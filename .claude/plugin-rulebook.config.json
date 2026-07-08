@@ -1,0 +1,18 @@
+{
+  "_meta": {
+    "note": "Repo-specific overrides for plugin-rulebook (part of the plugin-dev plugin). Not part of the plugin package — this file is specific to this repository and is merged on top of plugins/plugin-dev/skills/plugin-rulebook/assets/settings.json's plugin-portable defaults. See that file's R23 section and references/external-reference-policy.md for the merge procedure."
+  },
+  "rules": {
+    "R23_external_reference_policy": {
+      "config": {
+        "whitelist": ["tessl", "codacy", "coderabbit", "qodo", "codex", "devin", "windsurf", "cascade", "jetbrains", "antigravity", "gemini", "github", "cursor", "qwen", "bfg-repo-cleaner", "asana", "jira", "linear", "serena", "googleapis", "gstatic", "sheetjs", "anthropics", "openai", "google", "microsoft", "anthropics/claude-plugins-official"],
+        "blacklist": ["rcc", "daymade", "daymade-docs", "daymade-skills"],
+        "excluded_paths": [
+          "skills/skill-security/references/api-whitelist.md",
+          "skills/skill-security/references/pii-patterns.md",
+          "skills/skill-development/references/secrets-and-credentials.md"
+        ]
+      }
+    }
+  }
+}

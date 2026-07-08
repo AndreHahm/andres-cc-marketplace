@@ -1,0 +1,31 @@
+node_modules/
+npm-debug.log
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.ty/
+dist/
+build/
+reports/events/
+.env
+.env.*
+!.env.example
+.idea/
+.qodo/
+!.claude/
+!.codex/
+!.agents/
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md
+
+#Repo-specific fies and directories
+.merged/
+.not-implemented/
+.planned/
+**/to-implement/
+**/.rulebook/
+.claude/output/

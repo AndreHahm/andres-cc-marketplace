@@ -1,0 +1,8 @@
+{
+  "name": "plugin-dev",
+  "version": "1.0.0-alpha.1",
+  "description": "Plugin development toolkit with skills for creating agents, commands, hooks, MCP integrations, rules and comprehensive plugin structure guidance",
+  "author": {
+    "name": "Andre Hahm"
+  }
+}

@@ -1,0 +1,22 @@
+[project]
+name = "claude-pr-review"
+version = "0.1.0"
+description = "Claude PR Review"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [{ name = "Andre Hahm" }]
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.8",
+  "ty>=0.0.1a1"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

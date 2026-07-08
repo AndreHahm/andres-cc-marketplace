@@ -1,0 +1,25 @@
+{
+  "name": "andres-cc-marketplace",
+  "owner": {
+    "name": "Andre Hahm"
+  },
+  "metadata": {
+    "version": "1.0.0-alpha.1",
+    "description": "Andres Claude Code Plugin Marketplace"
+  },
+  "plugins": [
+    {
+      "name": "plugin-dev",
+      "source": "./plugins/plugin-dev",
+      "description": "Claude Code Plugin Development",
+      "version": "1.0.0-alpha.1",
+      "author": {
+        "name": "Andre Hahm",
+        "url": "https://github.com/andrehahm"
+      },
+      "homepage": "https://github.com/andrehahm/claude-pr-review",
+      "repository": "https://github.com/andrehahm/claude-pr-review",
+      "license": "Apache-2.0"
+    }
+  ]
+}

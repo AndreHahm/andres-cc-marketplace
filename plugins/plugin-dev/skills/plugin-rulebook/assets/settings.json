@@ -1,0 +1,264 @@
+{
+  "version": "1.0.0",
+  "_meta": {
+    "last_reviewed": "2026-07-05",
+    "review_triggers": {
+      "skill-development/references/size-limits.md": ["R13 (SKILL.md line limit weak_warning threshold)", "R18 (code block weak_warning threshold)"],
+      "skill-reviewer C1/C2 severity tier logic": ["R13", "R18"],
+      "platform frontmatter spec (new or removed fields)": ["R5 (forbidden field list)"],
+      "platform tool-scoping syntax changes": ["R6 (format and scope rules)"]
+    },
+    "note": "Update last_reviewed and re-check affected rules whenever any upstream trigger changes."
+  },
+  "rules": {
+    "R1_language_english_only": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "All frontmatter fields and body content must be in English"
+    },
+    "R2_reference_english_required": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "Every references/ file must have an English primary version"
+    },
+    "R3_reference_multilingual": {
+      "enabled": true,
+      "severity": "OPTIONAL",
+      "description": "Reference files may have language variant files alongside the English primary"
+    },
+    "R4_naming_kebab_case": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "All component identifiers must use lowercase kebab-case"
+    },
+    "R5_frontmatter_no_nonstandard_fields": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "Skill and agent frontmatter must not include command-only or unsupported fields"
+    },
+    "R6_tool_scoping_least_privilege": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "allowed-tools may be space-separated, comma-separated, or a YAML list; apply principle of least privilege",
+      "config": {
+        "canonical_format": "space-separated",
+        "accepted_formats": ["space-separated", "comma-separated", "yaml-list"],
+        "forbidden_bash_scopes": ["Bash", "Bash(*)", "Bash(sh:*)", "Bash(bash:*)", "Bash(cmd:*)", "Bash(powershell:*)"]
+      }
+    },
+    "R7_no_emoji_in_structure": {
+      "enabled": true,
+      "severity": "SUGGESTED",
+      "description": "No emoji in section headings, frontmatter fields, or procedural step labels"
+    },
+    "R8_description_multiline_syntax": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "Descriptions over 80 characters must use >- YAML block scalar syntax"
+    },
+    "R9_no_hardcoded_credentials": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "No API keys, tokens, passwords, or secrets in any plugin file"
+    },
+    "R10_reference_file_naming": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "Reference files use descriptive, specific, kebab-case topic names (max 40 chars, no generic names)"
+    },
+    "R11_max_heading_depth": {
+      "enabled": false,
+      "severity": "SUGGESTED",
+      "description": "Headings must not exceed depth 3 (###)",
+      "config": {
+        "max_depth": 3
+      }
+    },
+    "R12_code_block_language_specifier": {
+      "enabled": false,
+      "severity": "SUGGESTED",
+      "description": "All fenced code blocks must include a language identifier (```yaml, ```json, ```bash)"
+    },
+    "R13_skillmd_line_limit": {
+      "enabled": true,
+      "severity": "TIERED",
+      "description": "SKILL.md total line count — tiered severity by threshold (see references/size-rules.md)",
+      "config": {
+        "thresholds": {
+          "weak_warning": 100,
+          "soft_warning": 300,
+          "warning": 490,
+          "critical": 500
+        }
+      }
+    },
+    "R14_references_one_level_deep": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "No nested subdirectories in references/ — only references/<file>.md is valid"
+    },
+    "R15_no_human_documentation_files": {
+      "enabled": false,
+      "severity": "SUGGESTED",
+      "description": "No README.md, CHANGELOG.md, INSTALLATION.md, or similar human-facing docs in skill directories"
+    },
+    "R16_progressive_disclosure_order": {
+      "enabled": false,
+      "severity": "SUGGESTED",
+      "description": "Quick Start section must appear before detailed workflow or reference sections in SKILL.md"
+    },
+    "R17_no_bare_urls": {
+      "enabled": true,
+      "severity": "SUGGESTED",
+      "description": "All hyperlinks must use named reference syntax — text in brackets, URL in parentheses"
+    },
+    "R18_code_block_line_limit": {
+      "enabled": true,
+      "severity": "TIERED",
+      "description": "Inline fenced code block line count — tiered severity by threshold (see references/size-rules.md)",
+      "config": {
+        "thresholds": {
+          "weak_warning": 10,
+          "warning": 20,
+          "critical": 30
+        }
+      }
+    },
+    "R19_canonical_path_resolution": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "Resolve the target component's actual file path and verify no duplicate/shadow copy of the same named component exists in another scope (project, plugin, or user skill directories)"
+    },
+    "R20_duplicate_fact_sweep": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "When a canonical enum, threshold, or field value changes, sweep the plugin tree for other occurrences of the old value in sibling files and flag any not updated"
+    },
+    "R21_skill_description_size": {
+      "enabled": true,
+      "severity": "TIERED",
+      "description": "SKILL.md description/when_to_use/combined length — tiered severity by threshold (see references/size-rules.md)",
+      "config": {
+        "limits": {
+          "description": {"min_length": 80, "max_length": 1024},
+          "when_to_use": {"max_length": 512},
+          "combined": {"min_length": 80, "max_length": 1536}
+        },
+        "warning_thresholds": {
+          "description_low": 80,
+          "description_high": 1018,
+          "when_to_use_high": 506,
+          "combined_high": 1524
+        },
+        "critical_thresholds": {
+          "description_low": 20,
+          "description_high": 1024,
+          "when_to_use_high": 512,
+          "combined_high": 1536
+        }
+      }
+    },
+    "R22_argument_frontmatter_consistency": {
+      "enabled": true,
+      "severity": "TIERED",
+      "description": "argument-hint/arguments frontmatter must match $ARGUMENTS/$N/$name usage in the body (see references/argument-consistency.md)",
+      "config": {
+        "checks": {
+          "accepts_args_but_undeclared": "WARNING",
+          "missing_argument": "CRITICAL",
+          "stale_argument": "CRITICAL",
+          "wrong_position": "CRITICAL"
+        },
+        "positional_indexing": "0-based ($0 = first argument, matching $ARGUMENTS[0])"
+      }
+    },
+    "R23_external_reference_policy": {
+      "enabled": true,
+      "severity": "TIERED",
+      "description": "External references (companies, GitHub orgs, marketplaces, plugins, skills, repositories) must be classified whitelist/blacklist; unclassified and broken references are flagged (see references/external-reference-policy.md)",
+      "config": {
+        "whitelist": [],
+        "blacklist": [],
+        "auto_allow_marketplace_json_entries": true,
+        "match_kinds": ["domain", "github_org", "github_repo", "plugin_name", "skill_name", "marketplace_name"],
+        "excluded_paths": [],
+        "repo_overrides_file": "{REPO_ROOT}/.claude/plugin-rulebook.config.json",
+        "severity_by_classification": {
+          "whitelisted": "OK",
+          "blacklisted": "CRITICAL",
+          "unknown": "ADVISORY",
+          "broken": "CRITICAL"
+        }
+      }
+    }
+  },
+  "languages": {
+    "primary": "en",
+    "additional": ["de", "zh", "fr", "es", "ja", "pt"],
+    "variant_naming_pattern": "{topic}.{lang}.md",
+    "notes": "Add or remove codes in 'additional' to control which language variants are permitted"
+  },
+  "naming": {
+    "max_length": 64,
+    "min_length": 3,
+    "pattern": "^[a-z][a-z0-9-]+[a-z0-9]$",
+    "forbidden_words": ["anthropic", "claude"],
+    "soft_warning_words": ["helper", "utils"],
+    "reference_file": {
+      "max_topic_length": 40,
+      "forbidden_generic_names": [
+        "reference", "guide", "config", "docs", "info",
+        "stuff", "misc", "other", "readme", "index"
+      ]
+    }
+  },
+  "formatting": {
+    "max_heading_depth": 3,
+    "list_style": "-",
+    "code_block_language_required": false,
+    "description_multiline_threshold_chars": 80
+  },
+  "agent": {
+    "allowed_fields": [
+      "name", "description", "model", "tools",
+      "disallowedTools", "permissionMode", "maxTurns", "skills",
+      "mcpServers", "hooks", "memory", "background", "effort",
+      "isolation", "color", "initialPrompt"
+    ],
+    "color": {
+      "valid_values": ["red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"],
+      "deprecated_values": ["magenta"],
+      "notes": "magenta is no longer listed in current platform docs; flag as deprecated, not invalid"
+    },
+    "permissionMode": {
+      "valid_values": ["default", "acceptEdits", "dontAsk", "bypassPermissions", "plan", "auto", "manual"],
+      "aliases": {
+        "manual": "default"
+      },
+      "notes": "manual is an alias for default, introduced in Claude Code v2.1.200+"
+    },
+    "model": {
+      "valid_values": ["inherit", "sonnet", "opus", "haiku"]
+    },
+    "effort": {
+      "valid_values": ["low", "medium", "high", "max"]
+    },
+    "memory": {
+      "valid_values": ["user", "project", "local"]
+    },
+    "isolation": {
+      "valid_values": ["worktree"]
+    }
+  },
+  "skill": {
+    "allowed_fields": [
+      "name", "description", "argument-hint", "disable-model-invocation",
+      "user-invocable", "allowed-tools", "model", "effort", "context",
+      "agent", "hooks", "paths", "shell"
+    ]
+  },
+  "rule_files": {
+    "allowed_fields": ["paths"]
+  },
+  "hooks_only_vars": ["${CLAUDE_PLUGIN_ROOT}", "${CLAUDE_PLUGIN_DATA}"]
+}
