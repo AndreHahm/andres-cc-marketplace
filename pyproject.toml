@@ -1,9 +1,9 @@
 [project]
-name = "claude-pr-review"
+name = "andres-cc-marketplace"
 version = "0.1.0"
-description = "Claude PR Review"
+description = "Claude Code Marketplace with plugins created by Andre Hahm"
 requires-python = ">=3.13"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 authors = [{ name = "Andre Hahm" }]
 dependencies = []
 

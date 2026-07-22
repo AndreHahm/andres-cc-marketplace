@@ -18,7 +18,7 @@ description drawn from its own section below.
 **Actions:**
 1. Resolve this project's transcript directory: `~/.claude/projects/<project-dir>/`,
    where `<project-dir>` is the sanitized form of the current repo path (matches the
-   directory naming already observed this session, e.g. `C--Dev-Repos-claude-pr-review`).
+   directory naming already observed this session, e.g. `C--Dev-Repos-andres-cc-marketplace`).
 2. `Glob('*.jsonl', path=<that directory>)`, filter to files modified within the window
    (`Bash(date:*)` for the cutoff timestamp, compare against each file's mtime).
 3. **Cheap pre-filter, never a full Read:** `Grep` each candidate transcript for
