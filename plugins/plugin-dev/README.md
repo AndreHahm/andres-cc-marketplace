@@ -4,7 +4,7 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-dev` ships **32 skills**, **22 agents**, **16 commands**, and `PreToolUse`/`Stop`/`PostToolUse` hooks. Skills fall into six broad groups:
+`plugin-dev` ships **32 skills**, **23 agents**, **16 commands**, and `PreToolUse`/`Stop`/`PostToolUse` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
@@ -95,11 +95,12 @@ cc --plugin-dir /path/to/plugin-dev
 
 ## Agents
 
-Twenty-two specialized agents, seventeen of which are quality-gate reviewers cross-checked by `plugin-validator`:
+Twenty-three specialized agents, seventeen of which are quality-gate reviewers cross-checked by `plugin-validator`:
 
 | Agent | Purpose |
 |---|---|
 | `plugin-validator` | Validates overall plugin structure, manifest, and component wiring |
+| `plugin-rulebook-checker` | Isolated, Agent-dispatchable R1-R26 compliance checker for plugin-rulebook -- full-plugin batch sweep or fast targeted delta re-check, without a general-purpose Agent's tool-schema and full-SKILL.md-reading overhead |
 | `skill-reviewer` | Reviews skill files for structure and best-practice adherence |
 | `hook-reviewer` | Reviews hook configurations for safety and correctness before deployment |
 | `rule-reviewer` | Reviews `.claude/rules/` files before they load into every session |
