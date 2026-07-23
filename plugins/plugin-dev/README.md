@@ -4,12 +4,12 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-dev` ships **31 skills**, **22 agents**, **16 commands**, and `PreToolUse`/`Stop`/`PostToolUse` hooks. Skills fall into six broad groups:
+`plugin-dev` ships **32 skills**, **22 agents**, **16 commands**, and `PreToolUse`/`Stop`/`PostToolUse` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
 | **Component authoring** | `agent-development`, `command-development`, `hook-development`, `skill-development`, `workflow-skill-development`, `mcp-integration` |
-| **Plugin structure & governance** | `plugin-development`, `plugin-rulebook`, `plugin-settings`, `plugin-evaluation`, `marketplace-development`, `plugin-documentation` |
+| **Plugin structure & governance** | `plugin-development`, `plugin-rulebook`, `upstream-sources-registry`, `plugin-settings`, `plugin-evaluation`, `marketplace-development`, `plugin-documentation` |
 | **Skill quality & lifecycle** | `skill-refiner-interactive`, `skill-improver-loop`, `skill-tester`, `skill-security`, `skill-stocktake`, `skill-maintenance` |
 | **Plugin lifecycle** | `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance` |
 | **Planning & analysis** | `plugin-ideation`, `plugin-planning`, `plugin-comparison`, `plugin-grader`, `analyzing-sessions` |
@@ -48,6 +48,7 @@ cc --plugin-dir /path/to/plugin-dev
 |---|---|
 | `plugin-development` | Creating, converting, or publishing a plugin end-to-end (delegates component work to the skills above) |
 | `plugin-rulebook` | Checking naming, language, formatting, and tool-scoping compliance on any component |
+| `upstream-sources-registry` | Tracking official Claude Code sources (docs, changelog, informal GitHub signals) with classification, derived re-check priority, and freshness state, consulted by the dev-rules commands instead of ad-hoc web search |
 | `plugin-settings` | Adding per-project configuration via `.claude/plugin-name.local.md` |
 | `plugin-evaluation` | Designing a rubric or LLM-judge methodology to evaluate agents/commands |
 | `marketplace-development` | Converting a skills-only repo (no `plugin.json`) into a publishable marketplace |
