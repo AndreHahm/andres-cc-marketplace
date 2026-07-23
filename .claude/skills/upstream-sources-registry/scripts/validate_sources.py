@@ -7,6 +7,7 @@ Usage:
 import json
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 REQUIRED_FIELDS = {
     "id", "name", "url", "authority", "volatility", "enabled",
@@ -17,6 +18,14 @@ VALID_AUTHORITY = {"spec", "guide", "changelog", "informal"}
 VALID_VOLATILITY = {"stable", "evolving", "frequent"}
 VALID_RANK = {"critical", "standard", "opportunistic", None}
 
+# Built-in (non-custom) sources must resolve to one of these domains -- a
+# non-custom entry pointing anywhere else would mean the seed data itself was
+# tampered with. Custom sources outside this list are allowed (that's the
+# whole point of "add a custom source") but get a visible warning rather than
+# a silent pass, since a URL is exactly what a later WebFetch/WebSearch step
+# will treat as trusted enough to inform a rule-file edit.
+ALLOWLISTED_DOMAINS = {"docs.claude.com", "github.com"}
+
 
 def main() -> int:
     sources_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent.parent / "assets" / "sources.json"
@@ -24,10 +33,15 @@ def main() -> int:
         print(f"sources.json not found at {sources_path}", file=sys.stderr)
         return 1
 
-    with open(sources_path, encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(sources_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"Malformed JSON in {sources_path} at line {e.lineno}, column {e.colno}: {e.msg}", file=sys.stderr)
+        return 1
 
     errors = []
+    warnings = []
     seen_ids = set()
 
     for i, source in enumerate(data.get("sources", [])):
@@ -58,6 +72,21 @@ def main() -> int:
 
         if not isinstance(source.get("cited_by"), list):
             errors.append(f"{label}: 'cited_by' must be an array")
+
+        url = source.get("url") or ""
+        parsed = urlparse(url)
+        if parsed.scheme != "https":
+            errors.append(f"{label}: url must be https:// (got '{url}')")
+        elif parsed.netloc.lower() not in ALLOWLISTED_DOMAINS:
+            if source.get("custom"):
+                warnings.append(f"{label}: custom source url domain '{parsed.netloc}' is outside the allowlist {sorted(ALLOWLISTED_DOMAINS)} -- review before trusting its fetched content")
+            else:
+                errors.append(f"{label}: non-custom source url domain '{parsed.netloc}' is outside the allowlist {sorted(ALLOWLISTED_DOMAINS)} -- built-in sources must resolve to a known domain")
+
+    if warnings:
+        print(f"{len(warnings)} warning(s):")
+        for w in warnings:
+            print(f"  - {w}")
 
     if errors:
         print(f"{len(errors)} issue(s) found:")

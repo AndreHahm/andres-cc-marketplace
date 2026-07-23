@@ -64,21 +64,12 @@ Exception: a user may explicitly override a specific rulebook rule in the curren
 
 Manual `plugin-rulebook` invocation is a policy gate, not a runtime guardrail. If a component change adds a destructive or irreversible action (e.g., a hook that deletes or overwrites), the enforcement rule MUST also require a backing hook — a textual rule alone is not sufficient enforcement. For plugins shipped as a team tool, pair this manual check with the live PostToolUse validation hook described in the `hook-development` skill.
 
-## Rulebook Audit
+## Upstream Source Verification
 
-The `plugin-rulebook` is the **leading source** for all plugin component rules. When an upstream source changes, do not update the rulebook automatically — trigger an audit to surface gaps and resolve them with the user.
+Plugin-rulebook rules that trace back to an official Claude Code doc are tracked, classified, and freshness-checked by the `upstream-sources-registry` skill — not by a rulebook-owned audit procedure. When a tracked source changes, `find-dev-rule`/`verify-dev-rules`/`update-dev-rule` (which consult that registry instead of a blind `WebSearch`) surface the gap through their existing classification (`OUTDATED`/`MISSING`/`CONFLICT`) rather than a rulebook-specific "audit mode."
 
-**Trigger:** any tracked upstream source is created or modified.
+**Intentional divergence:** if a plugin-rulebook rule should knowingly differ from what an official source currently says (a deliberate policy choice, not a defect), record it via `verify-dev-rules`'s Exclusion mechanism (its Step 2) rather than a separate rulebook-specific decision log — `verify-dev-rules` already treats a target's prior exclusions as binding across runs (its Step 3), so a decision recorded once is not re-litigated on the next check.
 
-**Procedure:**
-1. Invoke the `plugin-rulebook` skill in audit mode targeting the changed upstream source.
-2. The skill identifies gaps between the current rulebook rules and the upstream change.
-3. Before asking the user about a gap, check `.claude/plugin-rulebook-audit-decisions.md` — if the gap was already decided, apply the prior decision without asking.
-4. For each new (undecided) gap, present three options:
-   - **1. Keep plugin-rulebook** — overwrite the upstream source with the rulebook's version
-   - **2. Keep `<upstream-source>`** — update the rulebook rule to match the upstream version
-   - **3. Keep both** — preserve both; record the intentional divergence
-5. Record each decision in `.claude/plugin-rulebook-audit-decisions.md` to prevent re-asking in future audits.
-6. After all gaps are resolved, update `_meta.last_reviewed` in `.claude/skills/plugin-rulebook/assets/settings.json`.
+**Trigger:** run `verify-dev-rules --level component --name plugin-rulebook` (or the equivalent whole-plugin invocation) whenever a tracked upstream source changes, or monthly at minimum — same cadence as before.
 
-**Audit cadence:** whenever a tracked upstream source changes, or when a rulebook rule produces unexpected results. Minimum: once per month.
+**Migrated history:** `.claude/plugin-rulebook-audit-decisions.md` is retained as the historical record of decisions made under the old mechanism. New decisions are recorded in `verify-dev-rules`'s own gap reports going forward — any decision in the old log still actively relevant should be re-recorded as an Excluded Candidate the next time `verify-dev-rules` runs against `plugin-rulebook`, so it isn't silently re-flagged as a fresh gap now that this section's old procedure no longer runs.

@@ -35,6 +35,8 @@ No rules report found. Run /report-dev-rules first.
 
 Read the resolved report file fully. Extract every rule row from every section (see the "Standard table format" in `/report-dev-rules` — `Rule | Severity | Source | Detail`, plus CLAUDE.md rows and any existing Conflict/Consistency rows).
 
+**Load prior exclusions:** check whether `{output-dir}/{name}-gaps.md` already exists from a previous run against this same target. If it does, read its **Excluded Candidates** table now and hold it for Step 2 — this is what lets Step 2's "Intentional divergence (carried forward)" case actually find prior decisions on a first pass through this document, rather than only becoming available once Step 3 re-reads it. If no prior gap report exists, proceed with an empty prior-exclusions set (every gap in this run is newly surfaced).
+
 **Pre-flight:** Before any `WebFetch`/`WebSearch` call, print the resolved report path, the count of rules extracted, and the distinct topic areas found (e.g. "skill frontmatter", "agent/subagent frontmatter", "hooks", "plugin manifest", "commands", "rules/CLAUDE.md", "MCP", "settings"). Wait for confirmation ("yes"/"y"/"proceed"/"ok") before proceeding; on any other answer, print "Cancelled." and stop.
 
 ---
@@ -57,7 +59,9 @@ For every rule row extracted in Setup, compare it against the documentation cont
 | `NOT-OFFICIAL` | Rule is a project-internal convention (naming style, line-count budget, internal field like `title`/`impact`) with no platform-doc equivalent — this is expected and not a defect on its own |
 | `UNVERIFIABLE` | No official documentation could be found covering this rule; note this explicitly rather than guessing |
 
-Record, for every non-`CONFIRMED` and non-`NOT-OFFICIAL` row: the doc URL (or the registry source `id` if the registry path was used), a short quoted or paraphrased excerpt supporting the classification, and the exact local rule text with its source file.
+**Authority-tier gate:** when the registry path was used, it returns the source's `authority` tier alongside its content (per `upstream-sources-registry`'s Freshness Check). A `changelog`/`informal`-tier source is corroborating evidence only, never sufficient on its own to classify `OUTDATED`/`MISSING` — if that's the *only* source backing the classification, classify the row `UNVERIFIABLE` instead and note "informal-only, needs spec/guide corroboration" rather than treating it as an actionable gap. Only a `spec`/`guide`-tier source (or training-data-independent direct `WebFetch`/`WebSearch` of a `docs.claude.com` page) is sufficient to classify `OUTDATED`/`MISSING` on its own.
+
+Record, for every non-`CONFIRMED` and non-`NOT-OFFICIAL` row: the doc URL (or the registry source `id` and its `authority` tier if the registry path was used), a short quoted or paraphrased excerpt supporting the classification, and the exact local rule text with its source file.
 
 ---
 
@@ -77,7 +81,7 @@ From every `OUTDATED`, `MISSING`, and `UNVERIFIABLE` classification in Step 1, c
 **Exclusion mechanism:** before finalizing a gap, check two things:
 
 1. **Automatic safeguard** — would fixing this gap make local rules *more restrictive* than the official docs (e.g. banning a value the docs list as a supported default, or treating something the docs describe as optional as if it were forbidden)? If so, move it straight to **Excluded Candidates** with case `Automatic safeguard` and a one-line explanation — no user confirmation needed. This class of mistake (proposing a rule that quietly contradicts an official default) has happened before in this exact pipeline and was only caught on a second review pass — do not rely on Step 3 alone to catch it; screen for it here first.
-2. **Intentional divergence** — does the local rule deliberately differ from the official docs for a stated policy reason, not a defect? If a prior run's Excluded Candidates for this same target already documents this gap as intentional, carry it forward with case `Intentional divergence (carried forward)` — no need to re-ask. If this is newly surfaced with no prior record, present it to the user (`AskUserQuestion`: conform to match the official docs / keep local as an intentional, recorded divergence) before finalizing — do not silently assume divergence is intentional just because it looks defensible.
+2. **Intentional divergence** — does the local rule deliberately differ from the official docs for a stated policy reason, not a defect? Check the prior-exclusions set loaded in Setup: if it already documents this gap as intentional, carry it forward with case `Intentional divergence (carried forward)` — no need to re-ask. If this is newly surfaced with no prior record, present it to the user (`AskUserQuestion`: conform to match the official docs / keep local as an intentional, recorded divergence) before finalizing — do not silently assume divergence is intentional just because it looks defensible.
 
 Output both lists (gaps and excluded candidates) — do not silently drop excluded candidates from the report. Every Excluded Candidates row states which of the two cases above it is, so a later run can tell an automatic safeguard from a human-confirmed decision.
 

@@ -29,6 +29,9 @@ MATCHES="$(cd "$REPO_ROOT" && grep -rEn "$PATTERN" \
   --exclude-dir="output" \
   --exclude-dir="worktrees" \
   --exclude-dir="node_modules" \
+  --exclude-dir=".draft" \
+  --exclude-dir=".backup" \
+  --exclude-dir=".temp" \
   . || true)"
 
 if [ -z "$MATCHES" ]; then

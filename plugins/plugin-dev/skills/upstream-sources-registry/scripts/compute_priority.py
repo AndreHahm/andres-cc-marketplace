@@ -13,8 +13,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-REQUIRED_RULE_PATTERN = "REQUIRED"
-
 
 def find_repo_root(start: Path) -> Path:
     current = start.resolve()
@@ -22,6 +20,10 @@ def find_repo_root(start: Path) -> Path:
         if (candidate / ".git").exists():
             return candidate
     return start.resolve()
+
+
+class GrepUnavailableError(RuntimeError):
+    """Raised when grep itself cannot be run -- distinct from "grep ran, found nothing"."""
 
 
 def grep_blast_radius(repo_root: Path, source_id: str) -> int:
@@ -32,11 +34,24 @@ def grep_blast_radius(repo_root: Path, source_id: str) -> int:
     own_dir_markers = ("upstream-sources-registry",)
     try:
         result = subprocess.run(
-            ["grep", "-rl", source_id, str(repo_root)],
+            ["grep", "-rlF", "--exclude-dir=.git", source_id, str(repo_root)],
             capture_output=True, text=True, timeout=30,
+            encoding="utf-8", errors="replace",
         )
-    except (OSError, subprocess.TimeoutExpired):
-        return 0
+    except FileNotFoundError as e:
+        raise GrepUnavailableError(f"grep is not available on this system: {e}") from e
+    except subprocess.TimeoutExpired as e:
+        raise GrepUnavailableError(f"grep timed out scanning {repo_root}: {e}") from e
+
+    # grep exit codes: 0 = matches found, 1 = no matches (expected, not an error),
+    # 2+ = a real error (bad pattern, unreadable path, permission denied). Codes
+    # 0/1 both fall through to counting stdout; only 2+ is a genuine failure that
+    # must not be silently reported as blast_radius=0.
+    if result.returncode not in (0, 1):
+        raise GrepUnavailableError(
+            f"grep exited {result.returncode} for id '{source_id}': {result.stderr.strip()}"
+        )
+
     if not result.stdout:
         return 0
     hits = [
@@ -78,23 +93,39 @@ def main() -> int:
         print(f"sources.json not found at {sources_path}", file=sys.stderr)
         return 1
 
-    with open(sources_path, encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(sources_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"Malformed JSON in {sources_path} at line {e.lineno}, column {e.colno}: {e.msg}", file=sys.stderr)
+        return 1
 
-    repo_root = find_repo_root(sources_path)
+    repo_root = find_repo_root(sources_path.parent)
 
+    exit_code = 0
     for source in data.get("sources", []):
+        source_id = source.get("id")
+        if not source_id:
+            print(f"Skipping entry with no 'id' field: {source!r}", file=sys.stderr)
+            exit_code = 1
+            continue
+
         override = source.get("manual_rank_override")
         if override:
             priority = override
             reason = "manual_rank_override"
         else:
-            blast_radius = grep_blast_radius(repo_root, source["id"])
+            try:
+                blast_radius = grep_blast_radius(repo_root, source_id)
+            except GrepUnavailableError as e:
+                print(f"{source_id}: ERROR -- {e}", file=sys.stderr)
+                exit_code = 1
+                continue
             priority = derive_priority(source, blast_radius)
             reason = f"derived (blast_radius={blast_radius})"
-        print(f"{source['id']}: {priority}  [{reason}]")
+        print(f"{source_id}: {priority}  [{reason}]")
 
-    return 0
+    return exit_code
 
 
 if __name__ == "__main__":

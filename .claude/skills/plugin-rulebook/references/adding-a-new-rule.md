@@ -44,4 +44,4 @@ Locations that have needed updating on past additions (starting point, not exhau
 
 ## 4. Worked Example
 
-R24 (Allowed Programming Languages) touched: `SKILL.md` (6 locations: frontmatter description, When NOT to Use, new rule section, Compliance Check Procedure example, Testing & Validation gate, plus the rule body itself), `assets/settings.json` (1 new config block), and 8 sibling files caught by the R20 sweep (all of §3's list except itself). All 9 canonical files were mirrored to `.claude/` and verified byte-identical before commit.
+R24 (Allowed Programming Languages) touched: `SKILL.md` (6 locations: frontmatter description, When NOT to Use, new rule section, Compliance Check Procedure example, Testing & Validation gate, plus the rule body itself), `assets/settings.json` (1 new config block), and 7 sibling files caught by the R20 sweep (all of §3's list except itself). All 9 canonical files were mirrored to `.claude/` and verified byte-identical before commit.

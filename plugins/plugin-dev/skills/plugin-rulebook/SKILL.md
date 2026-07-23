@@ -6,7 +6,7 @@ description: >-
   component, checking naming conventions and R1-R26 formatting compliance, auditing a full plugin, or loading active
   rule configuration, or before finalizing or packaging any plugin component. Governs naming, language, formatting,
   tool-scoping, and structure across the entire plugin.
-allowed-tools: Read Glob
+allowed-tools: Read Glob Bash(*/r20-sweep.sh:*) Bash(*/agent-cost-tracker.py:*)
 ---
 
 # Plugin Rulebook

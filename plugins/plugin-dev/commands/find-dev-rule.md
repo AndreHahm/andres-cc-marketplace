@@ -47,6 +47,8 @@ If two or more sources state different values for what should be the same rule, 
 
 ## Step 3: Verify Rule Against Official Docs, and Display Status
 
+**Pre-flight (standalone invocation only):** Step 2 can surface more than one distinct rule, and each one triggers its own `Skill(upstream-sources-registry)`/`WebSearch`/`WebFetch` call below — an unbounded per-rule external-call fan-out. When this command is run directly (`/find-dev-rule <query>`), print the count of distinct rules found and wait for confirmation ("yes"/"y"/"proceed"/"ok") before proceeding; on any other answer, print "Cancelled." and stop. **Skip this pre-flight** when these Steps are being executed inline as part of `/update-dev-rule`'s own Step 1 — that command already gates the same fan-out with its own pre-flight immediately afterward, and a second prompt here would just double-confirm the identical action.
+
 For each rule, invoke `Skill(upstream-sources-registry)` with the rule's topic to check whether a tracked source already covers it:
 - If a tracked, enabled source matches, the registry returns either a fresh cached snapshot (no fetch needed) or runs its own freshness check and returns the current result — use that returned content as "the current official docs" for the comparison below.
 - If no tracked source matches, fall back to `WebSearch`/`WebFetch` directly, same as before — an untracked topic is not itself grounds for `UNVERIFIABLE`, only an actual failed search is.
@@ -62,9 +64,11 @@ Do not answer from training-data memory in either path, since schemas, enums, an
 | `NOT-OFFICIAL` | Project-internal convention with no platform-doc equivalent — expected, not a defect |
 | `UNVERIFIABLE` | No official documentation could be found covering this rule |
 
+**Authority-tier gate:** when the registry path was used, it returns the source's `authority` tier alongside its content. A `changelog`/`informal`-tier source is corroborating evidence only — if that's the *only* source backing an `OUTDATED`/`MISSING` classification, classify it `UNVERIFIABLE` instead and note "informal-only, needs spec/guide corroboration." Only a `spec`/`guide`-tier source is sufficient to classify `OUTDATED`/`MISSING` on its own.
+
 Display one compact status line per rule:
 ```
 {rule name}: {STATUS} — {one-line reason, citing the doc excerpt or the disagreeing sources}
 ```
 
-For `OUTDATED` or `MISSING`, include what the official docs currently say, so there's enough here to act on with `/update-dev-rule` without re-researching. If the registry path was used, also note which tracked source `id` supplied the answer.
+For `OUTDATED` or `MISSING`, include what the official docs currently say, so there's enough here to act on with `/update-dev-rule` without re-researching. If the registry path was used, also note which tracked source `id` and `authority` tier supplied the answer.
