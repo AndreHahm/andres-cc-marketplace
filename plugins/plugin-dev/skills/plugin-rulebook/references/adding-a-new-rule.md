@@ -16,12 +16,13 @@ Work through in order — each step names the exact anchor to find and edit in `
 | 2 | `SKILL.md` "When NOT to Use" | Update any `R1–R{N-1}` total-scope mention (e.g. the `scripts-reviewer` exclusion line) → `R1–R{N}` |
 | 3 | `SKILL.md` "Active Rules" | Insert a new `### RNN — <Name> [SEVERITY, default: on/off]` section, placed after the highest-numbered existing rule and before "Repo-Specific Configuration". Follow the existing format: one-line summary, **Scope**, the rule's specific criteria (whitelist/thresholds/violations as applicable), **Fix** |
 | 4 | `assets/settings.json` → `rules` | Add a `RNN_<snake_case_name>` entry: `enabled`, `severity`, `description`, and a `config` block if the rule has tunable values (thresholds, enums, lists) |
-| 5 | `SKILL.md` "Compliance Check Procedure" example report | `Rules checked: N enabled / {N-1} total` → `{N} total` |
-| 6 | `SKILL.md` "Testing & Validation" quality gate | Update the enabled-rules list (e.g. `R1–R10, R13, R14, R17–R{N-1}`) → include `RNN` |
-| 7 | R20 sibling sweep (see below) | Grep the whole plugin tree for the old `R1-R{N-1}` / `R1–R{N-1}` total-count phrasing and update every sibling occurrence |
-| 8 | Mirror | Copy every touched file from `plugins/plugin-dev/` to `.claude/`, verify byte-identical via `diff` |
-| 9 | Self-check | Re-read the new rule section against R1 (English), R4 (if it introduces new naming), R8 (description length) — the rule you just wrote is itself plugin content |
-| 10 | Commit | One commit, message states the new rule ID + one-line purpose + which sibling files were swept |
+| 5 | `references/compact-rule-checklist.md` | Add a new table row for `RNN` (severity, tier `M`/`J`, scope, violation pattern, fix) matching the new "Active Rules" section, and update the file's own header count ("all 22 currently-enabled rules" → `N`) — this file is `plugin-rulebook-checker`'s only rule source, so a rule added here without a matching checklist row is invisible to that agent regardless of how correctly `SKILL.md` itself was updated |
+| 6 | `SKILL.md` "Compliance Check Procedure" example report | `Rules checked: N enabled / {N-1} total` → `{N} total` |
+| 7 | `SKILL.md` "Testing & Validation" quality gate | Update the enabled-rules list (e.g. `R1–R10, R13, R14, R17–R{N-1}`) → include `RNN` |
+| 8 | R20 sibling sweep (see below) | Grep the whole plugin tree for the old `R1-R{N-1}` / `R1–R{N-1}` total-count phrasing and update every sibling occurrence |
+| 9 | Mirror | Copy every touched file from `plugins/plugin-dev/` to `.claude/`, verify byte-identical via `diff` |
+| 10 | Self-check | Re-read the new rule section against R1 (English), R4 (if it introduces new naming), R8 (description length) — the rule you just wrote is itself plugin content |
+| 11 | Commit | One commit, message states the new rule ID + one-line purpose + which sibling files were swept |
 
 ## 3. R20 Sibling Sweep — Known Mention Locations
 
@@ -32,6 +33,7 @@ Run `scripts/r20-sweep.sh <previous-rule-number>` (e.g. `scripts/r20-sweep.sh 24
 Locations that have needed updating on past additions (starting point, not exhaustive — always run a fresh repo-wide grep, new mentions appear as components are added):
 
 - `plugin-rulebook/SKILL.md` itself (3 spots — see Touch List above)
+- `plugin-rulebook/references/compact-rule-checklist.md` (header count + the R11-R16-gap phrasing "R1-R10, R13, R14, R17-RNN" — won't match `r20-sweep.sh`'s `R1-RNN` contiguous-range pattern, so this one needs a manual check every time)
 - `rules/plugin-rulebook-enforcement.md` (`Active rulebook rules (R1–RNN, ...)`)
 - `agents/plugin-validator.md`
 - `agents/human-doc-reviewer.md`
