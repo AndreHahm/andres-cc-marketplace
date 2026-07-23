@@ -111,7 +111,7 @@ For each target, read in this order — later sources add detail, earlier source
 - All `commands/*.md` files — allowed frontmatter fields, argument-hint rules, tool-scoping conventions
 - `hooks/hooks.json` + hook scripts — structural requirements, exit code contract, location rules
 - `.claude/rules/*.md` (and subdirectories) — frontmatter restrictions, content rules, line budget
-- `skills/plugin-rulebook/` or `.claude/skills/plugin-rulebook/` (if present) — canonical rule list. If **both** exist, treat this as a reportable conflict on its own (see Step 5) rather than silently picking one. If the rulebook declares a "Tracked Upstream Sources" list (or similarly named pointer to other files it depends on), follow each pointer and read the named upstream file too — an upstream source not covered by whatever change generated the current state is a common place for values to go stale unnoticed.
+- `skills/plugin-rulebook/` or `.claude/skills/plugin-rulebook/` (if present) — canonical rule list. If **both** exist, treat this as a reportable conflict on its own (see Step 5) rather than silently picking one. Also read `upstream-sources-registry`'s `assets/sources.json` for the current list of tracked official sources, their classification, and last-verified state — this supersedes `plugin-rulebook`'s former "Tracked Upstream Sources" table, which existed for the same purpose before this registry consolidated it.
 
 **4. Plugin manifest** (plugin-level constraints):
 - `.claude-plugin/plugin.json` — manifest schema and required fields

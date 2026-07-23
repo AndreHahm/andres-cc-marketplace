@@ -1,0 +1,86 @@
+{
+  "version": "1.0.0",
+  "_meta": {
+    "notes": "Seeded during the upstream-sources-registry build by migrating plugin-rulebook's former 'Tracked Upstream Sources' table and settings.json _meta.review_triggers. Two of that table's six rows (skill-development/references/size-limits.md, skill-reviewer C1/C2 severity tier logic) were internal plugin-dev files, not official sources -- they were miscategorized in the old table and are intentionally NOT migrated here; see references/migration-notes.md. Seed entries below have not yet had a live freshness check run against them -- last_verified/last_verified_snapshot are null until the first real check populates them; do not treat a null last_verified as a fabricated or assumed check."
+  },
+  "sources": [
+    {
+      "id": "skill-agent-frontmatter-spec",
+      "name": "Claude Code skill/agent frontmatter field spec",
+      "url": "https://docs.claude.com/en/docs/claude-code/skills",
+      "authority": "spec",
+      "volatility": "stable",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": ["R5"],
+      "last_verified": null,
+      "last_verified_snapshot": null,
+      "custom": false
+    },
+    {
+      "id": "tool-scoping-syntax-spec",
+      "name": "Claude Code tool permission / allowed-tools scoping syntax",
+      "url": "https://docs.claude.com/en/docs/claude-code/settings",
+      "authority": "spec",
+      "volatility": "stable",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": ["R6"],
+      "last_verified": null,
+      "last_verified_snapshot": null,
+      "custom": false
+    },
+    {
+      "id": "skill-description-listing-spec",
+      "name": "Claude Code skill description/when_to_use combined listing cap",
+      "url": "https://docs.claude.com/en/docs/claude-code/skills",
+      "authority": "spec",
+      "volatility": "stable",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": ["R21"],
+      "last_verified": null,
+      "last_verified_snapshot": null,
+      "custom": false
+    },
+    {
+      "id": "argument-substitution-spec",
+      "name": "Claude Code $ARGUMENTS/$N/$name positional substitution semantics",
+      "url": "https://docs.claude.com/en/docs/claude-code/slash-commands",
+      "authority": "spec",
+      "volatility": "stable",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": ["R22"],
+      "last_verified": null,
+      "last_verified_snapshot": null,
+      "custom": false
+    },
+    {
+      "id": "claude-code-changelog",
+      "name": "Claude Code changelog / release notes",
+      "url": "https://docs.claude.com/en/release-notes/claude-code",
+      "authority": "changelog",
+      "volatility": "frequent",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": [],
+      "last_verified": null,
+      "last_verified_snapshot": null,
+      "custom": false
+    },
+    {
+      "id": "anthropics-claude-code-repo",
+      "name": "anthropics/claude-code GitHub repo (issues, discussions, example plugins)",
+      "url": "https://github.com/anthropics/claude-code",
+      "authority": "informal",
+      "volatility": "frequent",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": [],
+      "last_verified": null,
+      "last_verified_snapshot": null,
+      "custom": false
+    }
+  ]
+}

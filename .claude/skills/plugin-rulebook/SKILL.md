@@ -471,9 +471,9 @@ correctness (encodings, shell logic, mojibake). Run `scripts-reviewer` separatel
 - [ ] PASS / ADVISORY / FAIL emitted for every enabled rule checked
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
 
-## Upstream Audit
+## Upstream Source Verification
 
-The `plugin-rulebook` is the **leading source** for all plugin component rules. Upstream sources do not overwrite the rulebook automatically — when an upstream source changes, audit the rulebook to identify gaps, then resolve each gap explicitly with the user. See `references/upstream-audit-procedure.md` for the full Audit Procedure and Tracked Upstream Sources table.
+Whether a rule traces back to an official Claude Code doc, and whether that doc has changed, is tracked by the `upstream-sources-registry` skill — not by this skill. `find-dev-rule`/`verify-dev-rules`/`update-dev-rule` consult that registry and surface any gap through their own classification. See `.claude/rules/plugin-rulebook-enforcement.md`'s "Upstream Source Verification" section for the full procedure and how intentional divergences are recorded.
 
 ---
 
@@ -494,5 +494,4 @@ The `plugin-rulebook` is the **leading source** for all plugin component rules. 
 | `${CLAUDE_SKILL_DIR}/references/external-reference-policy.md` | R23 detection procedure, whitelist/blacklist matching, marketplace.json auto-allow, worked examples |
 | `${CLAUDE_SKILL_DIR}/references/plugin-file-surface.md` | Shared plugin-scope/CWD-scope file-enumeration definition used by `language-reviewer`, `external-references-reviewer`, `consistency-reviewer`, `completeness-reviewer`, and `scripts-reviewer` |
 | `${CLAUDE_SKILL_DIR}/references/gitignore-exclusion.md` | Shared procedure, used by every reviewer agent, for excluding gitignored paths before reviewing Glob results — and the companion authoring-side rule that no component may reference a gitignored path as a live dependency |
-| `${CLAUDE_SKILL_DIR}/references/upstream-audit-procedure.md` | Full Audit Procedure and Tracked Upstream Sources table for the Upstream Audit workflow |
 | `${CLAUDE_SKILL_DIR}/references/overhead-and-cost-rules.md` | R25/R26 violations, fix guidance, and worked examples |

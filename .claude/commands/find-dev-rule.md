@@ -3,7 +3,7 @@ description: >-
   Find a plugin-dev rule by name, value, or behavior across the codebase, show every place
   it's defined, and check its status against current official Claude Code documentation.
 argument-hint: <rule name, value, or behavior description>
-allowed-tools: Read Glob Grep WebFetch WebSearch
+allowed-tools: Read Glob Grep WebFetch WebSearch Skill(upstream-sources-registry)
 model: opus
 ---
 
@@ -47,7 +47,11 @@ If two or more sources state different values for what should be the same rule, 
 
 ## Step 3: Verify Rule Against Official Docs, and Display Status
 
-For each rule, locate the current official Claude Code documentation covering it via `WebSearch`/`WebFetch` — do not answer from training-data memory, since schemas, enums, and behavior evolve across releases and a rule correct yesterday can already be stale today. Compare every source value from Step 2 against the docs and classify:
+For each rule, invoke `Skill(upstream-sources-registry)` with the rule's topic to check whether a tracked source already covers it:
+- If a tracked, enabled source matches, the registry returns either a fresh cached snapshot (no fetch needed) or runs its own freshness check and returns the current result — use that returned content as "the current official docs" for the comparison below.
+- If no tracked source matches, fall back to `WebSearch`/`WebFetch` directly, same as before — an untracked topic is not itself grounds for `UNVERIFIABLE`, only an actual failed search is.
+
+Do not answer from training-data memory in either path, since schemas, enums, and behavior evolve across releases and a rule correct yesterday can already be stale today. Compare every source value from Step 2 against the docs content obtained above and classify:
 
 | Status | Meaning |
 |---|---|
@@ -63,4 +67,4 @@ Display one compact status line per rule:
 {rule name}: {STATUS} — {one-line reason, citing the doc excerpt or the disagreeing sources}
 ```
 
-For `OUTDATED` or `MISSING`, include what the official docs currently say, so there's enough here to act on with `/update-dev-rule` without re-researching.
+For `OUTDATED` or `MISSING`, include what the official docs currently say, so there's enough here to act on with `/update-dev-rule` without re-researching. If the registry path was used, also note which tracked source `id` supplied the answer.

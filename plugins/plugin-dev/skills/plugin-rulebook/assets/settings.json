@@ -2,13 +2,7 @@
   "version": "1.0.0",
   "_meta": {
     "last_reviewed": "2026-07-05",
-    "review_triggers": {
-      "skill-development/references/size-limits.md": ["R13 (SKILL.md line limit weak_warning threshold)", "R18 (code block weak_warning threshold)"],
-      "skill-reviewer C1/C2 severity tier logic": ["R13", "R18"],
-      "platform frontmatter spec (new or removed fields)": ["R5 (forbidden field list)"],
-      "platform tool-scoping syntax changes": ["R6 (format and scope rules)"]
-    },
-    "note": "Update last_reviewed and re-check affected rules whenever any upstream trigger changes."
+    "note": "Official-source tracking (formerly review_triggers here) moved to upstream-sources-registry's assets/sources.json. The two internal (non-official-source) triggers this used to list -- skill-development/references/size-limits.md and skill-reviewer's severity-tier logic -- were not migrated there; they remain R20 Duplicate Fact Sweep's job, unrelated to external source tracking. See upstream-sources-registry's references/migration-notes.md for the full mapping."
   },
   "rules": {
     "R1_language_english_only": {

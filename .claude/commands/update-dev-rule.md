@@ -3,7 +3,7 @@ description: >-
   Find a stale plugin-dev rule, update it and every other rule it affects using the official
   docs recommendation, then check for and fix any resulting staleness.
 argument-hint: <rule name, value, or behavior description>
-allowed-tools: Read Write Edit Glob Grep WebFetch WebSearch Bash(date:*)
+allowed-tools: Read Write Edit Glob Grep WebFetch WebSearch Bash(date:*) Skill(upstream-sources-registry)
 model: opus
 ---
 
@@ -17,7 +17,7 @@ Find a stale rule, fix it and everything it affects, then report every change: $
 
 Read `${CLAUDE_PLUGIN_ROOT}/commands/find-dev-rule.md` and execute its Steps 1–3 against `$ARGUMENTS`.
 
-From the resulting classifications, treat `OUTDATED`, `MISSING`, and `CONFLICT` as **stale** — these need action. `CONFIRMED`, `NOT-OFFICIAL`, and `UNVERIFIABLE` need no update. If every found rule is one of these, print "No stale rule found matching '{query}'." and stop.
+From the resulting classifications, treat `OUTDATED`, `MISSING`, and `CONFLICT` as **stale** — these need action. `CONFIRMED`, `NOT-OFFICIAL`, and `UNVERIFIABLE` need no update. Before treating a stale rule as needing action, check whether a `verify-dev-rules` gap report for the same target already records it as an `Intentional divergence` Excluded Candidate — if so, treat it the same as `NOT-OFFICIAL` (no update) rather than auto-conforming it to the docs; a recorded intentional divergence is a decision, not a defect this command should silently overwrite. If every found rule is one of these (including any newly-excluded intentional divergence), print "No stale rule found matching '{query}'." and stop.
 
 **Pre-flight:** print each stale rule, its sources, and the planned correction (from the official-docs excerpt already gathered). Wait for confirmation ("yes"/"y"/"proceed"/"ok") before making any changes; on any other answer, print "Cancelled." and stop.
 

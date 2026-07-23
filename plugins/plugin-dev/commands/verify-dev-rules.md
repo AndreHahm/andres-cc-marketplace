@@ -4,7 +4,7 @@ description: >-
   gaps between local plugin-dev rules and the platform, and re-verify every reported gap
   before finalizing a gap report.
 argument-hint: --report <path> | --level <plugin|component> --name <name> [--output-dir <dir>]
-allowed-tools: Read Write Glob Grep WebFetch WebSearch Bash(mkdir:*)
+allowed-tools: Read Write Glob Grep WebFetch WebSearch Bash(mkdir:*) Skill(upstream-sources-registry)
 model: opus
 ---
 
@@ -41,9 +41,13 @@ Read the resolved report file fully. Extract every rule row from every section (
 
 ## Step 1: Verify Reported Rules Against Official Docs
 
-For each distinct topic area found in the report, locate the current official Claude Code documentation for that area. Use `WebSearch`/`WebFetch` to find and read the live docs — **do not answer from training-data memory**; the platform's schemas, valid enum values, and lifecycle behavior evolve across releases, and a rule that was correct when the report was generated may already be stale by the time you verify it (this is the same failure mode `/report-dev-rules` was built to catch across local files — the same discipline applies here against the external source).
+For each distinct topic area found in the report, invoke `Skill(upstream-sources-registry)` with that topic to check whether a tracked source already covers it:
+- If a tracked, enabled source matches, use the registry's returned content (a fresh cached snapshot, or the result of a freshness check it runs itself) as the current official documentation for that topic area.
+- If no tracked source matches, fall back to `WebSearch`/`WebFetch` directly to find and read the live docs, same as before.
 
-For every rule row extracted in Setup, compare it against the official documentation for its topic area and classify:
+**Do not answer from training-data memory in either path** — the platform's schemas, valid enum values, and lifecycle behavior evolve across releases, and a rule that was correct when the report was generated may already be stale by the time you verify it (this is the same failure mode `/report-dev-rules` was built to catch across local files — the same discipline applies here against the external source).
+
+For every rule row extracted in Setup, compare it against the documentation content obtained above for its topic area and classify:
 
 | Classification | Meaning |
 |---|---|
@@ -53,7 +57,7 @@ For every rule row extracted in Setup, compare it against the official documenta
 | `NOT-OFFICIAL` | Rule is a project-internal convention (naming style, line-count budget, internal field like `title`/`impact`) with no platform-doc equivalent — this is expected and not a defect on its own |
 | `UNVERIFIABLE` | No official documentation could be found covering this rule; note this explicitly rather than guessing |
 
-Record, for every non-`CONFIRMED` and non-`NOT-OFFICIAL` row: the doc URL, a short quoted or paraphrased excerpt supporting the classification, and the exact local rule text with its source file.
+Record, for every non-`CONFIRMED` and non-`NOT-OFFICIAL` row: the doc URL (or the registry source `id` if the registry path was used), a short quoted or paraphrased excerpt supporting the classification, and the exact local rule text with its source file.
 
 ---
 
@@ -70,9 +74,12 @@ From every `OUTDATED`, `MISSING`, and `UNVERIFIABLE` classification in Step 1, c
 | **Official doc** | URL + quoted/paraphrased excerpt from Step 1 |
 | **Recommendation** | The specific corrected wording or addition |
 
-**Exclusion safeguard:** Before finalizing a gap, check whether it would make local rules *more restrictive* than the official docs — e.g. banning a value the docs list as a supported default, or treating something the docs describe as optional as if it were forbidden. If so, do not add it as a gap to fix; instead list it under a separate **Excluded Candidates** section with a one-line reason. This class of mistake (proposing a rule that quietly contradicts an official default) has happened before in this exact pipeline and was only caught on a second review pass — do not rely on Step 3 alone to catch it; screen for it here first.
+**Exclusion mechanism:** before finalizing a gap, check two things:
 
-Output both lists (gaps and excluded candidates) — do not silently drop excluded candidates from the report.
+1. **Automatic safeguard** — would fixing this gap make local rules *more restrictive* than the official docs (e.g. banning a value the docs list as a supported default, or treating something the docs describe as optional as if it were forbidden)? If so, move it straight to **Excluded Candidates** with case `Automatic safeguard` and a one-line explanation — no user confirmation needed. This class of mistake (proposing a rule that quietly contradicts an official default) has happened before in this exact pipeline and was only caught on a second review pass — do not rely on Step 3 alone to catch it; screen for it here first.
+2. **Intentional divergence** — does the local rule deliberately differ from the official docs for a stated policy reason, not a defect? If a prior run's Excluded Candidates for this same target already documents this gap as intentional, carry it forward with case `Intentional divergence (carried forward)` — no need to re-ask. If this is newly surfaced with no prior record, present it to the user (`AskUserQuestion`: conform to match the official docs / keep local as an intentional, recorded divergence) before finalizing — do not silently assume divergence is intentional just because it looks defensible.
+
+Output both lists (gaps and excluded candidates) — do not silently drop excluded candidates from the report. Every Excluded Candidates row states which of the two cases above it is, so a later run can tell an automatic safeguard from a human-confirmed decision.
 
 ---
 
@@ -96,6 +103,7 @@ Before writing the report, verify:
 - [ ] Every rule row from the input report received a Step 1 classification — none silently skipped.
 - [ ] Every gap has all six Step 2 fields populated (ID, Priority, Type, Local rule, Official doc, Recommendation) plus a Step 3 **Verified** value.
 - [ ] No finalized gap duplicates or contradicts an entry in Excluded Candidates.
+- [ ] Every Excluded Candidates row states its Case (`Automatic safeguard` or `Intentional divergence (carried forward)`/newly-confirmed) — none left blank.
 - [ ] Every gap's Priority is exactly one of P1–P4.
 - [ ] Every citation URL in the report was actually fetched during Step 1 or Step 3 in this run (no fabricated or assumed URLs).
 
@@ -118,8 +126,8 @@ Verifies `{input report path}` against official Claude Code documentation.
 |---|---|---|---|---|---|---|
 
 ## Excluded Candidates
-| ID | What was considered | Why excluded |
-|---|---|---|
+| ID | What was considered | Case | Why excluded |
+|---|---|---|---|
 
 ## Coverage Summary
 Rules checked: {n} | Confirmed: {n} | Gaps: {n} (P1: {n}, P2: {n}, P3: {n}, P4: {n}) | Excluded: {n} | Unverifiable: {n}
