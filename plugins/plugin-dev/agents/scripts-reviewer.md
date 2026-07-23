@@ -37,7 +37,7 @@ You are a scripts correctness reviewer for Claude Code plugins. Your job is to f
 - If the caller names a specific script or directory, use exactly that.
 - Otherwise, search for `plugin-rulebook`: `Glob("**/plugin-rulebook/SKILL.md")`.
   - **If found:** read `<plugin-rulebook-dir>/references/plugin-file-surface.md` for the Plugin-scope/CWD-scope definition and use its script enumeration (`scripts/`, `hooks/`, any extension, including scripts referenced from a SKILL.md/agent/command body even if they live elsewhere); read `<plugin-rulebook-dir>/references/gitignore-exclusion.md` and exclude gitignored paths. Also read `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` — used by Structured Output Mode (Step 4).
-  - **If not found:** `Glob("**/scripts/**")` and `Glob("**/hooks/**")` directly under the target, excluding common draft-directory patterns (`to-implement/`, `.planned/`, `.not-implemented/`, `.backup/`, `.merged/`, `node_modules/`) as a fallback. For Structured Output Mode, fall back to the hardcoded action enum in Step 4.
+  - **If not found:** `Glob("**/scripts/**")` and `Glob("**/hooks/**")` directly under the target, excluding common draft-directory patterns (`.temp/`, `.draft/`, `.backup/`, `node_modules/`) as a fallback. For Structured Output Mode, fall back to the hardcoded action enum in Step 4.
 - State the resolved script list and absolute paths in the report header (R19-style path-resolution discipline).
 
 ## Step 2: Read Every Script

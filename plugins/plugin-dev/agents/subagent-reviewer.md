@@ -61,7 +61,7 @@ If `agent-development` cannot be found, report this clearly and halt — do not 
 
 ## Step 3: Load the Target Subagent
 
-1. Locate the agent file: user-provided path, or Glob `agents/**/*.md` if only a name is given, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` (a draft copy under a gitignored directory like `to-implement/` is not the real target)
+1. Locate the agent file: user-provided path, or Glob `agents/**/*.md` if only a name is given, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` (a draft copy under a gitignored directory like `.temp/` or `.draft/` is not the real target)
 2. Read the full file — frontmatter and system prompt body
 3. Verify the `name` field matches the filename (minus `.md`)
 4. If `skills:` is present, Glob for each referenced skill's `SKILL.md` and flag any that don't resolve

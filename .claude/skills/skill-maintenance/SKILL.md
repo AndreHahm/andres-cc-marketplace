@@ -46,7 +46,7 @@ Plugin-dev components should stay current but not churn on every commit. Update 
 | New pattern discovered worth documenting as a Gotcha or reference | Small, self-contained feature addition |
 | New anti-pattern discovered (something that broke, was flagged, or was corrected) | Refactor that doesn't change behavior or guidance |
 | Canonical value changed (settings.json enum, threshold, forbidden-field list — see R20) | Formatting, renaming, or comment-only changes |
-| A component's interface/behavior changed in a way siblings assume | Work still in `to-implement/` — not shipped, not yet a maintenance concern |
+| A component's interface/behavior changed in a way siblings assume | Work still in `.temp/to-implement/` or `.draft` — not shipped, not yet a maintenance concern |
 | A critical constraint or new REQUIRED rule was added | Documentation-only edits with no behavioral claim |
 
 If nothing in the left column applies, stop here — no update needed.

@@ -54,7 +54,7 @@ Check the invocation context before starting:
 
 ## Step 1: Resolve the Target Skill
 
-Locate the skill directory: user-provided path, or Glob `**/SKILL.md` if only a name is given, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` — a matching draft in a gitignored directory like `to-implement/` is not the real target. If the name is ambiguous or not found, ask the user rather than guessing.
+Locate the skill directory: user-provided path, or Glob `**/SKILL.md` if only a name is given, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` — a matching draft in a gitignored directory like `.temp/` or `.draft/` is not the real target. If the name is ambiguous or not found, ask the user rather than guessing.
 
 State the resolved skill's absolute path in the report header (R19-style discipline).
 

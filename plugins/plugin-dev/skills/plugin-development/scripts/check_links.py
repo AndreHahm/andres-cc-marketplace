@@ -21,7 +21,7 @@ from pathlib import Path
 
 LINK_PATTERN = re.compile(r'\[([^\]]*)\]\(([^)]+)\)')
 BARE_FILENAME_PATTERN = re.compile(r'`([a-zA-Z0-9_-]+\.md)`')
-SKIP_DIRS = {'.git', '__pycache__', 'node_modules', 'to-implement'}
+SKIP_DIRS = {'.git', '__pycache__', 'node_modules', '.temp', '.draft', '.backup'}
 
 
 def find_markdown_files(root):

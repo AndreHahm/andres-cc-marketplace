@@ -51,7 +51,7 @@ Check the invocation context before starting:
 
 ## Step 1: Resolve the Component Set
 
-- If the caller names one or more specific skills/agents, resolve each via Glob (`**/SKILL.md` for skills, `agents/**/*.md` for agents), excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` — a draft copy under a gitignored directory like `to-implement/` is not a real overlap target.
+- If the caller names one or more specific skills/agents, resolve each via Glob (`**/SKILL.md` for skills, `agents/**/*.md` for agents), excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` — a draft copy under a gitignored directory like `.temp/` or `.draft/` is not a real overlap target.
 - Overlap detection needs something to compare against: if only one component is named, still pull in the rest of the plugin's skills and agents as the comparison set for Step 5 — state this explicitly ("Reviewed: X; compared against: N other skills, M other agents").
 - If the caller gives no target ("review activation triggers in `<plugin>`"), resolve the full set: every `skills/*/SKILL.md` plus every `agents/*.md` in scope.
 - Apply R19-style path discipline: if a named component resolves to more than one non-identical copy, flag it and ask which is authoritative before proceeding — do not silently pick one.
@@ -63,7 +63,7 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
 
 **If found:** read `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` plus `structured_output.per_agent_extensions.activation-reviewer` — used by Structured Output Mode (Step 7). Read `<plugin-rulebook-dir>/references/gitignore-exclusion.md` for the exclusion procedure used in Step 1.
 
-**If not found:** proceed without the shared exclusion definition (best-effort: skip any path containing `to-implement`, `.planned`, `.backup`, or matching a `.gitignore` entry you can read directly). For Structured Output Mode, fall back to the hardcoded action enum in Step 7.
+**If not found:** proceed without the shared exclusion definition (best-effort: skip any path containing `.temp`, `.backup`, or matching a `.gitignore` entry you can read directly). For Structured Output Mode, fall back to the hardcoded action enum in Step 7.
 
 Then load the activation-description standards each component type is judged against — do not invent criteria that duplicate what `skill-reviewer`/`subagent-reviewer` already own:
 

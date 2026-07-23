@@ -31,7 +31,7 @@ You are an expert plugin validator specializing in comprehensive validation of C
 
 **Validation Process:**
 
-**Gitignore exclusion (applies to every Glob below):** exclude gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` before validating any file found via Glob. Draft, backup, or not-yet-shipped directories (`to-implement/`, `.rulebook/`, `.planned/`, `.backup/`, `.merged/`, etc.) are not part of the plugin's live, shipped surface and must not be validated as if they were real components. The same file's Authoring Side section also applies here: flag as Critical any component instruction that claims a gitignored path as an existing, readable dependency (not its own output location) — this overlaps with `external-references-reviewer`'s dedicated Broken-reference check, so a full sweep isn't required here, but an obvious instance found in passing should still be reported.
+**Gitignore exclusion (applies to every Glob below):** exclude gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` before validating any file found via Glob. Draft, backup, or not-yet-shipped directories (`.temp/`, `.draft/`, `.backup/`, `.claude/output/`, etc.) are not part of the plugin's live, shipped surface and must not be validated as if they were real components. The same file's Authoring Side section also applies here: flag as Critical any component instruction that claims a gitignored path as an existing, readable dependency (not its own output location) — this overlaps with `external-references-reviewer`'s dedicated Broken-reference check, so a full sweep isn't required here, but an obvious instance found in passing should still be reported.
 
 1. **Locate Plugin Root**:
    - Check for `.claude-plugin/plugin.json`

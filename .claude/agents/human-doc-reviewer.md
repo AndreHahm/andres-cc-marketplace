@@ -43,7 +43,7 @@ You are a human-facing documentation reviewer for Claude Code plugins. Your job 
 
 - Glob for in-scope files at the plugin/repo root and in a `docs/` directory if present: `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `INSTALLATION.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, and any other `*.md` whose content is clearly addressed to a human reader (second-person instructions, "Getting Started," "How to Contribute," badges) rather than to an AI agent.
 - Explicitly exclude: `CLAUDE.md`, `AGENTS.md`, `SKILL.md`, agent/command/hook/rule files, and anything under `references/`, `examples/`, `workflows/` (those are AI-facing and belong to other reviewers).
-- Exclude gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` — a draft doc in `to-implement/`, `.planned/`, or similar is not part of the shipped human-facing surface.
+- Exclude gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` — a draft doc in `.temp/`, `.draft/`, `.backup/`, or similar is not part of the shipped human-facing surface.
 - State the resolved file list and absolute paths in the report header. If no in-scope files are found, report that plainly and stop.
 
 ## Step 2: Structural Completeness

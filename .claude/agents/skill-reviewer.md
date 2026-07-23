@@ -55,7 +55,7 @@ If `skill-development` cannot be found, report this clearly and halt — do not 
 
 ## Step 3: Load the Target Skill
 
-1. Locate the skill directory (use user-provided path; if only a name is given, use Glob `**/SKILL.md` to find it, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` — a matching draft in a gitignored directory like `to-implement/` is not the real target)
+1. Locate the skill directory (use user-provided path; if only a name is given, use Glob `**/SKILL.md` to find it, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` — a matching draft in a gitignored directory like `.temp/` or `.draft/` is not the real target)
 2. Read `SKILL.md` — frontmatter and full body
 3. List all files in the skill directory with Glob (`<skill-path>/**`)
 4. Read every file referenced or linked in SKILL.md (all `references/` files, any linked `scripts/`)

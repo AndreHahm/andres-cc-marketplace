@@ -88,7 +88,7 @@ questions: [
 **When user requests refinement:**
 
 1. **Locate the skill (MANDATORY first step)**
-   - Search current project first: `skills/skill-name/`, `.claude/skills/skill-name/` — exclude gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` (Glob `**/plugin-rulebook/SKILL.md` to find it, if present); a matching draft in a gitignored directory like `to-implement/`, `.planned/`, or `.backup/` is not the real target
+   - Search current project first: `skills/skill-name/`, `.claude/skills/skill-name/` — exclude gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` (Glob `**/plugin-rulebook/SKILL.md` to find it, if present); a matching draft in a gitignored directory like `.temp/`, `.draft/`, or `.backup/` is not the real target
    - **Mirror-pair check (R19):** if both `skills/skill-name/` and `.claude/skills/skill-name/` exist under the same plugin, this is an in-development staging mirror, not two independent skills. Diff `SKILL.md` and every `references/`/`scripts/` file between the two copies:
      - Identical → treat as one logical skill; every edit made during this workflow applies to BOTH copies; re-verify byte-identical before finalizing
      - Differ → HALT per R19 and ask which copy is authoritative before proceeding:
