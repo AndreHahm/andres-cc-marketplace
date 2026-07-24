@@ -14,6 +14,7 @@ This guide documents the standard plugin directory layout, file organization pat
   - [Optional: bin/ Directory](#optional-bin-directory)
   - [Optional: .mcp.json File](#optional-mcpjson-file)
   - [Optional: .lsp.json File](#optional-lspjson-file)
+  - [Optional: settings.json File (Plugin Defaults)](#optional-settingsjson-file-plugin-defaults)
   - [Optional: output-styles/ Directory](#optional-output-styles-directory)
   - [Optional: themes/ Directory](#optional-themes-directory)
   - [Optional: monitors/ Directory](#optional-monitors-directory)
@@ -315,6 +316,25 @@ bin/
 }
 ```
 
+### Optional: settings.json File (Plugin Defaults)
+
+**Purpose:** Default configuration applied when the plugin is enabled
+
+**Location:** Plugin root (not in subdirectory) — distinct from a project's `.claude/settings.json`
+
+**Supported keys (only these two — unknown keys are silently ignored):**
+- `agent` — activates one of the plugin's own `agents/` definitions as the main-thread agent, applying its system prompt, tool restrictions, and model
+- `subagentStatusLine` — status line shown for subagents spawned while this plugin is enabled
+
+**File format:**
+```json
+{
+  "agent": "security-reviewer"
+}
+```
+
+Values here take priority over any `settings` declared in `plugin.json`.
+
 ### Optional: output-styles/ Directory
 
 **Purpose:** Adjust Claude's response formatting (terseness, structure, verbosity) — not visual/CSS styling. Output styles surface in `/output-style` once the plugin is enabled.
@@ -473,6 +493,7 @@ assets/
 | **LSP servers** | `.lsp.json` or inline | File/Config | ❌ No | Code intelligence |
 | **Scripts** | `scripts/` | Directory | ❌ No | Utility scripts |
 | **Bin** | `bin/` | Directory | ❌ No | Executables added to `PATH` (privileged) |
+| **Plugin Settings** | `settings.json` | File | ❌ No | Default config (`agent`, `subagentStatusLine` keys only) |
 | **Output Styles** | `output-styles/` | Directory | ❌ No | Response-formatting styles (Markdown) |
 | **Themes** | `themes/` | Directory | ❌ No | Color theme presets (JSON) |
 | **Monitors** | `monitors/monitors.json` | File | ❌ No | Background watcher configs (v2.1.105+) |

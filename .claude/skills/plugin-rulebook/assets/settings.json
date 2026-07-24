@@ -259,7 +259,7 @@
       "notes": "manual is an alias for default, introduced in Claude Code v2.1.200+"
     },
     "model": {
-      "valid_values": ["inherit", "sonnet", "opus", "haiku"]
+      "valid_values": ["inherit", "sonnet", "opus", "haiku", "fable"]
     },
     "effort": {
       "valid_values": ["low", "medium", "high", "max"]

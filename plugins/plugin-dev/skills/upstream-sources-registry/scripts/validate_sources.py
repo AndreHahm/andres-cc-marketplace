@@ -24,7 +24,7 @@ VALID_RANK = {"critical", "standard", "opportunistic", None}
 # whole point of "add a custom source") but get a visible warning rather than
 # a silent pass, since a URL is exactly what a later WebFetch/WebSearch step
 # will treat as trusted enough to inform a rule-file edit.
-ALLOWLISTED_DOMAINS = {"docs.claude.com", "github.com"}
+ALLOWLISTED_DOMAINS = {"docs.claude.com", "code.claude.com", "github.com"}
 
 
 def main() -> int:

@@ -235,7 +235,7 @@ Not every type is valid for every event (e.g. `SessionStart` supports only `comm
 }
 ```
 
-Events go directly at the top level — no wrapper object. Plugin hooks merge with user hooks and run in parallel.
+Events go directly at the top level — no wrapper object. Plugin hooks merge with user hooks and run in parallel. Settings format also supports a top-level `disableAllHooks` boolean key to disable every configured hook at once — verify whether this applies to plugin `hooks/hooks.json` too before relying on it there.
 
 `hooks/hooks.json` has only two top-level keys: `description` and `hooks` — verify this against the current platform schema before enforcing it. Shared team hooks belong in `.claude/settings.json` (checked into version control) — never in `.claude/settings.local.json`, which is personal and gitignored.
 
@@ -258,8 +258,10 @@ Command-only:
 | Field | Required | Description |
 |---|---|---|
 | `command` | yes | Shell command to execute |
+| `args` | no | Array of arguments — when present, `command` runs as an executable (exec form, no shell interpretation) instead of being passed to a shell |
 | `async` | no | `true` = background, non-blocking, command hooks only. Cannot block, cannot return decisions, and delivers output on a later turn — never use for safety gates |
-| `shell` | no | Shell used to run `command` |
+| `asyncRewake` | no | Background mode only — wake Claude when the async hook exits with code 2 |
+| `shell` | no | Shell used to run `command` — `"bash"` or `"powershell"` |
 
 Prompt/Agent-only:
 
@@ -303,7 +305,7 @@ MCP Tool-only:
 | `Notification` | Claude sends notification | ❌ No | React to notifications |
 | `WorktreeCreate` | Worktree created | ⚠️ Special | Must return the absolute path of the created worktree — not a standard allow/block decision |
 
-This is not the full event list — Claude Code also ships `Setup`, `UserPromptExpansion`, `PostToolBatch`, `MessageDisplay`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `WorktreeRemove`, `CwdChanged`, and others. Full list, per-event payloads, and the hook-type/event compatibility matrix: `references/event-reference.md`.
+This is not the full event list — Claude Code also ships `Setup`, `UserPromptExpansion`, `PostToolBatch`, `MessageDisplay`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `WorktreeRemove`, `CwdChanged`, `PermissionDenied`, `StopFailure`, `InstructionsLoaded`, `ConfigChange`, `FileChanged`, `PostCompact`, `Elicitation`, and `ElicitationResult`. Full list, per-event payloads, and the hook-type/event compatibility matrix: `references/event-reference.md`.
 
 **⚠️ Stop/SubagentStop infinite loop guard** — always check `stop_hook_active`:
 ```bash

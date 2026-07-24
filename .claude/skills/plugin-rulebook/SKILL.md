@@ -43,6 +43,8 @@ Read active settings from `${CLAUDE_SKILL_DIR}/assets/settings.json` (plugin-por
 
 Rules are enabled/disabled in `${CLAUDE_SKILL_DIR}/assets/settings.json`. Defaults shown in brackets.
 
+**Note on "command" as a scope category:** current platform docs describe `commands/*.md` as a legacy flat-file skill format ("custom commands have been merged into skills") and recommend `skills/` for new plugin components. This rulebook continues to check "command files" as their own scope category below because plugin-dev's own plugin currently ships 16 components under `commands/` that depend on this convention — new components should prefer `skills/`.
+
 **Severity vocabulary:** `REQUIRED` and `SUGGESTED` (used throughout this rulebook) correspond to [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)'s `MUST`/`MUST NOT` and `SHOULD`/`SHOULD NOT` requirement levels respectively — a `REQUIRED` finding is a blocking violation, a `SUGGESTED` finding is a recommended fix a maintainer may have valid reasons to decline. `ADVISORY` (used for some sub-checks, e.g. R5's agent-field check) is this rulebook's own tier, sitting below `SUGGESTED`: worth flagging, never blocking, and not itself an RFC 2119 term.
 
 ---

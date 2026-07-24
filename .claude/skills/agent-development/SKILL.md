@@ -123,7 +123,7 @@ Read-only reviewer/analysis agents must not receive `Bash`, `Write`, or `Edit` �
 
 Controls how the agent handles permission prompts. Default: `default`.
 
-Values: `default` (prompt each time) · `acceptEdits` (auto-accept file edits) · `dontAsk` (auto-deny prompts, for background) · `bypassPermissions` (skip all checks) · `plan` (read-only mode). `manual` is an alias for `default` (Claude Code v2.1.200+).
+Values: `default` (prompt each time) · `acceptEdits` (auto-accept file edits) · `auto` (background classifier reviews commands and protected-directory writes, for unattended execution) · `dontAsk` (auto-deny prompts, for background) · `bypassPermissions` (skip all checks) · `plan` (read-only mode). `manual` is an alias for `default` (Claude Code v2.1.200+).
 
 See `references/permission-modes.md` for decision matrices and use-case matching.
 
