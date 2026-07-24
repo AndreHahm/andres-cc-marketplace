@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# PostToolUse hook (matcher: Agent|Skill): best-effort, log-only runtime check
+# PostToolUse hook (matcher: Agent|Skill|Bash): best-effort, log-only runtime check
 # for a small set of known plugin-rulebook R26 (Expensive-Action Opt-In)
 # signatures. See r26-expensive-action-check.py's header for scope and the
 # reason this is log-only (never blocks) and does not attempt R25.

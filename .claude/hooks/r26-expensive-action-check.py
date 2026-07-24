@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.8"
 # ///
-# PostToolUse hook (matcher: Agent|Skill): best-effort, log-only detection of a
+# PostToolUse hook (matcher: Agent|Skill|Bash): best-effort, log-only detection of a
 # subset of plugin-rulebook R26 (Expensive-Action Opt-In) violations at
 # runtime. R26 is otherwise a text-only rule checked by plugin-rulebook (does
 # a SKILL.md *say* it asks before an expensive action) -- this hook cannot
@@ -23,10 +23,13 @@
 #
 # Matcher assumption verified against a real session transcript (not just
 # claude --debug synthetic input): PostToolUse tool_name is literally "Agent"
-# for Agent() dispatches and "Skill" for Skill() dispatches, and AskUserQuestion
-# tool_use entries serialize as `"name":"AskUserQuestion"` -- confirmed via
+# for Agent() dispatches, "Skill" for Skill() dispatches, and "Bash" for
+# Bash() calls, and AskUserQuestion tool_use entries serialize as
+# `"name":"AskUserQuestion"` -- confirmed via
 # `grep -o '"name":"[A-Za-z_]*"' <session>.jsonl` against this plugin-dev
-# repo's own ~/.claude/projects/ transcript during this hook's own build.
+# repo's own ~/.claude/projects/ transcript during this hook's own build (and
+# re-confirmed for "Bash" when the test-agent-trigger.sh signature below was
+# moved from an Agent dispatch to a direct scoped-Bash call).
 
 import json
 import re
@@ -48,12 +51,30 @@ EXPENSIVE_ACTIONS = [
         "label": "human-doc-reviewer dispatched in full mode (R26 Document-step gate)",
     },
     {
-        "tool_name": "Agent",
-        "target_pattern": re.compile(r"test-agent-trigger\.sh", re.IGNORECASE),
+        # test-agent-trigger.sh is called directly via a scoped Bash tool now
+        # (plugin-lifecycle-upstream's bounded Phase-5 check and
+        # plugin-lifecycle-downstream's exhaustive Deep Test battery both
+        # dispatch it this way, not via an Agent), so there is no descriptive
+        # prose in tool_input to pattern-match against -- just a shell
+        # command line. The script's own auto-derive mode (no phrases-file
+        # argument) only ever emits "+" (should-trigger) phrases; there is no
+        # code path for it to produce "-" (should-not-trigger) cases. So an
+        # explicit phrases-file 2nd positional argument is the only way to
+        # get should-not-trigger coverage or a hand-curated exhaustive list --
+        # its presence is what actually distinguishes Deep Test's full
+        # battery from the bounded single-call auto-derive check, which never
+        # passes one. This is a heuristic (see module docstring): it doesn't
+        # parse the shell command, just checks token shape after the script
+        # name and can be fooled by unusual quoting or argument order.
+        "tool_name": "Bash",
+        "target_pattern": re.compile(r"test-agent-trigger\.sh"),
         "expensive_mode_pattern": re.compile(
-            r"(exhaustive|every declared trigger phrase|full trigger-phrase)", re.IGNORECASE
+            r"test-agent-trigger\.sh\s+\S+\s+(?!--timeout\b)\S+"
         ),
-        "label": "exhaustive trigger-phrase battery dispatched (R26 Deep Test gate)",
+        "label": (
+            "test-agent-trigger.sh invoked with an explicit phrases-file argument "
+            "-- full battery, not the bounded auto-derive check (R26 Deep Test gate)"
+        ),
     },
     {
         "tool_name": "Skill",

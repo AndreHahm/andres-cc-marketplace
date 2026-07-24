@@ -12,7 +12,7 @@ description: >-
   plugin-lifecycle-downstream for QA once Test completes. For a single already-designed
   component, use the matching Design skill directly instead of this pipeline.
 argument-hint: "[rough idea, or path to an existing Concept Card/Plan]"
-allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git:*) TaskCreate TaskUpdate
+allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git:*) Bash(*/test-agent-trigger.sh:*) TaskCreate TaskUpdate
 ---
 
 # Plugin Lifecycle: Upstream
@@ -109,7 +109,7 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 **Quality gates:**
 - [ ] Every phase transition is gated by explicit `AskUserQuestion` approval — never silent
 - [ ] Auto-detection always runs before Phase 1 starts — never assumes a cold start
-- [ ] No phase's substantive work is done by this skill directly — always dispatched via `Skill`/`Agent`
+- [ ] No phase's substantive work is done by this skill directly — always dispatched via `Skill`/`Agent` (Phase 5's agent-component check is a narrow, named exception: it calls `test-agent-trigger.sh` directly via the scoped `Bash(*/test-agent-trigger.sh:*)` tool, since the script is a deterministic offline check with no LLM step — not substantive delegated work)
 - [ ] Phase 3 (Design) never calls `Write`/`Edit` against a real component path — designed content stays in the conversation until Gate 3 is approved and Phase 4 (Build) begins
 - [ ] Phase 5's per-component results always distinguish pass / fail / skipped — a skipped component type is never presented as if it passed
 - [ ] Phase 5 never runs a component's full trigger-phrase battery or an eval suite — that's `plugin-lifecycle-downstream`'s optional, user-gated Deep Test step
@@ -129,7 +129,7 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 | `skill-development` / `agent-development` / `command-development` / `hook-development` / `rule-development` | Phase 3, one per component type |
 | `plugin-development` skill | Phase 4 |
 | `skill-tester` skill | Phase 5, fast pass/fail mode, skill components |
-| `agent-development/scripts/test-agent-trigger.sh` | Phase 5, agent components — bounded smoke check only; full battery moved to `plugin-lifecycle-downstream`'s optional Deep Test step |
+| `agent-development/scripts/test-agent-trigger.sh` | Phase 5, agent components — bounded smoke check only, called directly via the scoped `Bash(*/test-agent-trigger.sh:*)` tool (no subagent dispatch); full battery moved to `plugin-lifecycle-downstream`'s optional Deep Test step |
 | `plugin-documentation` skill | Document step, after Commit and before the handoff report — authors doc updates and runs its own `human-doc-reviewer` QA internally |
 | `build-handoff-writer` agent | Post-Commit handoff report (create), before the downstream offer |
 | `plugin-lifecycle-downstream` skill | Handover target after Test; also updates the handoff report |

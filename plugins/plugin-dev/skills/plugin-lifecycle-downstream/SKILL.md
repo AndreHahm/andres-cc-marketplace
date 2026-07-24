@@ -11,7 +11,7 @@ description: >-
   commits, rather than producing a disconnected report. For a single score with no
   orchestration, invoke plugin-grader directly instead of this pipeline.
 argument-hint: "[path to plugin directory]"
-allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git:*) TaskCreate TaskUpdate
+allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git:*) Bash(*/test-agent-trigger.sh:*) TaskCreate TaskUpdate
 ---
 
 # Plugin Lifecycle: Downstream
@@ -113,7 +113,7 @@ Also ask, either alongside the Phase 3 offer or as a standalone follow-up at any
 - [ ] Phase 2 always runs regardless of Phase 1 findings — never skipped on failure
 - [ ] Phase 3 is always opt-in via `AskUserQuestion` — never auto-started, except when an external caller explicitly invokes Phase 3 directly per its documented entry condition
 - [ ] Phase 3, when run, always operates against a real `prioritized_next_steps`-shaped list — the current run's own report, or a validly-shaped externally-supplied one — never a cached, hypothetical, or malformed list
-- [ ] No phase's substantive work is done by this skill directly — always dispatched via `Skill`/`Agent`
+- [ ] No phase's substantive work is done by this skill directly — always dispatched via `Skill`/`Agent` (Deep Test's agent-component check is a narrow, named exception: it calls `test-agent-trigger.sh` directly via the scoped `Bash(*/test-agent-trigger.sh:*)` tool, since the script is a deterministic offline check with no LLM step — not substantive delegated work)
 - [ ] Phases 1-2 never edit a file, regardless of how small or clearly-correct the fix looks — findings are recorded, not applied, until Phase 3 is explicitly approved
 - [ ] When a handoff report exists, it is updated in place (same path) — never duplicated into a second timestamped file
 - [ ] Phase 3's commit (if any) always happens after re-validation, never before, and always states the file list/message first
@@ -136,7 +136,7 @@ Also ask, either alongside the Phase 3 offer or as a standalone follow-up at any
 | `plugin-grader` skill | Phase 2 — weighted score, SWOT, prioritized next steps |
 | `build-handoff-writer` agent | Updated (not created) after Phase 2, and after Phase 3 if it runs |
 | `enhancement-suggestor` agent | Phase 3 — turns next steps into a WHAT/WHY/HOW plan |
-| `agent-development/scripts/test-agent-trigger.sh` | Deep Test (optional) — full trigger-phrase battery per agent component, opt-in per plugin-rulebook R26 |
+| `agent-development/scripts/test-agent-trigger.sh` | Deep Test (optional) — full trigger-phrase battery per agent component, called directly via the scoped `Bash(*/test-agent-trigger.sh:*)` tool (no subagent dispatch), opt-in per plugin-rulebook R26 |
 | `skill-tester` skill | Deep Test (optional) — full baseline-comparison benchmark / eval suite per skill component |
 | `plugin-documentation` skill | Document step, after Phase 3 (or Phase 2 if Phase 3 was declined) — authors doc updates and runs its own `human-doc-reviewer` QA internally |
 | `skill-improver-loop` skill | Phase 3 — automated fix-review cycles |

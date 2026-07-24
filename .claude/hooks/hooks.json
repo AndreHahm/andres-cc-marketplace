@@ -42,7 +42,7 @@
         ]
       },
       {
-        "matcher": "^(Agent|Skill)$",
+        "matcher": "^(Agent|Skill|Bash)$",
         "hooks": [
           {
             "type": "command",

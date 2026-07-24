@@ -168,7 +168,7 @@ Twenty-three specialized agents, seventeen of which are quality-gate reviewers c
 - **`PreToolUse`** (matcher `Bash`) → `security-precommit-check.sh` — log-only, deterministic security pre-commit check run before `git commit` executes
 - **`Stop`** → `stop-hook.sh` — drives the iterative skill-improvement loop's stop-cycle logic
 - **`PostToolUse`** (matcher `Write|Edit`) → `rulebook-check.sh` — enforces `plugin-rulebook` compliance on edited components; `hooks-schema-check.sh` — validates any edited `hooks.json` against its schema
-- **`PostToolUse`** (matcher `^(Agent|Skill)$`) → `r26-expensive-action-check.sh` — log-only, best-effort runtime check for R26 (Expensive-Action Opt-In) violations on Agent/Skill dispatches
+- **`PostToolUse`** (matcher `^(Agent|Skill|Bash)$`) → `r26-expensive-action-check.sh` — log-only, best-effort runtime check for R26 (Expensive-Action Opt-In) violations on Agent/Skill dispatches and scoped Bash calls
 
 ## Quick Start
 
