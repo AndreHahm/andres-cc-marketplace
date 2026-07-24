@@ -59,6 +59,8 @@ There is also an optional, ungated-into-the-phase-count **Deep Test** step (see 
 
 **Deep Test is opt-in and gated, and runs independently of Phases 1-3.** `plugin-lifecycle-upstream`'s own Phase 5 only runs a bounded smoke check (at most 3 checks, confirming a new component doesn't crash the harness) — it deliberately does not exhaustively test every declared trigger phrase or run eval suites, since each check is a nested LLM call and a "quick" gate must not spend that by default. This pipeline's Deep Test step is where that exhaustive, expensive testing belongs, but only when the user explicitly asks for it (plugin-rulebook R26) — never as a silent default alongside Phases 1-2's automatic read-only checks.
 
+**Phase 1's dependency/security check mode has its own narrow internal gate — not a gate between phases.** When Phase 1 is triggered by a named, narrow addition (a single new component, not a general/periodic/pre-release audit), `dependency-reviewer`/`security-reviewer` may run Scoped (each agent's own Delta mode) instead of the Full whole-plugin sweep — see `workflows/run-qa-pipeline.md`'s Phase 1 for the entry condition and the `AskUserQuestion` this asks before choosing. The "no gates between Phases 1-2" rule above still holds for the phase *transition* itself — this gate sits inside Phase 1's own Actions, before Phase 2 is ever reached.
+
 **Phases 1-2 never edit files — not even to fix an obvious REQUIRED violation.** If `plugin-rulebook` or `plugin-validator` surfaces a clear, small, unambiguous fix mid-Validate, record it as a finding for Phase 2's report and Phase 3's `prioritized_next_steps` — do not apply it there. This holds even when another instruction (e.g. a component-authoring rule that says "fix REQUIRED failures before finalizing") would normally justify an immediate fix — that rule governs authoring a component, not running this read-only pipeline against one, and does not override Phases 1-2's read-only contract. Any file edit during this pipeline, at any severity, requires asking the user first, exactly like Phase 3 already does.
 
 **Every written artifact gets a link line.** Whenever this pipeline writes or updates a file (the Audit Report, the Build Handoff Report), present `📄 <Artifact Name> written:`/`updated: \`<path>\`` as its own line before the content summary — see `workflows/run-qa-pipeline.md`'s Phase 2 and Phase 3 for the exact pattern. Shared convention with `plugin-lifecycle-upstream` and `plugin-lifecycle-maintenance` — keep new artifact-producing steps consistent with it.
@@ -108,6 +110,7 @@ Also ask, either alongside the Phase 3 offer or as a standalone follow-up at any
 11. **Deep Test declined (default case)** — confirm Phases 1-2 complete and the pipeline reports its result without ever having run the exhaustive trigger-phrase battery or eval suites, since Deep Test was never opted into
 12. **Deep Test accepted** — confirm it runs the full `test-agent-trigger.sh` phrase set per agent component (not the bounded single-phrase check `plugin-lifecycle-upstream` already ran) and any eval suites for skill components, and that any tool-level overhead encountered (a crash, a retry) is disclosed in plain language alongside the results
 13. **Document step delegates to plugin-documentation** — confirm the Document step invokes `plugin-documentation` (not `human-doc-reviewer` directly) and does not ask its own separate delta/full question before that call — `plugin-documentation` owns that decision internally; confirm the specific list of changed claims from Phase 3's applied fixes is passed through
+14. **Phase 1 triggered by a narrow, named addition** — confirm the dependency/security check mode gate asks via `AskUserQuestion` before Actions 3-4 and recommends Scoped by default; confirm a general/periodic/pre-release audit trigger skips the question entirely and runs Full without asking; confirm a Scoped result is stated plainly as such, never presented as a Full sweep
 
 **Quality gates:**
 - [ ] Phase 2 always runs regardless of Phase 1 findings — never skipped on failure
@@ -123,6 +126,7 @@ Also ask, either alongside the Phase 3 offer or as a standalone follow-up at any
 - [ ] Deep Test is always opt-in via `AskUserQuestion` — never runs as a silent default alongside Phases 1-2's automatic checks
 - [ ] Deep Test, when run, always uses the exhaustive per-trigger-phrase/eval-suite check — never the bounded smoke check `plugin-lifecycle-upstream`'s Phase 5 already covers
 - [ ] The Document step always delegates to `plugin-documentation` — never calls `human-doc-reviewer` directly or asks its own separate delta/full question
+- [ ] Phase 1's dependency/security Scoped-vs-Full choice is only ever asked when the run's own entry names a narrow, specific addition — never asked for a general/periodic/pre-release audit, and never silently defaulted to the expensive Full sweep for a narrow addition either
 
 ## Reference Guide
 
@@ -131,8 +135,8 @@ Also ask, either alongside the Phase 3 offer or as a standalone follow-up at any
 | `workflows/run-qa-pipeline.md` | Full 3-phase procedure, plus the optional Deep Test step |
 | `plugin-rulebook` skill | Phase 1 — rule compliance |
 | `plugin-validator` agent | Phase 1 — structural validation |
-| `dependency-reviewer` agent | Phase 1 — circular/bidirectional dependency and required-vs-optional analysis |
-| `security-reviewer` agent | Phase 1 — permission-risk, prompt-injection surface, PII/credential-leakage audit (deeper than plugin-validator's basic check) |
+| `dependency-reviewer` agent | Phase 1 — circular/bidirectional dependency and required-vs-optional analysis; Full sweep by default, or Scoped (its own Delta mode) for a named narrow addition, gated via `AskUserQuestion` |
+| `security-reviewer` agent | Phase 1 — permission-risk, prompt-injection surface, PII/credential-leakage audit (deeper than plugin-validator's basic check); Full sweep by default, or Scoped (its own Delta mode) for a named narrow addition, same gate as dependency-reviewer |
 | `plugin-grader` skill | Phase 2 — weighted score, SWOT, prioritized next steps |
 | `build-handoff-writer` agent | Updated (not created) after Phase 2, and after Phase 3 if it runs |
 | `enhancement-suggestor` agent | Phase 3 — turns next steps into a WHAT/WHY/HOW plan |

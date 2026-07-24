@@ -6,14 +6,19 @@ The complete Validate → Audit+Report → Fix procedure. Phases 1-2 run automat
 
 **Entry:** A plugin path is given or resolved from context.
 
+**Dependency/security check mode:** `dependency-reviewer` and `security-reviewer` (Actions 3-4) each support a Delta mode scoped to a named new/changed component, instead of re-verifying the whole plugin's call graph and permission surface every time (`plugin-validator`, Action 2, has no such mode and always runs full). Before Actions 3-4, check whether this Phase 1 run's own entry names a small, specific set of new or changed components (e.g. "QA following the addition of new agent X", "check the just-built skill Y") rather than a general, periodic, or pre-release audit with no such named focus.
+
+- If it names a narrow scope: ask via `AskUserQuestion` — "Scoped" (each agent's own Delta mode, checking only the named component(s)' edges/permissions) or "Full" (the whole-plugin sweep)? State plainly that Scoped won't catch a pre-existing cycle or permission issue elsewhere in the plugin, while Full re-verifies everything but costs substantially more on a large plugin. Recommend Scoped as the default option here, matching the same never-silently-default-to-expensive discipline this plugin already applies elsewhere (`plugin-documentation`'s delta/full gate, `plugin-lifecycle-maintenance`'s self-service "Shared: Cost-Gated Dispatch" procedure) — plugin-rulebook R26.
+- If the run's own framing is already a general/periodic/pre-release audit (no named narrow scope): skip this question entirely and run Full — asking would be noise when Full is already the only sensible answer.
+
 **Actions:**
 1. Invoke `Skill(plugin-rulebook)` in batch mode against every component in the plugin (per `plugin-rulebook-enforcement.md`'s Batch mode — one invocation, per-component PASS/ADVISORY/FAIL lines).
 2. Invoke the `plugin-validator` agent (via `Agent`) against the plugin root for structural/manifest validation.
-3. Invoke the `dependency-reviewer` agent (via `Agent`) against the plugin's full component set for circular/bidirectional dependency and required-vs-optional analysis.
-4. Invoke the `security-reviewer` agent (via `Agent`) against the plugin's full component set for the deeper permission-risk/prompt-injection/PII audit `plugin-validator`'s own Security Checks item doesn't attempt.
-5. Collect all four reports.
+3. Invoke the `dependency-reviewer` agent (via `Agent`) — Full component set, or Scoped (Delta mode) against the named component(s), per the gate above.
+4. Invoke the `security-reviewer` agent (via `Agent`) — Full component set, or Scoped (Delta mode) against the named component(s), per the gate above.
+5. Collect all four reports. If Scoped mode was used for 3-4, state this plainly alongside the collected results — a Scoped report must never be presented as if it were a Full sweep.
 
-**Exit criteria:** All four reports are complete — do not proceed to Phase 2 with a partial rulebook sweep (e.g. only some components checked) or a partial reviewer dispatch.
+**Exit criteria:** All four reports are complete — do not proceed to Phase 2 with a partial rulebook sweep (e.g. only some components checked) or a partial reviewer dispatch. A Scoped dependency/security report is still "complete" for its own declared scope, per the gate above — it is not a partial dispatch.
 
 ## Phase 2: Audit + Report
 
