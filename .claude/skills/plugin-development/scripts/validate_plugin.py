@@ -210,6 +210,28 @@ def validate_manifest(plugin_path, verbose=False):
                 "FIX: Change to {\"name\": \"Your Name\"}"
             )
 
+    # Type-check fields that must be arrays -- wrong type is a load error upstream, not a warning
+    for field in ('keywords', 'dependencies'):
+        if field in manifest and not isinstance(manifest[field], list):
+            result.add_check(
+                False,
+                f"Field '{field}' must be an array, got {type(manifest[field]).__name__}. "
+                f"FIX: Change to a JSON array, e.g. \"{field}\": [...]"
+            )
+
+    # Unrecognized top-level fields: Claude Code ignores these and `claude plugin validate`
+    # reports them as warnings, not errors -- match that here rather than staying silent.
+    known_fields = {
+        'name', '$schema', 'displayName', 'version', 'description', 'author',
+        'homepage', 'repository', 'license', 'keywords', 'defaultEnabled',
+        'dependencies', 'userConfig', 'channels', 'skills', 'commands', 'agents',
+        'hooks', 'mcpServers', 'outputStyles', 'themes', 'lspServers', 'monitors',
+        'experimental', 'settings',
+    }
+    for field in manifest:
+        if field not in known_fields:
+            result.add_warning(f"Unrecognized field '{field}' in plugin.json (ignored by Claude Code at load time)")
+
     return result
 
 

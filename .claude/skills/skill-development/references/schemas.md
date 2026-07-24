@@ -25,6 +25,7 @@ Full field-by-field reference for `SKILL.md` YAML frontmatter. For a shorter usa
 | `effort` | string | `low` \| `medium` \| `high` \| `max` \| `xhigh` (`xhigh` on Opus 4.6+). Available levels depend on the active model. |
 | `context` | string | `fork` — run the skill in an isolated subagent. |
 | `agent` | string | Subagent type to use when `context: fork` is set (e.g., `Explore`, `Plan`). |
+| `background` | boolean | Optional. When `true`, hints that the skill is intended for background/unattended execution. |
 | `hooks` | object | On-demand hooks scoped to the skill's session. |
 | `paths` | comma-separated string or YAML list | Glob patterns; the skill only triggers for matching file paths. |
 | `shell` | string | `bash` (default) or `powershell` — interpreter for inline shell execution blocks. |

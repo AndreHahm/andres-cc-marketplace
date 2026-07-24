@@ -92,6 +92,21 @@ Brief explanation of plugin purpose and functionality.
 
 ### Metadata Fields
 
+#### $schema
+
+**Type**: String
+**Example**: `"https://anthropic.com/schemas/plugin.json"`
+
+Optional JSON Schema URL for editor tooling (autocomplete, inline validation). Ignored by Claude Code itself at load time — purely an authoring aid.
+
+#### displayName
+
+**Type**: String
+**Example**: `"Enterprise DevOps Toolkit"`
+**Version**: Requires Claude Code v2.1.143 or later.
+
+Human-readable name shown in UI surfaces (marketplace listings, `/plugin` menu) — distinct from the kebab-case `name` field, which is the machine identifier used for installation and namespacing.
+
 #### author
 
 **Type**: Object
@@ -448,6 +463,8 @@ See `references/output-styles.md` for the full component reference.
 
 JSON color-preset files (`{name, base, overrides}`) shown in `/theme`. A custom value **replaces** the default `themes/` directory.
 
+**Migration note:** top-level `themes` still works today, but `claude plugin validate` already warns about it — a future release will require the `experimental.themes` form instead.
+
 See `references/themes.md` for the full component reference.
 
 #### lspServers
@@ -480,6 +497,8 @@ See `references/lsp-servers.md` for the full field list (`transport`, `env`, `in
 Background watcher configs — a custom value **replaces** the default `monitors/monitors.json`.
 
 > **Version**: Requires Claude Code v2.1.105 or later.
+
+**Migration note:** top-level `monitors` still works today, but `claude plugin validate` already warns about it — a future release will require the `experimental.monitors` form instead.
 
 See `references/monitors.md` for the full component reference.
 
