@@ -2,11 +2,13 @@
 name: plugin-rulebook-checker
 description: >-
   Use this agent when you need an isolated, Agent-dispatchable R1-R26 plugin-rulebook compliance
-  check — a full-plugin batch sweep or a fast targeted delta re-check of specific files against
-  specific rule IDs — without the token overhead of a general-purpose Agent re-deriving the
-  rulebook procedure from its full teaching documentation on every dispatch. Typical triggers
-  include "run a batch rulebook sweep on this plugin as a background task" and "re-check just
-  these files against R6 and R26 after a fix."
+  check — a full-plugin batch sweep, a fast targeted delta re-check of specific files against
+  specific rule IDs, or a Structured Output Mode pass returning machine-readable YAML findings
+  instead of a narrative report — without the token overhead of a general-purpose Agent
+  re-deriving the rulebook procedure from its full teaching documentation on every dispatch.
+  Typical triggers include "run a batch rulebook sweep on this plugin as a background task",
+  "re-check just these files against R6 and R26 after a fix", and "give me the findings as
+  structured YAML so a script can parse them."
 model: sonnet
 color: blue
 tools: ["Read", "Grep", "Glob"]
@@ -128,4 +130,4 @@ counts: {fail: 1, advisory: 2}
 
 - A pipeline or orchestrator (e.g. `plugin-lifecycle-downstream`'s Phase 1 Validate step) needs an isolated rulebook batch sweep across a whole plugin, run as a background task so the main conversation's context isn't spent on ~500 lines of rulebook teaching prose per dispatch.
 - A developer just applied a fix for 1-3 specific REQUIRED FAILs and wants a fast, cheap re-check confirming those specific rules now pass on those specific files, without re-sweeping the whole plugin.
-- Any caller that already knows it's parsing the result programmatically (a grading/rollup script, another agent) and wants Structured Output Mode directly rather than parsing narrative prose.
+- A grading or rollup script, or another agent, asks for "structured output" or "machine-readable findings" directly — e.g. "run the rulebook check in structured output mode" — rather than being handed a narrative report to parse.

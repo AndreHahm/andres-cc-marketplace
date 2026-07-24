@@ -199,6 +199,7 @@ Write 2–4 trigger scenarios in the body's `## When to invoke` section to cover
 - **Orchestrator agents** that dispatch other agents must declare the `Agent` tool and document which sub-agents they may dispatch.
 - **Nested dispatch:** subagents may spawn further nested subagents if granted the `Agent` tool (fixed depth limit: 5 levels). `Agent(agent_type)` allowlists only filter nested spawning in main-thread agents — in a subagent definition, listing `Agent` permits all nested agent types.
 - **Context isolation:** a regular subagent starts with an empty context window — no conversation history, invoked skills, or previously read files. Pass all required context explicitly; forked agents are the exception.
+- **Never ask a subagent to verify something it can't access.** A dispatch prompt must not say "confirm this yourself against X" or "double-check the conversation" when the subagent has no tool access to X (no `Bash`, no transcript path, no memory of the parent conversation). Resolve the ambiguous or uncertain fact in the calling context first and hand the subagent a flat, resolved statement instead. A real instance: a same-day dispatch to `build-handoff-writer` (whose own tools are `Read`/`Write` only) asked it to "confirm this yourself against the conversation context" — a fact it structurally could not check — and that dispatch cost roughly 3x the wall-clock time of a comparable one for a similar token count.
 - Optional heuristic (not a hard rule): orchestrator agents → `haiku` (cost), implementer agents → `sonnet` (balance), quality-gate/advisor agents → `opus`.
 
 See `references/advanced-patterns.md`, `references/delegation.md`, and `references/how-subagents-work.md` for full patterns and examples.
@@ -275,6 +276,8 @@ After creating the first agent file in a new `agents/` directory, restart Claude
 Run the 7-phase validation workflow (configuration → delegation signal → prompt quality → tool scoping → permission mode → hooks → real-world testing) from `references/validation.md`. The sign-off checklist is included at the end of that file.
 
 If delegation doesn't fire, the description needs clearer trigger phrases — see `references/delegation.md` for the trigger phrase library and debugging guide.
+
+**Data-dependency timing check:** when a new step reads data another step is supposed to have produced (a prior-run marker, a lookup result from an earlier phase), confirm that data actually exists at the point in execution order it's read — not just that the reference is written correctly. Two sibling command files in this plugin (`verify-dev-rules.md`, `update-dev-rule.md`) each shipped a new "intentional divergence carry-forward" step that referenced prior-run data a *later* step actually loaded, making the new step dead code on a first pass through the document. The bug shape recurring in two independently-written files is the signal to check for this generically, not just fix it once.
 
 Before finalizing, invoke `plugin-rulebook` to verify naming, tool-scoping, and formatting compliance.
 

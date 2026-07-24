@@ -6,7 +6,7 @@ description: >-
   skills to keep or retire, checking for stale or redundant skills, or
   evaluating skill quality across a project. Supports Quick Scan (changed
   skills only, 5–10 min) and Full Stocktake (complete review, 20–30 min).
-allowed-tools: Read Agent WebSearch Skill
+allowed-tools: Read Agent WebSearch Skill Bash(*/quick-diff.sh:*) Bash(*/save-results.sh:*) Bash(*/scan.sh:*)
 ---
 
 # skill-stocktake
