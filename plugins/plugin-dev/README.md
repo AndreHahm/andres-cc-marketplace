@@ -4,7 +4,7 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-dev` ships **32 skills**, **23 agents**, **16 commands**, and `PreToolUse`/`Stop`/`PostToolUse` hooks. Skills fall into six broad groups:
+`plugin-dev` ships **33 skills**, **23 agents**, **16 commands**, and `PreToolUse`/`Stop`/`PostToolUse` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
@@ -12,7 +12,7 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 | **Plugin structure & governance** | `plugin-development`, `plugin-rulebook`, `upstream-sources-registry`, `plugin-settings`, `plugin-evaluation`, `marketplace-development`, `plugin-documentation` |
 | **Skill quality & lifecycle** | `skill-refiner-interactive`, `skill-improver-loop`, `skill-tester`, `skill-security`, `skill-stocktake`, `skill-maintenance` |
 | **Plugin lifecycle** | `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance` |
-| **Planning & analysis** | `plugin-ideation`, `plugin-planning`, `plugin-comparison`, `plugin-grader`, `analyzing-sessions` |
+| **Planning & analysis** | `plugin-ideation`, `plugin-planning`, `plugin-comparison`, `plugin-grader`, `analyzing-sessions`, `verify-agent-citations` |
 | **`.claude/rules/` pipeline** | `rule-development`, `rules-extract`, `rules-merge`, `rules-apply`, `rules-review` |
 
 Each skill follows progressive disclosure: a lean `SKILL.md`, detailed `references/`, working `examples/`, and utility `scripts/` where relevant.
@@ -82,6 +82,7 @@ cc --plugin-dir /path/to/plugin-dev
 | `plugin-comparison` | Comparing a plugin/component in this repo against another internal, installed, local, or GitHub-hosted target |
 | `plugin-grader` | Scoring a plugin or component on a weighted rubric with SWOT and prioritized next steps |
 | `analyzing-sessions` | Running a post-session retrospective — SWOT, self-critique, and improvement suggestions across every component used |
+| `verify-agent-citations` | Re-checking a dispatched agent's file/line citations and quoted evidence against the real files before acting on them |
 
 ### `.claude/rules/` Pipeline
 
