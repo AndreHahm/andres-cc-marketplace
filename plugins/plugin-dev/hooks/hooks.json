@@ -1,6 +1,18 @@
 {
-  "description": "Skill Improver stop hook for iterative skill improvement loop; PostToolUse hooks backing plugin-rulebook compliance checks and hooks.json schema validation on component edits",
+  "description": "Skill Improver stop hook for iterative skill improvement loop; PostToolUse hooks backing plugin-rulebook compliance checks, hooks.json schema validation, a best-effort R26 expensive-action audit on component edits/dispatches, and a best-effort R25 overhead-disclosure reminder on Agent/Bash retries; PostToolUseFailure hook feeding that same R25 reminder's failure-tracking state; PreToolUse hook running a log-only, deterministic security pre-commit check before git commit executes",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/security-precommit-check.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",
@@ -26,6 +38,41 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/hooks-schema-check.sh",
             "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "^(Agent|Skill|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r26-expensive-action-check.sh",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "^(Agent|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r25-overhead-disclosure-check.sh",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^(Agent|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r25-overhead-disclosure-check.sh",
+            "timeout": 10,
+            "onError": "warn"
           }
         ]
       }

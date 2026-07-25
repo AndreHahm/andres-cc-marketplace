@@ -15,33 +15,15 @@ In pairwise comparison, LLMs systematically prefer responses in certain position
 
 ```python
 async def position_swap_comparison(response_a, response_b, prompt, criteria):
-    # Pass 1: Original order
-    result_ab = await compare(response_a, response_b, prompt, criteria)
-    
-    # Pass 2: Swapped order
-    result_ba = await compare(response_b, response_a, prompt, criteria)
-    
-    # Map second result (A in second position → B in first)
-    result_ba_mapped = {
-        'winner': {'A': 'B', 'B': 'A', 'TIE': 'TIE'}[result_ba['winner']],
-        'confidence': result_ba['confidence']
-    }
-    
-    # Consistency check
+    result_ab = await compare(response_a, response_b, prompt, criteria)      # original order
+    result_ba = await compare(response_b, response_a, prompt, criteria)      # swapped order
+    remap = {'A': 'B', 'B': 'A', 'TIE': 'TIE'}
+    result_ba_mapped = {'winner': remap[result_ba['winner']], 'confidence': result_ba['confidence']}
     if result_ab['winner'] == result_ba_mapped['winner']:
-        return {
-            'winner': result_ab['winner'],
-            'confidence': (result_ab['confidence'] + result_ba_mapped['confidence']) / 2,
-            'position_consistent': True
-        }
-    else:
-        # Disagreement indicates position bias was a factor
-        return {
-            'winner': 'TIE',
-            'confidence': 0.5,
-            'position_consistent': False,
-            'bias_detected': True
-        }
+        avg_conf = (result_ab['confidence'] + result_ba_mapped['confidence']) / 2
+        return {'winner': result_ab['winner'], 'confidence': avg_conf, 'position_consistent': True}
+    # disagreement indicates position bias was a factor
+    return {'winner': 'TIE', 'confidence': 0.5, 'position_consistent': False, 'bias_detected': True}
 ```
 
 ### Alternative: Multiple Shuffles
@@ -58,17 +40,10 @@ async def multi_shuffle_comparison(response_a, response_b, prompt, criteria, n_s
             r = await compare(response_b, response_a, prompt, criteria)
             r['winner'] = {'A': 'B', 'B': 'A', 'TIE': 'TIE'}[r['winner']]
         results.append(r)
-    
-    # Majority vote
-    winners = [r['winner'] for r in results]
+    winners = [r['winner'] for r in results]                 # majority vote
     final_winner = max(set(winners), key=winners.count)
     agreement = winners.count(final_winner) / len(winners)
-    
-    return {
-        'winner': final_winner,
-        'confidence': agreement,
-        'n_shuffles': n_shuffles
-    }
+    return {'winner': final_winner, 'confidence': agreement, 'n_shuffles': n_shuffles}
 ```
 
 ## Length Bias
@@ -256,19 +231,16 @@ Monitor for systematic biases in production:
 class BiasMonitor:
     def __init__(self):
         self.evaluations = []
-    
     def record(self, evaluation):
         self.evaluations.append(evaluation)
-    
     def detect_position_bias(self):
-        """Detect if first position wins more often than expected."""
+        """First position winning more often than expected."""
         first_wins = sum(1 for e in self.evaluations if e['first_position_winner'])
         expected = len(self.evaluations) * 0.5
         z_score = (first_wins - expected) / (expected * 0.5) ** 0.5
         return {'bias_detected': abs(z_score) > 2, 'z_score': z_score}
-    
     def detect_length_bias(self):
-        """Detect if longer responses score higher."""
+        """Longer responses scoring higher than shorter ones."""
         from scipy.stats import spearmanr
         lengths = [e['response_length'] for e in self.evaluations]
         scores = [e['score'] for e in self.evaluations]

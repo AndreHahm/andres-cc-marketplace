@@ -153,18 +153,15 @@ Use this checklist to validate movement during refinement:
 - [ ] **Phase 3 (DELETE):** Old source files deleted ONLY after Phase 2
 - [ ] **Phase 3 (DELETE):** Final read-verify: SKILL.md works without errors
 
-## Hook Validation (Automated)
+## Manual Verification (No Automated Hook)
 
-The skill-refiner hook validates Movement Pattern automatically during write/edit operations:
+No hook automatically validates Movement Pattern in this plugin — compliance is the operator's (or the refining agent's) manual responsibility. Before committing a move, verify:
 
-**Hook checks:**
 - Is content being removed?
 - Does destination file exist and contain equivalent content?
 - Are links in SKILL.md pointing to destination?
 - Reject if: "Content deleted with no corresponding destination"
 - Accept if: "Content clearly relocated to another location"
-
-**Result:** Movement Pattern violations are caught before changes committed.
 
 ## Common Mistakes
 

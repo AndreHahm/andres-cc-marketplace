@@ -2,6 +2,8 @@
 
 Essential patterns for production-ready skills used in team environments or with production data.
 
+**R18 exception (recorded):** a few sample transcripts/reports below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent worked example; splitting one would break it.
+
 ## Error Handling
 
 Production skills must handle errors gracefully, providing helpful feedback instead of failing silently.
@@ -46,22 +48,17 @@ When editing files:
 **Cache paths (never edit):**
 ```
 If user points to ~/.claude/plugins/cache/...:
-→ REFUSE immediately and explain:
-  "That's an installed plugin (cache). I can't edit it directly.
-   Would you like me to:
-   1. Copy it to your project first, then edit it there?
-   2. Work with the source location of the plugin instead?"
+→ REFUSE immediately and explain: "That's an installed plugin (cache). I can't edit it directly."
+→ Use `AskUserQuestion` — question: "How would you like to proceed?", options:
+  "Copy it to your project first, then edit it there" / "Work with the source location of the plugin instead"
 ```
 
 **User-space skills (conditional):**
 ```
 If skill found in ~/.claude/skills/ (affects all projects):
-→ WARN and ask for confirmation:
-  "This skill is in user-space (~/.claude/skills/).
-   Changes will affect ALL projects using this skill.
-   Do you want to:
-   1. Edit the user-space copy directly? (affects all projects)
-   2. Copy to this project first, then edit? (project-scoped)"
+→ WARN: "This skill is in user-space (~/.claude/skills/). Changes will affect ALL projects using this skill."
+→ Use `AskUserQuestion` — question: "How would you like to proceed?", options:
+  "Edit the user-space copy directly (affects all projects)" / "Copy to this project first, then edit (project-scoped)"
 ```
 
 ## Logging & Change Documentation
@@ -137,7 +134,7 @@ Phase 3 (Frontmatter):
   ✓ name: "skill-refiner" (valid)
   ✓ description: includes trigger phrases (refine, validate, improve)
   ✓ version: 1.0.0 (semantic versioning)
-  ✓ allowed-tools: Read,Edit,Write,Bash(git:*),Glob,Task(*) (least privilege)
+  ✓ allowed-tools: Read,Edit,Write,Bash(git:*),Glob (least privilege)
 
 Phase 4 (Body Content):
   ✓ Lines: 950 (under 500 is optimal, acceptable up to 1,000)

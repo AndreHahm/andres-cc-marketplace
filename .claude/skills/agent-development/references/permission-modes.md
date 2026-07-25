@@ -206,6 +206,7 @@ name: deploy-automation
 description: Deploy application to production
 tools: Bash                          # Still restricted to Bash
 permissionMode: bypassPermissions
+color: blue
 ---
 ```
 
@@ -255,6 +256,7 @@ name: code-reviewer
 description: Review code for quality and security
 tools: Read, Grep, Glob, Bash
 permissionMode: plan
+color: blue
 ---
 ```
 
@@ -403,6 +405,7 @@ description: Review code for quality and security
 tools: Read, Grep, Glob, Bash
 permissionMode: plan
 model: sonnet
+color: blue
 ---
 ```
 
@@ -421,6 +424,7 @@ description: Fix bugs and implement features
 tools: Read, Edit, Write, Bash
 permissionMode: acceptEdits
 model: sonnet
+color: blue
 ---
 ```
 
@@ -439,6 +443,7 @@ description: Execute read-only queries to analyze data
 tools: Bash, Read
 permissionMode: dontAsk
 model: haiku
+color: blue
 ---
 ```
 
@@ -457,6 +462,7 @@ description: Deploy application to production
 tools: Bash                        # Still restricted to Bash
 permissionMode: bypassPermissions  # Trust this subagent completely
 model: sonnet
+color: blue
 ---
 ```
 
@@ -512,4 +518,4 @@ model: sonnet
 - **Tool access patterns:** See `tool-scoping.md`
 - **Hook-based validation:** See `advanced-patterns.md`
 - **Complete configuration reference:** See `configuration-reference.md`
-- **Validation workflow:** See `validation-workflow.md`
+- **Validation workflow:** See `validation.md`

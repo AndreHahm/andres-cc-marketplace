@@ -293,39 +293,25 @@ my-plugin/
 
 ### Updated hooks.json
 
+A plugin `hooks/hooks.json` requires the outer `"hooks"` wrapper (see "Hook Configuration Formats" above) — the migrated file is not just the bare event map:
+
 ```json
 {
-  "PreToolUse": [
-    {
-      "matcher": "Bash",
-      "hooks": [
-        {
-          "type": "prompt",
-          "prompt": "Validate bash command safety: destructive ops, privilege escalation, network access"
-        }
-      ]
-    },
-    {
-      "matcher": "Write|Edit",
-      "hooks": [
-        {
-          "type": "prompt",
-          "prompt": "Validate file write safety: system paths, credentials, path traversal, content secrets"
-        }
-      ]
-    }
-  ],
-  "Stop": [
-    {
-      "matcher": "*",
-      "hooks": [
-        {
-          "type": "prompt",
-          "prompt": "Verify tests were run if code was modified"
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "prompt", "prompt": "Validate bash command safety: destructive ops, privilege escalation, network access" }]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{ "type": "prompt", "prompt": "Validate file write safety: system paths, credentials, path traversal, content secrets" }]
+      }
+    ],
+    "Stop": [
+      { "matcher": "*", "hooks": [{ "type": "prompt", "prompt": "Verify tests were run if code was modified" }] }
+    ]
+  }
 }
 ```
 

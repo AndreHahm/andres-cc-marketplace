@@ -2,6 +2,8 @@
 
 Complete guide to parsing `.claude/plugin-name.local.md` files in bash scripts.
 
+**R18 exception (recorded):** the "Complete Example" script below intentionally exceeds the rulebook's 30-line code-block threshold — it's a complete, runnable script; splitting it would break it.
+
 ## File Structure
 
 Settings files use markdown with YAML frontmatter:

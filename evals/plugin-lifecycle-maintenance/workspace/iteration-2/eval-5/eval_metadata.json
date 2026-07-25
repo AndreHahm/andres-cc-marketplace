@@ -1,0 +1,9 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "assertions": [
+    {"text": "Identifies Single-Rule mode, not Bulk mode", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Correctly sequences find-dev-rule before update-dev-rule", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Names both the workflow's own coarser gate and update-dev-rule's own second pre-flight confirmation as distinct, non-duplicated gates", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

@@ -1,30 +1,10 @@
 # Templates for Skill Creation
 
+**R18 exception (recorded):** several templates below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, copy-paste-ready template; splitting one would break its usability. Matches this plugin's established R18 exception pattern (see `command-development/references/marketplace-considerations.md`).
+
 ## Content-Size Decision Tree
 
-**Before creating skill files, check total content:**
-
-```
-Generate complete SKILL.md + reference content
-Count total lines
-
-IF total_lines < 500:
-  ✅ Create SKILL.md only (no references/)
-  📢 Explain to user: "Total content is [X] lines.
-     Keeping in SKILL.md for efficiency.
-     When it exceeds 500 lines, we'll split into references."
-
-IF total_lines >= 500:
-  ✅ Create SKILL.md + references/
-  📢 Explain to user: "Total content is [X] lines.
-     Splitting into SKILL.md + references/
-     for token efficiency (80% rule)."
-```
-
-This ensures:
-- No unnecessary files created
-- User understands the structure decision
-- Content stays efficient (< 500 line threshold)
+For the authoritative decision tree (which specific content goes in SKILL.md vs. references/, including the ~100-line content-type-specific trigger for API docs/schema tables/background material), see `skill-workflow.md` Part 1 (the 80% Rule) — not restated here to avoid drift with a conflicting flat threshold.
 
 ## Table of Contents
 - [SKILL.md Template](#skillmd-template)
@@ -86,7 +66,6 @@ name: complex-skill-name
 description: >-
   What the skill does. Use when [specific trigger contexts].
   Designed for complex skill use with robust error handling.
-version: 1.0.0
 allowed-tools: Read,Write,Bash(python:*)
 ---
 ```
@@ -226,21 +205,7 @@ project/
 
 ## Description Formula & Examples
 
-**Formula:**
-```
-[Action/capability]. Use when [trigger contexts]. [Scope/constraints].
-```
-
-### Example Descriptions
-
-✅ **Good: Specific + triggers + scope**
-- "Run PHPUnit tests in Laravel via Docker. Use when validating code before commit. Generates JUnit reports and coverage."
-- "Create Claude Code skills following best practices. Use when building new skills, validating existing skills, or improving quality."
-
-❌ **Poor: Vague, no triggers, unclear scope**
-- "Helper for testing"
-- "Useful for code validation"
-- "Makes things easier"
+See `content-guidelines.md`'s "Writing Effective Descriptions" section for the formula, good/poor examples, and full writing rules — not repeated here to avoid drift.
 
 ## Common Description Patterns
 
@@ -343,7 +308,6 @@ allowed-tools: Read,Bash(grep:*,ls:*)
 # Example 4: Skill with external dependencies (limited network, file ops only)
 ---
 name: markdown-doc-generator
-version: 1.0.0
 allowed-tools: Read,Write,Bash(python:*,curl:*)
 ---
 ```
@@ -352,29 +316,6 @@ allowed-tools: Read,Write,Bash(python:*,curl:*)
 - Specify exact commands: `Bash(git:*)` not `Bash(*)`
 - For team skills: minimal permissions
 - Never use `Bash(*)` unless absolutely necessary
-
-### Version Field Example
-
-Track your skill's evolution:
-
-```yaml
----
-name: my-skill
-version: 1.0.0
----
-```
-
-Then include in SKILL.md:
-```markdown
-## Version History
-
-**v1.0.0** (January 2026)
-- Initial release with core features
-- Comprehensive error handling
-
-**v0.9.0** (December 2025)
-- Beta: Community testing
-```
 
 ## Structure Validation
 

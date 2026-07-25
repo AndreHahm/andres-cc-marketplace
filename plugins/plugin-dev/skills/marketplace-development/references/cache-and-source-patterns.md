@@ -7,7 +7,7 @@ semantics.
 ## Contents
 
 - [Mental Model](#mental-model) — the three-level marketplace → plugin → skill hierarchy
-- [Pattern: Single-Skill Narrow Cache](#pattern-single-skill-narrow-cache) — independent install/update for one skill
+- [Pattern: Single-Skill Plugin](#pattern-single-skill-plugin) — independent install/update for one skill
 - [Pattern: Suite Plugin](#pattern-suite-plugin) — shared namespace for related skills
 - [Canonical Source for Suite Members](#canonical-source-for-suite-members) — avoiding duplicate skill directories
 - [Anti-Patterns](#anti-patterns) — full-repo sources, symlink suites, broad text replacement
@@ -116,38 +116,7 @@ creates drift and makes version bumps ambiguous.
 
 ## Anti-Patterns
 
-### Full repo source for a single skill
-
-```json
-{
-  "name": "mermaid-tools",
-  "source": "./"
-}
-```
-
-This installs a full repository cache for one plugin. The cache will contain
-unrelated skills and can confuse debugging. Use `source: "./mermaid-tools"`
-instead.
-
-### Using `skills: ["./"]`
-
-```json
-{
-  "name": "pdf-creator",
-  "source": "./acme-docs/pdf-creator",
-  "skills": ["./"]
-}
-```
-
-Rejected by Claude Code 2.1.x path-escape validator with `skills path "./"
-escapes plugin root`. Omit the `skills` field — auto-discovery finds SKILL.md
-in the `source` directory.
-
-### Symlink suite directories
-
-Do not build suite sources from symlinks to canonical skill directories. Claude Code
-preserves the symlink in the cache, and the symlink can point back to the marketplace
-working copy. That cache is not self-contained or version-immutable.
+See `anti-patterns.md`'s "Source and Cache Errors" section for the canonical Symptom/Fix writeup of full-repo source pollution, `skills: ["./"]` rejection, and symlink suite directories — not restated here to avoid drift.
 
 ### Text-wide source replacement
 

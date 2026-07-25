@@ -54,6 +54,7 @@ Subagent can ONLY use Read, Grep, Glob. All other tools denied.
 name: code-analyzer
 description: Analyze code for patterns
 tools: Read, Grep, Glob          # Only analysis tools
+color: blue
 ---
 ```
 
@@ -78,6 +79,7 @@ Subagent inherits all tools except Write, Edit, Bash.
 name: safe-researcher
 description: Research without modifying anything
 disallowedTools: Write, Edit, Bash    # Deny modifications
+color: blue
 ---
 ```
 
@@ -101,6 +103,7 @@ Subagent inherits all tools from parent conversation.
 name: full-power-agent
 description: Do anything needed
 # Inherits all tools
+color: blue
 ---
 ```
 
@@ -127,6 +130,7 @@ name: code-analyzer
 description: Analyze code structure and patterns
 tools: Read, Grep, Glob
 permissionMode: plan
+color: blue
 ---
 ```
 
@@ -151,6 +155,7 @@ name: code-fixer
 description: Fix bugs and refactor code
 tools: Read, Write, Edit, Bash
 permissionMode: acceptEdits
+color: blue
 ---
 ```
 
@@ -174,6 +179,7 @@ name: test-runner
 description: Run tests and report results
 tools: Bash, Read, Grep, Glob
 permissionMode: dontAsk
+color: blue
 ---
 ```
 
@@ -184,7 +190,7 @@ permissionMode: dontAsk
 - `Grep` - Search for specific patterns
 - `Glob` - Find files
 - `Bash` - Run queries/scripts
-- `Task` - Delegate to other subagents
+- `Agent` - Delegate to other subagents (the tool was renamed from `Task` to `Agent` in Claude Code v2.1.63; `Task(...)` still works as a legacy alias)
 
 **Useful for:**
 - Codebase exploration
@@ -197,8 +203,9 @@ permissionMode: dontAsk
 ---
 name: architecture-researcher
 description: Analyze architecture and dependencies
-tools: Read, Grep, Glob, Bash, Task
+tools: Read, Grep, Glob, Bash, Agent
 permissionMode: plan
+color: blue
 ---
 ```
 
@@ -214,6 +221,7 @@ name: analyzer
 description: Analyze code and generate reports
 tools: Read, Grep, Glob
 permissionMode: plan
+color: blue
 ---
 ```
 
@@ -238,6 +246,7 @@ name: editor
 description: Edit and refactor code
 tools: Read, Write, Edit, Bash
 permissionMode: default
+color: blue
 ---
 ```
 
@@ -260,6 +269,7 @@ name: trusted-editor
 description: Auto-fix issues and refactor code
 tools: Read, Write, Edit, Bash
 permissionMode: acceptEdits
+color: blue
 ---
 ```
 
@@ -287,6 +297,7 @@ hooks:
       hooks:
         - type: command
           command: "./scripts/validate-readonly-query.sh"
+color: blue
 ---
 ```
 
@@ -310,6 +321,7 @@ description: Research codebase architecture and patterns
 tools: Read, Grep, Glob
 permissionMode: dontAsk
 model: haiku
+color: blue
 ---
 ```
 
@@ -397,10 +409,11 @@ name: code-fixer
 description: Fix bugs in code
 tools: Read, Write, Edit, Bash
 permissionMode: acceptEdits    # Trust file edits
+color: blue
 ---
 ```
 
-### `Task` Tool
+### `Agent` Tool
 
 **Risk:** Can launch other subagents
 
@@ -414,7 +427,8 @@ permissionMode: acceptEdits    # Trust file edits
 ---
 name: coordinator
 description: Coordinate analysis across modules
-tools: Read, Grep, Glob, Task  # Can delegate research
+tools: Read, Grep, Glob, Agent  # Can delegate research
+color: blue
 ---
 ```
 
@@ -531,10 +545,14 @@ hooks:
       hooks:
         - type: command
           command: "./scripts/block-dangerous.sh"
+color: blue
 ---
 ```
 
 **Validation script:**
+
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a complete, runnable validation script; splitting it would leave a non-functional fragment.
+
 ```bash
 #!/bin/bash
 
@@ -612,7 +630,7 @@ When configuring tool scoping:
 - Bash (not bash, BASH)
 - Grep (not grep, GREP)
 - Glob (not glob, GLOB)
-- Task (not task, TASK)
+- Agent (not agent, AGENT)
 - Skill (not skill, SKILL)
 - AskUserQuestion (exact case)
 

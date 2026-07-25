@@ -17,7 +17,10 @@ from pathlib import Path
 
 SKILL_TEMPLATE = """---
 name: {skill_name}
-description: [TODO: Complete and informative explanation of what the skill does and when to use it. Include WHEN to use this skill - specific scenarios, file types, or tasks that trigger it.]
+description: >-
+  [TODO: Complete and informative explanation of what the skill does and
+  when to use it. Include WHEN to use this skill - specific scenarios,
+  file types, or tasks that trigger it.]
 ---
 
 # {skill_title}
@@ -26,7 +29,19 @@ description: [TODO: Complete and informative explanation of what the skill does 
 
 [TODO: 1-2 sentences explaining what this skill enables]
 
-## Structuring This Skill
+## Quick Start
+
+[TODO: 3-5 essential steps, or a minimal code-first example, that alone solve 80% of the tasks this skill covers.]
+
+## When to Use
+
+[TODO: Concrete trigger conditions - specific scenarios, file types, or tasks that should activate this skill.]
+
+## When NOT to Use
+
+[TODO: Explicit redirections with named alternatives, if any related skill/tool exists that this one should defer to.]
+
+## Structuring the Rest of This Skill
 
 [TODO: Choose the structure that best fits this skill's purpose. Common patterns:
 
@@ -100,6 +115,16 @@ Files not intended to be loaded into context, but rather used within the output 
 ---
 
 **Any unneeded directories can be deleted.** Not every skill requires all three types of resources.
+
+## Testing & Validation
+
+[TODO: 3-5 checks that verify this skill works correctly, plus a quality-gates checklist.]
+
+## Reference Guide
+
+| Resource | Purpose |
+|---|---|
+| `references/api_reference.md` | [TODO: what it covers] |
 """
 
 EXAMPLE_SCRIPT = '''#!/usr/bin/env python3
@@ -276,7 +301,7 @@ def main():
         print("\nSkill name requirements:")
         print("  - Hyphen-case identifier (e.g., 'data-analyzer')")
         print("  - Lowercase letters, digits, and hyphens only")
-        print("  - Max 40 characters")
+        print("  - Max 64 characters")
         print("  - Must match directory name exactly")
         print("\nExamples:")
         print("  init_skill.py my-new-skill --path skills/public")

@@ -2,6 +2,8 @@
 
 A well-structured plugin with commands, agents, and skills.
 
+**R18 exception (recorded):** the directory tree and per-file content blocks below intentionally exceed the rulebook's 30-line code-block threshold — each is a whole-file illustration within a single worked example, matching `advanced-plugin.md`'s own recorded exception; splitting them would remove the pedagogical value of seeing a complete real plugin's files in one place.
+
 ## Directory Structure
 
 ```
@@ -225,9 +227,8 @@ Generated tests include:
 
 ```markdown
 ---
-name: Code Standards
+name: code-standards
 description: This skill should be used when reviewing code, enforcing style guidelines, checking naming conventions, or ensuring code quality standards. Provides project-specific coding standards and best practices.
-version: 1.0.0
 ---
 
 # Code Standards

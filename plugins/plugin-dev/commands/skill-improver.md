@@ -1,5 +1,7 @@
 ---
-description: "Iteratively reviews and fixes a Claude Code skill until it meets quality standards. Triggers on 'fix my skill', 'improve skill quality', 'skill improvement loop'."
+description: >-
+  Iteratively reviews and fixes a Claude Code skill until it meets quality standards. Triggers
+  on 'fix my skill', 'improve skill quality', 'skill improvement loop'.
 argument-hint: "<SKILL_NAME_OR_PATH> [--max-iterations N]"
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-skill-improver.sh:*) Task Read Edit Write Glob Grep
 ---
@@ -21,7 +23,7 @@ Glob(pattern="**/SKILL.md")
 
 Filter results to find skills matching the user's input (by skill name or path substring).
 
-- **Multiple matches:** Ask the user to choose
+- **Multiple matches:** Use `AskUserQuestion` — question: "Which skill did you mean?", one option per match — to let the user choose
 - **No matches:** Report available skills
 - **Single match:** Proceed with that path
 

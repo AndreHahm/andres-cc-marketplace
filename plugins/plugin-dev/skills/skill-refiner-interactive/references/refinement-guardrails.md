@@ -53,21 +53,7 @@ This applies to:
 - Reorganizing within SKILL.md or references/
 - Consolidating duplicate content
 
-❌ **WRONG (content disappears):**
-```
-1. Remove content from source
-2. Intend to add to destination
-3. Never actually add it
-→ Content is lost
-```
-
-✅ **CORRECT (content preserved):**
-```
-1. Add/update content in destination
-2. Verify destination has complete content
-3. Remove from source
-→ Content is relocated, not lost
-```
+See `movement-pattern.md` for the full wrong/right sequence comparison (this is the same CREATE→LINK→DELETE discipline, not restated here to avoid drift).
 
 **This is enforced as a gate:** If content is removed but no corresponding content appears in destination, the refinement is REJECTED.
 

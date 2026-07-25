@@ -1,5 +1,7 @@
 # Output Structure Reference
 
+**R18 exception (recorded):** several examples below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, authoritative output-structure example; trimming risks documenting an incomplete structure.
+
 ## Contents
 
 - Configuration YAML
@@ -141,7 +143,7 @@ paths:
 
 - `RefOrNull<T extends { id: string }> = T | { id: null }` - nullable relationships
 - `pathFor(page) + url()` - Page Object navigation pair
-- `useAuthClient()` returns `{ user, login, logout }` - auth hook interface
+- `useAuth()` returns `{ user, login, logout }` - auth hook interface
 
 ## Examples
 

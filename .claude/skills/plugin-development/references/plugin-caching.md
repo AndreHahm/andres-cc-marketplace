@@ -400,5 +400,5 @@ Plugin caching provides security benefits:
 
 - [Plugin paths and variables](plugin-paths-variables.md) — Path types and variable usage
 - [Plugin manifest](plugin-json-schema.md) — Configuration options
-- [CLI commands](cli-commands.md) — Installation and management commands
-- [Debugging and troubleshooting](debugging-troubleshooting.md) — Troubleshoot path issues
+- [CLI commands](installation-and-cli.md) — Installation and management commands
+- [Debugging and troubleshooting](troubleshooting-and-production.md) — Troubleshoot path issues

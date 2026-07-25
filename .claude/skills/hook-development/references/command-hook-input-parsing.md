@@ -335,4 +335,4 @@ fi
 ## Reference
 
 - **Official docs**: [Hooks — hook input](https://code.claude.com/docs/en/hooks#hook-input)
-- **Related**: `how-hooks-work.md`, `event-reference.md`, `templates.md`
+- **Related**: `how-hooks-work.md`, `event-reference.md`, `patterns-and-templates.md`

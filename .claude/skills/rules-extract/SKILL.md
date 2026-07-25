@@ -192,7 +192,7 @@ After the subagent completes, report the results to the user.
 
 ## Compaction Mode
 
-When `--compact` is specified, compact over-threshold rules files. Target file selection, char-count check, and threshold filtering all happen inside this mode — callers (e.g. `dev-workflow` Step 11) invoke `--compact` without file arguments.
+When `--compact` is specified, compact over-threshold rules files. Target file selection, char-count check, and threshold filtering all happen inside this mode — orchestrating callers invoke `--compact` without file arguments.
 
 Uses the Pattern A iteration loop: main thread resolves targets → subagent analyzes → main thread applies `mechanical_edits` → fenced JSON return contract for caller dispatch. Per-file outer loop with `max_iterations = 2` (default).
 
@@ -258,7 +258,7 @@ After running rules-extract:
 
 ## Sub-skill caller directive
 
-When invoked as a sub-skill (i.e. via `Skill(rules-extract)` from an orchestrator such as `dev-workflow` Step 11), the fenced JSON verdict block this skill emits in `--compact` mode is the **structured return value** of the skill's procedure — it is **not** a deliverable to the user, and emitting it does **not** terminate the orchestrator's turn. The same agent that ran this skill must immediately issue the next tool call dictated by the orchestrator's flow. Do not insert a prose summary, an acknowledgment, or a "shall I proceed?" sentence between the JSON verdict and the next tool call. Only one fenced JSON block — the verdict block — appears in the response, so callers can locate it unambiguously.
+When invoked as a sub-skill (i.e. via `Skill(rules-extract)` from an orchestrating caller), the fenced JSON verdict block this skill emits in `--compact` mode is the **structured return value** of the skill's procedure — it is **not** a deliverable to the user, and emitting it does **not** terminate the orchestrator's turn. The same agent that ran this skill must immediately issue the next tool call dictated by the orchestrator's flow. Do not insert a prose summary, an acknowledgment, or a "shall I proceed?" sentence between the JSON verdict and the next tool call. Only one fenced JSON block — the verdict block — appears in the response, so callers can locate it unambiguously.
 
 This directive applies specifically to `--compact` mode. Other modes produce prose reports rather than fenced JSON verdicts and are not subject to this contract.
 

@@ -2,6 +2,8 @@
 
 Common mistakes in workflow-based skill structure and workflow design (AP-1 through AP-10).
 
+**R18 exception (recorded):** AP-6's "After" example below intentionally exceeds the rulebook's 30-line code-block threshold — it's a complete, coherent before/after illustration; splitting it would break it.
+
 ---
 
 ## Structure Anti-Patterns
@@ -54,7 +56,7 @@ The `description` controls activation. The body sections scope behavior after ac
 
 **Symptom:** SKILL.md exceeds 500 lines with everything inlined.
 
-**Why it's wrong:** Oversized files dilute the LLM's attention. Critical instructions get buried in reference material. The skill triggers correctly but executes poorly because the LLM cannot prioritize.
+**Why it's wrong:** see `progressive-disclosure-guide.md`'s "The 500-Line Rule" for the full rationale (LLM attention degradation) — not restated here.
 
 **Before:** A 900-line SKILL.md with full API documentation, examples, and workflow steps all in one file.
 
@@ -66,7 +68,7 @@ The `description` controls activation. The body sections scope behavior after ac
 
 **Symptom:** SKILL.md links to file A, which links to file B, which links to file C.
 
-**Why it's wrong:** The LLM follows chains linearly. By the time it reaches file C, the context from SKILL.md has degraded. Each hop adds latency and increases the chance of the LLM stopping early.
+**Why it's wrong:** see `progressive-disclosure-guide.md`'s "The One-Level-Deep Rule" for the full rationale — not restated here.
 
 **Before:**
 ```
@@ -243,5 +245,5 @@ Use distinctive keywords per workflow. If two workflows genuinely overlap, add a
 
 **After:**
 ```markdown
-| None of the above | Ask user to clarify: "I can help with X, Y, or Z. Which would you like?" |
+| None of the above | Use `AskUserQuestion` — question: "Which would you like?", options: "X" / "Y" / "Z" |
 ```

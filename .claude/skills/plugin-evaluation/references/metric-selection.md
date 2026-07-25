@@ -219,22 +219,17 @@ What type of evaluation task?
 ## Evaluation System Metrics Report
 
 ### Human Agreement
-- Spearman's ρ: 0.82 (p < 0.001)
-- Cohen's κ: 0.74
-- Sample size: 500 evaluations
+- Spearman's ρ: 0.82 (p < 0.001) · Cohen's κ: 0.74 · Sample size: 500 evaluations
 
 ### Bias Indicators
-- Position consistency: 91%
-- Length-score correlation: 0.12
+- Position consistency: 91% · Length-score correlation: 0.12
 
 ### Per-Criterion Performance
 | Criterion | Spearman's ρ | κ |
 |-----------|--------------|---|
 | Accuracy | 0.88 | 0.79 |
 | Clarity | 0.76 | 0.68 |
-| Completeness | 0.81 | 0.72 |
 
 ### Recommendations
-- All metrics within acceptable ranges
-- Monitor "Clarity" criterion — lower agreement may indicate need for rubric refinement
+- Monitor "Clarity" — lower agreement may indicate need for rubric refinement
 ```

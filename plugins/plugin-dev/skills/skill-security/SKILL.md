@@ -127,4 +127,4 @@ After producing an audit report, verify:
 
 - **Pre-execution Mandate:** NEVER execute a newly created or modified skill without running an Audit first.
 - **Checkpoint Authority:** Always require explicit manual approval before network requests to non-whitelisted APIs or ANY file deletion.
-- **Absolute Failure:** A command in the ABSOLUTE DENY tier of the blacklist immediately drops the Trust score to 0 and halts all agent proceedings.
+- **Absolute Failure:** A command in the ABSOLUTE DECLINE tier of the blacklist immediately drops the Trust score to 0 and halts all agent proceedings.

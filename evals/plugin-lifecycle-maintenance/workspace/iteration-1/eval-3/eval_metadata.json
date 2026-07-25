@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "assertions": [
+    {"text": "Identifies workflows/improve-a-plugin.md as the correct workflow file", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "States the next step involves human-decision via AskUserQuestion before anything is applied, not an automatic selection", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Does not claim it would reimplement apply/test/commit logic itself -- recognizes the hand-off to plugin-lifecycle-downstream's Fix phase", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

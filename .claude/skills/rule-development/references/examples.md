@@ -12,13 +12,13 @@ Research shows that rules with both positive and negative examples are significa
 
 ### Description Principles
 
+See SKILL.md's "Writing Effective Rules" section for "Be specific" and "State the WHY" — not restated here. This table covers additional principles for grading/evaluation-style rules:
+
 | Principle | Example |
 |-----------|---------|
 | **Prioritize correctness over style** | "A functionally correct but ugly solution is better than an elegant but broken one" |
 | **Do not reward hallucinated detail** | "Extra information not grounded in the codebase should be penalized, not rewarded" |
 | **Penalize confident errors** | "A confidently stated wrong answer is worse than an uncertain correct one" |
-| **Be specific, not vague** | "Functions must not exceed 50 lines" not "Keep functions short" |
-| **State the WHY** | "Use early returns to reduce nesting — deeply nested code increases cognitive load" |
 
 ### Incorrect Examples: What to Show
 
@@ -52,117 +52,13 @@ The Correct section must show the minimal change needed to fix the Incorrect pat
 
 ## Complete Example: Global Rule
 
-```markdown
----
-title: Use Early Returns to Reduce Nesting
-paths:
-  - "**/*.ts"
----
-
-# Use Early Returns to Reduce Nesting
-
-Handle error conditions and edge cases at the top of functions using early returns. Deeply nested code increases cognitive load and makes logic harder to follow.
-
-## Incorrect
-
-Guard clauses are buried inside nested conditionals, making the happy path hard to find.
-
-\`\`\`typescript
-function processOrder(order: Order) {
-  if (order) {
-    if (order.items.length > 0) {
-      if (order.status === 'pending') {
-        // actual logic buried 3 levels deep
-        const total = calculateTotal(order.items)
-        return submitOrder(order, total)
-      } else {
-        throw new Error('Order not pending')
-      }
-    } else {
-      throw new Error('No items')
-    }
-  } else {
-    throw new Error('No order')
-  }
-}
-\`\`\`
-
-## Correct
-
-Error conditions are handled first with early returns, keeping the happy path at the top level.
-
-\`\`\`typescript
-function processOrder(order: Order) {
-  if (!order) 
-    throw new Error('No order')
-  if (order.items.length === 0) 
-    throw new Error('No items')
-  if (order.status !== 'pending') 
-    throw new Error('Order not pending')
-
-  const total = calculateTotal(order.items)
-  return submitOrder(order, total)
-}
-\`\`\`
-
-## Reference
-
-- [Flattening Arrow Code](https://blog.codinghorror.com/flattening-arrow-code/)
-```
+See `examples/global-rule-example.md` for the full worked example (Use Early Returns to Reduce Nesting).
 
 ---
 
 ## Complete Example: Path-Scoped Rule
 
-```markdown
----
-title: API Endpoints Must Validate Input
-paths:
-  - "src/api/**/*.ts"
-  - "src/routes/**/*.ts"
----
-
-# API Endpoints Must Validate Input
-
-Every API endpoint must validate request input before processing. Unvalidated input leads to runtime errors, security vulnerabilities, and data corruption.
-
-## Incorrect
-
-The handler trusts the request body without validation, allowing malformed data through.
-
-\`\`\`typescript
-export async function POST(req: Request) {
-  const body = await req.json()
-  const user = await db.users.create({
-    email: body.email,
-    name: body.name,
-  })
-  return Response.json(user)
-}
-\`\`\`
-
-## Correct
-
-Input is validated with a schema before use. Invalid requests receive a 400 response.
-
-\`\`\`typescript
-import { z } from 'zod'
-
-const CreateUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1).max(100),
-})
-
-export async function POST(req: Request) {
-  const parsed = CreateUserSchema.safeParse(await req.json())
-  if (!parsed.success) {
-    return Response.json({ error: parsed.error.flatten() }, { status: 400 })
-  }
-  const user = await db.users.create(parsed.data)
-  return Response.json(user)
-}
-\`\`\`
-```
+See `examples/path-scoped-rule-example.md` for the full worked example (API Endpoints Must Validate Input).
 
 ---
 

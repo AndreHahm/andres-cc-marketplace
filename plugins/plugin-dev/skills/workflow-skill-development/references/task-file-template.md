@@ -2,6 +2,8 @@
 
 Template for `tasks/step-N-<workflow>-<name>.md` files created during Step 3 of the Implementation Process.
 
+**R18 exception (recorded):** the template below intentionally exceeds the rulebook's 30-line code-block threshold — it's a complete, coherent task-file template; splitting it would break it.
+
 ```markdown
 # Step N: <Step Name>
 

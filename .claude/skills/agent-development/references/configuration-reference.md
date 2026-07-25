@@ -2,6 +2,8 @@
 
 Complete reference for all YAML frontmatter fields available when creating subagents. Use this to understand each field, its valid values, defaults, and effects on subagent behavior.
 
+**R18 exception (recorded):** several examples below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent agent configuration or field-combination example; splitting one would leave a non-functional fragment.
+
 ## Table of Contents
 
 - [Frontmatter Overview](#frontmatter-overview)
@@ -33,10 +35,13 @@ hooks:
       hooks:
         - type: command
           command: "./validate.sh"
+color: blue
 ---
 
 [System prompt body follows below]
 ```
+
+**Field-ordering rule:** every configuration field MUST appear between the opening and closing `---` delimiters, as valid YAML. Content placed after the closing `---` is the system prompt body — it is never parsed as frontmatter, no matter how field-like it looks. This plugin's own convention doesn't use `<example>` blocks inside frontmatter (trigger scenarios go in the body's `## When to invoke` section instead — see `references/delegation.md`), which sidesteps the specific upstream gotcha where fields placed after an `<example>` block silently stop being parsed as YAML. If you're porting an agent authored against the upstream `<example>`-in-frontmatter convention, watch for exactly this: any field appearing after an `<example>` block in the original file was likely never actually taking effect.
 
 ## Required Fields
 
@@ -84,7 +89,7 @@ description: >-
   Execute database operations. Use when needed.   # "when needed" is vague
 ```
 
-For detailed guidance on writing descriptions, see `delegation-signals.md`.
+For detailed guidance on writing descriptions, see `delegation.md`.
 
 ## Optional Fields
 
@@ -118,6 +123,8 @@ model: inherit           # Keep consistency with parent conversation
 - **opus**: Complex reasoning, multi-step logic, production systems
 - **inherit**: Subagent work chains with parent (needs parent's reasoning level)
 
+**Role-tier mapping (advisory, not a hard rule):** as a starting heuristic when a task-based choice above isn't obvious, map the agent's role to a tier — **orchestrator** agents (dispatch other agents, hold the `Agent` tool) → `haiku`; **implementer/worker** agents (do the actual read/write/analysis work) → `sonnet`; **quality-gate/advisor/reviewer** agents (this plugin's own `*-reviewer` family) → `opus`. This is guidance for judgment calls, not a requirement — `inherit` remains valid and is often the right choice regardless of role.
+
 ### `color`
 
 **Optional.** Display color for the agent in the UI. Do not hardcode this list elsewhere — verify against current platform documentation before publishing. At last review, valid values were:
@@ -141,7 +148,7 @@ color: red      # critical/security agents
 - `Bash` - Execute bash commands
 - `Grep` - Search file contents
 - `Glob` - Find files by pattern
-- `Task` - Launch subagents
+- `Agent` - Launch subagents (renamed from `Task` in Claude Code v2.1.63; `Task(...)` still works as a legacy alias)
 - `AskUserQuestion` - Ask user for input
 - `Skill` - Invoke skills
 - And any MCP tools available in parent conversation
@@ -196,7 +203,7 @@ disallowedTools: Edit, Bash       # Comma-separated
 disallowedTools: Write, Edit
 
 # Start with all, deny dangerous tools
-disallowedTools: Bash, Task
+disallowedTools: Bash, Agent
 ```
 
 **Rules:**
@@ -282,9 +289,9 @@ skills: security-analysis, performance-optimization
 - Full skill content is loaded (not just name reference)
 - Increases token usage (skills are loaded into context)
 
-**Difference from `Task` tool:**
+**Difference from `Agent` tool:**
 - `skills` field: Skill content injected into context (direct access to instructions)
-- `Task` tool: Launch a specialized subagent (separate execution context)
+- `Agent` tool: Launch a specialized subagent (separate execution context)
 
 ### `hooks`
 
@@ -382,11 +389,22 @@ memory: project
 
 ### `isolation`
 
-**Optional.** Execution isolation mode. Valid value: `worktree` — runs the subagent in an isolated git worktree.
+**Optional.** Execution isolation mode. Valid value: `worktree` — runs the subagent in an isolated git worktree, giving it complete filesystem isolation on a fresh branch. The worktree auto-cleans if the agent makes no changes.
 
 ```yaml
 isolation: worktree
 ```
+
+**When to use:** multiple agents editing the same codebase in parallel where file conflicts are likely, or a competitive-implementation pattern (dispatch N agents at the same task, pick the best result).
+
+**This is agent-level isolation — declared once in frontmatter, applied on every invocation of that agent.** It's a separate mechanism from **session-level** worktree isolation, which is requested ad hoc in natural language for the current session rather than declared on a specific agent:
+
+```
+"work in a worktree"
+"start a worktree for this bug fix"
+```
+
+Session-level requests use the same underlying git-worktree isolation but apply to the whole session's work, not to a single agent dispatch — use `isolation: worktree` in an agent's frontmatter when the isolation need is intrinsic to that agent's role (e.g. a parallel-implementation agent), and a session-level request when the isolation need is specific to the current task rather than the agent's general design.
 
 ### `initialPrompt`
 
@@ -405,6 +423,7 @@ isolation: worktree
 ---
 name: basic-agent
 description: Does basic tasks
+color: blue
 ---
 
 # Tool-restricted, read-only
@@ -414,6 +433,7 @@ description: Analyzes code
 tools: Read, Grep, Glob
 permissionMode: plan
 model: haiku
+color: blue
 ---
 
 # Trusted editor
@@ -423,6 +443,7 @@ description: Fixes bugs
 tools: Read, Edit, Write, Bash
 permissionMode: acceptEdits
 model: sonnet
+color: blue
 ---
 
 # Validated database access
@@ -436,6 +457,7 @@ hooks:
       hooks:
         - type: command
           command: "./validate-query.sh"
+color: blue
 ---
 ```
 
@@ -470,7 +492,6 @@ description: >-
   Execute read-only SQL queries to analyze data. Use when analyzing data
   patterns, generating reports, or exploring table structure. SELECT
   queries only; write operations blocked.
-version: 1.0.0
 model: opus
 tools: Bash, Read, Write
 permissionMode: dontAsk
@@ -481,9 +502,14 @@ hooks:
       hooks:
         - type: command
           command: "./scripts/validate-query.sh"
+color: blue
 ---
 
 You are a data analyst specializing in SQL analysis...
+
+## When to invoke
+
+Use when analyzing data patterns, generating reports, or exploring table structure — SELECT-only, write operations blocked.
 ```
 
 ## Validation Checklist
@@ -501,7 +527,7 @@ Before deploying, verify:
 - [ ] File has frontmatter delimiters (`---` before and after)
 - [ ] System prompt (body) follows frontmatter
 
-See `validation-workflow.md` for full validation process.
+See `validation.md` for full validation process.
 
 ## Scope Storage
 
@@ -526,7 +552,7 @@ When multiple subagents share the same name, higher priority location wins.
 ### Subagent doesn't delegate
 - Check `description` for vague language
 - Add 3+ specific trigger phrases to description
-- Review `delegation-signals.md` for better descriptions
+- Review `delegation.md` for better descriptions
 
 ### Tool access denied
 - Verify tool is in `tools` list (case-sensitive)
@@ -545,8 +571,8 @@ When multiple subagents share the same name, higher priority location wins.
 
 ## Next Steps
 
-- **Writing descriptions:** See `delegation-signals.md`
+- **Writing descriptions:** See `delegation.md`
 - **Permission mode details:** See `permission-modes.md`
 - **Tool access patterns:** See `tool-scoping.md`
 - **Advanced hooks:** See `advanced-patterns.md`
-- **Validation workflow:** See `validation-workflow.md`
+- **Validation workflow:** See `validation.md`

@@ -2,6 +2,8 @@
 
 Comprehensive guide to creating commands that gather user feedback and make decisions through the AskUserQuestion tool.
 
+**R18 exception (recorded):** many complete command examples below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent, copy-paste-ready command file; splitting one would break it. This file has the largest concentration of such examples in the skill (up to 105 lines); a dedicated extraction pass (moving each into its own example file) is worth a future, separately-scoped session rather than this batch.
+
 ## Overview
 
 Some commands need user input that doesn't work well with simple arguments. For example:
@@ -634,9 +636,9 @@ allowed-tools: AskUserQuestion, Bash, Read
 ## Detect Current State
 
 Check existing configuration:
-- Current language: !`detect-language.sh`
-- Existing frameworks: !`detect-frameworks.sh`
-- Available tools: !`check-tools.sh`
+- Current language: !\`detect-language.sh\`
+- Existing frameworks: !\`detect-frameworks.sh\`
+- Available tools: !\`check-tools.sh\`
 
 ## Ask Context-Appropriate Questions
 
@@ -665,116 +667,40 @@ If language is Python:
 Questions adapt to project context.
 ```
 
-## Real-World Example: Multi-Agent Swarm Launch
+## Example: Branching Multi-Question Wizard
 
-**From multi-agent-swarm plugin:**
+A command that chains several `AskUserQuestion` prompts, with later questions and behavior depending on earlier answers — the pattern to reach for whenever a single question can't capture the full setup (e.g. orchestrating multiple sub-tasks that each need their own name, type, and dependencies).
 
 ```markdown
 ---
-description: Launch multi-agent swarm
-allowed-tools: AskUserQuestion, Read, Write, Bash
+description: Set up a multi-task work plan interactively
+allowed-tools: Read, Write
 ---
 
-# Launch Multi-Agent Swarm
+# Set Up Work Plan
 
-## Interactive Mode (No Task List Provided)
+If the user didn't provide a task list file, help create one interactively.
 
-If user didn't provide task list file, help create one interactively.
+### Question 1: Task Count
 
-### Question 1: Agent Count
+Question: "How many tasks should we set up?"
+Header: "Task count"
+Options: 2 tasks (small) / 4 tasks (standard) / 8 tasks (large)
 
-Use AskUserQuestion:
-
-Question: "How many agents should we launch?"
-Header: "Agent count"
-Options:
-  - 2 agents (Best for simple projects)
-  - 3 agents (Good for medium projects)
-  - 4 agents (Standard team size)
-  - 6 agents (Large projects)
-  - 8 agents (Complex multi-component projects)
-
-### Question 2: Task Definition Approach
-
-Use AskUserQuestion:
+### Question 2: Definition Approach
 
 Question: "How would you like to define tasks?"
 Header: "Task setup"
-Options:
-  - File (I have a task list file ready)
-  - Guided (Help me create tasks interactively)
-  - Custom (Other approach)
+Options: File (I have a list ready) / Guided (help me create tasks interactively)
 
-If "File":
-  Ask for file path
-  Validate file exists and has correct format
+If "File": ask for the file path, then validate it exists and parses.
+If "Guided": for each task (1 to N from Question 1), ask its name, type, and
+dependencies (`multiSelect: true`, options drawn from previously-named tasks)
+as a nested per-task sub-wizard — the same branching pattern as Question 2
+itself, one level deeper.
 
-If "Guided":
-  Enter iterative task creation mode (see below)
-
-### Question 3: Coordination Mode
-
-Use AskUserQuestion:
-
-Question: "How should agents coordinate?"
-Header: "Coordination"
-Options:
-  - Team Leader (One agent coordinates others)
-  - Collaborative (Agents coordinate as peers)
-  - Autonomous (Independent work, minimal coordination)
-
-### Iterative Task Creation (If "Guided" Selected)
-
-For each agent (1 to N from Question 1):
-
-**Question A: Agent Name**
-Question: "What should we call agent [number]?"
-Header: "Agent name"
-Options:
-  - auth-agent
-  - api-agent
-  - ui-agent
-  - db-agent
-  (Provide relevant suggestions based on common patterns)
-
-**Question B: Task Type**
-Question: "What task for [agent-name]?"
-Header: "Task type"
-Options:
-  - Authentication (User auth, JWT, OAuth)
-  - API Endpoints (REST/GraphQL APIs)
-  - UI Components (Frontend components)
-  - Database (Schema, migrations, queries)
-  - Testing (Test suites and coverage)
-  - Documentation (Docs, README, guides)
-
-**Question C: Dependencies**
-Question: "What does [agent-name] depend on?"
-Header: "Dependencies"
-multiSelect: true
-Options:
-  - [List of previously defined agents]
-  - No dependencies
-
-**Question D: Base Branch**
-Question: "Which base branch for PR?"
-Header: "PR base"
-Options:
-  - main
-  - staging
-  - develop
-
-Store all task information for each agent.
-
-### Generate Task List File
-
-After collecting all agent task details:
-
-1. Ask for project name
-2. Generate task list in proper format
-3. Save to `.daisy/swarm/tasks.md`
-4. Show user the file path
-5. Proceed with launch using generated task list
+After collecting every task's details, generate the task list file, save it,
+and show the user the path before proceeding.
 ```
 
 ## Best Practices

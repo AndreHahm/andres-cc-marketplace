@@ -2,6 +2,8 @@
 
 Production-grade patterns for complex hook scenarios, advanced use cases, and sophisticated automation workflows.
 
+**R18 exception (recorded):** several examples below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, runnable `hooks.json` configuration or standalone test/example script for one named pattern; splitting one would leave a non-functional fragment. Matches this plugin's established R18 exception pattern (see `command-development/references/marketplace-considerations.md`).
+
 ## Table of Contents
 
 - [Pattern 1: Conditional Execution](#pattern-1-conditional-execution)
@@ -210,29 +212,13 @@ fi
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format-write.sh"
           }
         ]
-      },
-      {
-        "matcher": "^Edit$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format-edit.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "^Bash$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/audit-bash.sh"
-          }
-        ]
       }
     ]
   }
 }
 ```
+
+Repeat the same `{ "matcher": ..., "hooks": [...] }` entry once per tool inside the `PostToolUse` array — e.g. `"^Edit$"` calling `format-edit.sh`, `"^Bash$"` calling `audit-bash.sh`.
 
 **Execution:** Each matcher is independent; only matching matchers execute.
 
@@ -1071,16 +1057,4 @@ time $SCRIPT "$@"
 
 ## Production Deployment Checklist
 
-- [ ] Idempotent (safe to run multiple times)
-- [ ] Atomic operations (no partial file state)
-- [ ] Error handling (all failure cases covered)
-- [ ] Timeout set (prevent hangs)
-- [ ] Exit codes correct (0=success, 2=blocking error Claude sees, 1=non-blocking)
-- [ ] Logging implemented (for debugging)
-- [ ] Performance tested (meets acceptable latency)
-- [ ] Tested with real scenarios (happy path, sad path, failure modes)
-- [ ] `shellcheck` passes on all command hook scripts
-- [ ] Rollback procedure documented
-- [ ] Monitoring/alerting configured
-- [ ] Team understands the hook purpose and behavior
-- [ ] Documentation complete
+See `validation-guide.md`'s "Production & Team Hooks Checklist" for the full canonical checklist (idempotency, atomicity, exit codes, shellcheck, rollback, monitoring, and documentation are all covered there).

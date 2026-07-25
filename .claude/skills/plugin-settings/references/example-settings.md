@@ -1,5 +1,7 @@
 # Example Plugin Settings File
 
+**R18 exception (recorded):** the "Template: Agent State File" example below intentionally exceeds the rulebook's 30-line code-block threshold — it's a complete, coherent settings template; splitting it would break it.
+
 ## Template: Basic Configuration
 
 **.claude/my-plugin.local.md:**
@@ -26,67 +28,18 @@ strict_mode: false
 max_file_size: 1000000
 allowed_extensions: [".js", ".ts", ".tsx"]
 enable_logging: true
-notification_level: info
 retry_attempts: 3
-timeout_seconds: 60
-custom_path: "/path/to/data"
 ---
 
 # My Plugin Advanced Configuration
 
-This project uses custom plugin configuration with:
-- Standard validation mode
-- 1MB file size limit
-- JavaScript/TypeScript files allowed
-- Info-level logging
-- 3 retry attempts
-
-## Additional Notes
-
-Contact @team-lead with questions about this configuration.
+Standard validation mode, 1MB file size limit, JavaScript/TypeScript files
+allowed, logging on, 3 retry attempts. Contact @team-lead with questions.
 ```
 
 ## Template: Agent State File
 
-**.claude/multi-agent-swarm.local.md:**
-
-```markdown
----
-agent_name: database-implementation
-task_number: 4.2
-pr_number: 5678
-coordinator_session: team-leader
-enabled: true
-dependencies: ["Task 3.5", "Task 4.1"]
-additional_instructions: "Use PostgreSQL, not MySQL"
----
-
-# Task Assignment: Database Schema Implementation
-
-Implement the database schema for the new features module.
-
-## Requirements
-
-- Create migration files
-- Add indexes for performance
-- Write tests for constraints
-- Document schema in README
-
-## Success Criteria
-
-- Migrations run successfully
-- All tests pass
-- PR created with CI green
-- Schema documented
-
-## Coordination
-
-Depends on:
-- Task 3.5: API endpoint definitions
-- Task 4.1: Data model design
-
-Report status to coordinator session 'team-leader'.
-```
+See `real-world-examples.md`'s "multi-agent-swarm Plugin" section for the canonical worked example of this pattern (`agent_name`/`task_number`/`pr_number`/`coordinator_session`/`enabled`/`dependencies` fields) — it also shows the hook implementation that reads this file, which this template alone doesn't cover.
 
 ## Template: Feature Flag Pattern
 

@@ -23,7 +23,8 @@ NETWORK
   GATE   New domain    : approval on first use
   DENY   HTTP (clear)  : forbidden
   DENY   Raw socket    : forbidden
-
+```
+```
 EXECUTION
   ALLOW  Bash (allowed): safe commands only
   ALLOW  Python/Node   : inside sandbox
@@ -60,7 +61,8 @@ NETWORK
   DENY   WebSocket     : forbidden
   DENY   HTTP (clear)  : forbidden
   DENY   Raw socket    : forbidden
-
+```
+```
 EXECUTION
   ALLOW  Python/Node   : strictly inside sandbox, no network
   DENY   Bash          : forbidden

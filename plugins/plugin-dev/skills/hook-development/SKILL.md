@@ -9,7 +9,8 @@ description: >-
   implementing PreToolUse validation, blocking dangerous commands, running
   auto-format on file writes, enforcing completion standards with Stop hooks,
   loading session context at startup, automating responses to Claude Code events,
-  or working with any Claude Code hook event.
+  or writing/configuring any Claude Code hook event. For reviewing an existing
+  hook's quality/safety before deployment, use the hook-reviewer agent instead.
 allowed-tools: Read Write Edit Glob Bash(jq:*) Bash(scripts/validate-hook-schema.sh:*) Bash(scripts/test-hook.sh:*) Bash(scripts/hook-linter.sh:*) Bash(shellcheck:*) Bash(claude:*) Skill
 ---
 
@@ -44,6 +45,7 @@ Hooks are event-driven automation scripts that execute in response to Claude Cod
 - For one-time prompts — use slash commands instead
 - For global config changes — modify `settings.json` directly
 - Never edit `~/.claude/plugins/cache/` — those are read-only installed copies
+- Reviewing an existing hook's quality/safety before deployment → use the `hook-reviewer` agent instead
 
 ---
 
@@ -122,76 +124,7 @@ Every hook action (command, http, mcp_tool, prompt, agent) **must** be inside a 
 
 ## Hook Types
 
-### Prompt-Based (Recommended)
-
-LLM-driven decision making for context-aware validation:
-
-```json
-{
-  "type": "prompt",
-  "prompt": "Evaluate if this tool use is appropriate: $TOOL_INPUT",
-  "timeout": 30
-}
-```
-
-Best for: flexible logic, edge cases, natural language reasoning, easy maintenance.
-
-### Command
-
-Bash execution for deterministic checks:
-
-```json
-{
-  "type": "command",
-  "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/validate.sh",
-  "timeout": 60
-}
-```
-
-Best for: fast deterministic validations, file system checks, external tool integrations.
-
-### Agent-Based
-
-Multi-turn subagent with Read/Grep/Glob/Bash access for checks requiring file inspection:
-
-```json
-{
-  "type": "agent",
-  "prompt": "Verify all unit tests pass. Run the test suite and check results. $ARGUMENTS",
-  "timeout": 120
-}
-```
-
-Returns `{"ok": true}` or `{"ok": false, "reason": "..."}`. Default timeout: 60s; up to 50 tool-use turns.
-
-### HTTP
-
-Posts event data to a webhook endpoint:
-
-```json
-{
-  "type": "http",
-  "url": "https://example.com/hook",
-  "timeout": 10
-}
-```
-
-Cannot block via a non-2xx status code — to block, the endpoint must return `2xx` with a valid JSON decision body (see `references/exit-code-behavior.md`).
-
-### MCP Tool
-
-Calls an installed MCP server tool as the hook action. Requires `server` and `tool`:
-
-```json
-{
-  "type": "mcp_tool",
-  "server": "my-server",
-  "tool": "validate",
-  "timeout": 10
-}
-```
-
-See `references/mcp-tools.md` for the full reference.
+Five action types: `prompt` (LLM-driven, flexible), `command` (bash, deterministic), `agent` (multi-turn, file inspection), `http` (webhook), `mcp_tool` (calls an installed MCP server tool). Full field reference and JSON example per type: `references/hook-types.md` (`mcp_tool` has its own dedicated reference, `references/mcp-tools.md`).
 
 **Type decision:**
 
@@ -233,7 +166,7 @@ Not every type is valid for every event (e.g. `SessionStart` supports only `comm
 }
 ```
 
-Events go directly at the top level — no wrapper object. Plugin hooks merge with user hooks and run in parallel.
+Events go directly at the top level — no wrapper object. Plugin hooks merge with user hooks and run in parallel. Settings format also supports a top-level `disableAllHooks` boolean key to disable every configured hook at once — verify whether this applies to plugin `hooks/hooks.json` too before relying on it there.
 
 `hooks/hooks.json` has only two top-level keys: `description` and `hooks` — verify this against the current platform schema before enforcing it. Shared team hooks belong in `.claude/settings.json` (checked into version control) — never in `.claude/settings.local.json`, which is personal and gitignored.
 
@@ -256,8 +189,10 @@ Command-only:
 | Field | Required | Description |
 |---|---|---|
 | `command` | yes | Shell command to execute |
+| `args` | no | Array of arguments — when present, `command` runs as an executable (exec form, no shell interpretation) instead of being passed to a shell |
 | `async` | no | `true` = background, non-blocking, command hooks only. Cannot block, cannot return decisions, and delivers output on a later turn — never use for safety gates |
-| `shell` | no | Shell used to run `command` |
+| `asyncRewake` | no | Background mode only — wake Claude when the async hook exits with code 2 |
+| `shell` | no | Shell used to run `command` — `"bash"` or `"powershell"` |
 
 Prompt/Agent-only:
 
@@ -301,7 +236,7 @@ MCP Tool-only:
 | `Notification` | Claude sends notification | ❌ No | React to notifications |
 | `WorktreeCreate` | Worktree created | ⚠️ Special | Must return the absolute path of the created worktree — not a standard allow/block decision |
 
-This is not the full event list — Claude Code also ships `Setup`, `UserPromptExpansion`, `PostToolBatch`, `MessageDisplay`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `WorktreeRemove`, `CwdChanged`, and others. Full list, per-event payloads, and the hook-type/event compatibility matrix: `references/event-reference.md`.
+This is not the full event list — Claude Code also ships `Setup`, `UserPromptExpansion`, `PostToolBatch`, `MessageDisplay`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `WorktreeRemove`, `CwdChanged`, `PermissionDenied`, `StopFailure`, `InstructionsLoaded`, `ConfigChange`, `FileChanged`, `PostCompact`, `Elicitation`, and `ElicitationResult`. Full list, per-event payloads, and the hook-type/event compatibility matrix: `references/event-reference.md`.
 
 **⚠️ Stop/SubagentStop infinite loop guard** — always check `stop_hook_active`:
 ```bash
@@ -444,11 +379,12 @@ After writing or modifying hooks:
 
 | Reference | Purpose |
 |---|---|
+| `references/hook-types.md` | Full field reference and JSON example for each of the 5 hook action types |
 | `references/event-reference.md` | Complete event docs: data payloads, timing, matcher values |
 | `references/decision-schemas.md` | Output schemas for prompt/agent/command hooks by event |
 | `references/exit-code-behavior.md` | Exit code semantics (0/1/2) with per-event scenarios |
 | `references/command-hook-input-parsing.md` | Stdin field paths and bash parsing patterns per event |
-| `references/patterns-and-templates.md` | 10 common patterns and copy-paste templates for all hook types |
+| `references/patterns-and-templates.md` | 11 common patterns and copy-paste templates for all hook types |
 | `references/advanced-hooks.md` | 18 advanced patterns: rate limiting, caching, retry, cross-event workflows, external integrations |
 | `references/how-hooks-work.md` | Lifecycle, execution model, `onError`, hot-reload limits |
 | `references/validation-guide.md` | 7-phase systematic validation; production checklists; troubleshooting |

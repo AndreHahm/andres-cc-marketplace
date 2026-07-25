@@ -79,7 +79,7 @@ Command body starts here.
 |-------|---------|---------|
 | `description` | Shown in `/help` — keep under 60 chars | First line of prompt |
 | `allowed-tools` | Tools the command may use (`Read`, `Bash(git:*)`, `*`) | Inherits from conversation |
-| `model` | Model override (`haiku`, `sonnet`, `opus`) | Inherits from conversation |
+| `model` | Model override (`haiku`, `sonnet`, `opus`, `fable`) | Inherits from conversation |
 | `argument-hint` | Autocomplete hint (e.g. `[pr-number] [priority]`), 0-based order matching body usage — plugin-rulebook R22 | None |
 | `disable-model-invocation` | Prevent programmatic invocation | `false` |
 
@@ -134,7 +134,7 @@ Commands can run bash inline to gather context before Claude processes the promp
 ---
 allowed-tools: Bash(git:*)
 ---
-Files changed: !`git diff --name-only`
+Files changed: !\`git diff --name-only\`
 
 Review each changed file for code quality and test coverage.
 ```
@@ -149,7 +149,7 @@ Plugin commands have access to `${CLAUDE_PLUGIN_ROOT}` — an env var resolving 
 ---
 allowed-tools: Bash(node:*)
 ---
-Run analysis: !`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js \$0`
+Run analysis: !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js \$0\`
 Load config: @${CLAUDE_PLUGIN_ROOT}/config/settings.json
 ```
 
@@ -185,6 +185,7 @@ Subdirectory names appear as namespace labels in `/help`.
 - **Output file policy:** commands that write output files must state an explicit update policy; the default is full regeneration from current sources on every invocation — append-only behavior requires an explicit statement in the command body
 - **Skill/command distinction:** multi-step commands with descriptive bodies can be mistaken for skills and invoked via `Skill()` — which silently fails. Add an invocation note at the top of the body for any command complex enough to cause this confusion: `> **Invocation:** Run as /command-name in the Claude Code prompt. This command cannot be invoked via Skill() — it must be triggered as a slash command or followed manually.`
 - **Thinking mode:** add a `Think step-by-step` instruction or `## Analysis` section header in the command body to trigger extended reasoning before Claude acts (e.g. `Think through all edge cases before making any changes.`)
+- **Data-dependency timing check:** when a new step reads data another step is supposed to produce (a prior-run marker, a lookup result from an earlier step), confirm that data actually exists at the point in execution order it's read — not just that the reference is written correctly. Two sibling commands in this plugin (`verify-dev-rules.md`, `update-dev-rule.md`) each shipped a new "intentional divergence carry-forward" step that referenced prior-run data a *later* step actually loaded, making the new step dead code on a first pass through the document.
 
 For complete patterns, multi-step workflows, and templates, see `references/advanced-workflows.md`, `references/interactive-commands.md`, and `examples/`.
 
@@ -224,6 +225,8 @@ After writing or modifying a command:
 | `references/advanced-workflows.md` | Multi-step patterns, complex workflows |
 | `references/interactive-commands.md` | `AskUserQuestion` patterns, user interaction |
 | `references/testing-strategies.md` | Validation patterns, argument/file/resource checks |
+| `scripts/validate-command.sh` | Bundled: validates a command file's structure (extension, non-empty, frontmatter markers) |
+| `scripts/validate-frontmatter.sh` | Bundled: validates a command file's frontmatter fields (`model`, `allowed-tools`, `description` length) |
 | `references/documentation-patterns.md` | Documentation command patterns |
 | `references/marketplace-considerations.md` | Publishing and distribution |
 | `references/slash-command-template.md` | Ready-to-use command template |

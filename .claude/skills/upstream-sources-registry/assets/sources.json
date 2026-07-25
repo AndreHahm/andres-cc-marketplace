@@ -1,0 +1,99 @@
+{
+  "version": "1.0.0",
+  "_meta": {
+    "notes": "Seeded during the upstream-sources-registry build by migrating plugin-rulebook's former 'Tracked Upstream Sources' table and settings.json _meta.review_triggers. Two of that table's six rows (skill-development/references/size-limits.md, skill-reviewer C1/C2 severity tier logic) were internal plugin-dev files, not official sources -- they were miscategorized in the old table and are intentionally NOT migrated here; see references/migration-notes.md. Seed entries below have not yet had a live freshness check run against them -- last_verified/last_verified_snapshot are null until the first real check populates them; do not treat a null last_verified as a fabricated or assumed check."
+  },
+  "sources": [
+    {
+      "id": "skill-agent-frontmatter-spec",
+      "name": "Claude Code skill/agent frontmatter field spec",
+      "url": "https://code.claude.com/docs/en/skills",
+      "authority": "spec",
+      "volatility": "stable",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": ["R5"],
+      "last_verified": "2026-07-24",
+      "last_verified_snapshot": "URL migrated: docs.claude.com/en/docs/claude-code/skills now 301-redirects here. Frontmatter reference table: all fields optional (only 'description' recommended); full field list is name, description, when_to_use, argument-hint, arguments, disable-model-invocation, user-invocable, allowed-tools, disallowed-tools, model, effort, context, agent, background, hooks, paths, shell. Notably: 'allowed-tools' pre-approves tools for the invoking turn only (clears on next message) and does NOT restrict which tools are callable -- 'every tool remains callable, and your permission settings still govern tools that are not listed.'",
+      "custom": false
+    },
+    {
+      "id": "tool-scoping-syntax-spec",
+      "name": "Claude Code tool permission / allowed-tools scoping syntax",
+      "url": "https://code.claude.com/docs/en/settings",
+      "authority": "spec",
+      "volatility": "stable",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": ["R6"],
+      "last_verified": "2026-07-24",
+      "last_verified_snapshot": "URL migrated: docs.claude.com/en/docs/claude-code/settings now 301-redirects here. Bash scoping syntax confirmed: Bash(command_pattern), e.g. Bash(npm run lint), Bash(npm run test *), Bash(curl *) in deny. Page does not enumerate a comprehensive valid-tool-name list or explicit 'forbidden pattern' rules beyond the wildcard examples shown.",
+      "custom": false
+    },
+    {
+      "id": "skill-description-listing-spec",
+      "name": "Claude Code skill description/when_to_use combined listing cap",
+      "url": "https://code.claude.com/docs/en/skills",
+      "authority": "spec",
+      "volatility": "stable",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": ["R21"],
+      "last_verified": "2026-07-24",
+      "last_verified_snapshot": "URL migrated: docs.claude.com/en/docs/claude-code/skills now 301-redirects here. Confirmed: combined description + when_to_use text is capped at 1,536 characters in the skill listing (configurable via skillListingMaxDescChars setting) -- matches plugin-rulebook R21's 1536 combined-length ceiling.",
+      "custom": false
+    },
+    {
+      "id": "argument-substitution-spec",
+      "name": "Claude Code $ARGUMENTS/$N/$name positional substitution semantics",
+      "url": "https://code.claude.com/docs/en/slash-commands",
+      "authority": "spec",
+      "volatility": "stable",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": ["R22"],
+      "last_verified": "2026-07-24",
+      "last_verified_snapshot": "URL migrated: docs.claude.com/en/docs/claude-code/slash-commands now 301-redirects here (fetched via the skills page, which documents substitution semantics jointly for skills/commands post-merge). Confirmed 0-based indexing: $ARGUMENTS[0]/$0 = first argument, matching plugin-rulebook R22's documented convention.",
+      "custom": false
+    },
+    {
+      "id": "plugin-manifest-schema-spec",
+      "name": "Claude Code plugin.json manifest schema",
+      "url": "https://code.claude.com/docs/en/plugins-reference",
+      "authority": "spec",
+      "volatility": "stable",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": ["Plugin Manifest Rules"],
+      "last_verified": "2026-07-24",
+      "last_verified_snapshot": "'name' is the only required field. Metadata fields: $schema (ignored at load), displayName (v2.1.143+), version (optional semver; plugin.json wins over marketplace entry if both set), description, author (object), homepage (string), repository (string), license (string), keywords (array), defaultEnabled (boolean, v2.1.154+, default true; marketplace entry's value takes precedence over plugin.json's here -- opposite precedence direction from version). Component path fields: skills, commands, agents, hooks, mcpServers, outputStyles, lspServers, experimental.themes, experimental.monitors, userConfig (object), channels (array), dependencies (array). Unrecognized top-level fields are ignored at load and reported as warnings (not errors) by `claude plugin validate`; wrong-typed fields (e.g. keywords as a string instead of an array) are load errors. `--strict` promotes warnings to errors. Top-level (non-experimental.*) themes/monitors still work today but validate already warns; a future release requires the experimental.* form.",
+      "custom": false
+    },
+    {
+      "id": "claude-code-changelog",
+      "name": "Claude Code changelog / release notes",
+      "url": "https://docs.claude.com/en/release-notes/claude-code",
+      "authority": "changelog",
+      "volatility": "frequent",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": [],
+      "last_verified": null,
+      "last_verified_snapshot": null,
+      "custom": false
+    },
+    {
+      "id": "anthropics-claude-code-repo",
+      "name": "anthropics/claude-code GitHub repo (issues, discussions, example plugins)",
+      "url": "https://github.com/anthropics/claude-code",
+      "authority": "informal",
+      "volatility": "frequent",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": [],
+      "last_verified": null,
+      "last_verified_snapshot": null,
+      "custom": false
+    }
+  ]
+}

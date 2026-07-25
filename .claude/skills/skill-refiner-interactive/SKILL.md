@@ -5,8 +5,12 @@ description: >-
   production readiness. Use when refining skills, improving skill structure, validating against
   best practices, reducing token usage, consolidating references, checking production readiness,
   applying the 80% rule, or running interactive fix-review workflows on existing skills.
-  Not for creating new skills — use skill-development instead.
-allowed-tools: Read Edit Write Glob Grep Skill
+  Not for creating new skills — use skill-development instead. For a one-shot structured
+  quality report with no interactive back-and-forth, use the skill-reviewer agent instead —
+  this skill wraps skill-reviewer in Validation mode and then interactively applies fixes.
+  For fully automated, non-interactive fix-review loops with no user checkpoints, use
+  skill-improver-loop instead.
+allowed-tools: Read Edit Write Glob Grep Skill Agent
 ---
 
 # Interactive Skill Refiner
@@ -84,7 +88,7 @@ questions: [
 **When user requests refinement:**
 
 1. **Locate the skill (MANDATORY first step)**
-   - Search current project first: `skills/skill-name/`, `.claude/skills/skill-name/` — exclude gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` (Glob `**/plugin-rulebook/SKILL.md` to find it, if present); a matching draft in a gitignored directory like `to-implement/`, `.planned/`, or `.backup/` is not the real target
+   - Search current project first: `skills/skill-name/`, `.claude/skills/skill-name/` — exclude gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` (Glob `**/plugin-rulebook/SKILL.md` to find it, if present); a matching draft in a gitignored directory like `.temp/`, `.draft/`, or `.backup/` is not the real target
    - **Mirror-pair check (R19):** if both `skills/skill-name/` and `.claude/skills/skill-name/` exist under the same plugin, this is an in-development staging mirror, not two independent skills. Diff `SKILL.md` and every `references/`/`scripts/` file between the two copies:
      - Identical → treat as one logical skill; every edit made during this workflow applies to BOTH copies; re-verify byte-identical before finalizing
      - Differ → HALT per R19 and ask which copy is authoritative before proceeding:
@@ -101,9 +105,9 @@ questions: [
        }
        ```
    - If not found in project → Check user-space: `~/.claude/skills/skill-name/`
-   - If found in user-space → WARN: "This affects all projects. Continue?"
+   - If found in user-space → WARN "This affects all projects," then use `AskUserQuestion` — question: "Continue with the user-space copy?", options: "Continue" / "Cancel"
    - If in cache (`~/.claude/plugins/cache/`) → REFUSE: "That's an installed copy (read-only)"
-   - If not found anywhere → ASK: "Where should I find this skill?"
+   - If not found anywhere → use `AskUserQuestion` — question: "Where should I find this skill?", options: "Project skill" / "User-space skill" / "Other" (lets the operator type a path)
 
    **Immediately after locating — pre-analyze before any interview:**
    - Check for `plugin-rulebook` skill (Glob `**/plugin-rulebook/SKILL.md`); if found, read its `assets/settings.json` and load BOTH R13 (SKILL.md line-count) and R18 (inline code-block size) tiered thresholds — these supersede the flat limits below for the rest of pre-analysis. If not found, fall back to `skill-development/references/size-limits.md`'s flat 500-line / 10-line limits.
@@ -295,7 +299,7 @@ After gathering responses (if any), document approved scope and proceed.
    - List all files in `references/` directory with line counts
    - Group by topic (what do they cover?)
    - Flag potential merges (2-4 files on same topic → 1 consolidated file)
-   - ASK: "Should we consolidate these files? Saves N lines, improves clarity"
+   - Use `AskUserQuestion` — question: "Should we consolidate these files? Saves N lines, improves clarity.", options: "Consolidate" / "Leave as-is"
    - Only proceed if operator approves
 
 4. **Apply preservation gates (CRITICAL - four gates, in order)**
@@ -367,13 +371,14 @@ After gathering responses (if any), document approved scope and proceed.
 1. **Locate the skill** (same as refinement step 1 — includes the gitignore-exclusion and R19 mirror-pair checks; if the skill is a mirror pair, everything below runs once against the synced content, not once per copy)
 
 2. **Delegate to `skill-reviewer` and `plugin-rulebook`** — do not reimplement their checks here; this skill's job is routing and presentation, not a second, independently-drifting scoring system
-   - Call `skill-reviewer` (full mode) on the located skill. It owns: file inventory, frontmatter validation, the R13/R18 gatekeeper checks (via its own `plugin-rulebook` lookup), the 100-pt Activation/Implementation rubric, the checklist pass (references, tool reconciliation, chain-violation detection, spawn anti-patterns, workflow pattern validation), and the Critical/Major/Minor severity report.
+   - Call `skill-reviewer` (full mode, **Structured output mode**) on the located skill. It owns: file inventory, frontmatter validation, the R13/R18 gatekeeper checks (via its own `plugin-rulebook` lookup), the 100-pt Activation/Implementation rubric, the checklist pass (references, tool reconciliation, chain-violation detection, spawn anti-patterns, workflow pattern validation), and the Critical/Major/Minor severity findings — returned as YAML (`verdict`, `score`, `counts`, `findings[]`, `top_priority_fixes`) per its own Structured Output Mode schema, not the narrative report. Requesting structured output here makes the branching in step 3 a direct field read instead of prose-parsing, while this skill still renders a human-readable summary from it.
    - Call `Skill(plugin-rulebook)` separately for a full compliance check (all enabled rules, not just the R13/R18 subset `skill-reviewer` loads) — a standing project requirement (`.claude/rules/plugin-rulebook-enforcement.md`) for any component being validated. This is the only check that covers R4, R19, R21, R22, R23, and the rest of the rule set `skill-reviewer` doesn't touch.
 
 3. **Present the report**
-   - Use `skill-reviewer`'s own verdict directly (S-Tier / Pass / Reject) — do not translate it into a different status scale
-   - Append any `plugin-rulebook` FAIL findings under their own heading; a FAIL downgrades an otherwise-Pass `skill-reviewer` verdict to Reject
-   - Surface `skill-reviewer`'s Top 3 Priority Fixes and any plugin-rulebook FAILs together as the actionable summary
+   - Render `skill-reviewer`'s YAML into a narrative summary for the user: `verdict` as the headline status (S-Tier / Pass / Reject, unchanged from the scale `skill-reviewer` defines), `findings[]` grouped by `severity` the same way the narrative report would present them, `top_priority_fixes` as the actionable list
+   - Append any `plugin-rulebook` FAIL findings under their own heading; a FAIL downgrades an otherwise-Pass `verdict` to Reject in the summary shown to the user (this downgrade is this skill's own presentation logic — it does not change what `skill-reviewer` itself returned)
+   - Surface `top_priority_fixes` and any plugin-rulebook FAILs together as the actionable summary
+   - If `verdict` is Reject (after the plugin-rulebook downgrade above), or `counts.critical` or `counts.major` is nonzero, ask with `AskUserQuestion`: "Run `enhancement-suggestor` against this report for a classified (complexity/risk/benefit) WHAT/WHY/HOW action plan?" — options "Yes" / "No". If yes, invoke the `enhancement-suggestor` agent (via `Agent`) against the combined report. Never invoke it without asking first
 
 ## Automated Improvement Loop
 

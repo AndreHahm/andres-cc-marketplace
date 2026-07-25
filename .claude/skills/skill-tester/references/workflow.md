@@ -77,14 +77,7 @@ Each eval tests a different scenario; pass rates show which scenarios the skill 
 
 **Question:** What makes a GOOD output? What should we verify?
 
-**Assertion categories:**
-
-| Category | Example | Check |
-|----------|---------|-------|
-| **Presence** | "SKILL.md frontmatter exists" | File/field/section present |
-| **Quality** | "Description has trigger phrases" | Content meets criteria |
-| **Structure** | "References have one-level nesting" | Directory layout correct |
-| **Functionality** | "All reference links are valid" | Cross-references work |
+**Assertion categories:** see `eval-schema.md`'s "Assertion Types" table (under `eval_metadata.json`) for the canonical category list — not restated here to avoid drift.
 
 **Assertion checklist:**
 - [ ] Each assertion is **specific** (e.g., "description mentions 'skill'" not "description is good")
@@ -234,7 +227,7 @@ eval-1 baseline:   5 assertions, 2 passed → 0.4 (40%)
 
 ### Decision Point 5.1: Aggregation Trigger
 
-**Question:** When should we run the Ruby aggregation script?
+**Question:** When should we run the aggregation script?
 
 **Answer:** After ALL evals are graded (Phase 4 complete).
 
@@ -244,7 +237,7 @@ eval-1 baseline:   5 assertions, 2 passed → 0.4 (40%)
 
 **Command:**
 ```bash
-ruby skills/skill-tester/scripts/aggregate_benchmark.rb ./evals/<skill-name>/workspace/iteration-1
+python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py ./evals/<skill-name>/workspace/iteration-1
 ```
 
 **Inputs:** All `eval-N/{with_skill,baseline}/{grading,timing}.json` files in iteration directory
@@ -376,32 +369,34 @@ iteration-3/ — pass rate 98% ("added examples")
 - [ ] **Phase 2:** evals.json written, eval_metadata.json files created for each eval
 - [ ] **Phase 3:** Both agents ran in parallel for each eval, outputs in correct directories, timing.json written
 - [ ] **Phase 4:** All assertions graded, grading.json written for with_skill and baseline
-- [ ] **Phase 5:** Ruby script executed, benchmark.json created
+- [ ] **Phase 5:** Aggregation script executed, benchmark.json created
 - [ ] **Phase 6:** Results presented to user, next action decided
 - [ ] **Phase 7 (if iterate):** Skill updated, new iteration created, process repeats
 
 ---
 
-## Integration with skill-development, skill-refiner
+## Integration with skill-development, skill-refiner-interactive
 
 **skill-development workflow:**
 1. Create skill with skill-development
 2. Test immediately with skill-tester (Phase 1–6, no iteration needed for new skills)
 3. Review results
-4. If pass rate <80%, use skill-refiner to improve → skill-tester again
+4. If pass rate <80%, use skill-refiner-interactive to improve → skill-tester again
 
-**skill-refiner workflow:**
-1. Refine skill with skill-refiner
+**skill-refiner-interactive workflow:**
+1. Refine skill with skill-refiner-interactive
 2. Validate with skill-tester (run benchmark)
 3. Compare iteration-N vs. iteration-N-1 results
 4. If improvement achieved, keep changes; else revert
+
+**Adversarial/compliance testing:** This pipeline measures whether a skill improves output quality (pass rate, tokens, timing) on cooperative scenarios — it does not test whether a skill's instructions survive an agent incentivized to skip them. For skills that enforce discipline or have compliance costs (`skill-development`'s Phase 3.5 scoping in `references/compliance-testing.md` lines 7–12 lists what qualifies), run `skill-development` Phase 3.5 pressure testing before or alongside this pipeline's quantitative benchmarking. The two measure different axes and neither substitutes for the other — a skill can score well here while still failing under time/sunk-cost/exhaustion/authority pressure.
 
 **Example workflow (recommended):**
 
 ```
 skill-development → SKILL.md v1.0 → skill-tester iteration-1 (pass rate: 75%)
                                       ↓
-                              skill-refiner (improve descriptions)
+                              skill-refiner-interactive (improve descriptions)
                                       ↓
 skill-development → SKILL.md v1.1 → skill-tester iteration-2 (pass rate: 92%)
                                       ↓

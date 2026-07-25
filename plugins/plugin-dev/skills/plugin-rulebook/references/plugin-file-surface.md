@@ -12,7 +12,7 @@ State both resolved absolute paths in the report header (mirrors R19's own path-
 
 ## Gitignore Exclusion
 
-Before including any file found via the enumeration below in either scope, exclude gitignored paths per `${CLAUDE_SKILL_DIR}/references/gitignore-exclusion.md`. This applies to both scopes — a gitignored draft or backup directory (`to-implement/`, `.rulebook/`, `.backup/`, `.planned/`, `.merged/`) is not part of what the plugin or project actually ships, in either scope.
+Before including any file found via the enumeration below in either scope, exclude gitignored paths per `${CLAUDE_SKILL_DIR}/references/gitignore-exclusion.md`. This applies to both scopes — a gitignored draft or backup directory (`.temp/`, `.draft/`, `.backup/`) is not part of what the plugin or project actually ships, in either scope.
 
 ## File Enumeration
 

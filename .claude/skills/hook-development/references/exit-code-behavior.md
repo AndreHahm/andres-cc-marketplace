@@ -320,6 +320,8 @@ exit 0
 
 ### Example 2: Decision with JSON Output
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a complete, runnable script showing the full auto-approve/default-ask decision flow; splitting it would leave a non-functional fragment.
+
 ```bash
 #!/bin/bash
 

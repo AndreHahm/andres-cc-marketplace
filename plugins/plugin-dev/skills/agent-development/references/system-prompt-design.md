@@ -2,6 +2,8 @@
 
 Complete guide to writing effective agent system prompts that enable autonomous, high-quality operation.
 
+**R18 exception (recorded):** several structure/pattern blocks below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent system-prompt skeleton meant to be read and copied as a whole; splitting one into multiple blocks would break the pattern it's illustrating.
+
 ## Recommended Structure: Role → Process → Output Format
 
 As a baseline, structure agent system prompts in **Role → Process → Output Format** order:
@@ -11,6 +13,21 @@ As a baseline, structure agent system prompts in **Role → Process → Output F
 3. **Output Format** — the exact shape of what it returns
 
 This ordering gives the agent its identity before its instructions, and its instructions before the format it must produce — a predictable pattern that's easy for both authors and reviewers to check. It's a recommendation, not a mandatory schema; the fuller structure below adds optional sections for more complex agents.
+
+### CO-STAR: A Finer-Grained Lens for User-Facing Agents
+
+Role → Process → Output Format is the right baseline for most agents in this plugin — the ones that return structured findings or data to a caller. For an agent whose output is itself user-facing prose (a tone or audience-sensitive response, not just structured data), the six-part **CO-STAR** framework adds finer control than Role/Process/Output alone captures:
+
+| CO-STAR element | Maps to (or extends) | Ask |
+|---|---|---|
+| **C**ontext | Background the agent needs — often folded into Role | What does the agent need to know before it can act? |
+| **O**bjective | The Process section's goal | What is the agent trying to achieve? |
+| **S**tyle | New — not covered by Role/Process/Output | What writing style — formal, casual, technical? |
+| **T**one | New — not covered by Role/Process/Output | What attitude — encouraging, neutral, urgent? |
+| **A**udience | New — not covered by Role/Process/Output | Who reads the output, and what do they already know? |
+| **R**esponse | The Output Format section | What exact shape should the response take? |
+
+Use CO-STAR's Style/Tone/Audience questions as an *addition* to Role → Process → Output Format when the agent's output quality depends on getting those three right (e.g. a user-facing report-writing agent) — not as a replacement for the baseline structure used elsewhere in this plugin.
 
 ## Core Structure
 

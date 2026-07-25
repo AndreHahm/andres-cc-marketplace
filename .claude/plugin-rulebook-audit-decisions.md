@@ -1,8 +1,10 @@
 # Rulebook Audit Decisions
 
-Log of gaps surfaced by `plugin-rulebook`'s Upstream Audit procedure and how each was resolved, for this repository specifically. Checked here before re-asking the user about a previously-decided gap.
+**Historical record — no longer the active decision log.** `plugin-rulebook`'s Upstream Audit procedure that wrote to this file has been retired; source tracking now lives in the `upstream-sources-registry` skill, and new intentional-divergence decisions are recorded via `verify-dev-rules`'s Excluded Candidates mechanism instead (see `.claude/rules/plugin-rulebook-enforcement.md`'s "Upstream Source Verification" section). The entries below are kept as-is for reference. Any entry still actively relevant should be re-recorded as an Excluded Candidate the next time `verify-dev-rules` runs against `plugin-rulebook`, so it isn't silently re-flagged as a fresh gap now that this file is no longer consulted automatically.
 
-This file is repo-specific config for the `plugin-dev` plugin's `plugin-rulebook` skill — not part of the plugin package itself. See `.claude/plugin-rulebook.config.json` for the sibling repo-specific rule overrides (R23 whitelist/blacklist/excluded_paths), and `plugins/plugin-dev/skills/plugin-rulebook/SKILL.md`'s Upstream Audit Procedure section for how this file is used.
+Log of gaps surfaced by `plugin-rulebook`'s former Upstream Audit procedure and how each was resolved, for this repository specifically.
+
+This file is repo-specific config for the `plugin-dev` plugin's `plugin-rulebook` skill — not part of the plugin package itself. See `.claude/plugin-rulebook.config.json` for the sibling repo-specific rule overrides (R23 whitelist/blacklist/excluded_paths).
 
 ## 2026-07-05 — hook event/type list vs an external reference plugin and official docs
 

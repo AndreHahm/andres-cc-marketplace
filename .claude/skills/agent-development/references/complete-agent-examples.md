@@ -2,6 +2,8 @@
 
 Full, production-ready agent examples for common use cases. Use these as templates for your own agents.
 
+**R18 exception (recorded):** each example below intentionally exceeds the rulebook's 30-line code-block threshold — each is a complete, copy-paste-ready agent file; splitting one would break its usability as a worked template. Matches this plugin's established R18 exception pattern (see `command-development/references/marketplace-considerations.md`).
+
 ## Example 1: Code Review Agent
 
 **File:** `agents/code-reviewer.md`
@@ -342,7 +344,7 @@ Choose colors that match agent purpose:
 - **Green**: Generation, creation, success-oriented
 - **Yellow**: Validation, warnings, caution
 - **Red**: Security, critical analysis, errors
-- **Magenta**: Refactoring, transformation, creative
+- ~~**Magenta**: Refactoring, transformation, creative~~ — deprecated, no longer in the platform's valid `color` list; use **Purple** or **Orange** instead
 
 ## Using These Templates
 

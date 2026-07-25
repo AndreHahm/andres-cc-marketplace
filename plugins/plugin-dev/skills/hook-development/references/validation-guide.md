@@ -388,6 +388,41 @@ subprocess.run(["cat", file_path], check=False)
 
 ---
 
+## macOS bash Compatibility
+
+macOS ships `/bin/bash` version 3.2. Hook scripts run with this shell unless explicitly using a different interpreter. Bash 4+ features silently cause exit code 127 under `set -euo pipefail`, which Claude Code treats as a hook error — see "Fail-Open vs. Hook Error" below for why that's worse than a normal script failure.
+
+**Common bash 4+ features to avoid:**
+
+| Feature | bash 4+ | bash 3.2 alternative |
+|---|---|---|
+| `mapfile -t arr < <(cmd)` | 4+ only | `while IFS= read -r line; do arr+=("$line"); done < <(cmd)` |
+| `readarray -t arr < <(cmd)` | 4+ only | same as above |
+| `declare -A` (associative arrays) | 4+ only | use `case` or parallel arrays |
+
+Test any script written on Linux/WSL directly against macOS's bash 3.2 (or `bash --version` check in CI) before shipping — a script that works during development on a Linux machine can crash silently on every macOS user's install.
+
+## Fail-Open vs. Hook Error
+
+These are fundamentally different outcomes, and conflating them is the most common way a "blocking" hook silently stops blocking anything:
+
+| Situation | Claude Code shows | Operation |
+|---|---|---|
+| Script outputs the documented deny/block response (see `references/decision-schemas.md`) | Deny reason shown to user | **Blocked** |
+| Script crashes with no valid output (e.g. `mapfile` under bash 3.2, an unhandled `set -e` failure) | A hook-error notice | **Allowed** (fail-open) |
+
+`set -euo pipefail` makes any failing command kill the script before it can output the block decision. A PreToolUse validation hook that's supposed to deny dangerous commands provides **zero protection** if it crashes instead of denying — the dangerous operation still goes through. Test hooks directly before deploying, not just through Claude Code's own invocation:
+
+```bash
+echo '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"test\""}}' | \
+  bash ./scripts/my-pretool-hook.sh
+echo "Exit: $?"
+```
+
+If this crashes with a bash-version error rather than producing the expected deny/allow output, the hook is failing open in production — fix the bash-4+ incompatibility before relying on it for anything security-relevant.
+
+---
+
 ## Existing Hook Validation Checklist
 
 Use when auditing existing hooks against best practices.
@@ -559,6 +594,9 @@ Use when creating hooks for production or team use.
 - [ ] **Code reviewed** — Peer review before deployment
 - [ ] **Security reviewed** — Checked for injection, privilege issues
 - [ ] **Well commented** — Clear for other team members
+- [ ] **Idempotent** — Safe to run multiple times; atomic operations, no partial file state
+- [ ] **Matcher precise** — Not a bare `.*` unless truly intended for every tool; uses a specific pattern like `^(Write|Edit)$`
+- [ ] **Exit codes correct** — `0` = success, `2` = blocking error Claude sees, `1` = non-blocking
 
 ### Testing & Validation
 - [ ] **Unit tested** — Script/agent tested independently

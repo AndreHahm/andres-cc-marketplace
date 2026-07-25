@@ -218,7 +218,7 @@ Is content being proposed for deletion?
 │  ├─ Is it essential to core workflow?
 │  │  ├─ YES → REFUSE deletion (move instead)
 │  │  └─ NO → SAFE to delete
-│  └─ Get operator confirmation before deletion
+│  └─ Get operator confirmation via `AskUserQuestion` before deletion
 └─ NO (moving or updating instead) → Proceed with movement pattern
 ```
 
@@ -305,29 +305,7 @@ Result: ✓ Updated, ✓ Preserved (not lost), ✓ Available for reference
 
 ### Example 3: Consolidating Without Loss
 
-**Scenario:** 3 related reference files exist
-
-```
-BEFORE:
-references/error-handling.md (124 lines)
-references/team-patterns.md (189 lines)
-references/advanced-patterns.md (156 lines)
-Total: 469 lines
-
-DURING CONSOLIDATION:
-✓ Create references/production-patterns.md
-✓ Merge all 3 files into new file (sections for each topic)
-✓ Update SKILL.md links to point to consolidated file
-✓ DELETE old files only after links verified
-
-AFTER:
-references/production-patterns.md (380 lines)
-  ├─ Error Handling (from error-handling.md)
-  ├─ Team Patterns (from team-patterns.md)
-  └─ Advanced Patterns (from advanced-patterns.md)
-
-Result: ✓ Consolidated (fewer files), ✓ Preserved (all content), ✓ Linked (SKILL.md updated)
-```
+See `production-patterns.md`'s "Changes Made Summary" for a worked example of this exact 3-file consolidation (error-handling.md + team-patterns.md + advanced-patterns.md → production-patterns.md) — not restated here to avoid drift. The principle: create the consolidated destination and verify links first, delete old files only after.
 
 ## Summary
 
@@ -335,5 +313,5 @@ Result: ✓ Consolidated (fewer files), ✓ Preserved (all content), ✓ Linked 
 
 **When in doubt:** Move to references instead of deleting. Moving preserves functionality while still improving efficiency.
 
-**Operator approval:** Always ask before deleting. Migrations and improvements don't need approval (content preserved anyway).
+**Operator approval:** Always use `AskUserQuestion` before deleting. Migrations and improvements don't need approval (content preserved anyway).
 

@@ -2,6 +2,8 @@
 
 Copy the structure below to start a new skill. Follow the progressive loading system for maximum token efficiency.
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a complete, copy-paste-ready skill template; splitting it would break its copy-paste usability.
+
 ```markdown
 ---
 name: {skill-name}

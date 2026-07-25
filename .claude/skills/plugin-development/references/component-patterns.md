@@ -28,6 +28,8 @@ When components are used:
 
 ## Command Organization Patterns
 
+**Deprecation note:** `commands/` (legacy slash commands) is deprecated in favor of Agent Skills (`skills/`) for new plugin work — supported for backward compatibility only, per `SKILL.md`'s "Slash Commands Deprecated" section. The organizational patterns below still apply to any `commands/` directory a plugin already maintains.
+
 ### Flat Structure
 
 Single directory with all commands:

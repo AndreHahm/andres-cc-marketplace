@@ -1,0 +1,22 @@
+{
+  "eval_id": 4,
+  "config": "with_skill",
+  "results": [
+    {
+      "text": "Identifies workflows/enhance-a-plugin.md as the correct workflow file, not improve-a-plugin.md or modernize-plugin-dev.md",
+      "passed": true,
+      "evidence": "Response explicitly names enhance-a-plugin.md, then rules out both alternatives by name with a stated reason for each (wrong finding source / wrong domain)."
+    },
+    {
+      "text": "Correctly names plugin-comparison as the finding source, not analyzing-sessions",
+      "passed": true,
+      "evidence": "Section 2 states 'The finding source is the plugin-comparison skill' and cites its report path and sections (Unique to B, Notable Differences, Recommendation)."
+    },
+    {
+      "text": "States the Fix hand-off goes to plugin-lifecycle-downstream's external Phase 3 entry, not a reimplemented apply step",
+      "passed": true,
+      "evidence": "Section 3 states the hand-off is 'a Skill invocation of plugin-lifecycle-downstream...entering via its documented external Phase 3 entry point...skipping Phases 1-2' and explicitly notes this skill 'never reimplements apply -> re-validate -> commit logic itself'."
+    }
+  ],
+  "overall_pass": true
+}

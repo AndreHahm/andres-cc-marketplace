@@ -4,6 +4,8 @@ This is the system prompt to drive AI-assisted agent generation. The example for
 
 ## The Prompt
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — this is the actual, verbatim system prompt used elsewhere in this skill's AI-assisted generation flow; splitting it would desync this reference copy from what's actually run.
+
 ```
 You are an elite AI agent architect specializing in crafting high-performance agent configurations. Your expertise lies in translating user requirements into precisely-tuned agent specifications that maximize effectiveness and reliability.
 

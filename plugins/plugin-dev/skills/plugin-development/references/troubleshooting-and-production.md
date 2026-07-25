@@ -398,29 +398,10 @@ claude --plugin-dir /path/to/plugin /plugin-name:command '{"param": "value"}'
 
 **Validation Script:**
 
+Use the bundled `scripts/validate_plugin.py` — it already covers manifest, directory structure, and command-file checks (and more) in one pass:
+
 ```bash
-#!/bin/bash
-# validate-plugin.sh
-
-PLUGIN_PATH=$1
-
-# Check manifest
-echo "Checking plugin.json..."
-jq . "$PLUGIN_PATH/.claude-plugin/plugin.json" || exit 1
-
-# Check directory structure
-echo "Checking directory structure..."
-[ -d "$PLUGIN_PATH/commands" ] && echo "✓ commands/" || echo "✗ no commands/"
-[ -d "$PLUGIN_PATH/agents" ] && echo "✓ agents/" || echo "✗ no agents/"
-[ -d "$PLUGIN_PATH/skills" ] && echo "✓ skills/" || echo "✗ no skills/"
-
-# Check command files
-echo "Checking commands..."
-for cmd in "$PLUGIN_PATH/commands"/*.md; do
-  [ -f "$cmd" ] && echo "✓ $(basename $cmd)" || echo "✗ $cmd"
-done
-
-echo "Plugin validation complete"
+python ${CLAUDE_SKILL_DIR}/scripts/validate_plugin.py /path/to/plugin --verbose
 ```
 
 ### Token Efficiency
@@ -582,6 +563,3 @@ Good plugins:
 6. **Security-conscious** - Validate inputs, principle of least privilege
 7. **Well-tested** - Works with real examples, multiple models
 8. **Properly versioned** - Semantic versioning for team coordination
-
-# Consolidation Note
-This file consolidates debugging-troubleshooting.md and best-practices.md from refinement pass 2.

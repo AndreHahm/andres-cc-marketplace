@@ -283,6 +283,37 @@ Meta-test: "Skill was clear, I should follow it"
 
 **Bulletproof achieved after 2 REFACTOR iterations.**
 
+## Worked Example: Root-Cause-Tracing Skill Bulletproofing
+
+### Initial Test (Failed)
+
+```markdown
+Scenario: Intermittent test failure (1-in-20 runs), code review in 20 minutes
+Agent chose: Add sleep() to mask the timing issue
+Rationalization: "The fix works and I don't have time to trace the async job"
+```
+
+### Iteration 1 — Add Counter
+
+```markdown
+Added section: "Symptom Fixes Are Debt, Not Fixes"
+Re-tested: Agent STILL added a workaround
+New rationalization: "This is a targeted mitigation, not a symptom fix"
+```
+
+### Iteration 2 — Add Foundational Principle
+
+```markdown
+Added: "If you can't name the original trigger, you haven't found the root
+cause — call it a mitigation, not a fix, and say so explicitly"
+Re-tested: Agent traced backward through the call chain, found the async
+job race condition
+Cited: New principle directly when flagging its own first attempt as insufficient
+Meta-test: "Skill was clear about what counts as done, I should follow it"
+```
+
+**Bulletproof achieved after 2 REFACTOR iterations.**
+
 ## Testing Checklist
 
 **RED Phase:**

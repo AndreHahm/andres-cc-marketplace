@@ -9,12 +9,10 @@ Create a new Claude Code slash command based on the user's requirements: $ARGUME
 
 For complete slash command documentation, see: <https://docs.claude.com/en/docs/claude-code/slash-commands>
 
-First, ask the user to specify the command type:
+First, check whether the user already specified the command type. If not, use `AskUserQuestion` — question: "Where should this command live?", options:
 
 - **project** - Add to current project's `.claude/commands/` directory (shared with team)
 - **personal** - Add to user's `~/.claude/commands/` directory (personal use only)
-
-If the user doesn't specify, ask which type to create.
 
 Then gather the following information from the user:
 
@@ -78,7 +76,7 @@ When creating the command, support these Claude Code features if requested:
 ## Implementation Steps
 
 1. **Determine Location**
-   - If command type not specified, ask the user (project vs personal)
+   - If command type not specified, use `AskUserQuestion` (project vs personal) per the gate above
    - For project commands: create `.claude/commands/` directory if needed
    - For personal commands: create `~/.claude/commands/` directory if needed
    - Create subdirectories for namespaced commands (e.g., `api/` for `/api:create`)

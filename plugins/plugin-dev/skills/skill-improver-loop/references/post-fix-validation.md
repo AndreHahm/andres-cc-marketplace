@@ -8,8 +8,8 @@ Run after applying fixes, before calling `skill-reviewer` again. Catches structu
 2. **Read All** — Load complete skill content (frontmatter, body, all referenced files)
 3. **Frontmatter Check** — Verify required fields: `name`, `description`; check name is kebab-case, ≤64 chars, no reserved words
 4. **Body Content** — Check: <500 lines? 80% rule applied? Clear procedural instructions in imperative form?
-5. **References** — Verify: all linked files exist? No orphaned files? One level deep only? No reference→reference chains (a `references/*.md` directing the reader to read another `references/` file — a fix can accidentally introduce this)?
-6. **Tool Scoping** — Check for undeclared tools: any tool called in SKILL.md or a `references/` file but absent from `allowed-tools` is a runtime blocker (Major); also check for unused declared tools (Minor). Principle of least privilege applied?
+5. **References** — Verify links resolve and no reference→reference chain violation was introduced by the fix (see `issue-categorization.md`'s Major Issues list for the definition)
+6. **Tool Scoping** — Verify no undeclared-tool violation was introduced by the fix (see `issue-categorization.md`'s Major Issues list); also check for unused declared tools (Minor). Principle of least privilege applied?
 7. **Testing** — Does the description include trigger phrases? Will Claude recognize real requests?
 
 Run only the phases relevant to the fixes applied. If fixes were frontmatter-only, skip phases 4–7.

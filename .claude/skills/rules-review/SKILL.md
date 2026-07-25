@@ -34,6 +34,7 @@ Checks code changes for compliance with `.claude/rules/` rule files.
 - Extracting new conventions into rule files → use `rules-extract`
 - Project has no `.claude/rules/` directory
 - Reviewing compliance of pre-existing (unchanged) code — this skill checks only diff lines
+- Reviewing a rule file's own authoring quality/structure (not code compliance) → use the `rule-reviewer` agent instead
 
 ## Usage
 
@@ -147,6 +148,8 @@ No rule violations found
 - **Suggested fix**: <suggestion>
 - **Confidence**: low-confidence
 ```
+
+**Suggested next step:** when violations are found, ask with `AskUserQuestion`: "Run `enhancement-suggestor` against this violation list for a classified (complexity/risk/benefit) WHAT/WHY/HOW action plan?" — options "Yes" / "No". If yes, invoke the `enhancement-suggestor` agent (via `Agent`) against the violation list. Never invoke it without asking first.
 
 ## Testing & Validation
 

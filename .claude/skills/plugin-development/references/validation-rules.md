@@ -269,7 +269,7 @@ python scripts/validate_plugin.py plugin/ --check 2025
 
 ## Resources
 
-- **Official Schema**: https://anthropic.com/schemas/plugin.json
+- **Official Schema**: [anthropic.com/schemas/plugin.json](https://anthropic.com/schemas/plugin.json)
 - **Generate Manifest**: `python scripts/generate_manifest.py plugin/`
 - **Validate Plugin**: `python scripts/validate_plugin.py plugin/`
 - **Package Skills**: `python scripts/package_skills.py source/ plugin/ --validate`

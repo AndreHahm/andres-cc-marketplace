@@ -4,11 +4,12 @@ description: >-
   Create, test, evaluate, improve, repair, and consolidate Claude Code skills. Use when the user
   asks to "create a skill", "add a skill to plugin", "write a new skill", "improve a skill",
   "make a skill for X", "turn this into a skill", "convert a slash command to a skill", "apply a
-  skill template", "benchmark a skill", "evaluate a skill", "improve skill description", "organize
+  skill template", "improve skill description", "organize
   skill content", "fix a broken skill", "repair a skill", "consolidate skills", "find duplicate
   skills", "bulletproof a skill", "verify skill under pressure", or "compliance test a skill".
   Also covers skill structure, progressive disclosure, skill categories, testing, compliance
   testing, and slash-command conversion for Claude Code plugins.
+allowed-tools: Read Write Edit Glob Grep Agent Skill Bash(python:*) Bash(mkdir:*)
 ---
 
 # Skill Development for Claude Code Plugins
@@ -37,6 +38,7 @@ Identify the entry path and jump in:
 - **Refining an existing skill only** → use `/skill-refiner-interactive`
 - **Reviewing skill quality** → use the `skill-reviewer` agent
 - **Quick standalone repair (issue already diagnosed)** → run `scripts/repair_skill.py` directly; skip the full skill workflow
+- **Standalone empirical benchmarking of an already-built skill** (with_skill vs. baseline pass rates, timing/token metrics, iteration-over-iteration comparison) → use `skill-tester`. This skill's own Phase 3 is scoped to validating a skill *during its own creation/audit workflow*, not a dedicated benchmark pipeline — don't run both on the same skill in the same pass.
 
 ## Mindset
 
@@ -82,10 +84,12 @@ Identify the skill category (9 categories available). Read `${CLAUDE_SKILL_DIR}/
 2. **Gotchas section = highest ROI.** Build from real failure points. Each gotcha names the problem AND the fix, starting with 2–3 entries and growing from testing.
 3. **Explain the why.** LLMs generalize from reasoning. "We validate timestamps because the API silently accepts future dates but the downstream system crashes" beats "ALWAYS validate timestamps."
 4. **Give flexibility.** Over-constrained skills break on anything slightly different from test cases. Give Claude the information it needs but let it adapt to context.
+5. **For skills that enforce discipline or have compliance costs, capture a no-skill baseline before drafting the enforcement content.** Run the target scenario without the skill and document the actual failure/rationalization verbatim first — writing rules from assumption reveals what you think needs preventing, not what actually does (see Gotchas: "Skipping RED in compliance testing"). Skip this for pure-reference skills or skills with no rules to violate — see `${CLAUDE_SKILL_DIR}/references/compliance-testing.md`'s "When to Use" / "Don't test" scoping. Full methodology: Phase 3.5 below.
+6. **Verify any claim about another component's behavior before writing it into the skill.** If the skill body says another component "supports X" or "can be entered at Y," `Read` that component's actual file first — don't infer the claim from architectural intent or from what a good design *should* support. A cross-component instruction that turns out to be wrong ships as a defect only a downstream reviewer catches, not something this skill's own design process caught.
 
 **Content distribution (80% Rule):** Core procedural content used in 80%+ of activations stays in SKILL.md. Supplementary content (<20%) moves to `references/`. Never move content solely to reduce line count if execution is affected. See `${CLAUDE_SKILL_DIR}/references/skill-workflow.md` for decision rules and preservation gates. Aim to keep SKILL.md itself under 300 lines for navigation clarity — the hard limit enforced by R13 is 500 lines; when a skill directory contains API documentation, schema tables, or background reference material exceeding ~100 lines, extract it to `references/` as a concrete size-based trigger alongside the 80% Rule.
 
-**Skill placement:** Confirm where the skill will live before creating: project-scoped (`.claude/skills/`), user-space (`~/.claude/skills/`), or plugin-scoped (`skills/` in plugin). Never default to user-space without asking — it affects all projects.
+**Skill placement:** Confirm where the skill will live before creating — use `AskUserQuestion` with options project-scoped (`.claude/skills/`), user-space (`~/.claude/skills/`), or plugin-scoped (`skills/` in plugin). Never default to user-space without asking — it affects all projects.
 
 **Complex skill considerations:** For error handling, tool scoping, validation, and security review patterns: `${CLAUDE_SKILL_DIR}/references/complex-skills-patterns.md`. For self-containment architecture: `${CLAUDE_SKILL_DIR}/references/self-containment-principle.md`. For secrets/credentials handling: `${CLAUDE_SKILL_DIR}/references/secrets-and-credentials.md`. For tool scoping (principle of least privilege): `${CLAUDE_SKILL_DIR}/references/allowed-tools.md`. Any skill that uses shell-injected dynamic context must be reviewed as executable content; design it to degrade gracefully when `disableSkillShellExecution` is set.
 
@@ -100,7 +104,7 @@ Identify the skill category (9 categories available). Read `${CLAUDE_SKILL_DIR}/
 
 For platform features (frontmatter fields, string substitutions, hook system), read `${CLAUDE_SKILL_DIR}/references/platform-reference.md`.
 
-**Lifecycle and field semantics:** Skill content is injected into the conversation at invocation and remains active until compaction or session end — write instructions as standing guidance for the full task, not one-time setup text. If a skill expects free-form user input, place `\$ARGUMENTS` at the intended position in the body; Claude Code does not append it automatically. Use `disable-model-invocation: true` to block autonomous invocation and `user-invocable: false` only to hide a skill from the slash menu — the latter does not restrict programmatic invocation. Never use `${CLAUDE_PLUGIN_ROOT}` or `${CLAUDE_PLUGIN_DATA}` in prose body text outside code blocks or inline code — these expand at runtime and produce unexpected literal strings in documentation contexts. Skills also support `when_to_use`, `arguments`, `disallowed-tools`, `effort`, `context`, `agent`, `hooks`, `paths`, and `shell` — full field-by-field schema in `${CLAUDE_SKILL_DIR}/references/schemas.md`.
+**Lifecycle and field semantics:** Skill content is injected into the conversation at invocation and remains active until compaction or session end — write instructions as standing guidance for the full task, not one-time setup text. If a skill expects free-form user input, place `\$ARGUMENTS` at the intended position in the body; Claude Code does not append it automatically. Use `disable-model-invocation: true` to block autonomous invocation and `user-invocable: false` only to hide a skill from the slash menu — the latter does not restrict programmatic invocation. Never use `${CLAUDE_PLUGIN_ROOT}` or `${CLAUDE_PLUGIN_DATA}` in prose body text outside code blocks or inline code — these expand at runtime and produce unexpected literal strings in documentation contexts. Skills also support `when_to_use`, `arguments`, `disallowed-tools`, `effort`, `context`, `agent`, `background`, `hooks`, `paths`, and `shell` — full field-by-field schema in `${CLAUDE_SKILL_DIR}/references/schemas.md`.
 
 For design patterns (sequential workflow, multi-MCP coordination, gotchas structure, progressive disclosure, hooks, composability), read `${CLAUDE_SKILL_DIR}/references/design-patterns.md`.
 
@@ -132,7 +136,7 @@ Output: feat(auth): implement JWT-based authentication
 2. Spawn all runs in one turn — one with-skill, one baseline (no skill, or snapshot of previous version). Launching everything at once lets runs finish around the same time.
 3. **Capture timing** when each subagent task completes — save `timing.json` to the run directory immediately: `{"total_tokens": ..., "duration_ms": ..., "total_duration_seconds": ...}`. This data arrives through the task notification only and isn't persisted elsewhere; process each notification as it arrives.
 4. Draft assertions while runs are in progress. Read `${CLAUDE_SKILL_DIR}/references/eval-writing-guide.md` for how to write good assertions.
-5. Grade each run using `${CLAUDE_SKILL_DIR}/agents/grader.md`. `grading.json` expectations must use fields `text`, `passed`, and `evidence` — the viewer depends on these exact field names. Aggregate: `python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>`. Then do an analyst pass — read `${CLAUDE_SKILL_DIR}/agents/analyzer.md` for patterns (non-discriminating assertions, high-variance evals, time/token tradeoffs).
+5. Grade each run using `${CLAUDE_SKILL_DIR}/agents/grader.md`. `grading.json` expectations must use fields `text`, `passed`, and `evidence` — the viewer depends on these exact field names. Aggregate: `python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>` — this writes the iteration's `benchmark.json`/`benchmark.md` and appends a summary row to `<workspace>/benchmark-log.md`, a cumulative running history across all iterations (append-only — never edit past rows by hand). Then do an analyst pass — read `${CLAUDE_SKILL_DIR}/agents/analyzer.md` for patterns (non-discriminating assertions, high-variance evals, time/token tradeoffs).
 6. Launch eval viewer: `python ${CLAUDE_SKILL_DIR}/eval-viewer/generate_review.py <workspace>/iteration-N --skill-name <name>`. For iteration 2+: add `--previous-workspace`. The viewer has two tabs — **Outputs** (click through test cases, leave feedback; previous iteration output shown collapsed) and **Benchmark** (pass rates, timing, token usage per configuration). Navigation via prev/next or arrow keys; "Submit All Reviews" saves `feedback.json`.
 7. After a Claude model update, rerun evals. A pass rate drop signals needed adaptation.
 
@@ -330,6 +334,7 @@ Adapt technical vocabulary to the user's apparent familiarity:
 - **Snapshot before improving.** Always `cp -r` the skill before making changes in Phase 4. Without a snapshot, there's no meaningful baseline comparison — the "before" is gone.
 - **Create the workspace before spawning subagents.** `mkdir -p <skill-name>-workspace/iteration-N/<eval-name>` upfront. If each subagent tries to create the same parent directory, race conditions produce half-populated directories.
 - **Don't reuse iteration numbers.** When improving, always bump to `iteration-<N+1>/`. Rerunning into a previous iteration silently overwrites the baseline needed for comparison.
+- **`benchmark-log.md` is append-only.** It's the one cumulative file spanning all iterations — never rewrite or delete a past entry by hand. `scripts/aggregate_benchmark.py` appends automatically; only ever add to it, matching the same discipline as not reusing iteration numbers.
 - **Kill the eval viewer.** The viewer process stays alive after review. Forgetting `kill $VIEWER_PID` causes port conflicts or zombie processes on subsequent launches.
 - **Don't over-design upfront.** The biggest time sink is spending 30 minutes on a perfect SKILL.md that turns out to need rewriting after the first eval. Write the minimum, test, then improve.
 - **Description bloat.** If the capability summary in the description exceeds 100 words (quoted trigger phrases excluded), some capabilities belong in the body. Description is a trigger condition, not a manual — move excess to SKILL.md body or `references/`.
@@ -342,7 +347,7 @@ Adapt technical vocabulary to the user's apparent familiarity:
 **Verify this skill activates on:**
 - "create a skill for X" / "add a skill to plugin" / "write a new skill"
 - "improve this skill" / "audit this skill" / "fix a broken skill"
-- "benchmark a skill" / "evaluate a skill" / "bulletproof a skill"
+- "bulletproof a skill" / "verify skill under pressure" / "compliance test a skill"
 - "convert this slash command to a skill" / "consolidate my skills"
 
 **Verify it does NOT activate on:**
@@ -368,7 +373,7 @@ Run `quick_validate.py`, then work through the full pre-release checklist at `${
 
 | File | Purpose | When to Read |
 |---|---|---|
-| `${CLAUDE_SKILL_DIR}/references/lifecycle.md` | Full 5-phase lifecycle (token-optimized guide) | Phase 1 (understand) |
+| `${CLAUDE_SKILL_DIR}/references/lifecycle.md` | Historical draft lifecycle guide (superseded by this file's own Phase 1-5.5 process; kept for token-efficiency background) | Background reference |
 | `${CLAUDE_SKILL_DIR}/references/how-skills-work.md` | Token loading mechanics, activation internals, selection mechanism | Phase 1 (understand) — deep dive |
 | `${CLAUDE_SKILL_DIR}/references/skill-categories.md` | 9 categories with templates and improvement patterns | Phase 1 (identify category) and Phase 4 (improve) |
 | `${CLAUDE_SKILL_DIR}/references/slash-command-conversion.md` | Detection, mapping, conversion logic, validation | Phase 1 — Convert entry path |
@@ -381,6 +386,7 @@ Run `quick_validate.py`, then work through the full pre-release checklist at `${
 | `${CLAUDE_SKILL_DIR}/references/resource-organization.md` | Content placement decision framework | Phase 2 (design) |
 | `${CLAUDE_SKILL_DIR}/references/content-guidelines.md` | Description formulas, phrase library, activation examples | Phase 2 (design) and Phase 5 (polish) |
 | `${CLAUDE_SKILL_DIR}/references/ask-user-question-patterns.md` | AskUserQuestion interaction patterns, decision trees, wizard pattern | Phase 2 (design) — skills with user interviews |
+| `${CLAUDE_SKILL_DIR}/references/task-management-patterns.md` | TaskCreate/TaskUpdate instruction patterns for multi-step components | Phase 2 (design) — skills/agents with 3+ step workflows |
 | `${CLAUDE_SKILL_DIR}/references/anti-patterns.md` | Token-wasting, activation, structure, content, and tool-scoping anti-patterns | Phase 2 (design) and Phase 4 (improve) |
 | `${CLAUDE_SKILL_DIR}/references/advanced-patterns.md` | Production patterns, skill archetypes, specialized skill designs | Phase 2 (design) and Phase 4 (improve) |
 | `${CLAUDE_SKILL_DIR}/references/complex-skills-patterns.md` | Error handling, tool scoping, validation scripts, security review | Phase 2 (design) — complex skills |

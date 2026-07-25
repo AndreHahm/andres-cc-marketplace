@@ -101,13 +101,8 @@ Use this checklist when validating new plugins or converting projects to plugins
 ---
 name: validate
 description: Validate code and return detailed feedback
-arguments:
-  code:
-    description: Source code to validate
-    required: true
-  language:
-    description: Programming language
-    required: false
+argument-hint: [code] [language]
+arguments: [code, language]
 ---
 
 # Validate Command
@@ -185,7 +180,7 @@ Examples of problems this agent solves.
 
 - [ ] **hooks.json structure**:
   - [ ] Valid JSON syntax
-  - [ ] Event types are valid (on-save, on-commit, on-test, etc.)
+  - [ ] Event types are valid (`PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, etc. — see `hooks.md`'s "Available Events" table for the full list)
   - [ ] Command references exist in `commands/` directory
   - [ ] Arguments match command definitions
 

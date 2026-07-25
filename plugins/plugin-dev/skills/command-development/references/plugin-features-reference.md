@@ -94,14 +94,14 @@ description: Analyze using plugin script
 allowed-tools: Bash(node:*), Read
 ---
 
-Run analysis: !`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js`
+Run analysis: !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js\`
 
 Read template: @${CLAUDE_PLUGIN_ROOT}/templates/report.md
 ```
 
 **Expands to:**
 ```
-Run analysis: !`node /path/to/plugins/plugin-name/scripts/analyze.js`
+Run analysis: !\`node /path/to/plugins/plugin-name/scripts/analyze.js\`
 
 Read template: @/path/to/plugins/plugin-name/templates/report.md
 ```
@@ -116,7 +116,7 @@ description: Run custom linter from plugin
 allowed-tools: Bash(node:*)
 ---
 
-Lint results: !`node ${CLAUDE_PLUGIN_ROOT}/bin/lint.js $0`
+Lint results: !\`node ${CLAUDE_PLUGIN_ROOT}/bin/lint.js $0\`
 
 Review the linting output and suggest fixes.
 ```
@@ -126,7 +126,7 @@ Review the linting output and suggest fixes.
 ```markdown
 ---
 description: Deploy using plugin configuration
-allowed-tools: Read Bash(bash:*)
+allowed-tools: Read Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/deploy.sh:*)
 ---
 
 Configuration: @${CLAUDE_PLUGIN_ROOT}/config/deploy-config.json
@@ -151,12 +151,12 @@ Generate a report for @$0 following the template format.
 ```markdown
 ---
 description: Complete plugin workflow
-allowed-tools: Bash(bash:*) Read
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/prepare.sh:*) Read
 ---
 
-Step 1 - Prepare: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/prepare.sh $0`
+Step 1 - Prepare: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/prepare.sh $0\`
 Step 2 - Config: @${CLAUDE_PLUGIN_ROOT}/config/$0.json
-Step 3 - Execute: !`${CLAUDE_PLUGIN_ROOT}/bin/execute $0`
+Step 3 - Execute: !\`${CLAUDE_PLUGIN_ROOT}/bin/execute $0\`
 
 Review results and report status.
 ```
@@ -179,7 +179,7 @@ Review results and report status.
    allowed-tools: Bash(test:*), Read
    ---
 
-   !`test -f ${CLAUDE_PLUGIN_ROOT}/config.json && echo "exists" || echo "missing"`
+   !\`test -f ${CLAUDE_PLUGIN_ROOT}/config.json && echo "exists" || echo "missing"\`
 
    If config exists, load it: @${CLAUDE_PLUGIN_ROOT}/config.json
    Otherwise, use defaults...
@@ -198,7 +198,7 @@ Review results and report status.
 
 4. **Combine with arguments:**
    ```markdown
-   Run: !`${CLAUDE_PLUGIN_ROOT}/bin/process.sh $0 $1`
+   Run: !\`${CLAUDE_PLUGIN_ROOT}/bin/process.sh $0 $1\`
    ```
 
 ### Troubleshooting
@@ -227,15 +227,15 @@ Commands that load plugin-specific configuration:
 ```markdown
 ---
 description: Deploy using plugin settings
-allowed-tools: Read Bash(bash:*)
+allowed-tools: Read Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/deploy.sh:*)
 ---
 
 Load configuration: @${CLAUDE_PLUGIN_ROOT}/deploy-config.json
 
 Deploy to $0 environment using:
 1. Configuration settings above
-2. Current git branch: !`git branch --show-current`
-3. Application version: !`cat package.json | grep version`
+2. Current git branch: !\`git branch --show-current\`
+3. Application version: !\`cat package.json | grep version\`
 
 Execute deployment and monitor progress.
 ```
@@ -271,12 +271,12 @@ Commands that orchestrate multiple plugin scripts:
 ```markdown
 ---
 description: Complete build and test workflow
-allowed-tools: Bash(bash:*)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh:*)
 ---
 
-Build: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh`
-Validate: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/validate.sh`
-Test: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/test.sh`
+Build: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh\`
+Validate: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/validate.sh\`
+Test: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/test.sh\`
 
 Review all outputs and report:
 1. Build status
@@ -299,7 +299,7 @@ argument-hint: [dev|staging|prod]
 
 Environment config: @${CLAUDE_PLUGIN_ROOT}/config/$0.json
 
-Environment check: !`echo "Deploying to: $0"`
+Environment check: !\`echo "Deploying to: $0"\`
 
 Deploy application using $0 environment configuration.
 Verify deployment and run smoke tests.
@@ -320,7 +320,7 @@ allowed-tools: Bash(mkdir:*) Bash(date:*) Read Write
 Cache directory: ${CLAUDE_PLUGIN_ROOT}/cache/
 
 Analyze @$0 and save results to cache:
-!`mkdir -p ${CLAUDE_PLUGIN_ROOT}/cache && date > ${CLAUDE_PLUGIN_ROOT}/cache/last-run.txt`
+!\`mkdir -p ${CLAUDE_PLUGIN_ROOT}/cache && date > ${CLAUDE_PLUGIN_ROOT}/cache/last-run.txt\`
 
 Store analysis for future reference and comparison.
 ```
@@ -420,7 +420,7 @@ File to review: @$0
 Execute comprehensive review:
 
 1. **Static Analysis** (via plugin scripts)
-   !`node ${CLAUDE_PLUGIN_ROOT}/scripts/lint.js $0`
+   !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/lint.js $0\`
 
 2. **Deep Review** (via plugin agent)
    Launch the code-reviewer agent for detailed analysis.
@@ -448,7 +448,7 @@ description: Deploy to environment with validation
 argument-hint: [environment]
 ---
 
-Validate environment: !`echo "$0" | grep -E "^(dev|staging|prod)$" || echo "INVALID"`
+Validate environment: !\`echo "$0" | grep -E "^(dev|staging|prod)$" || echo "INVALID"\`
 
 $IF($0 in [dev, staging, prod],
   Deploy to $0 environment using validated configuration,
@@ -471,7 +471,7 @@ description: Process configuration file
 argument-hint: [config-file]
 ---
 
-Check file: !`test -f $0 && echo "EXISTS" || echo "MISSING"`
+Check file: !\`test -f $0 && echo "EXISTS" || echo "MISSING"\`
 
 Process configuration if file exists: @$0
 
@@ -491,7 +491,7 @@ description: Create deployment with version
 argument-hint: [environment] [version]
 ---
 
-Validate inputs: !`test -n "$0" -a -n "$1" && echo "OK" || echo "MISSING"`
+Validate inputs: !\`test -n "$0" -a -n "$1" && echo "OK" || echo "MISSING"\`
 
 $IF($0 AND $1,
   Deploy version $1 to $0 environment,
@@ -510,9 +510,9 @@ allowed-tools: Bash(test:*)
 ---
 
 Validate plugin setup:
-- Config exists: !`test -f ${CLAUDE_PLUGIN_ROOT}/config.json && echo "✓" || echo "✗"`
-- Scripts exist: !`test -d ${CLAUDE_PLUGIN_ROOT}/scripts && echo "✓" || echo "✗"`
-- Tools available: !`test -x ${CLAUDE_PLUGIN_ROOT}/bin/analyze && echo "✓" || echo "✗"`
+- Config exists: !\`test -f ${CLAUDE_PLUGIN_ROOT}/config.json && echo "✓" || echo "✗"\`
+- Scripts exist: !\`test -d ${CLAUDE_PLUGIN_ROOT}/scripts && echo "✓" || echo "✗"\`
+- Tools available: !\`test -x ${CLAUDE_PLUGIN_ROOT}/bin/analyze && echo "✓" || echo "✗"\`
 
 If all checks pass, proceed with analysis.
 Otherwise, report missing components and installation steps.
@@ -525,15 +525,15 @@ Validate command execution results:
 ```markdown
 ---
 description: Build and validate output
-allowed-tools: Bash(bash:*) Bash(test:*) Bash(find:*)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh:*) Bash(test:*) Bash(find:*)
 ---
 
-Build: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh`
+Build: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh\`
 
 Validate output:
-- Exit code: !`echo $?`
-- Output exists: !`test -d dist && echo "✓" || echo "✗"`
-- File count: !`find dist -type f | wc -l`
+- Exit code: !\`echo $?\`
+- Output exists: !\`test -d dist && echo "✓" || echo "✗"\`
+- File count: !\`find dist -type f | wc -l\`
 
 Report build status and any validation failures.
 ```
@@ -548,7 +548,7 @@ description: Process file with error handling
 argument-hint: [file-path]
 ---
 
-Try processing: !`node ${CLAUDE_PLUGIN_ROOT}/scripts/process.js $0 2>&1 || echo "ERROR: $?"`
+Try processing: !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/process.js $0 2>&1 || echo "ERROR: $?"\`
 
 If processing succeeded:
 - Report results

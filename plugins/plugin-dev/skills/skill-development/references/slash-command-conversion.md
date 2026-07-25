@@ -166,6 +166,9 @@ version: 1.0.0
 ```
 
 **SKILL.md body:**
+
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a complete before/after conversion example; splitting it would break the comparison it's illustrating.
+
 ```
 ## Release Workflow
 

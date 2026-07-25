@@ -4,9 +4,9 @@ description: >-
   Test and benchmark Claude Code skills empirically using evaluation-driven development.
   Use when validating a skill's effectiveness, running evals, comparing skill vs. baseline
   performance, running benchmarks with timing/token metrics, or iterating on skill improvements
-  based on empirical data. Supports two modes — Quick Workflow (with_skill only, no baseline,
-  fast pass/fail) or Full Pipeline (7-phase with baseline comparison, timing, aggregation).
-allowed-tools: Read Write Edit Glob Grep Agent Bash(ruby:*) Skill
+  based on empirical data. Supports both a fast pass/fail check and a full baseline-comparison
+  benchmark with timing/token metrics.
+allowed-tools: Read Write Edit Glob Grep Agent Bash(python:*) Skill
 ---
 
 # Skill Tester
@@ -17,18 +17,20 @@ allowed-tools: Read Write Edit Glob Grep Agent Bash(ruby:*) Skill
 
 Skills must be **measured, not assumed**. This pipeline provides systematic evidence: Does the skill improve Claude's performance? By how much? What should we improve next?
 
-## Core Use Cases
+## When to Use
 
-**Validate new skills** — Test a newly created skill against baseline Claude performance without it.
-**Benchmark improvements** — Measure impact of skill refinements across multiple iterations.
-**Comparative analysis** — Prove skill effectiveness with timing, token usage, and pass rates side-by-side.
-**Iteration planning** — Data-driven decisions on what to improve next.
+- Validating a newly created skill against baseline Claude performance without it
+- Benchmarking skill refinements across multiple iterations
+- Proving skill effectiveness with timing, token usage, and pass rates side-by-side
+- Making data-driven decisions on what to improve next in a skill
 
 ## When NOT to Use
 
 - **Creating skills** — use `skill-development` instead.
 - **Reviewing skill quality** — use `skill-reviewer` for a single-pass structural quality check without benchmarking.
 - **Validating plugin structure** — use the `plugin-validator` agent for manifest and directory checks.
+- **Testing during initial skill authoring (Phase 3 of skill creation, before the skill is finalized)** — use `skill-development`'s own Phase 3 workflow; switch to this skill once the skill exists and you need a dedicated with/baseline benchmark or a multi-iteration comparison.
+- **Automated structural fix-review loops until skill-reviewer passes** — use `skill-improver-loop` instead; this skill iterates on empirical eval/benchmark data, not skill-reviewer's structural findings.
 
 ## Core Principles
 
@@ -47,7 +49,7 @@ Phase 1: Setup          → Identify skill + confirm what it does
 Phase 2: Create Evals   → Interview user → write test cases + assertions
 Phase 3: Run Tests      → Launch 2 agents per eval (with_skill + baseline) in parallel
 Phase 4: Grade Results  → Evaluate outputs against assertions
-Phase 5: Aggregate      → Run ruby script to compute benchmark.json
+Phase 5: Aggregate      → Run aggregation script to compute benchmark.json
 Phase 6: Review Summary → Show comparison table + improvement suggestions
 Phase 7: Iterate        → Update skill + run next iteration (or stop if satisfied)
 ```
@@ -87,7 +89,7 @@ question: "Which skill do you want to test?"
 header: "Skill Selection"
 options: [
   {label: "skill-development", description: "Testing skill-development from skills/ directory"},
-  {label: "skill-refiner", description: "Testing skill-refiner from skills/ directory"},
+  {label: "skill-refiner-interactive", description: "Testing skill-refiner-interactive from skills/ directory"},
   {label: "Other skill", description: "Testing a skill not listed above"}
 ]
 ```
@@ -163,7 +165,7 @@ Log workspace path. All subsequent phases write to this directory (NOT inside th
 
 ### Step 2.1: Interview User for Test Scenarios
 
-Ask 3 questions (use AskUserQuestion with free-form "Other" option):
+Ask 3 questions plus an optional 4th (use AskUserQuestion with free-form "Other" option):
 
 ```
 Question 1: "What are 2-3 core scenarios this skill should handle?"
@@ -177,9 +179,20 @@ correct SKILL.md structure, efficient references/"
 Question 3: "What should FAIL (baseline without skill)?"
 Example: "Baseline will miss best practices, create vague descriptions,
 skip necessary structure"
+
+Question 4 (optional): "Should any of these scenarios also be tested under pressure —
+e.g. time constraints, sunk cost, exhaustion, authority — to verify the skill holds up
+when an agent is incentivized to skip it?"
+Example: "Yes — the validation scenario should be re-run with a 'you have 5 minutes' framing"
 ```
 
 ⏸️ **Collect responses.** Store in memory.
+
+If Question 4 is answered yes, this pipeline's quantitative pass rates don't cover that axis — run `skill-development`'s Phase 3.5 compliance testing (`references/compliance-testing.md`) before or alongside this pipeline; see "Integration with skill-development, skill-refiner-interactive" in `references/workflow.md`.
+
+### Step 2.1b: Cross-Check Against the Target's Own Testing & Validation Section
+
+Before writing `evals.json`, `Read` the target skill's own SKILL.md for a "Testing & Validation" section. If one exists and lists numbered scenarios, check whether the eval scenarios collected in Step 2.1 collectively exercise each item — or explicitly note the gap for any that aren't covered. A skill's own Testing & Validation checklist is a direct, authoritative claim about what "tested" should mean for it; writing an eval set that doesn't cross-check against it risks shipping eval coverage narrower than the skill's own documented claims, which reads as tested when it isn't.
 
 ### Step 2.2: Generate evals.json
 
@@ -307,18 +320,18 @@ See `references/eval-schema.md` for full schema and pass/fail examples.
 
 **Goal:** Compute benchmark.json with summary stats (pass rates, tokens, timing).
 
-### Step 5.1: Run Ruby Script
+### Step 5.1: Run Aggregation Script
 
-Execute the aggregation script (see `scripts/aggregate_benchmark.rb` for the full implementation; `references/eval-schema.md` for the invocation command and output schema):
+Execute the aggregation script (see `scripts/aggregate_benchmark.py` for the full implementation; `references/eval-schema.md` for the invocation command and output schema):
 
 ```bash
-ruby skills/skill-tester/scripts/aggregate_benchmark.rb \
+python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py \
   ./evals/<skill-name>/workspace/iteration-1
 ```
 
 Example:
 ```bash
-ruby skills/skill-tester/scripts/aggregate_benchmark.rb \
+python ${CLAUDE_SKILL_DIR}/scripts/aggregate_benchmark.py \
   ./evals/skill-development/workspace/iteration-1
 ```
 
@@ -426,6 +439,8 @@ Loop back to Phase 6 (Step 6.2) to ask: iterate again or stop?
 
 ---
 
+**Suggested next step:** if a benchmark run shows a regression, a failed assertion, or a Quick Workflow FAIL, ask with `AskUserQuestion`: "Run `enhancement-suggestor` against these results for a classified (complexity/risk/benefit) WHAT/WHY/HOW action plan?" — options "Yes" / "No". If yes, invoke the `enhancement-suggestor` agent (via `Agent`) against the results. Never invoke it without asking first.
+
 ## Testing & Validation
 
 After a test run, verify:
@@ -433,8 +448,10 @@ After a test run, verify:
 1. **Trigger phrases** — confirm skill activates on: "run evals on skill-X", "benchmark this skill", "validate skill performance", "compare skill vs. baseline", "test skill effectiveness"
 2. **Non-triggers** — confirm skill does NOT activate on: "review my skill structure", "create a new skill", "fix this PR"
 3. **Mode selection** — Quick Workflow and Full Pipeline branches both produce correctly structured output directories
-4. **Schema integrity** — all JSON files (`evals.json`, `grading.json`, `benchmark.json`, `timing.json`) validate against `references/eval-schema.md` schemas
+4. **Schema integrity** — all JSON files (`evals.json`, `grading.json`, `benchmark.json`, `timing.json`, `eval_metadata.json`) validate against `references/eval-schema.md` schemas
 5. **Baseline parity** — baseline agent receives no SKILL.md content; with_skill agent receives full SKILL.md content
+
+**Verified 2026-07-11:** items 1 and 2 checked directly against the current frontmatter description — each of the 5 trigger phrases maps to specific description language ("running evals", "validating a skill's effectiveness", "comparing skill vs. baseline performance", "running benchmarks"), and none of the 3 non-trigger phrases share that vocabulary (they map to `skill-reviewer`'s and `skill-development`'s domains instead). `aggregate_benchmark.py`'s new guard/sort behavior (items covering script robustness) was verified with synthetic fixtures — see the script's own commit history. A live end-to-end pipeline run (spawning real with_skill/baseline agents) has not been performed — that remains the one unverified item.
 
 **Quality gates:**
 - [ ] WITH_SKILL and BASELINE agents launched simultaneously (not sequentially) in Full Pipeline
@@ -447,6 +464,6 @@ After a test run, verify:
 |---|---|
 | `references/eval-schema.md` | JSON schemas, agent prompt templates, and workspace structure |
 | `references/workflow.md` | Decision points and detailed workflow guidance |
-| `scripts/aggregate_benchmark.rb` | Ruby script that aggregates grading/timing data into benchmark.json |
+| `scripts/aggregate_benchmark.py` | Python script that aggregates grading/timing data into benchmark.json |
 | `plugin-rulebook` skill | Active rule configuration for compliance-testing assertions |
-| `README.md` | User-facing guide with quick start, examples, and troubleshooting |
+| `enhancement-suggestor` agent | Turns a regression/fail/delta result into a classified, prioritized action plan |

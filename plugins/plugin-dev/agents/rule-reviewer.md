@@ -6,8 +6,10 @@ description: >-
   quality review, asks to 'review my rule', 'check rule quality', 'validate
   this rule', 'audit rules directory', or wants to ensure a rule follows best
   practices before it loads into every session. Trigger proactively after
-  rule creation or modification.
-model: inherit
+  rule creation or modification. Reviews the rule file's own authoring
+  quality (structure, examples, phrasing) — for checking whether code
+  changes comply with existing rules, use the rules-review skill instead.
+model: sonnet
 color: green
 tools: ["Read", "Grep", "Glob"]
 ---
@@ -20,6 +22,7 @@ Check the invocation context before starting:
 
 - **Full review** (default): Run Steps 1–6.
 - **Fast path** (`--fast`, "gatekeeper only", or "quick check" in the request): Run Steps 1–4, then the Security Self-Check portion of Step 5 only. Skip content-quality scoring, redundancy checks, and the session-start load-cost tally. Output only Critical/blocking findings and a Pass/Reject verdict.
+- **Structured output** (`--yaml`, "structured output", or "machine-readable" in the request): orthogonal to the two modes above — run the same Steps (Full or Fast, whichever also applies) but emit YAML per "Structured Output Mode" below instead of the narrative report in Step 7. Skip the narrative-only "Suggested next step" trailer in this mode.
 
 ## Step 1: Load plugin-rulebook (if available)
 
@@ -37,7 +40,9 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
 
 Also read `settings.json → rule_files.allowed_fields` (currently `["paths"]`) — this is the officially platform-recognized frontmatter field. Combine with `rule-development`'s own tolerance for `title`/`impact` as internal, non-platform conventions (Step 2) when judging frontmatter, rather than flagging them as violations.
 
-**If not found:** skip rulebook checks; rely solely on `rule-development` standards (Step 2).
+Also load `settings.json → structured_output.action_enum` plus `structured_output.per_agent_extensions.rule-reviewer` — used by Structured Output Mode (Step 7).
+
+**If not found:** skip rulebook checks; rely solely on `rule-development` standards (Step 2). For Structured Output Mode, fall back to the hardcoded action enum in Step 7.
 
 ## Step 2: Load Standards from `rule-development`
 
@@ -56,7 +61,7 @@ If `rule-development` cannot be found, report this clearly and halt — do not s
 1. Locate the rule file: user-provided path, or Glob `.claude/rules/**/*.md` if only a name or directory is given, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md`
 2. Read the full rule file, including frontmatter
 3. If a sibling `<rule-name>.examples.md` companion file exists, read it too — it is part of the same review unit
-4. **Duplication check constraint:** compare the rule's content against CLAUDE.md and other rule files only using what is already visible in the current context. Do not proactively Read or Grep CLAUDE.md or other `.claude/rules/` files to hunt for duplicates — rules and CLAUDE.md auto-load into every session, so re-reading them here only burns budget without adding signal beyond what duplication is already apparent from context
+4. **Duplication check constraint:** compare the rule's content against CLAUDE.md and other rule files only using what is already visible in the current context. Do not proactively Read or Grep CLAUDE.md or other `.claude/rules/` files to hunt for duplicates — rules and CLAUDE.md auto-load into every session, so re-reading them here only burns budget without adding signal beyond what duplication is already apparent from context. For an exhaustive, from-scratch comparison instead of this context-only check, run `consistency-reviewer` directly, naming CLAUDE.md and the rule files as the target set.
 5. **Session-load-cost tally (full review only):** Glob `.claude/rules/**/*.md`, and Read each *global* rule (no `paths:` frontmatter) solely to count its lines — this is a distinct, mechanical check from the duplication comparison in step 4, not a content search
 
 ## Step 4: Validate Frontmatter and Path Patterns
@@ -117,3 +122,18 @@ For each non-minor finding: the file and line range, the checklist item that fai
 End the report with:
 - **Overall Rating**: Pass / Reject — Reject whenever one or more Critical findings exist
 - **Top 3 Priority Fixes**: highest-impact actions to take first, in priority order
+- **Suggested next step**: if this report contains any Critical or Major finding, the calling context should ask the user via `AskUserQuestion` whether to run the `enhancement-suggestor` agent against it for classified (complexity/risk/benefit) WHAT/WHY/HOW next-step suggestions — this agent does not invoke it itself
+
+### Structured Output Mode
+
+When invoked in Structured output mode (see Invocation Modes), skip the narrative report above entirely and return YAML only — no prose outside the block:
+
+```yaml
+verdict: Pass                    # Pass | Reject
+counts: {critical: 0, major: 1, minor: 2}
+findings:
+  - {id: M1, severity: major, check: "no-procedural-content", location: ".claude/rules/example.md:12-28", action: move_to_skill, finding: "explanation", fix: "suggested fix"}
+top_priority_fixes: [highest-impact fix, second fix, third fix]
+```
+
+`findings[].check` is free-text naming the failing checklist item (frontmatter field, glob validity/coverage/breadth, template structure, contrastive quality, imperative language, procedural content, compactness, session budget, one-topic-per-file, security self-check pattern, directory placement). `findings[].severity` uses `critical | major | minor`, ordered Critical-first same as the narrative report. `findings[].action` uses the canonical enum loaded in Step 1 (`move_to_references | delete | replace_line | add_field | fix_frontmatter`) **plus** this agent's own extension (`split_rule | move_to_skill`) — the two additions mirror the literal recommendation terms Steps 5 already uses in prose ("recommend `move_to_skill`", "recommend `split_rule`"). Omit the field only if no enum value fits. Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`verdict`.

@@ -266,6 +266,6 @@ claude --plugin-dir /path/to/my-plugin
 
 ## See Also
 
-- [MCP Documentation](about:/docs/en/mcp) - Official MCP specs
-- [Claude Code MCP Reference](about:/docs/en/plugins-reference#mcp-servers) - Plugin-specific MCP configuration
+- [MCP Documentation](https://code.claude.com/docs/en/mcp) - Official MCP specs
+- [Claude Code MCP Reference](https://code.claude.com/docs/en/plugins-reference#mcp-servers) - Plugin-specific MCP configuration
 - [Model Context Protocol](https://modelcontextprotocol.io/) - MCP standard

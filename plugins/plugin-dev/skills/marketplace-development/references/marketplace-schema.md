@@ -98,13 +98,8 @@ Fill in from analysis — do NOT rewrite or translate SKILL.md descriptions.
 ```json
 {
   "name": "<marketplace-name>",
-  "owner": {
-    "name": "<github-org-or-username>"
-  },
-  "metadata": {
-    "description": "<one-line description of the marketplace>",
-    "version": "<from-VERSION-file-or-1.0.0>"
-  },
+  "owner": {"name": "<github-org-or-username>"},
+  "metadata": {"description": "<one-line marketplace description>", "version": "<from-VERSION-file-or-1.0.0>"},
   "plugins": [
     {
       "name": "<skill-name>",

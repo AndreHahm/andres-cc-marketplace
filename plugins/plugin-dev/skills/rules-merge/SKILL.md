@@ -124,7 +124,7 @@ See `references/promotion-algorithm.md` for the full algorithm: semantic equival
 
 1. Check output directory:
    - If `--dry-run`: skip writing, show planned file list with contents summary, then go to Step 7
-   - If exists and has files: warn and ask for confirmation before overwriting
+   - If exists and has files: warn, then use `AskUserQuestion` — question: "Output directory already has files. Overwrite?", options: "Overwrite" / "Cancel" — before overwriting
    - If not exists: create with `mkdir -p`
 2. Write merged files preserving directory structure:
    - `languages/<lang>.md` / `languages/<lang>.examples.md`

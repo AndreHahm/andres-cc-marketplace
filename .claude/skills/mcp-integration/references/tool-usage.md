@@ -2,6 +2,8 @@
 
 Complete guide to using MCP tools effectively in Claude Code plugin commands and agents.
 
+**R18 exception (recorded):** a few examples below intentionally sit near the rulebook's 30-line code-block threshold — each is a complete, coherent worked example; splitting one would break it.
+
 ## Contents
 
 - [Tool Naming Convention](#tool-naming-convention)
@@ -248,6 +250,14 @@ Each MCP tool has a schema defining its parameters. View with `/mcp`.
       "workspace": {
         "type": "string",
         "description": "Workspace GID"
+      },
+      "assignee": {
+        "type": "string",
+        "description": "Assignee GID (optional)"
+      },
+      "due_on": {
+        "type": "string",
+        "description": "Due date, YYYY-MM-DD (optional)"
       }
     },
     "required": ["name", "workspace"]
@@ -487,7 +497,7 @@ Use read_item with item ID...
 Use update_item with item ID and changes...
 
 ## Delete
-Use delete_item with item ID (ask for confirmation first)...
+Use delete_item with item ID (use `AskUserQuestion` for confirmation first)...
 ```
 
 ### Pattern: Search and Process

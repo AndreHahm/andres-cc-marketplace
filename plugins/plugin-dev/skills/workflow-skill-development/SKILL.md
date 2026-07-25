@@ -6,7 +6,10 @@ description: >-
   Use when creating or implementing skills that involve sequential pipelines, routing patterns,
   safety gates, task tracking, phased execution, parallel sub-agent orchestration, or any
   multi-step workflow command. Also applies when reviewing or refactoring existing workflow skills.
-allowed-tools: Read Glob Grep Write TodoRead TodoWrite
+  Not for simple single-purpose skills with no multi-step workflow — use skill-development
+  directly for those; this skill covers workflow/orchestration architecture only, not domain
+  content authoring.
+allowed-tools: Read Glob Grep Write TodoRead TodoWrite Skill
 ---
 
 # Workflow Skill Development

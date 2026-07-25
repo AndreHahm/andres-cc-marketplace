@@ -2,13 +2,14 @@
 
 Standard skeleton for every workflow-based skill, regardless of pattern.
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — the file's own stated purpose is this exact "standard skeleton for every workflow-based skill"; trimming would contradict that.
+
 ```markdown
 ---
 name: kebab-case-name
 description: "Third-person description with trigger keywords — this is how Claude decides to activate the skill"
 allowed-tools: Tool1 Tool2 Tool3
-# Optional: disable-model-invocation, user-invocable, context, agent, model, argument-hint
-# See tool-assignment-guide.md for the full field reference
+# Optional fields: see tool-assignment-guide.md for the full reference
 ---
 
 # Title

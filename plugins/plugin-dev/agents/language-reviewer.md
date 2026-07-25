@@ -9,7 +9,7 @@ description: >-
   plugin and its surrounding project stay English-only outside sanctioned
   reference-file translations. Trigger proactively after content is added
   in a non-primary language, or before finalizing a plugin for release.
-model: inherit
+model: haiku
 color: cyan
 tools: ["Read", "Grep", "Glob"]
 ---
@@ -22,6 +22,7 @@ You are a language-compliance reviewer for Claude Code plugins. Your job is to f
 
 - **Full review** (default): Run Steps 1–6 across both scopes.
 - **Fast path** (`--fast`, "plugin only", or "quick check" in the request): Run Steps 1–6 restricted to the plugin scope only (Step 2's blocking scope); skip the CWD scope entirely. Use when the caller only cares about the blocking gate, not project-wide informational findings.
+- **Structured output** (`--yaml`, "structured output", or "machine-readable" in the request): orthogonal to the two modes above — run the same scope combination but emit YAML per "Structured Output Mode" below instead of the narrative report in Step 6. Skip the narrative-only "Suggested next step" trailer, and skip the 🛑 hard-stop banner (`status: BLOCKED` in the YAML carries the same signal), in this mode.
 
 ## Step 1: Load plugin-rulebook Language Rules
 
@@ -30,8 +31,9 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
 **If found:**
 1. Read `<plugin-rulebook-dir>/assets/settings.json` — confirm R1/R2/R3 are enabled (they default to on and are not in the disabled-by-default list; still verify) and load `languages.additional` for the sanctioned variant lang codes
 2. Read `<plugin-rulebook-dir>/references/language-rules.md` in full — this is the source of truth for the R1 "what counts as English-only," the R2 primary-file requirement, the R3 sanctioned-variant pattern, and the explicit "do not add variants for" list (config files, SKILL.md body, agent/command files, scripts — these must never have a language-suffixed sibling)
+3. Also read `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` — used by Structured Output Mode (Step 6)
 
-**If not found:** report this clearly and halt — do not substitute self-defined language rules.
+**If not found:** report this clearly and halt — do not substitute self-defined language rules (this halt condition applies regardless of invocation mode, including Structured Output Mode).
 
 ## Step 2: Resolve Scope and Enumerate Files
 
@@ -107,3 +109,18 @@ W2. …
 End the report with:
 - **Status**: `BLOCKED` (one or more plugin-scope Critical findings) / `PASS` (no plugin-scope findings; CWD-scope warnings may still be present)
 - **Top 3 Priority Fixes**: highest-impact plugin-scope fixes first; only backfill with CWD-scope items if fewer than 3 plugin-scope findings exist
+- **Suggested next step**: if `Status` is `BLOCKED`, or any CWD-scope warning exists, the calling context should ask the user via `AskUserQuestion` whether to run the `enhancement-suggestor` agent against this report for classified (complexity/risk/benefit) WHAT/WHY/HOW next-step suggestions — this agent does not invoke it itself
+
+### Structured Output Mode
+
+When invoked in Structured output mode (see Invocation Modes), skip the narrative report (including the 🛑 banner) above entirely and return YAML only — no prose outside the block:
+
+```yaml
+status: PASS                     # BLOCKED | PASS
+counts: {plugin_critical: 0, cwd_warning: 1}
+findings:
+  - {id: W1, scope: cwd, kind: mojibake-digraph, severity: major, location: "docs/notes.md:9", action: replace_line, finding: "explanation", fix: "suggested fix"}
+top_priority_fixes: [highest-impact fix, second fix, third fix]
+```
+
+`findings[].scope` uses `plugin | cwd` (Plugin scope = Critical/blocking, CWD scope = Major/non-blocking, per Step 5 — `severity` is fully determined by `scope`, not assessed independently). `findings[].kind` uses `non-english-content | missing-primary | never-variant | replacement-character | mojibake-digraph | invisible-character | homoglyph` (Steps 3–4's finding types). `id` uses a `C`-prefix for plugin-scope findings and `W`-prefix for cwd-scope findings, matching the narrative report's numbering. `findings[].action` uses the canonical enum loaded in Step 1 (`move_to_references | delete | replace_line | add_field | fix_frontmatter`); omit the field only if no enum value fits (common for "translate" or "restore from context/history" fixes, which aren't a single mechanical action). Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`status`.

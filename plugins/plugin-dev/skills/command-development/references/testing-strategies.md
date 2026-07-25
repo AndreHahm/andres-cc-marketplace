@@ -2,6 +2,8 @@
 
 Comprehensive strategies for testing slash commands before deployment and distribution.
 
+**R18 exception (recorded):** the "Level 6: Bash Execution Testing" procedure (32 lines) and the "Command Test Suite" script (`test-commands.sh`, 38 lines) below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent worked example; splitting either would break it.
+
 ## Overview
 
 Testing commands ensures they work correctly, handle edge cases, and provide good user experience. A systematic testing approach catches issues early and builds confidence in command reliability.
@@ -31,44 +33,7 @@ ls .claude/commands/*.md
 test -f .claude/commands/my-command.md && echo "Found" || echo "Missing"
 ```
 
-**Automated validation script:**
-
-```bash
-#!/bin/bash
-# validate-command.sh
-
-COMMAND_FILE="$1"
-
-if [ ! -f "$COMMAND_FILE" ]; then
-  echo "ERROR: File not found: $COMMAND_FILE"
-  exit 1
-fi
-
-# Check .md extension
-if [[ ! "$COMMAND_FILE" =~ \.md$ ]]; then
-  echo "ERROR: File must have .md extension"
-  exit 1
-fi
-
-# Validate YAML frontmatter if present
-if head -n 1 "$COMMAND_FILE" | grep -q "^---"; then
-  # Count frontmatter markers
-  MARKERS=$(head -n 50 "$COMMAND_FILE" | grep -c "^---")
-  if [ "$MARKERS" -ne 2 ]; then
-    echo "ERROR: Invalid YAML frontmatter (need exactly 2 '---' markers)"
-    exit 1
-  fi
-  echo "✓ YAML frontmatter syntax valid"
-fi
-
-# Check for empty file
-if [ ! -s "$COMMAND_FILE" ]; then
-  echo "ERROR: File is empty"
-  exit 1
-fi
-
-echo "✓ Command file structure valid"
-```
+**Automated validation script:** bundled at `scripts/validate-command.sh` — checks file existence, `.md` extension, non-empty content, and frontmatter marker count. Run it directly: `scripts/validate-command.sh .claude/commands/my-command.md`.
 
 ### Level 2: Frontmatter Field Validation
 
@@ -77,51 +42,7 @@ echo "✓ Command file structure valid"
 - Values in valid ranges
 - Required fields present (if any)
 
-**Validation script:**
-
-```bash
-#!/bin/bash
-# validate-frontmatter.sh
-
-COMMAND_FILE="$1"
-
-# Extract YAML frontmatter
-FRONTMATTER=$(sed -n '/^---$/,/^---$/p' "$COMMAND_FILE" | sed '1d;$d')
-
-if [ -z "$FRONTMATTER" ]; then
-  echo "No frontmatter to validate"
-  exit 0
-fi
-
-# Check 'model' field if present
-if echo "$FRONTMATTER" | grep -q "^model:"; then
-  MODEL=$(echo "$FRONTMATTER" | grep "^model:" | cut -d: -f2 | tr -d ' ')
-  if ! echo "sonnet opus haiku fable inherit" | grep -qw "$MODEL" && [[ "$MODEL" != claude-* ]]; then
-    echo "ERROR: Invalid model '$MODEL' (must be sonnet, opus, haiku, fable, inherit, or a full model ID string e.g. claude-sonnet-4-5)"
-    exit 1
-  fi
-  echo "✓ Model field valid: $MODEL"
-fi
-
-# Check 'allowed-tools' field format
-if echo "$FRONTMATTER" | grep -q "^allowed-tools:"; then
-  echo "✓ allowed-tools field present"
-  # Could add more sophisticated validation here
-fi
-
-# Check 'description' length
-if echo "$FRONTMATTER" | grep -q "^description:"; then
-  DESC=$(echo "$FRONTMATTER" | grep "^description:" | cut -d: -f2-)
-  LENGTH=${#DESC}
-  if [ "$LENGTH" -gt 80 ]; then
-    echo "WARNING: Description length $LENGTH (recommend < 60 chars)"
-  else
-    echo "✓ Description length acceptable: $LENGTH chars"
-  fi
-fi
-
-echo "✓ Frontmatter fields valid"
-```
+**Validation script:** bundled at `scripts/validate-frontmatter.sh` — checks `model` against the valid set (`sonnet`, `opus`, `haiku`, `inherit`, or a full model ID string), `allowed-tools` presence, and `description` length. Run it directly: `scripts/validate-frontmatter.sh .claude/commands/my-command.md`.
 
 ### Level 3: Manual Command Invocation
 
@@ -156,7 +77,7 @@ tail -f ~/.claude/debug-logs/latest
 ### Level 4: Argument Testing
 
 **What to test:**
-- Positional arguments work ($1, $2, etc.)
+- Positional arguments work ($0, $1, etc.)
 - $ARGUMENTS captures all arguments
 - Missing arguments handled gracefully
 - Invalid arguments detected
@@ -261,8 +182,8 @@ description: Test bash execution
 allowed-tools: Bash(echo:*), Bash(date:*)
 ---
 
-Current date: !`date`
-Test output: !`echo "Hello from bash"`
+Current date: !\`date\`
+Test output: !\`echo "Hello from bash"\`
 
 Analysis of output above...
 EOF
@@ -281,7 +202,7 @@ description: Test forbidden command
 allowed-tools: Bash(echo:*)
 ---
 
-Trying forbidden: !`ls -la /`
+Trying forbidden: !\`ls -la /\`
 EOF
 
 > /test-forbidden
@@ -360,7 +281,7 @@ for cmd_file in "$TEST_DIR"/*.md; do
   echo "Testing: $cmd_name"
 
   # Validate structure
-  if ./validate-command.sh "$cmd_file"; then
+  if ./scripts/validate-command.sh "$cmd_file"; then
     echo "  ✓ Structure valid"
   else
     echo "  ✗ Structure invalid"
@@ -368,7 +289,7 @@ for cmd_file in "$TEST_DIR"/*.md; do
   fi
 
   # Validate frontmatter
-  if ./validate-frontmatter.sh "$cmd_file"; then
+  if ./scripts/validate-frontmatter.sh "$cmd_file"; then
     echo "  ✓ Frontmatter valid"
   else
     echo "  ✗ Frontmatter invalid"
@@ -486,14 +407,14 @@ jobs:
 **Bash command edge cases:**
 ```markdown
 # Commands that might fail
-!`exit 1`
-!`false`
-!`command-that-does-not-exist`
+!\`exit 1\`
+!\`false\`
+!\`command-that-does-not-exist\`
 
 # Commands with special output
-!`echo ""`
-!`cat /dev/null`
-!`yes | head -n 1000000`
+!\`echo ""\`
+!\`cat /dev/null\`
+!\`yes | head -n 1000000\`
 ```
 
 ## Performance Testing

@@ -69,16 +69,7 @@ A 6-phase process for creating a workflow-based skill from scratch.
 
 **Actions:**
 
-1. **For each action in each phase**, identify the tool it needs:
-   - Finding files -> Glob
-   - Searching content -> Grep
-   - Reading files -> Read
-   - Creating files -> Write
-   - Editing files -> Edit
-   - Running commands -> Bash
-   - User confirmation -> AskUserQuestion
-   - Delegating work -> Task
-   - Tracking steps -> TaskCreate/TaskUpdate/TaskList
+1. **For each action in each phase**, identify the tool it needs — see `references/tool-assignment-guide.md`'s "Tool Selection Matrix" for the canonical operation-to-tool mapping (not restated here to avoid drift)
 
 2. **Compile the unique tool list.** This becomes your `allowed-tools` in frontmatter.
 

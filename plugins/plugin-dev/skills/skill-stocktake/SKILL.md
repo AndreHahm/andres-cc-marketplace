@@ -6,7 +6,7 @@ description: >-
   skills to keep or retire, checking for stale or redundant skills, or
   evaluating skill quality across a project. Supports Quick Scan (changed
   skills only, 5–10 min) and Full Stocktake (complete review, 20–30 min).
-allowed-tools: Read Agent WebSearch Skill
+allowed-tools: Read Agent WebSearch Skill Bash(*/quick-diff.sh:*) Bash(*/save-results.sh:*) Bash(*/scan.sh:*)
 ---
 
 # skill-stocktake
@@ -165,6 +165,7 @@ Return JSON for each skill:
 2. **Improve**: present specific improvement suggestions with rationale:
    - What to change and why (e.g., "trim 430→200 lines because sections X/Y duplicate python-patterns")
    - User decides whether to act; to action improvements, invoke `/skill-refiner-interactive` on the target skill
+   - For multiple Improve-verdict skills at once, ask with `AskUserQuestion`: "Run `enhancement-suggestor` against the batch of Improve verdicts for one prioritized action plan?" — options "Yes" / "No". If yes, invoke the `enhancement-suggestor` agent (via `Agent`) against the batch instead of a skill-by-skill pass
 3. **Update**: present updated content with sources checked
 4. Check MEMORY.md line count; propose compression if >100 lines
 

@@ -21,7 +21,7 @@ Run the `plugin-rulebook` skill **before finalizing** any operation that creates
 
 When the active `plugin-rulebook` (as configured in `.claude/skills/plugin-rulebook/assets/settings.json`) conflicts with any other project rule, CLAUDE.md instruction, or inline user preference, **the rulebook wins for plugin component decisions**. The priority stack is:
 
-1. Active rulebook rules (R1–R23, enabled in `settings.json`) — highest authority for component structure, naming, and formatting decisions
+1. Active rulebook rules (R1–R26, enabled in `settings.json`) — highest authority for component structure, naming, and formatting decisions
 2. CLAUDE.md project instructions
 3. Inline user preferences for the current session
 
@@ -39,6 +39,8 @@ Exception: a user may explicitly override a specific rulebook rule in the curren
    - **PASS** — no action needed.
 4. Re-run after applying fixes until the report shows no FAIL findings.
 
+**Post-commit verification (required):** after every `git commit` — including each commit in a multi-commit batch — run `git status` (expect a clean tree for the paths just committed) and `git show --stat` (or `git diff --stat <prev>..<commit>`) against the intended file list before considering that commit final. A batched `git add` with multiple pathspecs silently stages nothing at all if even one pathspec fails to match (e.g. a path already moved by a prior `git rm`) — the commit then succeeds but is missing files, with no error at commit time. This check is what catches that failure mode; do not skip it because the `git add`/`git commit` commands themselves reported success.
+
 **Batch mode:** When one session's work applies the same rule change across N components (e.g., rolling a new rule out to multiple skills), a single `Skill(plugin-rulebook)` invocation satisfies "before finalizing" for all N — provided the resulting compliance report enumerates each component by name with its own PASS/ADVISORY/FAIL line, not one blanket verdict. Asserting compliance from memory, without an actual tool invocation covering the named components, does not satisfy this rule — the check must be an executed `Skill(plugin-rulebook)` call, not a recollection of what an earlier call found.
 
 ## Duplicate Fact Sweep Trigger (R20)
@@ -50,6 +52,10 @@ Exception: a user may explicitly override a specific rulebook rule in the curren
 2. Update every sibling occurrence found, or record the divergence as an intentional exception.
 3. Report swept occurrences (or "none found") alongside the R20 PASS/FAIL line in the compliance report.
 
+**Single-pass, whole-file requirement:** when converting a component (or a set of sibling components) from an old convention to a new one, grep each affected file's **entire content in one pass** — frontmatter and body and any templates/examples it contains — rather than fixing frontmatter first and re-checking body instructions in a follow-up round. A convention conversion isn't done until both frontmatter and body agree; splitting the check across multiple rounds is what let a body-instruction contradiction survive an earlier "fixed" frontmatter in this plugin's own agent-creator.md.
+
+**Whole-tree sweep order:** the initial grep for a convention change must cover `agents/`, `commands/`, `skills/`, and `rules/` together, in the same first pass — not `agents/` first with the rest found later by a catch-all cleanup. This plugin's own `<example>`-block removal found `commands/create-plugin.md`'s testing checklist and `agent-development/scripts/validate-agent.sh`'s heuristic stale only in a final sweep, after `agents/` had already been treated as done. Run one repo-wide grep for the old convention's marker string across all four directories before declaring any of them finished.
+
 **Exception — respect R19:** Do not flag the `.claude/` ↔ `plugins/plugin-dev/` mirror duplication itself as stale-value drift (see R19's in-development-mirror exception in `plugin-rulebook/SKILL.md`) — that duplication is structurally expected, not a fact that has diverged, as long as both copies stay identical. R20 targets facts that have drifted *between independently-worded restatements* (e.g. three skills each hand-writing the same character limit), not the intentional mirror pattern itself.
 
 **Keeping plugin development possible:** this trigger fires at "before finalizing," the same checkpoint as every other rule here — not on every intermediate edit. Editing a canonical value mid-task does not require an immediate repo-wide sweep; only the final state before reporting the work as done does. This matches the existing "intermediate edits within a single session do not each require a separate check" principle above.
@@ -58,21 +64,12 @@ Exception: a user may explicitly override a specific rulebook rule in the curren
 
 Manual `plugin-rulebook` invocation is a policy gate, not a runtime guardrail. If a component change adds a destructive or irreversible action (e.g., a hook that deletes or overwrites), the enforcement rule MUST also require a backing hook — a textual rule alone is not sufficient enforcement. For plugins shipped as a team tool, pair this manual check with the live PostToolUse validation hook described in the `hook-development` skill.
 
-## Rulebook Audit
+## Upstream Source Verification
 
-The `plugin-rulebook` is the **leading source** for all plugin component rules. When an upstream source changes, do not update the rulebook automatically — trigger an audit to surface gaps and resolve them with the user.
+Plugin-rulebook rules that trace back to an official Claude Code doc are tracked, classified, and freshness-checked by the `upstream-sources-registry` skill — not by a rulebook-owned audit procedure. When a tracked source changes, `find-dev-rule`/`verify-dev-rules`/`update-dev-rule` (which consult that registry instead of a blind `WebSearch`) surface the gap through their existing classification (`OUTDATED`/`MISSING`/`CONFLICT`) rather than a rulebook-specific "audit mode."
 
-**Trigger:** any tracked upstream source is created or modified.
+**Intentional divergence:** if a plugin-rulebook rule should knowingly differ from what an official source currently says (a deliberate policy choice, not a defect), record it via `verify-dev-rules`'s Exclusion mechanism (its Step 2) rather than a separate rulebook-specific decision log — `verify-dev-rules` already treats a target's prior exclusions as binding across runs (its Step 3), so a decision recorded once is not re-litigated on the next check.
 
-**Procedure:**
-1. Invoke the `plugin-rulebook` skill in audit mode targeting the changed upstream source.
-2. The skill identifies gaps between the current rulebook rules and the upstream change.
-3. Before asking the user about a gap, check `.claude/plugin-rulebook-audit-decisions.md` — if the gap was already decided, apply the prior decision without asking.
-4. For each new (undecided) gap, present three options:
-   - **1. Keep plugin-rulebook** — overwrite the upstream source with the rulebook's version
-   - **2. Keep `<upstream-source>`** — update the rulebook rule to match the upstream version
-   - **3. Keep both** — preserve both; record the intentional divergence
-5. Record each decision in `.claude/plugin-rulebook-audit-decisions.md` to prevent re-asking in future audits.
-6. After all gaps are resolved, update `_meta.last_reviewed` in `.claude/skills/plugin-rulebook/assets/settings.json`.
+**Trigger:** run `verify-dev-rules --level component --name plugin-rulebook` (or the equivalent whole-plugin invocation) whenever a tracked upstream source changes, or monthly at minimum — same cadence as before.
 
-**Audit cadence:** whenever a tracked upstream source changes, or when a rulebook rule produces unexpected results. Minimum: once per month.
+**Migrated history:** `.claude/plugin-rulebook-audit-decisions.md` is retained as the historical record of decisions made under the old mechanism. New decisions are recorded in `verify-dev-rules`'s own gap reports going forward — any decision in the old log still actively relevant should be re-recorded as an Excluded Candidate the next time `verify-dev-rules` runs against `plugin-rulebook`, so it isn't silently re-flagged as a fresh gap now that this section's old procedure no longer runs.

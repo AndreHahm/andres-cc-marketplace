@@ -205,6 +205,8 @@ How to write Agent() call prompts in skill implementations for reliable, consist
 
 ### Core Structure
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a single coherent prompt-structure template; splitting it would break its copy-paste usability.
+
 ```
 Agent type: general-purpose
 Prompt: "
@@ -318,6 +320,23 @@ Use only: Read, Grep
 Do NOT use: Write, Bash
 ```
 
+### Pattern: External Services Token Isolation
+
+When a task needs `WebSearch`, `WebFetch`, or any other external-service call likely to return large raw content (search result snippets, full documentation pages, API responses), delegate it to an Agent rather than calling the tool directly in the main context — even when no other reason to delegate exists.
+
+**Why:** external services can return large volumes of content that consume significant token budget, mix unrelated results from different queries, and make it harder to find relevant information in conversation history later. A dedicated agent absorbs that cost, extracts the minimum viable snippet plus constraints, deduplicates near-identical results (mirrors, forks, repeated answers), and returns only copyable snippets with a brief explanation — the main context stays clean regardless of search volume.
+
+```
+Launch an agent (via the Agent tool) to research authentication best practices
+  -> Agent runs WebSearch/WebFetch
+  -> Agent extracts minimum viable snippets + constraints
+  -> Agent deduplicates near-identical results
+  -> Agent returns copyable snippets + brief explanation
+Main context stays clean regardless of search volume
+```
+
+**Apply this pattern for:** web search for current information, documentation lookups, multi-step research requiring several queries. **Skip it for:** a single, small, already-scoped fetch where the raw result is itself the deliverable (e.g. fetching one known URL the user explicitly asked to read).
+
 ### Anti-Patterns
 
 | Anti-pattern | Problem |
@@ -327,6 +346,7 @@ Do NOT use: Write, Bash
 | Missing constraints — "test the skill" | Agent may add unintended features or skip required steps |
 | Implicit dependencies — "refine the skill" | Agent doesn't know where the skill file is |
 | Ambiguous success — "let me know when done" | Agent may continue working indefinitely |
+| Running `WebSearch`/`WebFetch` directly in the main context for open-ended research | Pollutes context with raw, unfiltered results the caller must then sift through |
 
 ### Delegation Prompt Checklist
 

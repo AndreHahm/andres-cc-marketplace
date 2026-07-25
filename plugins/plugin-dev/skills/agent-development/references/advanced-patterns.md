@@ -2,6 +2,8 @@
 
 Advanced patterns and techniques for production subagents, including hook validation, lifecycle management, subagent chaining, background execution, and error handling.
 
+**R18 exception (recorded):** a few blocks below intentionally exceed the rulebook's 30-line code-block threshold — the rate-limiting validation script (Hook Validation Patterns) is a complete, coherent, runnable script, and the "Example Production Subagent" is a complete, coherent, copy-paste-ready agent file; splitting either would remove the pedagogical value of seeing the complete real example.
+
 ## Table of Contents
 
 - [Hook Validation Patterns](#hook-validation-patterns)
@@ -31,9 +33,14 @@ hooks:
       hooks:
         - type: command
           command: "./scripts/validate-sql-readonly.sh"
+color: blue
 ---
 
 You are a database analyst. Execute SELECT queries only.
+
+## When to invoke
+
+Use when analyzing data with read-only SQL queries; not for any write/DDL operation.
 ```
 
 **Validation script** (`./scripts/validate-sql-readonly.sh`):
@@ -82,6 +89,7 @@ hooks:
       hooks:
         - type: command
           command: "./scripts/validate-file-path.sh"
+color: blue
 ---
 ```
 
@@ -226,6 +234,7 @@ Done
 name: code-reviewer
 description: Review code and identify issues
 tools: Read, Grep, Glob
+color: blue
 ---
 
 When you identify issues, report them clearly:
@@ -236,6 +245,10 @@ When you identify issues, report them clearly:
    - Suggested fix
 
 After review, the fixer subagent will use this analysis to make corrections.
+
+## When to invoke
+
+Use when reviewing code and identifying issues to hand off to a fixer subagent.
 ```
 
 **Prompt guidance for fixer:**
@@ -246,6 +259,7 @@ name: code-fixer
 description: Fix code issues identified by reviewer
 tools: Read, Write, Edit, Bash
 permissionMode: acceptEdits
+color: blue
 ---
 
 When invoked with code review findings:
@@ -253,6 +267,10 @@ When invoked with code review findings:
 2. Implement fixes in order
 3. Run tests to verify
 4. Report what was fixed
+
+## When to invoke
+
+Use when fixing code issues identified by a reviewer subagent's findings.
 ```
 
 ### Parallel Chain (Multiple Subagents at Once)
@@ -297,6 +315,7 @@ description: Analyze codebase in background
 tools: Read, Grep, Glob
 permissionMode: dontAsk
 model: haiku
+color: blue
 ---
 
 You are a background analysis agent. Generate comprehensive analysis
@@ -308,6 +327,10 @@ Your task:
 3. [Step 3]
 
 Return: Summary of findings
+
+## When to invoke
+
+Use when analyzing a large codebase asynchronously, without needing user interaction, so the user can keep working.
 ```
 
 **Usage:**
@@ -329,6 +352,7 @@ description: Process files in bulk in background
 tools: Read, Write, Bash
 permissionMode: acceptEdits
 model: haiku
+color: blue
 ---
 
 Process files automatically without user interaction:
@@ -339,6 +363,10 @@ Process files automatically without user interaction:
 
 When edits are blocked due to background restrictions, skip that file
 and continue with others.
+
+## When to invoke
+
+Use when processing many files automatically in the background with no user interaction needed.
 ```
 
 ## Lifecycle Management Patterns
@@ -361,9 +389,14 @@ hooks:
   Stop:
     - type: command
       command: "./scripts/cleanup-db.sh"
+color: blue
 ---
 
 You have database access. Execute queries and return results.
+
+## When to invoke
+
+Use when executing database operations that need connection setup at start and cleanup on completion.
 ```
 
 **Setup script** (`./scripts/setup-db-connection.sh`):
@@ -458,6 +491,7 @@ name: flexible-worker
 description: Complete tasks with flexible approaches
 tools: Read, Write, Edit, Bash
 permissionMode: acceptEdits
+color: blue
 ---
 
 You can edit files or run Bash commands. If either is blocked:
@@ -467,6 +501,10 @@ You can edit files or run Bash commands. If either is blocked:
 
 Example: If can't run tests (Bash blocked), verify changes by reading
 the code and checking test files manually.
+
+## When to invoke
+
+Use when a task should keep making progress via an alternative approach if its preferred tool gets blocked.
 ```
 
 ### Pattern 2: Permission-Aware Prompting
@@ -479,6 +517,7 @@ name: permission-aware-worker
 description: Work within permission constraints
 tools: Read, Write, Edit, Bash
 permissionMode: dontAsk
+color: blue
 ---
 
 You have permission-aware access. Some operations may be auto-denied
@@ -495,6 +534,10 @@ in background execution:
 - Interactive prompts (won't show)
 
 Strategy: Design your approach to work with read/write even if Bash fails.
+
+## When to invoke
+
+Use when a task may run in background execution where some permissions are auto-denied, and the agent needs to work within those constraints.
 ```
 
 ## Multi-Agent Architecture Patterns
@@ -592,7 +635,6 @@ name: production-analyzer
 description: >-
   Analyze code structure and performance. Use when understanding
   architecture, identifying bottlenecks, or profiling. Read-only analysis.
-version: 1.0.0
 model: sonnet
 tools: Read, Grep, Glob, Bash
 permissionMode: plan
@@ -607,6 +649,7 @@ hooks:
       hooks:
         - type: command
           command: "./scripts/log-bash-operation.sh"
+color: blue
 ---
 
 # Production Code Analyzer
@@ -666,7 +709,7 @@ If any operation is denied:
 
 ```yaml
 # ❌ Bad: Too permissive
-tools: Read, Write, Edit, Bash, Grep, Glob, Task
+tools: Read, Write, Edit, Bash, Grep, Glob, Agent
 ```
 
 **Solution:** Apply principle of least privilege
@@ -739,4 +782,4 @@ This subagent can read and search files. Write operations are blocked
 - **Permission modes:** See `permission-modes.md`
 - **Tool scoping:** See `tool-scoping.md`
 - **Real examples:** See `templates.md`
-- **Validation:** See `validation-workflow.md`
+- **Validation:** See `validation.md`

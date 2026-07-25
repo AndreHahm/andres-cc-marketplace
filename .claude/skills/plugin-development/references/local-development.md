@@ -152,7 +152,7 @@ export CLAUDE_PLUGIN_ROOT=/path/to/plugin
 
 **Checklist:**
 - [ ] JSON syntax valid: `cat .claude-plugin/plugin.json | jq .`
-- [ ] Required fields present: `name`, `version`, `description`
+- [ ] Required field present: `name` (`description` is highly recommended — without it, Claude won't suggest the plugin — but not officially required)
 - [ ] All paths are relative: `./skills/`, `./hooks/hooks.json`
 - [ ] Version follows semantic versioning: `1.0.0`
 
@@ -245,8 +245,8 @@ Before distributing your plugin:
 
 ## Next Steps
 
-- Use `skill-creator` skill to validate individual Agent Skills
-- Use `hook-creator` skill to validate hooks
-- Use `subagent-creator` skill to validate subagents
-- Read [Plugin CLI Commands](cli-commands.md) for installation/distribution commands
-- See [Best Practices](best-practices.md) for production deployment
+- Use `skill-development` skill to validate individual Agent Skills
+- Use `hook-development` skill to validate hooks
+- Use `agent-development` skill to validate subagents
+- Read [Plugin CLI Commands](installation-and-cli.md) for installation/distribution commands
+- See [Troubleshooting and Production](troubleshooting-and-production.md) for production deployment

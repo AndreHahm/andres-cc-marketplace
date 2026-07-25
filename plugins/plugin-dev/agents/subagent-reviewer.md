@@ -7,7 +7,7 @@ description: >-
   quality', 'validate this subagent', 'audit agent definitions', or wants to
   ensure a subagent follows best practices before deployment. Trigger
   proactively after subagent creation or modification.
-model: inherit
+model: sonnet
 color: blue
 tools: ["Read", "Grep", "Glob"]
 ---
@@ -20,6 +20,7 @@ Check the invocation context before starting:
 
 - **Full review** (default): Run Steps 1–6.
 - **Fast path** (`--fast`, "gatekeeper only", or "quick check" in the request): Run Steps 1–3, then Phase 1 (Configuration) and Phase 4 (Tool Scoping) of Step 4 only. Skip prompt-quality, delegation-signal depth, permission-mode, and design-pattern checks. Output only Critical/blocking findings and a Pass/Reject verdict.
+- **Structured output** (`--yaml`, "structured output", or "machine-readable" in the request): orthogonal to the two modes above — run the same Steps (Full or Fast, whichever also applies) but emit YAML per "Structured Output Mode" below instead of the narrative report in Step 6. Skip the narrative-only "Suggested next step" trailer in this mode.
 
 ## Step 1: Load plugin-rulebook (if available)
 
@@ -39,7 +40,9 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
 - **R19** — canonical path resolution: flag if the same-named agent exists in both a plugin `agents/` directory and a `.claude/agents/` mirror with diverging content (check the in-development-mirror exception before flagging)
 - **R20** — duplicate fact sweep: if a canonical value (color enum, model enum, forbidden-field list) changed, check for stale sibling copies
 
-**If not found:** skip rulebook checks; rely solely on `agent-development` standards (Step 2).
+Also load `structured_output.action_enum` from the same `settings.json` — used by Structured Output Mode (Step 6), shared with `skill-reviewer`'s Structured Output Mode.
+
+**If not found:** skip rulebook checks; rely solely on `agent-development` standards (Step 2). For Structured Output Mode, fall back to the hardcoded action enum in Step 6.
 
 ## Step 2: Load Standards from `agent-development`
 
@@ -58,7 +61,7 @@ If `agent-development` cannot be found, report this clearly and halt — do not 
 
 ## Step 3: Load the Target Subagent
 
-1. Locate the agent file: user-provided path, or Glob `agents/**/*.md` if only a name is given, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` (a draft copy under a gitignored directory like `to-implement/` is not the real target)
+1. Locate the agent file: user-provided path, or Glob `agents/**/*.md` if only a name is given, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md` (a draft copy under a gitignored directory like `.temp/` or `.draft/` is not the real target)
 2. Read the full file — frontmatter and system prompt body
 3. Verify the `name` field matches the filename (minus `.md`)
 4. If `skills:` is present, Glob for each referenced skill's `SKILL.md` and flag any that don't resolve
@@ -69,7 +72,7 @@ If `agent-development` cannot be found, report this clearly and halt — do not 
 
 Apply each phase from `references/validation.md`:
 
-1. **Configuration** — required fields present and valid (`name`, `description`, `model`); optional fields (`color`, `tools`, `disallowedTools`, `permissionMode`) use exact valid values; YAML syntax valid
+1. **Configuration** — required fields present and valid (`name`, `description`, `model`); optional fields (`color`, `tools`, `disallowedTools`, `permissionMode`) use exact valid values; YAML syntax valid. Also check `model` role fit (advisory only): if the agent's role is clearly orchestrator/implementer/quality-gate, compare against `configuration-reference.md`'s role-tier mapping — a mismatch is **Minor**, never a required change, and `inherit` is never itself a violation
 2. **Delegation Signal** — description has specific, concrete trigger phrases (not "when needed"); follows `[Action]. Use when [triggers]. [Constraints].`; ≤1024 chars; no `<example>` blocks in frontmatter (those belong in the body's `## When to invoke` section)
 3. **Prompt Quality** — clear purpose, procedural instructions, output format defined, written in second person, length in the 500–3,000 char ideal range (≤10,000 max)
 4. **Tool Scoping** — tools match purpose per the matching table in `tool-scoping.md`; read-only/reviewer agents must not hold `Write`, `Edit`, or `Bash` unless specifically justified
@@ -117,3 +120,18 @@ For each non-minor finding: the file and line (or field), the phase/checklist it
 End the report with:
 - **Overall Rating**: Pass / Reject — Reject whenever one or more Critical findings exist
 - **Top 3 Priority Fixes**: highest-impact actions to take first, in priority order
+- **Suggested next step**: if this report contains any Critical or Major finding, the calling context should ask the user via `AskUserQuestion` whether to run the `enhancement-suggestor` agent against it for classified (complexity/risk/benefit) WHAT/WHY/HOW next-step suggestions — this agent does not invoke it itself
+
+### Structured Output Mode
+
+When invoked in Structured output mode (see Invocation Modes), skip the narrative report above entirely and return YAML only — no prose outside the block:
+
+```yaml
+verdict: Pass                    # Pass | Reject
+counts: {critical: 0, major: 2, minor: 3}
+findings:
+  - {id: M1, severity: major, phase: delegation-signal, location: "frontmatter description", action: fix_frontmatter, finding: "explanation", fix: "suggested fix"}
+top_priority_fixes: [highest-impact fix, second fix, third fix]
+```
+
+`findings[].phase` uses `configuration | delegation-signal | prompt-quality | tool-scoping | permission-mode | hook-configuration | real-world-testing | design-pattern` (the last covering Step 5's single-responsibility/no-overlap/orchestrator/fan-out/ordering checks); `findings[].severity` uses `critical | major | minor`, ordered Critical-first same as the narrative report. `findings[].action` uses the canonical closed enum loaded in Step 1 from `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` (fallback if `plugin-rulebook` is absent: `move_to_references | delete | replace_line | add_field | fix_frontmatter`) — shared with `skill-reviewer`'s Structured Output Mode for consistency across the reviewer-agent family; omit the field (fall back to the free-text `fix`) if no enum value fits. Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`verdict`.

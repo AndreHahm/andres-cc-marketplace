@@ -4,13 +4,15 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-dev` ships **21 skills**, **13 agents**, **14 commands**, and a `Stop`/`PostToolUse` hook pair. Skills fall into four broad groups:
+`plugin-dev` ships **33 skills**, **23 agents**, **16 commands**, and `PreToolUse`/`Stop`/`PostToolUse` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
 | **Component authoring** | `agent-development`, `command-development`, `hook-development`, `skill-development`, `workflow-skill-development`, `mcp-integration` |
-| **Plugin structure & governance** | `plugin-development`, `plugin-rulebook`, `plugin-settings`, `plugin-evaluation`, `marketplace-development` |
-| **Skill quality & lifecycle** | `skill-refiner-interactive`, `skill-improver-loop`, `skill-tester`, `skill-security`, `skill-stocktake` |
+| **Plugin structure & governance** | `plugin-development`, `plugin-rulebook`, `upstream-sources-registry`, `plugin-settings`, `plugin-evaluation`, `marketplace-development`, `plugin-documentation` |
+| **Skill quality & lifecycle** | `skill-refiner-interactive`, `skill-improver-loop`, `skill-tester`, `skill-security`, `skill-stocktake`, `skill-maintenance` |
+| **Plugin lifecycle** | `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance` |
+| **Planning & analysis** | `plugin-ideation`, `plugin-planning`, `plugin-comparison`, `plugin-grader`, `analyzing-sessions`, `verify-agent-citations` |
 | **`.claude/rules/` pipeline** | `rule-development`, `rules-extract`, `rules-merge`, `rules-apply`, `rules-review` |
 
 Each skill follows progressive disclosure: a lean `SKILL.md`, detailed `references/`, working `examples/`, and utility `scripts/` where relevant.
@@ -46,9 +48,11 @@ cc --plugin-dir /path/to/plugin-dev
 |---|---|
 | `plugin-development` | Creating, converting, or publishing a plugin end-to-end (delegates component work to the skills above) |
 | `plugin-rulebook` | Checking naming, language, formatting, and tool-scoping compliance on any component |
+| `upstream-sources-registry` | Tracking official Claude Code sources (docs, changelog, informal GitHub signals) with classification, derived re-check priority, and freshness state, consulted by the dev-rules commands instead of ad-hoc web search |
 | `plugin-settings` | Adding per-project configuration via `.claude/plugin-name.local.md` |
 | `plugin-evaluation` | Designing a rubric or LLM-judge methodology to evaluate agents/commands |
 | `marketplace-development` | Converting a skills-only repo (no `plugin.json`) into a publishable marketplace |
+| `plugin-documentation` | Authoring or updating a plugin's human-facing docs (README, CONTRIBUTING, CHANGELOG, and more) from its actual current state, then invoking `human-doc-reviewer` for QA |
 
 ### Skill Quality & Lifecycle
 
@@ -59,6 +63,26 @@ cc --plugin-dir /path/to/plugin-dev
 | `skill-tester` | Empirically benchmarking a skill against a baseline (timing, token metrics) |
 | `skill-security` | Auditing a skill for permission risk, prompt injection, or PII leakage |
 | `skill-stocktake` | Auditing all skills/commands in a project for quality, staleness, and overlap |
+| `skill-maintenance` | Deciding whether and how to propagate a change across plugin-dev's own components |
+
+### Plugin Lifecycle
+
+| Skill | Use when |
+|---|---|
+| `plugin-lifecycle-upstream` | Creating a new plugin/component end-to-end — Ideate, Plan, Design, Build, Test, Commit, Document, Handoff |
+| `plugin-lifecycle-downstream` | QA-ing an existing plugin — Validate, Audit+Report, optional Fix, and Document |
+| `plugin-lifecycle-maintenance` | Evolving an already-built plugin — retro-driven improvement, comparison-driven enhancement, keeping plugin-dev's own rules current against official docs, or plugin-dev's own on-demand self-service checks against itself |
+
+### Planning & Analysis
+
+| Skill | Use when |
+|---|---|
+| `plugin-ideation` | Brainstorming a new plugin or component from a rough idea into a Concept Card |
+| `plugin-planning` | Turning an accepted concept into a concrete component inventory and build plan |
+| `plugin-comparison` | Comparing a plugin/component in this repo against another internal, installed, local, or GitHub-hosted target |
+| `plugin-grader` | Scoring a plugin or component on a weighted rubric with SWOT and prioritized next steps |
+| `analyzing-sessions` | Running a post-session retrospective — SWOT, self-critique, and improvement suggestions across every component used |
+| `verify-agent-citations` | Re-checking a dispatched agent's file/line citations and quoted evidence against the real files before acting on them |
 
 ### `.claude/rules/` Pipeline
 
@@ -72,23 +96,33 @@ cc --plugin-dir /path/to/plugin-dev
 
 ## Agents
 
-Thirteen specialized agents, eleven of which are quality-gate reviewers cross-checked by `plugin-validator`:
+Twenty-three specialized agents, seventeen of which are quality-gate reviewers cross-checked by `plugin-validator`:
 
 | Agent | Purpose |
 |---|---|
 | `plugin-validator` | Validates overall plugin structure, manifest, and component wiring |
+| `plugin-rulebook-checker` | Isolated, Agent-dispatchable R1-R26 compliance checker for plugin-rulebook -- full-plugin batch sweep, fast targeted delta re-check, or a Structured Output Mode pass returning machine-readable YAML findings, without a general-purpose Agent's tool-schema and full-SKILL.md-reading overhead |
 | `skill-reviewer` | Reviews skill files for structure and best-practice adherence |
 | `hook-reviewer` | Reviews hook configurations for safety and correctness before deployment |
 | `rule-reviewer` | Reviews `.claude/rules/` files before they load into every session |
 | `subagent-reviewer` | Reviews agent/subagent definition files for quality before deployment |
 | `command-reviewer` | Reviews slash-command files for quality and best-practice compliance |
 | `claudemd-reviewer` | Reviews CLAUDE.md files for budget, separation of concerns, and actionability |
+| `human-doc-reviewer` | Reviews README/CONTRIBUTING/CHANGELOG and other human-facing docs for completeness and accuracy |
 | `language-reviewer` | Reviews a plugin and its surrounding project for English-language and Unicode-integrity compliance |
 | `external-references-reviewer` | Detects and classifies references to external companies, orgs, and repos |
 | `consistency-reviewer` | Reviews data, governance, functionality, and capability consistency across related components |
 | `completeness-reviewer` | Finds open items, missing documentation, missing test/eval evidence, and stale claims |
 | `scripts-reviewer` | Reviews shell/Python scripts for correctness bugs and code smells |
+| `activation-reviewer` | Reviews activation-description quality and detects overlapping/ambiguous triggers between skills/agents |
+| `skilldir-reviewer` | Deep-audits a skill's non-SKILL.md files (references/scripts/assets/workflows/examples) for staleness and duplication |
+| `dependency-reviewer` | Reviews the Skill()/Agent() call graph across components for circular/bidirectional dependencies and required-vs-optional classification |
+| `security-reviewer` | Audits a component for permission risk, prompt-injection surface, and PII/credential-leakage patterns beyond plugin-validator's basic check |
+| `permission-reviewer` | Computes a component's or plugin's effective permission by reconciling frontmatter against plugin-level settings.json/hook rules |
 | `agent-creator` | Generates new agent configurations from a described need |
+| `plugin-inspector` | Inspects a plugin or component and produces a structured capability portfolio |
+| `enhancement-suggestor` | Turns review/validation/comparison/test findings into a classified WHAT/WHY/HOW improvement plan |
+| `build-handoff-writer` | Writes/updates the build handoff report combining narrative, commits, and open items for a pipeline run |
 
 ## Commands
 
@@ -100,6 +134,7 @@ Thirteen specialized agents, eleven of which are quality-gate reviewers cross-ch
 | `/create-command` | Scaffold a new slash command with full feature support |
 | `/skill-improver` | Iteratively review and fix a skill until it passes quality standards |
 | `/cancel-skill-improver` | Stop an in-progress skill-improvement loop, keeping changes made so far |
+| `/implemented` | Check whether one or more stated requirements are implemented, partial, or open in the current plugin, verified fresh against actual files and official docs |
 
 **Rules pipeline:**
 
@@ -121,12 +156,20 @@ Thirteen specialized agents, eleven of which are quality-gate reviewers cross-ch
 | `/implement-dev-rules` | Execute a verified plan file-by-file, verifying each change |
 | `/update-dev-rule` | Update a stale rule and everything it affects, then report the changes |
 
+**Maintenance:**
+
+| Command | Purpose |
+|---|---|
+| `/trim-permissions` | Consolidate `.claude/settings.local.json`'s permission allowlist -- exact duplicates, wildcard-subsumed entries, and one-off literal commands, tiered by confidence |
+
 ## Hooks
 
 `hooks/hooks.json` registers:
 
+- **`PreToolUse`** (matcher `Bash`) → `security-precommit-check.sh` — log-only, deterministic security pre-commit check run before `git commit` executes
 - **`Stop`** → `stop-hook.sh` — drives the iterative skill-improvement loop's stop-cycle logic
 - **`PostToolUse`** (matcher `Write|Edit`) → `rulebook-check.sh` — enforces `plugin-rulebook` compliance on edited components; `hooks-schema-check.sh` — validates any edited `hooks.json` against its schema
+- **`PostToolUse`** (matcher `^(Agent|Skill|Bash)$`) → `r26-expensive-action-check.sh` — log-only, best-effort runtime check for R26 (Expensive-Action Opt-In) violations on Agent/Skill dispatches and scoped Bash calls
 
 ## Quick Start
 

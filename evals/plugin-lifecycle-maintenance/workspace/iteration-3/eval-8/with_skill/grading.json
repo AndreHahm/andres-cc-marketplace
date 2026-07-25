@@ -1,0 +1,31 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response states the Document step invokes plugin-documentation (via Skill), not human-doc-reviewer directly",
+      "passed": true,
+      "evidence": "Step 2 heading: 'Invoke plugin-documentation via Skill' — 'plugin-lifecycle-maintenance calls Skill(plugin-documentation) against plugin-foo's human-facing docs...'"
+    },
+    {
+      "text": "Response does NOT describe asking a separate delta/full AskUserQuestion before invoking plugin-documentation",
+      "passed": true,
+      "evidence": "'plugin-lifecycle-maintenance explicitly does not ask a separate delta/full question of its own here -- doing so would ask the user the same choice twice, since plugin-documentation's internal gate already satisfies R26.'"
+    },
+    {
+      "text": "Response states plugin-documentation owns the delta-vs-full human-doc-reviewer QA decision internally",
+      "passed": true,
+      "evidence": "'plugin-documentation decides delta vs. full mode itself, internally, via its own AskUserQuestion gate when the change set is small and enumerable... or goes straight to full mode with no gate for from-scratch authoring or a substantial rewrite.'"
+    },
+    {
+      "text": "Response states the specific list of changed claims from the core fix is passed to plugin-documentation",
+      "passed": true,
+      "evidence": "Step 1: 'the skill collects the specific, enumerable list of claims the just-committed core fix changed...This list is what gets handed to plugin-documentation'; Step 2: 'passing that changed-claims list'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

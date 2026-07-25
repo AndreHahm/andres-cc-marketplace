@@ -74,6 +74,8 @@ I need an agent that reviews code changes for quality issues, security vulnerabi
 
 File: `agents/code-quality-reviewer.md`
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a complete, copy-paste-ready agent file; splitting it would break its usability as a worked example.
+
 ```markdown
 ---
 name: code-quality-reviewer

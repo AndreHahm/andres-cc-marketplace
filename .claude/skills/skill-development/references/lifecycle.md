@@ -1,5 +1,7 @@
 # Skill Creation Lifecycle (Token-Optimized)
 
+**Historical draft, superseded.** This file describes an earlier, differently-numbered process (Phase 1 Understanding / 2 Planning / 3 Implementation / 4 Validation / 5 Iteration, framed around per-agent token budgets) that predates and does not match `SKILL.md`'s current process (Phase 1 Understand / 2 Design / 3 Test / 3.5 Compliance Testing / 4 Improve / 5 Polish). Kept as background context on the token-efficiency reasoning behind progressive disclosure; for the actual current workflow, follow `SKILL.md` directly.
+
 Complete process for creating high-density skills with maximum token efficiency.
 
 ## Phase 1: Understanding (Token Audit)
@@ -73,8 +75,8 @@ description: Implement BLoC pattern for Flutter state management. Use when creat
 
 ### Validation Checklist
 
-- [ ] SKILL.md < 100 lines
-- [ ] Frontmatter < 100 words, description ≤ 300 chars and "pushy"
+- [ ] SKILL.md within `size-limits.md`'s tiered thresholds (300-line soft target, 500-line hard limit)
+- [ ] Frontmatter < 100 words, description 80-1024 chars and "pushy" (see `size-limits.md`)
 - [ ] No redundant information
 - [ ] Complex examples in references/
 - [ ] Deterministic tasks in scripts/

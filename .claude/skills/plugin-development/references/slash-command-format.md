@@ -126,7 +126,9 @@ Detailed documentation (optional for complex commands).
 
 **Example command body:**
 
-```markdown
+**R18 exception (recorded):** the block below intentionally exceeds the rulebook's 30-line threshold — it's a complete, coherent example command body (Quick Start + Examples + Key Notes + Language-Specific Rules together); splitting it would break the "here's what a well-formed body looks like end to end" teaching point. It uses a 4-backtick outer fence specifically so the nested 3-backtick example transcripts inside it (invocation/output pairs) nest correctly per CommonMark — a 3-backtick outer fence here would prematurely close on the first nested transcript's closing fence, the bug this block previously had.
+
+````markdown
 # Validate Command
 
 Validate source code against best practices and return detailed feedback.
@@ -194,11 +196,13 @@ Output:
 - Check for borrowing/ownership issues
 - Validate syntax
 - Flag common Rust patterns
-```
+````
 
 ## Complete Command Example
 
 **File: `commands/validate.md`**
+
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a complete, copy-paste-ready command file, same rationale as the block above and as `examples/advanced-plugin.md`'s own recorded exception.
 
 ```markdown
 ---

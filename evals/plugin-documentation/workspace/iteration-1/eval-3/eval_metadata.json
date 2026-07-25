@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/plugin-dev/skills/plugin-documentation",
+  "assertions": [
+    {"text": "QUICK_START.md written with an install step and one working usage example, no more", "type": "structure", "target": "QUICK_START.md"},
+    {"text": "Final report explicitly states no dedicated reviewer is available for this doc type yet", "type": "quality", "target": "agent report"},
+    {"text": "Final report does not claim the doc was reviewed by human-doc-reviewer", "type": "quality", "target": "agent report"}
+  ]
+}

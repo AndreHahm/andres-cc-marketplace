@@ -1,5 +1,7 @@
 # Merge Rules Report — Sample Format
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — the complete, authoritative sample report format; trimming risks documenting an incomplete format.
+
 ```
 # Merge Rules Report
 

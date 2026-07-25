@@ -7,6 +7,8 @@ allowed-tools: ["Write", "AskUserQuestion"]
 
 This command helps users create a `.claude/my-plugin.local.md` settings file.
 
+**R18 exception (recorded):** the JSON example below intentionally exceeds the rulebook's 30-line code-block threshold — it's a complete, coherent AskUserQuestion payload; splitting it would break the example.
+
 ## Steps
 
 ### Step 1: Ask User for Preferences
@@ -59,23 +61,20 @@ Use AskUserQuestion to gather configuration:
 Extract answers from AskUserQuestion result:
 
 - answers["0"]: enabled (Yes/No)
-- answers["1"]: mode (Strict/Standard/Lenient)
+- answers["1"]: strict_mode (Yes/No)
 
 ### Step 3: Create Settings File
 
-Use Write tool to create `.claude/my-plugin.local.md`:
+Use Write tool to create `.claude/my-plugin.local.md`. Field names below match what `scripts/read-settings-hook.sh` actually reads back (`enabled`, `strict_mode`, `max_file_size`):
 
 ```markdown
 ---
 enabled: <true if Yes, false if No>
-validation_mode: <strict, standard, or lenient>
+strict_mode: <true if Yes, false if No>
 max_file_size: 1000000
-notify_on_errors: true
 ---
 
 # Plugin Configuration
-
-Your plugin is configured with <mode> validation mode.
 
 To modify settings, edit this file and restart Claude Code.
 ```

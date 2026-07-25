@@ -1,5 +1,6 @@
 ---
-description: Guided end-to-end plugin creation workflow with component design, implementation, and validation
+description: >-
+  Guided end-to-end plugin creation workflow with component design, implementation, and validation
 argument-hint: Optional plugin description
 allowed-tools:
   [
@@ -7,7 +8,11 @@ allowed-tools:
     "Write",
     "Grep",
     "Glob",
-    "Bash",
+    "Bash(mkdir:*)",
+    "Bash(git init:*)",
+    "Bash(*/validate-agent.sh:*)",
+    "Bash(*/validate-hook-schema.sh:*)",
+    "Bash(*/test-hook.sh:*)",
     "TodoWrite",
     "AskUserQuestion",
     "Skill",
@@ -18,6 +23,8 @@ allowed-tools:
 # Plugin Creation Workflow
 
 Guide the user through creating a complete, high-quality Claude Code plugin from initial concept to tested implementation. Follow a systematic approach: understand requirements, design components, clarify details, implement following best practices, validate, and test.
+
+> **Modern alternative:** for a more thorough guided pipeline with real overlap-checking, name validation, and content-depth planning before Design, plus a matching downstream QA pipeline, use `plugin-lifecycle-upstream` (and `plugin-lifecycle-downstream` after Build) instead of this legacy command. This command remains supported for existing workflows.
 
 ## Core Principles
 
@@ -57,11 +64,11 @@ Guide the user through creating a complete, high-quality Claude Code plugin from
 
 **Goal**: Determine what plugin components are needed
 
-**MUST load plugin-structure skill** using Skill tool before this phase.
+**MUST load plugin-development skill** using Skill tool before this phase.
 
 **Actions**:
 
-1. Load plugin-structure skill to understand component types
+1. Load plugin-development skill to understand component types
 2. Analyze plugin requirements and determine needed components:
    - **Skills**: Specialized knowledge OR user-initiated actions (deploy, configure, analyze). Skills are the preferred format for both — see note below.
    - **Agents**: Autonomous tasks? (validation, generation, analysis)

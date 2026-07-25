@@ -4,7 +4,7 @@ Any reviewer agent that resolves files via `Glob` — whether scanning broadly a
 
 ## Why this matters
 
-Gitignored directories typically hold draft, imported, backup, or not-yet-shipped content — e.g. `to-implement/`, `.rulebook/`, `.backup/`, `.planned/`, `.merged/`. Reviewing this content alongside the plugin's real, shipped components produces noise: stale-content findings that don't reflect what the plugin actually ships, and false external-reference findings from draft imports that were never meant to be cleaned up yet. It can also cause a by-name Glob fallback to resolve to the wrong copy — e.g. a draft `to-implement/agents/skill-reviewer.md` sitting alongside the real `agents/skill-reviewer.md` — which is the same shadow-copy hazard R19 already guards against for canonical path resolution.
+Gitignored directories typically hold draft, imported, backup, or not-yet-shipped content — e.g. `.temp/`, `.draft/`, `.backup/`, `.claude/output/`. Reviewing this content alongside the plugin's real, shipped components produces noise: stale-content findings that don't reflect what the plugin actually ships, and false external-reference findings from draft imports that were never meant to be cleaned up yet. It can also cause a by-name Glob fallback to resolve to the wrong copy — e.g. a draft `.draft/agents/skill-reviewer.md` sitting alongside the real `agents/skill-reviewer.md` — which is the same shadow-copy hazard R19 already guards against for canonical path resolution.
 
 ## Procedure
 
@@ -19,7 +19,7 @@ Reviewer agents in this plugin only have `Read`/`Grep`/`Glob` — no `Bash`, so 
 
 ## Authoring Side: Never Reference a Gitignored Path as a Live Dependency
 
-The procedure above governs what a reviewer *scans*. This section governs what a component's own instructions may *claim exists*: no skill, script, agent, rule, hook, command, or reference file may direct Claude to read, run, or otherwise depend on a path that is gitignored — a `to-implement/` draft, a `.rulebook/` audit report, `.claude/output/` artifacts, `.backup/`/`.planned/`/`.merged/` content, or similar.
+The procedure above governs what a reviewer *scans*. This section governs what a component's own instructions may *claim exists*: no skill, script, agent, rule, hook, command, or reference file may direct Claude to read, run, or otherwise depend on a path that is gitignored — a `.draft/` draft, a `.temp/` audit report, `.claude/output/` artifacts, `.backup/` content, or similar.
 
 This is a distinct failure mode from the scanning concern above: it doesn't require a broad Glob to surface — a single hardcoded reference in a component's own body (e.g. "read `${CLAUDE_PLUGIN_ROOT}/RULES.md` as a format reference") is enough to violate it, and it's wrong even if the path happens to resolve today, because gitignored content is explicitly not part of the shipped surface and can be deleted at any time without that being a breaking change to the plugin.
 

@@ -353,7 +353,7 @@ description: Review Git changes
 allowed-tools: Bash(git:*) Read
 ---
 
-Current changes: !`git diff --name-only`
+Current changes: !\`git diff --name-only\`
 
 Review each changed file for:
 - Code quality
@@ -377,7 +377,7 @@ Deploy $0 to $1 environment using version $2
 
 Pre-deployment checks:
 - Verify $1 configuration
-- Check cluster status: !`kubectl cluster-info`
+- Check cluster status: !\`kubectl cluster-info\`
 - Validate version $2 exists
 
 Proceed with deployment following deployment runbook.
@@ -402,7 +402,7 @@ This command requires human judgment and cannot be automated.
 
 Review deployment $0 for production approval:
 
-Deployment details: !`gh api /deployments/$0`
+Deployment details: !\`gh api /deployments/$0\`
 
 Verify:
 - All tests passed
@@ -440,7 +440,7 @@ allowed-tools: Bash  # ❌ Missing command filter
 model: gpt4  # ❌ Not a valid Claude model
 ```
 
-**Fix:** Use `sonnet`, `opus`, or `haiku`
+**Fix:** Use `sonnet`, `opus`, `haiku`, `fable`, `inherit`, or a full model ID string (e.g. `claude-sonnet-4-5`) — matching the full set listed under the `model` field above
 
 ### Validation Checklist
 

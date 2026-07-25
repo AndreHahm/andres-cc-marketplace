@@ -109,7 +109,7 @@ Parse URL to extract owner, repo, branch, and path:
 Fetch using `gh api`:
 
 1. Verify authentication: `gh auth status`
-2. Create temp directory: `mktemp -d -t rules-apply-XXXXXX`
+2. Create temp directory: `mktemp -d -t rules-apply-XXXXXX`. Record the exact path `mktemp` returns — Step 8's cleanup deletes only this literal path, never a re-derived or pattern-matched one.
 3. List top-level directory contents:
    ```
    gh api repos/{owner}/{repo}/contents/{path}?ref={branch}
@@ -223,7 +223,7 @@ For each filtered source rule file, determine the merge action:
 - rules-apply does not write new patterns to `.local.md`
 - **Cross-format duplicate removal**: After merging Principles in Step 6a, scan target `.local.md` for patterns whose description matches a Principle name now present in the corresponding `.md` (e.g., `` `useAuth() → { user, login, logout }` - auth hook interface `` is a duplicate of `Auth hook interface (useAuth)` in `## Principles`). Use AI judgment for semantic equivalence (case-insensitive, synonyms)
 - Remove matched patterns from `.local.md`
-- If `.local.md` becomes empty after removal, delete the file
+- If `.local.md` becomes empty after removal, use `AskUserQuestion` to confirm before deleting the file — present the full list of `.local.md` files this run would delete as a single list for confirmation, same pattern as Step 7's non-conforming-file migration: "The following `.local.md` files are now empty after duplicate cleanup. Delete them?" — options "Delete all" / "Keep all (leave as empty files)" / "specify by number". Never delete silently, even though the removed patterns were confirmed duplicates — the file itself is a real, separately-named artifact a user may still reference elsewhere.
 - Preserve all patterns that do not match any Principle (genuinely project-specific)
 - **Sync `paths:` frontmatter**: for any `.local.md` that still exists after cleanup, ensure its `paths:` frontmatter matches the sibling `.md`'s `paths:` (union and deduplicate with any existing entries on `.local.md`). This keeps project-specific patterns auto-loading under the same scope as the portable Principles. Older `.local.md` files generated before rules-extract propagated `paths:` to `.local.md` may be unscoped; this step retrofits the scope without requiring a full rules-extract re-run
 
@@ -274,7 +274,7 @@ Scan `output_dir` for files that don't conform to rules-extract/rules-merge conv
 
 ### Step 8: Cleanup
 
-If source was a GitHub URL, remove the temp directory: `rm -rf <tmpdir>` (the `rules-apply-` prefix from Step 2 lets this be scoped narrowly in `allowed-tools`)
+If source was a GitHub URL, remove the temp directory: `rm -rf <tmpdir>`, where `<tmpdir>` is the exact literal path `mktemp` returned in Step 2 — never a re-derived, globbed, or reconstructed path. The `allowed-tools` scope (`Bash(rm -rf */rules-apply-*)`) is a coarse pattern match, not a path-boundary guarantee, since it matches the `rules-apply-` prefix as text regardless of which directory it appears under — the actual safety boundary is this step using only the recorded Step 2 path, not the permission string alone.
 
 ### Step 9: Report Summary
 

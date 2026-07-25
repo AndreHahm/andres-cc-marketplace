@@ -14,7 +14,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 import re
@@ -171,43 +171,23 @@ def scan_skill_directory(skill_path: Path) -> Optional[Dict[str, Any]]:
 
     return skill_info
 
-def load_skills_registry(config_path: Path) -> Dict[str, Any]:
-    """Load the skills registry from config/skills.json."""
-    registry_path = config_path / 'skills.json'
+def calculate_usage_stats(skills_inventory: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Calculate summary statistics purely from the scanned inventory.
 
-    if not registry_path.exists():
-        print(f"Warning: Skills registry not found at {registry_path}")
-        return {'skills': {}, 'categories': {}, 'emoji_defaults': {}}
-
-    try:
-        with open(registry_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error loading skills registry: {e}")
-        return {'skills': {}, 'categories': {}, 'emoji_defaults': {}}
-
-def calculate_usage_stats(skills_inventory: List[Dict[str, Any]], registry: Dict[str, Any]) -> Dict[str, Any]:
-    """Calculate usage statistics from the inventory and registry."""
+    Claude Code discovers skills by scanning for SKILL.md — there is no
+    registry file, so usage patterns (activation counts, last-used dates,
+    categories, emoji) are not tracked and cannot be reported here.
+    """
     stats = {
         'total_skills': len(skills_inventory),
         'skills_with_frontmatter': 0,
         'skills_with_scripts': 0,
         'skills_with_references': 0,
         'skills_with_assets': 0,
-        'skills_with_emojis': 0,
         'average_file_count': 0,
         'average_size_kb': 0,
-        'categories': {},
-        'usage_patterns': {
-            'never_used': 0,
-            'used_this_month': 0,
-            'used_this_quarter': 0,
-            'used_this_year': 0,
-            'no_last_used': 0
-        },
-        'top_triggers': {},
         'top_keywords': {},
-        'emoji_distribution': {},
         'resource_summary': {
             'total_scripts': 0,
             'total_references': 0,
@@ -216,15 +196,7 @@ def calculate_usage_stats(skills_inventory: List[Dict[str, Any]], registry: Dict
         }
     }
 
-    now = datetime.now()
-    month_ago = now - timedelta(days=30)
-    quarter_ago = now - timedelta(days=90)
-    year_ago = now - timedelta(days=365)
-
-    trigger_counts = {}
     keyword_counts = {}
-    category_counts = {}
-
     total_files = 0
     total_size = 0
 
@@ -232,13 +204,6 @@ def calculate_usage_stats(skills_inventory: List[Dict[str, Any]], registry: Dict
         # Count skills with frontmatter
         if skill.get('frontmatter'):
             stats['skills_with_frontmatter'] += 1
-
-        # Count emoji assignments
-        reg_data = registry.get('skills', {}).get(skill['name'], {})
-        if reg_data.get('emoji'):
-            stats['skills_with_emojis'] += 1
-            emoji = reg_data['emoji']
-            stats['emoji_distribution'][emoji] = stats['emoji_distribution'].get(emoji, 0) + 1
 
         # Count resource types
         if skill['bundled_resources']['scripts']:
@@ -259,45 +224,8 @@ def calculate_usage_stats(skills_inventory: List[Dict[str, Any]], registry: Dict
         total_files += skill['file_count']
         total_size += skill.get('total_size_kb', 0)
 
-        # Registry data
-        skill_name = skill['name']
-        registry_data = registry.get('skills', {}).get(skill_name, {})
-
-        # Usage patterns
-        activation_count = registry_data.get('activation_count', 0)
-        last_used = registry_data.get('last_used')
-
-        if activation_count == 0:
-            stats['usage_patterns']['never_used'] += 1
-
-        if last_used:
-            try:
-                last_used_date = datetime.fromisoformat(last_used.replace('Z', '+00:00'))
-                if last_used_date >= month_ago:
-                    stats['usage_patterns']['used_this_month'] += 1
-                if last_used_date >= quarter_ago:
-                    stats['usage_patterns']['used_this_quarter'] += 1
-                if last_used_date >= year_ago:
-                    stats['usage_patterns']['used_this_year'] += 1
-            except:
-                pass
-        else:
-            stats['usage_patterns']['no_last_used'] += 1
-
-        # Category stats
-        category = registry_data.get('category', 'unknown')
-        category_counts[category] = category_counts.get(category, 0) + 1
-
-        # Trigger analysis
-        triggers = registry_data.get('triggers', [])
-        if isinstance(triggers, str):
-            triggers = [triggers]
-
-        for trigger in triggers:
-            trigger_counts[trigger] = trigger_counts.get(trigger, 0) + 1
-
-        # Keyword analysis
-        keywords = registry_data.get('keywords', [])
+        # Keyword analysis (extracted from frontmatter description by scan_skill_directory)
+        keywords = skill.get('frontmatter', {}).get('keywords', [])
         if isinstance(keywords, str):
             keywords = [keywords]
 
@@ -309,10 +237,7 @@ def calculate_usage_stats(skills_inventory: List[Dict[str, Any]], registry: Dict
         stats['average_file_count'] = round(total_files / stats['total_skills'], 2)
         stats['average_size_kb'] = round(total_size / stats['total_skills'], 2)
 
-    stats['categories'] = category_counts
-
-    # Top triggers and keywords (get top 10)
-    stats['top_triggers'] = dict(sorted(trigger_counts.items(), key=lambda x: x[1], reverse=True)[:10])
+    # Top keywords (get top 10)
     stats['top_keywords'] = dict(sorted(keyword_counts.items(), key=lambda x: x[1], reverse=True)[:10])
 
     return stats
@@ -321,26 +246,19 @@ def main():
     parser = argparse.ArgumentParser(description='Scan skills directory and generate inventory')
     parser.add_argument('--output', '-o', required=True, help='Output JSON file path')
     parser.add_argument('--skills-dir', default='skills', help='Skills directory path (default: skills)')
-    parser.add_argument('--config-dir', default='config', help='Config directory path (default: config)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
 
     args = parser.parse_args()
 
     # Resolve paths
     skills_dir = Path(args.skills_dir)
-    config_dir = Path(args.config_dir)
     output_path = Path(args.output)
 
     if not skills_dir.exists():
         print(f"Error: Skills directory '{skills_dir}' does not exist")
         sys.exit(1)
 
-    if not config_dir.exists():
-        print(f"Error: Config directory '{config_dir}' does not exist")
-        sys.exit(1)
-
     print(f"Scanning skills in: {skills_dir}")
-    print(f"Loading registry from: {config_dir}")
 
     # Scan all skill directories
     skills_inventory = []
@@ -353,22 +271,17 @@ def main():
                 if args.verbose:
                     print(f"  Scanned: {skill_info['name']}")
 
-    # Load registry
-    registry = load_skills_registry(config_dir)
-
     # Calculate statistics
-    stats = calculate_usage_stats(skills_inventory, registry)
+    stats = calculate_usage_stats(skills_inventory)
 
     # Create final inventory object
     inventory = {
         'scan_date': datetime.now().isoformat(),
         'scanner_version': '1.0.0',
         'paths': {
-            'skills_dir': str(skills_dir),
-            'config_dir': str(config_dir)
+            'skills_dir': str(skills_dir)
         },
         'summary': stats,
-        'registry': registry,
         'skills': skills_inventory
     }
 
@@ -384,24 +297,6 @@ def main():
         print(f"🔧 {stats['skills_with_scripts']} skills have scripts")
         print(f"📚 {stats['skills_with_references']} skills have references")
         print(f"🎨 {stats['skills_with_assets']} skills have assets")
-        print(f"😀 {stats['skills_with_emojis']} skills have custom emojis")
-
-        if args.verbose:
-            print(f"\n📈 Usage Patterns:")
-            print(f"   Never used: {stats['usage_patterns']['never_used']}")
-            print(f"   Used this month: {stats['usage_patterns']['used_this_month']}")
-            print(f"   Used this quarter: {stats['usage_patterns']['used_this_quarter']}")
-            print(f"   No last_used date: {stats['usage_patterns']['no_last_used']}")
-
-            if stats['emoji_distribution']:
-                print(f"\n😀 Emoji Distribution:")
-                for emoji, count in sorted(stats['emoji_distribution'].items(), key=lambda x: x[1], reverse=True):
-                    print(f"   {emoji} {count} skill(s)")
-
-            if stats['categories']:
-                print(f"\n📂 Categories:")
-                for category, count in sorted(stats['categories'].items(), key=lambda x: x[1], reverse=True):
-                    print(f"   {category}: {count}")
 
     except Exception as e:
         print(f"Error writing output: {e}")

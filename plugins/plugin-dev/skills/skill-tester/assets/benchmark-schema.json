@@ -1,0 +1,40 @@
+{
+  "skill_name": "string - name of skill being tested",
+  "iteration": "integer - iteration number (1, 2, 3, ...)",
+  "timestamp": "string - ISO 8601 timestamp when aggregation ran",
+  "evals": [
+    {
+      "eval_id": "integer - eval identifier",
+      "with_skill": {
+        "pass_rate": "float (0.0-1.0) - assertions passed / total",
+        "assertions_passed": "integer",
+        "assertions_total": "integer",
+        "avg_tokens": "integer - tokens for this eval",
+        "avg_duration_ms": "integer - duration for this eval"
+      },
+      "baseline": {
+        "pass_rate": "float (0.0-1.0)",
+        "assertions_passed": "integer",
+        "assertions_total": "integer",
+        "avg_tokens": "integer",
+        "avg_duration_ms": "integer"
+      },
+      "delta": {
+        "pass_rate": "float - with_skill - baseline (positive = improvement)",
+        "tokens": "integer - with_skill - baseline (positive = more tokens)",
+        "duration_ms": "integer - with_skill - baseline (positive = slower)"
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": "float - average pass rate across all evals with skill",
+    "baseline_avg_pass_rate": "float - average pass rate across all evals without skill",
+    "improvement": "float - with_skill - baseline (percentage points)",
+    "avg_tokens_with_skill": "integer - average tokens with skill",
+    "avg_tokens_baseline": "integer - average tokens without skill",
+    "token_cost": "integer - with_skill - baseline (positive = more expensive)",
+    "avg_duration_ms_with_skill": "integer",
+    "avg_duration_ms_baseline": "integer",
+    "duration_cost_ms": "integer"
+  }
+}

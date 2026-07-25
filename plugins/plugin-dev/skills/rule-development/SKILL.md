@@ -70,21 +70,9 @@ Load every session. Use for universal constraints.
 
 ### Path-Scoped Rules (`paths` frontmatter)
 
-Rules without `paths` load unconditionally, every session. Rules with `paths` load when Claude
-works with matching files — they trigger when Claude reads a matching file, not on every tool use.
+Rules without `paths` load unconditionally, every session; rules with `paths` load only when Claude works with a matching file. See `references/rules-specification.md`'s "Path-Specific Rules" section for the full explanation, the pattern-assessment table, and multi-pattern/brace-expansion detail.
 
-```markdown
----
-paths:
-  - "src/api/**/*.ts"
----
-```
-
-**Use `paths` whenever it can be defined** — reduces context noise for unrelated work.
-
-Avoid overly broad patterns like `**/*` or `*` — they match nearly every file and defeat the
-purpose of scoping. Use the narrowest pattern that covers the intended files; if a broad pattern
-is genuinely required, state why in the rule's description.
+**Use `paths` whenever it can be defined** — reduces context noise for unrelated work. Avoid overly broad patterns like `**/*` or `*`.
 
 ### User-Level Rules (`~/.claude/rules/`)
 
@@ -276,3 +264,4 @@ silently contradict each other, and Claude may resolve the conflict arbitrarily.
 | `references/examples.md` | Complete worked examples, anti-patterns, extended writing guidance |
 | `references/rules-specification.md` | Official Claude Code rules documentation (path scoping, symlinks, user-level rules) |
 | `plugin-rulebook` | Plugin-level rules — invoke before finalizing any rule file to check naming, language, formatting, and external-reference compliance |
+| `plugin-rulebook/references/size-rules.md` — R18 section | Before extracting an oversized inline example (e.g. a full rule-file skeleton) into `examples/`, check its "Before extracting, check whether extraction actually removes the violation" guidance first — a naive extraction can just re-wrap the same content in another oversized fence inside the new file. `examples/global-rule-example.md` and `examples/path-scoped-rule-example.md` in this skill are worked examples of extracting correctly (standalone files, independent non-nested fences) |

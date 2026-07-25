@@ -269,15 +269,11 @@ Configure multiple languages in a single `.lsp.json`:
     "extensionToLanguage": {
       ".rs": "rust"
     }
-  },
-  "python": {
-    "command": "pylsp",
-    "extensionToLanguage": {
-      ".py": "python"
-    }
   }
 }
 ```
+
+Add further language entries the same way (e.g. `"python": {"command": "pylsp", "extensionToLanguage": {".py": "python"}}`).
 
 ### Initialization Options
 
@@ -451,4 +447,4 @@ When building language support, choose the right approach:
 
 - [LSP Specification](https://microsoft.github.io/language-server-protocol/)
 - [LSP Server Implementations](https://microsoft.github.io/language-server-protocol/implementors/servers/)
-- [Claude Code Plugins Reference](about:/docs/en/plugins-reference#lsp-servers)
+- [Claude Code Plugins Reference](https://code.claude.com/docs/en/plugins-reference#lsp-servers)

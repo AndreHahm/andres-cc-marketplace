@@ -14,7 +14,10 @@ This guide documents the standard plugin directory layout, file organization pat
   - [Optional: bin/ Directory](#optional-bin-directory)
   - [Optional: .mcp.json File](#optional-mcpjson-file)
   - [Optional: .lsp.json File](#optional-lspjson-file)
-  - [Optional: styles/ Directory](#optional-styles-directory)
+  - [Optional: settings.json File (Plugin Defaults)](#optional-settingsjson-file-plugin-defaults)
+  - [Optional: output-styles/ Directory](#optional-output-styles-directory)
+  - [Optional: themes/ Directory](#optional-themes-directory)
+  - [Optional: monitors/ Directory](#optional-monitors-directory)
   - [Optional: assets/ Directory](#optional-assets-directory)
   - [Optional: README.md](#optional-readmemd)
   - [Optional: CHANGELOG.md](#optional-changelogmd)
@@ -27,6 +30,8 @@ This guide documents the standard plugin directory layout, file organization pat
 - [See Also](#see-also)
 
 ## Standard Plugin Layout
+
+**R18 exception (recorded):** the tree below intentionally exceeds the rulebook's 30-line code-block threshold — a whole-tree illustration where splitting would remove the pedagogical value of seeing the complete standard layout in one place.
 
 A complete, production-ready plugin follows this structure:
 
@@ -57,9 +62,12 @@ my-plugin/
 │   ├── security-scan.sh
 │   ├── format.py
 │   └── deploy.js
-├── styles/                          # Output styles (optional)
-│   ├── command-output.css
-│   └── theme.css
+├── output-styles/                   # Response-formatting styles (optional)
+│   └── terse.md
+├── themes/                          # Color theme presets (optional)
+│   └── dracula.json
+├── monitors/                        # Background monitor configs (optional)
+│   └── monitors.json
 ├── assets/                          # Static assets (optional)
 │   ├── icon.png
 │   ├── logo.svg
@@ -171,7 +179,6 @@ skills/
 name: skill-name
 description: >-
   What the skill does. Use when [trigger context].
-version: 1.0.0
 allowed-tools: Read,Write,Bash
 disable-model-invocation: false  # Allow Claude auto-invoke
 user-invocable: true              # Allow user /skill-name invocation
@@ -309,24 +316,110 @@ bin/
 }
 ```
 
-### Optional: styles/ Directory
+### Optional: settings.json File (Plugin Defaults)
 
-**Purpose:** Custom CSS for command output styling
+**Purpose:** Default configuration applied when the plugin is enabled
+
+**Location:** Plugin root (not in subdirectory) — distinct from a project's `.claude/settings.json`
+
+**Supported keys (only these two — unknown keys are silently ignored):**
+- `agent` — activates one of the plugin's own `agents/` definitions as the main-thread agent, applying its system prompt, tool restrictions, and model
+- `subagentStatusLine` — status line shown for subagents spawned while this plugin is enabled
+
+**File format:**
+```json
+{
+  "agent": "security-reviewer"
+}
+```
+
+Values here take priority over any `settings` declared in `plugin.json`.
+
+### Optional: output-styles/ Directory
+
+**Purpose:** Adjust Claude's response formatting (terseness, structure, verbosity) — not visual/CSS styling. Output styles surface in `/output-style` once the plugin is enabled.
 
 **Structure:**
 ```
-styles/
-├── command-output.css       # Output styling
-├── theme.css                # Theme customization
-└── dark-mode.css
+output-styles/
+└── terse.md                 # Markdown file with name/description frontmatter
 ```
 
-**Usage in plugin.json:**
+**File format (`output-styles/terse.md`):**
+```markdown
+---
+name: terse
+description: Short, direct answers. Skip explanations unless asked.
+---
+
+Answer in the fewest words that convey the result. Skip preambles like
+"Sure, I'll" — go straight to the answer or the diff.
+```
+
+**Rules:**
+- Files are Markdown with `name` + `description` frontmatter, not CSS
+- Focus the body on *what to say and when*, not visual formatting
+- A custom `"outputStyles"` value in `plugin.json` **replaces** the default `output-styles/` directory
+
+See `references/output-styles.md` for the complete component reference.
+
+### Optional: themes/ Directory
+
+**Purpose:** Bundle color presets that appear in `/theme` alongside built-in and user themes.
+
+**Structure:**
+```
+themes/
+└── dracula.json              # One JSON file per theme
+```
+
+**File format (`themes/dracula.json`):**
 ```json
 {
-  "outputStyles": ["./styles/command-output.css", "./styles/theme.css"]
+  "name": "Dracula",
+  "base": "dark",
+  "overrides": {
+    "accent": "#bd93f9",
+    "error": "#ff5555"
+  }
 }
 ```
+
+**Rules:**
+- `base` inherits from a built-in preset (`"dark"` or `"light"`); `overrides` is a sparse map of color tokens
+- A custom `"themes"` value in `plugin.json` **replaces** the default `themes/` directory
+- Plugin themes are read-only in `/theme` — the user copies one to `~/.claude/themes/` to edit it
+
+See `references/themes.md` for the complete component reference.
+
+### Optional: monitors/ Directory
+
+**Purpose:** Background watchers Claude Code starts automatically when the plugin is active — each runs a shell command for the session's lifetime and streams stdout lines to Claude as notifications.
+
+> **Version:** Requires Claude Code v2.1.105 or later.
+
+**Structure:**
+```
+monitors/
+└── monitors.json             # Array of monitor entries
+```
+
+**File format (`monitors/monitors.json`):**
+```json
+[
+  {
+    "name": "error-log",
+    "command": "tail -F ./logs/error.log",
+    "description": "Application error log"
+  }
+]
+```
+
+**Rules:**
+- `name`, `command`, and `description` are required per entry
+- A custom `"monitors"` value in `plugin.json` **replaces** the default `monitors/monitors.json`
+
+See `references/monitors.md` for the complete component reference.
 
 ### Optional: assets/ Directory
 
@@ -400,7 +493,10 @@ assets/
 | **LSP servers** | `.lsp.json` or inline | File/Config | ❌ No | Code intelligence |
 | **Scripts** | `scripts/` | Directory | ❌ No | Utility scripts |
 | **Bin** | `bin/` | Directory | ❌ No | Executables added to `PATH` (privileged) |
-| **Styles** | `styles/` | Directory | ❌ No | Output CSS styling |
+| **Plugin Settings** | `settings.json` | File | ❌ No | Default config (`agent`, `subagentStatusLine` keys only) |
+| **Output Styles** | `output-styles/` | Directory | ❌ No | Response-formatting styles (Markdown) |
+| **Themes** | `themes/` | Directory | ❌ No | Color theme presets (JSON) |
+| **Monitors** | `monitors/monitors.json` | File | ❌ No | Background watcher configs (v2.1.105+) |
 | **Assets** | `assets/` | Directory | ❌ No | Static files, images |
 | **Docs** | `README.md`, `CHANGELOG.md` | Files | ❌ No | User documentation |
 | **License** | `LICENSE` | File | ❌ No | License terms |
@@ -474,6 +570,8 @@ database-plugin/
 
 ### Complete Enterprise Plugin
 
+**R18 exception (recorded):** the tree below intentionally exceeds the rulebook's 30-line code-block threshold — a whole-tree illustration where splitting would remove the pedagogical value of seeing a complete real-world layout in one place.
+
 ```
 enterprise-plugin/
 ├── .claude-plugin/
@@ -506,8 +604,8 @@ enterprise-plugin/
 │   ├── pre-deploy.sh
 │   ├── post-deploy.sh
 │   └── health-check.py
-├── styles/
-│   └── deployment.css
+├── output-styles/
+│   └── deployment-brief.md
 ├── assets/
 │   ├── icon.png
 │   └── templates/
@@ -536,7 +634,7 @@ Before installing or distributing your plugin:
 - [ ] No components inside `.claude-plugin/` directory
 - [ ] Directory depth appropriate (not overly nested)
 - [ ] No circular references or dependencies
-- [ ] No `commands/` directory (use skills instead)
+- [ ] `commands/` is deprecated in favor of `skills/` for new work — supported for backward compatibility, not forbidden
 
 ## Size and Performance Considerations
 
@@ -582,6 +680,6 @@ plugin/
 
 - [Plugin manifest schema](plugin-json-schema.md) — Configuration options
 - [Plugin caching](plugin-caching.md) — How plugins are installed
-- [Debugging and troubleshooting](debugging-troubleshooting.md) — Fix structural issues
+- [Debugging and troubleshooting](troubleshooting-and-production.md) — Fix structural issues
 - [Slash commands](slash-command-format.md) — Command file format
 - [Hooks](hooks.md) — Hook configuration patterns

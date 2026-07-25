@@ -22,10 +22,11 @@ reports/events/
 #Ignore vscode AI rules
 .github\instructions\codacy.instructions.md
 
-#Repo-specific fies and directories
-.merged/
-.not-implemented/
-.planned/
-**/to-implement/
-**/.rulebook/
+#Repo-specific files and directories
+*.local
+*.local.*
+**/*.local.*
 .claude/output/
+**/.draft/
+**/.backup/
+**/.temp/

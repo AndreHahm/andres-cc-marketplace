@@ -3,7 +3,7 @@ description: >-
   Find a stale plugin-dev rule, update it and every other rule it affects using the official
   docs recommendation, then check for and fix any resulting staleness.
 argument-hint: <rule name, value, or behavior description>
-allowed-tools: Read Write Edit Glob Grep WebFetch WebSearch Bash(date:*)
+allowed-tools: Read Write Edit Glob Grep WebFetch WebSearch Bash(date:*) Skill(upstream-sources-registry)
 model: opus
 ---
 
@@ -17,9 +17,9 @@ Find a stale rule, fix it and everything it affects, then report every change: $
 
 Read `${CLAUDE_PLUGIN_ROOT}/commands/find-dev-rule.md` and execute its Steps 1–3 against `$ARGUMENTS`.
 
-From the resulting classifications, treat `OUTDATED`, `MISSING`, and `CONFLICT` as **stale** — these need action. `CONFIRMED`, `NOT-OFFICIAL`, and `UNVERIFIABLE` need no update. If every found rule is one of these, print "No stale rule found matching '{query}'." and stop.
+From the resulting classifications, treat `OUTDATED`, `MISSING`, and `CONFLICT` as **stale** — these need action. `CONFIRMED`, `NOT-OFFICIAL`, and `UNVERIFIABLE` need no update. Before treating a stale rule as needing action, check for a prior intentional-divergence decision: `Glob` the default rules output directory (`.claude/output/rules/*-gaps.md`, or the caller-specified `--output-dir` if this command is invoked with one) for gap reports, and search each one's **Excluded Candidates** table for a row whose "What was considered" matches this rule's name/topic and whose Case is `Intentional divergence`. If found, treat this rule the same as `NOT-OFFICIAL` (no update) rather than auto-conforming it to the docs — a recorded intentional divergence is a decision, not a defect this command should silently overwrite. If no matching gap report or row exists, treat the rule as newly-stale and proceed normally. If every found rule is one of these (including any rule excluded by this check), print "No stale rule found matching '{query}'." and stop.
 
-**Pre-flight:** print each stale rule, its sources, and the planned correction (from the official-docs excerpt already gathered). Wait for confirmation ("yes"/"y"/"proceed"/"ok") before making any changes; on any other answer, print "Cancelled." and stop.
+**Pre-flight:** print each stale rule, its sources, and the planned correction (from the official-docs excerpt already gathered). Use `AskUserQuestion` — question: "Apply these corrections?", options: "Proceed" / "Cancel" — before making any changes; on "Cancel" (or any answer other than an affirmative), print "Cancelled." and stop.
 
 ---
 
@@ -27,6 +27,7 @@ From the resulting classifications, treat `OUTDATED`, `MISSING`, and `CONFLICT` 
 
 For each stale rule confirmed in Step 1:
 
+- **Authority-tier check (defense in depth):** confirm the corrected value's citation is `spec`/`guide`-tier (Step 1 already reclassifies an informal-only finding as `UNVERIFIABLE`, which needs no update — this is a second check at the actual edit point, not a substitute for that one). If a citation somehow reaches this step backed only by a `changelog`/`informal`-tier source, do not apply the edit — flag it to the user instead, stating the tier and asking for explicit confirmation before treating fetched external content as sufficient grounds to change a rule file.
 - Determine the corrected value/wording from the official-docs excerpt already gathered — do not re-derive it differently.
 - For a `CONFLICT` rule with no docs discrepancy: if one source already matches the docs, correct the other source(s) to match it; if neither matches, correct all sources to the docs value.
 - Apply the fix to **every** source location listed for that rule in Step 1's output — not just the first one found.

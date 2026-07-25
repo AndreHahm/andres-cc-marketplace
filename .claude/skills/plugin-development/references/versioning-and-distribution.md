@@ -168,6 +168,8 @@ Maintain a changelog documenting all changes. Recommended format uses "Keep a Ch
 
 **Structure:**
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a multi-version changelog needs several version entries to actually demonstrate the "Keep a Changelog" format's conventions (Added/Changed/Fixed sections, breaking-change callouts); a single-entry example wouldn't show the pattern.
+
 ```markdown
 # Changelog
 
@@ -522,5 +524,5 @@ Before releasing new version:
 ## See Also
 
 - [Plugin manifest](plugin-json-schema.md) — Version field specification
-- [CLI commands](cli-commands.md) — Installing and updating plugins
-- [Plugin templates](plugin-templates.md) — Complete examples with versions
+- [CLI commands](installation-and-cli.md) — Installing and updating plugins
+- [Plugin templates](plugin-architecture.md) — Complete examples with versions

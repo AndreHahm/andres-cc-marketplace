@@ -44,7 +44,7 @@ See [references/api.md](references/api.md) for complete function signatures.
 - Add gotchas as Claude hits new edge cases during testing
 - Include "before/after" code examples showing common mistakes
 - Focus on information that pushes Claude out of its default patterns
-- The `frontend-design` skill was built by iterating on Claude's design taste, avoiding cliche patterns like Inter font and purple gradients
+- e.g. a `frontend-design` skill could be built by iterating on Claude's design taste, avoiding cliche patterns like Inter font and purple gradients
 
 ---
 
@@ -314,7 +314,7 @@ Skills that perform routine maintenance and operational procedures. Some involve
 ## Procedure
 1. [Discovery step]
 2. [Report findings to user]
-3. [Wait for confirmation]
+3. [Confirm via AskUserQuestion]
 4. [Execute with guardrails]
 5. [Verify completion]
 

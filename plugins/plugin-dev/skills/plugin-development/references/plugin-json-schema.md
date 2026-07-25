@@ -1,6 +1,6 @@
 # plugin.json Schema Reference
 
-Complete field reference for Claude Code plugin manifests.
+Terse, example-first field reference for Claude Code plugin manifests — for the complete field-by-field reference (including `defaultEnabled`, `dependencies`, version-resolution fallback chain, and path-resolution rules), see `manifest-reference.md`.
 
 ## Location
 

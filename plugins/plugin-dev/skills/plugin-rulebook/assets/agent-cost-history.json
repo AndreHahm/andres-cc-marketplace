@@ -1,0 +1,55 @@
+{
+  "_meta": {
+    "schema_version": 1,
+    "last_updated": "2026-07-16",
+    "note": "Best-effort, orchestrator-recorded cost history per agent, used to surface a rough estimate in an R26 AskUserQuestion gate before dispatching an expensive action. Populated manually after each Agent() dispatch completes -- no hook can capture this automatically, since usage data arrives via a later completion notification, not the original tool_response. Averages are running means over all recorded observations; treat as a rough precedent, not a guarantee."
+  },
+  "agents": {
+    "permission-reviewer": {
+      "observations": 1,
+      "avg_tokens": 70737,
+      "avg_duration_ms": 160761,
+      "min_tokens": 70737,
+      "max_tokens": 70737,
+      "min_duration_ms": 160761,
+      "max_duration_ms": 160761
+    },
+    "hook-reviewer": {
+      "observations": 2,
+      "avg_tokens": 91610,
+      "avg_duration_ms": 316618,
+      "min_tokens": 91350,
+      "max_tokens": 91869,
+      "min_duration_ms": 275881,
+      "max_duration_ms": 357354
+    },
+    "human-doc-reviewer": {
+      "observations": 2,
+      "avg_tokens": 34234,
+      "avg_duration_ms": 88564,
+      "min_tokens": 26875,
+      "max_tokens": 41594,
+      "min_duration_ms": 50131,
+      "max_duration_ms": 126997,
+      "note": "Delta mode, second real observation"
+    },
+    "scripts-reviewer": {
+      "observations": 2,
+      "avg_tokens": 37932,
+      "avg_duration_ms": 196593,
+      "min_tokens": 18178,
+      "max_tokens": 57687,
+      "min_duration_ms": 102579,
+      "max_duration_ms": 290607
+    },
+    "enhancement-suggestor": {
+      "observations": 1,
+      "avg_tokens": 33857,
+      "avg_duration_ms": 199722,
+      "min_tokens": 33857,
+      "max_tokens": 33857,
+      "min_duration_ms": 199722,
+      "max_duration_ms": 199722
+    }
+  }
+}

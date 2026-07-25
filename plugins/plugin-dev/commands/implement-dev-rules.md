@@ -35,7 +35,7 @@ Read the plan fully. Parse its numbered file sections, exclusion list, and prior
 
 **Identify foundational files:** if any planned file is shared configuration that other planned files' changes are described as "matching" (e.g. a `settings.json` other sections reference), implement that file first and synchronously, before dispatching the rest — later groups may need to read its final state to stay consistent.
 
-**Pre-flight:** print the implementation groups (foundational file first, then each batch), the exclusion list, and ask for confirmation before making any changes.
+**Pre-flight:** print the implementation groups (foundational file first, then each batch) and the exclusion list, then use `AskUserQuestion` — question: "Proceed with implementation?", options: "Proceed" / "Cancel" — before making any changes.
 
 ---
 

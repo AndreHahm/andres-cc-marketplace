@@ -13,57 +13,7 @@ Complete, unified workflow for improving Claude Code skills while preserving fun
 
 ## Content Distribution (80% Rule)
 
-The 80% rule determines what stays in SKILL.md body vs. what moves to references/:
-
-**Core Principle:** SKILL.md body contains instructions Claude needs in 80%+ of skill activations. References contain supplementary content for <20% of cases.
-
-### Decision Framework
-
-```
-For ANY content chunk in SKILL.md body, ask:
-├─ "Will Claude execute this in 80%+ of skill activations?"
-│  ├─ YES → STAYS in SKILL.md (core procedural)
-│  └─ NO → Can MOVE to references/ (supplementary)
-└─ Uncertain?
-   └─ DEFER to operator; keep in SKILL.md by default
-```
-
-### Examples: Core (80%+) vs. Supplementary (<20%)
-
-**Core Content (STAYS in SKILL.md):**
-- Quick Start section (essential first steps)
-- Core procedural workflows (main use case)
-- Key rules and constraints (activates skill correctly)
-- Decision trees for common scenarios (helps 80% of users)
-- Examples of correct execution (not abstract theory)
-
-**Supplementary Content (CAN MOVE):**
-- Advanced patterns (production-only, affects <20% of users)
-- Comprehensive API references (detailed reference material)
-- Historical context or theory (helps understanding, not execution)
-- Uncommon error scenarios (edge cases affecting <20%)
-- Multiple implementation examples (one example is 80%, extras are supplementary)
-
-### Example Consolidation
-
-**Before (scattered references):**
-```
-references/advanced-patterns.md    (156 lines)
-references/error-handling.md        (124 lines)
-references/team-patterns.md         (189 lines)
-→ Total: 469 lines
-```
-
-**Analysis:** All three files address production patterns, used together. Related content spread across multiple files.
-
-**After (consolidated):**
-```
-references/production-patterns.md   (380 lines)
-→ Merged: advanced-patterns + error-handling + team-patterns
-→ Single file covers all production scenarios
-→ SKILL.md links to one destination: "See references/production-patterns.md for..."
-→ Savings: 89 lines + reduced linking complexity
-```
+See `80-percent-rule.md` for the full decision framework, core-vs-supplementary examples, and worked consolidation example — not restated here to avoid drift.
 
 ## Preservation Gates
 
@@ -170,8 +120,8 @@ APPROVED: Safe to remove from SKILL.md
 **Action:**
 1. **For DELETIONS** → Require explicit operator approval:
    - Show what's being deleted and why
-   - Ask: "Okay to delete this?"
-   - Wait for confirmation before removing
+   - Use `AskUserQuestion` — question: "Okay to delete this?", options: "Delete" / "Keep"
+   - Wait for the answer before removing anything
 2. **For MIGRATIONS** → Auto-approved (content preserved, just moved):
    - No separate approval needed
    - Just verify with operator: "I've moved X to references/. Working as expected?"
@@ -208,6 +158,9 @@ Seven systematic phases to validate skills after refinement. Run in order.
 **Action:** List complete skill structure before and after refinement.
 
 **Report:**
+
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a single coherent before/after comparison; splitting it would break the comparison it's illustrating.
+
 ```
 BEFORE REFINEMENT:
 ├── SKILL.md (1,200 lines)
@@ -385,8 +338,8 @@ Test 1: "Refine the plugin-creator skill"
 
 Test 2: "Validate that my skill is production-ready"
 → Description includes "validate"? ✓ Should trigger
-→ Validation workflow present? ✓ Seven phases clear
-→ Can apply checks? ✓ Checklist is actionable
+→ Core Workflow: Validation delegates to skill-reviewer + Skill(plugin-rulebook)? ✓ Correctly routes instead of reimplementing checks
+→ Report renders skill-reviewer's verdict + plugin-rulebook FAILs? ✓ Presentation works
 
 Pass: Activation and execution verified
 ```
@@ -395,81 +348,7 @@ Pass: Activation and execution verified
 
 ## Movement Pattern
 
-Safe procedure for migrating content between locations. **CRITICAL SEQUENCE.**
-
-**This is the ONLY safe way to move content. Follow exactly.**
-
-### The Sequence (Never Violate Order)
-
-```
-1. CREATE/UPDATE destination file(s)
-   └─ Write complete content to new location
-2. LINK - Update SKILL.md pointers
-   └─ Change references to point to new location(s)
-3. DELETE old source
-   └─ Remove from original location only after (1) and (2) complete
-```
-
-### Why This Order Matters
-
-**❌ WRONG:** DELETE → LINK → CREATE
-- Delete first → Content gone before destination is ready
-- Link second → Points to non-existent destination (broken!)
-- Create last → Content finally exists, but links already broken
-- Result: Lost content, broken references, skill broken
-
-**✅ CORRECT:** CREATE → LINK → DELETE
-- Create first → New destination ready and complete
-- Link second → References now point to valid location
-- Delete last → Only after links verified working
-- Result: Unbroken chain, no lost content, skill works
-
-### Step-by-Step Example
-
-**Scenario:** Move "Error Handling" from SKILL.md to references/
-
-**Step 1: CREATE destination**
-```
-File: references/production-patterns.md
-Content:
-  # Production Patterns
-
-  ## Error Handling
-  [Complete error handling content, examples, all scenarios]
-
-  ## [Other production topics...]
-```
-Status: ✓ File exists, ✓ Content complete
-
-**Step 2: LINK - Update SKILL.md**
-Old:
-```markdown
-## Error Handling
-[234 lines of error handling content in SKILL.md body]
-```
-
-New:
-```markdown
-For error handling patterns (production environments), see
-`references/production-patterns.md`.
-```
-
-Status: ✓ Pointer exists, ✓ Points to valid location
-
-**Step 3: DELETE from SKILL.md**
-Remove the 234 lines of error handling from SKILL.md body.
-
-Status: ✓ Content moved, ✓ Links verified, ✓ Only then delete
-
-### Validation After Movement
-
-After completing the sequence:
-1. Load SKILL.md → Follow link to references/production-patterns.md
-2. Does the link work? ✓
-3. Is content complete at destination? ✓
-4. Does deletion leave SKILL.md coherent? ✓
-
-Only if ALL three pass, movement is safe.
+See `movement-pattern.md` for the full CREATE→LINK→DELETE sequence, why the order matters, and a worked step-by-step example — not restated here to avoid drift.
 
 ## Consolidation Strategy
 
@@ -521,19 +400,7 @@ Apply movement pattern in this order:
 
 ### Consolidation Report
 
-After consolidation:
-```
-Consolidated:
-  - error-handling.md (124 lines)
-  - team-patterns.md (189 lines)
-  - advanced-patterns.md (156 lines)
-
-Into: production-patterns.md (380 lines total)
-
-Savings: 89 lines (124 + 189 + 156 - 380)
-Benefit: Single destination for all production topics, clearer organization
-Links updated: 4 pointers in SKILL.md now point to consolidated file sections
-```
+See `production-patterns.md`'s "Changes Made Summary" for a worked example of this exact 3-file consolidation report format — not restated here to avoid drift.
 
 ## Content Extraction
 
