@@ -13,7 +13,7 @@ description: >-
   Reuses plugin-lifecycle-downstream's Fix phase and the dev-rules commands' own apply
   steps. Not for a single, already-known fix — edit directly or use the matching Design
   skill.
-argument-hint: "[workflow: improve|enhance|modernize|self-service] [target]"
+argument-hint: "[workflow: improve|enhance|self-upstream|self-service] [target]"
 allowed-tools: Read Skill Agent Edit Write Bash(git:*) TaskCreate TaskUpdate
 ---
 
@@ -29,7 +29,7 @@ Identify which workflow the request matches and jump to its file:
 |---|---|
 | [improve-a-plugin.md](workflows/improve-a-plugin.md) | Retro-driven: `analyzing-sessions` finds issues from session behavior, human picks, hand off to Fix |
 | [enhance-a-plugin.md](workflows/enhance-a-plugin.md) | Comparison-driven: `plugin-comparison` finds gaps against another target, human picks, hand off to Fix |
-| [modernize-plugin-devkit.md](workflows/modernize-plugin-devkit.md) | Keeps `plugin-devkit`'s own rules current against official Claude Code docs — bulk or single-rule mode |
+| [self-upstream-plugin-devkit.md](workflows/self-upstream-plugin-devkit.md) | Keeps `plugin-devkit`'s own rules current against official Claude Code docs — bulk or single-rule mode |
 | [self-service-plugin-devkit.md](workflows/self-service-plugin-devkit.md) | Plugin-devkit's own on-demand self-checks against itself — 7 services: self-reflexion, self-review, self-validation, self-evaluation, self-grading, self-improvement, self-documentation |
 
 ## When to Use
@@ -60,11 +60,11 @@ After the core workflow's fix/rule-update is applied and committed, invoke `plug
 
 ## Every Written Artifact Gets a Link Line
 
-Whenever a step in any of the 4 workflows writes a file (Session Analysis Report, Comparison Report, Rules/Gap/Plan/Implementation Reports, Plugin-Grader Report), present `📄 <Artifact Name> written: \`<path>\`` as its own line before the content summary — see `workflows/improve-a-plugin.md` Step 1, `workflows/enhance-a-plugin.md` Step 1, `workflows/modernize-plugin-devkit.md`'s Bulk Mode steps, and `workflows/self-service-plugin-devkit.md`'s Service 5 (self-grading) for the exact pattern. Shared convention with `plugin-lifecycle-upstream` and `plugin-lifecycle-downstream`. Single-Rule mode's `find-dev-rule`/`update-dev-rule` steps are the one exception — neither writes a persisted file, so no link line applies there; don't fabricate one.
+Whenever a step in any of the 4 workflows writes a file (Session Analysis Report, Comparison Report, Rules/Gap/Plan/Implementation Reports, Plugin-Grader Report), present `📄 <Artifact Name> written: \`<path>\`` as its own line before the content summary — see `workflows/improve-a-plugin.md` Step 1, `workflows/enhance-a-plugin.md` Step 1, `workflows/self-upstream-plugin-devkit.md`'s Bulk Mode steps, and `workflows/self-service-plugin-devkit.md`'s Service 5 (self-grading) for the exact pattern. Shared convention with `plugin-lifecycle-upstream` and `plugin-lifecycle-downstream`. Single-Rule mode's `find-dev-rule`/`update-dev-rule` steps are the one exception — neither writes a persisted file, so no link line applies there; don't fabricate one.
 
 ## Slash Commands Are Not `Skill`-Invocable
 
-`/report-dev-rules`, `/verify-dev-rules`, `/plan-dev-rules`, `/implement-dev-rules`, `/find-dev-rule`, and `/update-dev-rule` each state in their own body: "This command cannot be invoked via `Skill()` — it must be triggered as a slash command or followed manually." `modernize-plugin-devkit.md` follows manually — `Read` the command file and execute its documented Steps directly with the given arguments, rather than attempting a tool call that doesn't exist for commands.
+`/report-dev-rules`, `/verify-dev-rules`, `/plan-dev-rules`, `/implement-dev-rules`, `/find-dev-rule`, and `/update-dev-rule` each state in their own body: "This command cannot be invoked via `Skill()` — it must be triggered as a slash command or followed manually." `self-upstream-plugin-devkit.md` follows manually — `Read` the command file and execute its documented Steps directly with the given arguments, rather than attempting a tool call that doesn't exist for commands.
 
 ## Task Tracking
 
@@ -76,8 +76,8 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 
 1. **improve-a-plugin, findings exist** — confirm `analyzing-sessions` runs, the human is asked which suggestions to act on via `AskUserQuestion`, and the hand-off to `plugin-lifecycle-downstream`'s Fix phase happens rather than a reimplemented apply step
 2. **enhance-a-plugin, findings exist** — same shape, confirm `plugin-comparison` is the finding source and the same Fix-phase hand-off happens
-3. **modernize-plugin-devkit, bulk mode** — confirm the 4 commands run in `report → verify → plan → implement` order (not the order a naive reading of "State→Find→Plan→Implement/Update→Verify" would suggest) and the human is asked which gaps to act on before `/plan-dev-rules` runs
-4. **modernize-plugin-devkit, single-rule mode** — confirm `/find-dev-rule`'s read-only findings are presented before `/update-dev-rule` runs, and that `/update-dev-rule`'s own built-in pre-flight confirmation is not skipped or duplicated by this skill's own gate
+3. **self-upstream-plugin-devkit, bulk mode** — confirm the 4 commands run in `report → verify → plan → implement` order (not the order a naive reading of "State→Find→Plan→Implement/Update→Verify" would suggest) and the human is asked which gaps to act on before `/plan-dev-rules` runs
+4. **self-upstream-plugin-devkit, single-rule mode** — confirm `/find-dev-rule`'s read-only findings are presented before `/update-dev-rule` runs, and that `/update-dev-rule`'s own built-in pre-flight confirmation is not skipped or duplicated by this skill's own gate
 5. **No findings / no gaps** — confirm each workflow stops cleanly and states nothing needed action, rather than forcing a fix
 6. **Document step, nothing to update** — confirm "no doc update needed" is presented as a normal outcome, not silently skipped without being stated
 7. **Document step delegates to plugin-documentation** — confirm the Document step invokes `plugin-documentation` (not `human-doc-reviewer` directly) and does not ask its own separate delta/full question first — `plugin-documentation` owns that decision internally
@@ -85,7 +85,7 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 **Quality gates:**
 - [ ] Every workflow's human-decision point uses `AskUserQuestion` — never an automatic selection
 - [ ] `improve-a-plugin`/`enhance-a-plugin` always hand off to `plugin-lifecycle-downstream`'s Fix phase for apply/re-validate/commit — never reimplement it
-- [ ] `modernize-plugin-devkit`'s bulk mode always runs `report → verify → plan → implement`, matching each command's own documented Pipeline order
+- [ ] `self-upstream-plugin-devkit`'s bulk mode always runs `report → verify → plan → implement`, matching each command's own documented Pipeline order
 - [ ] The Document step always runs after the core fix is committed, and its own doc-fix commit (if any) is always separate from the core fix's commit
 - [ ] The Document step always delegates to `plugin-documentation` — never calls `human-doc-reviewer` directly or asks its own separate delta/full question
 - [ ] The optional Handover offer uses `AskUserQuestion`, never auto-invoked without asking
@@ -97,7 +97,7 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 |---|---|
 | `workflows/improve-a-plugin.md` | Retro-driven improvement, full procedure |
 | `workflows/enhance-a-plugin.md` | Comparison-driven enhancement, full procedure |
-| `workflows/modernize-plugin-devkit.md` | Bulk and single-rule modernization against official docs, full procedure |
+| `workflows/self-upstream-plugin-devkit.md` | Bulk and single-rule modernization against official docs, full procedure |
 | `workflows/self-service-plugin-devkit.md` | Plugin-devkit's own 7 on-demand self-checks against itself, full procedure (includes the shared cost-gated dispatch pattern used by self-review/self-evaluation) |
 | `analyzing-sessions` skill | Finding source for `improve-a-plugin`; also the SWOT/critique engine `self-reflexion` hands session digests to |
 | `plugin-comparison` skill | Finding source for `enhance-a-plugin` |
@@ -109,5 +109,5 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 | `plugin-rulebook/scripts/agent-cost-tracker.py` | Cost estimates cited in `self-review`/`self-evaluation`'s scoped-vs-full gate |
 | `plugin-documentation` skill | Document step, all 4 workflows — authors doc updates and runs its own `human-doc-reviewer` QA internally |
 | `skill-maintenance` skill | Lighter-weight alternative for a single, already-known change — not this skill's job |
-| `/report-dev-rules`, `/verify-dev-rules`, `/plan-dev-rules`, `/implement-dev-rules` | `modernize-plugin-devkit` bulk mode, in this order |
-| `/find-dev-rule`, `/update-dev-rule` | `modernize-plugin-devkit` single-rule mode |
+| `/report-dev-rules`, `/verify-dev-rules`, `/plan-dev-rules`, `/implement-dev-rules` | `self-upstream-plugin-devkit` bulk mode, in this order |
+| `/find-dev-rule`, `/update-dev-rule` | `self-upstream-plugin-devkit` single-rule mode |
