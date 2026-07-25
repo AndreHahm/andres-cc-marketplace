@@ -392,55 +392,7 @@ Score the current and proposed versions on a fixed held-out check set (3–8 tas
 
 ## Key Rules (Non-Negotiable)
 
-### The 80% Rule (Content Distribution)
-- Will Claude execute this in 80%+ of skill activations? → **STAYS in SKILL.md**
-- Will Claude execute this in <20% of cases? → **CAN MOVE to references/**
-- Uncertain? → **DEFER to operator; keep in SKILL.md by default**
-
-### Movement Pattern (for content changes)
-```
-SEQUENCE (never violate order):
-1. CREATE/UPDATE destination file(s) with merged content
-2. LINK - Update SKILL.md pointers to new destination(s)
-3. DELETE old source (only after links verified and tested)
-
-NEVER: DELETE → LINK → CREATE (creates broken links and lost content)
-```
-
-**Visual flow:**
-
-```
-    ❌ WRONG                              ✅ CORRECT
-
-    DELETE old source                     CREATE destination
-            │                                     │
-            ▼                                     ▼
-    LINK to new location                  LINK pointers
-            │                                     │
-            ▼                                     ▼
-    CREATE destination                    DELETE old source
-    (broken links!)                       (safe, links verified)
-```
-
-### Preservation Gates (Four Gates, In Order)
-1. **Content Audit** - List ALL existing content. Classify using **the 80% rule**: core content (used in 80%+ of activations) vs. supplementary (<20%). See `references/80-percent-rule.md` for full decision framework.
-2. **Capability Assessment** - Will changes impair execution? If YES → cannot delete, only migrate
-3. **Migration Verification** - Before moving, verify destination complete. NO GAPS
-4. **Operator Confirmation** - Deletions require explicit approval. Migrations auto-approved
-
-### Scope Rules (Where to Work)
-✅ **PREFERRED** - Project paths (search first):
-- `skills/skill-name/` in plugin projects
-- `.claude/skills/skill-name/` in any project
-
-⚠️ **CONDITIONAL** - User-space (only if not in project):
-- `~/.claude/skills/skill-name/` - WARN: "Affects all projects"
-- Requires explicit user confirmation before editing
-- Offer to copy to project instead
-
-❌ **FORBIDDEN** - Never edit (REFUSE IMMEDIATELY):
-- `~/.claude/plugins/cache/*` (installed plugins - read-only)
-- Any path containing `/cache/` (always read-only)
+Four invariants govern every content change: the 80% Rule (core vs. supplementary content), the CREATE → LINK → DELETE movement pattern, four ordered Preservation Gates, and Scope Rules (which paths are preferred/conditional/forbidden to edit). Full detail — including the movement-pattern visual, the complete gate list, and the scope table — is in `references/non-negotiable-rules.md`; the workflow steps above already apply these, this is the reference version for the exact wording.
 
 ## Reference Guide
 
@@ -465,6 +417,7 @@ Never break existing behavior, never delete without knowing where content goes
 → `references/preservation-rules.md` for what NEVER gets cut
 → `references/refinement-guardrails.md` for safe patterns
 → `references/movement-pattern.md` for CREATE → LINK → DELETE sequence
+→ `references/non-negotiable-rules.md` for the full Key Rules reference (80% Rule, movement pattern, preservation gates, scope rules in one place)
 
 ### Validating Quality
 Check production readiness, tool scoping, completeness
