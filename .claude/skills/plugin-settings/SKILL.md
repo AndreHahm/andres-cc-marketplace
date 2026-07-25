@@ -253,7 +253,7 @@ Commands can create settings files:
 # Setup Command
 
 Steps:
-1. Ask user for configuration preferences
+1. Use `AskUserQuestion` to gather configuration preferences
 2. Create `.claude/my-plugin.local.md` with YAML frontmatter
 3. Set appropriate values based on user input
 4. Inform user that settings are saved

@@ -105,9 +105,9 @@ questions: [
        }
        ```
    - If not found in project → Check user-space: `~/.claude/skills/skill-name/`
-   - If found in user-space → WARN: "This affects all projects. Continue?"
+   - If found in user-space → WARN "This affects all projects," then use `AskUserQuestion` — question: "Continue with the user-space copy?", options: "Continue" / "Cancel"
    - If in cache (`~/.claude/plugins/cache/`) → REFUSE: "That's an installed copy (read-only)"
-   - If not found anywhere → ASK: "Where should I find this skill?"
+   - If not found anywhere → use `AskUserQuestion` — question: "Where should I find this skill?", options: "Project skill" / "User-space skill" / "Other" (lets the operator type a path)
 
    **Immediately after locating — pre-analyze before any interview:**
    - Check for `plugin-rulebook` skill (Glob `**/plugin-rulebook/SKILL.md`); if found, read its `assets/settings.json` and load BOTH R13 (SKILL.md line-count) and R18 (inline code-block size) tiered thresholds — these supersede the flat limits below for the rest of pre-analysis. If not found, fall back to `skill-development/references/size-limits.md`'s flat 500-line / 10-line limits.
@@ -299,7 +299,7 @@ After gathering responses (if any), document approved scope and proceed.
    - List all files in `references/` directory with line counts
    - Group by topic (what do they cover?)
    - Flag potential merges (2-4 files on same topic → 1 consolidated file)
-   - ASK: "Should we consolidate these files? Saves N lines, improves clarity"
+   - Use `AskUserQuestion` — question: "Should we consolidate these files? Saves N lines, improves clarity.", options: "Consolidate" / "Leave as-is"
    - Only proceed if operator approves
 
 4. **Apply preservation gates (CRITICAL - four gates, in order)**

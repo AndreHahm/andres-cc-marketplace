@@ -38,7 +38,7 @@ Before starting, check what already exists to avoid redundant work:
 | No Concept Card or Plan found, and `$ARGUMENTS` is a rough idea | Run the full pipeline from Phase 1 |
 | A Concept Card path is given or found in `.claude/output/plugin-ideation/` | Skip Phase 1; confirm the card with the user, then start at Phase 2 |
 | A Plan path is given or found in `.claude/output/plugin-planning/` | Skip Phases 1-2; confirm the plan with the user, then start at Phase 3 |
-| Some components already exist on disk matching the plan | Ask the user: design the remaining components only, or re-design everything? |
+| Some components already exist on disk matching the plan | Use `AskUserQuestion` — question: "Some components already exist on disk. What should this pass do?", options: "Design the remaining components only" / "Re-design everything" |
 
 ## When to Use
 

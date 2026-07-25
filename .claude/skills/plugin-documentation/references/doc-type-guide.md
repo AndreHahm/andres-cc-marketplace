@@ -40,7 +40,7 @@ These six baselines are drawn directly from `human-doc-reviewer`'s own Step 2 st
 
 **Required:** actual conduct expectations and an enforcement/reporting path — same "content the filename promises" bar as SECURITY.md.
 
-**Source of truth:** ask the user, or reuse a named standard (e.g. Contributor Covenant) only if the user confirms that's the intended baseline — don't silently adopt one.
+**Source of truth:** ask the user for the actual content, or reuse a named standard (e.g. Contributor Covenant) — but only after using `AskUserQuestion` to confirm that standard is the intended baseline, don't silently adopt one.
 
 ## Not Yet Reviewed by `human-doc-reviewer`
 

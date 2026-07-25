@@ -49,12 +49,7 @@ Summarize:
 - Suggestions for improvement
 - Approval recommendation
 
-Would you like to:
-1. Approve PR
-2. Request changes
-3. Leave comments only
-
-Reply with your choice and I'll help complete the action.
+Use `AskUserQuestion` — question: "What would you like to do?", options: "Approve PR" / "Request changes" / "Leave comments only" — then complete the chosen action.
 ```
 
 **Key features:**
@@ -535,14 +530,9 @@ Running steps with error handling...
 if [ $? -ne 0 ]; then
   ERROR: Tests failed
 
-  Options:
-  1. Fix tests and retry
-  2. Skip tests (NOT recommended)
-  3. Abort deployment
-
-  What would you like to do?
-
-  [Wait for user input before continuing]
+  Use `AskUserQuestion` — question: "Tests failed. What would you like to do?",
+  options: "Fix tests and retry" / "Skip tests (NOT recommended)" / "Abort deployment" —
+  before continuing.
 fi
 
 ## Step 2: Build

@@ -87,7 +87,7 @@ Group skills by function. Categories are freeform strings. Good patterns:
 - `business-diagnostics`, `content-creation`, `thinking-tools`, `utilities`
 - `developer-tools`, `productivity`, `documentation`, `security`
 
-Ask the user to confirm categories if grouping is ambiguous.
+If grouping is ambiguous, propose a category set and use `AskUserQuestion` — question: "Does this category grouping look right?", options: "Confirm" / "Let me revise" — to confirm before proceeding.
 
 ### Step 4: Choose plugin boundaries
 

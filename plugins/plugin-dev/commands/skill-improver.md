@@ -23,7 +23,7 @@ Glob(pattern="**/SKILL.md")
 
 Filter results to find skills matching the user's input (by skill name or path substring).
 
-- **Multiple matches:** Ask the user to choose
+- **Multiple matches:** Use `AskUserQuestion` — question: "Which skill did you mean?", one option per match — to let the user choose
 - **No matches:** Report available skills
 - **Single match:** Proceed with that path
 

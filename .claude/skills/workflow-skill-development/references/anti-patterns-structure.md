@@ -245,5 +245,5 @@ Use distinctive keywords per workflow. If two workflows genuinely overlap, add a
 
 **After:**
 ```markdown
-| None of the above | Ask user to clarify: "I can help with X, Y, or Z. Which would you like?" |
+| None of the above | Use `AskUserQuestion` — question: "Which would you like?", options: "X" / "Y" / "Z" |
 ```

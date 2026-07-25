@@ -55,13 +55,13 @@ Each target may be given as:
 - An absolute local path to a plugin folder or component file
 - A GitHub reference: `owner/repo`, `owner/repo@ref`, or `owner/repo@ref/path/to/component`
 
-If either target is omitted or ambiguous, ask the user directly before proceeding — do not guess at a GitHub repo or install path.
+If either target is omitted or ambiguous, use `AskUserQuestion` to ask the user directly before proceeding — do not guess at a GitHub repo or install path.
 
 ## Processing Flow
 
 ### 1. Resolve Target A
 
-Parse `$0` (or the conversation, if the command was invoked without arguments). If it names a component or plugin inside the current repo, resolve it with `Glob` to its canonical absolute path. If the name resolves to both a `plugins/plugin-dev/` copy and a `.claude/` mirror (the intentional staging-mirror pattern documented in `plugin-rulebook`'s R19 exception), use the `plugins/plugin-dev/` copy as canonical and note the mirror exists — do not treat it as an error. If Target A isn't clearly identifiable, ask the user which component they mean.
+Parse `$0` (or the conversation, if the command was invoked without arguments). If it names a component or plugin inside the current repo, resolve it with `Glob` to its canonical absolute path. If the name resolves to both a `plugins/plugin-dev/` copy and a `.claude/` mirror (the intentional staging-mirror pattern documented in `plugin-rulebook`'s R19 exception), use the `plugins/plugin-dev/` copy as canonical and note the mirror exists — do not treat it as an error. If Target A isn't clearly identifiable, use `AskUserQuestion` — question: "Which component did you mean for Target A?", options: one per plausible candidate found (plus "Other" to type a path/reference).
 
 ### 2. Resolve Target B and Its Source Kind
 
@@ -74,7 +74,7 @@ Parse `$1`. Determine which of the four source kinds it is:
 | Is an absolute/relative filesystem path that exists but isn't installed | Locally saved external plugin |
 | Matches `owner/repo`, `owner/repo@ref`, or a `github.com/...` URL shape | Public GitHub-hosted |
 
-If `$1` doesn't clearly match any of these (e.g. a bare name that isn't in the repo and isn't installed), ask the user to clarify which source kind they mean and provide the exact path/reference before continuing — do not fabricate a GitHub owner/repo or a local path.
+If `$1` doesn't clearly match any of these (e.g. a bare name that isn't in the repo and isn't installed), use `AskUserQuestion` — question: "Which of these best describes Target B?", options: "Internal (repo component)" / "Locally installed plugin" / "Locally saved plugin folder" / "Public GitHub-hosted" — then get the exact path/reference before continuing; do not fabricate a GitHub owner/repo or a local path.
 
 For **locally installed**: read `~/.claude/plugins/installed_plugins.json` (via `Read`) to find the plugin's `installPath`, marketplace, and enabled/disabled state.
 

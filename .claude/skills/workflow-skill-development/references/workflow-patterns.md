@@ -198,7 +198,7 @@ Use AskUserQuestion with clear options.
 
 ### GATE 2: Final Confirmation with Exact Commands
 Show the EXACT commands that will run.
-**Confirm? (yes/no)**
+Use `AskUserQuestion` — question: "Run these exact commands?", options: "Confirm" / "Cancel".
 
 ### Phase 3: Execute
 Run each action as a **separate command**.

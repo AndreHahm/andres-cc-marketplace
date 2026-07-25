@@ -57,7 +57,7 @@ For each distinct capability the concept implies, decide the component type usin
 
 List each planned component: name candidate, type, one-line purpose, and rough trigger phrases.
 
-**Code smell check:** if the plan proposes more than 4 agents, or more skills than can be summarized in one paragraph each, flag this explicitly and ask the user whether the concept should be split into two plugins — cheaper to catch here than after Design.
+**Code smell check:** if the plan proposes more than 4 agents, or more skills than can be summarized in one paragraph each, flag this explicitly and use `AskUserQuestion` — question: "This plan is large — should the concept be split into two plugins?", options: "Split into two" / "Keep as one" — cheaper to catch here than after Design.
 
 ## Step 3: Allocate Content Depth (Skills Only)
 

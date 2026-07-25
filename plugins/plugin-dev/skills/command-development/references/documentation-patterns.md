@@ -211,14 +211,7 @@ New version: $1
 <!-- This pause allows user to verify everything is correct -->
 <!-- We can't automatically proceed because deployment is risky -->
 
-Review the above configuration.
-
-**Continue with deployment?**
-- Reply "yes" to proceed
-- Reply "no" to cancel
-- Reply "edit" to modify configuration
-
-[Await user input before continuing...]
+Review the above configuration, then use `AskUserQuestion` — question: "Continue with this deployment?", options: "Proceed" / "Edit configuration" / "Cancel" — before continuing.
 
 <!-- After user confirms, we proceed with deployment -->
 <!-- All subsequent steps are automated -->

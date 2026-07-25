@@ -187,8 +187,9 @@ also fetched from a live external location this skill doesn't control.
   disable it, since the history (`last_verified`/`last_verified_snapshot`) is worth keeping.
 - **Manual rank override:** set `manual_rank_override` to `critical`/`standard`/`opportunistic`, or
   `null` to fall back to the derived value.
-- **Add a custom source:** append a new entry with `custom: true`. Ask the user for `authority`/
-  `volatility` if not stated; default an unclassified blog post/paper/repo to `informal`/`stable`
+- **Add a custom source:** append a new entry with `custom: true`. If `authority`/`volatility` aren't
+  stated, use `AskUserQuestion` (`authority`: `spec`/`guide`/`changelog`/`informal`; `volatility`:
+  `stable`/`evolving`/`frequent`); default an unclassified blog post/paper/repo to `informal`/`stable`
   rather than guessing a higher tier. Run `scripts/validate_sources.py` after any manual edit to
   `assets/sources.json` before considering the change complete — it catches malformed entries and
   duplicate `id`s before they reach a consuming command. **Do the fetch as part of this step** (via

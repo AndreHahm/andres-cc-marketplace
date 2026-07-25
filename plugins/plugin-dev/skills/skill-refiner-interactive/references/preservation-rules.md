@@ -218,7 +218,7 @@ Is content being proposed for deletion?
 │  ├─ Is it essential to core workflow?
 │  │  ├─ YES → REFUSE deletion (move instead)
 │  │  └─ NO → SAFE to delete
-│  └─ Get operator confirmation before deletion
+│  └─ Get operator confirmation via `AskUserQuestion` before deletion
 └─ NO (moving or updating instead) → Proceed with movement pattern
 ```
 
@@ -313,5 +313,5 @@ See `production-patterns.md`'s "Changes Made Summary" for a worked example of th
 
 **When in doubt:** Move to references instead of deleting. Moving preserves functionality while still improving efficiency.
 
-**Operator approval:** Always ask before deleting. Migrations and improvements don't need approval (content preserved anyway).
+**Operator approval:** Always use `AskUserQuestion` before deleting. Migrations and improvements don't need approval (content preserved anyway).
 
