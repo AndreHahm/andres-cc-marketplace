@@ -48,6 +48,8 @@ For date-range retrospectives or deep taxonomy guidance, read the full phases be
 
 If a scope was supplied as an argument (a date string, `"today"`, `"this conversation"`, or similar), skip the question UI and proceed directly to Phase 2 using that argument as the scope.
 
+**Timezone pitfall — "since last retro" boundaries:** a prior retro's own header timestamp is UTC (`Z`-suffixed, e.g. `2026-07-24T10:44:23Z`), but local file mtimes (used to locate output artifacts and session transcripts in Phase 2) are in local time. Convert the UTC boundary to local before comparing — e.g. `10:44:23Z` on a UTC+2 machine is `12:44:23+02:00` local, not `10:44:23` local. Treating the boundary as already-local silently shifts the window earlier than intended and can wrongly exclude or include artifacts near the boundary.
+
 Ask for the session range only when no argument was provided:
 
 ```
