@@ -41,7 +41,7 @@ description drawn from its own section below.
    `analyzing-sessions` directly with a date argument.
 
 **Exit criteria:** A plugin-level rollup presented on top of `analyzing-sessions`' own
-persisted report; if zero transcripts survive the pre-filter, state "No plugin-dev-related
+persisted report; if zero transcripts survive the pre-filter, state "No plugin-devkit-related
 sessions in the last N days" and stop — not an error.
 
 ## Service 2: Self-Review
@@ -207,7 +207,7 @@ collision only, not the scenarios below. Treat every item as design-review-verif
 until eval coverage is added (see `SKILL.md`'s Testing & Validation note for the same
 caveat at the skill level).
 
-1. **Self-reflexion, zero matching sessions** — confirm "No plugin-dev-related sessions
+1. **Self-reflexion, zero matching sessions** — confirm "No plugin-devkit-related sessions
    in the last N days" is stated plainly, not treated as an error
 2. **Self-reflexion, pre-filter correctness** — confirm a transcript with no plugin-devkit
    references is dropped before any digest-extraction `Grep`/`Read`, not just excluded

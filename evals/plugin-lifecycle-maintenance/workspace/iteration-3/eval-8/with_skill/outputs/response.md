@@ -1,6 +1,6 @@
 # The Document Step, Step by Step — plugin-foo's core fix just committed
 
-Context: this is the shared "Document" step that runs after the core fix/rule-update in *any* of the four `plugin-lifecycle-maintenance` workflows (improve-a-plugin, enhance-a-plugin, modernize-plugin-dev, self-service-plugin-dev) has been applied and committed. It doesn't matter which workflow got plugin-foo here — once the core fix is committed, the Document step is identical.
+Context: this is the shared "Document" step that runs after the core fix/rule-update in *any* of the four `plugin-lifecycle-maintenance` workflows (improve-a-plugin, enhance-a-plugin, self-upstream-plugin-devkit, self-service-plugin-devkit) has been applied and committed. It doesn't matter which workflow got plugin-foo here — once the core fix is committed, the Document step is identical.
 
 ## Step 0 — Task bookkeeping (before dispatch)
 

@@ -18,5 +18,5 @@ Since the user prompt is a literal, word-for-word match of one of the explicitly
 
 Reasoning:
 - The skill explicitly maps its three workflows to three trigger categories: retro-driven improvement, comparison-driven enhancement, and dev-rules/docs-modernization.
-- "based on the retro" directly signals the retrospective/analyzing-sessions source of findings, not a comparison against another plugin (`enhance-a-plugin.md`, which is comparison-driven and triggers on phrasing like "enhance this plugin compared to X") and not the docs-modernization workflow (`modernize-plugin-dev.md`, which triggers on phrasing like "modernize plugin-devkit's rules" or "keep plugin-devkit current with the platform docs").
+- "based on the retro" directly signals the retrospective/analyzing-sessions source of findings, not a comparison against another plugin (`enhance-a-plugin.md`, which is comparison-driven and triggers on phrasing like "enhance this plugin compared to X") and not the docs-modernization workflow (`self-upstream-plugin-devkit.md`, which triggers on phrasing like "check plugin-devkit's rules against upstream docs" or "keep plugin-devkit current with the platform docs").
 - The description's own example ordering pairs "improve this plugin based on the retro" with the first-listed workflow, "retro-driven improvement," confirming the mapping to `improve-a-plugin.md`.
