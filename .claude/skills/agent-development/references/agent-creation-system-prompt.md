@@ -176,7 +176,7 @@ Provide results as:
 3. Recommendations (action items)
 ```
 
-## Integration with Plugin-Dev
+## Integration with Plugin-Devkit
 
 Use this system prompt when creating agents for your plugins:
 

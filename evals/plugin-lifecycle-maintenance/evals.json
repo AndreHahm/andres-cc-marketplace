@@ -1,7 +1,7 @@
 {
   "skill_name": "plugin-lifecycle-maintenance",
   "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
-  "description": "Orchestrates ongoing maintenance for an already-built plugin through 4 workflows (improve/enhance/modernize/self-service), each ending in a human-approved, tested, documented, committed change.",
+  "description": "Orchestrates ongoing maintenance for an already-built plugin through 4 workflows (improve/enhance/self-upstream/self-service), each ending in a human-approved, tested, documented, committed change.",
   "evals": [
     {
       "id": 1,

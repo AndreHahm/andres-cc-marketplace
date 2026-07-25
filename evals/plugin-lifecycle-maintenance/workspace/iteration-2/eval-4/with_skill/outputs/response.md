@@ -7,7 +7,7 @@ This is the comparison-driven enhancement workflow, and it's the right match bec
 Ruling out the other two:
 
 - **`improve-a-plugin.md`** (retro-driven) is driven by `analyzing-sessions` findings from session behavior — the user didn't run a retro, they ran a comparison. Wrong finding source.
-- **`modernize-plugin-dev.md`** is scoped specifically to keeping `plugin-devkit`'s own rules current against official Claude Code docs, via the `/report-dev-rules` → `/verify-dev-rules` → `/plan-dev-rules` → `/implement-dev-rules` (bulk) or `/find-dev-rule` → `/update-dev-rule` (single-rule) command chains — not a `plugin-comparison` report. Wrong domain and wrong finding source.
+- **`self-upstream-plugin-devkit.md`** is scoped specifically to keeping `plugin-devkit`'s own rules current against official Claude Code docs, via the `/report-dev-rules` → `/verify-dev-rules` → `/plan-dev-rules` → `/implement-dev-rules` (bulk) or `/find-dev-rule` → `/update-dev-rule` (single-rule) command chains — not a `plugin-comparison` report. Wrong domain and wrong finding source.
 
 The `SKILL.md` Quick Start table confirms this directly: `enhance-a-plugin.md` is "Comparison-driven: `plugin-comparison` finds gaps against another target, human picks, hand off to Fix."
 

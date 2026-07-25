@@ -7,7 +7,7 @@ description: >-
   validation, evaluation, grading, improvement, documentation) — each ending in a
   human-approved, tested, documented, committed change. Use when the user asks to
   "improve this plugin based on the retro", "enhance this plugin compared to X",
-  "modernize plugin-devkit's rules", "run a self-check on plugin-devkit", or wants to act on
+  "check plugin-devkit's rules against upstream docs", "run a self-check on plugin-devkit", or wants to act on
   findings from analyzing-sessions, plugin-comparison, or the dev-rules commands rather
   than just reading a report. Never decides what to fix itself — the human always picks.
   Reuses plugin-lifecycle-downstream's Fix phase and the dev-rules commands' own apply

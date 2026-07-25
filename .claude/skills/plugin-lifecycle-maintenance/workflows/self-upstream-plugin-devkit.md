@@ -1,4 +1,4 @@
-# Modernize plugin-devkit: Keep Rules Current Against Official Docs
+# Self-Upstream: Keep Plugin-Devkit's Rules Current Against Official Docs
 
 Two sub-modes, chosen by scope at the start. Both end in the same Document → Commit → optional Handover tail.
 

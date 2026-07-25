@@ -6,7 +6,7 @@ The user just ran a retro on `plugin-foo` and wants to act on the findings. That
 
 Not `enhance-a-plugin.md` — that's for comparison-driven findings (`plugin-comparison` against another target), and there's no second target named here.
 
-Not `modernize-plugin-dev.md` — that's specifically for keeping `plugin-devkit`'s own rules current against official Claude Code docs, unrelated to a general session retro.
+Not `self-upstream-plugin-devkit.md` — that's specifically for keeping `plugin-devkit`'s own rules current against official Claude Code docs, unrelated to a general session retro.
 
 ## 2. Concrete next step (Step 1 → Step 2 of improve-a-plugin.md)
 

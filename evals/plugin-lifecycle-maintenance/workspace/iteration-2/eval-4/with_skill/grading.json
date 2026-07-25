@@ -3,7 +3,7 @@
   "config": "with_skill",
   "results": [
     {
-      "text": "Identifies workflows/enhance-a-plugin.md as the correct workflow file, not improve-a-plugin.md or modernize-plugin-dev.md",
+      "text": "Identifies workflows/enhance-a-plugin.md as the correct workflow file, not improve-a-plugin.md or self-upstream-plugin-devkit.md",
       "passed": true,
       "evidence": "Response explicitly names enhance-a-plugin.md, then rules out both alternatives by name with a stated reason for each (wrong finding source / wrong domain)."
     },
