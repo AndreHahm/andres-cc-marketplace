@@ -42,6 +42,7 @@ For date-range retrospectives or deep taxonomy guidance, read the full phases be
 - **Single-component review** — use `skill-reviewer` for one skill or `plugin-validator` for one plugin; this skill adds overhead without benefit for isolated reviews
 - **Code quality** — use `/code-review` for diff analysis; this skill covers skill and agent behavior, not code correctness
 - **Want the retrospective's suggestions applied, tested, documented, and committed as a guided pipeline, not just surfaced** — use `plugin-lifecycle-maintenance`'s `improve-a-plugin` workflow after this skill's report is produced; this skill stops at "Top 5 Actions," it never applies them
+- **Full permission-candidate extraction across session transcripts** — use `find-permissions`; this skill's own Permission Friction note (Phase 6) is a qualitative observation only, not a substitute for that command's systematic scan
 
 ## Phase 1: Scope
 
@@ -170,6 +171,8 @@ Output two views.
 ### P3 — Minor
 <details><summary>N minor suggestions</summary>…</details>
 ```
+
+**Permission friction (if observed):** if the session showed the user repeatedly approving or denying the same or similar Bash commands, add a short qualitative note — pattern and approximate frequency, e.g. "approved `git push` 4x this session." This is a narrative observation only, not an extraction pass; for a full candidate list of permission-rule gaps across session transcripts, point the user to `find-permissions` rather than attempting to replicate its extraction here.
 
 Close with **Top 5 Actions**: the five highest-impact suggestions across all components, in order.
 
