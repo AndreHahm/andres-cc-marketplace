@@ -36,8 +36,14 @@ Session transcripts are stored at `~/.claude/projects/<encoded-cwd>/<session-id>
 
 1. Compute the expected encoded directory name from `pwd`.
 2. `Glob('~/.claude/projects/*')` and confirm a directory matching the computed name exists. If not found exactly, fall back to matching the directory whose name contains the repo's leaf folder name, and state which directory was selected before proceeding — do not guess silently among multiple candidates.
-3. Within that directory, select transcript file(s) per Step 1's resolved mode: the N most-recent by mtime (`ls -t`), the one matching `--session`, or all files.
-4. If `--all` resolves to more than 10 files, print the count and ask for confirmation before proceeding — this can be slow and produce a noisy report.
+3. Within that directory, list transcript file(s) per Step 1's resolved mode: mtime-sorted (`ls -t`) for `--recent`/`--all`, or the one matching `--session`.
+4. **`--recent N` qualifying filter:** mtime alone is not a reliable proxy for "a real work session" — a Claude Code project directory also accumulates small auxiliary session files (e.g. title-generation side-sessions) with only one or two assistant turns and no tool use at all, which sort to the top of `ls -t` exactly like a real session would. Walk the mtime-sorted list and, for each candidate file, run a cheap existence check before counting it toward N:
+   ```
+   jq -e 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="Bash")' <file> >/dev/null 2>&1
+   ```
+   A non-zero exit means the file has no Bash tool_use at all — skip it (it would contribute nothing to Step 3 anyway) rather than counting it toward N. Stop once N qualifying files are found, or once 20 files have been scanned, whichever comes first — report both the qualifying count and the skipped-trivial count in the final report (Step 6) rather than silently discarding them. If fewer than N qualifying files are found within the 20-file scan cap, proceed with however many were found and state this explicitly rather than treating it as an error.
+5. **`--session <id>` and `--all` are never filtered** — `--session` targets exactly the file the user named, even if it turns out to have no Bash commands (report zero found, don't silently substitute another file); `--all` means everything in scope by definition, though a file with zero qualifying commands still contributes nothing to Step 4's candidate list.
+6. If `--all` resolves to more than 10 files, print the count and ask for confirmation before proceeding — this can be slow and produce a noisy report.
 
 ## Step 3: Extract Bash Commands
 
@@ -71,6 +77,7 @@ Get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), create the output directo
 Scanned {n} session transcript(s) for Bash commands with no matching current permission rule.
 **Generated:** {YYYY-MM-DD} | **Scope:** {recent N / session ID / all} | **Sessions:** {list of files}
 **Coverage:** Bash commands only (v1) — other tool types not scanned.
+**Skipped (no Bash tool_use found):** {n} file(s) — {list, if any; "none" for --session or if none skipped}
 
 ## Candidates
 | Pattern | Frequency | Sessions | Example |
