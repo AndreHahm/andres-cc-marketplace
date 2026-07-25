@@ -342,24 +342,16 @@ Every reference to an external company, GitHub organization, marketplace, plugin
 
 **Scope (as checked by `plugin-rulebook` directly):** SKILL.md, agent files, command files, hook config, rule files, and all files in `references/`/`scripts/`/`examples/`/`workflows/` — the same component scope as R1. `CLAUDE.md`/`AGENTS.md`/`README.md`/`CONTRIBUTING.md` are **not** in `plugin-rulebook`'s own scope, consistent with `claudemd-reviewer`'s documented exception. The dedicated `external-references-reviewer` agent deliberately extends this same R23 classification to that wider file surface (mirroring how `language-reviewer` extends R1–R3) — that extension lives in the agent, not in this rule's default scope.
 
-**Repo-specific config split:** `config.whitelist`, `config.blacklist`, and `config.excluded_paths` are the one part of this rulebook's settings that's inherently repo-specific — a whitelist/blacklist that makes sense for this repo (e.g. its own internal tool/company allow-list) is meaningless or wrong for any other repo that installs this plugin. `assets/settings.json` ships these as empty arrays (the clean default). The actual values for this repo live in `{REPO_ROOT}/.claude/plugin-rulebook.config.json` and are merged on top — see "Repo-Specific Configuration" below.
-
-**Classification** (configurable in `assets/settings.json → rules.R23_external_reference_policy.config`, merged with the repo-specific override file):
+**Classification** (configurable in `assets/settings.json → rules.R23_external_reference_policy.config`, merged with the repo-specific override file — `config.whitelist`/`config.blacklist`/`config.excluded_paths` are inherently repo-specific and ship empty by default, see "Repo-Specific Configuration" below):
 
 | Classification | Meaning | Severity |
 |---|---|---|
-| **Whitelisted** | Matches an entry in `config.whitelist`, or is a plugin explicitly listed in a `marketplace.json` found in the repo (auto-allowed when `config.auto_allow_marketplace_json_entries` is true) | OK — no finding |
-| **Blacklisted** | Matches an entry in `config.blacklist` | ❌ Critical — must be removed or replaced before proceeding |
+| **Whitelisted** | Matches `config.whitelist`, or a plugin explicitly listed in a `marketplace.json` found in the repo | OK — no finding |
+| **Blacklisted** | Matches `config.blacklist` | ❌ Critical — must be removed or replaced before proceeding |
 | **Unknown** | Matches neither list | ⚠️ Advisory — flag for the maintainer to explicitly whitelist or blacklist, not a blocking defect by itself |
 | **Broken** | A referenced URL, repo, plugin, or skill name that doesn't resolve to anything that exists | ❌ Critical — distinct from classification; a stale or invalid reference is a correctness defect regardless of whitelist/blacklist status |
 
-**Marketplace auto-allow:** if any `marketplace.json` exists in the repository, every plugin name listed in it is treated as whitelisted by default for this check — a marketplace's own declared plugin list is a first-party distribution surface, not a stray external mention.
-
-**Excluded paths:** `config.excluded_paths` lists files that are entirely out of scope for R23 — not classified, not reported. Use this for files whose whole purpose is to catalog third-party names/domains as functional content (a trusted-domain allowlist, a credential-signature reference) rather than incidentally mention them; classifying every entry in such a file is noise, not signal.
-
-**Exception — illustrative examples:** a plugin, org, or marketplace name used purely as an illustrative example in prose (e.g. a trigger description explaining "after adapting a pattern from a plugin like `acme-tools`") is not itself a reference requiring classification, the same way R9 exempts placeholder credential values and R17 exempts URLs used as examples. Only a genuine dependency, citation, or leftover mention is in scope.
-
-Whitelist and blacklist entries match domains, GitHub org/repo names, plugin names, skill names, and marketplace names — see `${CLAUDE_SKILL_DIR}/references/external-reference-policy.md` for the full matching procedure, entry-format examples, and worked cases.
+Marketplace auto-allow, excluded-path handling, the illustrative-example exception, whitelist/blacklist entry-format examples, and the full matching procedure: `${CLAUDE_SKILL_DIR}/references/external-reference-policy.md`.
 
 ---
 

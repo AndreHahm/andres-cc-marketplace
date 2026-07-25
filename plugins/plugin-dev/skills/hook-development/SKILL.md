@@ -124,76 +124,7 @@ Every hook action (command, http, mcp_tool, prompt, agent) **must** be inside a 
 
 ## Hook Types
 
-### Prompt-Based (Recommended)
-
-LLM-driven decision making for context-aware validation:
-
-```json
-{
-  "type": "prompt",
-  "prompt": "Evaluate if this tool use is appropriate: $TOOL_INPUT",
-  "timeout": 30
-}
-```
-
-Best for: flexible logic, edge cases, natural language reasoning, easy maintenance.
-
-### Command
-
-Bash execution for deterministic checks:
-
-```json
-{
-  "type": "command",
-  "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/validate.sh",
-  "timeout": 60
-}
-```
-
-Best for: fast deterministic validations, file system checks, external tool integrations.
-
-### Agent-Based
-
-Multi-turn subagent with Read/Grep/Glob/Bash access for checks requiring file inspection:
-
-```json
-{
-  "type": "agent",
-  "prompt": "Verify all unit tests pass. Run the test suite and check results. $ARGUMENTS",
-  "timeout": 120
-}
-```
-
-Returns `{"ok": true}` or `{"ok": false, "reason": "..."}`. Default timeout: 60s; up to 50 tool-use turns.
-
-### HTTP
-
-Posts event data to a webhook endpoint:
-
-```json
-{
-  "type": "http",
-  "url": "https://example.com/hook",
-  "timeout": 10
-}
-```
-
-Cannot block via a non-2xx status code — to block, the endpoint must return `2xx` with a valid JSON decision body (see `references/exit-code-behavior.md`).
-
-### MCP Tool
-
-Calls an installed MCP server tool as the hook action. Requires `server` and `tool`:
-
-```json
-{
-  "type": "mcp_tool",
-  "server": "my-server",
-  "tool": "validate",
-  "timeout": 10
-}
-```
-
-See `references/mcp-tools.md` for the full reference.
+Five action types: `prompt` (LLM-driven, flexible), `command` (bash, deterministic), `agent` (multi-turn, file inspection), `http` (webhook), `mcp_tool` (calls an installed MCP server tool). Full field reference and JSON example per type: `references/hook-types.md` (`mcp_tool` has its own dedicated reference, `references/mcp-tools.md`).
 
 **Type decision:**
 
@@ -448,6 +379,7 @@ After writing or modifying hooks:
 
 | Reference | Purpose |
 |---|---|
+| `references/hook-types.md` | Full field reference and JSON example for each of the 5 hook action types |
 | `references/event-reference.md` | Complete event docs: data payloads, timing, matcher values |
 | `references/decision-schemas.md` | Output schemas for prompt/agent/command hooks by event |
 | `references/exit-code-behavior.md` | Exit code semantics (0/1/2) with per-event scenarios |

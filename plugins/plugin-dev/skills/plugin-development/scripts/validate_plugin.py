@@ -221,6 +221,8 @@ def validate_manifest(plugin_path, verbose=False):
 
     # Unrecognized top-level fields: Claude Code ignores these and `claude plugin validate`
     # reports them as warnings, not errors -- match that here rather than staying silent.
+    # known_fields duplicates references/manifest-reference.md's field list -- if a new
+    # field is documented there, add it here too, or this validator will warn on it.
     known_fields = {
         'name', '$schema', 'displayName', 'version', 'description', 'author',
         'homepage', 'repository', 'license', 'keywords', 'defaultEnabled',

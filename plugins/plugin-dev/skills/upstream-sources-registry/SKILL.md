@@ -51,7 +51,11 @@ Two distinct consumers:
   `_meta.review_triggers` entries), but the R1–R26 rule content itself is untouched and stays there.
 - **A one-off "what does the current Claude Code doc say about X" lookup with no intent to track
   it** — just `WebSearch`/`WebFetch` directly; registering a source only makes sense for something
-  worth re-checking over time.
+  worth re-checking over time. **If the fetch is explicitly meant to be tracked going forward,
+  invoke this skill first** ("add a source to the registry") rather than fetching directly and
+  reconciling `assets/sources.json` afterward — see "Managing Sources" below. The end state is the
+  same either way, but going through the skill's own entry point keeps the registry, not an ad hoc
+  fetch, as the actual source of truth for what gets tracked.
 
 ## Quick Start
 
@@ -187,7 +191,10 @@ also fetched from a live external location this skill doesn't control.
   `volatility` if not stated; default an unclassified blog post/paper/repo to `informal`/`stable`
   rather than guessing a higher tier. Run `scripts/validate_sources.py` after any manual edit to
   `assets/sources.json` before considering the change complete — it catches malformed entries and
-  duplicate `id`s before they reach a consuming command.
+  duplicate `id`s before they reach a consuming command. **Do the fetch as part of this step** (via
+  the Freshness Check procedure above, so `last_verified`/`last_verified_snapshot` are populated
+  from the start) rather than fetching the source separately beforehand and only registering it
+  after the fact.
 
 ## Testing & Validation
 
