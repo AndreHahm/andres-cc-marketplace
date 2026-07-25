@@ -1,6 +1,6 @@
 {
   "eval_id": "eval-2",
-  "skill_path": "plugins/plugin-dev/skills/plugin-documentation",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-documentation",
   "assertions": [
     {"text": "README now lists both hello-skill and goodbye-skill", "type": "functionality", "target": "README.md"},
     {"text": "The 'Known Issues' section and its exact content are preserved", "type": "presence", "target": "README.md"},

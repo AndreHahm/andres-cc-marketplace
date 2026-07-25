@@ -1,6 +1,6 @@
 {
   "eval_id": 3,
-  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
   "assertions": [
     {"text": "Identifies workflows/improve-a-plugin.md as the correct workflow file", "type": "functionality", "target": "outputs/ directory"},
     {"text": "States the next step involves human-decision via AskUserQuestion before anything is applied, not an automatic selection", "type": "quality", "target": "outputs/ directory"},

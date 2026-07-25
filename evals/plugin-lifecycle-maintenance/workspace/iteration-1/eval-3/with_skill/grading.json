@@ -2,7 +2,7 @@
   "eval_id": 3,
   "configuration": "with_skill",
   "assertions_evaluated": [
-    {"text": "Identifies workflows/improve-a-plugin.md as the correct workflow file", "passed": true, "evidence": "Agent named improve-a-plugin.md and explicitly ruled out the other two with reasons (no comparison target given; not plugin-dev's own rules)."},
+    {"text": "Identifies workflows/improve-a-plugin.md as the correct workflow file", "passed": true, "evidence": "Agent named improve-a-plugin.md and explicitly ruled out the other two with reasons (no comparison target given; not plugin-devkit's own rules)."},
     {"text": "States the next step involves human-decision via AskUserQuestion before anything is applied, not an automatic selection", "passed": true, "evidence": "Agent stated Step 2 presents the report and asks via AskUserQuestion (multiSelect), with 'none of these' as a valid answer."},
     {"text": "Does not claim it would reimplement apply/test/commit logic itself -- recognizes the hand-off to plugin-lifecycle-downstream's Fix phase", "passed": true, "evidence": "Agent explicitly stated nothing reaches plugin-lifecycle-downstream's Fix phase (Step 3) until a human-approved list exists, and there is no auto-apply path."}
   ],

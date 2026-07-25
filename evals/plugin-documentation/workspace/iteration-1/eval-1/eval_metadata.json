@@ -1,6 +1,6 @@
 {
   "eval_id": "eval-1",
-  "skill_path": "plugins/plugin-dev/skills/plugin-documentation",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-documentation",
   "assertions": [
     {"text": "README states what widget-tools does, drawn from plugin.json's description field", "type": "presence", "target": "README.md"},
     {"text": "README lists hello-skill with its actual frontmatter description content", "type": "presence", "target": "README.md"},

@@ -2,7 +2,7 @@ A retro with zero suggestions was run against `plugin-foo` via `analyzing-sessio
 
 ## 1. What Step 1's exit criteria say for zero suggestions
 
-Step 1 ("Retro") of `plugins/plugin-dev/skills/plugin-lifecycle-maintenance/workflows/improve-a-plugin.md` states:
+Step 1 ("Retro") of `plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/workflows/improve-a-plugin.md` states:
 
 > **Exit criteria:** The report exists with at least one suggestion (P1, P2, or P3). If it has none, state this plainly and stop — there is nothing for this workflow to act on.
 

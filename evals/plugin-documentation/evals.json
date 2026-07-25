@@ -1,6 +1,6 @@
 {
   "skill_name": "plugin-documentation",
-  "skill_path": "plugins/plugin-dev/skills/plugin-documentation",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-documentation",
   "description": "Author and update a Claude Code plugin's human-facing documentation from the plugin's actual current state, then invoke human-doc-reviewer for QA.",
   "evals": [
     {
