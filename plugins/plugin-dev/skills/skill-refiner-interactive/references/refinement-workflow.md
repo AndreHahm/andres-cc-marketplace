@@ -120,8 +120,8 @@ APPROVED: Safe to remove from SKILL.md
 **Action:**
 1. **For DELETIONS** → Require explicit operator approval:
    - Show what's being deleted and why
-   - Ask: "Okay to delete this?"
-   - Wait for confirmation before removing
+   - Use `AskUserQuestion` — question: "Okay to delete this?", options: "Delete" / "Keep"
+   - Wait for the answer before removing anything
 2. **For MIGRATIONS** → Auto-approved (content preserved, just moved):
    - No separate approval needed
    - Just verify with operator: "I've moved X to references/. Working as expected?"

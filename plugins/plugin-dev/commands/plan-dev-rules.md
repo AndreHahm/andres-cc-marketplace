@@ -32,7 +32,7 @@ No gap report found. Run /verify-dev-rules first.
 
 Read the gaps file fully. Build the working gap set: every row from its **Gaps** table where **Verified** is `CONFIRMED` or `PATCHED`, minus any gap ID passed via `--exclude`. Carry the **Excluded Candidates** table forward unchanged, plus any `--exclude` IDs added with reason "excluded by user at plan time."
 
-**Pre-flight:** Print the working gap count by priority tier and the excluded count. Wait for confirmation before proceeding.
+**Pre-flight:** Print the working gap count by priority tier and the excluded count. Use `AskUserQuestion` — question: "Proceed with planning?", options: "Proceed" / "Cancel" — before proceeding.
 
 ---
 

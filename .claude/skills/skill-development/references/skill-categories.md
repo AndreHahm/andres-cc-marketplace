@@ -314,7 +314,7 @@ Skills that perform routine maintenance and operational procedures. Some involve
 ## Procedure
 1. [Discovery step]
 2. [Report findings to user]
-3. [Wait for confirmation]
+3. [Confirm via AskUserQuestion]
 4. [Execute with guardrails]
 5. [Verify completion]
 

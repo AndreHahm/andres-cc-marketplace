@@ -19,7 +19,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/commands/find-dev-rule.md` and execute its Steps 1�
 
 From the resulting classifications, treat `OUTDATED`, `MISSING`, and `CONFLICT` as **stale** — these need action. `CONFIRMED`, `NOT-OFFICIAL`, and `UNVERIFIABLE` need no update. Before treating a stale rule as needing action, check for a prior intentional-divergence decision: `Glob` the default rules output directory (`.claude/output/rules/*-gaps.md`, or the caller-specified `--output-dir` if this command is invoked with one) for gap reports, and search each one's **Excluded Candidates** table for a row whose "What was considered" matches this rule's name/topic and whose Case is `Intentional divergence`. If found, treat this rule the same as `NOT-OFFICIAL` (no update) rather than auto-conforming it to the docs — a recorded intentional divergence is a decision, not a defect this command should silently overwrite. If no matching gap report or row exists, treat the rule as newly-stale and proceed normally. If every found rule is one of these (including any rule excluded by this check), print "No stale rule found matching '{query}'." and stop.
 
-**Pre-flight:** print each stale rule, its sources, and the planned correction (from the official-docs excerpt already gathered). Wait for confirmation ("yes"/"y"/"proceed"/"ok") before making any changes; on any other answer, print "Cancelled." and stop.
+**Pre-flight:** print each stale rule, its sources, and the planned correction (from the official-docs excerpt already gathered). Use `AskUserQuestion` — question: "Apply these corrections?", options: "Proceed" / "Cancel" — before making any changes; on "Cancel" (or any answer other than an affirmative), print "Cancelled." and stop.
 
 ---
 

@@ -74,7 +74,7 @@ If a CLAUDE.md does not exist at a given scope, skip it silently.
 
 ## Step 3: Pre-flight Confirmation
 
-Before reading any source files or writing any output, print a dry-run summary and wait for confirmation:
+Before reading any source files or writing any output, print a dry-run summary, then use `AskUserQuestion` to confirm:
 
 ```
 Pre-flight: /report-dev-rules --level {level} --name {name}
@@ -84,11 +84,9 @@ Sources to read:
 
 Output to write:
   {list each planned output file path, one per line}
-
-Proceed? [yes/no]
 ```
 
-Wait for the user's response. On any answer other than an affirmative ("yes", "y", "proceed", "ok"), print "Cancelled." and stop — do not read any further files or write any output.
+`AskUserQuestion` — question: "Proceed with this report?", options: "Proceed" / "Cancel". On "Cancel" (or any answer other than an affirmative), print "Cancelled." and stop — do not read any further files or write any output.
 
 ---
 
