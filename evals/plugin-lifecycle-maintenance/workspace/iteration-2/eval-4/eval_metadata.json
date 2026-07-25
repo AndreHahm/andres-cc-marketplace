@@ -2,7 +2,7 @@
   "eval_id": 4,
   "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
   "assertions": [
-    {"text": "Identifies workflows/enhance-a-plugin.md as the correct workflow file, not improve-a-plugin.md or modernize-plugin-devkit.md", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Identifies workflows/enhance-a-plugin.md as the correct workflow file, not improve-a-plugin.md or self-upstream-plugin-devkit.md", "type": "functionality", "target": "outputs/ directory"},
     {"text": "Correctly names plugin-comparison as the finding source, not analyzing-sessions", "type": "quality", "target": "outputs/ directory"},
     {"text": "States the Fix hand-off goes to plugin-lifecycle-downstream's external Phase 3 entry, not a reimplemented apply step", "type": "functionality", "target": "outputs/ directory"}
   ]

@@ -3,6 +3,6 @@
   "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
   "assertions": [
     {"text": "Judges the description would trigger for this prompt", "type": "functionality", "target": "outputs/ directory"},
-    {"text": "Correctly identifies improve-a-plugin as the matching workflow, not enhance-a-plugin or modernize-plugin-devkit", "type": "quality", "target": "outputs/ directory"}
+    {"text": "Correctly identifies improve-a-plugin as the matching workflow, not enhance-a-plugin or self-upstream-plugin-devkit", "type": "quality", "target": "outputs/ directory"}
   ]
 }
