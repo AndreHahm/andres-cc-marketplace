@@ -2,6 +2,8 @@
 
 Complete implementation reference for LLM-as-a-Judge evaluation: taxonomy, implementation approaches, prompt templates, evaluation patterns, and examples.
 
+**R18 exception (recorded):** several prompt templates and JSON examples below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent, copy-paste-ready prompt or output schema; splitting one into multiple blocks would break the template it's illustrating.
+
 ## Evaluation Taxonomy
 
 LLM-as-a-Judge is not a single technique but a family of approaches, each suited to different evaluation contexts.
@@ -34,12 +36,7 @@ LLM judges exhibit systematic biases that must be actively mitigated:
 
 ### Metric Selection Framework
 
-| Task Type | Primary Metrics | Secondary Metrics |
-|-----------|-----------------|-------------------|
-| Binary classification (pass/fail) | Recall, Precision, F1 | Cohen's κ |
-| Ordinal scale (1-5 rating) | Spearman's ρ, Kendall's τ | Cohen's κ (weighted) |
-| Pairwise preference | Agreement rate, Position consistency | Confidence calibration |
-| Multi-label | Macro-F1, Micro-F1 | Per-label precision/recall |
+See `metric-selection.md`'s "Selection Decision Tree" for the canonical task-type-to-metric mapping (not restated here to avoid drift — its ordinal-scale case in particular splits into two sub-cases with different recommended metrics depending on whether you're comparing against human judgments or another automated judge).
 
 Key insight: High absolute agreement matters less than systematic disagreement patterns.
 

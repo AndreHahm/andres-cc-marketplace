@@ -9,7 +9,7 @@ description: >-
   mentions marketplace.json, one-click install, auto-update, plugin distribution
   for a skills collection, or wants a skills repo installable via `claude plugin install`.
   For plugins that already have plugin.json, plugin-development handles marketplace publishing.
-allowed-tools: Read Write Glob Bash(bash:*) Bash(jq:*) Bash(python3:*) Bash(find:*) Bash(claude:*) Bash(git:*)
+allowed-tools: Read Write Glob Bash(scripts/check_marketplace.sh:*) Bash(jq:*) Bash(python3:*) Bash(find:*) Bash(claude:*) Bash(git:*)
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"

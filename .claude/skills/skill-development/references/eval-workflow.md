@@ -77,12 +77,23 @@ When each subagent finishes, save to `timing.json` immediately — this data onl
 ## Step 4: Grade & Benchmark
 
 1. Grade assertions per run → save `grading.json` (fields: `text`, `passed`, `evidence`)
-2. Aggregate → `benchmark.json` + `benchmark.md` (pass rate, time, tokens — with vs without)
+2. Aggregate → `benchmark.json` + `benchmark.md` (pass rate, time, tokens — with vs without), plus a summary row appended to `<workspace>/benchmark-log.md` — a cumulative, append-only history across all iterations, one file, for at-a-glance progress scanning without opening each iteration's files individually
 3. Analyst pass — flag non-discriminating assertions, flaky evals, token tradeoffs
+
+**Gate check (before presenting to the user):** classify the delta using the same scale as `skill-tester`'s Evaluation framework (`skill-tester/references/workflow.md`, Decision Point 5.3) — kept in sync manually since these are independent skills, so the two testing skills in this plugin agree on what counts as "good enough":
+
+| Improvement | Token Cost | Verdict |
+|---|---|---|
+| +30 points | +500 tokens | **Excellent** — big improvement, moderate cost |
+| +10 points | +100 tokens | **Good** — solid improvement, low cost |
+| +5 points | +1000 tokens | **Acceptable** — marginal gain, high cost, reconsider |
+| -10 points | -500 tokens | **Fail** — skill hurts performance |
+
+Surface this verdict alongside the raw benchmark numbers in Step 5.
 
 ## Step 5: Review & Iterate
 
-1. Present qualitative outputs + benchmark to user
+1. Present qualitative outputs + benchmark, including the gate-check verdict, to user
 2. Collect feedback per eval case
 3. Improve skill — generalize from feedback, don't overfit to specific examples
 4. Rerun into `iteration-N+1/` directory

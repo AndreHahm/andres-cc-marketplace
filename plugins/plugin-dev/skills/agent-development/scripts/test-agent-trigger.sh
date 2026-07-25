@@ -44,6 +44,8 @@ from pathlib import Path
 import re
 import sys
 
+sys.stdout.reconfigure(encoding="utf-8")
+
 path = Path(sys.argv[1])
 content = path.read_text(encoding="utf-8")
 lines = content.splitlines()
@@ -75,7 +77,7 @@ def parse_frontmatter(text):
         flush_current()
         current_key = match.group(1)
         value = match.group(2).strip()
-        if value in {"|", ">"}:
+        if value.rstrip("+-") in {"|", ">"}:
             current_lines = []
         else:
             current_lines = [value.strip("\"'")] if value else []
@@ -83,10 +85,40 @@ def parse_frontmatter(text):
     return data
 
 frontmatter = parse_frontmatter("\n".join(lines[1:end_idx])) if end_idx is not None else {}
-description = str(frontmatter.get("description", ""))
-matches = re.findall(r'user:\s*"([^"]+)"', description)
-for match in matches:
-    print(f"+ {match}")
+body = "\n".join(lines[end_idx + 1:]) if end_idx is not None else "\n".join(lines)
+
+# Current convention (see agent-development/references/delegation.md): trigger
+# phrases live in the body's "## When to invoke" section as 2-4 prose bullets,
+# not as `user: "..."` transcript shapes in the description (that convention
+# is deprecated and no compliant agent description matches it anymore). Also
+# accept "## When to Use" since some agents in this plugin use that heading.
+section_match = re.search(
+    r"^##\s*When to (?:invoke|Use)\s*$(.*?)(?=^##\s|\Z)", body, re.MULTILINE | re.DOTALL
+)
+if section_match:
+    for raw_line in section_match.group(1).splitlines():
+        stripped = raw_line.strip().lstrip("-*").strip()
+        if stripped:
+            print(f"+ {stripped}")
+else:
+    # Many agents (e.g. the *-reviewer family) have no dedicated body section
+    # at all -- their trigger phrases are instead quoted inline in the
+    # frontmatter description ("Use when the user asks to '...', '...'").
+    # Extract those. Guard against apostrophes used as contractions (e.g.
+    # "what's", "doesn't") rather than as quote delimiters, since a naive
+    # split on every "'" mis-pairs phrases containing one. Also scope the
+    # scan to the quoted-list clause right after "asks" rather than the
+    # whole description -- an unrelated later sentence can contain its own
+    # stray apostrophe (e.g. a plural possessive like "components'") that
+    # would otherwise mis-pair with a real phrase's quote.
+    description = frontmatter.get("description", "")
+    flat = re.sub(r"\s+", " ", description)
+    placeholder = "\x00APOS\x00"
+    protected = re.sub(r"'(s|t|re|ll|ve|d|m)\b", placeholder + r"\1", flat)
+    clause_match = re.search(r"asks[^']*?((?:'[^']*?'(?:,\s*|\s+or\s+)?)+)", protected)
+    clause = clause_match.group(1) if clause_match else ""
+    for phrase in re.findall(r"'([^']{3,80})'", clause):
+        print(f"+ {phrase.replace(placeholder, chr(39)).strip()}")
 PY
   if [ ! -s "$PHRASES_FILE" ]; then
     echo "ERROR: Could not infer test phrases from description; provide a phrases file."
@@ -168,7 +200,7 @@ def parse_frontmatter(text: str) -> dict[str, str]:
         flush_current()
         current_key = match.group(1)
         value = match.group(2).strip()
-        if value in {"|", ">"}:
+        if value.rstrip("+-") in {"|", ">"}:
             current_lines = []
         else:
             current_lines = [value.strip("\"'")] if value else []
@@ -217,6 +249,7 @@ def run_with_fallback(prompt: str, *, system_prompt: str, timeout: int, **_kwarg
             command,
             input=stdin_text,
             text=True,
+            encoding="utf-8",
             capture_output=True,
             timeout=timeout,
             check=False,
@@ -274,6 +307,7 @@ def run_claude_native(agent_file: Path, agent_name: str, phrase: str, timeout_se
                 cmd,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 cwd=temp_dir,
                 timeout=timeout_seconds,
                 env={k: v for k, v in os.environ.items() if k != "CLAUDECODE"},

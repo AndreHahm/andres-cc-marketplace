@@ -331,6 +331,50 @@ def generate_markdown(benchmark: dict) -> str:
     return "\n".join(lines)
 
 
+def append_benchmark_log(benchmark_dir: Path, benchmark: dict) -> Path:
+    """
+    Append a summary row for this iteration to a cumulative, append-only
+    <workspace>/benchmark-log.md — never overwrite prior entries.
+
+    Complements the per-iteration benchmark.json/benchmark.md (which stay
+    where they are) with a single running history file at the workspace
+    root, so cross-iteration progress is visible without opening each
+    iteration's files individually.
+    """
+    metadata = benchmark["metadata"]
+    run_summary = benchmark["run_summary"]
+    configs = [k for k in run_summary if k != "delta"]
+    delta = run_summary.get("delta", {})
+
+    log_path = benchmark_dir.parent / "benchmark-log.md"
+
+    lines = [
+        f"## Run: {metadata['timestamp']}",
+        "",
+        f"**Iteration:** {benchmark_dir.name} | **Model:** {metadata['executor_model']}",
+        "",
+        "| Config | Pass Rate | Time | Tokens |",
+        "|--------|-----------|------|--------|",
+    ]
+    for config in configs:
+        summary = run_summary.get(config, {})
+        pr = summary.get("pass_rate", {}).get("mean", 0) * 100
+        time_s = summary.get("time_seconds", {}).get("mean", 0)
+        tok = summary.get("tokens", {}).get("mean", 0)
+        lines.append(f"| {config} | {pr:.0f}% | {time_s:.1f}s | {tok:.0f} |")
+
+    lines.append("")
+    lines.append(f"**Delta:** pass_rate {delta.get('pass_rate', '—')}, time {delta.get('time_seconds', '—')}s, tokens {delta.get('tokens', '—')}")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+    return log_path
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Aggregate benchmark run results into summary statistics"
@@ -379,6 +423,10 @@ def main():
     with open(output_md, "w", encoding="utf-8") as f:
         f.write(markdown)
     print(f"Generated: {output_md}")
+
+    # Append to the cumulative, append-only workspace-root log
+    log_path = append_benchmark_log(args.benchmark_dir, benchmark)
+    print(f"Appended: {log_path}")
 
     # Print summary
     run_summary = benchmark["run_summary"]

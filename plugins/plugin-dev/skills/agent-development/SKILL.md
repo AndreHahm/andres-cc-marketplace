@@ -3,9 +3,11 @@ name: agent-development
 description: >-
   Creates, validates, and refines Claude Code plugin agents — covering frontmatter,
   system prompts, triggering conditions, tool scoping, permission modes, and hooks.
-  Use when the user asks to create, build, develop, write, validate, or improve
-  a plugin agent or agent file.
-allowed-tools: Read Grep Glob Bash
+  Use when the user wants to understand agent structure, hand-author or edit an agent
+  file's fields directly, or validate/refine an existing agent against the spec. For
+  one-shot generation of a brand-new agent from a described need, use the agent-creator
+  agent instead; for a structured quality review of an existing agent, use subagent-reviewer.
+allowed-tools: Read Grep Glob Skill Bash(scripts/validate-agent.sh:*) Bash(scripts/test-agent-trigger.sh:*)
 ---
 
 # Agent Development for Claude Code Plugins
@@ -32,6 +34,8 @@ Agents are autonomous subprocesses with their own isolated context window that h
 - Creating a **slash command** → use `command-development` instead
 - Creating a **hook** (lifecycle automation) → use `hook-development` instead
 - Running **plugin compliance checks** → use `plugin-rulebook` instead
+- Generating a complete new agent end-to-end from a description → use `agent-creator` instead
+- Structured quality review of an existing agent (tool scoping, prompt quality, checklist compliance) → use `subagent-reviewer` instead
 
 ## Quick Start
 
@@ -148,7 +152,9 @@ The markdown body becomes the agent's system prompt. Write in second person, add
 
 **Recommended baseline ordering:** Role → Process → Output Format. Use this simpler ordering when the full six-part structure above isn't needed — see `references/system-prompt-design.md`.
 
-Agents that act as a pass/fail gate for another skill or workflow should emit structured YAML for programmatic consumption: `{pass: bool, issues: [...]}`.
+**Structured Output Mode recommendation:** when designing an agent whose job is to deliver findings/results back to a caller (a reviewer, validator, or any agent another skill or agent might parse programmatically), ask the user via `AskUserQuestion` — "Will this agent's output be parsed programmatically by another skill or agent, or only read by a person?" — rather than deciding unilaterally. If yes, add an optional, orthogonal **Structured Output Mode**: the agent's default output stays a human-readable narrative report, and a separate invocation-mode flag (`--yaml`/"structured output"/"machine-readable") switches to YAML-only output for that one invocation — see `plugins/plugin-dev/agents/skill-reviewer.md` or `plugins/plugin-dev/agents/rule-reviewer.md` for worked examples, and load the shared `action` enum from `plugin-rulebook/assets/settings.json → structured_output.action_enum` rather than hardcoding a new one (extend it per-agent under `structured_output.per_agent_extensions` only if the agent's domain genuinely needs an action value the shared list doesn't cover). Do not add a Structured Output Mode speculatively — if the caller's need is unconfirmed, ship without one and add it later once an actual consumer exists (this project's own precedent: `skill-reviewer` and `subagent-reviewer` got theirs only after a caller was confirmed via research, not by default).
+
+**Delta Mode recommendation:** when designing an agent whose default Process reads or re-verifies a whole component, a whole plugin, or a set of multiple components as its normal invocation scope (a "whole-surface" reviewer, as opposed to a narrowly-scoped single-check agent), ask the user via `AskUserQuestion` — "Will this agent often be asked about just one specific, already-known change, rather than a full sweep every time?" — rather than deciding unilaterally. If yes, add an optional, orthogonal **Delta mode** (`--delta`, or the caller names the specific fact/section/edge that changed): skip the agent's most expensive step(s) and check only the named thing instead of re-verifying the whole scope, stating plainly in the report header what was skipped — see `plugins/plugin-dev/agents/permission-reviewer.md` or `plugins/plugin-dev/agents/consistency-reviewer.md` for worked examples. This exists because a whole-surface reviewer with no cheaper path costs the same whether the actual question is "did this two-line diff need anything" or "audit everything" — `permission-reviewer`'s own missing Delta mode once cost ~70k tokens answering the former. Do not add a Delta mode speculatively — if the agent's typical invocation is already narrowly scoped (a single named target, not a whole plugin/set), there's nothing further to cut and it isn't needed.
 
 ### Process Stage Ordering
 
@@ -220,10 +226,12 @@ Use the template at [`references/agent-creation-prompt-template.md`](references/
 4. Choose color (distinct within the plugin)
 5. Define tools (minimum needed)
 6. Write system prompt following Required Agent Sections order
-7. Add `## When to invoke` with 2–4 prose trigger scenarios
-8. Save as `agents/agent-name.md`
-9. Validate with `scripts/validate-agent.sh`
-10. Test with real trigger scenarios
+7. If the agent delivers findings/results to a caller, ask via `AskUserQuestion` whether a Structured Output Mode is needed now (see "Structured Output Mode recommendation" above) — don't add one speculatively
+8. If the agent's default scope is a whole component/plugin/set rather than a single narrowly-named target, ask via `AskUserQuestion` whether a Delta mode is needed now (see "Delta Mode recommendation" above) — don't add one speculatively
+9. Add `## When to invoke` with 2–4 prose trigger scenarios
+10. Save as `agents/agent-name.md`
+11. Validate with `scripts/validate-agent.sh`
+12. Test with real trigger scenarios
 
 ## Validation Rules
 
@@ -319,3 +327,4 @@ See [`references/templates.md`](references/templates.md) → **Plugin Agent Temp
 | Tool scoping | [`references/tool-scoping.md`](references/tool-scoping.md) | Allowlist/denylist patterns, principle of least privilege |
 | Permission modes | [`references/permission-modes.md`](references/permission-modes.md) | Decision matrices for foreground vs background execution |
 | Advanced patterns | [`references/advanced-patterns.md`](references/advanced-patterns.md) | Hook validation, chaining, background execution |
+| Agent Teams (experimental) | [`references/agent-teams.md`](references/agent-teams.md) | When multi-session peer-to-peer collaboration fits better than a subagent |

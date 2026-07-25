@@ -305,29 +305,7 @@ Result: ✓ Updated, ✓ Preserved (not lost), ✓ Available for reference
 
 ### Example 3: Consolidating Without Loss
 
-**Scenario:** 3 related reference files exist
-
-```
-BEFORE:
-references/error-handling.md (124 lines)
-references/team-patterns.md (189 lines)
-references/advanced-patterns.md (156 lines)
-Total: 469 lines
-
-DURING CONSOLIDATION:
-✓ Create references/production-patterns.md
-✓ Merge all 3 files into new file (sections for each topic)
-✓ Update SKILL.md links to point to consolidated file
-✓ DELETE old files only after links verified
-
-AFTER:
-references/production-patterns.md (380 lines)
-  ├─ Error Handling (from error-handling.md)
-  ├─ Team Patterns (from team-patterns.md)
-  └─ Advanced Patterns (from advanced-patterns.md)
-
-Result: ✓ Consolidated (fewer files), ✓ Preserved (all content), ✓ Linked (SKILL.md updated)
-```
+See `production-patterns.md`'s "Changes Made Summary" for a worked example of this exact 3-file consolidation (error-handling.md + team-patterns.md + advanced-patterns.md → production-patterns.md) — not restated here to avoid drift. The principle: create the consolidated destination and verify links first, delete old files only after.
 
 ## Summary
 

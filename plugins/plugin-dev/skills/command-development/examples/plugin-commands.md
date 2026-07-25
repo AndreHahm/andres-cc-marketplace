@@ -2,6 +2,8 @@
 
 Practical examples of commands designed for Claude Code plugins, demonstrating plugin-specific patterns and features.
 
+**R18 exception (recorded):** one complete command example below intentionally exceeds the rulebook's 30-line code-block threshold — it's a complete, coherent, copy-paste-ready command file; splitting it would break it.
+
 ## Table of Contents
 
 1. [Simple Plugin Command](#1-simple-plugin-command)
@@ -32,7 +34,7 @@ allowed-tools: Bash(node:*), Read
 
 Analyze @$0 using plugin's quality checker:
 
-!`node ${CLAUDE_PLUGIN_ROOT}/scripts/quality-check.js $0`
+!\`node ${CLAUDE_PLUGIN_ROOT}/scripts/quality-check.js $0\`
 
 Review the analysis output and provide:
 1. Summary of findings
@@ -58,20 +60,20 @@ Review the analysis output and provide:
 ---
 description: Complete code audit using plugin suite
 argument-hint: [directory]
-allowed-tools: Bash(*)
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/security-scan.sh:*) Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/perf-analyze.sh:*) Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/best-practices.sh:*)
 model: sonnet
 ---
 
 Running complete audit on $0:
 
 **Security scan:**
-!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/security-scan.sh $0`
+!\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/security-scan.sh $0\`
 
 **Performance analysis:**
-!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/perf-analyze.sh $0`
+!\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/perf-analyze.sh $0\`
 
 **Best practices check:**
-!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/best-practices.sh $0`
+!\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/best-practices.sh $0\`
 
 Analyze all results and create comprehensive report including:
 - Critical issues requiring immediate attention
@@ -135,22 +137,22 @@ Format output as markdown suitable for README or docs site.
 ---
 description: Execute complete release workflow
 argument-hint: [version]
-allowed-tools: Bash(*), Read
+allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/pre-release-check.sh:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/build-release.sh:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-tests.sh:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/package.sh:*), Read
 ---
 
 Executing release workflow for version $0:
 
 **Step 1 - Pre-release validation:**
-!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/pre-release-check.sh $0`
+!\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/pre-release-check.sh $0\`
 
 **Step 2 - Build artifacts:**
-!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/build-release.sh $0`
+!\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/build-release.sh $0\`
 
 **Step 3 - Run test suite:**
-!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-tests.sh`
+!\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-tests.sh\`
 
 **Step 4 - Package release:**
-!`bash ${CLAUDE_PLUGIN_ROOT}/scripts/package.sh $0`
+!\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/package.sh $0\`
 
 Review all step outputs and report:
 1. Any failures or warnings
@@ -178,14 +180,14 @@ Review all step outputs and report:
 ---
 description: Deploy application to environment
 argument-hint: [environment]
-allowed-tools: Read, Bash(*)
+allowed-tools: Read, Bash(git rev-parse:*), Bash(cat package.json:*)
 ---
 
 Deployment configuration for $0: @${CLAUDE_PLUGIN_ROOT}/config/$0-deploy.json
 
-Current git state: !`git rev-parse --short HEAD`
+Current git state: !\`git rev-parse --short HEAD\`
 
-Build info: !`cat package.json | grep -E '(name|version)'`
+Build info: !\`cat package.json | grep -E '(name|version)'\`
 
 Execute deployment to $0 environment using configuration above.
 
@@ -304,7 +306,7 @@ Target file: @$0
 Execute comprehensive review workflow:
 
 **Phase 1: Automated Analysis**
-Run plugin analyzer: !`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js $0`
+Run plugin analyzer: !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js $0\`
 
 **Phase 2: Deep Review (Agent)**
 Launch the code-quality-reviewer agent for detailed analysis.
@@ -353,22 +355,22 @@ Include specific file locations and suggested changes for each item.
 ---
 description: Build for specific environment with validation
 argument-hint: [environment]
-allowed-tools: Bash(*)
+allowed-tools: Bash(echo:*), Bash(test:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/validate-build.sh:*)
 ---
 
-Validate environment argument: !`echo "$0" | grep -E "^(dev|staging|prod)$" && echo "VALID" || echo "INVALID"`
+Validate environment argument: !\`echo "$0" | grep -E "^(dev|staging|prod)$" && echo "VALID" || echo "INVALID"\`
 
-Check build script exists: !`test -x ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh && echo "EXISTS" || echo "MISSING"`
+Check build script exists: !\`test -x ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh && echo "EXISTS" || echo "MISSING"\`
 
-Verify configuration available: !`test -f ${CLAUDE_PLUGIN_ROOT}/config/$0.json && echo "FOUND" || echo "NOT_FOUND"`
+Verify configuration available: !\`test -f ${CLAUDE_PLUGIN_ROOT}/config/$0.json && echo "FOUND" || echo "NOT_FOUND"\`
 
 If all validations pass:
 
 **Configuration:** @${CLAUDE_PLUGIN_ROOT}/config/$0.json
 
-**Execute build:** !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh $0 2>&1`
+**Execute build:** !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/build.sh $0 2>&1\`
 
-**Validation results:** !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/validate-build.sh $0 2>&1`
+**Validation results:** !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/validate-build.sh $0 2>&1\`
 
 Report build status and any issues.
 
@@ -398,24 +400,24 @@ If validations fail:
 ---
 description: Run environment-appropriate checks
 argument-hint: [environment]
-allowed-tools: Bash(*), Read
+allowed-tools: Bash(echo:*), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/*.sh:*), Read
 ---
 
 Environment: $0
 
 Load environment configuration: @${CLAUDE_PLUGIN_ROOT}/config/$0-checks.json
 
-Determine check level: !`echo "$0" | grep -E "^prod$" && echo "FULL" || echo "BASIC"`
+Determine check level: !\`echo "$0" | grep -E "^prod$" && echo "FULL" || echo "BASIC"\`
 
 **For production environment:**
-- Full test suite: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/test-full.sh`
-- Security scan: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/security-scan.sh`
-- Performance audit: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/perf-check.sh`
-- Compliance check: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/compliance.sh`
+- Full test suite: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/test-full.sh\`
+- Security scan: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/security-scan.sh\`
+- Performance audit: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/perf-check.sh\`
+- Compliance check: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/compliance.sh\`
 
 **For non-production environments:**
-- Basic tests: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/test-basic.sh`
-- Quick lint: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint.sh`
+- Basic tests: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/test-basic.sh\`
+- Quick lint: !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint.sh\`
 
 Analyze results based on environment requirements:
 
@@ -438,7 +440,7 @@ Report status and recommend proceed/block decision.
 
 ### Pattern: Plugin Script Execution
 ```markdown
-!`node ${CLAUDE_PLUGIN_ROOT}/scripts/script-name.js $0`
+!\`node ${CLAUDE_PLUGIN_ROOT}/scripts/script-name.js $0\`
 ```
 Use for: Running plugin-provided Node.js scripts
 
@@ -468,13 +470,13 @@ Use for: Leveraging plugin skills for specialized knowledge
 
 ### Pattern: Input Validation
 ```markdown
-Validate input: !`echo "$0" | grep -E "^pattern$" && echo "OK" || echo "ERROR"`
+Validate input: !\`echo "$0" | grep -E "^pattern$" && echo "OK" || echo "ERROR"\`
 ```
 Use for: Validating command arguments
 
 ### Pattern: Resource Validation
 ```markdown
-Check exists: !`test -f ${CLAUDE_PLUGIN_ROOT}/path/file && echo "YES" || echo "NO"`
+Check exists: !\`test -f ${CLAUDE_PLUGIN_ROOT}/path/file && echo "YES" || echo "NO"\`
 ```
 Use for: Verifying required plugin files exist
 
@@ -493,7 +495,7 @@ Use for: Verifying required plugin files exist
 2. **Verify ${CLAUDE_PLUGIN_ROOT} expansion:**
    ```bash
    # Add debug output to command
-   !`echo "Plugin root: ${CLAUDE_PLUGIN_ROOT}"`
+   !\`echo "Plugin root: ${CLAUDE_PLUGIN_ROOT}"\`
    ```
 
 3. **Test across different working directories:**
@@ -505,8 +507,8 @@ Use for: Verifying required plugin files exist
 4. **Validate resource availability:**
    ```bash
    # Check all plugin resources exist
-   !`ls -la ${CLAUDE_PLUGIN_ROOT}/scripts/`
-   !`ls -la ${CLAUDE_PLUGIN_ROOT}/config/`
+   !\`ls -la ${CLAUDE_PLUGIN_ROOT}/scripts/\`
+   !\`ls -la ${CLAUDE_PLUGIN_ROOT}/config/\`
    ```
 
 ### Common Mistakes to Avoid
@@ -514,22 +516,22 @@ Use for: Verifying required plugin files exist
 1. **Using relative paths instead of ${CLAUDE_PLUGIN_ROOT}:**
    ```markdown
    # Wrong
-   !`node ./scripts/analyze.js`
+   !\`node ./scripts/analyze.js\`
 
    # Correct
-   !`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js`
+   !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js\`
    ```
 
 2. **Forgetting to allow required tools:**
    ```markdown
    # Missing allowed-tools
-   !`bash script.sh`  # Will fail without Bash permission
+   !\`bash script.sh\`  # Will fail without Bash permission
 
-   # Correct
+   # Correct - scope to the specific script, not Bash(*)
    ---
-   allowed-tools: Bash(*)
+   allowed-tools: Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/script.sh:*)
    ---
-   !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/script.sh`
+   !\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/script.sh\`
    ```
 
 3. **Not validating inputs:**
@@ -538,7 +540,7 @@ Use for: Verifying required plugin files exist
    Deploy to $0 environment
 
    # Better - with validation
-   Validate: !`echo "$0" | grep -E "^(dev|staging|prod)$" || echo "INVALID"`
+   Validate: !\`echo "$0" | grep -E "^(dev|staging|prod)$" || echo "INVALID"\`
    Deploy to $0 environment (if valid)
    ```
 

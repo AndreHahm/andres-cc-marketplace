@@ -48,7 +48,7 @@ Use this guide when refining skills that interact with users. AskUserQuestion is
 
 **Examples from toolkit:**
 
-✅ **skill-refiner** (lines 30-46):
+✅ **skill-refiner**:
 ```json
 {
   "question": "What would you like to do with this skill?",
@@ -61,7 +61,7 @@ Use this guide when refining skills that interact with users. AskUserQuestion is
 }
 ```
 
-✅ **skill-creator** (lines 21-38):
+✅ **skill-creator**:
 ```json
 {
   "question": "What do you want to do?",
@@ -98,7 +98,7 @@ Use this guide when refining skills that interact with users. AskUserQuestion is
 
 **Example from toolkit:**
 
-✅ **plugin-creator (CORRECTED)** - BATCH 1 (lines 149-162):
+✅ **plugin-creator (CORRECTED)** - BATCH 1:
 ```json
 {
   "question": "Which core components will the plugin include?",
@@ -191,13 +191,13 @@ Batch 3: Continue as needed
 
 **Real toolkit example:**
 
-✅ **plugin-creator** (lines 146-180):
-- BATCH 1 (lines 149-162): "Which core components?" (4 options, multiSelect)
-- BATCH 2 (lines 167-177): "Include LSP support?" (2 options, yes/no)
+✅ **plugin-creator**:
+- BATCH 1: "Which core components?" (4 options, multiSelect)
+- BATCH 2: "Include LSP support?" (2 options, yes/no)
 
-✅ **skill-refiner** (lines 69-132):
-- BATCH 1 (lines 72-100): "What aspects need improvement?" (4 options: Clarity, Efficiency, Structure, User Interaction UX) + 3 open-form questions
-- BATCH 2 (lines 107-132): "Should we consolidate references?" (yes/no) + "Validate for production?" (yes/no) + "Add testing patterns?" (yes/no)
+✅ **skill-refiner**:
+- BATCH 1: "What aspects need improvement?" (4 options: Clarity, Efficiency, Structure, User Interaction UX) + 3 open-form questions
+- BATCH 2: "Should we consolidate references?" (yes/no) + "Validate for production?" (yes/no) + "Add testing patterns?" (yes/no)
 
 ---
 
@@ -218,7 +218,9 @@ Batch 3: Continue as needed
 
 **Examples from toolkit:**
 
-✅ **skill-refiner - BATCH 1 (interview)** (lines 72-82):
+**R18 exception (recorded):** the example below intentionally exceeds the 30-line threshold — a complete, real `AskUserQuestion` call; splitting it would leave an invalid, incomplete call.
+
+✅ **skill-refiner - BATCH 1 (interview)**:
 ```json
 {
   "question": "What aspects need improvement?",
@@ -248,7 +250,7 @@ Batch 3: Continue as needed
 }
 ```
 
-✅ **skill-creator** (lines 147-169):
+✅ **skill-creator**:
 ```json
 {
   "question": "What domain-specific task should Claude execute?",
@@ -293,7 +295,7 @@ Q2: [Depends on Q1 answer]
 
 **Real toolkit example:**
 
-✅ **skill-refiner** (lines 23-53):
+✅ **skill-refiner**:
 ```
 1. Ask: "What would you like to do?" (Refine / Validate)
 2. Wait for response
@@ -344,7 +346,7 @@ Q2: [Depends on Q1 answer]
 
 **Example from toolkit:**
 
-✅ **skill-refiner - BATCH 1** (lines 72-100):
+✅ **skill-refiner - BATCH 1**:
 ```json
 {
   "questions": [
@@ -528,15 +530,15 @@ grep -A 15 "options: \[" SKILL.md | grep "{ label:" | wc -l
 
 ## Examples from the Toolkit
 
-All toolkit skills now follow these patterns:
+Historically, toolkit skills followed these patterns (skill-creator, plugin-creator, hook-creator, and subagent-creator have since been consolidated into skill-development/plugin-development/hook-development/agent-development — the pattern names below still apply to their current equivalents):
 
-| Skill | Pattern | Location |
-|-------|---------|----------|
-| **skill-creator** | Pattern 1 + Pattern 4 (routing + interviews) | Lines 21-38, 147-169, 176-196 |
-| **skill-refiner** | Pattern 1 + Pattern 4 (action choice + interview batches) | Lines 30-46, 72-127 |
-| **plugin-creator** | Pattern 1 + Pattern 3 (action choice + split components) | Lines 18-43, 149-177 |
-| **hook-creator** | Pattern 1 (simple action choice) | Lines 22-43 |
-| **subagent-creator** | Pattern 1 + Pattern 4 (action + scope + interviews) | Lines 18-42, 104-165 |
+| Original skill | Pattern |
+|-------|---------|
+| **skill-creator** | Pattern 1 + Pattern 4 (routing + interviews) |
+| **skill-refiner** | Pattern 1 + Pattern 4 (action choice + interview batches) |
+| **plugin-creator** | Pattern 1 + Pattern 3 (action choice + split components) |
+| **hook-creator** | Pattern 1 (simple action choice) |
+| **subagent-creator** | Pattern 1 + Pattern 4 (action + scope + interviews) |
 
 All comply with:
 - ✅ Maximum 4 options per question

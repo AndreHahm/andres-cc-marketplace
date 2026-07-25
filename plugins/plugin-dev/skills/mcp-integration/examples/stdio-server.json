@@ -1,7 +1,7 @@
 {
   "_comment": "Example stdio MCP server configuration for local file system access",
   "filesystem": {
-    "_comment": "${CLAUDE_PROJECT_DIR} resolves to ${REPO_ROOT}/.claude — the project's Claude configuration directory, set automatically by Claude Code",
+    "_comment": "${CLAUDE_PROJECT_DIR} resolves to the project root directory (absolute path), set automatically by Claude Code",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-filesystem", "${CLAUDE_PROJECT_DIR}"],
     "env": {

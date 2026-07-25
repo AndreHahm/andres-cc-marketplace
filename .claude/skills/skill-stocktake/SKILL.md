@@ -165,6 +165,7 @@ Return JSON for each skill:
 2. **Improve**: present specific improvement suggestions with rationale:
    - What to change and why (e.g., "trim 430→200 lines because sections X/Y duplicate python-patterns")
    - User decides whether to act; to action improvements, invoke `/skill-refiner-interactive` on the target skill
+   - For multiple Improve-verdict skills at once, ask with `AskUserQuestion`: "Run `enhancement-suggestor` against the batch of Improve verdicts for one prioritized action plan?" — options "Yes" / "No". If yes, invoke the `enhancement-suggestor` agent (via `Agent`) against the batch instead of a skill-by-skill pass
 3. **Update**: present updated content with sources checked
 4. Check MEMORY.md line count; propose compression if >100 lines
 

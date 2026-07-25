@@ -410,6 +410,8 @@ chmod +x .git/hooks/pre-commit
 
 Add to `.gitignore` to prevent secret files from being committed:
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a security-relevant complete pattern set; trimming risks silently dropping a real credential-file pattern from the recommendation.
+
 ```gitignore
 # Environment files with secrets
 .env
@@ -459,8 +461,8 @@ git push --force-with-lease
 **4. Notify users** — If the repo is shared, alert all users to pull the cleaned history.
 
 **References:**
-- BFG Repo-Cleaner: https://rtyley.github.io/bfg-repo-cleaner/
-- Git docs: https://git-scm.com/docs/git-filter-branch
+- [BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/)
+- [Git docs: git-filter-branch](https://git-scm.com/docs/git-filter-branch)
 
 ## Testing Without Exposing Secrets
 
@@ -574,21 +576,21 @@ Use this checklist when creating or reviewing skills to ensure no secrets are ex
 ### Security Tools
 
 - **git-secrets** — GitHub's official tool to prevent secret commits
-  https://github.com/awslabs/git-secrets
+  [github.com/awslabs/git-secrets](https://github.com/awslabs/git-secrets)
 
 - **truffleHog** — Searches git history for secrets with high confidence
-  https://github.com/trufflesecurity/trufflehog
+  [github.com/trufflesecurity/trufflehog](https://github.com/trufflesecurity/trufflehog)
 
 - **gitleaks** — Scans repos against 140+ secret patterns
-  https://github.com/gitleaks/gitleaks
+  [github.com/gitleaks/gitleaks](https://github.com/gitleaks/gitleaks)
 
 ### Service-Specific Resources
 
-- **GitHub Token Security** — https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-authentication-to-github
-- **AWS Credential Security** — https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html
-- **OAuth Best Practices** — https://tools.ietf.org/html/rfc6749#section-3.2.1
+- **GitHub Token Security** — [docs.github.com: keeping your account and data secure](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-authentication-to-github)
+- **AWS Credential Security** — [docs.aws.amazon.com: credential types](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html)
+- **OAuth Best Practices** — [RFC 6749 section 3.2.1](https://tools.ietf.org/html/rfc6749#section-3.2.1)
 
 ### Compliance & Standards
 
-- **OWASP: Secrets Management** — https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
-- **CWE-798: Hardcoded Credentials** — https://cwe.mitre.org/data/definitions/798.html
+- **OWASP: Secrets Management** — [cheatsheetseries.owasp.org](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
+- **CWE-798: Hardcoded Credentials** — [cwe.mitre.org](https://cwe.mitre.org/data/definitions/798.html)

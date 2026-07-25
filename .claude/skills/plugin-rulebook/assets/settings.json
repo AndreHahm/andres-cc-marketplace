@@ -34,7 +34,12 @@
     "R5_frontmatter_no_nonstandard_fields": {
       "enabled": true,
       "severity": "REQUIRED",
-      "description": "Skill and agent frontmatter must not include command-only or unsupported fields"
+      "description": "Skill and agent frontmatter must not include command-only or unsupported fields",
+      "config": {
+        "agent_nonfunctional_fields": ["hooks", "mcpServers", "permissionMode"],
+        "agent_nonfunctional_fields_severity": "ADVISORY",
+        "agent_nonfunctional_fields_note": "Schema-accepted but not honored for plugin-scoped agents (upstream security restriction) -- flag as ADVISORY, not REQUIRED, since the field doesn't break validation, it silently does nothing"
+      }
     },
     "R6_tool_scoping_least_privilege": {
       "enabled": true,
@@ -190,6 +195,28 @@
           "broken": "CRITICAL"
         }
       }
+    },
+    "R24_allowed_programming_languages": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "Only Python, Bash, and JavaScript/TypeScript are allowed as programming/scripting languages anywhere in the plugin (script files and embedded fenced code blocks); Ruby is banned explicitly; every other language is banned by default-deny since the whitelist is closed",
+      "config": {
+        "whitelist_extensions": [".py", ".sh", ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx"],
+        "whitelist_language_tags": ["python", "py", "bash", "sh", "shell", "javascript", "js", "jsx", "typescript", "ts", "tsx"],
+        "banned": ["ruby", "rb"],
+        "exempt_tags": ["yaml", "yml", "json", "toml", "ini", "xml", "html", "css", "markdown", "md", "text", "plaintext", "console", "output", "diff", "http"],
+        "notes": "whitelist_extensions/whitelist_language_tags form a closed allowlist — a script file or fenced-block tag not on this list is banned by default-deny, not just the languages named in 'banned'. 'banned' exists to name explicitly-prohibited languages (Ruby) even though the closed whitelist already implies the same rejection, so the prohibition is visible without inferring it from an absence."
+      }
+    },
+    "R25_unplanned_overhead_disclosure": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "A skill/pipeline whose actual execution deviates from a documented quick/fast/bounded phase (extra retries, debugging detours, an unplanned fallback) must disclose this to the user in plain language, not fold it silently into a clean final result"
+    },
+    "R26_expensive_action_optin": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "A skill/agent step capable of triggering per-item nested LLM/subprocess calls, whole-surface re-verification, or heavy multi-agent dispatch must gate that action behind an explicit AskUserQuestion decision rather than defaulting to always running it"
     }
   },
   "languages": {
@@ -257,8 +284,23 @@
       "agent", "hooks", "paths", "shell"
     ]
   },
+  "structured_output": {
+    "action_enum": ["move_to_references", "delete", "replace_line", "add_field", "fix_frontmatter"],
+    "per_agent_extensions": {
+      "rule-reviewer": ["split_rule", "move_to_skill"],
+      "hook-reviewer": ["fix_exit_code", "add_file_filter", "fix_registration", "fix_security", "add_error_handling", "add_output_limit"],
+      "activation-reviewer": ["narrow_description", "add_exclusion", "merge_components", "split_component", "add_trigger_hint"],
+      "skilldir-reviewer": ["merge_duplicate_content", "flatten_reference"]
+    },
+    "notes": "Canonical closed-enum value list for the 'action' field in any plugin-dev reviewer agent's Structured Output Mode findings[]. Loaded in Step 1 by every reviewer agent with a Structured Output Mode (rather than hardcoded inline) so R20's Duplicate Fact Sweep can catch drift if a future agent copies it inline instead of loading it. 'per_agent_extensions' lists agent-specific additional action values kept out of the shared base list because they only make sense for that agent's domain (e.g. rule-reviewer's split_rule/move_to_skill mirror literal recommendation terms already used in its own prose; hook-reviewer's 6 values cover the script/config-level fixes — exit code, file filtering, settings.json registration, security, error handling, output limits — that the generic frontmatter/reference-file-oriented base list was never designed for; activation-reviewer's 5 values cover cross-component trigger-overlap remediations — narrowing a description's scope, adding an explicit exclusion, merging or splitting components, or adding a file/keyword trigger hint — none of which map to a single-file structural edit the base enum was designed for; skilldir-reviewer's 2 values cover merging near-duplicate content found across a skill's own non-SKILL.md files, and flattening a nested reference file up one level for R14 — distinct from move_to_references, which moves content INTO references/ from elsewhere, not sideways within it) — an agent with an entry here loads the base list plus its own extension, not a replacement. claudemd-reviewer's YAML 'rule' field is a separate, fully domain-specific enum (CLAUDE.md violation categories) and intentionally does not use this list at all.",
+    "suggested_edit_field": {
+      "field_name": "suggested_edit",
+      "shape": "{old_string: string, new_string: string}",
+      "applies_to": "findings[] entries, alongside the existing free-text 'fix' field",
+      "notes": "Optional. Populate ONLY when the fix reduces to a single, unambiguous literal find-replace within one file — the exact old_string must appear verbatim and only once in the target file (the same uniqueness constraint the Edit tool itself enforces), so a caller can paste it directly into an Edit call without further judgment. Never populate this for a fix that requires narrative judgment, spans multiple files, or needs surrounding-context disambiguation — leave 'fix' as prose-only for those, same as before this field existed. This field is additive: agents that don't implement it are unaffected, and 'fix' remains required on every finding regardless of whether 'suggested_edit' is also present."
+    }
+  },
   "rule_files": {
     "allowed_fields": ["paths"]
-  },
-  "hooks_only_vars": ["${CLAUDE_PLUGIN_ROOT}", "${CLAUDE_PLUGIN_DATA}"]
+  }
 }

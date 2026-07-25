@@ -57,6 +57,17 @@ class ValidationResult:
             for warning in self.warnings:
                 print(f"  ⚠ WARNING: {warning}")
 
+    def to_dict(self):
+        """Machine-readable form for --json output."""
+        return {
+            "category": self.category,
+            "passed": self.is_passed(),
+            "checks_passed": self.checks_passed,
+            "checks_total": self.checks_total,
+            "errors": list(self.errors),
+            "warnings": list(self.warnings),
+        }
+
 
 def validate_structure(plugin_path, verbose=False):
     """Validate plugin directory structure."""
@@ -325,6 +336,8 @@ def validate_2025_compliance(plugin_path, verbose=False):
 
 def main():
     """Main entry point."""
+    sys.stdout.reconfigure(encoding='utf-8')
+
     parser = argparse.ArgumentParser(
         description="Validate Claude Code plugin",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -336,6 +349,7 @@ Examples:
   python validate_plugin.py my-plugin/ --check manifests
   python validate_plugin.py my-plugin/ --check components
   python validate_plugin.py my-plugin/ --check 2025
+  python validate_plugin.py my-plugin/ --json       # Machine-readable output (CI)
 
 Exit codes:
   0 - All validation passed
@@ -348,21 +362,30 @@ Exit codes:
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
     parser.add_argument('--check', choices=['structure', 'manifests', 'components', '2025'],
                         help='Run specific validation check only')
+    parser.add_argument('--json', action='store_true',
+                        help='Emit a single JSON object instead of human-readable output (for CI)')
 
     args = parser.parse_args()
 
     # Validate plugin path
     plugin_path = Path(args.plugin_path)
     if not plugin_path.exists():
-        print(f"✗ Error: Plugin directory does not exist: {plugin_path}")
+        if args.json:
+            print(json.dumps({"error": f"Plugin directory does not exist: {plugin_path}"}))
+        else:
+            print(f"✗ Error: Plugin directory does not exist: {plugin_path}")
         sys.exit(2)
 
     if not plugin_path.is_dir():
-        print(f"✗ Error: Path is not a directory: {plugin_path}")
+        if args.json:
+            print(json.dumps({"error": f"Path is not a directory: {plugin_path}"}))
+        else:
+            print(f"✗ Error: Path is not a directory: {plugin_path}")
         sys.exit(2)
 
-    print(f"Validating plugin: {plugin_path.name}")
-    print("=" * 60)
+    if not args.json:
+        print(f"Validating plugin: {plugin_path.name}")
+        print("=" * 60)
 
     # Run validation checks
     results = []
@@ -379,14 +402,24 @@ Exit codes:
     if not args.check or args.check == '2025':
         results.append(validate_2025_compliance(plugin_path, args.verbose))
 
-    # Print results
-    for result in results:
-        result.print_results(args.verbose)
-
     # Summary
     total_errors = sum(len(r.errors) for r in results)
     total_warnings = sum(len(r.warnings) for r in results)
     all_passed = all(r.is_passed() for r in results)
+
+    if args.json:
+        print(json.dumps({
+            "plugin": plugin_path.name,
+            "passed": all_passed,
+            "total_errors": total_errors,
+            "total_warnings": total_warnings,
+            "results": [r.to_dict() for r in results],
+        }, indent=2))
+        sys.exit(0 if all_passed else 1)
+
+    # Print results
+    for result in results:
+        result.print_results(args.verbose)
 
     print("\n" + "=" * 60)
     if all_passed:

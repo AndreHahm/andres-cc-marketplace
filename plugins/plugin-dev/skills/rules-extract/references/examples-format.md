@@ -21,7 +21,7 @@ Always generate one `.examples.md` per rule category (regardless of `split_outpu
   - Rule: `` - `useAuth() → { user, login, logout }` - auth hook interface `` → `` ### `useAuth() → { user, login, logout }` ``
   - Rule: `` - `clean_bracket_params(:keyword)` - bracket removal for WAF compatibility `` → `` ### `clean_bracket_params(:keyword)` ``
 
-```markdown
+````markdown
 # <Category> Rules - Examples
 
 ## Principles Examples
@@ -42,7 +42,7 @@ Always generate one `.examples.md` per rule category (regardless of `split_outpu
 ```<lang>
 <usage example from codebase>
 ```
-```
+````
 
 - No `paths:` frontmatter (kept consistent across modes; auto-load behavior is controlled by `.examples.md`'s placement under `examples_output_dir`, not by frontmatter)
 - Skip generating the file if no examples exist for any rule in the category

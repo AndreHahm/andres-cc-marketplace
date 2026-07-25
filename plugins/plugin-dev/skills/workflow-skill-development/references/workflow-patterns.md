@@ -2,6 +2,8 @@
 
 Five patterns for structuring workflow-based skills. Choose based on your skill's decision structure, not its domain.
 
+**R18 exception (recorded):** several pattern skeletons below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent structural skeleton; splitting one would break the pattern it's illustrating.
+
 ---
 
 ## 1. Routing Pattern

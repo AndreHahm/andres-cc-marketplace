@@ -10,7 +10,7 @@ Main-thread processing steps for `/rules-extract --compact`.
 - Step CP4: Emit Structured Summary
 - Step CP5: Sub-skill caller directive For the subagent analysis instructions, heuristics, and per-iter response contract, see `references/compaction-mode.md`. For the sub-skill caller directive governing the fenced JSON return when invoked from an orchestrator, see `## Sub-skill caller directive` in the parent SKILL.md.
 
-Uses the Pattern A iteration loop convention (sibling to `verify-diff` / `publicity-review` / `skill-review`): the Skill wrapper runs in the main thread, a subagent performs the compaction analysis, the main thread applies the resulting `mechanical_edits`, and a fenced JSON return contract is emitted for caller dispatch. Per-file outer loop with `max_iterations = 2` (default).
+Uses a subagent-analysis / main-thread-apply iteration loop convention: the Skill wrapper runs in the main thread, a subagent performs the compaction analysis, the main thread applies the resulting `mechanical_edits`, and a fenced JSON return contract is emitted for caller dispatch. Per-file outer loop with `max_iterations = 2` (default).
 
 ## Step CP1: Load Settings and Resolve Targets
 
@@ -29,7 +29,7 @@ Uses the Pattern A iteration loop convention (sibling to `verify-diff` / `public
 
 For each file in the target set, run the per-file iteration loop. `max_iterations = 2` by default (compaction is judgment-heavy; two passes give the subagent a chance to refine its first attempt before declaring `partial`). Under-threshold files terminate at iter 1's (d) convergence check (chars_after ≤ compaction_threshold is already true), so their loop effectively runs once for consolidation detection only.
 
-**(a) Read & dispatch (per-iter)**: On iter 1, reuse the cached content from Step CP1 step 3 — `chars_before` is that cache entry's char count (avoids re-reading the same file). On iter `i ≥ 2`, re-`Read` the target file so the subagent operates on the post-prior-iter content. Spawn an `Agent` (`subagent_type: general-purpose`) with the dispatch prompt assembled from these `--- LABEL ---` sections (same fence convention as `verify-diff` Step 3 dispatch):
+**(a) Read & dispatch (per-iter)**: On iter 1, reuse the cached content from Step CP1 step 3 — `chars_before` is that cache entry's char count (avoids re-reading the same file). On iter `i ≥ 2`, re-`Read` the target file so the subagent operates on the post-prior-iter content. Spawn an `Agent` (`subagent_type: general-purpose`) with the dispatch prompt assembled from these `--- LABEL ---` sections:
 
 - `--- TARGET FILE ---`: absolute path + full current content
 - `--- COMPACTION HEURISTICS ---`: the four heuristics enumerated in `references/compaction-mode.md` § Heuristics (class-level extension merge / similar-entry merge / example reference extraction / one-shot incident dropout) — emit into `mechanical_edits` / `structural_notes`
@@ -37,10 +37,10 @@ For each file in the target set, run the per-file iteration loop. `max_iteration
 - `--- TARGET CHARS ---`: the resolved `compaction_threshold`
 - `--- MIN CLUSTER SIZE ---`: the resolved `min_cluster_size` integer
 - `--- ITER INFO ---`: current iter number (1 or 2), `max_iter` (2). On iter 2, also include a one-line summary of what iter 1 applied (the count of `mechanical_edits` landed and the iter-1 `chars_after` figure) so the subagent can plan an additional pass. Note: `consolidation_proposals` are collected from iter 1 only and the subagent should not re-emit them on iter 2
-- `--- COMPACTOR PROMPT ---`: the subagent instructions, including the `mechanical_edits` `old_string` uniqueness convention (1–3 lines of surrounding context, per the `verify-diff` convention) and the two-heuristic-set / distinct-output-array routing (see `references/compaction-mode.md` § Contract). Include the body verbatim from `references/compaction-mode.md`
+- `--- COMPACTOR PROMPT ---`: the subagent instructions, including the `mechanical_edits` `old_string` uniqueness convention (1–3 lines of surrounding context) and the two-heuristic-set / distinct-output-array routing (see `references/compaction-mode.md` § Contract). Include the body verbatim from `references/compaction-mode.md`
 - `--- RESPONSE FORMAT ---`: the fenced JSON schema the subagent must emit (per-iter response, not the top-level skill return shape)
 
-**(b) Parse**: parse the subagent's fenced JSON response. Evaluate in this order, **first match wins** (same evaluate-in-order discipline as `verify-diff` § (b) Parse & apply):
+**(b) Parse**: parse the subagent's fenced JSON response. Evaluate in this order, **first match wins**:
 
 1. **Verdict missing or malformed** — no fenced JSON block found, or JSON parse fails → terminate this file's loop with per-file `status: "error"`, `reason: "verdict parse failure"`
 2. **Schema violation** — required keys (`mechanical_edits`, `structural_notes`, `consolidation_proposals`) are missing, values are not arrays, or any entry fails its expected shape: each `mechanical_edits` entry needs non-empty string `file`, `old_string`, `new_string`; each `structural_notes` entry needs non-empty string `file`, `description`, `rationale`; each `consolidation_proposals` entry needs non-empty string `file`, non-empty `cluster_bullets` array (each item with non-empty string `line_range` and `snippet`), `merged_principle` object with non-empty string `name` and `text`, and non-empty `replacements` array (each item with non-empty string `line_range`, `strategy ∈ {"delete", "cross_ref"}`, and — when `strategy: "cross_ref"` — non-empty string `cross_ref_text`) → terminate with per-file `status: "error"`, `reason: "verdict schema violation"`. Validating entry shape here prevents a malformed entry from crashing downstream consumers (`Edit` calls for `mechanical_edits`, caller-side rendering for `consolidation_proposals`). For forward-compat with older subagent prompts that do not emit `consolidation_proposals`, the main thread treats a **missing** `consolidation_proposals` key (not present in the JSON) as an empty array; only an explicitly non-array value triggers the schema-violation path
@@ -49,7 +49,7 @@ For each file in the target set, run the per-file iteration loop. `max_iteration
 
 **(c) Apply (per-iter)**: this phase has two sub-phases — (c1) `mechanical_edits` apply (compaction heuristics 1–4), followed by (c2) `consolidation_proposals` main-thread synthesis (iter 1 only; consolidation heuristics 1–4). Both sub-phases share the iter-level `applied_edits_count` counter.
 
-**(c1) `mechanical_edits` apply**: for each entry in `mechanical_edits`, re-`Read` the target file (so `old_string` matches the current contents after any earlier edit in this iter), then call `Edit`. **Scope rail**: before each `Edit`, verify the entry's `file` equals the target file's path; if not, skip that entry (no working-tree write) and record the rejected path. This mirrors `verify-diff` Auto-derive A2 (c) Scope rail. If `old_string` is not found, skip that entry — this is the expected no-op fallback for overlapping edits emitted from the same iter-1 snapshot. Increment the iter-level `applied_edits_count` only for entries whose `Edit` call succeeded.
+**(c1) `mechanical_edits` apply**: for each entry in `mechanical_edits`, re-`Read` the target file (so `old_string` matches the current contents after any earlier edit in this iter), then call `Edit`. **Scope rail**: before each `Edit`, verify the entry's `file` equals the target file's path; if not, skip that entry (no working-tree write) and record the rejected path. If `old_string` is not found, skip that entry — this is the expected no-op fallback for overlapping edits emitted from the same iter-1 snapshot. Increment the iter-level `applied_edits_count` only for entries whose `Edit` call succeeded.
 
 **(c2) `consolidation_proposals` main-thread synthesis (iter 1 only)**: for each cluster in `consolidation_proposals` (process clusters sequentially — cluster A complete before cluster B begins, so cluster B's bullet extraction reads the post-cluster-A working-tree state). Per § `consolidation_proposals` schema in `references/compaction-mode.md`, the subagent does **not** emit `mechanical_edits` for these proposals — main thread synthesizes the `Edit` calls from the proposal's `cluster_bullets` + `merged_principle` + `replacements` fields. Per-cluster procedure:
 
@@ -71,13 +71,13 @@ The same scope rail and no-op-fallback semantics from (c1) apply: any entry whos
 
 - `path`, `chars_before`, `chars_after` (the latest measured), `iterations_used`
 - `applied_edits_count` (sum across iters)
-- `structural_notes` — captured from iter 1 only (treat iter 1 as the source of truth; iter 2 re-runs the heuristics on already-modified content and may return drifted notes — same `inferred_intent persistence` discipline as `verify-diff`). If iter 1 produced no parseable verdict (terminated via the (b) error paths), `structural_notes` is `[]`
+- `structural_notes` — captured from iter 1 only (treat iter 1 as the source of truth; iter 2 re-runs the heuristics on already-modified content and may return drifted notes). If iter 1 produced no parseable verdict (terminated via the (b) error paths), `structural_notes` is `[]`
 - `consolidation_proposals` — same iter-1-only discipline as `structural_notes` above. Iter 2's `consolidation_proposals_count` is ignored (the subagent should not re-emit them, and the main thread does not consume them if returned). If iter 1 produced no parseable verdict, `consolidation_proposals` is `[]`
 - `per_file_status` ∈ {`converged`, `partial`, `unresolved`, `error`, `skipped-below-threshold`}. Set by (d) (`converged` or `skipped-below-threshold` per the threshold-vs-applied-edits discrimination), (e) (`partial`), or (b) (`error` / `unresolved`). The `skipped-below-threshold` value's semantic is **widened**: it now means "compaction skipped because the file was already at-or-below threshold (no compaction-or-consolidation edits landed — cumulative `applied_edits_count == 0`), but Step CP2 still ran the per-file dispatch and any `consolidation_proposals` / `structural_notes` may be present"
 - `below_threshold` = `chars_after ≤ compaction_threshold`
 - `reason` (set only when `per_file_status ∈ {error, unresolved}`; omitted otherwise — including for `converged` / `partial` / `skipped-below-threshold`)
 
-**Important**: `consolidation_proposals` are **auto-applied by the main thread synthesis sub-phase (c2)** — the subagent still emits them as detection-only output (the subagent does **not** call `Edit` itself, per the analysis-only / file-write contract in `references/compaction-mode.md` § Forbidden tool calls and § `consolidation_proposals` schema's Materialization disposition), and the main thread synthesizes the corresponding `Edit` calls from the cluster description. The `consolidation_proposals` array in the per-file record is therefore now the **applied-cluster trace** (surfaced alongside the resulting file-content change), not a caller-judgment note. `structural_notes` remain **not applied** by this mode — they are surfaced as caller-judgment notes (the caller, e.g. `dev-workflow` Step 11 user-gate, decides whether to act). This matches the `skill-review` semantic for structural notes.
+**Important**: `consolidation_proposals` are **auto-applied by the main thread synthesis sub-phase (c2)** — the subagent still emits them as detection-only output (the subagent does **not** call `Edit` itself, per the analysis-only / file-write contract in `references/compaction-mode.md` § Forbidden tool calls and § `consolidation_proposals` schema's Materialization disposition), and the main thread synthesizes the corresponding `Edit` calls from the cluster description. The `consolidation_proposals` array in the per-file record is therefore now the **applied-cluster trace** (surfaced alongside the resulting file-content change), not a caller-judgment note. `structural_notes` remain **not applied** by this mode — they are surfaced as caller-judgment notes for the orchestrating caller's user-gate step to act on or dismiss.
 
 ## Step CP3: Security Self-Check
 
@@ -98,37 +98,42 @@ Run Security Self-Check (same as Step 6.5 in Full Extraction Mode) on all modifi
 
 Emit a single fenced JSON block at the end of the response, matching the schema:
 
+**Top-level shape:**
 ```json
 {
   "status": "compacted" | "no-actionable" | "error",
   "compaction_threshold": <int>,
   "min_cluster_size": <int>,
-  "files_processed": [
+  "files_processed": [ /* one entry per file, shape below */ ],
+  "reason": "<optional, required when top-level status=error>"
+}
+```
+
+**Each `files_processed[]` entry:**
+
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — the complete, authoritative field schema; trimming risks documenting an incomplete schema.
+
+```json
+{
+  "path": "<abs-path>",
+  "chars_before": <int>,
+  "chars_after": <int>,
+  "iterations_used": <int>,
+  "applied_edits_count": <int>,
+  "structural_notes": [{"description": "<str>", "rationale": "<str>"}],
+  "consolidation_proposals": [
     {
-      "path": "<abs-path>",
-      "chars_before": <int>,
-      "chars_after": <int>,
-      "iterations_used": <int>,
-      "applied_edits_count": <int>,
-      "structural_notes": [
-        {"description": "<str>", "rationale": "<str>"}
-      ],
-      "consolidation_proposals": [
-        {
-          "cluster_bullets": [{"line_range": "<L:M>", "snippet": "<str>"}],
-          "merged_principle": {"name": "<str>", "text": "<str>"},
-          "replacements": [
-            {"line_range": "<L:M>", "strategy": "delete"},
-            {"line_range": "<L:M>", "strategy": "cross_ref", "cross_ref_text": "<str>"}
-          ]
-        }
-      ],
-      "per_file_status": "converged" | "partial" | "unresolved" | "error" | "skipped-below-threshold",
-      "below_threshold": <bool>,
-      "reason": "<optional, required when per_file_status=error or unresolved>"
+      "cluster_bullets": [{"line_range": "<L:M>", "snippet": "<str>"}],
+      "merged_principle": {"name": "<str>", "text": "<str>"},
+      "replacements": [
+        {"line_range": "<L:M>", "strategy": "delete"},
+        {"line_range": "<L:M>", "strategy": "cross_ref", "cross_ref_text": "<str>"}
+      ]
     }
   ],
-  "reason": "<optional, required when top-level status=error>"
+  "per_file_status": "converged" | "partial" | "unresolved" | "error" | "skipped-below-threshold",
+  "below_threshold": <bool>,
+  "reason": "<optional, required when per_file_status=error or unresolved>"
 }
 ```
 

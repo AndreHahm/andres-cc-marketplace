@@ -1,0 +1,22 @@
+{
+  "eval_id": 5,
+  "config": "with_skill",
+  "results": [
+    {
+      "text": "Identifies Single-Rule mode, not Bulk mode",
+      "passed": true,
+      "evidence": "Response opens with '## 1. Mode: Single-Rule Mode' and explains why via Step 0's bulk-vs-single-rule distinction, matching Testing scenario 4 not scenario 3."
+    },
+    {
+      "text": "Correctly sequences find-dev-rule before update-dev-rule",
+      "passed": true,
+      "evidence": "Numbered sequence in section 2 lists find-dev-rule.md as step 1 (read-only finding) and update-dev-rule.md as step 3, gated behind the AskUserQuestion in step 2."
+    },
+    {
+      "text": "Names both the workflow's own coarser gate and update-dev-rule's own second pre-flight confirmation as distinct, non-duplicated gates",
+      "passed": true,
+      "evidence": "Section 3 explicitly labels 'Gate A - the skill's own coarser gate' and 'Gate B - update-dev-rule's own built-in pre-flight confirmation', quoting the workflow file's own 'must not skip or duplicate either one' language."
+    }
+  ],
+  "overall_pass": true
+}

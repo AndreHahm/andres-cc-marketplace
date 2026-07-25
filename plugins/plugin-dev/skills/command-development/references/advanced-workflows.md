@@ -2,6 +2,8 @@
 
 Multi-step command sequences and composition patterns for complex workflows.
 
+**R18 exception (recorded):** several complete command examples below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent, copy-paste-ready command file; splitting one would break it.
+
 ## Overview
 
 Advanced workflows combine multiple commands, coordinate state across invocations, and create sophisticated automation sequences. These patterns enable building complex functionality from simple command building blocks.
@@ -22,10 +24,10 @@ allowed-tools: Bash(gh:*), Read, Grep
 # PR Review Workflow for #$0
 
 ## Step 1: Fetch PR Details
-!`gh pr view $0 --json title,body,author,files`
+!\`gh pr view $0 --json title,body,author,files\`
 
 ## Step 2: Review Files
-Files changed: !`gh pr diff $0 --name-only`
+Files changed: !\`gh pr diff $0 --name-only\`
 
 For each file:
 - Check code quality
@@ -33,7 +35,7 @@ For each file:
 - Review documentation
 
 ## Step 3: Run Checks
-Test status: !`gh pr checks $0`
+Test status: !\`gh pr checks $0\`
 
 Verify:
 - All tests passing
@@ -75,8 +77,8 @@ allowed-tools: Write Bash(git:*)
 
 Creating deployment tracking file...
 
-Current branch: !`git branch --show-current`
-Latest commit: !`git log -1 --format=%H`
+Current branch: !\`git branch --show-current\`
+Latest commit: !\`git log -1 --format=%H\`
 
 Deployment state saved to `.claude/deployment-state.local.md`:
 
@@ -112,7 +114,7 @@ allowed-tools: Read Bash(npm:*)
 
 Reading deployment state from `.claude/deployment-state.local.md`...
 
-Running tests: !`npm test`
+Running tests: !\`npm test\`
 
 Updating state to 'tested'...
 
@@ -140,8 +142,8 @@ allowed-tools: Bash(git:*) Bash(npm:*) Read
 
 ## Pre-flight Checks
 
-Branch: !`git branch --show-current`
-Status: !`git status --short`
+Branch: !\`git branch --show-current\`
+Status: !\`git status --short\`
 
 **Checking conditions:**
 
@@ -151,7 +153,7 @@ Status: !`git status --short`
    - If hotfix: Fast-track process
 
 2. Tests:
-   !`npm test`
+   !\`npm test\`
    - If tests fail: STOP - fix tests first
    - If tests pass: Continue
 
@@ -457,10 +459,10 @@ description: Deploy with optional version
 argument-hint: [environment] [version]
 ---
 
-Environment: ${1:-staging}
-Version: ${2:-latest}
+Environment: ${0:-staging}
+Version: ${1:-latest}
 
-Deploying ${2:-latest} to ${1:-staging}...
+Deploying ${1:-latest} to ${0:-staging}...
 
 Note: Using defaults for missing arguments:
 - Environment defaults to 'staging'
@@ -528,7 +530,7 @@ description: Resilient deployment workflow
 Running steps with error handling...
 
 ## Step 1: Tests
-!`npm test`
+!\`npm test\`
 
 if [ $? -ne 0 ]; then
   ERROR: Tests failed
@@ -557,17 +559,17 @@ description: Deployment with rollback
 # Deploy with Rollback
 
 Saving current state for rollback...
-Previous version: !`current-version.sh`
+Previous version: !\`current-version.sh\`
 
 Deploying new version...
 
-!`deploy.sh`
+!\`deploy.sh\`
 
 if [ $? -ne 0 ]; then
   DEPLOYMENT FAILED
 
   Initiating automatic rollback...
-  !`rollback.sh`
+  !\`rollback.sh\`
 
   Rolled back to previous version.
   Check logs for failure details.
@@ -586,15 +588,15 @@ description: Workflow with checkpoints
 # Multi-Stage Deployment
 
 ## Checkpoint 1: Validation
-!`validate.sh`
+!\`validate.sh\`
 echo "checkpoint:validation" >> .claude/deployment-checkpoints.log
 
 ## Checkpoint 2: Build
-!`build.sh`
+!\`build.sh\`
 echo "checkpoint:build" >> .claude/deployment-checkpoints.log
 
 ## Checkpoint 3: Deploy
-!`deploy.sh`
+!\`deploy.sh\`
 echo "checkpoint:deploy" >> .claude/deployment-checkpoints.log
 
 If any step fails, resume with:
@@ -653,10 +655,10 @@ Creating workflow state...
 ---
 workflow: deployment
 environment: $0
-branch: !`git branch --show-current`
-commit: !`git rev-parse HEAD`
+branch: !\`git branch --show-current\`
+commit: !\`git rev-parse HEAD\`
 stage: initialized
-timestamp: !`date -u +%Y-%m-%dT%H:%M:%SZ`
+timestamp: !\`date -u +%Y-%m-%dT%H:%M:%SZ\`
 ---
 \`\`\`
 
@@ -690,14 +692,14 @@ Next: Run /deployment-execute
 ```markdown
 ---
 description: Execute deployment
-allowed-tools: Read Write Bash(bash:*)
+allowed-tools: Read Write Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/deploy.sh:*)
 ---
 
 Reading state: @.claude/deployment-state.local.md
 
 Executing deployment to [environment]...
 
-!`deploy.sh [environment]`
+!\`bash ${CLAUDE_PLUGIN_ROOT}/scripts/deploy.sh [environment]\`
 
 Deployment complete.
 Updating state to 'completed'...

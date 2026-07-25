@@ -13,121 +13,10 @@ Examples:
     repair_skill.py --list-issues
 """
 
-import json
 import sys
 import yaml
 from pathlib import Path
-from datetime import datetime
-from quick_validate import diagnose_skill_issues, validate_skill_registry_entry
-
-
-def create_registry_entry(skill_name, skill_path):
-    """
-    Create a registry entry for a skill based on its SKILL.md metadata.
-
-    Args:
-        skill_name: Name of the skill
-        skill_path: Path to skill directory
-
-    Returns:
-        dict: Registry entry or None if failed
-    """
-    skill_md = skill_path / "SKILL.md"
-    if not skill_md.exists():
-        return None
-
-    try:
-        content = skill_md.read_text(encoding='utf-8')
-
-        # Extract frontmatter
-        frontmatter_end = content.find('---', 3)
-        if frontmatter_end == -1:
-            return None
-
-        frontmatter_text = content[3:frontmatter_end].strip()
-        frontmatter = yaml.safe_load(frontmatter_text)
-
-        if not isinstance(frontmatter, dict):
-            return None
-
-        # Create registry entry
-        entry = {
-            "name": frontmatter.get('name', skill_name.replace('-', ' ').title()),
-            "category": frontmatter.get('category', 'create'),
-            "triggers": frontmatter.get('triggers', [
-                f"using {skill_name}",
-                f"activate {skill_name}",
-                f"skill {skill_name}"
-            ]),
-            "keywords": frontmatter.get('keywords', skill_name.split('-')),
-            "activation_count": 0,
-            "last_used": None,
-            "related_skills": frontmatter.get('related_skills', []),
-            "description": frontmatter.get('description', f"Skill: {skill_name}")
-        }
-
-        return entry
-
-    except Exception as e:
-        print(f"Error creating registry entry: {e}")
-        return None
-
-
-def add_skill_to_registry(skills_json_path, skill_name, registry_entry):
-    """
-    Add a skill to the skills.json registry.
-
-    Args:
-        skills_json_path: Path to skills.json
-        skill_name: Name of the skill
-        registry_entry: Registry entry data
-
-    Returns:
-        bool: Success status
-    """
-    try:
-        # Read current skills.json
-        if skills_json_path.exists():
-            with open(skills_json_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-        else:
-            data = {
-                "project": "PomoFlow",
-                "version": "1.0.0",
-                "last_updated": datetime.now().strftime('%Y-%m-%d'),
-                "skills": {},
-                "categories": {}
-            }
-
-        # Add skill to registry
-        if "skills" not in data:
-            data["skills"] = {}
-
-        data["skills"][skill_name] = registry_entry
-
-        # Ensure category exists
-        category = registry_entry.get('category', 'create')
-        if "categories" not in data:
-            data["categories"] = {}
-
-        if category not in data["categories"]:
-            data["categories"][category] = {
-                "description": f"Skills for {category}",
-                "color": "#3498DB"  # Default blue color
-            }
-
-        # Update timestamp
-        data["last_updated"] = datetime.now().strftime('%Y-%m-%d')
-
-        # Write back to file
-        with open(skills_json_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-
-        return True
-
-    except Exception as e:
-        print(f"Error adding skill to registry: {e}")
-        return False
+from quick_validate import diagnose_skill_issues
 
 
 def fix_frontmatter_format(skill_path):
@@ -216,7 +105,6 @@ def repair_skill(skill_name, skills_base_path):
         bool: Success status
     """
     skill_path = skills_base_path / skill_name
-    skills_json_path = skills_base_path.parent / "config" / "skills.json"
 
     print(f"🔧 Repairing skill: {skill_name}")
     print(f"   Path: {skill_path}")
@@ -259,18 +147,6 @@ def repair_skill(skill_name, skills_base_path):
         elif category == "frontmatter":
             if fix_frontmatter_format(skill_path):
                 fixes_applied += 1
-
-        elif category == "registry":
-            print("  Adding skill to registry...")
-            registry_entry = create_registry_entry(skill_name, skill_path)
-            if registry_entry:
-                if add_skill_to_registry(skills_json_path, skill_name, registry_entry):
-                    print("  ✅ Added to skills.json registry")
-                    fixes_applied += 1
-                else:
-                    print("  ❌ Failed to add to registry")
-            else:
-                print("  ❌ Could not create registry entry")
 
     print()
     print(f"🎉 Repair complete! Applied {fixes_applied} fix(es)")

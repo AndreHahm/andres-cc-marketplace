@@ -231,6 +231,8 @@ The gotchas section is the highest-signal content in any skill. It should be bui
 
 ## Progressive Disclosure
 
+See `how-skills-work.md`'s "Token Loading Hierarchy" for the canonical three-level explanation; the table below adds the skill-content-lifecycle/auto-compaction detail that file doesn't cover.
+
 ### The Three-Level System
 
 | Level | What | When Loaded | Size Target |

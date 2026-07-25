@@ -1,0 +1,8 @@
+{
+  "name": "widget-tools",
+  "description": "Utilities for creating and validating widget configuration files.",
+  "version": "0.1.0",
+  "author": {"name": "Test Author"},
+  "license": "MIT",
+  "skills": ["./skills/"]
+}

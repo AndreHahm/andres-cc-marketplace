@@ -8,6 +8,10 @@ Understanding plugin paths is critical for scripts, hooks, and external service 
 - [Relative Paths in plugin.json](#relative-paths-in-pluginjson)
 - [${CLAUDE_PLUGIN_ROOT} Variable](#claude_plugin_root-variable)
 - [Installation Path Behavior](#installation-path-behavior)
+- [${CLAUDE_PLUGIN_DATA} Variable](#claude_plugin_data-variable)
+- [${CLAUDE_PROJECT_DIR} Variable](#claude_project_dir-variable)
+- [${CLAUDE_SKILL_DIR} Variable](#claude_skill_dir-variable)
+- [Choosing the Right Variable](#choosing-the-right-variable)
 - [Common Path Issues](#common-path-issues)
 - [Real-World Examples](#real-world-examples)
 - [Testing Paths During Development](#testing-paths-during-development)
@@ -200,6 +204,102 @@ ${CLAUDE_PLUGIN_ROOT} = /system/managed/cache/my-plugin
 
 **Available in:** All projects (read-only)
 
+## ${CLAUDE_PLUGIN_DATA} Variable
+
+Use this variable for **persistent plugin state that must survive plugin updates** — installed dependencies (`node_modules`, Python virtualenvs), caches, generated code, logs, or databases.
+
+### Why This Variable Exists
+
+`${CLAUDE_PLUGIN_ROOT}` changes every time the plugin updates (the previous version's directory is kept for about seven days before cleanup, then removed). Anything written there is lost on update. `${CLAUDE_PLUGIN_DATA}` resolves to a separate, stable directory that outlives plugin version changes — the right place for state that shouldn't be reinstalled or regenerated every update.
+
+### Resolution
+
+```
+${CLAUDE_PLUGIN_DATA} = ~/.claude/plugins/data/{id}/
+```
+
+`{id}` is the plugin identifier with any character outside `a-z`, `A-Z`, `0-9`, `_`, `-` replaced by `-`. A plugin installed as `formatter@my-marketplace` resolves to `~/.claude/plugins/data/formatter-my-marketplace/`.
+
+The directory is created automatically the first time this variable is referenced — no setup step needed.
+
+### Example: Persisting Installed Dependencies
+
+```json
+{
+  "mcpServers": {
+    "routines": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/server.js"],
+      "env": {
+        "NODE_PATH": "${CLAUDE_PLUGIN_DATA}/node_modules"
+      }
+    }
+  }
+}
+```
+
+Because the data directory outlives any single plugin version, a directory-existence check alone can't detect a manifest change on update. Compare the bundled manifest against a copy stored in the data directory, and reinstall when they differ:
+
+```bash
+diff -q "${CLAUDE_PLUGIN_ROOT}/package.json" "${CLAUDE_PLUGIN_DATA}/package.json" >/dev/null 2>&1 \
+  || (cd "${CLAUDE_PLUGIN_DATA}" && cp "${CLAUDE_PLUGIN_ROOT}/package.json" . && npm install) \
+  || rm -f "${CLAUDE_PLUGIN_DATA}/package.json"
+```
+
+### Uninstall Behavior
+
+Uninstalling from the last remaining scope deletes `${CLAUDE_PLUGIN_DATA}` by default. Use `--keep-data` to preserve it — for example, when reinstalling after testing a new version.
+
+## ${CLAUDE_PROJECT_DIR} Variable
+
+The project root directory — the same value hooks and MCP servers receive as the `CLAUDE_PROJECT_DIR` environment variable. Use this to reference project-local scripts or config files, independent of where the plugin itself is installed.
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}\"/scripts/lint.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Also valid inside a skill's `allowed-tools` frontmatter, so a permission rule and the skill body can reference the identical path: `Bash(${CLAUDE_PROJECT_DIR}/scripts/lint.sh *)`.
+
+**Requires Claude Code v2.1.196 or later.**
+
+## ${CLAUDE_SKILL_DIR} Variable
+
+The directory containing the skill's own `SKILL.md` file. For a plugin skill, this is the **skill's subdirectory within the plugin — not the plugin root**. This is the key difference from `${CLAUDE_PLUGIN_ROOT}`: a plugin can bundle many skills, and `${CLAUDE_SKILL_DIR}` always resolves to the one currently executing, without hardcoding that skill's directory name.
+
+```yaml
+---
+name: codebase-visualizer
+---
+
+Run `python3 ${CLAUDE_SKILL_DIR}/scripts/visualize.py .` to generate the diagram.
+```
+
+Works identically whether the skill is installed at the personal, project, or plugin level.
+
+**Scope note:** unlike `${CLAUDE_PLUGIN_ROOT}`/`${CLAUDE_PLUGIN_DATA}`/`${CLAUDE_PROJECT_DIR}`, this variable is a skill-content substitution only — it is not available in `hooks.json`, MCP server configs, or LSP server configs, since those aren't scoped to a single skill file.
+
+## Choosing the Right Variable
+
+| Need | Variable |
+|---|---|
+| Reference a script/binary bundled anywhere in the plugin, from a hook/MCP/LSP config | `${CLAUDE_PLUGIN_ROOT}` |
+| Reference a file bundled with *this specific skill*, from inside that skill's own SKILL.md/references | `${CLAUDE_SKILL_DIR}` |
+| Persist installed dependencies, caches, or generated files across plugin updates | `${CLAUDE_PLUGIN_DATA}` |
+| Reference a project-local script or config file, independent of plugin install location | `${CLAUDE_PROJECT_DIR}` |
+
 ## Common Path Issues
 
 ### Issue 1: Hard-coded Absolute Paths
@@ -362,6 +462,8 @@ Hooks execute at:
 
 ### Example 3: Multiple Path Types
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — the section's own point is showing regular, MCP, and LSP path conventions together in one plugin.json; splitting would defeat that.
+
 ```json
 {
   "name": "code-tools",
@@ -419,4 +521,7 @@ During development with `--plugin-dir`:
 | **component paths** | plugin.json | `./relative/path` | Plugin root + relative path |
 | **script paths** | hooks, MCP | `${CLAUDE_PLUGIN_ROOT}/path` | Installation path + relative path |
 | **variable** | runtime | `${CLAUDE_PLUGIN_ROOT}` | Absolute path to plugin (system-dependent) |
+| **persistent data** | runtime | `${CLAUDE_PLUGIN_DATA}` | `~/.claude/plugins/data/{id}/` (survives plugin updates) |
+| **project-local paths** | hooks, MCP, skill body/allowed-tools | `${CLAUDE_PROJECT_DIR}/path` | Project root + relative path (requires v2.1.196+) |
+| **skill-bundled paths** | skill body only | `${CLAUDE_SKILL_DIR}/path` | This skill's own directory + relative path |
 | **symlinks** | not recommended | — | Use `${CLAUDE_PLUGIN_ROOT}` instead |

@@ -3,9 +3,9 @@
 Plugins can bundle Agent Skills, Subagents, and Hooks as reusable components. This guide covers packaging, organizing, and using each component type within plugins.
 
 **For component creation:**
-- **Creating Skills:** Use the `skill-creator` skill
-- **Creating Subagents:** Use the `subagent-creator` skill
-- **Creating Hooks:** Use the `hook-creator` skill
+- **Creating Skills:** Use the `skill-development` skill
+- **Creating Subagents:** Use the `agent-development` skill
+- **Creating Hooks:** Use the `hook-development` skill
 
 This guide covers integration into plugins only.
 
@@ -392,6 +392,8 @@ my-plugin/
 
 Hooks can be defined in `hooks.json`:
 
+**R18 exception (recorded):** the example below intentionally exceeds the 30-line threshold — deliberately shows two different hook types (`command` and `agent`) side by side to illustrate their differing schema; splitting would lose that comparison.
+
 ```json
 {
   "hooks": {
@@ -439,20 +441,7 @@ Or inline in `plugin.json`:
 
 ### Hook Types
 
-**Command hooks** — Run shell scripts
-- Fastest option for validation, formatting, state management
-- Use for non-blocking operations
-- Example: Run formatter after file write
-
-**Prompt hooks** — Ask LLM to make decisions
-- For decisions requiring language understanding
-- Adds latency (LLM call)
-- Example: Review changes before deployment
-
-**Agent hooks** — Delegate to specialized agent
-- For complex verification requiring multiple tools
-- Can run asynchronously
-- Example: Security scanning before release
+See `hooks.md`'s "Hook Types" section for the Command/Prompt/Agent categorization — not restated here to avoid drift.
 
 ### Hook Best Practices
 
@@ -468,12 +457,12 @@ Or inline in `plugin.json`:
 
 1. **Determine need** — What event should trigger? What should happen?
 2. **Create hook scripts** — Write validation/formatting/coordination scripts in `scripts/`
-3. **Use hook-creator skill** — Build and validate hook configuration
+3. **Use hook-development skill** — Build and validate hook configuration
 4. **Add to plugin** — Place `hooks.json` in plugin root (or inline in `.claude-plugin/plugin.json`)
 5. **Test locally** — `claude --plugin-dir /path/to/plugin` and verify hooks trigger
 6. **Validate** — Run `claude plugin validate .` to check structure
 
-For detailed hook creation and validation workflows, use the `hook-creator` skill.
+For detailed hook creation and validation workflows, use the `hook-development` skill.
 
 ---
 
@@ -497,17 +486,3 @@ Each component type tracks versions independently:
 - **Plugin version** (in plugin.json): Bump based on all bundled components
 
 See your plugin's CLAUDE.md for versioning rules.
-
-# Consolidation Note
-This file consolidates agent-skills.md, subagents-in-plugins.md, and hooks-in-plugins.md from refinement pass 2.
-
----
-
-## Advanced Reference
-
-This consolidated guide combines:
-- Agent Skills in Plugins (from agent-skills.md)
-- Subagents in Plugins (from subagents-in-plugins.md)
-- Hooks in Plugins (from hooks-in-plugins.md)
-
-All three components are fully documented in their respective sections above.

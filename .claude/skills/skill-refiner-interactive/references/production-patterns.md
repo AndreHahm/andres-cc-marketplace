@@ -2,6 +2,8 @@
 
 Essential patterns for production-ready skills used in team environments or with production data.
 
+**R18 exception (recorded):** a few sample transcripts/reports below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent worked example; splitting one would break it.
+
 ## Error Handling
 
 Production skills must handle errors gracefully, providing helpful feedback instead of failing silently.
@@ -137,7 +139,7 @@ Phase 3 (Frontmatter):
   ✓ name: "skill-refiner" (valid)
   ✓ description: includes trigger phrases (refine, validate, improve)
   ✓ version: 1.0.0 (semantic versioning)
-  ✓ allowed-tools: Read,Edit,Write,Bash(git:*),Glob,Task(*) (least privilege)
+  ✓ allowed-tools: Read,Edit,Write,Bash(git:*),Glob (least privilege)
 
 Phase 4 (Body Content):
   ✓ Lines: 950 (under 500 is optimal, acceptable up to 1,000)

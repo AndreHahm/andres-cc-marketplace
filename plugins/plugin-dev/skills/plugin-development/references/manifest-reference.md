@@ -107,13 +107,6 @@ Brief explanation of plugin purpose and functionality.
 }
 ```
 
-**Alternative format** (string only):
-```json
-{
-  "author": "Jane Developer <jane@example.com> (https://janedeveloper.com)"
-}
-```
-
 **Use cases**:
 - Credit and attribution
 - Contact for support or questions
@@ -185,7 +178,7 @@ Software license identifier.
 - `"ISC"` - Permissive, similar to MIT
 - `"UNLICENSED"` - Proprietary, not open source
 
-**Full list**: https://spdx.org/licenses/
+**Full list**: [SPDX license list](https://spdx.org/licenses/)
 
 **Multiple licenses**:
 ```json
@@ -232,18 +225,89 @@ Users can review and explicitly enable such plugins rather than having them acti
 
 #### dependencies
 
-**Type**: Array of strings
+**Type**: Array of strings or objects
 **Example**: `["shared-utils", "org-linter@marketplace"]`
 
 Other plugins this plugin requires. Claude Code enables declared dependencies transitively when this plugin is enabled, and supports pruning orphaned dependencies when it is removed.
 
+**String form** (name only, or `name@marketplace`):
+```json
+{
+  "dependencies": ["shared-utils", "org-linter@marketplace"]
+}
+```
+
+**Object form** (version-pinned):
+```json
+{
+  "dependencies": [
+    { "name": "secrets-vault", "version": "~2.1.0" }
+  ]
+}
+```
+
 **Use cases**:
 - Splitting shared components (skills, agents, hooks) into a common dependency plugin
 - Ensuring a required companion plugin is present before this plugin's components run
+- Pinning a dependency to a compatible version range (object form) when the dependency's API isn't stable across majors
 
 **Note**: dependency resolution is validated during install, enable, update, disable, and prune workflows — declare dependencies explicitly rather than assuming a companion plugin is already present.
 
+#### userConfig
+
+**Type**: Object
+**Example**: `{ "api_endpoint": { "type": "string", "title": "API endpoint", "description": "Base URL of the service" } }`
+
+User-configurable values prompted at enable time. Each option requires `type` (`string`, `number`, `boolean`, `directory`, or `file`), `title`, and `description`.
+
+```json
+{
+  "userConfig": {
+    "api_endpoint": {
+      "type": "string",
+      "title": "Deploy API endpoint",
+      "description": "Base URL of the deployment status API"
+    },
+    "api_key": {
+      "type": "string",
+      "title": "API Key",
+      "description": "Secret key for authentication",
+      "sensitive": true
+    }
+  }
+}
+```
+
+**Use cases**:
+- Values referenced in `mcpServers`, `lspServers`, `hooks`, or `monitors` commands via `${user_config.<key>}`
+- Values exposed as `CLAUDE_PLUGIN_OPTION_<KEY>` environment variables
+- Set `"sensitive": true` to mask input and store the value in the system keychain rather than plain config
+
+#### channels
+
+**Type**: Array of objects
+**Example**: `[{ "server": "telegram-bot" }]`
+
+Message-injection channels (Telegram/Slack/Discord-style) that let an external service push messages into a session. Each entry needs `server` matching a key in `mcpServers`.
+
+**Use cases**:
+- A plugin that bridges an external chat platform into Claude Code's conversation
+
 ### Component Path Fields
+
+#### skills
+
+**Type**: String or Array of strings
+**Default**: `["./skills"]`
+**Example**: `"./custom-skills"`
+
+Additional directories or files containing Agent Skills.
+
+**Format**: Same as `commands` field
+
+**Use cases**:
+- Grouping skills by domain
+- Loading skills from plugin dependencies
 
 #### commands
 
@@ -365,6 +429,59 @@ MCP server configuration location or inline definition.
 - Simple plugins: Single inline server (< 20 lines)
 - Complex plugins: External `.mcp.json` file
 - Multiple servers: Always use external file
+
+#### outputStyles
+
+**Type**: String or Array of strings
+**Default**: `["./output-styles"]`
+**Example**: `"./output-styles/terse.md"`
+
+Markdown files (with `name`+`description` frontmatter) that adjust Claude's response formatting — not CSS. A custom value **replaces** the default `output-styles/` directory.
+
+See `references/output-styles.md` for the full component reference.
+
+#### themes
+
+**Type**: String or Array of strings
+**Default**: `["./themes"]`
+**Example**: `"./themes/dracula.json"`
+
+JSON color-preset files (`{name, base, overrides}`) shown in `/theme`. A custom value **replaces** the default `themes/` directory.
+
+See `references/themes.md` for the full component reference.
+
+#### lspServers
+
+**Type**: String (path to `.lsp.json`) or Object (inline configuration)
+**Default**: `./.lsp.json`
+
+Language Server Protocol configuration location or inline definition — additive with the default `.lsp.json` (values combine rather than replace).
+
+```json
+{
+  "lspServers": {
+    "go": {
+      "command": "gopls",
+      "args": ["serve"],
+      "extensionToLanguage": { ".go": "go" }
+    }
+  }
+}
+```
+
+See `references/lsp-servers.md` for the full field list (`transport`, `env`, `initializationOptions`, `restartOnCrash`, etc.).
+
+#### monitors
+
+**Type**: String or Array of strings
+**Default**: `["./monitors/monitors.json"]`
+**Example**: `"./monitors.json"`
+
+Background watcher configs — a custom value **replaces** the default `monitors/monitors.json`.
+
+> **Version**: Requires Claude Code v2.1.105 or later.
+
+See `references/monitors.md` for the full component reference.
 
 ## Path Resolution
 
@@ -528,6 +645,8 @@ Good metadata for distribution:
 ### Complete Plugin
 
 Full configuration with all features:
+
+**R18 exception (recorded):** the example below intentionally exceeds the rulebook's 30-line code-block threshold — a whole-manifest illustration where splitting would remove the pedagogical value of seeing a realistic complete plugin.json in one place.
 
 ```json
 {

@@ -1,0 +1,17 @@
+{
+  "eval_id": 7,
+  "config": "with_skill",
+  "results": [
+    {
+      "text": "States 'no update needed' is a normal, valid outcome, not a failure",
+      "passed": true,
+      "evidence": "Response states 'It is explicitly treated as a normal, valid outcome - not a failure' and quotes SKILL.md's own '\"no update needed\" is a common, valid outcome, not a failure' line."
+    },
+    {
+      "text": "States no separate doc-fix commit happens when nothing was applied",
+      "passed": true,
+      "evidence": "Response states 'No. A separate doc-fix commit only happens if human-doc-reviewer finds gaps and the human approves fixes to apply... there is nothing to stage or commit', corroborated by the quoted '(if any)' quality-gate language."
+    }
+  ],
+  "overall_pass": true
+}

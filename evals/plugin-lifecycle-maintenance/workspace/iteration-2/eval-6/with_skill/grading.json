@@ -1,0 +1,17 @@
+{
+  "eval_id": 6,
+  "config": "with_skill",
+  "results": [
+    {
+      "text": "States the workflow stops cleanly at Step 1's exit criteria when no suggestions exist",
+      "passed": true,
+      "evidence": "Response quotes Step 1's exit criteria verbatim ('If it has none, state this plainly and stop') and states 'Zero suggestions means Step 1's exit criteria are not met... stop.'"
+    },
+    {
+      "text": "Does not proceed to Step 2's human-decision gate or fabricate a suggestion",
+      "passed": true,
+      "evidence": "Section 2 states 'No -- it stops before Step 2'; section 3 explicitly states 'I would not invent or fabricate a suggestion to have something to present.'"
+    }
+  ],
+  "overall_pass": true
+}

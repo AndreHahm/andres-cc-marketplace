@@ -2,6 +2,8 @@
 
 Understanding plugin architecture helps you create effective plugins. This guide covers how plugins work mechanically, then provides copy-paste templates for common patterns.
 
+**R18 exception (recorded):** the per-file content blocks under "Plugin Templates" intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, copy-paste-ready file within a named template (Template 1-5); splitting one would break the template's copy-paste usability, the same rationale already recorded in `examples/advanced-plugin.md` and `examples/standard-plugin.md`.
+
 ## Table of Contents
 
 - [Plugin Discovery & Activation](#plugin-discovery--activation)
@@ -18,23 +20,7 @@ Understanding plugin architecture helps you create effective plugins. This guide
 
 ## Plugin Directory Structure
 
-Standard layout at the plugin root:
-
-```
-my-plugin/
-├── .claude-plugin/
-│   └── plugin.json                    # Required: metadata manifest
-├── skills/                            # Optional: Agent Skills (recommended)
-│   └── skill-name/
-│       ├── SKILL.md
-│       └── references/
-├── agents/                            # Optional: subagents
-├── hooks/                             # Optional: event handlers
-│   └── hooks.json
-├── .mcp.json                          # Optional: MCP servers
-├── .lsp.json                          # Optional: LSP servers
-└── commands/                          # DEPRECATED: Use skills instead
-```
+See `directory-structure.md`'s "Standard Plugin Layout" for the complete canonical directory tree — not repeated here to avoid drift.
 
 **Auto-discovery sequence:**
 1. Reads `.claude-plugin/plugin.json` for metadata and custom paths
@@ -130,6 +116,9 @@ Loaded only when Claude executes a component:
 | **Hooks** | Event handlers that trigger automatically | `hooks.json` |
 | **MCP Servers** | External service integration (APIs, databases) | `.mcp.json` |
 | **LSP Servers** | Language-specific code intelligence | `.lsp.json` |
+| **Output Styles** | Adjust Claude's response formatting (Markdown, not CSS) | `output-styles/` |
+| **Themes** | Bundled color presets shown in `/theme` | `themes/` |
+| **Monitors** | Background watchers streaming stdout as notifications (v2.1.105+) | `monitors/monitors.json` |
 | **Commands** | User-invoked slash commands (DEPRECATED: use Skills) | `commands/` |
 
 ---
@@ -469,18 +458,30 @@ my-plugin/
 **`hooks.json`:**
 ```json
 {
-  "on-save": [
-    {
-      "name": "format",
-      "args": {}
-    }
-  ],
-  "on-commit": [
-    {
-      "name": "validate",
-      "args": {}
-    }
-  ]
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate.sh"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 

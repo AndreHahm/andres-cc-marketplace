@@ -2,6 +2,8 @@
 
 Reference templates for each mode's output report.
 
+**R18 exception (recorded):** each template below intentionally exceeds the rulebook's 30-line code-block threshold — each is the exact, complete output format for one extraction mode; splitting one would leave an incomplete, misleading template.
+
 ## Contents
 
 - Full Extraction Mode (Step 7)
@@ -57,23 +59,11 @@ Reference templates for each mode's output report.
 | frameworks/nextjs.md | 2 | 3 |
 
 ### Added to languages/typescript.md:
-#### Principles
-- (none)
-
-#### Project-specific patterns
-- `useNewFeature()` returns `{ data, refresh }` - new feature hook
-
-#### Examples (typescript.examples.md)
-- Added example for `useNewFeature()`
-
-### Added to frameworks/react.md:
-- (none)
+- Project-specific pattern: `useNewFeature()` returns `{ data, refresh }` - new feature hook
+- Example added to typescript.examples.md
 
 ### Promoted from staging (2nd observation, matched by --update):
 - `formatCurrency(amount, currency)` - locale-aware money formatter  (→ .claude/rules/project.md)
-
-### Unchanged files:
-- project.md
 
 ### Potentially stale rules:
 | File | Pattern | Reason |
@@ -90,35 +80,19 @@ The `### Promoted from staging (2nd observation, matched by --update):` section 
 ```markdown
 ## Restructure Complete
 
-**Project**: [project name]
-**Languages**: [detected languages]
-**Frameworks**: [detected frameworks]
-**Integrations**: [detected integrations]
+**Project**: [project name] · **Languages**: [detected] · **Frameworks**: [detected]
 
 ### Structural Changes
-
-| Action | File |
-|--------|------|
-| Kept | languages/typescript.md |
-| Created | frameworks/nextjs.md |
-| Removed | frameworks/old.md |
+- Kept: languages/typescript.md · Created: frameworks/nextjs.md · Removed: frameworks/old.md
 
 ### Content Merge Summary
 
 | File | Fresh | Merged from existing | Total |
 |------|-------|---------------------|-------|
 | languages/typescript.md | 3 principles, 5 patterns | 0 principles, 2 patterns | 3 principles, 7 patterns |
-| languages/typescript.examples.md | 8 examples | 2 examples | 10 examples |
-
-### Unmatched Rules (→ project.md)
-- (none)
 
 ### Resolved References
-
-| Source File | Referenced File | Extracted |
-|-------------|----------------|-----------|
-| project.md | docs/conventions.md | 2 principles, 3 patterns |
-| languages/typescript.md | @docs/ts-guidelines.md | 1 principle |
+- project.md → docs/conventions.md: 2 principles, 3 patterns extracted
 
 ### Unresolved References
 

@@ -79,7 +79,7 @@ Command body starts here.
 |-------|---------|---------|
 | `description` | Shown in `/help` — keep under 60 chars | First line of prompt |
 | `allowed-tools` | Tools the command may use (`Read`, `Bash(git:*)`, `*`) | Inherits from conversation |
-| `model` | Model override (`haiku`, `sonnet`, `opus`) | Inherits from conversation |
+| `model` | Model override (`haiku`, `sonnet`, `opus`, `fable`) | Inherits from conversation |
 | `argument-hint` | Autocomplete hint (e.g. `[pr-number] [priority]`), 0-based order matching body usage — plugin-rulebook R22 | None |
 | `disable-model-invocation` | Prevent programmatic invocation | `false` |
 
@@ -134,7 +134,7 @@ Commands can run bash inline to gather context before Claude processes the promp
 ---
 allowed-tools: Bash(git:*)
 ---
-Files changed: !`git diff --name-only`
+Files changed: !\`git diff --name-only\`
 
 Review each changed file for code quality and test coverage.
 ```
@@ -149,7 +149,7 @@ Plugin commands have access to `${CLAUDE_PLUGIN_ROOT}` — an env var resolving 
 ---
 allowed-tools: Bash(node:*)
 ---
-Run analysis: !`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js \$0`
+Run analysis: !\`node ${CLAUDE_PLUGIN_ROOT}/scripts/analyze.js \$0\`
 Load config: @${CLAUDE_PLUGIN_ROOT}/config/settings.json
 ```
 
@@ -224,6 +224,8 @@ After writing or modifying a command:
 | `references/advanced-workflows.md` | Multi-step patterns, complex workflows |
 | `references/interactive-commands.md` | `AskUserQuestion` patterns, user interaction |
 | `references/testing-strategies.md` | Validation patterns, argument/file/resource checks |
+| `scripts/validate-command.sh` | Bundled: validates a command file's structure (extension, non-empty, frontmatter markers) |
+| `scripts/validate-frontmatter.sh` | Bundled: validates a command file's frontmatter fields (`model`, `allowed-tools`, `description` length) |
 | `references/documentation-patterns.md` | Documentation command patterns |
 | `references/marketplace-considerations.md` | Publishing and distribution |
 | `references/slash-command-template.md` | Ready-to-use command template |

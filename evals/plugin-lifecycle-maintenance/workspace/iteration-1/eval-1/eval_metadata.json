@@ -1,0 +1,8 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "assertions": [
+    {"text": "Judges the description would trigger for this prompt", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Correctly identifies improve-a-plugin as the matching workflow, not enhance-a-plugin or modernize-plugin-dev", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

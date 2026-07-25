@@ -1,0 +1,28 @@
+{
+  "skill_name": "plugin-documentation",
+  "skill_path": "plugins/plugin-dev/skills/plugin-documentation",
+  "description": "Author and update a Claude Code plugin's human-facing documentation from the plugin's actual current state, then invoke human-doc-reviewer for QA.",
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "Author a new README from scratch",
+      "prompt": "Using the plugin-documentation skill, write a README.md for the plugin at evals/plugin-documentation/fixture-plugin (no README.md exists there yet).",
+      "expected_output": "README.md at evals/plugin-documentation/fixture-plugin/README.md describing widget-tools, listing both hello-skill and goodbye-skill with their actual descriptions, an install command, and a license line — with no invented capabilities.",
+      "files": ["evals/plugin-documentation/fixture-plugin/README.md"]
+    },
+    {
+      "id": "eval-2",
+      "name": "Update existing README without dropping human-added content",
+      "prompt": "Using the plugin-documentation skill, update the README.md at evals/plugin-documentation/fixture-plugin-eval2 to reflect that the plugin now has two skills (hello-skill and goodbye-skill), not just one.",
+      "expected_output": "README.md updated to list both skills, while the existing 'Known Issues' section and its content are preserved unchanged.",
+      "files": ["evals/plugin-documentation/fixture-plugin-eval2/README.md"]
+    },
+    {
+      "id": "eval-3",
+      "name": "Author a doc type outside human-doc-reviewer's scope",
+      "prompt": "Using the plugin-documentation skill, write a QUICK_START.md for the plugin at evals/plugin-documentation/fixture-plugin-eval3.",
+      "expected_output": "QUICK_START.md written with install step + one usage example, and the final report explicitly states no dedicated reviewer is available for this doc type yet.",
+      "files": ["evals/plugin-documentation/fixture-plugin-eval3/QUICK_START.md"]
+    }
+  ]
+}

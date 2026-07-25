@@ -213,16 +213,6 @@ def check_skill_links_and_orphans(text, file_path, findings):
         findings.append(("ADVISORY", "ORPHAN", f"{len(orphans)} orphaned file(s) not referenced in SKILL.md: {shown}{more}"))
 
 
-def check_hooks_only_vars(text, settings, findings):
-    hooks_only_vars = (settings or {}).get("hooks_only_vars", ["${CLAUDE_PLUGIN_ROOT}", "${CLAUDE_PLUGIN_DATA}"])
-    body = body_after_frontmatter(text)
-    text_plain = re.sub(r"```[\s\S]*?```", "", body)
-    text_plain = re.sub(r"`[^`\n]+`", "", text_plain)
-    for var in hooks_only_vars:
-        if var in text_plain:
-            findings.append(("FAIL", "HOOKVAR", f"invalid variable in SKILL.md body: {var} (hooks/hooks.json only)"))
-
-
 def check_secrets(text, findings):
     for line in text.splitlines():
         if any(hint in line for hint in PLACEHOLDER_HINTS):
@@ -336,7 +326,6 @@ def main():
 
     if kind == "skill":
         check_skill_links_and_orphans(text, file_path, findings)
-        check_hooks_only_vars(text, settings, findings)
 
     check_secrets(text, findings)
     check_skill_line_count(text, kind, settings, findings)

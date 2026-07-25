@@ -1,6 +1,8 @@
 # JSON Schemas
 
-JSON structures used by skill-forge for evals, grading, benchmarking, and comparison. Also includes the canonical `SKILL.md` frontmatter field reference below.
+JSON structures used by skill-development for evals, grading, benchmarking, and comparison. Also includes the canonical `SKILL.md` frontmatter field reference below.
+
+**R18 exception (recorded):** several schema examples below intentionally exceed the rulebook's 30-line code-block threshold — each is the authoritative, complete schema for a specific file type (e.g. `grading.json`'s exact field names are depended on by the eval viewer, per the note below); trimming would risk documenting an incomplete or misleading schema.
 
 ---
 

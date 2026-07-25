@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Judges the description would trigger for this prompt", "passed": true, "evidence": "\"improve this plugin based on the retro\" is a verbatim match to one of the description's explicitly enumerated example phrases."},
+    {"text": "Correctly identifies improve-a-plugin as the matching workflow, not enhance-a-plugin or modernize-plugin-dev", "passed": true, "evidence": "Agent explicitly named improve-a-plugin.md and distinguished it from the other two workflows by their finding sources."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

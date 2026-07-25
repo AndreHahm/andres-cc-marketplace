@@ -1,6 +1,6 @@
-# Plugin Creator Quick Reference
+# Plugin Development Quick Reference
 
-Fast lookup for common plugin creation tasks.
+Fast lookup for common plugin creation tasks — templates and compact tables not duplicated elsewhere. For checklists and step-by-step procedures, see `SKILL.md` directly.
 
 ## Directory Structure Template
 
@@ -46,7 +46,7 @@ my-plugin/
 
 ## Slash Command Template
 
-File: `commands/command-name.md`
+File: `commands/command-name.md`. Frontmatter shape only — see `plugin-architecture.md`'s Template 1 for the full worked file with body sections filled in:
 
 ```markdown
 ---
@@ -57,22 +57,6 @@ arguments:
     description: What this parameter is
     required: true
 ---
-
-# Command Name
-
-Your command instructions here.
-
-## Quick Start
-
-Step-by-step instructions.
-
-## Examples
-
-Concrete examples Claude can reference.
-
-## Key Notes
-
-Important constraints and edge cases.
 ```
 
 ## Naming Conventions Quick Check
@@ -97,20 +81,9 @@ Important constraints and edge cases.
 - Hook integration
 - File support/formats
 
-## Quick Checklist Before Deployment
+## Deployment Checklist
 
-- [ ] plugin.json exists in `.claude-plugin/` directory
-- [ ] plugin.json is valid JSON (`jq . plugin.json` passes)
-- [ ] `name` field: lowercase, hyphens, no spaces, 1-64 chars
-- [ ] `description` field: includes trigger phrases
-- [ ] Commands in `commands/` directory as `.md` files
-- [ ] Each command has YAML frontmatter with `name`, `description`, and `argument-hint` if it takes arguments (optionally `arguments: [name, ...]` for named `$name` substitution — not an object/schema)
-- [ ] `argument-hint`/`arguments` declared slots match what the body actually consumes, in the same order (0-based `$0`/`$1`/...) — plugin-rulebook R22
-- [ ] Command instructions are clear and include examples
-- [ ] Agents (if present) are `.md` files in `agents/` directory
-- [ ] Skills (if present) have `SKILL.md` with proper frontmatter
-- [ ] Tested locally: `claude --plugin-dir /path/to/plugin /plugin-name:command`
-- [ ] No Bash tool in allowed-tools (unless explicitly needed)
+See `SKILL.md`'s own Testing & Validation section and Quality Gates for the full pre-deployment checklist — not restated here to avoid drift.
 
 ## Common Plugin Patterns
 
@@ -174,33 +147,14 @@ Claude activates plugins based on:
 
 **Both use same directory structure.**
 
-## Testing Commands
-
-```bash
-# Test plugin directory structure
-ls -R /path/to/plugin
-
-# Validate plugin.json
-jq . /path/to/plugin/.claude-plugin/plugin.json
-
-# Test command locally
-claude --plugin-dir /path/to/plugin /plugin-name:command
-
-# List all plugin commands
-ls /path/to/plugin/commands/
-
-# Validate command metadata
-grep -A 5 "^name:" /path/to/plugin/commands/*.md
-```
-
 ## Reference Files to Use
 
-- **Creating new plugin?** → See `plugin-templates.md`
+- **Creating new plugin?** → See `plugin-architecture.md`
 - **Validating existing?** → Use `validation-checklist.md`
-- **Confused about structure?** → Check `how-plugins-work.md`
+- **Confused about structure?** → Check `plugin-architecture.md`
 - **plugin.json questions?** → Read `plugin-json-schema.md`
 - **Command format help?** → See `slash-command-format.md`
-- **Best practices?** → Review `best-practices.md`
+- **Debugging/troubleshooting?** → Review `troubleshooting-and-production.md`
 
 ## Key Rules
 
@@ -257,13 +211,8 @@ More text with examples.
 | Search files | `Glob` | Find plugin components |
 | Ask user questions | `AskUserQuestion` | Gather requirements |
 
-**NOT allowed:** `Bash` (git operations reserved for user)
+**Scoped, not disallowed:** `Bash` is limited to `Bash(jq:*) Bash(python:*) Bash(claude:*)` for this skill (see `SKILL.md`'s frontmatter) — not a blanket exclusion.
 
-## Skill Delegation (hook-creator, subagent-creator)
+## Component-Specific Delegation
 
-For complex plugin components:
-- **Creating/improving hooks?** → Use `hook-creator` skill for hook-specific guidance
-- **Creating/refining subagents?** → Use `subagent-creator` skill for agent-specific guidance
-- **Creating/improving skills?** → Use `skill-creator` skill for skill-specific guidance
-
-plugin-creator handles plugin structure and organization. Component-specific skills provide deeper guidance for each type.
+See `SKILL.md`'s own "When NOT to Use" section for the current delegation targets (component creation, marketplace-only publishing, etc.) — not restated here to avoid drift. `plugin-development` itself handles plugin-level structure and organization only.

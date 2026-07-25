@@ -2,6 +2,8 @@
 
 Guidelines for creating commands designed for distribution and marketplace success.
 
+**R18 exception (recorded):** several blocks below intentionally exceed the rulebook's 30-line code-block threshold. Most are complete, coherent, copy-paste-ready command files — splitting one would break it. Two ("Pre-Release Checklist," "Version Compatibility," both HTML-comment blocks rather than command files) are complete illustrative checklists instead — trimming either would undermine the "here's what genuinely thorough looks like" teaching point, the same rationale, applied to a checklist rather than a command file.
+
 ## Overview
 
 Commands distributed through marketplaces need additional consideration beyond personal use commands. They must work across environments, handle diverse use cases, and provide excellent user experience for unknown users.
@@ -15,7 +17,7 @@ Commands distributed through marketplaces need additional consideration beyond p
 ```markdown
 ---
 description: Cross-platform command
-allowed-tools: Bash(*)
+allowed-tools: Bash(uname:*)
 ---
 
 # Platform-Aware Command
@@ -49,7 +51,7 @@ fi
 
 ```markdown
 <!-- BAD: macOS-specific -->
-!`pbcopy < file.txt`
+!\`pbcopy < file.txt\`
 
 <!-- GOOD: Platform detection -->
 if command -v pbcopy > /dev/null; then
@@ -70,7 +72,7 @@ fi
 ```markdown
 ---
 description: Dependency-aware command
-allowed-tools: Bash(*)
+allowed-tools: Bash(command -v:*)
 ---
 
 # Check Dependencies

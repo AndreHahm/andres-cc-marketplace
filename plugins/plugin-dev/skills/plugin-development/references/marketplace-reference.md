@@ -76,6 +76,8 @@ Standard values for `category`: `development`, `productivity`, `security`, `lear
 
 ### Complete Example
 
+**R18 exception (recorded):** intentionally exceeds the 30-line threshold — deliberately shows two plugin entries with different `source` shapes (local path vs. GitHub) side by side; splitting would lose that comparison.
+
 ```json
 {
   "$schema": "https://anthropic.com/schemas/marketplace.json",

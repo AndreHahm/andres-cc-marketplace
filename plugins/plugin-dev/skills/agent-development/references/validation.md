@@ -22,6 +22,7 @@ Verify the agent file is correctly formatted with all required fields.
 - [ ] `name` present: lowercase-hyphen, 3–64 chars
 - [ ] `description` present: ≤1024 chars
 - [ ] `model` field valid: `inherit`, `sonnet`, `opus`, `haiku`, `fable`, or a full model ID
+- [ ] `model` role fit (advisory, not blocking): if the agent's role is clearly orchestrator/implementer/quality-gate, compare against the role-tier mapping in `references/configuration-reference.md` — a mismatch is worth a Minor note, not a required change; `inherit` is never itself a violation
 - [ ] `color` (if present): use the current valid list in `references/configuration-reference.md` — don't duplicate a separate enum here
 - [ ] `tools` (if present): exact tool names (capitalized: `Read`, `Write`, `Bash`)
 - [ ] `disallowedTools` (if present): exact tool names; don't use both `tools` and `disallowedTools` unless intentional
@@ -253,4 +254,3 @@ Additional requirements before sharing or deploying to a team:
 - [ ] Documentation explains purpose, trigger phrases, permission mode rationale
 - [ ] Security review completed (permissions, tool access, hook logic)
 - [ ] Tested across multiple realistic request phrasings
-- [ ] Version field present if team is tracking changes: `version: 1.0.0`

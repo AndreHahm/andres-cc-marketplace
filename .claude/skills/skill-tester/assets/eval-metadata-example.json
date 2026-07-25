@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "skill_path": "skills/skill-development/SKILL.md",
+  "assertions": [
+    {
+      "text": "SKILL.md has frontmatter with name and description",
+      "type": "presence",
+      "target": "SKILL.md frontmatter (first 10 lines)"
+    },
+    {
+      "text": "Description includes specific trigger phrases (e.g., 'create', 'new skill', 'best practices')",
+      "type": "quality",
+      "target": "SKILL.md frontmatter description field"
+    },
+    {
+      "text": "Body is <500 lines and includes 'Quick Start' section",
+      "type": "structure",
+      "target": "SKILL.md body"
+    },
+    {
+      "text": "References/ directory has one-level nesting (no nested subdirectories)",
+      "type": "structure",
+      "target": "references/ directory tree"
+    },
+    {
+      "text": "All reference links in SKILL.md body have corresponding .md files",
+      "type": "functionality",
+      "target": "SKILL.md body cross-references vs. references/ files"
+    }
+  ]
+}

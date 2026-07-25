@@ -1,0 +1,61 @@
+{
+  "skill_name": "plugin-lifecycle-maintenance",
+  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "description": "Orchestrates ongoing maintenance for an already-built plugin through 4 workflows (improve/enhance/modernize/self-service), each ending in a human-approved, tested, documented, committed change.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Trigger phrase activates correctly",
+      "prompt": "improve this plugin based on the retro",
+      "expected_output": "A semantic skill-matcher judging this description would trigger plugin-lifecycle-maintenance, specifically routing to the improve-a-plugin workflow (retro-driven)."
+    },
+    {
+      "id": 2,
+      "name": "Unrelated request does not trigger",
+      "prompt": "review my PR for bugs",
+      "expected_output": "A semantic skill-matcher judging this description would NOT trigger plugin-lifecycle-maintenance -- this is a code review request with no plugin-maintenance framing."
+    },
+    {
+      "id": 3,
+      "name": "Body guidance correctly routes a realistic scenario",
+      "prompt": "I just ran a retro on plugin-foo and want to act on the findings",
+      "expected_output": "Given the full SKILL.md content, correctly identifies workflows/improve-a-plugin.md as the right workflow (not enhance-a-plugin or modernize-plugin-dev), and states the first concrete action is invoking analyzing-sessions (already done per the prompt) followed by presenting suggestions and asking the human which to act on via AskUserQuestion -- not silently picking suggestions itself."
+    },
+    {
+      "id": 4,
+      "name": "enhance-a-plugin routing and Fix hand-off (scenario 2)",
+      "prompt": "I just ran a plugin-comparison between plugin-foo and an external plugin, and found some real deltas I want to act on",
+      "expected_output": "Given the full SKILL.md + enhance-a-plugin.md content, correctly identifies enhance-a-plugin.md as the workflow (plugin-comparison as finding source, not analyzing-sessions), and states the hand-off after human approval goes to plugin-lifecycle-downstream's external Phase 3 entry -- not a reimplemented apply step."
+    },
+    {
+      "id": 5,
+      "name": "modernize-plugin-dev single-rule mode gate sequencing (scenario 4)",
+      "prompt": "I know the R13 line-count threshold might be outdated -- check it and fix it if so",
+      "expected_output": "Given the full SKILL.md + modernize-plugin-dev.md content, identifies Single-Rule mode (not Bulk mode -- this is one already-known rule, not a whole-plugin sweep), and correctly sequences find-dev-rule (read-only findings first) before update-dev-rule, naming both the workflow's own coarser confirmation gate AND update-dev-rule's own built-in second pre-flight confirmation as two distinct, non-duplicated gates."
+    },
+    {
+      "id": 6,
+      "name": "No findings clean stop (scenario 5)",
+      "prompt": "I ran a retro on plugin-foo via analyzing-sessions and it found nothing worth acting on -- zero suggestions",
+      "expected_output": "Given the full SKILL.md + improve-a-plugin.md content, states the workflow should stop cleanly at Step 1's exit criteria (report exists with at least one suggestion) -- does not proceed to Step 2's human-decision gate or fabricate a suggestion to act on."
+    },
+    {
+      "id": 7,
+      "name": "Document step nothing-to-update outcome (scenario 6)",
+      "prompt": "The core fix for plugin-foo just landed and was committed -- now what does the Document step do if human-doc-reviewer finds no documentation gaps?",
+      "expected_output": "Given SKILL.md's 'The Document Step' section, states that 'no update needed' is presented as a normal, valid outcome (not a failure or something to silently skip past without stating), and that no separate doc-fix commit happens in that case since nothing was applied."
+    },
+    {
+      "id": 8,
+      "name": "Document step delegates to plugin-documentation, no double delta/full ask (scenario 7)",
+      "prompt": "The core fix for plugin-foo just landed and was committed -- walk through exactly what the Document step does next, step by step.",
+      "expected_output": "Given SKILL.md's 'The Document Step' section, states that a single Skill(plugin-documentation) call is invoked, passing the specific list of changed claims -- and explicitly does NOT ask its own separate delta/full AskUserQuestion first, since plugin-documentation owns that decision internally. Does not describe invoking human-doc-reviewer directly."
+    },
+    {
+      "id": 9,
+      "name": "Document step nothing-to-update via plugin-documentation (scenario 6, re-verified after rewiring)",
+      "prompt": "The core fix for plugin-foo just landed and was committed -- now what does the Document step do if plugin-documentation finds no documentation gaps?",
+      "expected_output": "Given SKILL.md's 'The Document Step' section, states that 'no update needed' is presented as a normal, valid outcome (not a failure or something to silently skip past without stating), and that no separate doc-fix commit happens in that case since nothing was applied -- correctly attributing the finding to plugin-documentation's own internal human-doc-reviewer QA, not to a directly-invoked human-doc-reviewer."
+    }
+  ]
+}

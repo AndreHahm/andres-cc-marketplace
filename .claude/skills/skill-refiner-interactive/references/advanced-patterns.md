@@ -405,4 +405,4 @@ Beyond personal skills, production skills require:
 | **Validation script** | Team can verify skill works before use |
 | **Security review** | Catch edge cases and vulnerabilities |
 
-See `checklist.md` → "Team & Production Skills" for detailed requirements.
+See `validation-checklist.md` → "Production-Ready Checklist" for detailed requirements.

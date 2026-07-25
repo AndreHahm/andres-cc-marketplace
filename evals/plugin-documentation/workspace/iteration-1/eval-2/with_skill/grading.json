@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "README now lists both hello-skill and goodbye-skill", "passed": true, "evidence": "Skills table updated with goodbye-skill row"},
+    {"text": "The 'Known Issues' section and its exact content are preserved", "passed": true, "evidence": "Confirmed byte-identical to original"},
+    {"text": "No other pre-existing section was silently dropped or rewritten beyond what the skill-count update required", "passed": true, "evidence": "Only the Skills table changed; Installation/License/heading untouched"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "notes": "human-doc-reviewer flagged 2 Major findings against the resulting doc (stale opening paragraph, missing Usage section) that the test agent correctly declined to silently fix given the task's explicit 'preserve everything else exactly as-is' scope, and flagged the tension explicitly rather than guessing. Root cause: SKILL.md Step 3 didn't clearly require re-checking the opening summary paragraph against the full component list on an update pass. Fixed in SKILL.md before Commit (see iteration notes) - opening-paragraph re-check now explicit."
+}

@@ -41,6 +41,8 @@ Thresholds from `assets/settings.json → rules.R18_code_block_line_limit.config
 
 **Extraction target:** Runnable code → `scripts/<name>.<ext>`. Templates, config examples, non-executable content → `references/<topic>.md`. Replace the original block with a 1–2-line pointer.
 
+**Before extracting, check whether extraction actually removes the violation:** if the block's content is a complete, coherent worked example (a full YAML frontmatter block, a full config file, a full script) whose entire pedagogical value is showing the whole thing at once, moving it into a new `references/<topic>.md` often just re-wraps the same content in another fenced block inside that new file — the identical R18 violation, relocated rather than fixed. Ask first: "would the destination file need to show this content in a fence of the same size to serve its own purpose?" If yes, extraction is not a real fix — use the **R18 exception (recorded)** pattern instead: add a one-line note directly above the block explaining that it is an intentional whole-example illustration where splitting would destroy pedagogical value, and leave the block in place. Reserve extraction for blocks that can be restructured into a genuinely standalone file with independent, non-nested fences (e.g. frontmatter as its own small block, each example as its own separate fence) — not for a block that would just be re-wrapped whole.
+
 ---
 
 ## R21 — Skill Description Size

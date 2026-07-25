@@ -7,7 +7,7 @@ description: >-
   'validate this slash command', 'audit commands directory', or wants to
   ensure a command follows best practices before it ships. Trigger
   proactively after command creation or modification.
-model: inherit
+model: sonnet
 color: pink
 tools: ["Read", "Grep", "Glob"]
 ---
@@ -20,6 +20,7 @@ Check the invocation context before starting:
 
 - **Full review** (default): Run Steps 1–5.
 - **Fast path** (`--fast`, "gatekeeper only", or "quick check" in the request): Run Steps 1–3, then only the frontmatter/argument-consistency portion of Step 4. Skip content-quality checks in Step 5. Output only Critical/blocking findings and a Pass/Reject verdict.
+- **Structured output** (`--yaml`, "structured output", or "machine-readable" in the request): orthogonal to the two modes above — run the same Steps (Full or Fast, whichever also applies) but emit YAML per "Structured Output Mode" below instead of the narrative report in Step 6. Skip the narrative-only "Suggested next step" trailer in this mode.
 
 ## Step 1: Load plugin-rulebook (if available)
 
@@ -42,7 +43,9 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
 
 **Not applicable:** R2, R3, R10, R13, R14 (no `references/` directory convention for commands), R21 (explicitly scoped to SKILL.md only — commands use the R8 60/80-char check instead).
 
-**If not found:** skip rulebook checks; rely solely on `command-development` standards (Step 2), including its own informal argument-hint/body-order check.
+Also load `settings.json → structured_output.action_enum` — used by Structured Output Mode (Step 6).
+
+**If not found:** skip rulebook checks; rely solely on `command-development` standards (Step 2), including its own informal argument-hint/body-order check. For Structured Output Mode, fall back to the hardcoded action enum in Step 6.
 
 ## Step 2: Load Standards from `command-development`
 
@@ -113,3 +116,18 @@ For each non-minor finding: the file and line (or frontmatter field), the checkl
 End the report with:
 - **Overall Rating**: Pass / Reject — Reject whenever one or more Critical findings exist
 - **Top 3 Priority Fixes**: highest-impact actions to take first, in priority order
+- **Suggested next step**: if this report contains any Critical or Major finding, the calling context should ask the user via `AskUserQuestion` whether to run the `enhancement-suggestor` agent against it for classified (complexity/risk/benefit) WHAT/WHY/HOW next-step suggestions — this agent does not invoke it itself
+
+### Structured Output Mode
+
+When invoked in Structured output mode (see Invocation Modes), skip the narrative report above entirely and return YAML only — no prose outside the block:
+
+```yaml
+verdict: Pass                    # Pass | Reject
+counts: {critical: 0, major: 1, minor: 2}
+findings:
+  - {id: M1, severity: major, check: "argument-hint-consistency", location: "commands/example.md (frontmatter)", action: fix_frontmatter, finding: "explanation", fix: "suggested fix"}
+top_priority_fixes: [highest-impact fix, second fix, third fix]
+```
+
+`findings[].check` is free-text naming the failing checklist item (YAML validity, description length, allowed-tools coverage, model value, argument-hint/R22 consistency, disable-model-invocation, directives-not-descriptions, single responsibility, verb-noun naming, Bash scoping, destructive-action confirmation, output-file policy, Skill-confusion note, name collision, legacy-format awareness). `findings[].severity` uses `critical | major | minor`, ordered Critical-first same as the narrative report. `findings[].action` uses the canonical enum loaded in Step 1 (`move_to_references | delete | replace_line | add_field | fix_frontmatter`); omit the field only if no enum value fits. Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`verdict`.

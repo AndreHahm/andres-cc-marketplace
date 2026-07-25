@@ -4,18 +4,14 @@ Strategic use of directories to maximize token efficiency and context management
 
 ## Three-Level Loading System
 
-```json
-Level 1: Metadata (Always) → ~100 words
-Level 2: SKILL.md (Triggered) → <100 lines
-Level 3: Resources (Lazy) → As needed
-```
+See `how-skills-work.md`'s "Token Loading Hierarchy" for the authoritative explanation of the three loading levels (metadata always-loaded, SKILL.md body on trigger, bundled resources on-demand). The directory-by-directory guidance below assumes that model.
 
 ## Directory Structure & Purpose
 
 ### **SKILL.md** (Required)
 
 **Loading Level**: 2 (Triggered)
-**Token Budget**: <100 lines
+**Token Budget**: see `size-limits.md`'s tiered thresholds (300-line soft target, 500-line hard limit)
 **Purpose**: Core workflow and essential guidance
 
 **Content Strategy**:
@@ -126,6 +122,8 @@ assets/
 
 ## Decision Framework
 
+For the authoritative content-distribution decision process (the 80% Rule), see `skill-workflow.md` Part 1 — the table below is a compact placement reference, not a replacement for that decision tree.
+
 ### Content Placement Guide
 
 | Content Type        | SKILL.md       | references/ | scripts/ | assets/ |
@@ -196,7 +194,7 @@ api-integration/
 
 ### Structure Validation
 
-- [ ] SKILL.md exists and <100 lines
+- [ ] SKILL.md exists and within `size-limits.md`'s tiered thresholds
 - [ ] Resources organized by purpose
 - [ ] Clear separation of concerns
 - [ ] No content duplication
@@ -242,7 +240,7 @@ api-integration/
 
 ### Optimization Triggers
 
-- SKILL.md > 100 lines → Split to references/
+- SKILL.md exceeds `size-limits.md`'s soft-warning threshold (300 lines) → Split to references/
 - API documentation, schemas, or reference tables > ~100 lines → extract to references/ — a concrete size-based trigger that supplements the 80%-usage rule above
 - Frequent manual steps → Create scripts/
 - Large template usage → Move to assets/

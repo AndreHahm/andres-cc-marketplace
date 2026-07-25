@@ -93,7 +93,9 @@ Run agentic verifier with tools for complex verification:
 ```json
 {
   "type": "agent",
-  "capabilities": ["file-analysis", "code-review"]
+  "agent": "deployment-validator",
+  "timeout": 5000,
+  "onError": "fail"
 }
 ```
 

@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "assertions": [
+    {"text": "Judges the description would NOT trigger for this prompt", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "States a specific reason grounded in the description text, not a generic guess", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

@@ -111,37 +111,7 @@ Map the operation you need to the correct tool:
 
 ## Assigning Tools to Components
 
-### Read-Only Analysis Skills
-
-Skills that examine code without modifying it:
-
-```yaml
-allowed-tools: Read Glob Grep TodoRead TodoWrite
-```
-
-### Interactive Analysis Skills
-
-Skills that need user input during execution:
-
-```yaml
-allowed-tools: Read Glob Grep AskUserQuestion TodoRead TodoWrite
-```
-
-### Code Generation Skills
-
-Skills that produce output files:
-
-```yaml
-allowed-tools: Read Glob Grep Write Bash TodoRead TodoWrite
-```
-
-### Pipeline Skills (Multi-Step)
-
-Skills that orchestrate complex workflows:
-
-```yaml
-allowed-tools: Bash Read Write Glob Grep AskUserQuestion Task TaskCreate TaskList TaskUpdate TodoRead TodoWrite
-```
+See SKILL.md's "Tool Assignment Quick Reference" table for the canonical component-type-to-tool-set mapping — not restated here to avoid drift.
 
 ### Agents
 

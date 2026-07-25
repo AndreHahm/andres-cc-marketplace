@@ -15,7 +15,7 @@ This script reports, per document:
 Exit code is non-zero when any drift is found, so it can gate CI / pre-push.
 
 Usage:
-  check_doc_skill_lists.py [repo_root]      # defaults to two levels up
+  check_doc_skill_lists.py [repo_root]      # defaults to this script's repo root
 """
 import json
 import os

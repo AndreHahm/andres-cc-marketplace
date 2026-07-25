@@ -12,13 +12,8 @@ Save test cases to `evals/evals.json` next to `SKILL.md`:
       "id": 1,
       "prompt": "Realistic user task that should invoke this skill",
       "expected_output": "Description of what a correct response looks like",
-      "assertions": [
-        {
-          "id": "a1",
-          "description": "Output contains X",
-          "type": "contains",
-          "value": "X"
-        }
+      "expectations": [
+        "Output contains X"
       ]
     }
   ],
@@ -29,7 +24,7 @@ Save test cases to `evals/evals.json` next to `SKILL.md`:
 }
 ```
 
-**Assertion types**: `contains`, `not_contains`, `matches_regex`, `file_exists`.
+This extends `references/schemas.md`'s canonical `evals.json` fields (`skill_name`, `evals[].id`/`prompt`/`expected_output`/`expectations`/`files`) with one addition, `should_not_trigger`, used only for the trigger-rate testing this file covers — see `schemas.md` for the full field reference.
 
 - Write 2–3 `evals` (should-trigger) per skill. Use prompts a real user would type — specific, with context, not abstract.
 - Write 8–10 `should_not_trigger` entries. Focus on near-misses that share keywords but belong to a different skill.
@@ -108,5 +103,5 @@ When editing an existing skill, always compare before-and-after:
 
 - [ ] All previously-passing eval assertions still pass.
 - [ ] Trigger rate did not drop (re-run should-trigger set, verify ≥ previous score).
-- [ ] SKILL.md still within size limits (< 100 lines).
+- [ ] SKILL.md still within size limits (see `references/size-limits.md`'s tiered thresholds — 300-line soft target, 500-line hard limit).
 - [ ] No new anti-patterns introduced (check `references/anti-patterns.md`).

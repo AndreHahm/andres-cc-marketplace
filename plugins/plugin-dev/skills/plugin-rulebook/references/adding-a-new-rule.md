@@ -1,0 +1,47 @@
+# Adding a New Rule (RNN) to plugin-rulebook
+
+Checklist of every location a new rule touches. Derived from adding R24 (Allowed Programming Languages), where the full touch-list had to be reconstructed via ad hoc greps rather than a documented procedure — this file exists so the next addition doesn't repeat that.
+
+## 1. Pick the ID
+
+`RNN` = highest existing rule number + 1. Check both the "Active Rules" section and the "Suggested Additional Rules" table (disabled-by-default rules like R11/R12/R15/R16 still occupy their numbers).
+
+## 2. Touch List
+
+Work through in order — each step names the exact anchor to find and edit in `SKILL.md` and `assets/settings.json`.
+
+| # | File | What to change |
+|---|---|---|
+| 1 | `SKILL.md` frontmatter `description` | Update `R1-R{N-1} formatting compliance` → `R1-R{N}` |
+| 2 | `SKILL.md` "When NOT to Use" | Update any `R1–R{N-1}` total-scope mention (e.g. the `scripts-reviewer` exclusion line) → `R1–R{N}` |
+| 3 | `SKILL.md` "Active Rules" | Insert a new `### RNN — <Name> [SEVERITY, default: on/off]` section, placed after the highest-numbered existing rule and before "Repo-Specific Configuration". Follow the existing format: one-line summary, **Scope**, the rule's specific criteria (whitelist/thresholds/violations as applicable), **Fix** |
+| 4 | `assets/settings.json` → `rules` | Add a `RNN_<snake_case_name>` entry: `enabled`, `severity`, `description`, and a `config` block if the rule has tunable values (thresholds, enums, lists) |
+| 5 | `SKILL.md` "Compliance Check Procedure" example report | `Rules checked: N enabled / {N-1} total` → `{N} total` |
+| 6 | `SKILL.md` "Testing & Validation" quality gate | Update the enabled-rules list (e.g. `R1–R10, R13, R14, R17–R{N-1}`) → include `RNN` |
+| 7 | R20 sibling sweep (see below) | Grep the whole plugin tree for the old `R1-R{N-1}` / `R1–R{N-1}` total-count phrasing and update every sibling occurrence |
+| 8 | Mirror | Copy every touched file from `plugins/plugin-dev/` to `.claude/`, verify byte-identical via `diff` |
+| 9 | Self-check | Re-read the new rule section against R1 (English), R4 (if it introduces new naming), R8 (description length) — the rule you just wrote is itself plugin content |
+| 10 | Commit | One commit, message states the new rule ID + one-line purpose + which sibling files were swept |
+
+## 3. R20 Sibling Sweep — Known Mention Locations
+
+A rule-count total ("R1–R23", "R1-R24", "23 total") gets restated in prose across the plugin, not just inside `plugin-rulebook` itself. Grep for the *previous* rule's number specifically (e.g. `R1-R23|R1–R23|23 total` when adding R24) — a generic `grep RNN` won't find these since they cite the old ceiling, not the new one.
+
+Run `scripts/r20-sweep.sh <previous-rule-number>` (e.g. `scripts/r20-sweep.sh 24` when adding R25) to automate this grep across the whole tree, excluding `.claude/output/` and `.claude/worktrees/`. Treat its output as the first pass, not the final word — the known-locations list below remains the fallback of record for a restatement the script's fixed pattern doesn't anticipate (e.g. a paraphrased count that doesn't match the `R1-RNN` / `RNN total` shapes).
+
+Locations that have needed updating on past additions (starting point, not exhaustive — always run a fresh repo-wide grep, new mentions appear as components are added):
+
+- `plugin-rulebook/SKILL.md` itself (3 spots — see Touch List above)
+- `rules/plugin-rulebook-enforcement.md` (`Active rulebook rules (R1–RNN, ...)`)
+- `agents/plugin-validator.md`
+- `agents/human-doc-reviewer.md`
+- `agents/claudemd-reviewer.md`
+- `agents/consistency-reviewer.md` (an illustrative example of a *stale* rule-count range — keep the example itself current)
+- `skills/plugin-development/SKILL.md`
+- `plugin-rulebook/references/repo-specific-configuration.md`
+
+**Do not** update rule-count mentions inside `.claude/output/` (generated artifacts, out of rulebook-enforcement scope per `plugin-rulebook-enforcement.md`) or inside a separate git worktree under `.claude/worktrees/` — those are not part of the current tree being edited.
+
+## 4. Worked Example
+
+R24 (Allowed Programming Languages) touched: `SKILL.md` (6 locations: frontmatter description, When NOT to Use, new rule section, Compliance Check Procedure example, Testing & Validation gate, plus the rule body itself), `assets/settings.json` (1 new config block), and 8 sibling files caught by the R20 sweep (all of §3's list except itself). All 9 canonical files were mirrored to `.claude/` and verified byte-identical before commit.

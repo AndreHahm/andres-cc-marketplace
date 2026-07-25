@@ -3,7 +3,7 @@ name: plugin-rulebook
 description: >-
   Defines and enforces plugin-level rules governing all components (skills, agents, commands,
   hooks, rules) in a Claude Code plugin. Use when creating, validating, or refining any plugin
-  component, checking naming and language compliance, auditing a full plugin, or loading active
+  component, checking naming conventions and R1-R26 formatting compliance, auditing a full plugin, or loading active
   rule configuration, or before finalizing or packaging any plugin component. Governs naming, language, formatting,
   tool-scoping, and structure across the entire plugin.
 allowed-tools: Read Glob
@@ -33,12 +33,17 @@ Read active settings from `${CLAUDE_SKILL_DIR}/assets/settings.json` (plugin-por
 - Project-specific behavioral rules → use `rule-development` instead
 - Skill quality metrics (token efficiency, trigger phrases) → use `skill-reviewer` instead
 - Security threat analysis → use `skill-security` instead
+- Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R26 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly.
+- Dedicated wide-surface language-compliance review (scripts, config JSON, CLAUDE.md/README, beyond R1's own file scope) → use `language-reviewer` instead.
+- A combined Validate+Audit+Report+Fix pipeline across a whole plugin, not just rule compliance in isolation → use `plugin-lifecycle-downstream` instead
 
 **Note:** This skill's manual invocation model complements, but does not replace, automated live validation hooks. For production plugins, use both — manual rulebook checks during development and live enforcement hooks at commit or PR time.
 
 ## Active Rules
 
 Rules are enabled/disabled in `${CLAUDE_SKILL_DIR}/assets/settings.json`. Defaults shown in brackets.
+
+**Severity vocabulary:** `REQUIRED` and `SUGGESTED` (used throughout this rulebook) correspond to [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119)'s `MUST`/`MUST NOT` and `SHOULD`/`SHOULD NOT` requirement levels respectively — a `REQUIRED` finding is a blocking violation, a `SUGGESTED` finding is a recommended fix a maintainer may have valid reasons to decline. `ADVISORY` (used for some sub-checks, e.g. R5's agent-field check) is this rulebook's own tier, sitting below `SUGGESTED`: worth flagging, never blocking, and not itself an RFC 2119 term.
 
 ---
 
@@ -108,6 +113,8 @@ Skill and agent frontmatter must not include command-only or unsupported fields.
 
 **Allowed in skill and command files:** `argument-hint` — officially supported skill frontmatter field, also valid on commands
 **Allowed in command files only:** `version`
+
+**Non-functional in agent files (ADVISORY, not REQUIRED):** `hooks`, `mcpServers`, `permissionMode` are accepted by the schema on plugin-scoped agents but not honored — an upstream security restriction (plugin agents cannot register session hooks, bring their own MCP server fleet, or widen the user's tool-permission posture). Flag as ADVISORY when present in an agent file: the field doesn't break validation, it silently does nothing, which is a quieter but still real trap for an author who expects it to work. Configurable via `settings.json → rules.R5_frontmatter_no_nonstandard_fields.config.agent_nonfunctional_fields`.
 
 ---
 
@@ -354,6 +361,47 @@ Whitelist and blacklist entries match domains, GitHub org/repo names, plugin nam
 
 ---
 
+### R24 — Allowed Programming Languages: Python, Bash, JavaScript/TypeScript Only [REQUIRED, default: on]
+
+Only Python, Bash, and JavaScript/TypeScript may be used as programming/scripting languages anywhere in the plugin. The whitelist is closed: any language not on it is banned by default-deny, not just the languages named explicitly.
+
+**Scope:** Standalone script files in any `scripts/` directory (any component), and fenced code blocks in SKILL.md, agent files, command files, hook config, rule files, `references/`, `examples/`, and `workflows/` that are tagged with a general-purpose programming/scripting language identifier.
+
+**Whitelist** (configurable in `settings.json → rules.R24_allowed_programming_languages.config.whitelist_extensions` / `.whitelist_language_tags`):
+- **Python** — `.py` files; fenced blocks tagged `python`/`py`
+- **Bash** — `.sh` files; fenced blocks tagged `bash`/`sh`/`shell`
+- **JavaScript/TypeScript** — `.js`/`.mjs`/`.cjs`/`.jsx`/`.ts`/`.tsx` files; fenced blocks tagged `javascript`/`js`/`jsx`/`typescript`/`ts`/`tsx`
+
+**Banned — explicit:** **Ruby** — `.rb` files; fenced blocks tagged `ruby`/`rb`. Named explicitly in `config.banned` even though the closed whitelist already implies the same result, so a reader scanning `settings.json` sees the prohibition without having to infer it from an absence.
+
+**Banned — everything else:** Any other script-file extension or fenced-block language tag denoting a general-purpose programming/scripting language (e.g. `.go`, `.rs`, `.java`, `.php`, `.pl`, `.lua`, `.ps1`, `.swift`, `.kt`) is a REQUIRED violation by the same default-deny — nothing needs to be added to `config.banned` for it to be rejected.
+
+**Exempt (not governed by this rule):** data/markup/config formats and illustrative-output tags are not "programming languages" for this rule's purposes: `yaml`, `yml`, `json`, `toml`, `ini`, `xml`, `html`, `css`, `markdown`, `md`, `text`, `plaintext`, `console`, `output`, `diff`, `http` (configurable in `config.exempt_tags`). An untagged fenced block (` ``` ` with no language identifier) cannot be classified — treat as Advisory/Unknown, not a violation.
+
+**Violations:**
+- A `.rb` script file — banned language (Ruby, explicit), REQUIRED (this rule's first real violation, `skill-tester/scripts/aggregate_benchmark.rb`, was ported to Python and removed)
+- A fenced code block tagged ` ```go ` presenting an executable script — banned by default-deny, REQUIRED
+
+**Fix:** Rewrite the script or embedded example in Python, Bash, or JavaScript/TypeScript. Language choice is a policy decision, not a size tradeoff — unlike R18, this rule has no exception-recording escape hatch; a maintainer who wants to keep a non-whitelisted language must change `config.whitelist_extensions`/`config.whitelist_language_tags` explicitly rather than annotate around the finding.
+
+---
+
+### R25 — Unplanned-Overhead Disclosure [REQUIRED, default: on]
+
+A skill or pipeline that documents a phase as quick/fast/bounded must disclose to the user, in plain language, whenever actual execution deviated from that documented scope — extra debugging detours, retries, an unplanned fallback — rather than silently absorbing the cost and reporting only a clean final result.
+
+**Scope:** SKILL.md and agent files for any component that documents a quick/fast/bounded step or phase (e.g. a pipeline's Test phase, a "Fast mode," a stated per-phase test-count cap). See `${CLAUDE_SKILL_DIR}/references/overhead-and-cost-rules.md` for violations and fix guidance.
+
+---
+
+### R26 — Expensive-Action Opt-In [REQUIRED, default: on]
+
+A skill or agent that may trigger an expensive action — per-item nested LLM/subprocess calls, a full whole-plugin re-verification, or heavy multi-agent dispatch — must gate that action behind an explicit `AskUserQuestion` decision before running it, rather than defaulting to always running the expensive path.
+
+**Scope:** SKILL.md and agent files that document a step capable of triggering per-item nested LLM/subprocess calls, whole-surface re-scans, or multi-agent dispatch fan-out. See `${CLAUDE_SKILL_DIR}/references/overhead-and-cost-rules.md` for violations and fix guidance.
+
+---
+
 ## Repo-Specific Configuration
 
 Two files hold data that's specific to the repository this plugin is installed in, rather than portable plugin defaults: `{REPO_ROOT}/.claude/plugin-rulebook.config.json` (R23's `whitelist`/`blacklist`/`excluded_paths`) and `{REPO_ROOT}/.claude/plugin-rulebook-audit-decisions.md` (this repo's Upstream Audit decision log). See `references/repo-specific-configuration.md` for the load procedure and why these aren't `.claude/plugin-rulebook.local.md`-style personal files.
@@ -391,13 +439,15 @@ These rules are available but disabled by default. Enable in `settings.json → 
 📋 Rulebook Compliance: <component-name> (<type>)
 Path: <resolved-absolute-path> [R19: no duplicates found]
 Settings: assets/settings.json [loaded]
-Rules checked: N enabled / 23 total
+Rules checked: N enabled / 26 total
 
 PASS    R1 R2 R4 R5 R6 R8 R9 R10 R14 R19
 ADVISORY R7 — emoji in heading "## 🚀 Quick Start" (SKILL.md:14) [SUGGESTED]
 FAIL    R3 — references/patterns.de.md exists but references/patterns.md missing [REQUIRED]
 
 Status: FAIL — 1 blocking violation
+Scope: structure/naming/formatting/frontmatter only — does not check script or code
+correctness (encodings, shell logic, mojibake). Run `scripts-reviewer` separately for that.
 ```
 
 ## Testing & Validation
@@ -416,53 +466,14 @@ Status: FAIL — 1 blocking violation
 
 **Quality gates:**
 - [ ] `${CLAUDE_SKILL_DIR}/assets/settings.json` loads without JSON errors
-- [ ] All enabled rules (R1–R10, R13, R14, R17–R23) appear in the compliance report
+- [ ] All enabled rules (R1–R10, R13, R14, R17–R26) appear in the compliance report
 - [ ] R14 and R17 findings are correctly classified (REQUIRED vs SUGGESTED)
 - [ ] PASS / ADVISORY / FAIL emitted for every enabled rule checked
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
 
 ## Upstream Audit
 
-The `plugin-rulebook` is the **leading source** for all plugin component rules. Upstream sources do not overwrite the rulebook automatically — when an upstream source changes, audit the rulebook to identify gaps, then resolve each gap explicitly with the user.
-
-### Audit Procedure
-
-When a tracked upstream source changes:
-
-1. Read the changed upstream source.
-2. Compare each affected rulebook rule against the upstream change and list all gaps.
-3. Before presenting a gap to the user, check `{REPO_ROOT}/.claude/plugin-rulebook-audit-decisions.md` — if the same gap was already decided, apply the prior decision without asking again.
-4. For each new (undecided) gap, present the user with:
-   - The rule ID and upstream source name
-   - A one-line description of the difference
-   - Three choices: **1. Keep plugin-rulebook** / **2. Keep `<upstream-source>`** / **3. Keep both**
-5. Apply the chosen resolution:
-   - Choice 1 → overwrite the upstream source with the rulebook's version
-   - Choice 2 → update the rulebook rule to match the upstream source
-   - Choice 3 → preserve both; record the intentional divergence
-6. Append each decision to `{REPO_ROOT}/.claude/plugin-rulebook-audit-decisions.md`:
-
-```
-## <YYYY-MM-DD> — <rule-id> vs <upstream-source>
-Gap: <one-line description of the difference>
-Decision: Keep rulebook | Keep <upstream-source> | Keep both
-Rationale: <user's reason, or "none given">
-```
-
-7. Update `_meta.last_reviewed` in `${CLAUDE_SKILL_DIR}/assets/settings.json`.
-
-### Tracked Upstream Sources
-
-| Upstream source | Rules affected |
-|---|---|
-| `skill-development/references/size-limits.md` | R13, R18 — line count and code block thresholds |
-| `skill-reviewer` severity-tier logic | R13, R18 — tier boundary alignment |
-| Platform frontmatter field list | R5 — forbidden field list |
-| Platform tool-scoping syntax | R6 — format and scope rules |
-| Platform `description`/`when_to_use` combined listing cap | R21 — combined max_length threshold (the 80/1024/512 sub-limits are internal policy layered on top; only the 1536 combined cap is platform-anchored) |
-| Platform `\$ARGUMENTS`/`$N`/`$name` substitution semantics (0-based positional indexing) | R22 — detection procedure and the "positional placeholders are 0-based" reminder |
-
-**Last reviewed:** 2026-07-02 — see `assets/settings.json → _meta.last_reviewed` for the authoritative date.
+The `plugin-rulebook` is the **leading source** for all plugin component rules. Upstream sources do not overwrite the rulebook automatically — when an upstream source changes, audit the rulebook to identify gaps, then resolve each gap explicitly with the user. See `references/upstream-audit-procedure.md` for the full Audit Procedure and Tracked Upstream Sources table.
 
 ---
 
@@ -474,6 +485,7 @@ Rationale: <user's reason, or "none given">
 | `{REPO_ROOT}/.claude/plugin-rulebook.config.json` | Repo-specific R23 whitelist/blacklist/excluded_paths override — read second, if present (see "Repo-Specific Configuration" above) |
 | `{REPO_ROOT}/.claude/plugin-rulebook-audit-decisions.md` | This repo's own Upstream Audit decision log (moved out of the plugin package — see "Repo-Specific Configuration" above) |
 | `${CLAUDE_SKILL_DIR}/references/repo-specific-configuration.md` | Full load procedure and rationale for the repo-config split, expanded from "Repo-Specific Configuration" above |
+| `${CLAUDE_SKILL_DIR}/references/adding-a-new-rule.md` | Checklist of every location a new rule (RNN) touches — SKILL.md sections, settings.json, the R20 sibling sweep, and mirroring — read before adding a rule |
 | `${CLAUDE_SKILL_DIR}/references/size-rules.md` | R13/R18/R21 tiered thresholds for line count, code block size, and description size |
 | `${CLAUDE_SKILL_DIR}/references/argument-consistency.md` | R22 detection procedure and worked examples for argument-hint/arguments consistency |
 | `${CLAUDE_SKILL_DIR}/references/naming-conventions.md` | Full naming rules with examples for all component types |
@@ -482,3 +494,5 @@ Rationale: <user's reason, or "none given">
 | `${CLAUDE_SKILL_DIR}/references/external-reference-policy.md` | R23 detection procedure, whitelist/blacklist matching, marketplace.json auto-allow, worked examples |
 | `${CLAUDE_SKILL_DIR}/references/plugin-file-surface.md` | Shared plugin-scope/CWD-scope file-enumeration definition used by `language-reviewer`, `external-references-reviewer`, `consistency-reviewer`, `completeness-reviewer`, and `scripts-reviewer` |
 | `${CLAUDE_SKILL_DIR}/references/gitignore-exclusion.md` | Shared procedure, used by every reviewer agent, for excluding gitignored paths before reviewing Glob results — and the companion authoring-side rule that no component may reference a gitignored path as a live dependency |
+| `${CLAUDE_SKILL_DIR}/references/upstream-audit-procedure.md` | Full Audit Procedure and Tracked Upstream Sources table for the Upstream Audit workflow |
+| `${CLAUDE_SKILL_DIR}/references/overhead-and-cost-rules.md` | R25/R26 violations, fix guidance, and worked examples |

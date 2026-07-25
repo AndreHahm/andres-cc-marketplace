@@ -5,8 +5,12 @@ description: >-
   production readiness. Use when refining skills, improving skill structure, validating against
   best practices, reducing token usage, consolidating references, checking production readiness,
   applying the 80% rule, or running interactive fix-review workflows on existing skills.
-  Not for creating new skills — use skill-development instead.
-allowed-tools: Read Edit Write Glob Grep Skill
+  Not for creating new skills — use skill-development instead. For a one-shot structured
+  quality report with no interactive back-and-forth, use the skill-reviewer agent instead —
+  this skill wraps skill-reviewer in Validation mode and then interactively applies fixes.
+  For fully automated, non-interactive fix-review loops with no user checkpoints, use
+  skill-improver-loop instead.
+allowed-tools: Read Edit Write Glob Grep Skill Agent
 ---
 
 # Interactive Skill Refiner
@@ -367,13 +371,14 @@ After gathering responses (if any), document approved scope and proceed.
 1. **Locate the skill** (same as refinement step 1 — includes the gitignore-exclusion and R19 mirror-pair checks; if the skill is a mirror pair, everything below runs once against the synced content, not once per copy)
 
 2. **Delegate to `skill-reviewer` and `plugin-rulebook`** — do not reimplement their checks here; this skill's job is routing and presentation, not a second, independently-drifting scoring system
-   - Call `skill-reviewer` (full mode) on the located skill. It owns: file inventory, frontmatter validation, the R13/R18 gatekeeper checks (via its own `plugin-rulebook` lookup), the 100-pt Activation/Implementation rubric, the checklist pass (references, tool reconciliation, chain-violation detection, spawn anti-patterns, workflow pattern validation), and the Critical/Major/Minor severity report.
+   - Call `skill-reviewer` (full mode, **Structured output mode**) on the located skill. It owns: file inventory, frontmatter validation, the R13/R18 gatekeeper checks (via its own `plugin-rulebook` lookup), the 100-pt Activation/Implementation rubric, the checklist pass (references, tool reconciliation, chain-violation detection, spawn anti-patterns, workflow pattern validation), and the Critical/Major/Minor severity findings — returned as YAML (`verdict`, `score`, `counts`, `findings[]`, `top_priority_fixes`) per its own Structured Output Mode schema, not the narrative report. Requesting structured output here makes the branching in step 3 a direct field read instead of prose-parsing, while this skill still renders a human-readable summary from it.
    - Call `Skill(plugin-rulebook)` separately for a full compliance check (all enabled rules, not just the R13/R18 subset `skill-reviewer` loads) — a standing project requirement (`.claude/rules/plugin-rulebook-enforcement.md`) for any component being validated. This is the only check that covers R4, R19, R21, R22, R23, and the rest of the rule set `skill-reviewer` doesn't touch.
 
 3. **Present the report**
-   - Use `skill-reviewer`'s own verdict directly (S-Tier / Pass / Reject) — do not translate it into a different status scale
-   - Append any `plugin-rulebook` FAIL findings under their own heading; a FAIL downgrades an otherwise-Pass `skill-reviewer` verdict to Reject
-   - Surface `skill-reviewer`'s Top 3 Priority Fixes and any plugin-rulebook FAILs together as the actionable summary
+   - Render `skill-reviewer`'s YAML into a narrative summary for the user: `verdict` as the headline status (S-Tier / Pass / Reject, unchanged from the scale `skill-reviewer` defines), `findings[]` grouped by `severity` the same way the narrative report would present them, `top_priority_fixes` as the actionable list
+   - Append any `plugin-rulebook` FAIL findings under their own heading; a FAIL downgrades an otherwise-Pass `verdict` to Reject in the summary shown to the user (this downgrade is this skill's own presentation logic — it does not change what `skill-reviewer` itself returned)
+   - Surface `top_priority_fixes` and any plugin-rulebook FAILs together as the actionable summary
+   - If `verdict` is Reject (after the plugin-rulebook downgrade above), or `counts.critical` or `counts.major` is nonzero, ask with `AskUserQuestion`: "Run `enhancement-suggestor` against this report for a classified (complexity/risk/benefit) WHAT/WHY/HOW action plan?" — options "Yes" / "No". If yes, invoke the `enhancement-suggestor` agent (via `Agent`) against the combined report. Never invoke it without asking first
 
 ## Automated Improvement Loop
 

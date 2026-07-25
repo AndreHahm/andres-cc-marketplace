@@ -2,6 +2,8 @@
 
 Detailed analysis of how production plugins use the `.claude/plugin-name.local.md` pattern.
 
+**R18 exception (recorded):** the `agent-stop-notification.sh` and `stop-hook.sh` scripts below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, runnable script; splitting either would break it.
+
 ## multi-agent-swarm Plugin
 
 ### Settings File Structure
@@ -21,22 +23,10 @@ additional_instructions: "Use JWT tokens, not sessions"
 
 # Task: Implement Authentication
 
-Build JWT-based authentication for the REST API.
-
-## Requirements
-- JWT token generation and validation
-- Refresh token flow
-- Secure password hashing
-
-## Success Criteria
-- Auth endpoints implemented
-- Tests passing (100% coverage)
-- PR created and CI green
-- Documentation updated
-
-## Coordination
-Depends on Task 3.4 (user model).
-Report status to 'team-leader' session.
+Build JWT-based authentication for the REST API (token generation/validation,
+refresh flow, secure password hashing). Depends on Task 3.4 (user model);
+report status to the 'team-leader' session. Done when auth endpoints are
+implemented, tests pass at 100% coverage, and the PR is green with docs updated.
 ```
 
 ### How It's Used

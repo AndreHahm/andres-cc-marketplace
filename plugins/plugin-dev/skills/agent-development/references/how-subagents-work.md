@@ -119,17 +119,7 @@ Subagent can use all tools EXCEPT Edit, Write, Bash.
 
 ### Foreground vs Background Execution
 
-**Foreground** (default):
-- Blocks main conversation until subagent completes
-- Permission prompts go to user
-- User can see subagent output in real-time
-- Use when: Task requires user interaction or validation
-
-**Background** (user requests "run in background" or Ctrl+B):
-- Runs concurrently with main conversation
-- Auto-denies unpre-approved permissions (tool calls fail but subagent continues)
-- Output returns to main conversation after completion
-- Use when: Task is self-contained and won't need user input
+See `permission-modes.md`'s "Foreground vs Background Execution" section for the full breakdown of how each `permissionMode` behaves in each execution mode.
 
 ### Context Flow
 
@@ -316,81 +306,7 @@ The good version includes:
 
 ## Foreground vs Background Execution
 
-Subagents can run in the foreground (blocking) or background (concurrent). Understanding the differences is critical for choosing the right execution mode.
-
-### Foreground Execution (Default/Interactive)
-
-**Characteristics:**
-- Blocks main conversation until subagent completes
-- Full permission prompt interaction
-- User sees output in real-time
-- Subagent can ask user questions (AskUserQuestion tool)
-- MCP tools available
-- Latency: Waiting for subagent completion
-
-**When to use:**
-- Task requires user approval
-- Subagent needs to interact with user
-- You want to watch subagent work in real-time
-- Task is high-priority and you're waiting anyway
-- Subagent needs to ask clarifying questions
-
-**Permission mode behavior in foreground:**
-- `default`: Shows permission prompts to user
-- `acceptEdits`: Auto-accepts edits; prompts for others
-- `dontAsk`: No prompts; operations work if allowed
-- `bypassPermissions`: No prompts; all allowed
-- `plan`: Read-only; writes blocked
-
-**Example:**
-```
-User: Use code-reviewer to check my changes
-[Foreground - blocks main conversation]
-Subagent: Analyzes code, may ask for clarification
-[Output shown as it runs]
-User: [Waits for completion]
-[Results returned]
-```
-
-### Background Execution (Concurrent)
-
-**Characteristics:**
-- Runs concurrent with main conversation
-- Auto-denies unpre-approved permission prompts
-- No user interaction (questions fail)
-- User can continue working while subagent runs
-- MCP tools NOT available (can't require user interaction)
-- Subagent continues even if tool calls are denied
-- Results returned after completion
-
-**How to trigger:**
-- Ask Claude: "Run this in the background"
-- Press Ctrl+B while subagent is running
-- Claude may choose background automatically for suitable tasks
-
-**When to use:**
-- Task is self-contained (no user input needed)
-- You want to continue main conversation
-- Task produces verbose output (keep separate)
-- Running parallel research
-- Cost-sensitive (no waiting for user)
-
-**Permission mode behavior in background:**
-- `default`: ❌ Auto-denies all permissions (fails fast)
-- `acceptEdits`: ✅ Approves edits; denies others
-- `dontAsk`: ✅ Works without prompts; denials fail fast
-- `bypassPermissions`: ✅ All allowed
-- `plan`: ✅ Read-only; writes denied
-
-**Example:**
-```
-User: Analyze the API module in the background
-[Background - returns immediately]
-User: [Can continue working]
-[Subagent analyzes API in parallel]
-User: [Later] Show me the API analysis results
-[Results displayed]
-```
+Subagents can run in the foreground (blocking) or background (concurrent). See `permission-modes.md`'s "Foreground vs Background Execution" section for the full breakdown of characteristics, permission-mode behavior in each, and worked examples. Covered here: two behaviors specific to this file's scope that aren't about permission-mode behavior.
 
 ### Permission Denial Behavior in Background
 
@@ -430,77 +346,11 @@ Hooks enable conditional validation and lifecycle management of subagents. Hooks
 
 These hooks run WITHIN the subagent's execution context. Only valid in subagent's frontmatter.
 
-#### PreToolUse Hook
+#### PreToolUse Hook and PostToolUse Hook
 
-**When:** Runs BEFORE the subagent uses a tool
-**Use case:** Validate or block specific operations
+**When:** PreToolUse runs BEFORE the subagent uses a tool; PostToolUse runs AFTER.
 
-```yaml
-hooks:
-  PreToolUse:
-    - matcher: "Bash"
-      hooks:
-        - type: command
-          command: "./validate-sql-readonly.sh"
-```
-
-**Hook input (via stdin):**
-```json
-{
-  "tool": "Bash",
-  "tool_input": {
-    "command": "SELECT * FROM users WHERE id > 100"
-  }
-}
-```
-
-**Hook exit codes:**
-- `0` - Allow operation (proceed)
-- `2` - Block operation (deny)
-- Other - Error (fail tool execution)
-
-**Example: Block SQL write operations**
-```bash
-#!/bin/bash
-
-INPUT=$(cat)
-COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
-
-if echo "$COMMAND" | grep -iE '(INSERT|UPDATE|DELETE)'; then
-  echo "Blocked: Read-only mode" >&2
-  exit 2
-fi
-
-exit 0
-```
-
-#### PostToolUse Hook
-
-**When:** Runs AFTER the subagent uses a tool
-**Use case:** Run linters, formatters, or verification
-
-```yaml
-hooks:
-  PostToolUse:
-    - matcher: "Edit|Write"
-      hooks:
-        - type: command
-          command: "./scripts/run-linter.sh"
-```
-
-**Use case: Lint after edits**
-```bash
-#!/bin/bash
-
-# Run linter on modified files
-eslint --fix src/**/*.js
-
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-
-exit 0
-```
+See `tool-scoping.md`'s "Hook-Based Validation" section for the full worked examples (a read-only SQL validation PreToolUse hook, a linter PostToolUse hook) and the exit-code contract (`0` allow, `2` block, other = error).
 
 #### Stop Hook
 
@@ -717,7 +567,7 @@ Claude Code includes built-in subagents available by default. Understand when to
 
 The `skills` field loads skill content into the subagent's context at startup.
 
-### Difference: skills field vs Task tool
+### Difference: skills field vs Agent tool
 
 **`skills` field** (in frontmatter):
 - Skill content injected into subagent's context
@@ -725,7 +575,7 @@ The `skills` field loads skill content into the subagent's context at startup.
 - Increases subagent context token usage
 - No separate invocation needed
 
-**`Task` tool** (in subagent):
+**`Agent` tool** (in subagent):
 - Launches a separate subagent
 - Independent execution context
 - Subagent can invoke other specialized agents

@@ -2,6 +2,8 @@
 
 Complete architectural understanding of the hook system for creating reliable hooks.
 
+**R18 exception (recorded):** the ASCII diagrams below (Hook Lifecycle, Event Timing Diagram) intentionally exceed the rulebook's 30-line code-block threshold — each is a single coherent flowchart/timeline; splitting a diagram in half would make it unreadable.
+
 ## Table of Contents
 
 - [Hook Lifecycle](#hook-lifecycle)
@@ -44,21 +46,17 @@ Complete architectural understanding of the hook system for creating reliable ho
 ┌─────────────────────────────────────────────────────────────┐
 │ Claude Code Event Occurs (e.g., User Submits Prompt)       │
 └──────────────────────────┬──────────────────────────────────┘
-                           │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ Claude Code Checks Registered Hooks for Event               │
 │ (e.g., UserPromptSubmit hooks registered?)                 │
 └──────────────────────────┬──────────────────────────────────┘
-                           │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ For Each Hook, Evaluate Matcher Against Event Data          │
 │ (Does pattern match? Is tool in list? Is text present?)    │
 └──────────────────┬──────────────────────────────────────────┘
-                   │
         ┌──────────┴──────────┐
-        │                     │
         ▼                     ▼
    Matcher Match         No Match
    (Continue)            (Skip Hook)
@@ -68,20 +66,10 @@ Complete architectural understanding of the hook system for creating reliable ho
 │ Execute Hook Action (Command/Prompt/Agent)                  │
 │ (Run script, call LLM, verify with agent)                  │
 └──────────────────┬──────────────────────────────────────────┘
-                   │
         ┌──────────┴──────────┐
-        │                     │
         ▼                     ▼
    Action Success        Action Failed
-   (Proceed)             (Check onError)
-        │                     │
-        ▼                     ▼
-   Normal Flow         ┌──────────────┐
-                       │ onError:     │
-                       │ - warn       │
-                       │ - fail       │
-                       │ - continue   │
-                       └──────────────┘
+   (Proceed)             (see "Hook Result & onError" below)
 ```
 
 ## Event System

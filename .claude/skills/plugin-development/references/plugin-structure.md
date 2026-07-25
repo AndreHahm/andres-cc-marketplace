@@ -2,22 +2,7 @@
 
 ## Directory Hierarchy
 
-```
-plugin-name/
-├── .claude-plugin/
-│   └── plugin.json          # Required: Plugin metadata manifest
-├── commands/                 # Optional: Custom slash commands
-├── agents/                   # Optional: Agent definitions
-├── skills/                   # Optional: Agent Skills
-│   └── skill-name/
-│       ├── SKILL.md         # Required for each skill
-│       ├── scripts/         # Optional: Executable code
-│       ├── references/      # Optional: Documentation
-│       └── assets/          # Optional: Output files
-├── hooks/                    # Optional: Event handlers
-│   └── hooks.json
-└── .mcp.json                # Optional: MCP server integrations
-```
+See `directory-structure.md`'s "Standard Plugin Layout" for the complete canonical directory tree — not repeated here to avoid drift.
 
 ## Plugin Manifest (`plugin.json`)
 

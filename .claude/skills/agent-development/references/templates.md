@@ -2,6 +2,8 @@
 
 Copy-paste starting points for common subagent patterns. Customize name, description, and prompt body for your use case.
 
+**R18 exception (recorded):** several templates below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent, copy-paste-ready agent file (frontmatter + full body), and this file's whole purpose is providing exactly that; splitting one into multiple blocks would break the copy-paste workflow the file exists to support.
+
 ## Table of Contents
 
 - [Real-World Examples (Copy These)](#real-world-examples-copy-these)
@@ -33,6 +35,7 @@ hooks:
   - type: PreToolUse
     tools: [Bash]
     command: "./scripts/validate-readonly-query.sh"
+color: blue
 ---
 You are a database analyst with read-only access.
 1. Execute SELECT queries to explore databases
@@ -43,6 +46,10 @@ Constraints:
 - SELECT queries ONLY; no INSERT, UPDATE, DELETE, or DROP
 - No schema modifications
 - Read-only access enforced by hooks
+
+## When to invoke
+
+Use when exploring table structure, generating data reports, or analyzing patterns and trends in a database — not for schema changes or writes.
 ```
 
 **Validation Script** (`scripts/validate-readonly-query.sh`):
@@ -73,6 +80,7 @@ description: >-
 model: opus
 tools: Read, Write, Grep
 permissionMode: default
+color: blue
 ---
 You are a senior code reviewer.
 1. Analyze code for bugs, security vulnerabilities, and performance issues
@@ -89,6 +97,10 @@ Constraints:
 - Provide feedback, don't auto-commit changes
 - Flag security issues with priority levels
 - Suggest improvements, don't mandate them
+
+## When to invoke
+
+Use when analyzing pull requests, evaluating performance-sensitive changes, or checking architecture and design-pattern adherence before a merge.
 ```
 
 ### Background Analysis Task (Async, Autonomous)
@@ -103,6 +115,7 @@ description: >-
 model: haiku
 tools: Read, Write, Bash(grep|awk|sort:*)
 permissionMode: bypassPermissions
+color: blue
 ---
 You are a log analysis specialist.
 1. Parse log files for errors, warnings, and patterns
@@ -121,6 +134,10 @@ Constraints:
 - Focus on actionable patterns
 - Generate report for human review
 - Run autonomously without prompts
+
+## When to invoke
+
+Use when debugging production logs, identifying performance bottlenecks, or tracking recurring error trends — designed to run unattended in the background.
 ```
 
 ---

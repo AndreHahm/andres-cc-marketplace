@@ -208,17 +208,8 @@ For form filling, see references/FORMS.md
 - [ ] Would NOT trigger on unrelated requests
 - [ ] Discoverable by synonyms users might use
 
-### Examples of Good Descriptions
-✅ "Analyze Excel spreadsheets, create pivot tables, generate charts. Use when analyzing Excel files, spreadsheets, tabular data, or .xlsx files."
-
-✅ "Generate descriptive commit messages by analyzing git diffs. Use when user asks for help writing commit messages or reviewing staged changes."
-
-✅ "Create Claude Code skills following best practices. Use when building new skills, validating existing skills, or improving skill quality."
-
-### Examples of Poor Descriptions
-❌ "Helps with documents" — too vague, no triggers
-❌ "Processes data" — generic, no action clarity
-❌ "Does stuff with files" — no actionable content
+### Examples of Good/Poor Descriptions
+See `content-guidelines.md`'s "Examples of Good Descriptions" / "Examples of Poor Descriptions" — the canonical copy, kept in one place to avoid drift.
 
 ## Testing Checklist
 
@@ -344,6 +335,6 @@ For comprehensive best practices, see:
 - **How skills work**: `how-skills-work.md` (architecture, token loading, selection mechanism)
 - **Writing effective descriptions**: `content-guidelines.md` (description formula, trigger phrases, testing)
 - **Workflow patterns**: `templates.md` (checklist, feedback loop, conditional, template patterns)
-- **Testing & iteration**: `validation-workflow.md` Phase 7 and Testing Checklist
+- **Testing & iteration**: `skill-workflow.md` Phase 7 and Testing Checklist
 - **Security & permissions**: `allowed-tools.md` (tool scoping, principle of least privilege)
 - **Advanced patterns**: `advanced-patterns.md` (complex skill patterns, archetypes, risk tiering)

@@ -1,0 +1,109 @@
+{
+  "target": "example-skill",
+  "target_type": "skill",
+  "graded_at": "2026-07-11T14:32:00Z",
+  "dimensions": {
+    "structure_architecture": {
+      "score": 9.5, "weight": 0.15, "is_na": false,
+      "source": "skilldir-reviewer, skill-reviewer",
+      "findings_summary": "1 Minor: a reference filename is more generic than ideal."
+    },
+    "content_quality": {
+      "score": 5.5, "weight": 0.15, "is_na": false,
+      "source": "skilldir-reviewer",
+      "findings_summary": "1 Major: a worked example in references/eval-schema.md contradicted the file's own later section on the same topic."
+    },
+    "rule_compliance": {
+      "score": 10.0, "weight": 0.12, "is_na": false,
+      "source": "plugin-rulebook",
+      "findings_summary": "All 24 rules PASS."
+    },
+    "completeness": {
+      "score": 10.0, "weight": 0.12, "is_na": false,
+      "source": "completeness-reviewer",
+      "findings_summary": "No open items, no TODO markers, no stale claims."
+    },
+    "maintainability": {
+      "score": 10.0, "weight": 0.10, "is_na": false,
+      "source": "skilldir-reviewer",
+      "findings_summary": "No duplicated content across the skill's own files."
+    },
+    "robustness": {
+      "score": 10.0, "weight": 0.10, "is_na": true,
+      "source": "scripts-reviewer",
+      "findings_summary": "N/A — no scripts/ directory present."
+    },
+    "simplicity": {
+      "score": 8.0, "weight": 0.05, "is_na": false,
+      "source": "plugin-rulebook R13",
+      "findings_summary": "SKILL.md is 210 lines (Soft Warning tier), justified by content volume."
+    },
+    "testing": {
+      "score": 4.0, "weight": 0.05, "is_na": false,
+      "source": "static heuristic",
+      "findings_summary": "No evals/ directory, but SKILL.md has a concrete Testing & Validation section."
+    },
+    "uniqueness": {
+      "score": 10.0, "weight": 0.05, "is_na": false,
+      "source": "activation-reviewer",
+      "findings_summary": "No trigger overlap found against the rest of the plugin."
+    },
+    "safety_risk_handling": {
+      "score": 10.0, "weight": 0.05, "is_na": false,
+      "source": "plugin-rulebook R6/R9",
+      "findings_summary": "Tool scoping is least-privilege; no hardcoded credentials."
+    },
+    "efficiency": {
+      "score": 9.0, "weight": 0.03, "is_na": false,
+      "source": "plugin-rulebook R13/R18",
+      "findings_summary": "No R18 Warning-tier or Critical-tier blocks."
+    },
+    "actionability": {
+      "score": 10.0, "weight": 0.03, "is_na": false,
+      "source": "skill-reviewer",
+      "findings_summary": "Concrete, imperative Quick Start; no vagueness findings."
+    }
+  },
+  "weighted_total": 8.8,
+  "gates_applied": [],
+  "final_score": 8.8,
+  "swot": {
+    "strengths": [
+      "Rule Compliance (10/10) — all 24 rules PASS.",
+      "Completeness (10/10) — no open items or stale claims.",
+      "Maintainability (10/10) — no duplicated content within the skill's own files."
+    ],
+    "weaknesses": [
+      "Content Quality (5.5/10) — a worked example contradicts a later section of the same file (skilldir-reviewer M1).",
+      "Testing (4/10) — no automated eval coverage exists, only a manual testing checklist."
+    ],
+    "opportunities": [
+      "Fixing the eval-schema.md self-contradiction (see next step #1) recovers the largest single point gain available.",
+      "Adding an evals/ directory with even one eval case would move Testing from 4 to at least 7."
+    ],
+    "threats": [
+      "Simplicity's 8/10 score depends on plugin-rulebook's R13 threshold (300-line Soft Warning boundary) — a future threshold change would re-grade this component without any edit to its own content."
+    ]
+  },
+  "prioritized_next_steps": [
+    {
+      "rank": 1,
+      "action": "Fix the self-contradictory evals.json location described in references/eval-schema.md (contradicts the file's own later Workspace Directory Structure section)",
+      "dimension": "content_quality",
+      "points_gain_estimate": 0.23,
+      "lifts_gate": null
+    },
+    {
+      "rank": 2,
+      "action": "Add an evals/ directory with at least one eval case and run it once to produce a benchmark.json",
+      "dimension": "testing",
+      "points_gain_estimate": 0.15,
+      "lifts_gate": null
+    }
+  ],
+  "reasoning_summary": "Strong compliance, completeness, and maintainability; the score is held to 8.8 primarily by one Major content-quality contradiction and the absence of automated test coverage. No hard gates triggered.",
+  "notes": {
+    "inspection_limits": "scripts-reviewer was not dispatched (no scripts/ present).",
+    "na_dimensions": ["robustness"]
+  }
+}

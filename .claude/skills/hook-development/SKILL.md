@@ -9,7 +9,8 @@ description: >-
   implementing PreToolUse validation, blocking dangerous commands, running
   auto-format on file writes, enforcing completion standards with Stop hooks,
   loading session context at startup, automating responses to Claude Code events,
-  or working with any Claude Code hook event.
+  or writing/configuring any Claude Code hook event. For reviewing an existing
+  hook's quality/safety before deployment, use the hook-reviewer agent instead.
 allowed-tools: Read Write Edit Glob Bash(jq:*) Bash(scripts/validate-hook-schema.sh:*) Bash(scripts/test-hook.sh:*) Bash(scripts/hook-linter.sh:*) Bash(shellcheck:*) Bash(claude:*) Skill
 ---
 
@@ -44,6 +45,7 @@ Hooks are event-driven automation scripts that execute in response to Claude Cod
 - For one-time prompts — use slash commands instead
 - For global config changes — modify `settings.json` directly
 - Never edit `~/.claude/plugins/cache/` — those are read-only installed copies
+- Reviewing an existing hook's quality/safety before deployment → use the `hook-reviewer` agent instead
 
 ---
 
@@ -448,7 +450,7 @@ After writing or modifying hooks:
 | `references/decision-schemas.md` | Output schemas for prompt/agent/command hooks by event |
 | `references/exit-code-behavior.md` | Exit code semantics (0/1/2) with per-event scenarios |
 | `references/command-hook-input-parsing.md` | Stdin field paths and bash parsing patterns per event |
-| `references/patterns-and-templates.md` | 10 common patterns and copy-paste templates for all hook types |
+| `references/patterns-and-templates.md` | 11 common patterns and copy-paste templates for all hook types |
 | `references/advanced-hooks.md` | 18 advanced patterns: rate limiting, caching, retry, cross-event workflows, external integrations |
 | `references/how-hooks-work.md` | Lifecycle, execution model, `onError`, hot-reload limits |
 | `references/validation-guide.md` | 7-phase systematic validation; production checklists; troubleshooting |

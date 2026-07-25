@@ -2,6 +2,8 @@
 
 Copy-paste starting points and proven implementation patterns for Claude Code hooks.
 
+**R18 exception (recorded):** several templates/patterns below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, copy-paste-ready hook configuration or script; splitting one would break its copy-paste usability. Matches this plugin's established R18 exception pattern (see `command-development/references/marketplace-considerations.md`).
+
 ## Table of Contents
 
 **Templates (copy-paste starting points):**
@@ -527,7 +529,7 @@ Ensure tests run before stopping:
 {
   "Stop": [
     {
-      "matcher": "*",
+      "matcher": ".*",
       "hooks": [
         {
           "type": "prompt",
@@ -551,7 +553,7 @@ Load project-specific context at session start:
 {
   "SessionStart": [
     {
-      "matcher": "*",
+      "matcher": ".*",
       "hooks": [
         {
           "type": "command",
@@ -591,7 +593,7 @@ Log all notifications for audit or analysis:
 {
   "Notification": [
     {
-      "matcher": "*",
+      "matcher": ".*",
       "hooks": [
         {
           "type": "command",
@@ -640,7 +642,7 @@ Ensure project builds after code changes:
 {
   "Stop": [
     {
-      "matcher": "*",
+      "matcher": ".*",
       "hooks": [
         {
           "type": "prompt",
@@ -1027,35 +1029,4 @@ claude write myfile.js
 
 ## Production Deployment Checklist
 
-Before deploying to production:
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "^(Write|Edit)$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh",
-            "timeout": 2000,
-            "onError": "warn"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Verify:
-- [ ] **Command script passes shellcheck** (`shellcheck scripts/format.sh`)
-- [ ] Timeout reasonable (<5s for sync operations)
-- [ ] onError behavior appropriate (warn for safe ops, fail for critical)
-- [ ] Matcher precise — not `.*`; uses `^(Write|Edit)$` or similar
-- [ ] Script path uses `${CLAUDE_PLUGIN_ROOT}` (not hardcoded)
-- [ ] Matcher tested with real scenarios
-- [ ] Script is tested and documented
-- [ ] Logging/monitoring configured
-- [ ] Rollback procedure documented
+See `validation-guide.md`'s "Production & Team Hooks Checklist" for the full canonical checklist. Two things specific to the format-on-write pattern shown throughout this file: timeout should be reasonable (<5s for sync operations), and script paths should use `${CLAUDE_PLUGIN_ROOT}` rather than a hardcoded path.

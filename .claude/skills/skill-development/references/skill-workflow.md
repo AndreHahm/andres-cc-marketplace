@@ -350,7 +350,6 @@ Use this systematic workflow to validate skills. Follow phases in order.
 - [ ] Formula: `[Action]. Use when [trigger contexts]. [Optional scope].`
 
 **Optional Fields (for complex skills):**
-- [ ] `version: 1.0.0`
 - [ ] `allowed-tools` declared
 
 **Argument Fields (if the skill accepts arguments):**
@@ -483,7 +482,6 @@ Test unrelated queries (should NOT trigger):
 
 ### Should-Have (Best Practices)
 
-- [ ] `version` field (for complex skills)
 - [ ] `allowed-tools` field (for complex skills)
 - [ ] Code examples are concrete and runnable
 - [ ] Reference files include TOC (if >100 lines)

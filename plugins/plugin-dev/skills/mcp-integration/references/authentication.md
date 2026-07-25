@@ -2,6 +2,8 @@
 
 Complete guide to authentication methods for MCP servers in Claude Code plugins.
 
+**R18 exception (recorded):** a couple of examples below intentionally sit near the rulebook's 30-line code-block threshold — each is a complete, coherent worked example; splitting one would break it.
+
 ## Contents
 
 - [OAuth (Automatic)](#oauth-automatic)
@@ -280,23 +282,14 @@ EOF
 
 ## Security Best Practices
 
+See SKILL.md's "Security Best Practices" for the shared DO/DON'T list (env vars for tokens, HTTPS/WSS, no hardcoded credentials, no committing credentials). Auth-specific additions not covered there:
+
 **DO:**
-- Use environment variables for tokens: `"Authorization": "Bearer ${API_TOKEN}"`
-- Document required variables in README
-- Use HTTPS/WSS for all connections
 - Implement token rotation
-- Store tokens securely (env vars, not files)
 - Let OAuth handle authentication when available
 
 **DON'T:**
-- Hardcode tokens in configuration files:
-  ```json
-  { "Authorization": "Bearer sk-abc123..." }
-  ```
-- Commit credentials to git
 - Share tokens in documentation
-- Use HTTP instead of HTTPS
-- Store tokens in plugin files
 - Log tokens or sensitive headers
 
 ## Multi-Tenancy Patterns

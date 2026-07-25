@@ -42,6 +42,20 @@ Or use the init script:
 python scripts/init_plugin.py my-plugin --components skills,agents
 ```
 
+**Sample output** (abbreviated, from `init_plugin.py`'s actual print statements):
+```
+✓ Created my-plugin/, .claude-plugin/plugin.json, skills/, agents/, README.md
+✓ Plugin structure created successfully!
+Next steps:
+  1. cd my-plugin
+  2. Add your skills to my-plugin/skills/
+  4. Add your agents to my-plugin/agents/
+  5. Generate complete manifest: python path/to/generate_manifest.py my-plugin/
+  6. Validate plugin: python path/to/validate_plugin.py my-plugin/
+```
+
+`scripts/create_plugin.py` (the marketplace-registering variant) prints its own success/error lines prefixed `✅`/`❌`/`🎉` instead — see the script's source for the exact strings if you need to match output programmatically.
+
 ### Step 3: Create plugin.json Manifest
 
 Create `.claude-plugin/plugin.json`:
@@ -340,7 +354,7 @@ Update version in **both** locations when making changes:
 
 Or use the atomic bump script:
 ```bash
-python scripts/bump_version.py patch   # or: major | minor | patch
+python scripts/bump_version.py <plugin-name> patch [--marketplace-root /path]   # or: major | minor | patch
 ```
 
 **Semantic versioning:**

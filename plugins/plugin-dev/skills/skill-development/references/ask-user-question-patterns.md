@@ -344,6 +344,32 @@ All 4 questions are independent; user answers all together, then waits for next 
 
 ---
 
+## Pattern 7: Uncertainty Option
+
+**Use when:** A question requires domain judgment the user may not confidently have — category selection, architecture tradeoffs, tool choices — not every choice question needs this. Routine yes/no or preference questions don't, since adding it everywhere dilutes the 4-option budget without adding value.
+
+**Structure:**
+```json
+{
+  "questions": [{
+    "question": "Which category best fits this skill?",
+    "header": "Category",
+    "options": [
+      { "label": "Option A", "description": "..." },
+      { "label": "Option B", "description": "..." },
+      { "label": "I'm not sure — help me decide", "description": "Infer from earlier answers, or run a short clarifying/research step" }
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+**Why this matters:** without an explicit "I'm not sure" option, a user facing a genuine judgment call is forced to guess — and a wrong guess here propagates into every downstream decision (scaffold, triggers, structure) built on top of it.
+
+**Handling the answer:** when selected, either infer the answer from context already gathered in prior questions, or run a short clarifying/research step before re-asking — don't leave the field blank and proceed.
+
+---
+
 ## Decision Tree: Which Pattern to Use?
 
 ```
@@ -448,7 +474,33 @@ Call 2 (conditional): IF "Create" → ask follow-up
         (or IF "Refine" → ask different follow-up)
 ```
 
-### ❌ Mistake 5: Vague Option Descriptions
+### ❌ Mistake 5: Recommending a Follow-Up Action in Prose Instead of Gating It
+
+```
+// WRONG - states a suggestion and waits for the user to notice and reply
+"If you want, you could run `enhancement-suggestor` against this report
+for a prioritized action plan."
+```
+
+This looks harmless but produces real friction: the user has to notice the suggestion buried in prose, decide, and type a follow-up message in a new turn — versus getting an immediate yes/no decision point in the same turn. A real instance of this mistake shipped in this toolkit's own `plugin-comparison` skill: its first design ended every comparison with a prose "offer" to run `enhancement-suggestor`, and the pattern was copy-pasted into 19 other reviewer/skill components before a user explicitly asked for it to be replaced with an interactive prompt — meaning the fix required a second full sweep across every file that had already copied the wrong default.
+
+**Fix:** any "here's a recommended follow-up, but don't auto-invoke it" design should default to `AskUserQuestion` with a Yes/No (or named-options) choice from the first draft, not prose:
+
+```json
+{
+  "question": "Run enhancement-suggestor against these findings for a classified action plan?",
+  "header": "Next step",
+  "options": [
+    { "label": "Yes — run enhancement-suggestor", "description": "..." },
+    { "label": "No — skip for now", "description": "..." }
+  ],
+  "multiSelect": false
+}
+```
+
+**Rule of thumb:** if the next sentence after a finding/report is "you could..." or "consider running...", that's a signal that the design should be an `AskUserQuestion` gate instead — reserve pure prose recommendations for cases where no concrete follow-up action actually exists to invoke.
+
+### ❌ Mistake 6: Vague Option Descriptions
 
 ```json
 // WRONG - User doesn't understand what each option does
@@ -470,6 +522,23 @@ Call 2 (conditional): IF "Create" → ask follow-up
 }
 ```
 
+### ❌ Mistake 7: No Escape Hatch for Genuine Uncertainty
+
+```json
+// WRONG - forces a guess when the user may not know
+{
+  "question": "Which of these 9 categories fits this skill?",
+  "options": [
+    { "label": "Category A" },
+    { "label": "Category B" },
+    { "label": "Category C" }
+    // no path for "I don't know"
+  ]
+}
+```
+
+**Fix:** add an "I'm not sure — help me decide" option (Pattern 7) to any judgment-call question where a wrong guess would propagate into downstream decisions.
+
 ---
 
 ## Best Practices Checklist
@@ -482,6 +551,7 @@ When creating a skill that uses AskUserQuestion, verify:
 - ✅ **Predefined vs open-form** - Use options: [] for free-text, [options] for choices
 - ✅ **Conditional routing** - Next question logic is clear (if/then paths documented)
 - ✅ **Batching** - Related questions grouped; unrelated questions separated
+- ✅ **Uncertainty option** - Judgment-call questions include an "I'm not sure" path (Pattern 7)
 - ✅ **No violations** - Use fact-check or linting to verify compliance
 
 ---

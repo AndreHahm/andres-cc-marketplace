@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "QUICK_START.md written with an install step and one working usage example, no more", "passed": true, "evidence": "File contains exactly Install + Try It sections"},
+    {"text": "Final report explicitly states no dedicated reviewer is available for this doc type yet", "passed": true, "evidence": "Report states the exact human-doc-reviewer scope gap"},
+    {"text": "Final report does not claim the doc was reviewed by human-doc-reviewer", "passed": true, "evidence": "Report explicitly states human-doc-reviewer was not invoked"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

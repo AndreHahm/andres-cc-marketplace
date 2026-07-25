@@ -2,6 +2,8 @@
 
 Basic slash command patterns for common use cases.
 
+**R18 exception (recorded):** several complete command examples below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent, copy-paste-ready command file; splitting one would break it.
+
 **Important:** All examples below are written as instructions FOR Claude (agent consumption), not messages TO users. Commands tell Claude what to do, not tell users what will happen.
 
 ## Example 1: Code Review Command
@@ -97,7 +99,7 @@ allowed-tools: Bash(npm:*), Bash(jest:*)
 
 Run tests for $0:
 
-Test execution: !`npm test $0`
+Test execution: !\`npm test $0\`
 
 Analyze results:
 - Tests passed/failed
@@ -172,13 +174,13 @@ allowed-tools: Bash(git:*)
 
 Repository Status Summary:
 
-**Current Branch:** !`git branch --show-current`
+**Current Branch:** !\`git branch --show-current\`
 
-**Status:** !`git status --short`
+**Status:** !\`git status --short\`
 
-**Recent Commits:** !`git log --oneline -5`
+**Recent Commits:** !\`git log --oneline -5\`
 
-**Remote Status:** !`git fetch && git status -sb`
+**Remote Status:** !\`git fetch && git status -sb\`
 
 Provide:
 - Summary of changes
@@ -209,7 +211,7 @@ Deploy to $0 environment using version $1
 **Pre-deployment Checks:**
 1. Verify $0 configuration exists
 2. Check version $1 is valid
-3. Verify cluster accessibility: !`kubectl cluster-info`
+3. Verify cluster accessibility: !\`kubectl cluster-info\`
 
 **Deployment Steps:**
 1. Update deployment manifest with version $1
@@ -428,7 +430,7 @@ Analyze but don't modify...
 allowed-tools: Bash(git:*)
 ---
 
-!`git status`
+!\`git status\`
 Analyze and suggest...
 ```
 
@@ -485,7 +487,7 @@ Compare @$0 with @$1...
 allowed-tools: Bash(git:*), Read
 ---
 
-Context: !`git status`
+Context: !\`git status\`
 Files: @file1 @file2
 
 Analyze...

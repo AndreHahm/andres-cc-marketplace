@@ -44,7 +44,7 @@ See [references/api.md](references/api.md) for complete function signatures.
 - Add gotchas as Claude hits new edge cases during testing
 - Include "before/after" code examples showing common mistakes
 - Focus on information that pushes Claude out of its default patterns
-- The `frontend-design` skill was built by iterating on Claude's design taste, avoiding cliche patterns like Inter font and purple gradients
+- e.g. a `frontend-design` skill could be built by iterating on Claude's design taste, avoiding cliche patterns like Inter font and purple gradients
 
 ---
 

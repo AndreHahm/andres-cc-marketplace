@@ -1,6 +1,6 @@
 # Platform Reference
 
-Quick reference for Claude Code platform features used in skill development. Reflects Claude Code v2.1.126.
+Quick reference for Claude Code platform features used in skill development. Reflects Claude Code v2.1.200+.
 
 For the latest spec, fetch official docs: `WebFetch https://code.claude.com/docs/en/<page>`. Key pages: `skills.md`, `hooks.md`, `hooks-guide.md`, `plugins-reference.md`, `sub-agents.md`.
 
@@ -44,9 +44,10 @@ Available in SKILL.md body:
 | `$ARGUMENTS[N]` | Nth individual argument (0-indexed). E.g., `/my-skill foo bar` → `$ARGUMENTS[0]` = `foo` |
 | `$N` | Shorthand for `$ARGUMENTS[N]`, such as `$0` for the first argument. (skills.md) |
 | `$name` | Named argument declared in the `arguments` frontmatter list. With `arguments: [issue, branch]`, `$issue` expands to the first argument. (skills.md) |
-| `${CLAUDE_SKILL_DIR}` | Absolute path to this skill's folder — use to reference bundled files (`${CLAUDE_SKILL_DIR}/references/api.md`) |
+| `${CLAUDE_SKILL_DIR}` | Absolute path to this skill's folder — use to reference bundled files (`${CLAUDE_SKILL_DIR}/references/api.md`). For plugin skills, this is the skill's own subdirectory, not the plugin root — distinct from `${CLAUDE_PLUGIN_ROOT}`. Skill-content substitution only; not available in hooks.json, MCP, or LSP configs. |
 | `${CLAUDE_PLUGIN_ROOT}` | Plugin root directory — use for hook script paths |
 | `${CLAUDE_PLUGIN_DATA}` | Persistent data directory that survives plugin upgrades — use for config, logs, databases |
+| `${CLAUDE_PROJECT_DIR}` | Project root directory — same value hooks/MCP servers receive as `CLAUDE_PROJECT_DIR`. Valid in the skill body and in `allowed-tools` frontmatter (e.g. `Bash(${CLAUDE_PROJECT_DIR}/scripts/lint.sh *)`). Requires v2.1.196+. |
 | `${CLAUDE_SESSION_ID}` | Current session ID — e.g., append to `${CLAUDE_PLUGIN_DATA}/runs/${CLAUDE_SESSION_ID}.log` for per-session isolation |
 | `${CLAUDE_EFFORT}` | Current effort level: `low`, `medium`, `high`, `xhigh`, or `max` — added in v2.1.120. Use to gate optional deep-analysis steps based on effort budget (e.g., skip extra eval rounds when `low`). |
 

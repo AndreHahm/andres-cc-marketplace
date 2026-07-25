@@ -231,6 +231,8 @@ If both match an event:
 
 ## Practical Examples
 
+**R18 exception (recorded):** the examples below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent skill-with-embedded-hooks frontmatter; splitting one would break its copy-paste usability.
+
 ### Example 1: Format Skill with Once Initialization
 
 ```yaml

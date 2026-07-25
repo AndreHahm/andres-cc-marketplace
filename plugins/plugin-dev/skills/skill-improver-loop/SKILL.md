@@ -6,7 +6,9 @@ description: >-
   multiple skill quality issues, running automated improvement loops, iterating
   a skill until it passes skill-reviewer, or enforcing consistent quality
   without manual editing. NOT for one-time reviews — use /skill-reviewer
-  directly.
+  directly. For manual, conversational refinement with a user checkpoint
+  at each step, use skill-refiner-interactive instead — this skill runs
+  unattended automated cycles with no interactive checkpoints.
 allowed-tools: Read Edit Write Glob Grep Task Skill
 ---
 
@@ -41,12 +43,12 @@ Use Glob `**/SKILL.md` to find all skills in the project.
 ## Quick Start
 
 1. **Locate** — Find the skill directory using the Skill Location rules above
-2. **Review** — Call `skill-reviewer` on the target skill (see "Invoking skill-reviewer" below)
-3. **Categorize** — Parse issues by severity. See `${CLAUDE_SKILL_DIR}/references/issue-categorization.md` for Critical / Major / Minor definitions
+2. **Review** — Call `skill-reviewer` on the target skill in Structured output mode (see "Invoking skill-reviewer" below)
+3. **Categorize** — Read `counts` and `findings[].severity` directly from the returned YAML — no prose-parsing needed. See `${CLAUDE_SKILL_DIR}/references/issue-categorization.md` for what Critical / Major / Minor mean when deciding fixes
 4. **Fix** — Address critical and major issues. For structural changes (moving, reorganizing content), follow `${CLAUDE_SKILL_DIR}/references/structural-changes.md`
 5. **Validate** — Run post-fix validation phases before the next review cycle. See `${CLAUDE_SKILL_DIR}/references/post-fix-validation.md`. For plugin-rule compliance (naming, language, tool-scoping, formatting), invoke `plugin-rulebook` via the `Skill` tool and treat any violations as Major issues.
 6. **Evaluate** — Check each minor issue individually before fixing. See `${CLAUDE_SKILL_DIR}/references/issue-categorization.md` for evaluation criteria
-7. **Repeat** — Continue until quality bar is met. Abort after 3 cycles: if Critical or Major issues remain, report them and stop — do not loop indefinitely.
+7. **Repeat** — Continue until `counts.critical == 0` and `counts.major == 0`. Abort after 3 cycles: if either count is still nonzero, report the remaining findings and stop — do not loop indefinitely.
 
 ## When to Use
 
@@ -62,14 +64,15 @@ Use Glob `**/SKILL.md` to find all skills in the project.
 - **Non-skill files**: Only works on SKILL.md files
 - **Experimental skills**: Manual iteration gives more control
 - **Creating a new skill from scratch**: Use `skill-development` instead
+- **Empirical benchmarking/eval-driven testing with baseline comparison**: Use `skill-tester` instead
 
 ## Invoking skill-reviewer
 
 ```
-Review the skill at [SKILL_PATH] using the plugin-dev:skill-reviewer agent. Provide a detailed quality assessment with issues categorized by severity.
+Review the skill at [SKILL_PATH] using the plugin-dev:skill-reviewer agent in Structured output mode. Return YAML only, per skill-reviewer's own Structured Output Mode schema.
 ```
 
-Replace `[SKILL_PATH]` with the absolute path to the skill directory. Invoke via the `Task` tool with `subagent_type='plugin-dev:skill-reviewer'`.
+Replace `[SKILL_PATH]` with the absolute path to the skill directory. Invoke via the `Task` tool with `subagent_type='plugin-dev:skill-reviewer'`. Parse the returned YAML directly: `counts.critical`/`counts.major` drive the loop-termination check (steps 3/7 above), `verdict` drives the Completion Criteria check below, and `findings[]` (each with `severity`/`location`/`finding`/`fix`) is the issue list to work through in step 4. If the response isn't valid YAML with `counts`/`verdict` present, treat `skill-reviewer` as unavailable — see Testing & Validation gate 4.
 
 ## Completion Criteria
 
@@ -79,7 +82,7 @@ Replace `[SKILL_PATH]` with the absolute path to the skill directory. Invoke via
 <skill-improvement-complete>
 ```
 
-Output when: (1) skill-reviewer reports Pass or no issues found, (2) all critical and major issues are fixed and verified by re-running skill-reviewer, or (3) remaining issues are only minor and evaluated individually as false positives or not worth fixing.
+Output when: (1) skill-reviewer's structured output has `verdict: Pass` or `S-Tier` with `counts.critical: 0` and `counts.major: 0`, (2) all critical and major issues are fixed and verified by re-running skill-reviewer, or (3) remaining issues are only minor and evaluated individually as false positives or not worth fixing.
 
 Do NOT output while any critical or major issue remains unfixed.
 
@@ -91,11 +94,13 @@ After invoking the skill, verify:
 2. **Non-triggers** — confirm skill does NOT activate on: "review my skill once", "create a new skill", "check plugin structure"
 3. **Loop termination** — skill emits `<skill-improvement-complete>` on its own line when done; stop hook detects via whole-line match
 4. **skill-reviewer reachable** — `Task` tool with `subagent_type='plugin-dev:skill-reviewer'` succeeds; stop hook surfaces the error and halts if unavailable
+5. **Structured output parses** — the response is valid YAML with `counts`/`verdict`/`findings` present; if not, treat skill-reviewer as unavailable rather than falling back to prose-parsing
 
 **Quality gates:**
 - [ ] `Task` and `Skill` are in `allowed-tools` before activating the loop
 - [ ] `plugin-dev` plugin is installed (run `/plugins` to verify)
-- [ ] Loop does not emit `<skill-improvement-complete>` while any Critical or Major issue remains
+- [ ] Loop does not emit `<skill-improvement-complete>` while `counts.critical` or `counts.major` is nonzero
+- [ ] Every `skill-reviewer` call requests Structured output mode — never parsed from the narrative report format
 
 ## Gotchas
 

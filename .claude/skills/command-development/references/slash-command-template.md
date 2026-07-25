@@ -10,8 +10,8 @@ allowed-tools: {{ALLOWED_TOOLS}}
 
 ## Current State
 
-- {{DYNAMIC_CONTEXT_1}}: !`{{SHELL_COMMAND_1}}`
-- {{DYNAMIC_CONTEXT_2}}: !`{{SHELL_COMMAND_2}}`
+- {{DYNAMIC_CONTEXT_1}}: !\`{{SHELL_COMMAND_1}}\`
+- {{DYNAMIC_CONTEXT_2}}: !\`{{SHELL_COMMAND_2}}\`
 
 ## Task
 
@@ -65,8 +65,8 @@ allowed-tools: {{ALLOWED_TOOLS}}
 Use `!` prefix for shell commands that execute when command loads:
 
 ```markdown
-- Current branch: !`git branch --show-current`
-- File count: !`find . -name "*.py" | wc -l`
+- Current branch: !\`git branch --show-current\`
+- File count: !\`find . -name "*.py" | wc -l\`
 ```
 
 ### Arguments

@@ -6,7 +6,7 @@ description: >-
   to 'review my hook', 'check hook quality', 'validate hook configuration',
   'audit this hook', or wants to ensure a hook is safe and correct before
   deployment. Trigger proactively after hook creation or modification.
-model: inherit
+model: sonnet
 color: orange
 tools: ["Read", "Grep", "Glob"]
 ---
@@ -19,6 +19,7 @@ Check the invocation context before starting:
 
 - **Full review** (default): Run Steps 1–6.
 - **Fast path** (`--fast`, "gatekeeper only", or "quick check" in the request): Run Steps 1–3, then Security & Injection Prevention only (part of Step 5). Skip the full 7-phase pass and hook-type checklists. Output only Critical/blocking findings and a Pass/Reject verdict.
+- **Structured output** (`--yaml`, "structured output", or "machine-readable" in the request): orthogonal to the two modes above — run the same Steps (Full or Fast, whichever also applies) but emit YAML per "Structured Output Mode" below instead of the narrative report in Step 6. Skip the narrative-only "Suggested next step" trailer in this mode.
 
 ## Step 1: Load plugin-rulebook (if available)
 
@@ -33,7 +34,9 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
 - **R19** — canonical path resolution: flag if both a plugin `hooks/hooks.json` and a project `.claude/hooks.json` (or `.claude/settings.json` hooks key) exist with diverging content — check `hook-development`'s in-development-mirror exception before flagging a true violation
 - **R20** — duplicate fact sweep: if a canonical value (default timeout, matcher pattern) changed, check for stale sibling copies elsewhere in the plugin
 
-**If not found:** skip rulebook checks; rely solely on `hook-development` standards (Step 2).
+Also read `structured_output.action_enum` plus `structured_output.per_agent_extensions.hook-reviewer` — used by Structured Output Mode (Step 6).
+
+**If not found:** skip rulebook checks; rely solely on `hook-development` standards (Step 2). For Structured Output Mode, fall back to the hardcoded action enum in Step 6.
 
 ## Step 2: Load Standards from `hook-development`
 
@@ -114,3 +117,18 @@ For each non-minor finding: the hook's location (event + matcher + entry index),
 End the report with:
 - **Overall Rating**: Pass / Reject — Reject whenever one or more Critical findings exist
 - **Top 3 Priority Fixes**: highest-impact actions to take first, in priority order
+- **Suggested next step**: if this report contains any Critical or Major finding, the calling context should ask the user via `AskUserQuestion` whether to run the `enhancement-suggestor` agent against it for classified (complexity/risk/benefit) WHAT/WHY/HOW next-step suggestions — this agent does not invoke it itself
+
+### Structured Output Mode
+
+When invoked in Structured output mode (see Invocation Modes), skip the narrative report above entirely and return YAML only — no prose outside the block:
+
+```yaml
+verdict: Pass                    # Pass | Reject
+counts: {critical: 1, major: 1, minor: 1}
+findings:
+  - {id: C1, severity: critical, phase: error-handling, location: "hooks.json (PreToolUse entry 1)", action: add_error_handling, finding: "explanation", fix: "suggested fix"}
+top_priority_fixes: [highest-impact fix, second fix, third fix]
+```
+
+`findings[].phase` uses `event-correctness | matcher-analysis | hook-type-action | error-handling | performance-impact | integration-side-effects | testing-documentation | security-injection | hook-type-checklist` (the 7 phases plus the two Step 5 checklist categories). `findings[].severity` uses `critical | major | minor`, ordered Critical-first same as the narrative report. `findings[].action` uses the canonical enum loaded in Step 1 (`move_to_references | delete | replace_line | add_field | fix_frontmatter`) **plus** this agent's own extension (`fix_exit_code | add_file_filter | fix_registration | fix_security | add_error_handling | add_output_limit`) — the six additions cover this agent's characteristic script/config-level fixes (exit code, file filtering, registration, security, error handling, output limits) that the generic frontmatter/reference-file-oriented base list doesn't reach. Omit the field only if even the extended enum has no fitting value. Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`verdict`.

@@ -166,7 +166,7 @@ fi
 
 # Check commands directory structure
 if [[ -d commands ]]; then
-    add_warning "deprecation" "commands/ directory is deprecated in favor of Agent Skills (skills/)" "Migrate commands to Agent Skills using skill-creator"
+    add_warning "deprecation" "commands/ directory is deprecated in favor of Agent Skills (skills/)" "Migrate commands to Agent Skills using skill-development"
     while IFS= read -r cmd_file; do
         if [[ -n "$cmd_file" ]]; then
             if ! head -10 "$cmd_file" | grep -q "^---$"; then
@@ -262,6 +262,51 @@ PLUGIN_SIZE=$(du -sh . 2>/dev/null | cut -f1 || echo "unknown")
 TOTAL_BYTES=$(du -sb . 2>/dev/null | cut -f1 || echo "0")
 if [[ $TOTAL_BYTES -gt 52428800 ]]; then  # 50MB
     add_warning "performance" "Plugin is large ($PLUGIN_SIZE) - may impact installation speed" "Consider removing unused files or making assets lazy-loaded"
+fi
+
+# ============================================================================
+# 12. CHECK DELEGATION REFERENCES TO OTHER SKILLS RESOLVE
+# ============================================================================
+# Scans skills/, commands/, and agents/ for backtick-wrapped names followed
+# by "skill" (e.g. "the `skill-development` skill") and flags any that don't
+# resolve to skills/<name>/ within this same plugin — catches stale
+# delegation references left behind after a skill is renamed. Skips lines
+# inside fenced code blocks (illustrative code samples), lines with an
+# "Example:"/"e.g."/"for example" cue (illustrative prose), and lines with a
+# negation cue ("no dedicated", "there is no", "doesn't have a") — none of
+# those are real delegation instructions.
+DELEGATION_DIRS=()
+for d in skills commands agents; do
+    [[ -d "$d" ]] && DELEGATION_DIRS+=("$d")
+done
+if [[ ${#DELEGATION_DIRS[@]} -gt 0 ]]; then
+    DELEGATION_FILES=$(find "${DELEGATION_DIRS[@]}" -maxdepth 3 -name "*.md" 2>/dev/null || true)
+    if [[ -n "$DELEGATION_FILES" ]]; then
+        while IFS= read -r df; do
+            [[ -z "$df" ]] && continue
+            NAMES=$(awk '
+                /^```/ { in_fence = !in_fence; next }
+                in_fence { next }
+                tolower($0) ~ /no dedicated|there is no|doesn.t have a|isn.t a dedicated/ { next }
+                tolower($0) ~ /example:|e\.g\.|for example/ { next }
+                {
+                    line = $0
+                    while (match(line, /`[a-z][a-z0-9-]+` skill/)) {
+                        name = substr(line, RSTART + 1, RLENGTH - 8)
+                        print name
+                        line = substr(line, RSTART + RLENGTH)
+                    }
+                }
+            ' "$df" 2>/dev/null | sort -u)
+            [[ -z "$NAMES" ]] && continue
+            while IFS= read -r name; do
+                [[ -z "$name" ]] && continue
+                if [[ ! -d "skills/$name" ]]; then
+                    add_warning "delegation" "Referenced skill '\`$name\` skill' in $df doesn't resolve to skills/$name/" "Fix the stale name, or confirm it refers to a skill outside this plugin"
+                fi
+            done <<< "$NAMES"
+        done <<< "$DELEGATION_FILES"
+    fi
 fi
 
 # Output summary

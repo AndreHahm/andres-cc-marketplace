@@ -1,6 +1,6 @@
 # Validation Checklist
 
-Quick reference checklist for validating Claude Code skills. Use in conjunction with the seven validation phases.
+Quick reference checklist for validating Claude Code skills. `skill-reviewer` and `plugin-rulebook` run the authoritative checks (see SKILL.md's Core Workflow: Validation); use this checklist for a quick manual sanity pass before requesting a full validation run.
 
 ## File Structure Checklist
 

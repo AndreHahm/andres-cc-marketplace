@@ -2,6 +2,8 @@
 
 A complex, enterprise-grade plugin with MCP integration and advanced organization.
 
+**R18 exception (recorded):** the directory tree and full SKILL.md dump below intentionally exceed the rulebook's 30-line code-block threshold — both are whole-file/whole-tree illustrations where splitting would remove the pedagogical value of seeing a complete real example.
+
 ## Directory Structure
 
 ```
@@ -311,9 +313,8 @@ await SlackClient.notify({
 
 ```markdown
 ---
-name: Kubernetes Operations
+name: kubernetes-ops
 description: This skill should be used when deploying to Kubernetes, managing K8s resources, troubleshooting cluster issues, configuring ingress/services, scaling deployments, or working with Kubernetes manifests. Provides comprehensive Kubernetes operational knowledge and best practices.
-version: 2.0.0
 ---
 
 # Kubernetes Operations

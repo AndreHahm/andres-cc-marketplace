@@ -59,15 +59,15 @@ See `references/mcp-tools.md` for the full `mcp_tool` reference.
 
 **Availability:** All Claude Code tools (Read, Write, Edit, Bash, Glob, Grep, etc.)
 
-**Event data available:**
+**Event data available (see `command-hook-input-parsing.md` for the full stdin schema):**
 ```json
 {
-  "tool": "Write",
-  "arguments": {
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Write",
+  "tool_input": {
     "file_path": "/path/to/file.js",
     "content": "..."
-  },
-  "timestamp": 1234567890
+  }
 }
 ```
 
@@ -98,22 +98,20 @@ See `references/mcp-tools.md` for the full `mcp_tool` reference.
 
 **Availability:** All Claude Code tools
 
-**Event data available:**
+**Event data available (see `command-hook-input-parsing.md` for the full stdin schema):**
 ```json
 {
-  "tool": "Write",
-  "arguments": {
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Write",
+  "tool_input": {
     "file_path": "/path/to/file.js",
     "content": "..."
   },
-  "result": {
-    "success": true,
-    "output": "File written successfully"
-  },
-  "executionTime": 45,
-  "timestamp": 1234567890
+  "tool_response": "File written successfully"
 }
 ```
+
+**`tool_name` for sub-dispatch tools:** a matcher targeting an `Agent()` or `Skill()` dispatch (not just the built-in file/shell tools shown above) should match on the literal strings `"Agent"` and `"Skill"` — confirmed directly against a real session transcript (`grep -o '"name":"[A-Za-z_]*"' <session>.jsonl` showed both appearing exactly this way, alongside `AskUserQuestion` serializing as `"name":"AskUserQuestion"`), not inferred from documentation alone. See `plugins/plugin-dev/hooks/r26-expensive-action-check.py`'s header comment for the verification note this was first confirmed in.
 
 **Common use cases:**
 - Format code after write (prettier, black)
@@ -145,20 +143,19 @@ See `references/mcp-tools.md` for the full `mcp_tool` reference.
 
 **Availability:** All Claude Code tools
 
-**Event data available:**
+**Event data available (see `command-hook-input-parsing.md` for the full stdin schema):**
 ```json
 {
-  "tool": "Bash",
-  "arguments": {
+  "hook_event_name": "PostToolUseFailure",
+  "tool_name": "Bash",
+  "tool_input": {
     "command": "npm test"
   },
   "error": {
     "message": "Command failed with exit code 1",
     "code": 1,
     "stderr": "Test output..."
-  },
-  "executionTime": 2500,
-  "timestamp": 1234567890
+  }
 }
 ```
 
@@ -195,13 +192,10 @@ See `references/mcp-tools.md` for the full `mcp_tool` reference.
 **Event data available:**
 ```json
 {
+  "hook_event_name": "UserPromptSubmit",
+  "session_id": "abc123",
   "prompt": "Write a function that sorts an array",
-  "context": {
-    "sessionId": "...",
-    "messageCount": 5,
-    "fileContext": ["file1.js", "file2.js"]
-  },
-  "timestamp": 1234567890
+  "cwd": "/current/dir"
 }
 ```
 
@@ -238,13 +232,9 @@ See `references/mcp-tools.md` for the full `mcp_tool` reference.
 **Event data available:**
 ```json
 {
-  "sessionId": "sess_...",
-  "startTime": 1234567890,
-  "environment": {
-    "os": "darwin",
-    "nodeVersion": "18.0.0"
-  },
-  "timestamp": 1234567890
+  "hook_event_name": "SessionStart",
+  "session_id": "abc123",
+  "cwd": "/current/dir"
 }
 ```
 
@@ -279,12 +269,9 @@ See `references/mcp-tools.md` for the full `mcp_tool` reference.
 **Event data available:**
 ```json
 {
-  "sessionId": "sess_...",
-  "startTime": 1234567890,
-  "endTime": 1234568000,
-  "duration": 110,
-  "exitCode": 0,
-  "timestamp": 1234568000
+  "hook_event_name": "SessionEnd",
+  "session_id": "abc123",
+  "cwd": "/current/dir"
 }
 ```
 
@@ -688,6 +675,8 @@ Problem: Tool failed; error already happened
 ---
 
 ## Event Selection Decision Tree
+
+**R18 note:** this block (25 content lines) sits in R18's Warning tier (`>20`, `<=30`) — advisory-only, does not reach the `>30` Critical threshold an exception would be needed to justify. It's a single coherent decision tree; splitting it would make it unreadable.
 
 ```
 What do you want to do?

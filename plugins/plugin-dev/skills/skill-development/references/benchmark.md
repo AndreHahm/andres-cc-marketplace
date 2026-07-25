@@ -23,6 +23,8 @@ For every `❌ FAIL` in the benchmark, identify the root cause:
 | Skills conflict    | Two skills contradict      | Ensure P0 overrides P1                      |
 | Missing evals      | No `evals/evals.json`      | Create evals with ≥3 prompts, ≥2 assertions |
 | Low eval alignment | SKILL.md missing key terms | Add missing assertion values to SKILL.md    |
+| Regression         | Change broke a previously-passing case | Bisect against the prior iteration's `benchmark.json`; revert or isolate the change |
+| Context overload   | Skill body too dense/conflicting for the model to apply reliably | Trim per the 80% Rule; move detail to `references/` |
 
 ## 3. Compliance Score Calculation
 

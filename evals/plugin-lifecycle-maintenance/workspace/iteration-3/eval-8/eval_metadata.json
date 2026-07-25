@@ -1,0 +1,26 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "assertions": [
+    {
+      "text": "Response states the Document step invokes plugin-documentation (via Skill), not human-doc-reviewer directly",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Response does NOT describe asking a separate delta/full AskUserQuestion before invoking plugin-documentation",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Response states plugin-documentation owns the delta-vs-full human-doc-reviewer QA decision internally",
+      "type": "quality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Response states the specific list of changed claims from the core fix is passed to plugin-documentation",
+      "type": "presence",
+      "target": "outputs/ directory"
+    }
+  ]
+}

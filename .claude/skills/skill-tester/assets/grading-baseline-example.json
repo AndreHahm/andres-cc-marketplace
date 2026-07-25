@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "SKILL.md has frontmatter with name and description",
+      "passed": true,
+      "evidence": "Includes name, description, version"
+    },
+    {
+      "text": "Description includes specific trigger phrases",
+      "passed": false,
+      "evidence": "Description: 'This skill converts data' (vague, no specific trigger phrases)"
+    },
+    {
+      "text": "Body is <500 lines and includes 'Quick Start' section",
+      "passed": false,
+      "evidence": "SKILL.md body: 847 lines (exceeds 500), no 'Quick Start' section"
+    },
+    {
+      "text": "References/ directory has one-level nesting",
+      "passed": true,
+      "evidence": "references/: *.md files, no subdirs"
+    },
+    {
+      "text": "All reference links in SKILL.md body have corresponding .md files",
+      "passed": false,
+      "evidence": "Body mentions: references/parser.md (does not exist)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 2,
+    "pass_rate": 0.4
+  }
+}

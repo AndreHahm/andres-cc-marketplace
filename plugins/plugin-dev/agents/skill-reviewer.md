@@ -1,7 +1,16 @@
 ---
 name: skill-reviewer
-description: "Review Claude Code skill quality and adherence to standards. Use this agent when the user has created or modified a skill and needs quality review, asks to 'review my skill', 'check skill quality', 'improve skill description', 'validate skill structure', or wants to ensure a skill follows best practices. Trigger proactively after skill creation or modification."
-model: inherit
+description: >-
+  Review Claude Code skill quality and adherence to standards. Use this
+  agent when the user has created or modified a skill and needs quality
+  review, asks to 'review my skill', 'check skill quality', 'improve skill
+  description', 'validate skill structure', or wants to ensure a skill
+  follows best practices. Trigger proactively after SKILL.md itself is
+  created or modified. For a skill's references/scripts/assets/workflows/
+  examples/templates changing without a SKILL.md edit, use
+  skilldir-reviewer instead — both may legitimately run together when a
+  whole skill directory changes.
+model: sonnet
 color: cyan
 tools: ["Read", "Grep", "Glob"]
 ---
@@ -14,6 +23,7 @@ Check the invocation context before starting:
 
 - **Full review** (default): Run Steps 1–7. Use for thorough review, post-refiner checks, or when the caller has not specified a mode.
 - **Fast path** (`--fast`, "gatekeeper only", or "quick check" in the request): Run Steps 1–4 only. Skip scoring (Step 5) and checklist validation (Step 6). Output only C1–C4 gatekeeper results and a Pass/Reject verdict. Typical cost: ~40% of a full run.
+- **Structured output** (`--yaml`, "structured output", or "machine-readable" in the request; also the default when the caller states it's parsing the result programmatically, e.g. `skill-improver-loop` or `skill-refiner-interactive`'s Validation mode): orthogonal to the two modes above — run the same Steps (Full or Fast, whichever also applies) but emit YAML per "Structured Output Mode" below instead of the narrative report in Step 7. Skip the narrative-only "Suggested next step" trailer in this mode.
 
 When the refiner calls this agent and passes a pre-analysis report, accept its file-line counts as given for C1 — skip re-counting SKILL.md lines.
 
@@ -23,11 +33,11 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
 
 **If found:**
 1. Extract the plugin-rulebook directory path from the result
-2. Read `<plugin-rulebook-dir>/assets/settings.json` — load R13 and R18 threshold config
+2. Read `<plugin-rulebook-dir>/assets/settings.json` — load R13 and R18 threshold config, and `structured_output.action_enum` (used by Structured Output Mode, Step 7)
 3. Read `<plugin-rulebook-dir>/references/size-rules.md` — severity tier definitions
 4. Resolve active thresholds from the `config.thresholds` blocks in settings.json; these override the flat limits in `skill-development/references/size-limits.md`
 
-**If not found:** use the fallback flat limits from `skill-development/references/size-limits.md` (loaded in Step 2).
+**If not found:** use the fallback flat limits from `skill-development/references/size-limits.md` (loaded in Step 2), and fall back to the hardcoded action enum in Structured Output Mode (Step 7).
 
 ## Step 2: Load Standards from `skill-development`
 
@@ -108,6 +118,8 @@ Warning-tier C1/C2 findings are **Major**. Weak Warning–tier C1/C2 findings ar
 1. For each `workflows/*.md` file loaded in Step 3, scan for any action step that links to or directs the reader to a `references/` file (e.g., `Read references/foo.md`, `See references/foo.md`, or a markdown link `[...](references/foo.md)` in an imperative instruction). Flag each as **Major** — a workflow delegating to a reference file forces the caller to load unexpected context, violating self-containment.
 2. For each `references/*.md` file, scan for any imperative that directs the reader to read another `references/` file (e.g., `Read references/bar.md`, `see references/bar.md`). Flag each as **Major** — a reference chaining to another reference forces an unplanned second context load on any agent that loaded the first.
 
+**Cross-skill overlap check (mandatory, deterministic):** Grep the reviewed skill's key terms — drawn from its `name`, `description`, and top-level headings — against every other `**/SKILL.md` in the project and any `CLAUDE.md` in scope, excluding gitignored paths per `plugin-rulebook/references/gitignore-exclusion.md`. Flag duplicate workflow or trigger coverage as a candidate for merge or split, naming the overlapping skill/file. Generic terminology produces false positives easily — apply the `⚠️ Unverified` labeling and severity-cap policy from "Uncertain findings" below by default: treat an overlap match as **Minor** unless it's strong and unambiguous (near-identical trigger phrases or workflow steps), so a noisy match doesn't block a caller like `skill-improver-loop` from reaching its exit condition.
+
 **Workflow pattern validation:** Using the five patterns defined in `design-patterns.md`, identify which pattern(s) the skill's workflow most closely matches:
 - **Sequential Workflow Orchestration** — multi-step process with explicit ordering and inter-step dependencies
 - **Multi-MCP Coordination** — workflow spanning multiple services or MCP servers
@@ -117,10 +129,14 @@ Warning-tier C1/C2 findings are **Major**. Weak Warning–tier C1/C2 findings ar
 
 For each matched pattern, check that the key techniques from `design-patterns.md` are present. Missing techniques that are load-bearing for correctness (e.g., no stopping condition in an iterative skill, no rollback instructions in a destructive sequential flow) are **Major**. Advisory omissions (e.g., missing phase-transition validation in a low-risk Multi-MCP flow) are **Minor**. If the skill is too simple to match a named pattern, or the pattern is genuinely ambiguous, skip this check and note it.
 
+**Asset-sufficiency check:** if the matched pattern implies a repeated, structured sub-task recurring across the skill's steps (the same kind of file generation, validation, or transformation) with no corresponding `scripts/`, `templates/`, or `references/` asset backing it, flag as **Major** — per `design-patterns.md`'s bundling heuristic ("if 3 test cases result in similar `create_docx.py` or `build_chart.py`, bundle it in `scripts/`"). This is distinct from the chain-violation check above: it flags *missing* scaffolding, not a bad link between existing files.
+
 **Tool reconciliation check:**
 1. **Undeclared tools**: Flag any tool called in SKILL.md or any reference file that is absent from the `allowed-tools` frontmatter as **Major** — the agent will be blocked at runtime.
 2. **Unused declared tools**: Flag any tool listed in `allowed-tools` that is never referenced in the body or any reference file as **Minor** — over-permissioning.
 3. **Bash-for-dedicated-tool misuse**: Flag any instruction that uses a scoped `Bash` variant (e.g., `Bash(grep:*)`, `Bash(find:*)`, `Bash(cat:*)`) where a dedicated tool (Grep, Glob, Read) would serve the same purpose. Flag as **Minor**.
+
+**Forked-context model check:** if the reviewed skill's frontmatter sets `context: fork`, flag `model: inherit` or a missing `model` field as **Major** — a forked-context skill runs in an isolated context and should pin an explicit model rather than silently inheriting the parent's.
 
 **Workflow execution anti-patterns** (scan SKILL.md and all reference files):
 - **Cartesian product spawning**: Instructions that spawn subagents or dispatch tasks for every combination of two or more independent lists (e.g., "for each language × for each file, spawn an agent") causing O(N×M) spawns. Flag as **Major**.
@@ -156,3 +172,22 @@ When reporting C1 or C2 findings, include the active threshold source: `(plugin-
 End the report with:
 - **Overall Rating**: S-Tier / Pass / Reject — exactly as defined in the Final Grading scale in `rubric.md`
 - **Top 3 Priority Fixes**: Highest-impact actions the author should take first, in priority order
+- **Suggested next step**: if Overall Rating is Reject, or any Critical/Major finding exists, the calling context should ask the user via `AskUserQuestion` whether to run the `enhancement-suggestor` agent against this report for classified (complexity/risk/benefit) WHAT/WHY/HOW next-step suggestions — this agent does not invoke it itself
+
+### Structured Output Mode
+
+When invoked in Structured output mode (see Invocation Modes), skip the narrative Battle Test Report and Checklist Findings above entirely and return YAML only — no prose outside the block:
+
+```yaml
+verdict: Pass                    # S-Tier | Pass | Reject
+score: 78                        # 0-100; omit if Rejected before scoring (Step 5 skipped)
+gatekeepers: {c1_line_count: pass, c2_code_blocks: pass, c3_frontmatter: pass, c4_description_voice: pass}
+activation_score: 40             # out of 50; omit if Rejected before scoring
+implementation_score: 38         # out of 50; omit if Rejected before scoring
+counts: {critical: 0, major: 2, minor: 5}
+findings:
+  - {id: M1, severity: major, category: missing-when-not-to-use, location: SKILL.md, action: add_field, finding: "explanation", fix: "suggested fix"}
+top_priority_fixes: [highest-impact fix, second fix, third fix]
+```
+
+`gatekeepers.c1_line_count`/`c2_code_blocks` use `pass | weak_warning | warning | critical`; `c3_frontmatter`/`c4_description_voice` use `pass | fail`; `findings[].severity` uses `critical | major | minor`, ordered Critical-first same as the narrative report. `findings[].action` is a closed enum naming the specific machine-executable remediation, loaded from `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` in Step 1 (fallback if `plugin-rulebook` is absent: `move_to_references | delete | replace_line | add_field | fix_frontmatter`) — this list is shared with `subagent-reviewer`'s Structured Output Mode, so a future change to it should update the canonical `settings.json` entry, not just one agent's copy. Use whichever value is the closest match, and omit the field only if no enum value fits (a caller should still fall back to the free-text `fix`). `counts` gives the calling skill a single field to check for loop-termination or branching instead of counting list entries itself. Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`verdict`.
