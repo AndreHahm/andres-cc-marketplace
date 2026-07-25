@@ -1,6 +1,6 @@
 {
   "eval_id": 9,
-  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
   "assertions": [
     {
       "text": "Response states 'no update needed' is a normal, valid outcome, not a failure",

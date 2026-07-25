@@ -4,7 +4,7 @@
 
 Log of gaps surfaced by `plugin-rulebook`'s former Upstream Audit procedure and how each was resolved, for this repository specifically.
 
-This file is repo-specific config for the `plugin-dev` plugin's `plugin-rulebook` skill — not part of the plugin package itself. See `.claude/plugin-rulebook.config.json` for the sibling repo-specific rule overrides (R23 whitelist/blacklist/excluded_paths).
+This file is repo-specific config for the `plugin-devkit` plugin's `plugin-rulebook` skill — not part of the plugin package itself. See `.claude/plugin-rulebook.config.json` for the sibling repo-specific rule overrides (R23 whitelist/blacklist/excluded_paths).
 
 ## 2026-07-05 — hook event/type list vs an external reference plugin and official docs
 

@@ -9,8 +9,8 @@
   },
   "plugins": [
     {
-      "name": "plugin-dev",
-      "source": "./plugins/plugin-dev",
+      "name": "plugin-devkit",
+      "source": "./plugins/plugin-devkit",
       "description": "Claude Code Plugin Development",
       "version": "1.0.0-alpha.1",
       "author": {

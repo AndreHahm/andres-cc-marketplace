@@ -1,6 +1,6 @@
 {
   "eval_id": 6,
-  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
   "assertions": [
     {"text": "States the workflow stops cleanly at Step 1's exit criteria when no suggestions exist", "type": "functionality", "target": "outputs/ directory"},
     {"text": "Does not proceed to Step 2's human-decision gate or fabricate a suggestion", "type": "quality", "target": "outputs/ directory"}

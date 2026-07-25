@@ -1,6 +1,6 @@
 {
   "eval_id": 7,
-  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
   "assertions": [
     {"text": "States 'no update needed' is a normal, valid outcome, not a failure", "type": "quality", "target": "outputs/ directory"},
     {"text": "States no separate doc-fix commit happens when nothing was applied", "type": "functionality", "target": "outputs/ directory"}

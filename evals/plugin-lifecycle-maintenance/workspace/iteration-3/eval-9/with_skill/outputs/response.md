@@ -63,6 +63,6 @@ and reused verbatim by all four workflows.
 - `.claude/skills/plugin-lifecycle-maintenance/workflows/improve-a-plugin.md` — Step 4 (Document,
   line ~37-39) and Step 5 (Handover, Optional, line ~41-45), showing the "no changes -> skip"
   chaining.
-- Mirrored copy: `plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md` and its
+- Mirrored copy: `plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md` and its
   `workflows/improve-a-plugin.md` (same content, per the plugin's intentional in-development
-  mirror between `.claude/` and `plugins/plugin-dev/`).
+  mirror between `.claude/` and `plugins/plugin-devkit/`).

@@ -1,6 +1,6 @@
 {
   "eval_id": 8,
-  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
   "assertions": [
     {
       "text": "Response states the Document step invokes plugin-documentation (via Skill), not human-doc-reviewer directly",

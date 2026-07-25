@@ -1,6 +1,6 @@
 {
   "skill_name": "plugin-lifecycle-maintenance",
-  "skill_path": "plugins/plugin-dev/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
   "description": "Orchestrates ongoing maintenance for an already-built plugin through 4 workflows (improve/enhance/modernize/self-service), each ending in a human-approved, tested, documented, committed change.",
   "evals": [
     {
@@ -19,7 +19,7 @@
       "id": 3,
       "name": "Body guidance correctly routes a realistic scenario",
       "prompt": "I just ran a retro on plugin-foo and want to act on the findings",
-      "expected_output": "Given the full SKILL.md content, correctly identifies workflows/improve-a-plugin.md as the right workflow (not enhance-a-plugin or modernize-plugin-dev), and states the first concrete action is invoking analyzing-sessions (already done per the prompt) followed by presenting suggestions and asking the human which to act on via AskUserQuestion -- not silently picking suggestions itself."
+      "expected_output": "Given the full SKILL.md content, correctly identifies workflows/improve-a-plugin.md as the right workflow (not enhance-a-plugin or modernize-plugin-devkit), and states the first concrete action is invoking analyzing-sessions (already done per the prompt) followed by presenting suggestions and asking the human which to act on via AskUserQuestion -- not silently picking suggestions itself."
     },
     {
       "id": 4,
@@ -29,9 +29,9 @@
     },
     {
       "id": 5,
-      "name": "modernize-plugin-dev single-rule mode gate sequencing (scenario 4)",
+      "name": "modernize-plugin-devkit single-rule mode gate sequencing (scenario 4)",
       "prompt": "I know the R13 line-count threshold might be outdated -- check it and fix it if so",
-      "expected_output": "Given the full SKILL.md + modernize-plugin-dev.md content, identifies Single-Rule mode (not Bulk mode -- this is one already-known rule, not a whole-plugin sweep), and correctly sequences find-dev-rule (read-only findings first) before update-dev-rule, naming both the workflow's own coarser confirmation gate AND update-dev-rule's own built-in second pre-flight confirmation as two distinct, non-duplicated gates."
+      "expected_output": "Given the full SKILL.md + modernize-plugin-devkit.md content, identifies Single-Rule mode (not Bulk mode -- this is one already-known rule, not a whole-plugin sweep), and correctly sequences find-dev-rule (read-only findings first) before update-dev-rule, naming both the workflow's own coarser confirmation gate AND update-dev-rule's own built-in second pre-flight confirmation as two distinct, non-duplicated gates."
     },
     {
       "id": 6,
