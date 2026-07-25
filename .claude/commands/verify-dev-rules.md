@@ -37,6 +37,8 @@ Read the resolved report file fully. Extract every rule row from every section (
 
 **Load prior exclusions:** check whether `{output-dir}/{name}-gaps.md` already exists from a previous run against this same target. If it does, read its **Excluded Candidates** table now and hold it for Step 2 — this is what lets Step 2's "Intentional divergence (carried forward)" case actually find prior decisions on a first pass through this document, rather than only becoming available once Step 3 re-reads it. If no prior gap report exists, proceed with an empty prior-exclusions set (every gap in this run is newly surfaced).
 
+**Provenance marking:** a full run of this command from Setup through Step 5 needs no special marking — the whole report is provenance-clean by construction. But if this pass instead updates an existing gap report by manually following these steps rather than through a fresh top-to-bottom invocation (e.g. a scoped follow-up investigating one new source or a handful of gaps), mark every new or changed Gap row's **Verified** value with a trailing parenthetical recording that, e.g. `CONFIRMED (manually-followed, not a formal /verify-dev-rules invocation)`. This isn't a lesser trust level — Step 1-3's classification and citation requirements still apply in full — it's a provenance record: without it, a later reader can't tell "went through this command's own gates end-to-end" from "was reasoned through inline," and a scoped follow-up that skipped the Pre-flight confirmation and the full Step 1-4 sequence could otherwise be mistaken for a complete re-verification of the whole report.
+
 **Pre-flight:** Before any `WebFetch`/`WebSearch` call, print the resolved report path, the count of rules extracted, and the distinct topic areas found (e.g. "skill frontmatter", "agent/subagent frontmatter", "hooks", "plugin manifest", "commands", "rules/CLAUDE.md", "MCP", "settings"). Wait for confirmation ("yes"/"y"/"proceed"/"ok") before proceeding; on any other answer, print "Cancelled." and stop.
 
 ---
@@ -114,6 +116,7 @@ Before writing the report, verify:
 - [ ] Every citation URL in the report was actually fetched during Step 1 or Step 3 in this run (no fabricated or assumed URLs).
 - [ ] Every `AskUserQuestion` decision in Step 2 that resolved to "conform" has a corresponding Gap row in the Gaps table — none left as a chat-turn commitment only.
 - [ ] Every `MISSING` classification was checked against the target component's own `references/*.md` tree (and body) before being finalized, per Step 1's pre-finalization sweep.
+- [ ] If this run updated an existing gap report without a fresh top-to-bottom invocation, every new/changed Gap row's Verified value carries the manually-followed provenance note from Setup — none left ambiguous about which gate it actually went through.
 
 If any check fails, fix it before writing. Do not write a report with unresolved checklist items.
 
