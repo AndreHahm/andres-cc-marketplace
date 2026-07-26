@@ -84,8 +84,9 @@ Changes to this file take effect on the next `/commit` invocation — no restart
 | `git-cleanup` | Safely analyzing and cleaning up local git branches and worktrees |
 | `git-rebase-sync` | Syncing a feature branch onto the latest base branch via rebase, with backup tags and safe force-with-lease pushing |
 | `standalone-commits` | Deciding whether a commit is reviewable on its own, and ordering multi-file changes into dependency-ordered waves |
-| `explain-pr-changes` | Summarizing a PR's diff into a reviewer-focused changeset breakdown with a NEEDS_REVIEW/APPROVED triage |
+| `explain-pr-changes` | Summarizing a PR's diff into a reviewer-focused changeset breakdown with a NEEDS_REVIEW/APPROVED triage, and (on an open PR) resolving every existing review comment before considering the summary complete |
 | `github-issue-creator` | Turning raw notes, error logs, or screenshots into a structured GitHub issue markdown file |
+| `dependency-updater` | Scanning package manifests across ecosystems for outdated dependencies, flagging monorepo version conflicts, and proposing updates with confirmation before applying |
 
 ## Commands
 
