@@ -33,9 +33,43 @@ cc --plugin-dir /path/to/gitkit
 # Create a well-formatted commit
 > /commit
 
+# Amend the last commit
+> /commit --amend
+
+# Commit and push in one step
+> /commit --push
+
 # Create a pull request
 > /create-pr
 ```
+
+`commit` also checks staged files for sensitive patterns (`.env`, keys, credentials) before committing, confirms the generated message with you first (configurable), and reports a result summary (hash, files changed, push status) afterward — see Configuration below to adjust the confirmation and staging behavior per project.
+
+## Configuration
+
+The `commit` skill reads optional per-project settings from `.claude/gitkit.local.md` in the project root (YAML frontmatter, no required body). This file is user-local — add `.claude/*.local.md` to your project's `.gitignore` so it never gets committed. If the file is absent, or a field is omitted, the defaults below apply.
+
+```markdown
+---
+enabled: true
+commit_confirm_before_commit: true
+commit_auto_stage: false
+commit_first_line_soft_limit: 50
+commit_first_line_hard_limit: 72
+---
+```
+
+| Field | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Master toggle for this file's overrides |
+| `commit_confirm_before_commit` | `true` | Ask for confirmation (showing the generated message) before running `git commit` |
+| `commit_auto_stage` | `false` | When nothing is staged, auto-stage everything (`true`) instead of asking what to stage (`false`) |
+| `commit_first_line_soft_limit` | `50` | Recommended max length for a commit's first line |
+| `commit_first_line_hard_limit` | `72` | Hard max length for a commit's first line |
+
+Changes to this file take effect on the next `/commit` invocation — no restart needed, since it's read by the skill itself rather than a hook.
+
+**Security:** `commit_confirm_before_commit: false` and `commit_auto_stage: true` both weaken safety, so `commit` only honors them when this file is *not* tracked by git — it checks with `git ls-files` before applying either. Gitignoring the file (as instructed above) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or turn on auto-staging.
 
 ## Skills
 
