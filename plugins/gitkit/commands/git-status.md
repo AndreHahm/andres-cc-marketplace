@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(git:*), Read
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git branch:*), Read
 description: Show detailed git repository status
 name: git-status
 argument-hint: (optional) focus area or file path to emphasize in the summary

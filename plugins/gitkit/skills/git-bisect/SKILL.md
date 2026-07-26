@@ -1,7 +1,7 @@
 ---
 description: >-
   Use PROACTIVELY to guide automated git bisect sessions for finding regression commits with smart test execution
-allowed-tools: Bash(git bisect:*), Bash(git log:*), Bash(git show:*), Bash(git checkout:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Read, Edit, Grep
+allowed-tools: Bash(git bisect:*), Bash(git log:*), Bash(git show:*), Bash(git checkout:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Read, Grep
 argument-hint: [good-commit] [bad-commit] | --auto [test-command] | --reset | --continue
 ---
 
