@@ -24,7 +24,7 @@
     {
       "name": "gitkit",
       "source": "./plugins/gitkit",
-      "description": "Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, and issue drafting.",
+      "description": "Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, issue drafting, and dependency updates.",
       "version": "1.0.0-alpha.1",
       "author": {
         "name": "Andre Hahm",
