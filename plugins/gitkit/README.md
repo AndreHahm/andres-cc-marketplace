@@ -1,6 +1,6 @@
 # Git Plugin
 
-Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, and branch cleanup.
+Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, and issue drafting.
 
 ## Plugin Target
 
@@ -11,7 +11,7 @@ Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, 
 
 ## Overview
 
-`gitkit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, and branch/worktree cleanup.
+`gitkit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, and issue drafting.
 
 Several skills (`create-pr`, `gh-operations`) require GitHub CLI (`gh`) for full functionality.
 
@@ -82,6 +82,10 @@ Changes to this file take effect on the next `/commit` invocation — no restart
 | `git-notes` | Attaching metadata to commits without changing history |
 | `git-bisect` | Guiding an automated or manual git bisect session to find a regression commit |
 | `git-cleanup` | Safely analyzing and cleaning up local git branches and worktrees |
+| `git-rebase-sync` | Syncing a feature branch onto the latest base branch via rebase, with backup tags and safe force-with-lease pushing |
+| `standalone-commits` | Deciding whether a commit is reviewable on its own, and ordering multi-file changes into dependency-ordered waves |
+| `explain-pr-changes` | Summarizing a PR's diff into a reviewer-focused changeset breakdown with a NEEDS_REVIEW/APPROVED triage |
+| `github-issue-creator` | Turning raw notes, error logs, or screenshots into a structured GitHub issue markdown file |
 
 ## Commands
 
@@ -91,4 +95,4 @@ Changes to this file take effect on the next `/commit` invocation — no restart
 
 ## Attribution
 
-`gitkit` began as an adaptation of NeoLabHQ's `context-engineering-kit` `git` plugin and fernandezbaptiste's `claude-code-skills` `github-ops` skill. See `THIRD_PARTY_NOTICES.md` for full provenance and licensing details — this plugin is GPL-3.0 licensed as a result.
+`gitkit` began as an adaptation of NeoLabHQ's `context-engineering-kit` `git` plugin, fernandezbaptiste's `claude-code-skills` `github-ops` skill, and (for `standalone-commits`) EpicenterHQ's `epicenter` monorepo. See `THIRD_PARTY_NOTICES.md` for full provenance and licensing details — this plugin is GPL-3.0 licensed, combined with AGPL-3.0-or-later terms for the `standalone-commits` skill specifically (GPLv3 §13).
