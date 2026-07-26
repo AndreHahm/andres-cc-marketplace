@@ -1,0 +1,8 @@
+{
+  "name": "gitkit",
+  "version": "1.0.0-alpha.1",
+  "description": "Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, and branch cleanup.",
+  "author": {
+    "name": "Andre Hahm"
+  }
+}

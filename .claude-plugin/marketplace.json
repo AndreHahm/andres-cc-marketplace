@@ -20,6 +20,19 @@
       "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
       "repository": "https://github.com/andrehahm/andres-cc-marketplace",
       "license": "Apache-2.0"
+    },
+    {
+      "name": "gitkit",
+      "source": "./plugins/gitkit",
+      "description": "Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, and branch cleanup.",
+      "version": "1.0.0-alpha.1",
+      "author": {
+        "name": "Andre Hahm",
+        "url": "https://github.com/andrehahm"
+      },
+      "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
+      "repository": "https://github.com/andrehahm/andres-cc-marketplace",
+      "license": "GPL-3.0"
     }
   ]
 }
