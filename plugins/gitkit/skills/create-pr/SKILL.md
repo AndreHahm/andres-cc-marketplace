@@ -2,7 +2,7 @@
 name: create-pr
 description: Create pull requests using GitHub CLI with proper templates and formatting
 argument-hint: None required - interactive guide for PR creation
-allowed-tools: Bash(gh pr:*), Bash(gh auth:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Skill(gitkit:commit)
+allowed-tools: Bash(gh pr:*), Bash(gh auth:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Read, Skill(gitkit:commit)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -33,6 +33,16 @@ Check if `gh` is installed, if not follow this instruction to install it:
    gh auth login
    ```
 
+## Resolve PR Template
+
+Before drafting a description, determine which template to use:
+
+1. Check whether `.github/pull_request_template.md` exists in the project.
+2. If it exists, use it as the PR template.
+3. If it does not exist, use the bundled fallback at `${CLAUDE_SKILL_DIR}/assets/pull_request_template.md`.
+
+All later steps that reference "the PR template" or "the resolved template path" mean whichever of these two was resolved here.
+
 ## Pre-flight Checks
 
 Before creating a PR, check for uncommitted changes:
@@ -46,7 +56,7 @@ Before creating a PR, check for uncommitted changes:
 
 ## Creating a New Pull Request
 
-1. First, prepare your PR description following the template in @.github/pull_request_template.md
+1. First, prepare your PR description following the resolved PR template (see Resolve PR Template above)
 
 2. Use the `gh pr create --draft` command to create a new pull request:
 
@@ -55,11 +65,11 @@ Before creating a PR, check for uncommitted changes:
    gh pr create --draft --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main
    ```
 
-   For more complex PR descriptions with proper formatting, use the `--body-file` option with the exact PR template structure:
+   For more complex PR descriptions with proper formatting, use the `--body-file` option pointing at the resolved template path (`.github/pull_request_template.md`, or `${CLAUDE_SKILL_DIR}/assets/pull_request_template.md` if that project file doesn't exist):
 
    ```bash
    # Create PR with proper template structure
-   gh pr create --draft --title "<type>(scope): Your descriptive title" --body-file .github/pull_request_template.md --base main
+   gh pr create --draft --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main
    ```
 
 ## Best Practices
@@ -74,7 +84,7 @@ Before creating a PR, check for uncommitted changes:
      - `fix(auth): Fix login redirect issue`
      - `docs(readme): Update installation instructions`
 
-3. **Description Template**: Always use the PR template structure from @.github/pull_request_template.md:
+3. **Description Template**: Always use the resolved PR template structure (see Resolve PR Template above)
 
 4. **Template Accuracy**: Ensure your PR description precisely follows the template structure:
 
@@ -90,7 +100,7 @@ Before creating a PR, check for uncommitted changes:
 1. **Using Non-English Text**: All PR content must be in English
 2. **Incorrect Section Headers**: Always use the exact section headers from the template
 3. **Adding Custom Sections**: Stick to the sections defined in the template
-4. **Using Outdated Templates**: Always refer to the current @.github/pull_request_template.md file
+4. **Using Outdated Templates**: Always re-resolve the current template (see Resolve PR Template above) rather than reusing a stale copy
 
 ### Missing Sections
 
@@ -136,6 +146,6 @@ gh pr create --draft --title "feat(scope): Your title" --body-file pr-template.m
 
 ## Related Documentation
 
-- [PR Template](.github/pull_request_template.md)
+- [PR Template](.github/pull_request_template.md) — project template; falls back to `assets/pull_request_template.md` if absent (see Resolve PR Template above)
 - [Conventional Commits](https://www.conventionalcommits.org/)
 - [GitHub CLI documentation](https://cli.github.com/manual/)
