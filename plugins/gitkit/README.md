@@ -103,6 +103,14 @@ Changes to `.claude/gitkit.local.json` take effect on the next invocation — no
 | `merge-pr` | Checking whether a PR is ready to merge (draft/CI/review status), verifying the caller has merge rights, and merging (always with confirmation, never automatically) |
 | `manage-codeowners` | Bootstrapping and maintaining `.github/CODEOWNERS`, a dependency for `merge-pr`'s rights check |
 
+## Maintenance
+
+`gitkit` gets a periodic whole-plugin QA sweep — a `plugin-lifecycle-downstream` Validate pass against `plugins/gitkit/` — independent of new feature builds, not just as a side effect of one. A single sweep once found 6+ real, independent, pre-existing defects (a command silently ignoring its own argument, a critical malformed-markdown bug, documentation describing a nonexistent command, and more) that had gone uncaught until an unrelated build happened to trigger a downstream QA pass — periodic sweeps catch this kind of debt before it waits for the next feature.
+
+**Cadence:** quarterly, or before any release milestone, whichever comes first.
+**How to run:** invoke `plugin-lifecycle-downstream`'s Validate phase against `plugins/gitkit/` (Phase 1 only is sufficient for a routine sweep; run Phase 2/3 too if Phase 1 surfaces findings worth scoring/fixing).
+**Last full sweep:** 2026-07-27 — commit `63a040e`.
+
 ## Commands
 
 - `/git-status` - Show detailed git repository status

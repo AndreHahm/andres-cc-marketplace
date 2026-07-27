@@ -111,12 +111,13 @@ Skill and agent frontmatter must not include command-only or unsupported fields.
 
 **Forbidden in SKILL.md and agent files:**
 - `version` — command-only field
-- `AskUserQuestion` in `allowed-tools` — built-in interaction method, not a tool permission
 
 **Allowed in skill and command files:** `argument-hint` — officially supported skill frontmatter field, also valid on commands
 **Allowed in command files only:** `version`
 
 **Non-functional in agent files (ADVISORY, not REQUIRED):** `hooks`, `mcpServers`, `permissionMode` are accepted by the schema on plugin-scoped agents but not honored — an upstream security restriction (plugin agents cannot register session hooks, bring their own MCP server fleet, or widen the user's tool-permission posture). Flag as ADVISORY when present in an agent file: the field doesn't break validation, it silently does nothing, which is a quieter but still real trap for an author who expects it to work. Configurable via `settings.json → rules.R5_frontmatter_no_nonstandard_fields.config.agent_nonfunctional_fields`.
+
+**`AskUserQuestion` in `allowed-tools` (ADVISORY, not REQUIRED — corrected 2026-07-27, was previously misclassified as forbidden):** listing `AskUserQuestion` in `allowed-tools` is a harmless no-op, not a schema violation. Verified against current official docs (code.claude.com/docs/en/skills, "Pre-approve tools for a skill"): *"`allowed-tools`... does not restrict which tools are available: every tool remains callable"* — omitting a tool from `allowed-tools` never blocks it, so `AskUserQuestion` works identically whether listed or not. `AskUserQuestion` is a real, recognized tool name in Claude Code's permission vocabulary (the same docs use it as the canonical example for `disallowed-tools`: *"such as `AskUserQuestion` for a background loop"*), so listing it isn't malformed frontmatter either — it just grants pre-approval for a tool that was never permission-gated in the first place, so the grant has no effect. Flag as ADVISORY ("redundant — AskUserQuestion doesn't need to be in allowed-tools, listing it has no effect") when present, not as a blocking REQUIRED violation. This corrects an earlier version of this rule that classified it as forbidden; if a `skill-reviewer`-style pass ever flags `AskUserQuestion` as a *missing* required tool grant, that finding is also incorrect for the same reason — the tool is always callable regardless of `allowed-tools`.
 
 ---
 
@@ -403,6 +404,7 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 6. Classify each finding:
    - **REQUIRED** → blocking violation (must fix before deployment)
    - **SUGGESTED** → advisory violation (recommended fix)
+   - **R13/R18 verification method:** count SKILL.md lines and every fenced code block's lines mechanically (a script-based scan of the actual file, not visual sampling) — see `references/size-rules.md`'s "How to Apply" step 3 for why sampling misses violations, especially blocks containing a nested inner fence
    - **R18 consolidation:** when 3 or more code blocks exceed the 10-line weak-warning threshold, emit a single consolidated ADVISORY — "N blocks exceed 10 lines; consider extracting the largest (M lines) to `references/` or `scripts/`" — rather than one entry per block
    - **R20 sweep:** when a rule change touches a canonical enum/threshold/field value, grep sibling files across the plugin tree for the previous value and list each stale occurrence as a separate FAIL
 7. Emit compliance report:

@@ -827,9 +827,9 @@ These require explanation, so questions work better than arguments.
 ## Troubleshooting
 
 **Questions not appearing:**
-- Verify AskUserQuestion in allowed-tools
 - Check question format is correct
 - Ensure options array has 2-4 items
+- (Not a cause: `AskUserQuestion` doesn't need to be listed in `allowed-tools` — every tool remains callable regardless of `allowed-tools`, so a missing grant there won't block the question from appearing)
 
 **User can't make selection:**
 - Check option labels are clear

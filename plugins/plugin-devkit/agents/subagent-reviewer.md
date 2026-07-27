@@ -30,7 +30,7 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
 
 - **R1** — English only
 - **R4** — kebab-case naming: `name` field and directory/file name
-- **R5** — no non-standard frontmatter fields: this rule is explicitly scoped to skill and agent files, so it applies directly — forbidden fields are `version` and `AskUserQuestion` inside a tool list
+- **R5** — no non-standard frontmatter fields: this rule is explicitly scoped to skill and agent files, so it applies directly — the only forbidden field is `version` (`AskUserQuestion` in a tool list is a harmless no-op, not a violation — see R5's own current text)
 - **R6** — least-privilege principle applies conceptually, but its specific Bash-scope enum (`Bash(git:*)` syntax) is written for the skill/command `allowed-tools` string format, not the agent `tools` array of whole tool names — use `agent-development`'s own Tool Scoping checklist (Step 4, Phase 4) for the agent-specific check instead
 - **R7** — no emoji in headings or frontmatter
 - **R8** — descriptions over 80 characters must use `>-` block scalar syntax
