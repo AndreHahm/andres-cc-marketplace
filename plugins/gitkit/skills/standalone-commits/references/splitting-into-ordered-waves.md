@@ -24,19 +24,19 @@ If a planned wave fails that test, change the wave boundary before committing.
 
 ## The Pattern
 
+This reference uses the same 4-wave numbering as `standalone-commits`' own "Wave Planning" section — it doesn't introduce a separate numbering, only expands what typically belongs in each wave:
+
 ```
-Wave 1: Foundation (types, interfaces)
+Wave 1: Foundation — types, interfaces, contracts/APIs (the shape everything else builds on)
   ↓
-Wave 2: Factories/Builders (functions that create instances)
+Wave 2: Implementation — factories/builders, infrastructure, and anything that satisfies the Wave 1 contract
   ↓
-Wave 3: Contracts/APIs (public interfaces that use types)
+Wave 3: Consumers — apps, UI, integrations that adopt the new implementation
   ↓
-Wave 4: Infrastructure (utilities, converters, dependencies)
-  ↓
-Wave 5: Consumers (apps, UI, integrations)
+Wave 4: Cleanup — remove old paths once no consumers depend on them
 ```
 
-Not every change needs all waves. A simple bugfix might be one standalone commit. A cross-cutting refactor might need five.
+Not every change needs all four waves. A simple bugfix might be one standalone commit. A cross-cutting refactor might need all four, with Wave 1 or Wave 2 split into multiple commits if either one is too large to review as a single unit.
 
 ## Wave Characteristics
 
@@ -52,9 +52,9 @@ Each wave must be:
 
 ## Real Example: Schema Refactor
 
-This feature moved metadata from workspace to tables. Five waves:
+This feature moved metadata from workspace to tables. It needed five commits — Wave 1 (Foundation) and Wave 2 (Implementation) each split into two, since each half was independently reviewable and didn't depend on its sibling. Note the actual landing order interleaves the sub-waves (1a, 2a, 1b, 2b, 3) rather than finishing all of Wave 1 before starting Wave 2 — that's fine, since dependency order only requires each commit to come after what it actually depends on, not after every commit in an earlier-numbered wave:
 
-### Wave 1: Types
+### Wave 1a: Types (Foundation)
 
 ```
 feat(schema): add IconDefinition, CoverDefinition, and FieldMetadata types
@@ -67,7 +67,7 @@ feat(schema): add IconDefinition, CoverDefinition, and FieldMetadata types
 
 Files: `types.ts` only. Foundation for everything else.
 
-### Wave 2: Factories
+### Wave 2a: Factories (Implementation)
 
 ```
 feat(schema): add optional name/description to field factory functions
@@ -76,9 +76,9 @@ All factory functions (id, text, richtext, integer, real, boolean, date,
 select, tags, json) now accept optional name and description parameters.
 ```
 
-Files: `factories.ts` only. Uses types from Wave 1.
+Files: `factories.ts` only. Uses types from Wave 1a.
 
-### Wave 3: Contracts
+### Wave 1b: Contracts (Foundation)
 
 ```
 feat(schema): remove emoji and description from WorkspaceSchema
@@ -89,7 +89,7 @@ Visual metadata (icon, cover, description) now lives on TableDefinition.
 
 Files: `contract.ts` only. API change using new types.
 
-### Wave 4: Infrastructure
+### Wave 2b: Infrastructure (Implementation)
 
 ```
 feat(schema): use slugify for human-readable SQL column names
@@ -101,7 +101,7 @@ feat(schema): use slugify for human-readable SQL column names
 
 Files: `to-drizzle.ts`, `package.json`. Utility that uses field metadata.
 
-### Wave 5: Consumers
+### Wave 3: Consumers
 
 ```
 feat(schema): update app to use TablesWithMetadata

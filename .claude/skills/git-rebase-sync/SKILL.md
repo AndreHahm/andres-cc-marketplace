@@ -16,7 +16,7 @@ Use this skill when you need to sync a feature branch onto the latest `origin/{b
 
 ## Hard Rules
 - Do not create or switch to a different feature branch. Operate on the current branch name unless I explicitly ask otherwise.
-- Before any history-rewriting command (`git rebase ...`, `git push --force*`), print the exact command(s) you will run and wait for my confirmation.
+- Before any history-rewriting command (`git rebase ...`, `git push --force*`), use `AskUserQuestion` to show the exact command(s) you will run and confirm before proceeding.
 - Create a local backup ref (prefer an annotated tag) before starting the rebase. Do not push backup refs unless I explicitly ask.
 - Prefer `git push --force-with-lease`, never plain `--force`.
 - If the correct conflict resolution is unclear, stop and ask a targeted question. Do not invent product behavior.
@@ -48,7 +48,7 @@ Use this skill when you need to sync a feature branch onto the latest `origin/{b
 - If merge commits exist, ask whether to preserve them (`--rebase-merges`) or flatten them (plain rebase).
 
 ### 5) Run the rebase (requires confirmation)
-- Print the exact command you intend to run, then wait for confirmation:
+- Use `AskUserQuestion` to show the exact command you intend to run and confirm before running it:
   - Typical:
     - `git rebase origin/{base_branch}`
   - With merge preservation:
@@ -86,9 +86,9 @@ Helpful commands during conflicts:
 
 ### 8) Push updated branch (requires confirmation)
 - If the branch already exists on origin, rebasing rewrites history, so pushing requires force-with-lease.
-- Print the exact command and wait for confirmation:
+- Use `AskUserQuestion` to show the exact command and confirm before running it:
   - `git push --force-with-lease origin HEAD:{branch_name}`
 
 ## Recovery
 - If something goes wrong, use `{backup_ref}` to restore the pre-rebase state.
-- Do not run destructive commands (e.g., `git reset --hard`) unless I explicitly confirm after you show the exact command.
+- Do not run destructive commands (e.g., `git reset --hard`) unless the user explicitly confirms via `AskUserQuestion` after seeing the exact command.

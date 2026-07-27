@@ -239,4 +239,4 @@ gh pr list --author username --json number -q '.[].number' | \
 2. **Auto-assign** - Set up CODEOWNERS for automatic reviewers
 3. **Branch protection** - Require reviews before merging
 4. **CI/CD integration** - Ensure checks pass before merge
-5. **Auto-merge** - Use `--auto` flag for trusted changes
+5. **Merge via `merge-pr`** - it checks readiness and merge rights before merging; gitkit deliberately has no auto-merge path (see "Merging PRs" above)

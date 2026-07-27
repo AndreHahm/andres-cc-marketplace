@@ -8,18 +8,18 @@ CRITICAL: Perform the following steps exactly as described:
 
 1. **Current state check**: Run `git worktree list` to show all existing worktrees and their locations
 
-2. **Parse user input**: Classify each provided argument:
-   - **No arguments**: Interactive mode - ask user what to compare
-   - **`--stat`**: Show summary statistics of differences (files changed, insertions, deletions)
+2. **Parse the request**: Classify what the user gave:
+   - **Nothing specific**: Interactive mode - ask user what to compare
+   - **"summary"/"stats"**: Show summary statistics of differences (files changed, insertions, deletions)
    - **Worktree path**: A path that matches one of the worktree roots from `git worktree list`
    - **Branch name**: A name that matches a branch in one of the worktrees
    - **File/directory path**: A path within the current worktree to compare
 
 3. **Determine comparison targets** (worktrees to compare):
-   a. If user provided worktree paths: Use those as comparison targets
-   b. If user specified branch names: Find the worktrees for those branches from `git worktree list`
+   a. If user gave worktree paths: Use those as comparison targets
+   b. If user gave branch names: Find the worktrees for those branches from `git worktree list`
    c. If only one worktree exists besides current: Use current and that one as comparison targets
-   d. If multiple worktrees exist and none specified: Present list and ask user which to compare
+   d. If multiple worktrees exist and none specified: Present the list from step 1 and ask user which to compare
    e. If no other worktrees exist: Offer to compare with a branch using `git diff`
 
 4. **Determine what to compare** (files/directories within worktrees):
@@ -78,79 +78,25 @@ CRITICAL: Perform the following steps exactly as described:
 
 ## Worktree Detection
 
-The command finds worktrees using `git worktree list`:
-
-```
-/home/user/project           abc1234 [main]
-/home/user/project-feature   def5678 [feature-x]
-/home/user/project-hotfix    ghi9012 [hotfix-123]
-```
-
-From this output, the command extracts:
-
-- **Path**: The absolute path to the worktree directory
-- **Branch**: The branch name in brackets (used when user specifies branch name)
+Worktrees are found using `git worktree list` — see `SKILL.md`'s "List Worktrees" section for example output and how to read it (path, commit, branch).
 
 ## Examples
 
-**Compare specific file between worktrees:**
+**Compare specific file between worktrees** — user asks to compare `src/app.js`: prompt to select which worktree to compare with, then show the diff of `src/app.js` between current and selected worktree.
 
-```bash
-> /worktrees compare src/app.js
-# Prompts to select which worktree to compare with
-# Shows diff of src/app.js between current and selected worktree
-```
+**Compare between two specific worktrees** — user names both worktrees and a file: compare that file between the two specified worktrees directly.
 
-**Compare between two specific worktrees:**
+**Compare multiple files/directories** — user lists several paths: show diffs for all of them between worktrees, not just the first.
 
-```bash
-> /worktrees compare ../project-main ../project-feature src/module.js
-# Compares src/module.js between the two specified worktrees
-```
+**Compare entire directories** — user names a directory: show all differences in it between worktrees.
 
-**Compare multiple files/directories:**
+**Get summary statistics** — user asks for a stat summary: show which files differ and line counts, not full diff content.
 
-```bash
-> /worktrees compare src/app.js src/utils/ package.json
-# Shows diffs for all three paths between worktrees
-```
+**Interactive mode** — user gives no specifics: list available worktrees, ask which to compare, then ask for specific paths or the entire worktree.
 
-**Compare entire directories:**
+**Compare with branch worktree by branch name** — user names a branch: find the worktree for that branch and compare against it.
 
-```bash
-> /worktrees compare src/
-# Shows all differences in src/ directory between worktrees
-```
-
-**Get summary statistics:**
-
-```bash
-> /worktrees compare --stat
-# Shows which files differ and line counts
-```
-
-**Interactive mode:**
-
-```bash
-> /worktrees compare
-# Lists available worktrees
-# Asks which to compare
-# Asks for specific paths or entire worktree
-```
-
-**Compare with branch worktree by branch name:**
-
-```bash
-> /worktrees compare feature-x
-# Finds worktree for feature-x branch and compares
-```
-
-**Compare specific paths between branch worktrees:**
-
-```bash
-> /worktrees compare main feature-x src/ tests/
-# Compares src/ and tests/ directories between main and feature-x worktrees
-```
+**Compare specific paths between branch worktrees** — user names two branches and paths: compare those paths between the two branches' worktrees.
 
 ## Output Format
 
@@ -194,84 +140,56 @@ Statistics:
 
 ### Review Feature Changes
 
-```bash
-# See what changed in a feature branch
-> /worktrees compare --stat
-> /worktrees compare src/components/
-```
+Show a stat summary first, then diff the specific directory the user cares about (e.g. `src/components/`).
 
 ### Compare Implementations
 
-```bash
-# Compare how two features implemented similar functionality
-> /worktrees compare ../project-feature-1 ../project-feature-2 src/auth/
-```
+Compare how two features implemented similar functionality by diffing the same path (e.g. `src/auth/`) across both feature worktrees.
 
 ### Quick File Check
 
-```bash
-# Check if a specific file differs
-> /worktrees compare package.json
-```
+Diff a single file (e.g. `package.json`) between worktrees to confirm whether it differs at all.
 
 ### Pre-Merge Review
 
-```bash
-# Review all changes before merging (compare src and tests together)
-> /worktrees compare --stat
-> /worktrees compare src/ tests/
-# Both src/ and tests/ directories will be compared
-```
+Show a stat summary, then diff both `src/` and `tests/` before merging, so the reviewer sees the full change surface.
 
 ## Important Notes
 
-- **Argument detection**: The command auto-detects argument types by comparing them against `git worktree list` output:
+- **Argument detection**: Auto-detect what the user gave by comparing it against `git worktree list` output:
   - Paths matching worktree roots → treated as worktrees to compare
   - Names matching branches in worktrees → treated as worktrees to compare
   - Other paths → treated as files/directories to compare within worktrees
 
-- **Multiple paths**: When multiple file/directory paths are provided, ALL of them are compared between the selected worktrees (not just the first one).
+- **Multiple paths**: When multiple file/directory paths are given, compare ALL of them between the selected worktrees (not just the first one).
 
 - **Worktree paths**: When specifying worktrees, use the full path or relative path from current directory (e.g., `../project-feature`)
 
-- **Branch vs Worktree**: If you specify a branch name, the command looks for a worktree with that branch checked out. If no worktree exists for that branch, it suggests using `git diff` instead.
+- **Branch vs Worktree**: If the user names a branch, look for a worktree with that branch checked out. If no worktree exists for that branch, suggest `git diff` instead.
 
-- **Large diffs**: For large directories, the command will offer to show a summary first before displaying full diff output.
+- **Large diffs**: For large directories, offer to show a summary first before displaying full diff output.
 
 - **Binary files**: Binary files are detected and reported as "Binary files differ" without showing actual diff.
 
 - **File permissions**: The diff will also show changes in file permissions if they differ.
 
-- **No worktrees**: If no other worktrees exist, the command will explain how to create one and offer to use `git diff` for branch comparison instead.
-
-## Integration with Create Worktree
-
-Set up worktrees for comparison first — see `references/create-worktree.md`.
-
-```bash
-# Create worktrees for comparison
-> /worktrees create feature-x, main
-# Created: ../project-feature-x and ../project-main
-
-# Now compare
-> /worktrees compare src/
-```
+- **No worktrees**: If no other worktrees exist, explain how to create one (see `references/create-worktree.md`) and offer to use `git diff` for branch comparison instead.
 
 ## Troubleshooting
 
 **"No other worktrees found"**
 
-- Create a worktree first (see `references/create-worktree.md`)
+- Create a worktree first (`git worktree add <path> <branch>` — SKILL.md's Related Workflows section links to the dedicated creation workflow)
 - Or use `git diff` for branch-only comparison without worktrees
 
 **"Worktree for branch not found"**
 
 - The branch may not have a worktree created
 - Run `git worktree list` to see available worktrees
-- Create the worktree (see `references/create-worktree.md`)
+- Create one for it (`git worktree add <path> <branch>`)
 
 **"Path does not exist in worktree"**
 
 - The specified file/directory may not exist in one of the worktrees
 - This could indicate the file was added/deleted in one branch
-- The command will report this in the comparison output
+- Report this in the comparison output

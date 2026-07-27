@@ -11,40 +11,7 @@ Transform messy input (error logs, voice notes, screenshots) into clean, actiona
 
 ## Output Template
 
-```markdown
-## Summary
-[One-line description of the issue]
-
-## Environment
-- **Product/Service**: 
-- **Region/Version**: 
-- **Browser/OS**: (if relevant)
-
-## Reproduction Steps
-1. [Step]
-2. [Step]
-3. [Step]
-
-## Expected Behavior
-[What should happen]
-
-## Actual Behavior
-[What actually happens]
-
-## Error Details
-```
-[Error message/code if applicable]
-```
-
-## Visual Evidence
-[Reference to attached screenshots/GIFs]
-
-## Impact
-[Severity: Critical/High/Medium/Low + brief explanation]
-
-## Additional Context
-[Any other relevant details]
-```
+Use the structure in `assets/issue-template.md` for every generated issue — see the Examples section below for what it looks like filled in.
 
 ## Output Location
 
@@ -107,7 +74,7 @@ Required 3 retry attempts before successful deployment
 > Error: PERMISSION_DENIED when publishing to Teams channel. Code: 403. Was working yesterday.
 
 **Output**:
-```markdown
+~~~markdown
 ## Summary
 403 PERMISSION_DENIED error when publishing to Teams channel
 
@@ -136,4 +103,4 @@ Code: 403
 
 ## Additional Context
 Was working yesterday - possible permission/config change or service regression
-```
+~~~

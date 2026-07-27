@@ -1,6 +1,6 @@
 # How to Create Worktree
 
-Workflow to create and setup git worktrees for parallel development, with automatic detection and installation of project dependencies.
+Workflow to create and set up git worktrees for parallel development, with automatic detection and installation of project dependencies.
 
 ## Instructions
 
@@ -10,20 +10,17 @@ CRITICAL: Perform the following steps exactly as described:
 
 2. **Fetch latest remote branches**: Run `git fetch --all` to ensure local has knowledge of all remote branches
 
-3. **Parse user input**: Determine what the user wants to create:
-   - `<name>`: Create worktree with auto-detected type prefix
-   - `--list`: Just show existing worktrees and exit
-   - No input: Ask user interactively for the name
+3. **Parse the request**: Determine what the user wants to create — a name/description for the new worktree, or "just list existing worktrees." If neither is clear from what they said, ask.
 
-4. **Auto-detect branch type from name**: Check if the first word is a known branch type. If yes, use it as the prefix and the rest as the name. If no, default to `feature/`.
+4. **Auto-detect branch type from the name/description given**: Check if the first word is a known branch type. If yes, use it as the prefix and the rest as the name. If no, default to `feature/`.
 
    **Known types:** `feature`, `feat`, `fix`, `bug`, `bugfix`, `hotfix`, `release`, `docs`, `test`, `refactor`, `chore`, `spike`, `experiment`, `review`
 
    **Examples:**
-   - `refactor auth system` → `refactor/auth-system`
-   - `fix login bug` → `fix/login-bug`
-   - `auth system` → `feature/auth-system` (default)
-   - `hotfix critical error` → `hotfix/critical-error`
+   - "refactor auth system" → `refactor/auth-system`
+   - "fix login bug" → `fix/login-bug`
+   - "auth system" → `feature/auth-system` (default)
+   - "hotfix critical error" → `hotfix/critical-error`
 
    **Name normalization:** Convert spaces to dashes, lowercase, remove special characters except dashes/underscores
 
@@ -88,44 +85,31 @@ Worktrees are created as sibling directories to maintain organization:
 
 ## Examples
 
-**Feature worktree (default):**
-
-```bash
-> /worktrees create auth system
-# Branch: feature/auth-system
-# Creates: ../myproject-auth-system
+**Feature worktree (default)** — user asks to create a worktree for "auth system":
+```
+Branch: feature/auth-system
+Creates: ../myproject-auth-system
 ```
 
-**Fix worktree:**
-
-```bash
-> /worktrees create fix login error
-# Branch: fix/login-error
-# Creates: ../myproject-login-error
+**Fix worktree** — user asks for "fix login error":
+```
+Branch: fix/login-error
+Creates: ../myproject-login-error
 ```
 
-**Refactor worktree:**
-
-```bash
-> /worktrees create refactor api layer
-# Branch: refactor/api-layer
-# Creates: ../myproject-api-layer
+**Refactor worktree** — user asks for "refactor api layer":
+```
+Branch: refactor/api-layer
+Creates: ../myproject-api-layer
 ```
 
-**Hotfix worktree:**
-
-```bash
-> /worktrees create hotfix critical bug
-# Branch: hotfix/critical-bug
-# Creates: ../myproject-critical-bug
+**Hotfix worktree** — user asks for "hotfix critical bug":
+```
+Branch: hotfix/critical-bug
+Creates: ../myproject-critical-bug
 ```
 
-**List existing worktrees:**
-
-```bash
-> /worktrees list
-# Shows: git worktree list output
-```
+**List existing worktrees** — user asks to list worktrees: run `git worktree list` and show the output directly.
 
 ## Setup Detection Examples
 
@@ -157,55 +141,33 @@ Project built successfully
 
 ### Quick Feature Branch
 
-```bash
-> /worktrees create new dashboard
-# Branch: feature/new-dashboard
-# Creates worktree, installs dependencies, ready to code
-```
+User asks to create a worktree for "new dashboard" → branch `feature/new-dashboard`, worktree created, dependencies installed, ready to code.
 
 ### Hotfix While Feature In Progress
 
-```bash
-# In main worktree, working on feature
-> /worktrees create hotfix critical bug
-# Branch: hotfix/critical-bug
-# Creates separate worktree from main/master
-# Fix bug in hotfix worktree
-# Return to feature work when done
-```
+In the main worktree, working on a feature, the user asks for a hotfix worktree for "critical bug" → branch `hotfix/critical-bug`, created as a separate worktree from main/master. Fix the bug there, then return to the feature work when done.
 
 ### PR Review Without Stashing
 
-```bash
-> /worktrees create review pr 123
-# Branch: review/pr-123
-# Creates worktree for reviewing PR
-# Can run tests, inspect code
-# Delete when review complete
-```
+User asks for a review worktree for "pr 123" → branch `review/pr-123`, worktree created for reviewing the PR. Tests can run and code can be inspected there; delete the worktree when the review is complete.
 
 ### Experiment or Spike
 
-```bash
-> /worktrees create spike new architecture
-# Branch: spike/new-architecture
-# Creates isolated worktree for experimentation
-# Discard or merge based on results
-```
+User asks for a spike worktree for "new architecture" → branch `spike/new-architecture`, isolated worktree created for experimentation. Discard or merge based on results.
 
 ## Important Notes
 
-- **Branch lock**: Each branch can only be checked out in one worktree at a time. If a branch is already checked out, the command will inform you which worktree has it.
+- **Branch lock**: Each branch can only be checked out in one worktree at a time. If a branch is already checked out, tell the user which worktree has it.
 
 - **Shared .git**: All worktrees share the same Git object database. Changes committed in any worktree are visible to all others.
 
-- **Clean working directory**: The command checks for uncommitted changes and warns if present, as creating worktrees is safest with a clean state.
+- **Clean working directory**: Check for uncommitted changes and warn if present, as creating worktrees is safest with a clean state.
 
 - **Sibling directories**: Worktrees are always created as sibling directories (using `../`) to keep the workspace organized. Never create worktrees inside the main repository.
 
-- **Automatic dependency installation**: The command automatically detects the project type and package manager, then runs the appropriate install command without prompting.
+- **Automatic dependency installation**: Detect the project type and package manager, then run the appropriate install command without prompting.
 
-- **Remote tracking**: For remote branches, worktrees are created with proper tracking setup (`--track` flag) so pulls/pushes work correctly.
+- **Remote tracking**: For remote branches, create worktrees with proper tracking setup (`--track` flag) so pulls/pushes work correctly.
 
 ## Cleanup
 
@@ -244,5 +206,5 @@ Never use `rm -rf` to delete worktrees - always use `git worktree remove`.
 **"Wrong type detected"**
 
 - The first word is used as the branch type if it's a known type
-- To force a specific type, start with: `fix`, `hotfix`, `docs`, `test`, `refactor`, `chore`, `spike`, `review`
-- Default type is `feature/` when first word isn't a known type
+- To force a specific type, start the request with: `fix`, `hotfix`, `docs`, `test`, `refactor`, `chore`, `spike`, `review`
+- Default type is `feature/` when the first word isn't a known type
