@@ -47,29 +47,31 @@ cc --plugin-dir /path/to/gitkit
 
 ## Configuration
 
-The `commit` skill reads optional per-project settings from `.claude/gitkit.local.md` in the project root (YAML frontmatter, no required body). This file is user-local — add `.claude/*.local.md` to your project's `.gitignore` so it never gets committed. If the file is absent, or a field is omitted, the defaults below apply.
+`gitkit` ships git-tracked default settings at `skills/commit/assets/settings.json`:
 
-```markdown
----
-enabled: true
-commit_confirm_before_commit: true
-commit_auto_stage: false
-commit_first_line_soft_limit: 50
-commit_first_line_hard_limit: 72
----
+```json
+{
+  "enabled": true,
+  "commit_confirm_before_commit": true,
+  "commit_auto_stage": false,
+  "commit_first_line_soft_limit": 50,
+  "commit_first_line_hard_limit": 72
+}
 ```
+
+To override any of these per project, run `/create-gitkit-local-json` — it creates `.claude/gitkit.local.json` in the project root, seeded from those defaults, so you can edit it locally. This file is user-local: add `.claude/*.local.json` (or the broader `.claude/*.local.*`) to your project's `.gitignore` so it never gets committed — the command warns you if it detects the new file isn't actually ignored. If `.claude/gitkit.local.json` doesn't exist, or omits a field, the git-tracked defaults above apply for that field.
 
 | Field | Default | Meaning |
 |---|---|---|
-| `enabled` | `true` | Master toggle for this file's overrides |
+| `enabled` | `true` | Master toggle for `.claude/gitkit.local.json`'s overrides |
 | `commit_confirm_before_commit` | `true` | Ask for confirmation (showing the generated message) before running `git commit` |
 | `commit_auto_stage` | `false` | When nothing is staged, auto-stage everything (`true`) instead of asking what to stage (`false`) |
 | `commit_first_line_soft_limit` | `50` | Recommended max length for a commit's first line |
 | `commit_first_line_hard_limit` | `72` | Hard max length for a commit's first line |
 
-Changes to this file take effect on the next `/commit` invocation — no restart needed, since it's read by the skill itself rather than a hook.
+Changes to `.claude/gitkit.local.json` take effect on the next `/commit` invocation — no restart needed, since it's read by the skill itself rather than a hook.
 
-**Security:** `commit_confirm_before_commit: false` and `commit_auto_stage: true` both weaken safety, so `commit` only honors them when this file is *not* tracked by git — it checks with `git ls-files` before applying either. Gitignoring the file (as instructed above) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or turn on auto-staging.
+**Security:** `commit_confirm_before_commit: false` and `commit_auto_stage: true` both weaken safety, so `commit` only honors them from `.claude/gitkit.local.json` when that file is *not* tracked by git — it checks with `git ls-files` before applying either. Gitignoring the file (as instructed above, and checked by `/create-gitkit-local-json`) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or turn on auto-staging — `commit` falls back to the git-tracked `assets/settings.json` defaults for those two fields instead.
 
 ## Skills
 
@@ -93,6 +95,7 @@ Changes to this file take effect on the next `/commit` invocation — no restart
 - `/git-status` - Show detailed git repository status
 - `/sync-branch` - Sync the current feature branch with the latest main branch
 - `/update-branch-name` - Update the current branch name to follow naming conventions
+- `/create-gitkit-local-json` - Create or update `.claude/gitkit.local.json`, seeded from the git-tracked default settings
 
 ## Attribution
 

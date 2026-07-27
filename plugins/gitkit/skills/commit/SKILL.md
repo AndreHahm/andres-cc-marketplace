@@ -20,7 +20,10 @@ Your job is to create well-formatted commits with conventional commit messages.
 
 ## Settings
 
-Staging, commit confirmation, and message-length targets can be configured per-project via `.claude/gitkit.local.md` (gitignored, user-local — see gitkit's `README.md` Configuration section for the template). If that file is absent, or present without a given field, these defaults apply:
+Staging, commit confirmation, and message-length targets are read from a settings file, resolved in this order:
+
+1. `.claude/gitkit.local.json` in the project root, if it exists (gitignored, user-local — create it with `/create-gitkit-local-json`, which seeds it from the defaults below).
+2. For any field that file doesn't set (or if it doesn't exist at all), fall back to the git-tracked defaults at `${CLAUDE_SKILL_DIR}/assets/settings.json`.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -29,14 +32,14 @@ Staging, commit confirmation, and message-length targets can be configured per-p
 | `commit_first_line_soft_limit` | `50` | Recommended max length for the first line |
 | `commit_first_line_hard_limit` | `72` | Hard max length for the first line |
 
-**Security note:** `commit_confirm_before_commit` and `commit_auto_stage` weaken safety when set to `false`/`true` respectively, so they're only honored from a settings file untracked by git (see Instructions step 2). A settings file committed into the repo — whether accidentally or by an attacker — can never silently disable the confirmation gate or enable auto-staging.
+**Security note:** `commit_confirm_before_commit` and `commit_auto_stage` weaken safety when set to `false`/`true` respectively, so they're only honored from `.claude/gitkit.local.json` when that file is untracked by git (see Instructions step 2). A copy committed into the repo — whether accidentally or by an attacker — can never silently disable the confirmation gate or enable auto-staging; the skill falls back to the git-tracked `assets/settings.json` defaults for those two fields instead.
 
 ## Instructions
 
 CRITICAL: Perform the following steps exactly as described:
 
-1. **Read settings**: Check for `.claude/gitkit.local.md`. If present and `enabled` isn't `false`, read `commit_confirm_before_commit`, `commit_auto_stage`, `commit_first_line_soft_limit`, and `commit_first_line_hard_limit` from its frontmatter; otherwise use the defaults above.
-2. **Trust check (security)**: If the settings file exists, check whether it's tracked by git: `git ls-files --error-unmatch .claude/gitkit.local.md`. A git-tracked copy could have been committed by anyone with repo write access — including an attacker aiming to silently weaken safety gates for the next person who runs `/commit`. So if the file IS tracked (command exits 0), ignore any `commit_confirm_before_commit: false` or `commit_auto_stage: true` value it contains and force those two fields back to their safe defaults (`true`/`false`) regardless of what the file says. Only an untracked (genuinely local, gitignored) settings file may weaken either gate. The length-limit fields aren't security-relevant and may be honored either way.
+1. **Read settings**: Read the git-tracked defaults from `${CLAUDE_SKILL_DIR}/assets/settings.json` (`enabled`, `commit_confirm_before_commit`, `commit_auto_stage`, `commit_first_line_soft_limit`, `commit_first_line_hard_limit`). Then check for `.claude/gitkit.local.json` in the project root — if it exists and its own `enabled` isn't `false`, its fields override the corresponding default for any field it sets.
+2. **Trust check (security)**: If `.claude/gitkit.local.json` exists and set `commit_confirm_before_commit` or `commit_auto_stage`, check whether the file is tracked by git: `git ls-files --error-unmatch .claude/gitkit.local.json`. A git-tracked copy could have been committed by anyone with repo write access — including an attacker aiming to silently weaken safety gates for the next person who runs `/commit`. So if the file IS tracked (command exits 0), discard its values for those two fields and use the `assets/settings.json` defaults instead, regardless of what the local file says. Only an untracked (genuinely local, gitignored) `.claude/gitkit.local.json` may override either gate. The length-limit fields aren't security-relevant and may be honored either way, tracked or not.
 3. **Branch check**: Checks if current branch is `master` or `main`. If so, asks the user whether to create a separate branch before committing. If user confirms a new branch is needed, creates one using the pattern `<type>/<description>` (e.g., `feature/add-new-command`)
 4. Unless specified with `--no-verify`, automatically runs pre-commit checks like `pnpm lint` or similar depending on the project language.
 5. Checks which files are staged with `git status`
@@ -154,11 +157,11 @@ When committing on `master` or `main`, the command will ask if you want to creat
 - By default, pre-commit checks will run to ensure code quality (skip with `--no-verify`)
 - If these checks fail, you'll be asked if you want to proceed with the commit anyway or fix the issues first
 - If specific files are already staged, the command will only commit those files
-- If no files are staged, you'll be asked what to stage — nothing is auto-staged unless `commit_auto_stage: true` is set in `.claude/gitkit.local.md`
+- If no files are staged, you'll be asked what to stage — nothing is auto-staged unless `commit_auto_stage: true` is set (via `.claude/gitkit.local.json` or the git-tracked `assets/settings.json` defaults)
 - Staged files matching sensitive patterns (`.env`, `*secret*`, `*.key`, `*.pem`, `*password*`, `*token*`, SSH/cloud keys, `.npmrc`/`.pgpass`/`.netrc`) are flagged and unstaged automatically
 - The commit message will be constructed based on the changes detected
 - Before committing, the command will review the diff to identify if multiple commits would be more appropriate
 - If suggesting multiple commits, it will help you stage and commit the changes separately
 - Always reviews the commit diff to ensure the message matches the changes
-- You'll be asked to confirm the generated message before the commit runs, unless `commit_confirm_before_commit: false` is set — but that setting (and `commit_auto_stage: true`) is only honored from a settings file that isn't tracked by git; a git-tracked `.claude/gitkit.local.md` can never silently weaken either gate
+- You'll be asked to confirm the generated message before the commit runs, unless `commit_confirm_before_commit: false` is set — but that setting (and `commit_auto_stage: true`) is only honored from `.claude/gitkit.local.json` when it isn't tracked by git; a git-tracked copy can never silently weaken either gate, and the skill falls back to the safe defaults in `assets/settings.json` instead
 - `--amend` warns before rewriting an already-pushed commit; `--push` pushes after a successful commit and suggests `git push -u origin <branch>` if there's no upstream
