@@ -7,6 +7,16 @@
 # component edits. Backs the manual Skill(plugin-rulebook) gate required by
 # plugin-rulebook-enforcement.md with a live, always-on check; it does not replace it — semantic
 # rules (R1-R3, R7, R10, R19-R22) still require the skill.
+#
+# Audited 2026-07-27 for independently-hardcoded platform-behavior claims (the pattern behind a
+# real bug fixed the same day: this file used to FAIL any skill/agent listing AskUserQuestion in
+# allowed-tools, based on a plugin-rulebook R5 claim that turned out to be wrong against current
+# Claude Code docs -- see git history). Every OTHER check in this file (check_bash_scoping,
+# check_extra_fields, check_agent_enums, check_skill_line_count, check_code_block_sizes) correctly
+# derives its valid-value/threshold data from settings.json at runtime rather than hardcoding it in
+# Python -- the removed AskUserQuestion check was the one exception, with no settings.json backing
+# at all. No other hook in .claude/hooks/ (or plugins/plugin-devkit/hooks/) was found to hardcode a
+# platform-behavior claim outside settings.json during this audit.
 
 import json
 import re

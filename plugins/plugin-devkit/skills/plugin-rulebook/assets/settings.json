@@ -29,6 +29,8 @@
       "enabled": true,
       "severity": "REQUIRED",
       "description": "Skill and agent frontmatter must not include command-only or unsupported fields",
+      "platform_behavior_claim": true,
+      "platform_behavior_claim_note": "This rule's AskUserQuestion-in-allowed-tools sub-clause is a specific, falsifiable claim about current Claude Code tool-permission mechanics (not a naming/formatting convention this repo controls) -- it was wrong for an unknown duration until corrected 2026-07-27 against code.claude.com/docs/en/skills, and had propagated to 9 other files including a live-enforcing hook before the error was caught. See upstream-sources-registry's periodic sweep -- rules tagged platform_behavior_claim: true should be prioritized first, since they can go stale the moment the platform changes with no local signal that anything is wrong.",
       "config": {
         "agent_nonfunctional_fields": ["hooks", "mcpServers", "permissionMode"],
         "agent_nonfunctional_fields_severity": "ADVISORY",

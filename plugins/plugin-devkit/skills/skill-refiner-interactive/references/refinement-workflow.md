@@ -210,10 +210,7 @@ Changes: 1 file merged, SKILL.md reduced, references consolidated
 - [ ] `allowed-tools` field correct (space-separated preferred; comma-separated and YAML list are also valid; principle of least privilege)
 - [ ] YAML syntax valid (triple dashes, proper indentation)
 
-**Non-standard fields — remove if present:**
-- `version` — non-standard for skills (command-only field)
-
-**Harmless, not a violation:** `AskUserQuestion` in `allowed-tools` — a no-op (every tool remains callable regardless of `allowed-tools`, per current Claude Code docs), not something to remove.
+**Non-standard fields — remove if present:** per `plugin-rulebook`'s R5 (the source of truth for this check — trace back to its current text rather than restating the list here). As of R5's current text, the only forbidden field is `version` (command-only field); `AskUserQuestion` in `allowed-tools` is explicitly *not* a violation — a harmless no-op, since every tool remains callable regardless of `allowed-tools`.
 
 **Example:**
 ```yaml
