@@ -1,0 +1,53 @@
+## Git Cleanup Analysis
+
+### Related Branch Groups
+
+**Group: feat/api-* (4 branches)**
+| Branch | Status | Evidence |
+|--------|--------|----------|
+| feat/api | Superseded | Work merged in PR #29 |
+| feat/api-v2 | Superseded | Work merged in PR #45 |
+| feat/api-refactor | Superseded | Work merged in PR #67 |
+| feat/api-final | Superseded | Older iteration, diverged |
+
+Recommendation: Delete all 4 (work is in main)
+
+---
+
+### Individual Branches
+
+**Safe to Delete (merged with -d)**
+| Branch | Merged Into |
+|--------|-------------|
+| fix/typo | main |
+
+**Safe to Delete (squash-merged, requires -D)**
+| Branch | Merged As |
+|--------|-----------|
+| feat/login | PR #42 |
+
+**Needs Review ([gone] remotes, no PR found)**
+| Branch | Last Commit |
+|--------|-------------|
+| experiment/old | abc1234 "WIP something" |
+
+**Keep (active work)**
+| Branch | Status |
+|--------|--------|
+| wip/new-feature | 5 unpushed commits |
+
+### Worktrees
+| Path | Branch | Status |
+|------|--------|--------|
+| ../proj-auth | feat/auth | STALE (merged) |
+
+---
+
+**Summary:**
+- 4 related branches (feat/api-*) - recommend delete all
+- 1 merged branch - safe to delete
+- 1 squash-merged branch - safe to delete
+- 1 needs review
+- 1 to keep
+
+Which would you like to clean up?
