@@ -8,17 +8,17 @@ CRITICAL: Perform the following steps exactly as described:
 
 1. **Current state check**: Run `git worktree list` to show all existing worktrees and `git status` to verify working directory state
 
-2. **Parse user input**: Determine what merge operation the user wants:
-   - **`--interactive` or no arguments**: Guided interactive mode
+2. **Parse the request**: Determine what merge operation the user wants:
+   - **No specifics / "guide me"**: Guided interactive mode
    - **File/directory path**: Merge specific file(s) or directory from a worktree
    - **Commit name**: Cherry-pick a specific commit
    - **Branch name**: Merge from that branch's worktree
-   - **`--from <worktree>`**: Specify source worktree explicitly
-   - **`--patch` or `-p`**: Use interactive patch selection mode
+   - **A named source worktree**: Use that worktree as the merge source
+   - **"select changes"/"patch"**: Use interactive patch selection mode
 
 3. **Determine source worktree/branch**:
-   a. If user specified `--from <worktree>`: Use that worktree path directly
-   b. If user specified a branch name: Find worktree for that branch from `git worktree list`
+   a. If user named a source worktree: Use that worktree path directly
+   b. If user named a branch: Find worktree for that branch from `git worktree list`
    c. If only one other worktree exists: Ask to confirm using it as source
    d. If multiple worktrees exist: Present list and ask user which to merge from
    e. If no other worktrees exist: Explain and offer to use branch-based merge instead
@@ -36,31 +36,18 @@ CRITICAL: Perform the following steps exactly as described:
 
    **Strategy C: Cherry-Pick with Selective Staging** (for specific commits)
    - Best for: Applying a commit but excluding some changes
-   - Steps:
-     1. `git cherry-pick --no-commit <commit>`
-     2. Review staged changes
-     3. `git reset HEAD -- <unwanted-files>` to unstage
-     4. `git checkout -- <unwanted-files>` to discard
-     5. `git commit -m "message"`
+   - Commands: `git cherry-pick --no-commit <commit>` → review staged changes → `git reset HEAD -- <unwanted>` and `git checkout -- <unwanted>` to drop what you don't want → `git commit`
 
    **Strategy D: Manual Merge with Conflicts** (for complex merges)
    - Best for: Full branch merge with control over resolution
-   - Steps:
-     1. `git merge --no-commit <branch>`
-     2. Review all changes
-     3. Selectively stage/unstage files
-     4. Resolve conflicts if any
-     5. `git commit -m "message"`
+   - Commands: `git merge --no-commit <branch>` → review and selectively stage/unstage → resolve conflicts if any → `git commit`
 
    **Strategy E: Multi-Worktree Selective Merge** (combining from multiple sources)
    - Best for: Taking different files from different worktrees
-   - Steps:
-     1. `git checkout <branch1> -- <path1>`
-     2. `git checkout <branch2> -- <path2>`
-     3. `git commit -m "Merge selected files from multiple branches"`
+   - Commands: `git checkout <branch1> -- <path1>`, `git checkout <branch2> -- <path2>`, then one `git commit` for the combined result
 
 5. **Execute the selected strategy**:
-   - Run pre-merge comparison if user wants to review (see `references/compare-worktrees.md`)
+   - If the user wants to review changes first, use the comparison techniques from `SKILL.md`'s own worktree-comparison guidance before merging
    - Execute git commands for the chosen strategy
    - Handle any conflicts that arise
    - Confirm changes before final commit
@@ -88,51 +75,19 @@ CRITICAL: Perform the following steps exactly as described:
 
 ## Examples
 
-**Merge single file from worktree:**
-```bash
-> /worktrees merge src/app.js --from ../project-feature
-# Prompts for merge strategy
-# Executes: git checkout feature-branch -- src/app.js
-```
+**Merge single file from worktree** — user names a file and source worktree: prompt for merge strategy, then run `git checkout <branch> -- <file>`.
 
-**Interactive patch selection:**
-```bash
-> /worktrees merge src/utils.js --patch
-# Lists available worktrees to select from
-# Runs: git checkout -p feature-branch -- src/utils.js
-# User selects hunks interactively (y/n/s/e)
-```
+**Interactive patch selection** — user asks to select specific changes from a file: list available worktrees, then run `git checkout -p <branch> -- <file>`, letting the user select hunks interactively (y/n/s/e).
 
-**Cherry-pick specific commit:**
-```bash
-> /worktrees merge abc1234
-# Detects commit hash
-# Asks: Apply entire commit or selective?
-# If selective: git cherry-pick --no-commit abc1234
-# Then guides through unstaging unwanted changes
-```
+**Cherry-pick specific commit** — user names a commit hash: ask whether to apply the entire commit or selectively; if selective, `git cherry-pick --no-commit <commit>` then guide through unstaging unwanted changes.
 
-**Full guided mode:**
-```bash
-> /worktrees merge
-# Lists all worktrees
-# Asks what to merge (files, commits, or branches)
-# Guides through appropriate strategy
-# Offers cleanup at end
-```
+**Full guided mode** — user gives no specifics: list all worktrees, ask what to merge (files, commits, or branches), guide through the appropriate strategy, offer cleanup at the end.
 
-**Directory merge with conflicts:**
-```bash
-> /worktrees merge src/components/ --from ../project-refactor
-# Strategy D: Manual merge with conflicts
-# git merge --no-commit refactor-branch
-# Helps resolve any conflicts
-# Reviews and commits selected changes
-```
+**Directory merge with conflicts** — user names a directory and source worktree: use Strategy D (`git merge --no-commit <branch>`), help resolve any conflicts, review and commit the selected changes.
 
 ## Interactive Patch Mode Guide
 
-When using `--patch` or Strategy B, the user sees prompts for each change hunk:
+When using Strategy B, the user sees prompts for each change hunk:
 
 ```
 @@ -10,6 +10,8 @@ function processData(input) {
@@ -155,88 +110,33 @@ Apply this hunk? [y,n,q,a,d,s,e,?]
 | `e` | Manually edit the hunk |
 | `?` | Show help |
 
-## Cherry-Pick Selective Workflow
-
-For Strategy C (cherry-picking with selective staging):
-
-```bash
-# 1. Apply commit without committing
-git cherry-pick --no-commit abc1234
-
-# 2. Check what was staged
-git status
-
-# 3. Unstage files you don't want
-git reset HEAD -- path/to/unwanted.js
-
-# 4. Discard changes to those files
-git checkout -- path/to/unwanted.js
-
-# 5. Commit the remaining changes
-git commit -m "Cherry-pick selected changes from abc1234"
-```
-
-## Multi-Worktree Merge Workflow
-
-For Strategy E (merging from multiple worktrees):
-
-```bash
-# Get files from different branches
-git checkout feature-auth -- src/auth/login.js src/auth/session.js
-git checkout feature-api -- src/api/endpoints.js
-git checkout feature-ui -- src/components/Header.js
-
-# Review all changes
-git status
-git diff --cached
-
-# Commit combined changes
-git commit -m "feat: combine auth, API, and UI improvements from feature branches"
-```
-
 ## Common Workflows
 
 ### Take a Feature File Without Full Merge
-```bash
-> /worktrees merge src/new-feature.js --from ../project-feature
-# Gets just the file, not the entire branch
-```
+
+Get just one file from a feature worktree (Strategy A), not the entire branch.
 
 ### Partial Bugfix from Hotfix Branch
-```bash
-> /worktrees merge --patch src/utils.js --from ../project-hotfix
-# Select only the specific bug fix hunks, not all changes
-```
+
+Use interactive patch selection (Strategy B) against a hotfix worktree to take only the specific bug-fix hunks, not all its changes.
 
 ### Combine Multiple PRs' Changes
-```bash
-> /worktrees merge --interactive
-# Select specific files from PR-1 worktree
-# Select other files from PR-2 worktree
-# Combine into single coherent commit
-```
 
-### Pre-Merge Review
-```bash
-# First review what will be merged (see references/compare-worktrees.md)
-> /worktrees compare src/module.js
-# Then merge with confidence
-> /worktrees merge src/module.js --from ../project-feature
-```
+Guided mode: select specific files from one PR's worktree, other files from another's, combine into a single coherent commit.
 
 ## Important Notes
 
-- **Working directory state**: Always ensure your working directory is clean before merging. Uncommitted changes can cause conflicts.
+- **Working directory state**: Always ensure the working directory is clean before merging. Uncommitted changes can cause conflicts.
 
-- **Pre-merge review**: Consider reviewing (`references/compare-worktrees.md`) before merging to understand what changes will be applied.
+- **Pre-merge review**: Consider reviewing changes before merging to understand what will be applied — see `SKILL.md`'s worktree-comparison guidance.
 
-- **Conflict resolution**: If conflicts occur during merge, the command will help identify and resolve them before committing.
+- **Conflict resolution**: If conflicts occur during merge, help identify and resolve them before committing.
 
-- **No-commit flag**: Most strategies use `--no-commit` to give you control over the final commit message and what gets included.
+- **No-commit flag**: Most strategies use `--no-commit` to give the user control over the final commit message and what gets included.
 
 - **Shared repository**: All worktrees share the same Git object database, so commits made in any worktree are immediately visible to cherry-pick from any other.
 
-- **Branch locks**: Remember that branches can only be checked out in one worktree at a time. Use branch names for merge operations rather than creating duplicate worktrees.
+- **Branch locks**: Branches can only be checked out in one worktree at a time. Use branch names for merge operations rather than creating duplicate worktrees.
 
 ## Cleanup After Merge
 
@@ -256,16 +156,16 @@ git worktree remove --force ../project-feature
 git worktree prune
 ```
 
-The command will prompt you about cleanup after each successful merge to help maintain a tidy workspace.
+Ask about cleanup after each successful merge to help maintain a tidy workspace.
 
 ## Troubleshooting
 
 **"Cannot merge: working directory has uncommitted changes"**
-- Commit or stash your current changes first
+- Commit or stash current changes first
 - Or use `git stash` before merge, `git stash pop` after
 
 **"Merge conflict in <file>"**
-- The command will show conflicted files
+- Show the conflicted files
 - Open files and resolve conflicts (look for `<<<<<<<` markers)
 - Stage resolved files with `git add <file>`
 - Continue with `git commit`
@@ -284,19 +184,3 @@ The command will prompt you about cleanup after each successful merge to help ma
 - The specified worktree may have been removed
 - Run `git worktree list` to see current worktrees
 - Use `git worktree prune` to clean up stale references
-
-## Integration with Other Commands
-
-**Pre-merge review:**
-```bash
-> /worktrees compare src/
-> /worktrees merge src/specific-file.js
-```
-
-**Create worktree, merge, cleanup:**
-```bash
-> /worktrees create feature-branch
-> /worktrees compare src/
-> /worktrees merge src/module.js --from ../project-feature-branch
-# After merge, cleanup is offered automatically
-```

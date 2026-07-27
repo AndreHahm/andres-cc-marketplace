@@ -132,21 +132,7 @@ done
 
 ## Bulk Operations
 
-### Operating on Multiple Items
-
-```bash
-# Close all PRs with specific label
-gh pr list --label "wip" --json number -q '.[].number' | \
-  xargs -I {} gh pr close {}
-
-# Add label to multiple issues
-gh issue list --state open --json number -q '.[].number' | \
-  xargs -I {} gh issue edit {} --add-label "needs-triage"
-
-# Approve multiple PRs
-gh pr list --author username --json number -q '.[].number' | \
-  xargs -I {} gh pr review {} --approve
-```
+See `pr-operations.md`'s "Bulk Operations" section for PR-specific bulk-operation examples (close-by-label, add-label, approve-by-author), and `issue-operations.md`'s "Bulk Operations" section for issue-specific ones — this section covers execution *patterns* (parallelism, confirmation) that apply on top of either.
 
 ### Parallel Execution
 
@@ -259,7 +245,7 @@ git checkout -b feature/new-feature
 # Make changes and commit
 # ...
 
-# Push and create PR
+# Push and create PR — use the create-pr skill instead of a raw `gh pr create` here
 git push -u origin feature/new-feature
 PR_NUM=$(gh pr create \
   --title "feat: New feature" \
@@ -278,8 +264,8 @@ while true; do
   sleep 30
 done
 
-# Auto-merge if checks pass
-gh pr merge "$PR_NUM" --squash --auto
+# Merge — use the merge-pr skill instead: it checks readiness and merge rights.
+# gitkit deliberately has no auto-merge path (`gh pr merge --auto`).
 ```
 
 ---
@@ -412,15 +398,11 @@ gh api repos/{owner}/{repo}/pulls --paginate
 
 ### Create, Wait, Merge Pattern
 
-```bash
-# Create PR
-PR_NUM=$(gh pr create --title "Feature" --body "Description" | grep -oP '\d+$')
+Use `create-pr` to open the PR and `merge-pr` to merge it once checks pass (readiness + merge-rights checked); the shell pattern below just waits on checks in between:
 
+```bash
 # Wait for checks
 gh pr checks "$PR_NUM" --watch
-
-# Merge when ready
-gh pr merge "$PR_NUM" --squash
 ```
 
 ### Search and Process Pattern

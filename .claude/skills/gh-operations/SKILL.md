@@ -1,7 +1,7 @@
 ---
 name: gh-operations
 description: >-
-  Provides comprehensive GitHub operations using gh CLI and GitHub API. Activates when working with pull requests, issues, repositories, workflows, or GitHub API operations including creating/viewing/merging PRs, managing issues, querying API endpoints, and handling GitHub workflows in enterprise or public GitHub environments.
+  Provides a GitHub operations command reference using gh CLI and GitHub API — listing, viewing, editing, commenting on, and reviewing pull requests; managing issues, repository settings, and GitHub Actions workflows; querying API endpoints; and handling GitHub workflows in enterprise or public GitHub environments. Use when listing/viewing/reviewing/commenting on PRs, managing issues, or automating GitHub Actions/API calls. For creating a new PR use `create-pr` (template + pre-commit handling); for merging a PR use `merge-pr` (readiness + merge-rights checks) — this skill does not do either.
 allowed-tools: Bash(gh:*)
 ---
 
@@ -14,7 +14,7 @@ This skill provides comprehensive guidance for GitHub operations using the `gh` 
 ## When to Use This Skill
 
 This skill activates for tasks involving:
-- Creating, viewing, editing, or merging pull requests
+- Viewing, editing, commenting on, and reviewing pull requests (not creating — see `create-pr` — and not merging — see `merge-pr`)
 - Managing GitHub issues or repository settings
 - Querying GitHub API endpoints (REST or GraphQL)
 - Working with GitHub Actions workflows
@@ -26,23 +26,21 @@ This skill activates for tasks involving:
 
 ### Pull Requests
 
-```bash
-# Create PR with NOLINEAR prefix (bypasses LINEAR enforcement checks)
-gh pr create --title "NOLINEAR: Your PR title" --body "PR description"
+**Not for:** creating a PR (→ `create-pr`) or merging a PR (→ `merge-pr`).
 
+```bash
 # List and view PRs
 gh pr list --state open
 gh pr view 123
 
 # Manage PRs
-# Merge PR — use the merge-pr skill instead (checks readiness + rights first)
 gh pr review 123 --approve
 gh pr comment 123 --body "LGTM"
 ```
 
 See `references/pr-operations.md` for comprehensive PR workflows
 
-**PR Title Convention:**
+**PR Title Convention (org-specific example, optional):** the `IN-1234:`/`NOLINEAR:` prefix below is a Linear-ticket-tracking convention from this skill's original source project — adopt it only if your project uses Linear; otherwise use your own project's PR title convention.
 - With LINEAR ticket: `IN-1234: Descriptive title`
 - Without LINEAR ticket: `NOLINEAR: Descriptive title`
 
@@ -140,7 +138,7 @@ See `references/best-practices.md` for shell patterns and automation strategies
 
 **Most Common Operations:**
 ```bash
-gh pr create --title "NOLINEAR: Title" --body "Description"  # Create PR
+# Create PR — see the create-pr skill (template + pre-commit handling)
 gh pr list                                                  # List PRs
 gh pr view 123                                              # View PR details
 gh pr checks 123                                            # Check PR status
