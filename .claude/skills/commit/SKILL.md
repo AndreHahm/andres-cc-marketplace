@@ -3,7 +3,7 @@ name: commit
 description: Create well-formatted commits with conventional commit messages
 argument-hint: Optional flags (--no-verify, --amend, --push) followed by an optional commit message
 model: haiku
-allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git config:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push:*), Bash(git ls-files:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Read
+allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git config:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push:*), Bash(git ls-files:*), Bash(gh pr:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Read, Skill(gitkit:create-pr)
 ---
 
 # Claude Command: Commit
@@ -23,7 +23,7 @@ Your job is to create well-formatted commits with conventional commit messages.
 Staging, commit confirmation, and message-length targets are read from a settings file, resolved in this order:
 
 1. `.claude/gitkit.local.json` in the project root, if it exists (gitignored, user-local — create it with `/create-gitkit-local-json`, which seeds it from the defaults below).
-2. For any field that file doesn't set (or if it doesn't exist at all), fall back to the git-tracked defaults at `${CLAUDE_SKILL_DIR}/assets/settings.json`.
+2. For any field that file doesn't set (or if it doesn't exist at all), fall back to the git-tracked defaults at `${CLAUDE_PLUGIN_ROOT}/gitkit.settings.json` (shared across gitkit skills, not commit-specific).
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -31,15 +31,17 @@ Staging, commit confirmation, and message-length targets are read from a setting
 | `commit_auto_stage` | `false` | When nothing is staged, ask what to stage instead of auto-staging everything |
 | `commit_first_line_soft_limit` | `50` | Recommended max length for the first line |
 | `commit_first_line_hard_limit` | `72` | Hard max length for the first line |
+| `commit_auto_push` | `false` | After a successful commit, push without asking |
+| `push_auto_pr` | `false` | After a successful push (via `--push` or `commit_auto_push`), create a PR without asking (if none is already open) |
 
-**Security note:** `commit_confirm_before_commit` and `commit_auto_stage` weaken safety when set to `false`/`true` respectively, so they're only honored from `.claude/gitkit.local.json` when that file is untracked by git (see Instructions step 2). A copy committed into the repo — whether accidentally or by an attacker — can never silently disable the confirmation gate or enable auto-staging; the skill falls back to the git-tracked `assets/settings.json` defaults for those two fields instead.
+**Security note:** `commit_confirm_before_commit`, `commit_auto_stage`, `commit_auto_push`, and `push_auto_pr` all weaken safety or trigger further automation when enabled, so they're only honored from `.claude/gitkit.local.json` when that file is untracked by git (see Instructions step 2). A copy committed into the repo — whether accidentally or by an attacker — can never silently disable the confirmation gate, enable auto-staging, or trigger unattended pushes/PR creation; the skill falls back to the git-tracked `gitkit.settings.json` defaults for those fields instead.
 
 ## Instructions
 
 CRITICAL: Perform the following steps exactly as described:
 
-1. **Read settings**: Read the git-tracked defaults from `${CLAUDE_SKILL_DIR}/assets/settings.json` (`enabled`, `commit_confirm_before_commit`, `commit_auto_stage`, `commit_first_line_soft_limit`, `commit_first_line_hard_limit`). Then check for `.claude/gitkit.local.json` in the project root — if it exists and its own `enabled` isn't `false`, its fields override the corresponding default for any field it sets.
-2. **Trust check (security)**: If `.claude/gitkit.local.json` exists and set `commit_confirm_before_commit` or `commit_auto_stage`, check whether the file is tracked by git: `git ls-files --error-unmatch .claude/gitkit.local.json`. A git-tracked copy could have been committed by anyone with repo write access — including an attacker aiming to silently weaken safety gates for the next person who runs `/commit`. So if the file IS tracked (command exits 0), discard its values for those two fields and use the `assets/settings.json` defaults instead, regardless of what the local file says. Only an untracked (genuinely local, gitignored) `.claude/gitkit.local.json` may override either gate. The length-limit fields aren't security-relevant and may be honored either way, tracked or not.
+1. **Read settings**: Read the git-tracked defaults from `${CLAUDE_PLUGIN_ROOT}/gitkit.settings.json` (`enabled`, `commit_confirm_before_commit`, `commit_auto_stage`, `commit_first_line_soft_limit`, `commit_first_line_hard_limit`, `commit_auto_push`, `push_auto_pr`). Then check for `.claude/gitkit.local.json` in the project root — if it exists and its own `enabled` isn't `false`, its fields override the corresponding default for any field it sets.
+2. **Trust check (security)**: If `.claude/gitkit.local.json` exists and set `commit_confirm_before_commit`, `commit_auto_stage`, `commit_auto_push`, or `push_auto_pr`, check whether the file is tracked by git: `git ls-files --error-unmatch .claude/gitkit.local.json`. A git-tracked copy could have been committed by anyone with repo write access — including an attacker aiming to silently weaken safety gates for the next person who runs `/commit`. So if the file IS tracked (command exits 0), discard its values for those four fields and use the `gitkit.settings.json` defaults instead, regardless of what the local file says. Only an untracked (genuinely local, gitignored) `.claude/gitkit.local.json` may override any of these gates. The length-limit and `pr_merge_type`/`merge_auto_delete_branch`-style fields aren't security-relevant and may be honored either way, tracked or not.
 3. **Branch check**: Checks if current branch is `master` or `main`. If so, asks the user whether to create a separate branch before committing. If user confirms a new branch is needed, creates one using the pattern `<type>/<description>` (e.g., `feature/add-new-command`)
 4. Unless specified with `--no-verify`, automatically runs pre-commit checks like `pnpm lint` or similar depending on the project language.
 5. Checks which files are staged with `git status`
@@ -58,8 +60,9 @@ CRITICAL: Perform the following steps exactly as described:
 11. For each commit (or the single commit if not split), creates a commit message using conventional commit format (no emoji — see Best Practices)
 12. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly.
 13. **Amend**: if `--amend` was given, use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
-14. **Push**: if `--push` was given, run `git push` after a successful commit. If push fails because there's no upstream, suggest `git push -u origin <branch>`.
-15. **Show the result**: commit hash, files changed, insertions/deletions, and push status (if `--push` was used)
+14. **Push**: push after a successful commit when `--push` was given (explicit override, always pushes regardless of setting), or when `commit_auto_push` is `true`. Otherwise, when `commit_auto_push` is `false` and no `--push` flag was given, ask via `AskUserQuestion` whether to push. If push fails because there's no upstream, suggest `git push -u origin <branch>`.
+15. **Auto-PR**: after a successful push (from step 14, either path), check `gh pr view --json number` for the current branch. If a PR is already open, skip this step entirely. Otherwise: when `push_auto_pr` is `true`, invoke `Skill(gitkit:create-pr)` directly; when `false`, ask via `AskUserQuestion` whether to create one now, and invoke `Skill(gitkit:create-pr)` only on yes.
+16. **Show the result**: commit hash, files changed, insertions/deletions, and push status (if a push happened)
 
 ## Best Practices for Commits
 
@@ -157,11 +160,12 @@ When committing on `master` or `main`, the command will ask if you want to creat
 - By default, pre-commit checks will run to ensure code quality (skip with `--no-verify`)
 - If these checks fail, you'll be asked if you want to proceed with the commit anyway or fix the issues first
 - If specific files are already staged, the command will only commit those files
-- If no files are staged, you'll be asked what to stage — nothing is auto-staged unless `commit_auto_stage: true` is set (via `.claude/gitkit.local.json` or the git-tracked `assets/settings.json` defaults)
+- If no files are staged, you'll be asked what to stage — nothing is auto-staged unless `commit_auto_stage: true` is set (via `.claude/gitkit.local.json` or the git-tracked `gitkit.settings.json` defaults)
 - Staged files matching sensitive patterns (`.env`, `*secret*`, `*.key`, `*.pem`, `*password*`, `*token*`, SSH/cloud keys, `.npmrc`/`.pgpass`/`.netrc`) are flagged and unstaged automatically
 - The commit message will be constructed based on the changes detected
 - Before committing, the command will review the diff to identify if multiple commits would be more appropriate
 - If suggesting multiple commits, it will help you stage and commit the changes separately
 - Always reviews the commit diff to ensure the message matches the changes
-- You'll be asked to confirm the generated message before the commit runs, unless `commit_confirm_before_commit: false` is set — but that setting (and `commit_auto_stage: true`) is only honored from `.claude/gitkit.local.json` when it isn't tracked by git; a git-tracked copy can never silently weaken either gate, and the skill falls back to the safe defaults in `assets/settings.json` instead
-- `--amend` warns before rewriting an already-pushed commit; `--push` pushes after a successful commit and suggests `git push -u origin <branch>` if there's no upstream
+- You'll be asked to confirm the generated message before the commit runs, unless `commit_confirm_before_commit: false` is set — but that setting (along with `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true`) is only honored from `.claude/gitkit.local.json` when it isn't tracked by git; a git-tracked copy can never silently weaken any of these gates, and the skill falls back to the safe defaults in `gitkit.settings.json` instead
+- `--amend` warns before rewriting an already-pushed commit; `--push` pushes after a successful commit (an explicit override that always pushes) and suggests `git push -u origin <branch>` if there's no upstream; without `--push`, a push still happens automatically if `commit_auto_push: true`, otherwise you're asked
+- After a push, if no PR is already open for the branch, a PR gets created automatically when `push_auto_pr: true`, otherwise you're asked whether to create one
