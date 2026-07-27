@@ -46,10 +46,7 @@ allowed-tools: Read Edit Write Glob
 ---
 ```
 
-**Non-standard fields to remove if present:**
-- `version` — non-standard for skills (applicable to commands, not skills)
-
-**Harmless, not a violation:** `AskUserQuestion` in `allowed-tools` — a no-op (every tool remains callable regardless of `allowed-tools`, per current Claude Code docs), not something to flag or remove.
+**Non-standard fields to remove if present:** per `plugin-rulebook`'s R5 (the source of truth for this check — trace back to its current text rather than restating the list here, so this file can't drift from R5 the way an earlier version of this list did). As of R5's current text, the only forbidden field is `version` (applicable to commands, not skills); `AskUserQuestion` in `allowed-tools` is explicitly *not* a violation — a harmless no-op, since every tool remains callable regardless of `allowed-tools`.
 
 ## SKILL.md Body Content Checklist
 
