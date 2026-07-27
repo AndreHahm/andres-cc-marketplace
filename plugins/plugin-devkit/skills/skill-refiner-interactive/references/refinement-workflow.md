@@ -212,7 +212,8 @@ Changes: 1 file merged, SKILL.md reduced, references consolidated
 
 **Non-standard fields — remove if present:**
 - `version` — non-standard for skills (command-only field)
-- `AskUserQuestion` in `allowed-tools` — built-in interaction method, NOT a tool permission
+
+**Harmless, not a violation:** `AskUserQuestion` in `allowed-tools` — a no-op (every tool remains callable regardless of `allowed-tools`, per current Claude Code docs), not something to remove.
 
 **Example:**
 ```yaml

@@ -1,6 +1,6 @@
 # Tool Scoping with allowed-tools
 
-The `allowed-tools` field restricts which tools Claude can use when your Skill is active. Implement principle of least privilege: only grant tools your skill actually needs.
+The `allowed-tools` field pre-approves the listed tools so Claude can use them without a permission prompt during the turn that invokes the skill — it does not restrict which tools are available (every tool remains callable; unlisted tools still just fall through to normal permission prompting). Implement principle of least privilege anyway: only grant tools your skill actually needs, since a broad grant skips approval prompts for actions a reviewer may want to catch.
 
 ## Syntax Formats
 
@@ -23,7 +23,7 @@ Note: Comma-separated (`Read,Grep,Glob`) and YAML list formats are also valid fo
 | `Glob` | Find files by pattern |
 | `Task` | Launch specialized agents |
 | `Skill` | Invoke other skills |
-| `AskUserQuestion` | ⚠️ NOT an `allowed-tools` value — built-in interaction method; never add to `allowed-tools` |
+| `AskUserQuestion` | Always callable regardless of `allowed-tools` (verified against current Claude Code docs: the field pre-approves permission prompts, it doesn't restrict availability) — listing it is a harmless no-op, not required and not forbidden |
 
 ## Practical Examples
 

@@ -92,9 +92,6 @@ def check_forbidden_fields(fm, kind, findings):
         return
     if re.search(r"^version:\s*\S", fm, re.MULTILINE):
         findings.append(("FAIL", "R5", "'version' is a command-only field, not allowed in skill/agent frontmatter"))
-    tools_m = re.search(r"^allowed-tools:\s*(.+)$", fm, re.MULTILINE)
-    if tools_m and "AskUserQuestion" in tools_m.group(1):
-        findings.append(("FAIL", "R5", "'AskUserQuestion' is a built-in interaction, not an allowed-tools entry"))
 
 
 def check_bash_scoping(fm, settings, findings):

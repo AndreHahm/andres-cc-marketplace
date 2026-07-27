@@ -48,7 +48,8 @@ allowed-tools: Read Edit Write Glob
 
 **Non-standard fields to remove if present:**
 - `version` — non-standard for skills (applicable to commands, not skills)
-- `AskUserQuestion` in `allowed-tools` — built-in interaction method, NOT an allowed-tools permission value
+
+**Harmless, not a violation:** `AskUserQuestion` in `allowed-tools` — a no-op (every tool remains callable regardless of `allowed-tools`, per current Claude Code docs), not something to flag or remove.
 
 ## SKILL.md Body Content Checklist
 
