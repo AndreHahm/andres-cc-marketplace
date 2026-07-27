@@ -133,8 +133,8 @@ gh pr ready <PR-NUMBER>
 # Add reviewers to a PR
 gh pr edit <PR-NUMBER> --add-reviewer username1,username2
 
-# Merge a PR
-gh pr merge <PR-NUMBER> --squash
+# Merge a PR — use the merge-pr skill instead of a raw `gh pr merge` here:
+# it checks draft/CI/review status and verifies the caller has merge rights first.
 ```
 
 ## Using Templates for PR Creation

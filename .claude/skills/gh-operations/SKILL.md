@@ -35,7 +35,7 @@ gh pr list --state open
 gh pr view 123
 
 # Manage PRs
-gh pr merge 123 --squash
+# Merge PR — use the merge-pr skill instead (checks readiness + rights first)
 gh pr review 123 --approve
 gh pr comment 123 --body "LGTM"
 ```
@@ -144,7 +144,7 @@ gh pr create --title "NOLINEAR: Title" --body "Description"  # Create PR
 gh pr list                                                  # List PRs
 gh pr view 123                                              # View PR details
 gh pr checks 123                                            # Check PR status
-gh pr merge 123 --squash                                    # Merge PR
+# Merge PR — see the merge-pr skill (checks readiness + rights first)
 gh pr comment 123 --body "LGTM"                            # Comment on PR
 gh issue create --title "Title" --body "Description"       # Create issue
 gh workflow run workflow-name                               # Run workflow

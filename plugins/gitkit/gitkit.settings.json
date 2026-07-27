@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "commit_confirm_before_commit": true,
+  "commit_auto_stage": false,
+  "commit_first_line_soft_limit": 50,
+  "commit_first_line_hard_limit": 72,
+  "commit_auto_push": false,
+  "push_auto_pr": false,
+  "pr_merge_type": "REBASE",
+  "merge_auto_delete_branch": true
+}

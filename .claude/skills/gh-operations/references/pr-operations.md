@@ -88,15 +88,7 @@ gh pr edit 123 --remove-label "wip"
 
 ### Merging PRs
 
-```bash
-# Merge PR (various strategies)
-gh pr merge 123 --merge     # Regular merge commit
-gh pr merge 123 --squash    # Squash and merge
-gh pr merge 123 --rebase    # Rebase and merge
-
-# Auto-merge after checks pass
-gh pr merge 123 --auto --squash
-```
+Use the `merge-pr` skill instead of running `gh pr merge` directly — it checks draft/CI/review readiness and verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) before merging, and always asks for confirmation. gitkit deliberately has no auto-merge path (`gh pr merge --auto`) — merges are always explicit and rights-checked.
 
 ### PR Lifecycle Management
 
