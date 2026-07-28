@@ -63,3 +63,13 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+## Marketplace-Specific: Plugin Naming Convention
+
+Unlike the guidelines above, this section is specific to this marketplace, not a portable rule.
+
+Plugin names use `<domain>-kit` or `<domain>-devkit` — exactly one hyphen, placed immediately before the `kit`/`devkit` suffix, regardless of whether the domain itself is one word or several (e.g. `git-kit`, `plugin-devkit`, `python-devkit`).
+
+**Not yet decided:** which suffix (`-kit` vs. `-devkit`) or prefix applies when — that requires first defining the actual list of suffixes/prefixes and their intended meaning. Tracked as an open item in `plugin-rulebook`'s `references/naming-conventions.md`; not implemented as a rulebook check until that list exists.

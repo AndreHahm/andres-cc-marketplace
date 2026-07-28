@@ -73,3 +73,9 @@ These names are not allowed because they provide no information about content:
 - Start with a **verb**: `create-`, `review-`, `apply-`, `extract-`, `merge-`
 - Commands are user-facing — names appear as `/create-plugin`, `/review-rules`
 - Verb should match the primary action, not the component type
+
+## Open Item: Plugin Suffix/Prefix Taxonomy
+
+This file has no row for plugin-level naming. This marketplace's own hyphen-placement convention (`<domain>-kit`/`<domain>-devkit`, exactly one hyphen before the suffix) is documented in this repo's `CLAUDE.md`, not here — it's repo-specific, not a portable plugin-rulebook default.
+
+**Not yet decided, and not implemented as a rule:** which suffix (`-kit` vs. `-devkit`) or prefix applies to which kind of plugin, and what the full list of allowed suffixes/prefixes even is. A rule can't check against a list that doesn't exist yet. Once that list is defined, the natural implementation mirrors R23's whitelist pattern: a portable rule that checks a plugin name's suffix/prefix against an allowed list, with the actual list itself living in a repo-specific override file (like `{REPO_ROOT}/.claude/plugin-rulebook.config.json` already does for R23) rather than hardcoded into the portable rulebook.
