@@ -30,3 +30,4 @@ reports/events/
 **/.draft/
 **/.backup/
 **/.temp/
+**/.experiments/
