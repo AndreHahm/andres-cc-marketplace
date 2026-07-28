@@ -10,7 +10,7 @@ set -euo pipefail
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <previous-rule-number>" >&2
   echo "Example: when adding R25, run: $0 24" >&2
-  echo "  (sweeps for stale R1-R24 / R1<en-dash>R24 / \"24 total\" mentions)" >&2
+  echo "  (sweeps for stale R1-R24 / R1<en-dash>R24 / \"24 total\" / \"24 enabled\" mentions)" >&2
   exit 1
 fi
 
@@ -18,10 +18,12 @@ PREV="$1"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # Matches the previous ceiling's restatements: "R1-R24", "R1–R24" (en dash),
-# and "24 total". Deliberately greps the OLD number, not RNN -- per
-# adding-a-new-rule.md's note, a stale mention cites the ceiling being
-# replaced, not the one being added.
-PATTERN="R1[-–]R${PREV}\\b|\\b${PREV} total\\b"
+# "24 total", and "24 enabled" (covers both "24 enabled rules" and "all 24
+# enabled" -- the two real R26->R27 misses this pattern didn't catch until
+# added here; a manual follow-up grep had to find them instead). Deliberately
+# greps the OLD number, not RNN -- per adding-a-new-rule.md's note, a stale
+# mention cites the ceiling being replaced, not the one being added.
+PATTERN="R1[-–]R${PREV}\\b|\\b${PREV} total\\b|\\b${PREV} enabled\\b"
 
 MATCHES="$(cd "$REPO_ROOT" && grep -rEn "$PATTERN" \
   --include="*.md" --include="*.json" \
@@ -35,7 +37,7 @@ MATCHES="$(cd "$REPO_ROOT" && grep -rEn "$PATTERN" \
   . || true)"
 
 if [ -z "$MATCHES" ]; then
-  echo "No stale R1-R${PREV} / ${PREV}-total mentions found."
+  echo "No stale R1-R${PREV} / ${PREV}-total / ${PREV}-enabled mentions found."
   exit 0
 fi
 
