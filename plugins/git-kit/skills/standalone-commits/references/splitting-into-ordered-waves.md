@@ -2,7 +2,7 @@
 
 When a feature touches multiple files, implement in **waves**. Each wave is one logical concern, one standalone commit, ordered by dependency. This creates a clean git history that reviewers can audit one commit at a time.
 
-> **Related**: See the main `standalone-commits` skill for making each wave reviewable and auditable, and gitkit's `commit` skill for commit message conventions and PR guidelines.
+> **Related**: See the main `standalone-commits` skill for making each wave reviewable and auditable, and git-kit's `commit` skill for commit message conventions and PR guidelines.
 
 ## Relationship To Standalone Commits
 

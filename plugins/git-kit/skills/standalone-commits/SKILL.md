@@ -9,7 +9,7 @@ allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*)
 
 A standalone commit is a commit a reviewer can audit on its own, at that point in branch history. It may depend on earlier commits in the same branch, but it should not require future commits to explain, compile, test, or justify it.
 
-> **Related Skill**: See gitkit's `commit` skill for conventional commit messages and PR text.
+> **Related Skill**: See git-kit's `commit` skill for conventional commit messages and PR text.
 
 ## Two Halves: Boundary And Order
 
@@ -137,7 +137,7 @@ Better: Keep the fix focused. Put cleanup in a separate commit only if it is wor
 
 ## Commit Message Shape
 
-Use gitkit's `commit` skill for exact conventional commit formatting. For standalone commits, make the subject name the outcome, not the implementation detail.
+Use git-kit's `commit` skill for exact conventional commit formatting. For standalone commits, make the subject name the outcome, not the implementation detail.
 
 Good:
 

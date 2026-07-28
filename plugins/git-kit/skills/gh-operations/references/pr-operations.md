@@ -88,7 +88,7 @@ gh pr edit 123 --remove-label "wip"
 
 ### Merging PRs
 
-Use the `merge-pr` skill instead of running `gh pr merge` directly — it checks draft/CI/review readiness and verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) before merging, and always asks for confirmation. gitkit deliberately has no auto-merge path (`gh pr merge --auto`) — merges are always explicit and rights-checked.
+Use the `merge-pr` skill instead of running `gh pr merge` directly — it checks draft/CI/review readiness and verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) before merging, and always asks for confirmation. git-kit deliberately has no auto-merge path (`gh pr merge --auto`) — merges are always explicit and rights-checked.
 
 ### PR Lifecycle Management
 
@@ -239,4 +239,4 @@ gh pr list --author username --json number -q '.[].number' | \
 2. **Auto-assign** - Set up CODEOWNERS for automatic reviewers
 3. **Branch protection** - Require reviews before merging
 4. **CI/CD integration** - Ensure checks pass before merge
-5. **Merge via `merge-pr`** - it checks readiness and merge rights before merging; gitkit deliberately has no auto-merge path (see "Merging PRs" above)
+5. **Merge via `merge-pr`** - it checks readiness and merge rights before merging; git-kit deliberately has no auto-merge path (see "Merging PRs" above)

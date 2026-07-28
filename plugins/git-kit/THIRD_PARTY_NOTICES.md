@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-`gitkit` is not a bundled/vendored-dependency package — it does not ship third-party code, libraries, or MCP servers as part of its own tree. This notice instead documents the provenance of two other projects this plugin's skills originated from or were adapted from.
+`git-kit` is not a bundled/vendored-dependency package — it does not ship third-party code, libraries, or MCP servers as part of its own tree. This notice instead documents the provenance of two other projects this plugin's skills originated from or were adapted from.
 
 ## NeoLabHQ — `context-engineering-kit` (`plugins/git`)
 
@@ -23,13 +23,13 @@ The `gh-operations` skill (including its `references/` files) began as this plug
 
 ## EpicenterHQ — `epicenter` (`standalone-commits`)
 
-The `standalone-commits` skill (including its `references/splitting-into-ordered-waves.md` file) began as this plugin's own copy of the `standalone-commits` skill from EpicenterHQ's `epicenter` monorepo, lightly adapted (fixing a cross-reference to a sibling skill that doesn't exist in this plugin, replacing it with a reference to `gitkit`'s own `commit` skill; genericizing one example that named the source project).
+The `standalone-commits` skill (including its `references/splitting-into-ordered-waves.md` file) began as this plugin's own copy of the `standalone-commits` skill from EpicenterHQ's `epicenter` monorepo, lightly adapted (fixing a cross-reference to a sibling skill that doesn't exist in this plugin, replacing it with a reference to `git-kit`'s own `commit` skill; genericizing one example that named the source project).
 
 - **Author:** Braden Wong (EpicenterHQ)
 - **Source:** `EpicenterHQ/epicenter`, `.claude/skills/standalone-commits` and `.agents/skills/standalone-commits`
 - **License:** GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later) — `epicenter`'s repository uses a split-license model where only specific `packages/*` (not skills content) are MIT; everything else, including its skills, defaults to AGPL-3.0-or-later per the repository's own `LICENSE` index.
 
-Because the upstream skill is AGPL-3.0-or-later and this plugin's own `LICENSE` is GPL-3.0, this combination is handled under GPLv3 §13 ("Use with the GNU Affero General Public License"), which explicitly permits combining a GPL-3.0 covered work with AGPL-3.0 work into a single combined work — the GPL-3.0 terms continue to apply to `gitkit`'s own GPL-3.0-derived content, while AGPL-3.0's additional terms (notably its network-use clause) apply to the combination as such. `gitkit` is a set of Claude Code skills with no network-service component, so the AGPL network clause has no practical trigger here, but this notice records the combination for transparency.
+Because the upstream skill is AGPL-3.0-or-later and this plugin's own `LICENSE` is GPL-3.0, this combination is handled under GPLv3 §13 ("Use with the GNU Affero General Public License"), which explicitly permits combining a GPL-3.0 covered work with AGPL-3.0 work into a single combined work — the GPL-3.0 terms continue to apply to `git-kit`'s own GPL-3.0-derived content, while AGPL-3.0's additional terms (notably its network-use clause) apply to the combination as such. `git-kit` is a set of Claude Code skills with no network-service component, so the AGPL network clause has no practical trigger here, but this notice records the combination for transparency.
 
 ## Unattributed items
 
@@ -39,4 +39,4 @@ The `dependency-updater`, `merge-pr`, and `manage-codeowners` skills are origina
 
 ---
 
-This notice reflects provenance as of `gitkit`'s initial bootstrap into this marketplace, updated when `git-rebase-sync`, `explain-pr-changes`, `github-issue-creator`, `standalone-commits`, `dependency-updater`, `merge-pr`, and `manage-codeowners` were added. It does not itself grant or restrict any rights — see this plugin's own `LICENSE` (GPL-3.0) for `gitkit`'s own licensing terms.
+This notice reflects provenance as of `git-kit`'s initial bootstrap into this marketplace, updated when `git-rebase-sync`, `explain-pr-changes`, `github-issue-creator`, `standalone-commits`, `dependency-updater`, `merge-pr`, and `manage-codeowners` were added. It does not itself grant or restrict any rights — see this plugin's own `LICENSE` (GPL-3.0) for `git-kit`'s own licensing terms.
