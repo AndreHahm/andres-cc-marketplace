@@ -1,8 +1,8 @@
 ---
 name: standalone-commits
 description: >-
-  Make commits reviewable and auditable as self-contained units, and order multi-file changes into atomic dependency-ordered waves. Use when planning commits, 'split this into commits', 'break this up', 'commit strategy', splitting work into waves, staging changes, reviewing branch history, or deciding whether a commit is too broad, too tiny, incomplete, or hard to revert.
-allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*)
+  Make commits reviewable and auditable as self-contained units, order multi-file changes into atomic dependency-ordered waves, and decide which of several pending changes to stage first. Use when planning commits, 'split this into commits', 'break this up', 'commit strategy', splitting work into waves, staging changes, reviewing branch history, deciding whether a commit is too broad, too tiny, incomplete, or hard to revert, prioritizing which change to stage next, or filtering pending changes down to what's relevant to the current PR.
+allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(gh pr view:*)
 ---
 
 # Standalone Commits
@@ -74,6 +74,17 @@ Wave 4 claim: Remove old paths once no consumers depend on them.
 Do not create a "setup" commit that only makes a future commit possible unless it is independently reviewable. A foundation commit is fine when it introduces a real contract, helper, migration, or test fixture with a clear reason.
 
 Before coding a wave, write its claim. After staging it, re-read the staged diff and ask whether the claim is still honest. If not, split, combine, or move the work.
+
+## Prioritizing And Filtering Candidate Changes
+
+Before the Staging Workflow's step 1, when the working tree has more pending changes than belong in one wave, decide what to stage first:
+
+1. **Check for an open PR on the current branch**: `gh pr view --json number,files 2>/dev/null`. If one exists, treat its already-changed file list as the PR's declared scope.
+2. **Filter to PR-relevant changes** when a PR exists: changes to files the PR already touches, or files that directly support what the PR is doing, are in scope. A change unrelated to the PR's own concern — drift that crept in from something else worked on in the same session — stays unstaged; don't fold it into this PR's commits. With no open PR, there's no filter to apply — every pending change is a candidate.
+3. **Rank the remaining candidates by priority**, highest first: fixes that block or break something else, then changes the PR's own description or stated scope calls out explicitly, then everything else ordered by the wave-dependency rules in [references/splitting-into-ordered-waves.md](references/splitting-into-ordered-waves.md).
+4. **Stage only the top-ranked group** — the changes needed for the next standalone commit, not everything that passed the filter. Repeat this procedure for the next commit once the current one lands, rather than ranking and staging the entire backlog in one pass.
+
+This matters most when several unrelated concerns accumulate before a single staging pass. The acceptance checks above still decide whether any one grouping is reviewable; this section decides which grouping to reach for first.
 
 ## Staging Workflow
 
