@@ -54,7 +54,7 @@ Before creating a PR, check for uncommitted changes:
    ```
    Skill: commit
    ```
-   **Tell `commit` explicitly, as part of this invocation, to skip its own Auto-PR step (its step 15) even if the push succeeds and no PR is open yet** — this `create-pr` run is about to create the PR itself right after `commit` returns; without this, `commit`'s Auto-PR step and this run's own PR creation would both fire for the same push, creating a duplicate PR or nesting `create-pr` inside itself.
+   **Tell `commit` explicitly, as part of this invocation, to skip its own Auto-PR step (its step 16) even if the push succeeds and no PR is open yet** — this `create-pr` run is about to create the PR itself right after `commit` returns; without this, `commit`'s Auto-PR step and this run's own PR creation would both fire for the same push, creating a duplicate PR or nesting `create-pr` inside itself.
 3. This ensures all your work is committed before creating the PR
 
 ## Creating a New Pull Request
