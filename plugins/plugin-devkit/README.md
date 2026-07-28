@@ -58,6 +58,7 @@ cc --plugin-dir /path/to/plugin-devkit
 
 | Skill | Use when |
 |---|---|
+| `component-prototyping` | Trying a new skill/agent/hook idea locally against a sample scenario, before it's a real installed component |
 | `skill-refiner-interactive` | Interactively refining an existing skill for clarity, token efficiency, production readiness |
 | `skill-improver-loop` | Running automated fix-review cycles on a skill until it clears `skill-reviewer` |
 | `skill-tester` | Empirically benchmarking a skill against a baseline (timing, token metrics) |
