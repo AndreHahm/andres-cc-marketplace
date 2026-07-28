@@ -52,3 +52,15 @@ Try a skill, agent, or hook idea by running it against a sample scenario — wit
 - **Not a replacement for `skill-tester`.** `skill-tester` runs formal A/B benchmarks (with-skill vs. baseline, timing/token metrics, persisted `evals/`) against a *real, installed* skill. This skill is for the step before that exists at all — a single "does this roughly do what I mean" check on something that isn't installed anywhere.
 - **Not a replacement for `require-tests-for-behavior-changes.md`'s gate.** That rule governs behavior changes to real, shipped components. An experiment isn't shipped yet, so it doesn't trigger that gate — the gate applies once the experiment graduates and becomes a real component whose behavior might later change.
 - **Never writes outside `.experiments/`** during the trial-and-iterate loop. Promotion (step 7) is the only point files leave the scratch directory, and only with explicit confirmation.
+
+## Testing & Validation
+
+This skill documents three distinct workflows (skill, agent, hook). State explicitly which path a smoke test actually covered — "smoke-tested" without naming the path invites reading it as whole-component coverage, which it isn't.
+
+Coverage as of this writing:
+
+- [x] **Skill path** (step 3, blind `Agent` dispatch) — smoke-tested: a toy `vowel-counter` skill in `.experiments/`, dispatched per the exact prompt structure in step 3, correctly followed the raw instructions (right table format, right count, independently hand-verified) with zero installation.
+- [x] **Hook path** (step 4, direct script execution) — smoke-tested: a toy Python `PreToolUse`-style hook (`word-guard-hook`) run directly with two sample stdin payloads — a blocking case (command containing a forbidden word, correctly exited 2 with a stderr message) and an allowing case (clean command, correctly exited 0 silently).
+- [ ] **Agent path** (step 3, same blind dispatch mechanism, agent framing) — not yet tried. Same underlying mechanism as the skill path, but agent-style frontmatter (`tools`, `model`) and a role-based framing haven't been exercised specifically.
+
+Both scratch experiments above were deleted after their trial run, per this skill's own "never writes outside `.experiments/`" boundary and the general practice of not leaving throwaway test fixtures behind.
