@@ -63,18 +63,26 @@ Before creating a PR, check for uncommitted changes:
 
 2. Prepare your PR description following the resolved PR template (see Resolve PR Template above)
 
-3. Use the `gh pr create --draft` command to create a new pull request:
+3. **Ask draft vs. ready-to-merge**: use `AskUserQuestion` — "Create this PR as a draft, or ready-to-merge?" with options "Draft (default)" and "Ready-to-merge". Don't assume draft silently; the user may want to skip the draft step entirely (e.g. a small, already-reviewed change). Record the answer as the `--draft` decision for the next step.
+
+4. Use the `gh pr create` command to create a new pull request, including `--draft` only if the previous step's answer was "Draft":
 
    ```bash
-   # Basic command structure
+   # Basic command structure (draft)
    gh pr create --draft --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main
+
+   # Basic command structure (ready-to-merge)
+   gh pr create --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main
    ```
 
    For more complex PR descriptions with proper formatting, use the `--body-file` option pointing at the resolved template path (`.github/pull_request_template.md`, or `${CLAUDE_SKILL_DIR}/assets/pull_request_template.md` if that project file doesn't exist):
 
    ```bash
-   # Create PR with proper template structure
+   # Create PR with proper template structure (draft)
    gh pr create --draft --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main
+
+   # Create PR with proper template structure (ready-to-merge)
+   gh pr create --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main
    ```
 
 ## Best Practices
@@ -96,9 +104,9 @@ Before creating a PR, check for uncommitted changes:
    - Keep all section headers exactly as they appear in the template
    - Don't add custom sections that aren't in the template
 
-5. **Draft PRs**: Start as draft when the work is in progress
-   - Use `--draft` flag in the command
-   - Convert to ready for review when complete using `gh pr ready`
+5. **Draft PRs**: ask the user (see step 3 above) rather than assuming — draft is the sensible default for work still in progress, but always confirm
+   - `--draft` in the command when the answer is draft
+   - Convert to ready for review later using `gh pr ready`
 
 ### Common Mistakes to Avoid
 
