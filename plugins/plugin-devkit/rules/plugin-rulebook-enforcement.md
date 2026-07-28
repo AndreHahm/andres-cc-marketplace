@@ -15,7 +15,7 @@ Run the `plugin-rulebook` skill **before finalizing** any operation that creates
 
 "Before finalizing" means: after the **last** modification in a creation or editing sequence, before reporting the work as done to the user. Intermediate edits within a single session do not each require a separate check — only the final state does.
 
-> **Not in scope:** Files in `.claude/output/` (generated artifacts), build outputs, and other non-component files are not subject to rulebook enforcement.
+> **Not in scope:** Files in `.claude/output/` (generated artifacts), `.draft/` (local, gitignored planning documents — roadmaps, architecture drafts), build outputs, and other non-component files are not subject to rulebook enforcement.
 
 ## Rule Conflict Resolution
 

@@ -74,6 +74,7 @@ If "From a start date" → ask for the date. If sessions from prior conversation
 **Run these Globs first, unconditionally — before evaluating scope or waiting for confirmation:**
 - `Glob(pattern='*', path='.claude/output')` — output artifacts from prior runs
 - `Glob(pattern='*.md', path='.claude/rules')` — rules that load automatically, often without being mentioned in conversation
+- `Glob(pattern='*.local.md', path='.draft')` — local, gitignored planning documents (e.g. a roadmap or architecture draft) — this repo's only recurring `*.local.md` convention lives here, not under `.temp/` or elsewhere in `.draft/`; don't broaden the pattern to those, they hold staged plugin source components, not planning documents
 
 **Use the `path` parameter form above, not a bare relative pattern like `Glob('.claude/rules/*.md')`** — on at least one observed environment, a pattern with a literal leading `.claude/` segment silently returned no results even though matching files existed, while pointing `path` directly at the target directory with a bare pattern resolved correctly. A silent false negative here means rules or prior output artifacts go uncounted without any visible error, so treat an empty result from either call as suspect: retry once with a broader pattern (e.g. `Glob(pattern='**/*', path='.claude/rules')`) before concluding the category is genuinely empty.
 
@@ -86,6 +87,8 @@ These seed the inventory regardless of scope. Then identify every additional com
 - A "deferred" or "not yet fixed" item → `Grep`/`Read` the referenced file(s) to check whether it was actually addressed in a later commit or session, even if the artifact itself was never updated to reflect that
 - A "still open" claim → check whether a *later* artifact in the same scope (e.g. a subsequent handoff-report update, a later plugin-grader re-audit) already resolved it, and the earlier artifact is simply stale rather than wrong
 Record any discrepancy found — an item marked open that's actually resolved, an item marked resolved that isn't, or a factual claim (a SHA length, a file count) that doesn't match a direct check — as a Weakness in the SWOT of the component that *produced* the artifact, not as a note about the artifact file itself. This mirrors a documented real incident in this plugin's own session history: a `build-handoff-writer` report flagged its own inline-supplied commit SHA as "41 hex characters" (a miscount) rather than the correct 40, and a fix-pass's own dispatch prompt claimed "4 new commits" when there was exactly one — both were only caught because a later step independently re-verified rather than trusting the artifact's own text.
+
+**Read local planning documents as state, not as pipeline artifacts.** For every file the third Glob found (`.draft/*.local.md`) whose modification time falls inside the session range, `Read` it in full — this is the session's actual durable work-product when the session involved planning/roadmap/architecture work, and it's easy to miss because it never produces an invocation event the way a `Skill`/`Agent` call does. Unlike the handoff-report-shaped artifacts above, don't run these through the Verify Open Items check — a planning document doesn't carry "Open Items"/commit-SHA claims to re-verify, it just carries current decisions and scope. Because these files are gitignored, there's no git history to diff against for a prior version; for a scope that starts before the current conversation, recovering an earlier state of a `.draft/*.local.md` file requires the user to paste it in, same as any other prior-conversation content (see Phase 1's note above and the Gotchas below).
 
 | Category | What counts |
 |---|---|
@@ -199,11 +202,13 @@ After Phase 6, verify these gates before presenting output as final:
 - [ ] No two suggestions share the same Detail description — merge duplicates before emitting
 - [ ] Every output artifact found in scope (concept cards, plans, handoff reports, comparison/grader/dev-rules reports) was actually `Read`, not just listed by path
 - [ ] Every Open Items entry found in a re-checked artifact was independently re-verified against current repo state, not copied forward as still-accurate
+- [ ] Any `.draft/*.local.md` planning document modified in scope was `Read` for its current state, not just listed
 - [ ] The report was persisted to `.claude/output/analyzing-sessions/` and its path confirmed with the standard `📄 ... written:` line
 
 ## Gotchas
 
 - **Absence of evidence ≠ absence of use.** Rules in `.claude/rules/` load automatically — check the directory even if they were never mentioned in conversation.
+- **`.draft/*.local.md` planning documents are gitignored, so they have no git history to fall back on.** If a scope needs a *prior* version of one (not just its current state), there's no `git log`/`git show` to recover it — same limitation as "Prior-session data" below, ask the user to paste it.
 - **Weakness vs. Threat confusion.** Weaknesses are internal to the component (a missing gate, a wrong threshold). Threats are external (a stale dependency, an upstream change that will break the component). Do not cross-file them.
 - **Over-suggestion.** Not every observation earns a suggestion. If two components produced the same fixable pattern, emit one cross-cutting suggestion, not two identical ones.
 - **Prior-session data.** Claude cannot read past conversation history. For sessions before the current one, prompt the user to paste transcripts or summaries before Phase 2.
