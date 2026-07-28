@@ -170,3 +170,15 @@ When committing on `master` or `main`, the command will ask if you want to creat
 - You'll be asked to confirm the generated message before the commit runs, unless `commit_confirm_before_commit: false` is set — but that setting (along with `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true`) is only honored from `.claude/git-kit.local.json` when it isn't tracked by git; a git-tracked copy can never silently weaken any of these gates, and the skill falls back to the safe defaults in `git-kit.settings.json` instead
 - `--amend` warns before rewriting an already-pushed commit; `--push` pushes after a successful commit (an explicit override that always pushes) and suggests `git push -u origin <branch>` if there's no upstream; without `--push`, a push still happens automatically if `commit_auto_push: true`, otherwise you're asked
 - After a push, if no PR is already open for the branch, a PR gets created automatically when `push_auto_pr: true`, otherwise you're asked whether to create one
+
+## Testing & Validation
+
+Step 9 (Test-behavior-change check) has never been exercised through a genuine `Skill(commit)` invocation as of this writing — every commit that added or touched it was made via raw `git commit` with a hand-run approximation of the gate instead. The next time this skill is invoked for real against a staged skill/agent behavior change, verify:
+
+- [ ] The staged-diff scan actually fires — a change to `skills/*/SKILL.md`, `skills/*/references/*.md`, or `agents/*.md` content triggers the `AskUserQuestion`; an unrelated change (docs, scripts, config) does not
+- [ ] The `AskUserQuestion` presents the options as written in step 9's prose (the testing-mechanism choices, plus "commit anyway" and "stop, test first")
+- [ ] Step 9 sits correctly in sequence — fires after step 8's `git diff --cached`, before step 10's multiple-change analysis, without disrupting the flow
+- [ ] Step 9's ask and step 13's separate confirm-before-commit ask don't read as a confusing back-to-back double prompt when both fire in the same run
+- [ ] "Stop, test first" actually halts before any commit runs
+
+A `skill-tester` blind-comparison eval is the heavier alternative `require-tests-for-behavior-changes.md` names first, but `commit` is a `model: haiku`, heavily interactive skill built around several `AskUserQuestion` steps — an awkward fit for blind A/B comparison. This checklist is the pragmatic mechanism the rule explicitly permits instead ("a documented Testing & Validation section... concrete scenarios, pass/fail criteria").
