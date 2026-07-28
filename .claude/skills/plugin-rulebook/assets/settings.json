@@ -213,6 +213,11 @@
       "enabled": true,
       "severity": "REQUIRED",
       "description": "A skill/agent step capable of triggering per-item nested LLM/subprocess calls, whole-surface re-verification, or heavy multi-agent dispatch must gate that action behind an explicit AskUserQuestion decision rather than defaulting to always running it"
+    },
+    "R27_component_naming_grammatical_form": {
+      "enabled": true,
+      "severity": "ADVISORY",
+      "description": "Skills, agents, and commands should follow their documented grammatical form (skill: noun/gerund, agent: role noun, command: verb-first) per naming-conventions.md's Component-Type Conventions table -- interpretive, never blocking"
     }
   },
   "languages": {

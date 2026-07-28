@@ -3,7 +3,7 @@ name: plugin-rulebook
 description: >-
   Defines and enforces plugin-level rules governing all components (skills, agents, commands,
   hooks, rules) in a Claude Code plugin. Use when creating, validating, or refining any plugin
-  component, checking naming conventions and R1-R26 formatting compliance, auditing a full plugin, or loading active
+  component, checking naming conventions and R1-R27 formatting compliance, auditing a full plugin, or loading active
   rule configuration, or before finalizing or packaging any plugin component. Governs naming, language, formatting,
   tool-scoping, and structure across the entire plugin.
 allowed-tools: Read Glob Bash(*/r20-sweep.sh:*) Bash(*/agent-cost-tracker.py:*)
@@ -33,7 +33,7 @@ Read active settings from `${CLAUDE_SKILL_DIR}/assets/settings.json` (plugin-por
 - Project-specific behavioral rules → use `rule-development` instead
 - Skill quality metrics (token efficiency, trigger phrases) → use `skill-reviewer` instead
 - Security threat analysis → use `skill-security` instead
-- Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R26 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly. This is not a hypothetical caveat: a 3-command pipeline once passed this exact check cleanly while shipping 2 real functional bugs (a multi-line-command normalization bug and a session-selection logic bug), both caught only by later running it against real data — see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason.
+- Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R27 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly. This is not a hypothetical caveat: a 3-command pipeline once passed this exact check cleanly while shipping 2 real functional bugs (a multi-line-command normalization bug and a session-selection logic bug), both caught only by later running it against real data — see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason.
 - Dedicated wide-surface language-compliance review (scripts, config JSON, CLAUDE.md/README, beyond R1's own file scope) → use `language-reviewer` instead.
 - A combined Validate+Audit+Report+Fix pipeline across a whole plugin, not just rule compliance in isolation → use `plugin-lifecycle-downstream` instead
 
@@ -382,6 +382,26 @@ A skill or agent that may trigger an expensive action — per-item nested LLM/su
 
 ---
 
+### R27 — Component Naming: Grammatical Form [ADVISORY, default: on]
+
+Skills, agents, and commands should follow their documented grammatical form per `references/naming-conventions.md`'s Component-Type Conventions table — not just valid kebab-case (R4), but the right *shape* of phrase for the component type. Never REQUIRED: this is an interpretive, judgment-based check, not a mechanical pattern match, and a maintainer may have a considered reason to diverge (an established external convention, or the cost of renaming a widely cross-referenced component).
+
+**Scope:** `name` field in SKILL.md frontmatter, `name` field in agent file frontmatter, and command file basenames (commands have no `name` field — check the filename itself).
+
+**Expected form per type:**
+- Skill: a noun or gerund phrase naming a domain/capability (`skill-development`, `plugin-rulebook`, `bootstrapping-a-python-project`) — not a bare imperative verb phrase.
+- Agent: a role-based noun phrase (`skill-reviewer`, `plugin-validator`) — not a bare imperative verb phrase.
+- Command: starts with a verb (`create-plugin`, `review-rules`).
+
+**Violations (ADVISORY only):**
+- A skill named as a bare imperative verb phrase with no noun/gerund framing (e.g. a skill named `create-pr` reads as a command's action, not a skill's domain).
+- An agent named without role-noun framing.
+- A command that doesn't start with a recognizable verb.
+
+**Fix:** Rename to match the documented form, or reconsider the component type (a bare-imperative-named skill may actually want to be a command). Flag and move on if the maintainer declines — this rule exists to surface the mismatch, not to force a rename.
+
+---
+
 ## Repo-Specific Configuration
 
 Two files hold data that's specific to the repository this plugin is installed in, rather than portable plugin defaults: `{REPO_ROOT}/.claude/plugin-rulebook.config.json` (R23's `whitelist`/`blacklist`/`excluded_paths`) and `{REPO_ROOT}/.claude/plugin-rulebook-audit-decisions.md` (this repo's Upstream Audit decision log). See `references/repo-specific-configuration.md` for the load procedure and why these aren't `.claude/plugin-rulebook.local.md`-style personal files.
@@ -413,7 +433,7 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 📋 Rulebook Compliance: <component-name> (<type>)
 Path: <resolved-absolute-path> [R19: no duplicates found]
 Settings: assets/settings.json [loaded]
-Rules checked: N enabled / 26 total
+Rules checked: N enabled / 27 total
 
 PASS    R1 R2 R4 R5 R6 R8 R9 R10 R14 R19
 ADVISORY R7 — emoji in heading "## 🚀 Quick Start" (SKILL.md:14) [SUGGESTED]
@@ -440,7 +460,7 @@ correctness (encodings, shell logic, mojibake). Run `scripts-reviewer` separatel
 
 **Quality gates:**
 - [ ] `${CLAUDE_SKILL_DIR}/assets/settings.json` loads without JSON errors
-- [ ] All enabled rules (R1–R10, R13, R14, R17–R26) appear in the compliance report
+- [ ] All enabled rules (R1–R10, R13, R14, R17–R27) appear in the compliance report
 - [ ] R14 and R17 findings are correctly classified (REQUIRED vs SUGGESTED)
 - [ ] PASS / ADVISORY / FAIL emitted for every enabled rule checked
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
@@ -469,6 +489,6 @@ Whether a rule traces back to an official Claude Code doc, and whether that doc 
 | `${CLAUDE_SKILL_DIR}/references/plugin-file-surface.md` | Shared plugin-scope/CWD-scope file-enumeration definition used by `language-reviewer`, `external-references-reviewer`, `consistency-reviewer`, `completeness-reviewer`, and `scripts-reviewer` |
 | `${CLAUDE_SKILL_DIR}/references/gitignore-exclusion.md` | Shared procedure, used by every reviewer agent, for excluding gitignored paths before reviewing Glob results — and the companion authoring-side rule that no component may reference a gitignored path as a live dependency |
 | `${CLAUDE_SKILL_DIR}/references/overhead-and-cost-rules.md` | R25/R26 violations, fix guidance, and worked examples |
-| `${CLAUDE_SKILL_DIR}/references/compact-rule-checklist.md` | Pattern/violation/severity table for all 22 enabled rules, no narrative — read by the `plugin-rulebook-checker` agent instead of this file, to avoid re-reading full teaching prose on every isolated/backgrounded dispatch |
+| `${CLAUDE_SKILL_DIR}/references/compact-rule-checklist.md` | Pattern/violation/severity table for all 23 enabled rules, no narrative — read by the `plugin-rulebook-checker` agent instead of this file, to avoid re-reading full teaching prose on every isolated/backgrounded dispatch |
 | `${CLAUDE_SKILL_DIR}/references/allowed-languages.md` | R24 full whitelist/banned/exempt lists, worked violation examples, and fix guidance |
 | `${CLAUDE_SKILL_DIR}/references/suggested-additional-rules.md` | R11/R12/R15/R16 — disabled-by-default rules and why each might be worth enabling |

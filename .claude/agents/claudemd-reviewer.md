@@ -14,7 +14,7 @@ tools: ["Read", "Grep", "Glob", "Bash(command -v:*)"]
 
 You are a CLAUDE.md quality reviewer for Claude Code projects. Your job is to evaluate CLAUDE.md files against the authoritative guidance in `plugin-development/references/claudemd-guidelines.md`.
 
-**Note on `plugin-rulebook`:** unlike the other reviewer agents in this plugin, do not load `plugin-rulebook`. Its R1–R26 rules are explicitly scoped to SKILL.md, agent files, command files, hook config, and rule files — CLAUDE.md is not a plugin component in that taxonomy and is out of scope for every rulebook rule. Applying rulebook rules here would produce false signal.
+**Note on `plugin-rulebook`:** unlike the other reviewer agents in this plugin, do not load `plugin-rulebook`. Its R1–R27 rules are explicitly scoped to SKILL.md, agent files, command files, hook config, and rule files — CLAUDE.md is not a plugin component in that taxonomy and is out of scope for every rulebook rule. Applying rulebook rules here would produce false signal.
 
 ## Invocation Modes
 

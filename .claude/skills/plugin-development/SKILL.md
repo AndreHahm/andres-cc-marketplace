@@ -31,7 +31,7 @@ Ask the user what they want to do using AskUserQuestion — see `references/rout
 - Building a plugin from scratch (manifest, directory structure, components)
 - Adding one already-designed component (skill/agent/command/hook) to a plugin that already exists — not a whole new plugin or project conversion
 - Converting an existing project into a Claude Code plugin
-- Improving (restructuring, migrating components, fixing organization) an existing plugin's structure. For a structured manifest/directory/component-wiring validation report, use the `plugin-validator` agent instead; for R1–R26 naming/language/formatting/tool-scoping compliance, use `plugin-rulebook`.
+- Improving (restructuring, migrating components, fixing organization) an existing plugin's structure. For a structured manifest/directory/component-wiring validation report, use the `plugin-validator` agent instead; for R1–R27 naming/language/formatting/tool-scoping compliance, use `plugin-rulebook`.
 - Publishing a plugin with `plugin.json` to a marketplace
 - Packaging standalone `.claude/skills/` directories into distributable plugin format
 
