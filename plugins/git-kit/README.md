@@ -11,20 +11,20 @@ Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, 
 
 ## Overview
 
-`gitkit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management.
+`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management.
 
 Several skills (`create-pr`, `gh-operations`) require GitHub CLI (`gh`) for full functionality.
 
 ## Installation
 
 ```bash
-/plugin install gitkit@andres-cc-marketplace
+/plugin install git-kit@andres-cc-marketplace
 ```
 
 Or for local development:
 
 ```bash
-cc --plugin-dir /path/to/gitkit
+cc --plugin-dir /path/to/git-kit
 ```
 
 ## Quick Start
@@ -50,7 +50,7 @@ cc --plugin-dir /path/to/gitkit
 
 ## Configuration
 
-`gitkit` ships git-tracked default settings at `gitkit.settings.json` (plugin root — shared across skills):
+`git-kit` ships git-tracked default settings at `git-kit.settings.json` (plugin root — shared across skills):
 
 ```json
 {
@@ -66,11 +66,11 @@ cc --plugin-dir /path/to/gitkit
 }
 ```
 
-To override any of these per project, run `/create-gitkit-local-json` — it creates `.claude/gitkit.local.json` in the project root, seeded from those defaults, so you can edit it locally. This file is user-local: add `.claude/*.local.json` (or the broader `.claude/*.local.*`) to your project's `.gitignore` so it never gets committed — the command warns you if it detects the new file isn't actually ignored. If `.claude/gitkit.local.json` doesn't exist, or omits a field, the git-tracked defaults above apply for that field.
+To override any of these per project, run `/create-git-kit-local-json` — it creates `.claude/git-kit.local.json` in the project root, seeded from those defaults, so you can edit it locally. This file is user-local: add `.claude/*.local.json` (or the broader `.claude/*.local.*`) to your project's `.gitignore` so it never gets committed — the command warns you if it detects the new file isn't actually ignored. If `.claude/git-kit.local.json` doesn't exist, or omits a field, the git-tracked defaults above apply for that field.
 
 | Field | Default | Meaning |
 |---|---|---|
-| `enabled` | `true` | Master toggle for `.claude/gitkit.local.json`'s overrides |
+| `enabled` | `true` | Master toggle for `.claude/git-kit.local.json`'s overrides |
 | `commit_confirm_before_commit` | `true` | Ask for confirmation (showing the generated message) before running `git commit` |
 | `commit_auto_stage` | `false` | When nothing is staged, auto-stage everything (`true`) instead of asking what to stage (`false`) |
 | `commit_first_line_soft_limit` | `50` | Recommended max length for a commit's first line |
@@ -80,9 +80,9 @@ To override any of these per project, run `/create-gitkit-local-json` — it cre
 | `pr_merge_type` | `REBASE` | Merge strategy `merge-pr` uses: `MERGE`, `REBASE`, or `SQUASH` |
 | `merge_auto_delete_branch` | `true` | After `merge-pr` merges a PR, delete the just-merged branch without asking |
 
-Changes to `.claude/gitkit.local.json` take effect on the next invocation — no restart needed, since settings are read by each skill directly rather than a hook.
+Changes to `.claude/git-kit.local.json` take effect on the next invocation — no restart needed, since settings are read by each skill directly rather than a hook.
 
-**Security:** `commit_confirm_before_commit: false`, `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true` all weaken safety or trigger further automation, so `commit` only honors them from `.claude/gitkit.local.json` when that file is *not* tracked by git — it checks with `git ls-files` before applying any of them. Gitignoring the file (as instructed above, and checked by `/create-gitkit-local-json`) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or trigger unattended pushes/PR creation — `commit` falls back to the git-tracked `gitkit.settings.json` defaults for those fields instead. `pr_merge_type` and `merge_auto_delete_branch` are low-risk (a merge-strategy choice and a reversible single-branch deletion) and are honored from either file, tracked or not. `merge-pr` never auto-merges under any setting — it always asks before merging, and separately verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) first.
+**Security:** `commit_confirm_before_commit: false`, `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true` all weaken safety or trigger further automation, so `commit` only honors them from `.claude/git-kit.local.json` when that file is *not* tracked by git — it checks with `git ls-files` before applying any of them. Gitignoring the file (as instructed above, and checked by `/create-git-kit-local-json`) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or trigger unattended pushes/PR creation — `commit` falls back to the git-tracked `git-kit.settings.json` defaults for those fields instead. `pr_merge_type` and `merge_auto_delete_branch` are low-risk (a merge-strategy choice and a reversible single-branch deletion) and are honored from either file, tracked or not. `merge-pr` never auto-merges under any setting — it always asks before merging, and separately verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) first.
 
 ## Skills
 
@@ -105,10 +105,10 @@ Changes to `.claude/gitkit.local.json` take effect on the next invocation — no
 
 ## Maintenance
 
-`gitkit` gets a periodic whole-plugin QA sweep — a `plugin-lifecycle-downstream` Validate pass against `plugins/gitkit/` — independent of new feature builds, not just as a side effect of one. A single sweep once found 6+ real, independent, pre-existing defects (a command silently ignoring its own argument, a critical malformed-markdown bug, documentation describing a nonexistent command, and more) that had gone uncaught until an unrelated build happened to trigger a downstream QA pass — periodic sweeps catch this kind of debt before it waits for the next feature.
+`git-kit` gets a periodic whole-plugin QA sweep — a `plugin-lifecycle-downstream` Validate pass against `plugins/git-kit/` — independent of new feature builds, not just as a side effect of one. A single sweep once found 6+ real, independent, pre-existing defects (a command silently ignoring its own argument, a critical malformed-markdown bug, documentation describing a nonexistent command, and more) that had gone uncaught until an unrelated build happened to trigger a downstream QA pass — periodic sweeps catch this kind of debt before it waits for the next feature.
 
 **Cadence:** quarterly, or before any release milestone, whichever comes first.
-**How to run:** invoke `plugin-lifecycle-downstream`'s Validate phase against `plugins/gitkit/` (Phase 1 only is sufficient for a routine sweep; run Phase 2/3 too if Phase 1 surfaces findings worth scoring/fixing).
+**How to run:** invoke `plugin-lifecycle-downstream`'s Validate phase against `plugins/git-kit/` (Phase 1 only is sufficient for a routine sweep; run Phase 2/3 too if Phase 1 surfaces findings worth scoring/fixing).
 **Last full sweep:** 2026-07-27 — commit `63a040e`.
 
 ## Commands
@@ -116,8 +116,8 @@ Changes to `.claude/gitkit.local.json` take effect on the next invocation — no
 - `/git-status` - Show detailed git repository status
 - `/sync-branch` - Sync the current feature branch with the latest main branch
 - `/update-branch-name` - Update the current branch name to follow naming conventions
-- `/create-gitkit-local-json` - Create or update `.claude/gitkit.local.json`, seeded from the git-tracked default settings
+- `/create-git-kit-local-json` - Create or update `.claude/git-kit.local.json`, seeded from the git-tracked default settings
 
 ## Attribution
 
-`gitkit` began as an adaptation of NeoLabHQ's `context-engineering-kit` `git` plugin, fernandezbaptiste's `claude-code-skills` `github-ops` skill, and (for `standalone-commits`) EpicenterHQ's `epicenter` monorepo. See `THIRD_PARTY_NOTICES.md` for full provenance and licensing details — this plugin is GPL-3.0 licensed, combined with AGPL-3.0-or-later terms for the `standalone-commits` skill specifically (GPLv3 §13).
+`git-kit` began as an adaptation of NeoLabHQ's `context-engineering-kit` `git` plugin, fernandezbaptiste's `claude-code-skills` `github-ops` skill, and (for `standalone-commits`) EpicenterHQ's `epicenter` monorepo. See `THIRD_PARTY_NOTICES.md` for full provenance and licensing details — this plugin is GPL-3.0 licensed, combined with AGPL-3.0-or-later terms for the `standalone-commits` skill specifically (GPLv3 §13).

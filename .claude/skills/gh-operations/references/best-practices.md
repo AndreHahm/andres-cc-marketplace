@@ -265,7 +265,7 @@ while true; do
 done
 
 # Merge — use the merge-pr skill instead: it checks readiness and merge rights.
-# gitkit deliberately has no auto-merge path (`gh pr merge --auto`).
+# git-kit deliberately has no auto-merge path (`gh pr merge --auto`).
 ```
 
 ---
