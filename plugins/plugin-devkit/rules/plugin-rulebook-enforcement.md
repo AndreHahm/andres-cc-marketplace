@@ -21,7 +21,7 @@ Run the `plugin-rulebook` skill **before finalizing** any operation that creates
 
 When the active `plugin-rulebook` (as configured in `.claude/skills/plugin-rulebook/assets/settings.json`) conflicts with any other project rule, CLAUDE.md instruction, or inline user preference, **the rulebook wins for plugin component decisions**. The priority stack is:
 
-1. Active rulebook rules (R1–R26, enabled in `settings.json`) — highest authority for component structure, naming, and formatting decisions
+1. Active rulebook rules (R1–R27, enabled in `settings.json`) — highest authority for component structure, naming, and formatting decisions
 2. CLAUDE.md project instructions
 3. Inline user preferences for the current session
 

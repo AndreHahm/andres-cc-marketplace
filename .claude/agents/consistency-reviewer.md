@@ -60,7 +60,7 @@ For each component: read its frontmatter and full body, and every `references/*.
 
 Detect facts duplicated across two or more components in the set and check whether they still agree:
 
-- Numeric thresholds, enum lists, path references, rule-count ranges (e.g. a stale "R1–R17" next to a component correctly saying "R1–R26"), version numbers, tool-name lists
+- Numeric thresholds, enum lists, path references, rule-count ranges (e.g. a stale "R1–R17" next to a component correctly saying "R1–R27"), version numbers, tool-name lists
 - A fact restated with different values in two components → finding
 - A fact stated once by its owner but *re-described from memory* by a caller instead of delegated to (e.g. component A's docs describe component B's output format inline rather than pointing at B) → **Major**, even if currently accurate — it will silently go stale the next time B changes independently of A
 

@@ -1,7 +1,7 @@
 # Compact Rule Checklist
 
-Mechanical pattern → violation → severity reference for all 22 currently-enabled rules (R1-R10, R13, R14,
-R17-R26; R11/R12/R15/R16 disabled per `assets/settings.json`). No narrative rationale, examples, or
+Mechanical pattern → violation → severity reference for all 23 currently-enabled rules (R1-R10, R13, R14,
+R17-R27; R11/R12/R15/R16 disabled per `assets/settings.json`). No narrative rationale, examples, or
 "why enable" content — read `SKILL.md` instead for that. Kept in sync with `assets/settings.json` and
 `SKILL.md`'s own Active Rules section; any threshold shown here must match those two files exactly (R20).
 
@@ -33,6 +33,7 @@ model quality regardless of dispatch mode).
 | R24 Allowed Programming Languages | REQUIRED | M | scripts/ files, fenced code blocks | Any language/extension outside Python/Bash/JS-TS whitelist (closed allowlist, default-deny); Ruby explicitly banned | Rewrite in Python/Bash/JS/TS |
 | R25 Unplanned-Overhead Disclosure | REQUIRED | J | SKILL.md/agent files documenting a quick/fast/bounded phase | Actual execution deviated from documented scope (retry, detour, fallback) with no plain-language disclosure | Add explicit disclosure instruction |
 | R26 Expensive-Action Opt-In | REQUIRED | J | SKILL.md/agent files with per-item nested-call or whole-surface-rescan steps | An expensive action (per-item LLM/subprocess fan-out, whole-plugin re-verification, multi-agent dispatch) not gated behind an explicit `AskUserQuestion` | Add opt-in gate before the expensive step |
+| R27 Component Naming: Grammatical Form | ADVISORY | J | `name` field (skill/agent frontmatter), command filenames | Skill/agent not in noun-or-gerund/role-noun form, or command not verb-first, per `naming-conventions.md` | Rename to match documented form, or reconsider component type |
 
 ## R19/R20 Procedure Reminder (always full-quality, never skipped in Fast path)
 

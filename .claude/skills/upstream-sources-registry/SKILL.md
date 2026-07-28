@@ -46,9 +46,9 @@ Two distinct consumers:
   `report-dev-rules`/`verify-dev-rules`/`plan-dev-rules`/`implement-dev-rules`/`find-dev-rule`/
   `update-dev-rule`'s job. This skill tells those commands *which source to check and whether it's
   stale*; it does not itself decide `CONFIRMED`/`OUTDATED`/`MISSING`/`CONFLICT`/`NOT-OFFICIAL`.
-- **R1–R26 structural/naming/formatting rules** — that's `plugin-rulebook`. This skill replaces
+- **R1–R27 structural/naming/formatting rules** — that's `plugin-rulebook`. This skill replaces
   `plugin-rulebook`'s old scattered "Upstream Audit" bookkeeping (the source-tracking table and
-  `_meta.review_triggers` entries), but the R1–R26 rule content itself is untouched and stays there.
+  `_meta.review_triggers` entries), but the R1–R27 rule content itself is untouched and stays there.
 - **A one-off "what does the current Claude Code doc say about X" lookup with no intent to track
   it** — just `WebSearch`/`WebFetch` directly; registering a source only makes sense for something
   worth re-checking over time. **If the fetch is explicitly meant to be tracked going forward,
@@ -225,5 +225,5 @@ also fetched from a live external location this skill doesn't control.
 | `scripts/validate_sources.py` | Schema/consistency check for `assets/sources.json` — run after any manual edit |
 | `references/classification-criteria.md` | Worked examples for assigning authority tier and volatility to a new source |
 | `references/migration-notes.md` | Where each entry in the old `plugin-rulebook` "Tracked Upstream Sources" table and `_meta.review_triggers` moved to in this registry |
-| `plugin-rulebook` skill | R1–R26 structural rules — separate concern, see "When NOT to Use" |
+| `plugin-rulebook` skill | R1–R27 structural rules — separate concern, see "When NOT to Use" |
 | `find-dev-rule` / `verify-dev-rules` / `update-dev-rule` commands | The three automated consumers of this registry's Query Interface |
