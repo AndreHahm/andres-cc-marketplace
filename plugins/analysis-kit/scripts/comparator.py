@@ -13,6 +13,8 @@ Modes:
               headings only in A, only in B, and headings in both.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import re
