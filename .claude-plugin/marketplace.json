@@ -33,6 +33,19 @@
       "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
       "repository": "https://github.com/andrehahm/andres-cc-marketplace",
       "license": "GPL-3.0"
+    },
+    {
+      "name": "analyzing-kit",
+      "source": "./plugins/analyzing-kit",
+      "description": "Session analysis toolkit: retrospective SWOT analyses, self-critiques, and self-reflections for skills, sub-agents, commands, workflow-skills, and rules used across a Claude Code session, with classified improvement suggestions grouped by component and priority.",
+      "version": "1.0.0-alpha.1",
+      "author": {
+        "name": "Andre Hahm",
+        "url": "https://github.com/andrehahm"
+      },
+      "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
+      "repository": "https://github.com/andrehahm/andres-cc-marketplace",
+      "license": "Apache-2.0"
     }
   ]
 }
