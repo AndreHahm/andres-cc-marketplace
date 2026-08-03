@@ -15,6 +15,10 @@ Session analysis toolkit for Claude Code: retrospective SWOT analyses, self-crit
 
 This plugin is standalone — it has no dependency on any other plugin.
 
+## Prerequisites
+
+Both skills shell out to `python` (must resolve to Python 3.9+ on PATH — `scripts/component_inventory.py` uses PEP 585 builtin generics that fail on 3.8 and earlier).
+
 ## Installation
 
 ```bash

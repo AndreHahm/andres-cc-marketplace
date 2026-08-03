@@ -27,14 +27,19 @@ def _entries_for_glob(root: Path, pattern: str, category: str, verbose: bool) ->
         print(f"  {pattern} -> {len(matches)} match(es)", file=sys.stderr)
     entries = []
     for path in matches:
-        if not path.is_file():
+        try:
+            if not path.is_file():
+                continue
+            entries.append({
+                "category": category,
+                "name": path.name,
+                "path": path.relative_to(root).as_posix(),
+                "mtime": _iso(path.stat().st_mtime),
+            })
+        except OSError as exc:
+            if verbose:
+                print(f"  skipped {path} ({exc})", file=sys.stderr)
             continue
-        entries.append({
-            "category": category,
-            "name": path.name,
-            "path": path.relative_to(root).as_posix(),
-            "mtime": _iso(path.stat().st_mtime),
-        })
     return entries
 
 
