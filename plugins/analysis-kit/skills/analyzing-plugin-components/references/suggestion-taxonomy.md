@@ -33,7 +33,7 @@ Apply these before emitting the final suggestion list:
 
 ```
 [S##] [P1|P2|P3] [TYPE]  <one-line description>
-Source: <Weakness | Opportunity | Threat | Critique | Reflection>   Component: <name(s)>
+Source: <Strength | Weakness | Opportunity | Threat | Critique | Reflection>   Component: <name(s)>
 Detail: <what to change, where, and why — one to three sentences>
 ```
 

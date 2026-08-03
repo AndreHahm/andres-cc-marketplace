@@ -17,31 +17,50 @@ import sys
 from pathlib import Path
 
 
+class ConfigError(Exception):
+    def __init__(self, path: Path, reason: str):
+        super().__init__(f"{path}: {reason}")
+        self.path = path
+        self.reason = reason
+
+
 def _load_json(path: Path):
     if not path.is_file():
         return None
-    with path.open(encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with path.open(encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ConfigError(path, str(exc)) from exc
 
 
 def detect(project_root: Path, signatures_path: Path, plugin_root: Path) -> dict:
-    local_override = _load_json(project_root / ".claude" / "analysis-kit.local.json") or {}
-    if local_override.get("framework_override"):
+    try:
+        local_override = _load_json(project_root / ".claude" / "analysis-kit.local.json") or {}
+        if local_override.get("framework_override"):
+            return {
+                "source": "local_override",
+                "framework": local_override["framework_override"],
+                "confidence": "declared",
+            }
+
+        settings = _load_json(plugin_root / "analysis-kit.settings.json") or {}
+        if settings.get("framework_override"):
+            return {
+                "source": "settings_default",
+                "framework": settings["framework_override"],
+                "confidence": "declared",
+            }
+
+        signatures = _load_json(signatures_path) or {}
+    except ConfigError as exc:
         return {
-            "source": "local_override",
-            "framework": local_override["framework_override"],
-            "confidence": "declared",
+            "source": "error",
+            "framework": None,
+            "error": exc.reason,
+            "config_path": str(exc.path),
         }
 
-    settings = _load_json(plugin_root / "analysis-kit.settings.json") or {}
-    if settings.get("framework_override"):
-        return {
-            "source": "settings_default",
-            "framework": settings["framework_override"],
-            "confidence": "declared",
-        }
-
-    signatures = _load_json(signatures_path) or {}
     candidates = []
     for framework_id, spec in signatures.items():
         matched = [m for m in spec.get("markers", []) if (project_root / m).exists()]

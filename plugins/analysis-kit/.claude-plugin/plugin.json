@@ -1,7 +1,7 @@
 {
   "name": "analysis-kit",
   "version": "1.0.0-alpha.1",
-  "description": "Session analysis toolkit: retrospective SWOT analyses, self-critiques, and self-reflections for skills, sub-agents, commands, workflow-skills, and rules used across a Claude Code session, with classified improvement suggestions grouped by component and priority.",
+  "description": "Session analysis toolkit for Claude Code: retrospective SWOT analyses, self-critiques, and self-reflections for every skill, sub-agent, command, workflow-skill, and rule used across a session or date range, plus tool and developer-framework usage auditing, with classified improvement suggestions grouped by component and priority.",
   "author": {
     "name": "Andre Hahm"
   }
