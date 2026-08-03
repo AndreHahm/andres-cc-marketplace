@@ -1,6 +1,6 @@
 # Analysis Kit
 
-Session analysis toolkit for Claude Code: retrospective SWOT analyses, self-critiques, and self-reflections for every skill, sub-agent, command, workflow-skill, and rule used across a session or date range, plus tool and developer-framework usage auditing, with classified improvement suggestions grouped by component and priority.
+Session analysis toolkit for Claude Code: component retrospectives, tool/framework auditing, actor behavior analysis, governance and conflict detection, session/specification comparison, recurring-pattern mining, and classified improvement recommendations — all grounded in a session or date range, with reports persisted for later reference.
 
 ## Plugin Target
 
@@ -8,16 +8,22 @@ Session analysis toolkit for Claude Code: retrospective SWOT analyses, self-crit
 - Catch systemic issues that span more than one component, not just isolated bugs
 - Re-verify prior artifacts' own "still open" claims against current repo state instead of trusting them at face value
 - Identify which external tools and developer frameworks a session actually used, and whether a framework's execution companion stayed within its subordinate role
+- Assess agent behavior, human contribution, and cross-agent handoffs
+- Detect rule/boundary conformance issues and conflicts across agents, rules, specs, and sessions
+- Compare sessions to each other, or to a specification/architecture/constitution document
+- Mine recurring action sequences, loops, and recall gaps, and turn any finding into a concrete action plan
 
 ## Overview
 
-`analysis-kit` provides two skills. `analyzing-plugin-components` (renamed from `analyzing-sessions-by-project-and-time`) inventories every component active in a session (or date range), produces a SWOT and a self-critique/self-reflection for each, and derives classified, prioritized improvement suggestions from the findings. Reports are persisted to `.claude/output/analyzing-plugin-components/`, one file per run, so later runs can link back to a specific prior retrospective. `analyzing-tool-and-framework-use` inventories which external tools a session actually invoked, auto-detects which developer framework(s) the project uses (GSD, OpenSpec, Speckit, BMAD, GG-SAD, or an unrecognized "other" framework), and — when a detected framework pairs a governing method with a subordinate execution companion — checks whether the companion stayed within its role.
+`analysis-kit` provides 8 skills over a shared deterministic `scripts/` core (component/rule inventory, framework fingerprinting, structural diffing, sequence mining, usage aggregation — see the Skills table below for what each skill does). Reports from every skill are persisted under `.claude/output/<skill-name>/`, one file per run, so later runs can reference a specific prior report.
 
 This plugin is standalone — it has no dependency on any other plugin.
 
+**Two deliberate scope limits, not oversights:** no skill parses raw Claude Code session-log files — the real format was never confirmed as stable, so every skill works from conversation context plus (for scope before the current conversation) pasted transcripts instead. And `mining-recurring-patterns`' token/time reporting only ever aggregates subagent-dispatch usage figures (the one source of real usage data a skill can actually observe) — it never claims whole-session totals, since no skill can measure those directly.
+
 ## Prerequisites
 
-Both skills shell out to `python` (must resolve to Python 3.9+ on PATH — `scripts/component_inventory.py` uses PEP 585 builtin generics that fail on 3.8 and earlier).
+Every skill that calls a shared script shells out to `python` (must resolve to Python 3.9+ on PATH — several scripts use PEP 585 builtin generics that fail on 3.8 and earlier).
 
 ## Installation
 
@@ -42,12 +48,15 @@ cc --plugin-dir /path/to/analysis-kit
 
 # Tool and framework use for the current conversation
 > /analyzing-tool-and-framework-use
+
+# Expand a prior finding into a WHAT/WHY/HOW action plan
+> /generating-analysis-recommendations .claude/output/analyzing-plugin-components/this-conversation-2026-08-01T12-00-00Z.md
 ```
 
-1. Choose scope — this conversation, a start date, or today.
-2. For `analyzing-plugin-components`: confirm the component inventory before the full analysis runs. For `analyzing-tool-and-framework-use`: framework detection runs before the tool inventory.
-3. Review SWOT/critique or tool/framework findings in priority order.
-4. Act on the recommendations, then check the persisted report path.
+1. Choose scope — this conversation, a start date, or today (most skills), or a report/document path (the comparison and recommendation skills).
+2. Each skill runs its own deterministic first step (a shared script, or a component inventory) before any semantic interpretation.
+3. Review findings in priority order.
+4. Act on the recommendations, then check the persisted report path — or hand a specific finding to `generating-analysis-recommendations` for a concrete plan.
 
 ## Skills
 
@@ -55,6 +64,12 @@ cc --plugin-dir /path/to/analysis-kit
 |---|---|
 | `analyzing-plugin-components` | Running a post-session retrospective, auditing skill/agent/rule performance, or building a prioritized improvement backlog from a session or date range |
 | `analyzing-tool-and-framework-use` | Auditing which external tools or developer frameworks a session actually used, or checking whether a framework's execution companion stayed within its subordinate role |
+| `analyzing-actor-behavior` | Assessing agent behavior, human-vs-agent contribution, or cross-agent handoff/flow patterns |
+| `analyzing-governance-and-conflicts` | Checking rule/boundary conformance, or finding conflicts between agents, rules, specs, or sessions |
+| `comparing-sessions` | Comparing this session to a prior one, or checking whether a prior session's suggestions were acted on |
+| `comparing-session-to-specification` | Checking whether a session's decisions complied with a specification, architecture, or constitution document |
+| `mining-recurring-patterns` | Finding repeated action sequences, checking for repeated questions, or reviewing subagent token/time hotspots |
+| `generating-analysis-recommendations` | Turning any finding from another analysis-kit skill into a classified WHAT/WHY/HOW action plan |
 
 ## Configuration
 
@@ -66,4 +81,4 @@ Apache-2.0 — see [`LICENSE`](./LICENSE).
 
 ## Attribution
 
-`analysis-kit` began as a standalone port of the `analyzing-sessions` skill originally built inside this marketplace's `plugin-devkit` plugin, renamed to `analyzing-sessions-by-project-and-time` and decoupled from that plugin's other components so it has no cross-plugin dependency.
+`analysis-kit` began as a standalone port of the `analyzing-sessions` skill originally built inside this marketplace's `plugin-devkit` plugin, renamed to `analyzing-plugin-components` and decoupled from that plugin's other components so it has no cross-plugin dependency.
