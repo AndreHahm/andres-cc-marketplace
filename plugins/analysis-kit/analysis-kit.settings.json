@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "framework_override": null,
+  "known_frameworks": ["gsd", "gg-sad", "openspec", "speckit", "bmad"]
+}

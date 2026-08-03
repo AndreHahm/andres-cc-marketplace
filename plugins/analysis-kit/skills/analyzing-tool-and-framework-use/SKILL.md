@@ -1,0 +1,130 @@
+---
+name: analyzing-tool-and-framework-use
+description: >-
+  Inventories external tools actually invoked during a Claude Code session and
+  auto-detects which developer framework(s) a project uses (GSD, OpenSpec, Speckit,
+  BMAD, GG-SAD, or an unrecognized "other" framework), evaluating role-conformance
+  when a governing-method-plus-execution-companion pairing is detected. Supports a
+  project-level override when auto-detection is ambiguous or absent. Produces
+  tool-use and framework-configuration optimization recommendations. Use when
+  auditing which tools or frameworks a session actually used, identifying which
+  development framework a project relies on, checking whether a framework's
+  companion tool stayed within its subordinate role, or building tool/framework
+  optimization suggestions.
+allowed-tools: Read Glob Grep Write Bash(python:* date:*)
+---
+
+# Tool and Framework Use Analysis
+
+Inventory the external tools a Claude Code session actually used, detect which developer framework(s) the project relies on, and — when a framework defines a governing-method-plus-execution-companion pairing — evaluate whether the companion stayed within its subordinate role.
+
+## Quick Start
+
+1. Choose scope (same pattern as `analyzing-plugin-components` — this conversation, a start date, or today).
+2. Run framework detection (Phase 2) before the tool inventory — the detected framework determines which role-conformance rule set, if any, applies.
+3. Review the tool inventory and any role-conformance findings.
+4. Act on the optimization recommendations, then check the persisted report path.
+
+## When to Use
+
+- Auditing which external tools (CLI utilities, MCP servers, subagents) a session actually invoked, not just mentioned
+- Identifying which developer framework(s) a project uses, especially when it isn't obvious from conversation alone
+- Checking whether a framework's execution companion (e.g. GSD under GG-SAD) stayed within its subordinate role
+- Building tool-use or framework-configuration optimization suggestions
+
+## When NOT to Use
+
+- **No detected framework and no tools beyond Claude Code's own built-ins were used** — nothing to analyze
+- **Per-component (skill/agent/rule) retrospective SWOT** — use `analyzing-plugin-components` instead
+- **Code-level drift between implementation and a specification document** — outside this skill's scope
+
+## Phase 1: Scope
+
+If a scope was supplied as an argument (a date string, `"today"`, `"this conversation"`, or similar), skip the question UI and proceed directly to Phase 2 using that argument as the scope.
+
+Ask for the session range only when no argument was provided:
+
+```
+questions: [
+  {
+    question: "What should this analysis cover?",
+    header: "Session scope",
+    options: [
+      { label: "This conversation", description: "Analyze only the current conversation context" },
+      { label: "From a start date", description: "Provide a YYYY-MM-DD start date; analysis runs through today" },
+      { label: "Today", description: "All sessions from today (default)" }
+    ],
+    multiSelect: false
+  }
+]
+```
+
+If "From a start date" → ask for the date. If sessions from prior conversations are in scope, ask the user to paste in relevant transcript excerpts or summaries — Claude cannot read past conversation history directly.
+
+## Phase 2: Framework Detection
+
+Run the shared fingerprinting script:
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/framework_fingerprint.py" \
+  --project-root . \
+  --signatures "${CLAUDE_PLUGIN_ROOT}/skills/analyzing-tool-and-framework-use/assets/framework-signatures.json" \
+  --plugin-root "${CLAUDE_PLUGIN_ROOT}"
+```
+
+Interpret the JSON result:
+
+- `source: local_override` or `settings_default` → a project or plugin default declared the framework explicitly. Use it as-is; skip ambiguity handling entirely — the override wins even over a higher-confidence auto-detected candidate, since the user knows their own project better than a marker-path heuristic.
+- `source: auto_detect`, one candidate → use it, but carry its `confidence` tier into the report. A `low`-confidence signature means its marker paths are unconfirmed against the real tool's own documented conventions — see `references/framework-role-conformance.md`'s per-framework notes before treating a `low`-confidence match as settled fact.
+- `source: auto_detect`, multiple candidates → ambiguous. Ask via `AskUserQuestion` which one applies (or confirm the project genuinely uses more than one), rather than silently picking the first candidate.
+- `source: auto_detect`, no candidates → no known framework detected. Ask the user whether the project uses a framework not yet in `assets/framework-signatures.json` (the "other frameworks" case). If yes, record its name as a finding and note that a signature entry could be added later for auto-detection — don't fabricate a role-conformance check for a framework with no known rule set.
+
+## Phase 3: Tool Inventory
+
+Identify every external tool actually invoked in the session scope — not merely mentioned. Classify each using `references/tool-classification-taxonomy.md`'s categories and required distinctions. For each tool record: invocation count, inferred purpose, and whether it changed repository state.
+
+Cross-check conversation-derived tool usage against project configuration: `Glob` for common manifest files (`package.json`, `pyproject.toml`, `requirements.txt`, `.mcp.json`, or similar) and `Grep` them for tool/dependency names. A tool discovered only in configuration but never actually invoked is a distinct finding (see the taxonomy's Required Distinctions) — potential dead tooling, not usage to count.
+
+## Phase 4: Framework Role-Conformance
+
+Run this phase only when Phase 2 detected a framework that has a role-conformance rule set defined in `references/framework-role-conformance.md`. Skip it entirely — don't fabricate findings — when no framework was detected, or the detected framework has no rule set defined yet (currently: everything except GG-SAD/GSD).
+
+Evaluate the detected framework's execution companion against the authority, artifact, and process checks in `references/framework-role-conformance.md`.
+
+## Phase 5: Recommendations and Report
+
+Produce:
+
+- **Tool-use optimization** — redundant tools, missing safe wrappers, unpinned versions, repeated manual command sequences a script could replace.
+- **Framework-configuration optimization** (only if Phase 4 ran) — integration-mapping fixes, granularity changes, missing excluded-scope declarations, or other findings from `references/framework-role-conformance.md`'s checks.
+
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`) and `Write` the full findings to `.claude/output/analyzing-tool-and-framework-use/<scope-slug>-<timestamp>.md`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-08-01-to-today`). Present the confirmation as its own line before the rest of the report:
+
+```
+📄 Tool and Framework Analysis Report written: `.claude/output/analyzing-tool-and-framework-use/<scope-slug>-<timestamp>.md`
+```
+
+## Gotchas
+
+- **Low-confidence signatures are a starting point, not ground truth.** `assets/framework-signatures.json`'s OpenSpec/Speckit/BMAD marker paths were written without independently verifying each tool's actual directory conventions — correct them in that file once confirmed against the real tool, rather than reporting a `low`-confidence detection as settled fact.
+- **Override always wins over auto-detection**, even when auto-detection would have found a different, higher-confidence match — this is intentional, not a bug: a declared override reflects direct project knowledge a marker-path heuristic can't have.
+- **A tool merely mentioned in text is not a tool used.** Distinguish a tool discovered in configuration from one actually invoked, per `references/tool-classification-taxonomy.md`'s Required Distinctions — the same distinction applies to framework detection: a framework named in conversation without matching markers or an override is a candidate for the "other frameworks" ask in Phase 2, not a confirmed detection.
+
+## Testing & Validation
+
+After Phase 5, verify these gates before presenting output as final:
+
+- [ ] Framework detection (Phase 2) always runs before the tool inventory (Phase 3), even when scope is "this conversation"
+- [ ] An ambiguous auto-detection (2+ candidates) always triggers the `AskUserQuestion` disambiguation, never silently picks one
+- [ ] Phase 4 is skipped — not fabricated — when no framework or no known rule set was found
+- [ ] Every tool inventory entry distinguishes "mentioned" from "actually invoked"
+- [ ] The report was persisted to `.claude/output/analyzing-tool-and-framework-use/` and its path confirmed with the standard `📄 ... written:` line
+
+## Reference Guide
+
+| File | Purpose | When to read |
+|---|---|---|
+| `references/tool-classification-taxonomy.md` | Tool categories, detection sources, required distinctions | Phase 3 |
+| `references/framework-role-conformance.md` | Generic GM/execution-companion role-conformance checklist, plus per-framework confidence notes | Phase 2 (confidence notes), Phase 4 (checks) |
+| `assets/framework-signatures.json` | Marker paths per known framework, consumed by `scripts/framework_fingerprint.py` | Phase 2 |
+| `.claude/output/analyzing-tool-and-framework-use/` | Where this skill's own reports are persisted, one file per run | Phase 5 (write) |

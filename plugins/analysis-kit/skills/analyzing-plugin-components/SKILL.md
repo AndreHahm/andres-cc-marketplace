@@ -1,16 +1,16 @@
 ---
-name: analyzing-sessions-by-project-and-time
+name: analyzing-plugin-components
 description: >-
   Analyzes Claude Code sessions from a user-defined start date through today. Executes
   SWOT analyses, self-critiques, and self-reflections for each skill, sub-agent, command,
   workflow-skill, and rule active in the session range, reading generated output artifacts
   in scope and re-verifying their stated open items against current repo state rather than
   trusting them at face value. Generates classified improvement suggestions grouped by
-  component and priority, persisted to .claude/output/analyzing-sessions-by-project-and-time/.
+  component and priority, persisted to .claude/output/analyzing-plugin-components/.
   Use when running a post-session retrospective, auditing skill or agent performance, building
   an improvement backlog, or identifying systemic issues across skills, agents, and rules from
   a session or date range.
-allowed-tools: Read Glob Grep Write Bash(git:* date:*)
+allowed-tools: Read Glob Grep Write Bash(git:* date:* python:*)
 ---
 
 # Session Analysis
@@ -71,16 +71,19 @@ If "From a start date" → ask for the date. If sessions from prior conversation
 
 ## Phase 2: Component Inventory
 
-**Run these Globs first, unconditionally — before evaluating scope or waiting for confirmation:**
-- `Glob(pattern='*', path='.claude/output')` — output artifacts from prior runs
-- `Glob(pattern='*.md', path='.claude/rules')` — rules that load automatically, often without being mentioned in conversation
-- `Glob(pattern='*.local.md', path='.draft')` — if the project keeps gitignored local planning documents (a roadmap or architecture draft) under `.draft/`, this picks them up; skip this glob entirely if the project has no such convention
+**Run the shared inventory script first, unconditionally — before evaluating scope or waiting for confirmation:**
 
-**Use the `path` parameter form above, not a bare relative pattern like `Glob('.claude/rules/*.md')`** — on at least one observed environment, a pattern with a literal leading `.claude/` segment silently returned no results even though matching files existed, while pointing `path` directly at the target directory with a bare pattern resolved correctly. A silent false negative here means rules or prior output artifacts go uncounted without any visible error, so treat an empty result from either call as suspect: retry once with a broader pattern (e.g. `Glob(pattern='**/*', path='.claude/rules')`) before concluding the category is genuinely empty.
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/component_inventory.py" --project-root .
+```
 
-These seed the inventory regardless of scope. Then identify every additional component from the current conversation context.
+This returns a JSON array covering what's deterministically discoverable from the filesystem alone: rules in `.claude/rules/*.md` (that load automatically, often without being mentioned in conversation), output artifacts in `.claude/output/**` from prior runs, and — only if the project uses the convention — local planning documents in `.draft/*.local.md`. It does **not**, and structurally cannot, discover which skills, sub-agents, commands, or workflow-skills were actually invoked; that evidence only exists in the current conversation, not on disk.
 
-**Read output artifacts, don't just list them.** For every file the first Glob found whose modification time falls inside the session range, and that looks like a generated artifact from some pipeline-style skill in this project (a concept card, a plan, a handoff report, a comparison or scoring report, or similar), `Read` it in full — not just its path. The artifact's *content* is itself evidence about the component(s) that produced or consumed it: a plan's scope section is evidence for the planning skill's SWOT, a handoff report's Commits section is evidence for whatever produced it, and so on. A component whose only evidence is "it ran" (from the conversation) but whose actual output was never read is assessed on incomplete information.
+If the JSON is empty for a category you know has matching files (e.g. you can see `.claude/rules/` has files but the script reports none), don't silently trust the empty result — rerun with `--verbose` (prints each glob pattern tried and its match count to stderr) before concluding the category is genuinely empty.
+
+These seed the inventory regardless of scope. Then identify every additional component (skill, sub-agent, command, workflow-skill) from the current conversation context.
+
+**Read output artifacts, don't just list them.** For every `output_artifact` entry the script found whose modification time falls inside the session range, and that looks like a generated artifact from some pipeline-style skill in this project (a concept card, a plan, a handoff report, a comparison or scoring report, or similar), `Read` it in full — not just its path. The artifact's *content* is itself evidence about the component(s) that produced or consumed it: a plan's scope section is evidence for the planning skill's SWOT, a handoff report's Commits section is evidence for whatever produced it, and so on. A component whose only evidence is "it ran" (from the conversation) but whose actual output was never read is assessed on incomplete information.
 
 **Verify Open Items — don't trust an artifact's self-report.** For every handoff-report-shaped artifact read above (or any artifact with an "Open Items"/"Findings"/"Unresolved" section), independently re-check each listed item against current repository state before treating it as still accurate:
 - A commit SHA or count claimed in the artifact → verify with `Bash(git log)`/`Bash(git show)` directly (e.g. compare `${#SHA}` against the actual `git log -1 --format=%H` output)
@@ -88,15 +91,15 @@ These seed the inventory regardless of scope. Then identify every additional com
 - A "still open" claim → check whether a *later* artifact in the same scope (e.g. a subsequent handoff-report update, a later re-audit) already resolved it, and the earlier artifact is simply stale rather than wrong
 Record any discrepancy found — an item marked open that's actually resolved, an item marked resolved that isn't, or a factual claim (a SHA length, a file count) that doesn't match a direct check — as a Weakness in the SWOT of the component that *produced* the artifact, not as a note about the artifact file itself. An artifact that misstates its own metadata (a wrong hex-digest length, an off-by-one commit count) is exactly the kind of thing this check catches — never trust the artifact's self-report over a direct `git` check.
 
-**Read local planning documents as state, not as pipeline artifacts.** For every file the third Glob found (`.draft/*.local.md`, if the project uses that convention) whose modification time falls inside the session range, `Read` it in full — this is the session's actual durable work-product when the session involved planning/roadmap/architecture work, and it's easy to miss because it never produces an invocation event the way a `Skill`/`Agent` call does. Unlike the handoff-report-shaped artifacts above, don't run these through the Verify Open Items check — a planning document doesn't carry "Open Items"/commit-SHA claims to re-verify, it just carries current decisions and scope. Because these files are gitignored, there's no git history to diff against for a prior version; for a scope that starts before the current conversation, recovering an earlier state of such a file requires the user to paste it in, same as any other prior-conversation content (see Phase 1's note above and the Gotchas below).
+**Read local planning documents as state, not as pipeline artifacts.** For every `planning_document` entry the script found (`.draft/*.local.md`, if the project uses that convention) whose modification time falls inside the session range, `Read` it in full — this is the session's actual durable work-product when the session involved planning/roadmap/architecture work, and it's easy to miss because it never produces an invocation event the way a `Skill`/`Agent` call does. Unlike the handoff-report-shaped artifacts above, don't run these through the Verify Open Items check — a planning document doesn't carry "Open Items"/commit-SHA claims to re-verify, it just carries current decisions and scope. Because these files are gitignored, there's no git history to diff against for a prior version; for a scope that starts before the current conversation, recovering an earlier state of such a file requires the user to paste it in, same as any other prior-conversation content (see Phase 1's note above and the Gotchas below).
 
-| Category | What counts |
-|---|---|
-| **Skill** | Slash-command invocations that loaded a `SKILL.md` — **or** a skill's `SKILL.md`/`references/*.md`/`scripts/*` files that were directly edited this session, even without an invocation event (see note below) |
-| **Sub-agent** | Agent tool spawns (named agent type or description used) |
-| **Command** | `.claude/commands/*.md` invocations |
-| **Workflow-skill** | Skills invoked as sub-steps inside another skill's workflow |
-| **Rule** | `.claude/rules/*.md` files loaded and applied during the session |
+| Category | What counts | Source |
+|---|---|---|
+| **Skill** | Slash-command invocations that loaded a `SKILL.md` — **or** a skill's `SKILL.md`/`references/*.md`/`scripts/*` files that were directly edited this session, even without an invocation event (see note below) | conversation context |
+| **Sub-agent** | Agent tool spawns (named agent type or description used) | conversation context |
+| **Command** | `.claude/commands/*.md` invocations | conversation context |
+| **Workflow-skill** | Skills invoked as sub-steps inside another skill's workflow | conversation context |
+| **Rule** | `.claude/rules/*.md` files loaded and applied during the session | `component_inventory.py` |
 
 **Invoked vs. edited components:** both count, and both get their own SWOT — but frame them differently. An *invoked* component is assessed on how well it performed when run (did its checks fire, did its output need correction). An *edited* component (one whose files you modified as a task, without ever loading it via `Skill`/`Agent`) is assessed on how well its existing structure/docs supported making that edit correctly, and what defects the edit surfaced. Don't skip edited components just because there's no invocation event to point to as evidence — the edit itself is the evidence.
 
@@ -181,13 +184,13 @@ Output two views.
 
 Close with **Top 5 Actions**: the five highest-impact suggestions across all components, in order.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`) and `Write` the full Phase 3-6 output to `.claude/output/analyzing-sessions-by-project-and-time/<scope-slug>-<timestamp>.md`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). Present the confirmation as its own line before the rest of Phase 6's output:
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`) and `Write` the full Phase 3-6 output to `.claude/output/analyzing-plugin-components/<scope-slug>-<timestamp>.md`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). Present the confirmation as its own line before the rest of Phase 6's output:
 
 ```
-📄 Session Analysis Report written: `.claude/output/analyzing-sessions-by-project-and-time/<scope-slug>-<timestamp>.md`
+📄 Session Analysis Report written: `.claude/output/analyzing-plugin-components/<scope-slug>-<timestamp>.md`
 ```
 
-Use one file per run (`<scope-slug>-<timestamp>.md`) as the persistence convention — this lets a later run in the same project link back to a specific prior retro instead of re-deriving one, and gives the Verify Open Items check above something concrete to point future re-checks at. If `.claude/output/analyzing-sessions-by-project-and-time/` already contains files from an older, different naming convention, don't migrate or delete them before persisting a new report — `Glob` the directory first only if a specific old file's content matters for the current run.
+Use one file per run (`<scope-slug>-<timestamp>.md`) as the persistence convention — this lets a later run in the same project link back to a specific prior retro instead of re-deriving one, and gives the Verify Open Items check above something concrete to point future re-checks at. If `.claude/output/analyzing-plugin-components/` already contains files from an older, different naming convention, don't migrate or delete them before persisting a new report — `Glob` the directory first only if a specific old file's content matters for the current run.
 
 ## Testing & Validation
 
@@ -201,7 +204,7 @@ After Phase 6, verify these gates before presenting output as final:
 - [ ] Every output artifact found in scope (concept cards, plans, handoff reports, comparison/scoring reports) was actually `Read`, not just listed by path
 - [ ] Every Open Items entry found in a re-checked artifact was independently re-verified against current repo state, not copied forward as still-accurate
 - [ ] Any `.draft/*.local.md` planning document modified in scope was `Read` for its current state, not just listed
-- [ ] The report was persisted to `.claude/output/analyzing-sessions-by-project-and-time/` and its path confirmed with the standard `📄 ... written:` line
+- [ ] The report was persisted to `.claude/output/analyzing-plugin-components/` and its path confirmed with the standard `📄 ... written:` line
 
 ## Gotchas
 
@@ -210,7 +213,7 @@ After Phase 6, verify these gates before presenting output as final:
 - **Weakness vs. Threat confusion.** Weaknesses are internal to the component (a missing gate, a wrong threshold). Threats are external (a stale dependency, an upstream change that will break the component). Do not cross-file them.
 - **Over-suggestion.** Not every observation earns a suggestion. If two components produced the same fixable pattern, emit one cross-cutting suggestion, not two identical ones.
 - **Prior-session data.** Claude cannot read past conversation history. For sessions before the current one, prompt the user to paste transcripts or summaries before Phase 2.
-- **Self-referential sessions.** When `analyzing-sessions-by-project-and-time` is itself one of the components being analyzed, the assessment is inherently limited — the skill cannot objectively observe its own execution from outside. Note this explicitly in the SWOT weakness quadrant rather than producing inflated self-assessments.
+- **Self-referential sessions.** When `analyzing-plugin-components` is itself one of the components being analyzed, the assessment is inherently limited — the skill cannot objectively observe its own execution from outside. Note this explicitly in the SWOT weakness quadrant rather than producing inflated self-assessments.
 - **Don't trust an artifact's own "Open Items" section at face value.** A handoff report (or similar) reflects what its author believed was true at write time — it is not re-verified just by existing. Treat every "still open" or "resolved" claim as a hypothesis to check against current repo state (Phase 2's Verify Open Items step), not a fact to relay forward. An artifact that's wrong about its own open items is itself a finding about the component that produced it, not noise to filter out.
 - **Verify prior-state claims before writing them into a commit message or report — including this skill's own.** A claim like "this is new" or "X didn't exist before" is a testable assertion about current repo state, the same category as an artifact's Open Items claim above. `Glob`/`Read` the relevant directory before asserting novelty, whether the claim is about another component or about this one.
 
@@ -221,4 +224,4 @@ After Phase 6, verify these gates before presenting output as final:
 | `references/swot-framework.md` | Quadrant prompts and category-specific patterns | Phase 3 |
 | `references/critique-reflection-framework.md` | Question sets per category; rationalizations to reject | Phase 4 |
 | `references/suggestion-taxonomy.md` | Priority tiers, type definitions, merge rules, examples | Phase 5 |
-| `.claude/output/analyzing-sessions-by-project-and-time/` | Where this skill's own reports are persisted, one file per run | Phase 6 (write), Phase 2 of a later run (read, if in scope) |
+| `.claude/output/analyzing-plugin-components/` | Where this skill's own reports are persisted, one file per run | Phase 6 (write), Phase 2 of a later run (read, if in scope) |
