@@ -11,7 +11,7 @@ description: >-
   directly. Use when finding repeated command patterns, checking whether
   the same question was asked more than once, or reviewing where subagent
   time and tokens went this session.
-allowed-tools: Read Glob Write Bash(python */scripts/sequence_miner.py:*) Bash(python */scripts/token_time_aggregator.py:*) Bash(date:*)
+allowed-tools: Read Glob Write Bash(python */analysis-kit/scripts/sequence_miner.py:*) Bash(python */analysis-kit/scripts/token_time_aggregator.py:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 

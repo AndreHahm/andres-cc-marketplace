@@ -10,7 +10,7 @@ description: >-
   Use when running a post-session retrospective, auditing skill or agent performance, building
   an improvement backlog, or identifying systemic issues across skills, agents, and rules from
   a session or date range.
-allowed-tools: Read Glob Grep Write Bash(python */scripts/component_inventory.py:*) Bash(git log:*) Bash(git show:*) Bash(date:*)
+allowed-tools: Read Glob Grep Write Bash(python */analysis-kit/scripts/component_inventory.py:*) Bash(git log:*) Bash(git show:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 
@@ -159,8 +159,8 @@ Derive one or more concrete suggestions from each SWOT entry and each critique/r
 Each suggestion:
 ```
 [S##] [P1|P2|P3] [TYPE]  <one-line description>
-Source: <SWOT quadrant | Critique | Reflection>   Component: <name>
-Detail: <what to change and why>
+Source: <Strength | Weakness | Opportunity | Threat | Critique | Reflection>   Component: <name(s)>
+Detail: <what to change, where, and why — one to three sentences>
 ```
 
 Priority: **P1 Critical** (breaks behavior), **P2 Major** (degrades quality), **P3 Minor** (polish).
