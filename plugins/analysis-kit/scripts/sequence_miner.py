@@ -39,8 +39,12 @@ def main() -> int:
     args = parser.parse_args()
 
     input_path = Path(args.input).resolve()
-    with input_path.open(encoding="utf-8") as f:
-        tokens = json.load(f)
+    try:
+        with input_path.open(encoding="utf-8") as f:
+            tokens = json.load(f)
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        print(f"Error: could not read {input_path}: {exc}", file=sys.stderr)
+        return 1
 
     if not isinstance(tokens, list) or not all(isinstance(t, str) for t in tokens):
         print("Error: --input must be a JSON array of strings", file=sys.stderr)

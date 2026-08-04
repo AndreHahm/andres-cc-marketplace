@@ -49,6 +49,7 @@ For date-range retrospectives or deep taxonomy guidance, read the full phases be
 - **Want suggestions applied, tested, documented, and committed automatically** — this skill stops at "Top 5 Actions," it never applies them; a separate improvement workflow (if your project has one) picks up from the persisted report
 - **Full permission-candidate extraction across session transcripts** — this skill's own Permission Friction note (Phase 6) is a qualitative observation only, not a systematic scan; use a dedicated permission-audit tool for that if your project has one
 - **Which external tools or developer frameworks a session used** — counting tool/framework invocations, or auto-detecting a project's framework, is `analyzing-tool-and-framework-use`'s job; this skill assesses component *behavior quality* (SWOT, self-critique), not tool/framework inventory
+- **Actor behavior in the moment** (was a sub-agent's dispatch appropriate, what did the human correct or contribute, how did work hand off between agents) — use `analyzing-actor-behavior` instead; this skill assesses a component's *structural/SWOT quality*, not actor behavior in the moment
 
 ## Phase 1: Scope
 
