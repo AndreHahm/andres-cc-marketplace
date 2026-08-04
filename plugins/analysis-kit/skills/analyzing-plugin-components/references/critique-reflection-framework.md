@@ -20,7 +20,7 @@ Self-critique targets concrete execution failures — not hypothetical improveme
 - Did any finding require external knowledge to verify that the agent didn't have?
 - Were findings labeled Unverified when they should have been, or asserted as Major/Critical when uncertain?
 - Did the agent read all relevant files (including any `workflows/*.md`) or only files linked from its top-level definition?
-- **If this dispatch was a general-purpose or broad exploratory agent, was there a narrower purpose-built agent, skill, or direct tool call that could have handled the task instead?** A broad, general-purpose dispatch carries the heaviest fixed cost of any dispatch option — full tool-schema injection plus re-deriving any task-specific procedure from scratch, with no cached, purpose-built knowledge of the task's own domain. Not every broad dispatch is a finding: a genuinely exploratory, multi-step search with no dedicated tool or agent for the task is a legitimate use, and flagging the dispatch choice alone (with no cheaper alternative actually available) is noise, not signal. Flag as a `P2 ENHANCE` only when a narrower alternative plausibly existed for the specific task that was dispatched.
+- Dispatch appropriateness (whether a broad general-purpose agent was used where a narrower purpose-built one would have sufficed) is out of scope here — that's `analyzing-actor-behavior`'s check, not this skill's structural/SWOT assessment; see this SKILL.md's own When NOT to Use.
 
 ### Commands
 - Was the command output validated before it was used downstream?

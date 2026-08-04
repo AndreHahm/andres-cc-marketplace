@@ -23,7 +23,7 @@ Check whether a session's decisions complied with a project's specification, arc
 3. Walk each spec section and assess compliance (Phase 3).
 4. Review compliant/violated/unaddressed sections, then check the persisted report path.
 
-**Arguments:** `$ARGUMENTS` — optionally, a path to the specification/architecture/constitution/project-brief document. If omitted, ask the user for it or `Glob` common locations (`docs/`, `specs/`, `ARCHITECTURE.md`, `CONSTITUTION.md`, `PROJECT_BRIEF.md`).
+**Arguments:** `$ARGUMENTS` — optionally, a path to the specification/architecture/constitution/project-brief document. If omitted, ask the user for it or `Glob` common locations (`docs/`, a generic `specs/` directory, `ARCHITECTURE.md`, `CONSTITUTION.md`, `PROJECT_BRIEF.md`).
 
 ## When to Use
 

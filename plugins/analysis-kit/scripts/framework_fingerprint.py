@@ -30,7 +30,7 @@ def _load_json(path: Path):
     try:
         with path.open(encoding="utf-8") as f:
             return json.load(f)
-    except (json.JSONDecodeError, OSError) as exc:
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError) as exc:
         raise ConfigError(path, str(exc)) from exc
 
 
@@ -52,6 +52,8 @@ def detect(project_root: Path, signatures_path: Path, plugin_root: Path) -> dict
                 "confidence": "declared",
             }
 
+        if not signatures_path.is_file():
+            raise ConfigError(signatures_path, "required --signatures file not found")
         signatures = _load_json(signatures_path) or {}
     except ConfigError as exc:
         return {
