@@ -10,7 +10,7 @@ description: >-
   Use when running a post-session retrospective, auditing skill or agent performance, building
   an improvement backlog, or identifying systemic issues across skills, agents, and rules from
   a session or date range.
-allowed-tools: Read Glob Grep Write Bash(python */scripts/component_inventory.py:*) Bash(git log:*) Bash(git show:*) Bash(date:*)
+allowed-tools: Read Glob Grep Write Bash(python */analysis-kit/scripts/component_inventory.py:*) Bash(git log:*) Bash(git show:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 
@@ -49,6 +49,7 @@ For date-range retrospectives or deep taxonomy guidance, read the full phases be
 - **Want suggestions applied, tested, documented, and committed automatically** — this skill stops at "Top 5 Actions," it never applies them; a separate improvement workflow (if your project has one) picks up from the persisted report
 - **Full permission-candidate extraction across session transcripts** — this skill's own Permission Friction note (Phase 6) is a qualitative observation only, not a systematic scan; use a dedicated permission-audit tool for that if your project has one
 - **Which external tools or developer frameworks a session used** — counting tool/framework invocations, or auto-detecting a project's framework, is `analyzing-tool-and-framework-use`'s job; this skill assesses component *behavior quality* (SWOT, self-critique), not tool/framework inventory
+- **Actor behavior in the moment** (was a sub-agent's dispatch appropriate, what did the human correct or contribute, how did work hand off between agents) — use `analyzing-actor-behavior` instead; this skill assesses a component's *structural/SWOT quality*, not actor behavior in the moment
 
 ## Phase 1: Scope
 
@@ -158,8 +159,8 @@ Derive one or more concrete suggestions from each SWOT entry and each critique/r
 Each suggestion:
 ```
 [S##] [P1|P2|P3] [TYPE]  <one-line description>
-Source: <SWOT quadrant | Critique | Reflection>   Component: <name>
-Detail: <what to change and why>
+Source: <Strength | Weakness | Opportunity | Threat | Critique | Reflection>   Component: <name(s)>
+Detail: <what to change, where, and why — one to three sentences>
 ```
 
 Priority: **P1 Critical** (breaks behavior), **P2 Major** (degrades quality), **P3 Minor** (polish).

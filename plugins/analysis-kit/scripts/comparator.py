@@ -22,9 +22,16 @@ import sys
 from pathlib import Path
 
 
+class ComparatorError(Exception):
+    pass
+
+
 def _load_json(path: Path) -> dict:
-    with path.open(encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with path.open(encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise ComparatorError(f"{path}: {exc}") from exc
 
 
 def diff_keys(a_path: Path, b_path: Path, dotted_path: str | None) -> dict:
@@ -34,8 +41,12 @@ def diff_keys(a_path: Path, b_path: Path, dotted_path: str | None) -> dict:
         for part in dotted_path.split("."):
             a = a.get(part, {}) if isinstance(a, dict) else {}
             b = b.get(part, {}) if isinstance(b, dict) else {}
-    a_keys = set(a.keys()) if isinstance(a, dict) else set()
-    b_keys = set(b.keys()) if isinstance(b, dict) else set()
+    if not isinstance(a, dict):
+        raise ComparatorError(f"{a_path}: top-level JSON (or the resolved --path) is not an object")
+    if not isinstance(b, dict):
+        raise ComparatorError(f"{b_path}: top-level JSON (or the resolved --path) is not an object")
+    a_keys = set(a.keys())
+    b_keys = set(b.keys())
     return {
         "mode": "keys",
         "only_in_a": sorted(a_keys - b_keys),
@@ -48,7 +59,10 @@ _HEADING_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
 
 
 def _headings(path: Path) -> list[str]:
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ComparatorError(f"{path}: {exc}") from exc
     return [m.strip() for m in _HEADING_RE.findall(text)]
 
 
@@ -74,10 +88,14 @@ def main() -> int:
     a_path = Path(args.a).resolve()
     b_path = Path(args.b).resolve()
 
-    if args.mode == "keys":
-        result = diff_keys(a_path, b_path, args.path)
-    else:
-        result = diff_sections(a_path, b_path)
+    try:
+        if args.mode == "keys":
+            result = diff_keys(a_path, b_path, args.path)
+        else:
+            result = diff_sections(a_path, b_path)
+    except ComparatorError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
 
     json.dump(result, sys.stdout, indent=2)
     sys.stdout.write("\n")
