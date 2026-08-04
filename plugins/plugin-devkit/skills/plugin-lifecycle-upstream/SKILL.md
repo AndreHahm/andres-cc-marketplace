@@ -90,11 +90,13 @@ After the Commit step, invoke `plugin-documentation` (via `Skill`) against the p
 
 ## Post-Commit Handoff Report
 
-Immediately after the Commit and Document steps — before the downstream-QA offer below — invoke the `build-handoff-writer` agent (via `Agent`) with the Concept Card path, Plan path (if Phase 2 ran), a summary of each Design-phase gate outcome, the Build summary, Phase 5's test results, and the commit list gathered above (the build commit, plus a doc-fix commit if Document produced one). This is a **create** call (first report for this build). It produces one narrative-and-open-items report at `.claude/output/build-handoff-writer/` for a cold-context reader — it does not gate progress and does not require separate user approval to run, since it only synthesizes what already happened and was already approved at Phase 5's gate.
+Immediately after the Commit and Document steps — before the downstream-QA offer below — invoke the `build-handoff-writer` agent (via `Agent`) with the Concept Card path, Plan path (if Phase 2 ran), a summary of each Design-phase gate outcome, the Build summary, Phase 5's test results, and the commit list gathered above (the build commit, plus a doc-fix commit if Document produced one). This is a **create** call (first report for this build). The agent has no `Write` tool and returns the full report as text — `Write` its returned content to `.claude/output/build-handoff-writer/<slug>-<timestamp>.md` yourself. It does not gate progress and does not require separate user approval to run, since it only synthesizes what already happened and was already approved at Phase 5's gate.
 
 ## Handover to Downstream
 
 After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-lifecycle-downstream` now for QA (Validate → Audit → Report)?" — options "Yes — run downstream QA" / "No — stop here". If yes, invoke `plugin-lifecycle-downstream` (via `Skill`) with the newly built plugin's path **and the handoff report's path**, so downstream updates the same report instead of starting a new one. Never invoke it without asking first.
+
+**A newly-built plugin is not usable in the same session that built it.** QA and Fix operate on the plugin's files directly and don't require installation — but the plugin's own skills are not invocable via `Skill(<name>)` in the current session until it's actually installed (`/plugin install`, or `cc --plugin-dir` for local development) and, depending on the client, the session is restarted to pick up the new skill registration. State this plainly once the handoff report is written, so the user isn't surprised when the plugin they just built and QA'd can't be invoked yet in this same conversation.
 
 ## Testing & Validation
 
