@@ -13,7 +13,12 @@ The complete Validate → Audit+Report → Fix procedure. Phases 1-2 run automat
 
 **Actions:**
 1. Invoke `Skill(plugin-rulebook)` in batch mode against every component in the plugin (per `plugin-rulebook-enforcement.md`'s Batch mode — one invocation, per-component PASS/ADVISORY/FAIL lines).
-2. Invoke the `plugin-validator` agent (via `Agent`) against the plugin root for structural/manifest validation.
+2. Invoke the `plugin-validator` agent (via `Agent`) against the plugin root for structural/manifest validation. **For a plugin with more than 6 skills** (the threshold above which a single whole-plugin dispatch has previously run long enough to hit a session-limit error mid-run), split into multiple smaller dispatches instead of one big one, so a mid-run failure only costs re-running one batch:
+   a. One dispatch covering manifest/directory-structure/MCP/file-organization/security only (its own Steps 1-3, 8-10) — always a single call, cheap regardless of plugin size.
+   b. Skills split into batches of ~5-6 per dispatch, each in Batch mode (per the agent's own "Invocation Modes").
+   c. Commands + agents + hooks together in one more dispatch, unless any single type's count alone exceeds ~6, in which case batch that type the same way as skills.
+   d. Merge all batch reports into one combined result before presenting: union the Critical/Warning counts, concatenate Component Summary rows, state plainly that the result was compiled from N batched dispatches — never present a merged report as if it came from one dispatch.
+   For 6 or fewer skills, one whole-plugin dispatch (no batching) is fine — the blast-radius problem batching solves doesn't materialize at that size.
 3. Invoke the `dependency-reviewer` agent (via `Agent`) — Full component set, or Scoped (Delta mode) against the named component(s), per the gate above.
 4. Invoke the `security-reviewer` agent (via `Agent`) — Full component set, or Scoped (Delta mode) against the named component(s), per the gate above.
 5. Collect all four reports. If Scoped mode was used for 3-4, state this plainly alongside the collected results — a Scoped report must never be presented as if it were a Full sweep.
