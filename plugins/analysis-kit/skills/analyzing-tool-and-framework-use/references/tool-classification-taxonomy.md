@@ -45,6 +45,7 @@ tool:
   invocation_count: 34
   successful_invocations: 29
   failed_invocations: 5
+  changed_repository_state: false
   purposes:
     - verify acceptance examples
     - reproduce failing validation behavior

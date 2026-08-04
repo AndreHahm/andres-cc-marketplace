@@ -11,7 +11,7 @@ description: >-
   development framework a project relies on, checking whether a framework's
   companion tool stayed within its subordinate role, or building tool/framework
   optimization suggestions.
-allowed-tools: Read Glob Grep Write Bash(python */scripts/framework_fingerprint.py:*) Bash(date:*)
+allowed-tools: Read Glob Grep Write Bash(python */analysis-kit/scripts/framework_fingerprint.py:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 

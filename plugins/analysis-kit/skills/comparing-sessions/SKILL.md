@@ -10,7 +10,7 @@ description: >-
   conflict category). Use when comparing this session to a prior one,
   checking whether a prior session's suggestions were acted on, or tracking
   a trend across multiple sessions.
-allowed-tools: Read Glob Write Bash(python */scripts/comparator.py:*) Bash(date:*)
+allowed-tools: Read Glob Write Bash(python */analysis-kit/scripts/comparator.py:*) Bash(date:*)
 argument-hint: [path to a prior report, or "latest" to use the most recent one found]
 ---
 
