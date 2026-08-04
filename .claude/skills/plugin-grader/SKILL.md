@@ -69,6 +69,7 @@ skill (has `SKILL.md`) / agent (a file in `agents/`) / command (a file in `comma
 - The type-matched `*-reviewer` from `references/rubric.md`
 - `completeness-reviewer`
 - `activation-reviewer`
+- `security-reviewer` — feeds `safety_risk_handling` alongside `plugin-rulebook` R6/R9 (see `references/rubric.md`'s dimension 10 for the axis split that avoids double-counting the same finding)
 - `scripts-reviewer` — only if `scripts/` exists for the target
 - `hook-reviewer` — only if the target has hooks (a hook component, or a skill/agent declaring `hooks:` frontmatter)
 - `Skill(plugin-rulebook)` — invoked via `Skill`, not `Agent`, for Rule Compliance
@@ -79,7 +80,7 @@ Also run the Testing static heuristic directly (no dispatch): `Glob` for `evals/
 - `activation-reviewer` in whole-plugin mode → feeds `activation_critical`
 - `consistency-reviewer` across all components → feeds `consistency_critical`
 
-**Fast mode** (`--fast` or "quick grade" in the request): skip `scripts-reviewer` and `consistency-reviewer` dispatches. `robustness` defaults to `is_na: true` (score 10) and `maintainability` derives from `skilldir-reviewer`'s duplication axis alone. Note the reduced fidelity in `notes.inspection_limits` — never silently present a fast-mode score as equivalent to a full one.
+**Fast mode** (`--fast` or "quick grade" in the request): skip `scripts-reviewer`, `consistency-reviewer`, and `security-reviewer` dispatches. `robustness` defaults to `is_na: true` (score 10), `maintainability` derives from `skilldir-reviewer`'s duplication axis alone, and `safety_risk_handling` derives from `plugin-rulebook` R6/R9 findings alone. Note the reduced fidelity in `notes.inspection_limits` — never silently present a fast-mode score as equivalent to a full one.
 
 ### 4. Score Dimensions and Compute
 
@@ -125,10 +126,11 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 
 1. **Single skill, clean** — grade a skill with no findings from any dispatched reviewer; confirm all 12 dimensions score 10 and `final_score` is 10.0 with no gates
 2. **Rule compliance gate** — grade a target with a known REQUIRED rule violation; confirm Gate A fires and `final_score` is capped at 6.0
-3. **Gate stacking** — construct an input triggering both Gate A and Gate B; confirm `final_score` uses the *lower* of the two caps (5.0), not the first one found
+2a. **Safety gate** — grade a target with a Critical `safety_risk_handling` finding (e.g. `Bash(*)`); confirm Gate C fires and `final_score` is capped at 4.0, even when every other dimension scores 10
+3. **Gate stacking** — construct an input triggering both Gate A and Gate B; confirm `final_score` uses the *lower* of the two caps (5.0), not the first one found. Also confirm stacking Gate B and Gate C uses 4.0 (the lower of the two), since Gate C is now the lowest cap of the four
 4. **N/A dimension** — grade a component with no `scripts/`; confirm `robustness` scores 10 with `is_na: true`, not excluded from the weighted sum
 5. **Plugin rollup with one broken component** — construct component scores where one is < 3; confirm Gate P3 fires and `weakest_component` is reported even though the mean looks acceptable
-6. **Fast mode** — confirm `scripts-reviewer`/`consistency-reviewer` are skipped and `notes.inspection_limits` states this
+6. **Fast mode** — confirm `scripts-reviewer`/`consistency-reviewer`/`security-reviewer` are skipped and `notes.inspection_limits` states this
 
 **Quality gates:**
 - [ ] `scripts/compute_score.py` is always invoked for the weighted sum and gate math — never hand-computed

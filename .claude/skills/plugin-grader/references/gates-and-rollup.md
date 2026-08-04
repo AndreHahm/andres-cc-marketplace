@@ -11,13 +11,16 @@
 |---|---|---|
 | A | `rule_compliance` score < 5.0 | 6.0 |
 | B | `completeness` score < 4.0 | 5.0 |
+| C | `safety_risk_handling` score < 4.0 (a Critical security finding — destructive action with no guard, or `Bash(*)`) | 4.0 |
 | D | `testing` score == 0.0 | 8.0, and the output must include the literal comment `"Missing verification."` |
 
 5. `final_score = weighted_total` if no gate triggered; otherwise `final_score = min(weighted_total, min(caps of all triggered gates))`.
 6. Round to 1 decimal.
-7. **No artificial floor at 1.** A component with Gates A and B both active can legitimately show as low as the lower of the two caps intersected with the weighted total — including a value near 0.0 if the underlying dimensions are also near 0. Do not clamp a genuinely broken component to look better than it is.
+7. **No artificial floor at 1.** A component with multiple gates active can legitimately show as low as the lowest of the triggered caps intersected with the weighted total — including a value near 0.0 if the underlying dimensions are also near 0. Do not clamp a genuinely broken component to look better than it is.
 
-Gate caps are deliberately ordered `B(5) < A(6) < D(8)` — taking the minimum when multiple gates fire means "missing core functionality" always outranks "non-compliant," which always outranks "unverified." This is exactly what `scripts/compute_score.py`'s `min(caps)` implements — do not hand-compute this arithmetic; run the script.
+Gate caps are deliberately ordered `C(4) < B(5) < A(6) < D(8)` — taking the minimum when multiple gates fire means "the plugin can do real, unguarded harm" always outranks "missing core functionality," which always outranks "non-compliant," which always outranks "unverified." Gate C sits below Gate B (added after Gate C, but ranked worse) on the reasoning that a Critical security finding is not just a quality gap the plugin can be used despite — it's a live risk the plugin actively carries, whereas an incomplete plugin is merely less useful. This is exactly what `scripts/compute_score.py`'s `min(caps)` implements — do not hand-compute this arithmetic; run the script.
+
+**Why Gate C exists:** added after this exact gap surfaced twice in the same plugin's own history (`analysis-kit`) — a Phase 1 audit found `safety_risk_handling` scores of 0/10 and 2/10 from `Bash(python:*)`/`Bash(git:*)`-class findings, neither of which capped `final_score` the way a completeness Critical already did, so the weighted average alone understated how broken those two components actually were. `safety_risk_handling`'s 5% weight is too small on its own to reflect a Critical finding proportionally — a gate is what makes it visible in the final number, not the weight.
 
 **Every triggered gate must appear in `gates_applied`** with its `reason` — a capped score with no visible reason defeats the "explain reasoning briefly" requirement. Never silently apply a gate.
 

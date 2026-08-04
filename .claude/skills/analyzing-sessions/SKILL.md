@@ -10,7 +10,7 @@ description: >-
   .claude/output/analyzing-sessions/. Use when running a post-session retrospective,
   auditing skill or agent performance, building an improvement backlog, or identifying systemic
   issues across skills, agents, and rules from a session or date range.
-allowed-tools: Read Glob Grep Write Agent Bash(git:* date:*)
+allowed-tools: Read Glob Grep Write Edit Agent Bash(git:* date:*)
 ---
 
 # Session Analysis
@@ -87,6 +87,8 @@ These seed the inventory regardless of scope. Then identify every additional com
 - A "deferred" or "not yet fixed" item → `Grep`/`Read` the referenced file(s) to check whether it was actually addressed in a later commit or session, even if the artifact itself was never updated to reflect that
 - A "still open" claim → check whether a *later* artifact in the same scope (e.g. a subsequent handoff-report update, a later plugin-grader re-audit) already resolved it, and the earlier artifact is simply stale rather than wrong
 Record any discrepancy found — an item marked open that's actually resolved, an item marked resolved that isn't, or a factual claim (a SHA length, a file count) that doesn't match a direct check — as a Weakness in the SWOT of the component that *produced* the artifact, not as a note about the artifact file itself. This mirrors a documented real incident in this plugin's own session history: a `build-handoff-writer` report flagged its own inline-supplied commit SHA as "41 hex characters" (a miscount) rather than the correct 40, and a fix-pass's own dispatch prompt claimed "4 new commits" when there was exactly one — both were only caught because a later step independently re-verified rather than trusting the artifact's own text.
+
+**Commit SHA doesn't resolve at all — fix it, don't just flag it.** This is a standing responsibility of this skill, distinct from the general Weakness-recording treatment above: if a SHA referenced in a handoff-report-shaped artifact doesn't resolve via `git show <SHA>` at all (not merely miscounted, but genuinely absent from history), the most common cause is a rebase-merge (`gh pr merge --rebase`) rewriting the commit after the report was written. Search `git log --oneline` on the merge target branch for a commit with matching message and file scope. If found with high confidence, ask via `AskUserQuestion` whether to fix the stale reference(s) directly in the source artifact now — `Edit`, scoped narrowly to the exact stale-SHA-to-correct-SHA replacement(s), nothing else in the file. If approved, apply the fix and note it in this report's own Weakness entry as `[FIXED]` rather than `[FLAGGED]`, naming the old and new SHA. Do not rewrite a SHA that still belongs to an unmerged branch — verify it against that branch's own history, not the merge target's, and annotate it as branch-only rather than treating it as stale. If no confident message-match exists, fall back to the general Weakness-recording treatment above rather than guessing.
 
 **Read local planning documents as state, not as pipeline artifacts.** For every file the third Glob found (`.draft/*.local.md`) whose modification time falls inside the session range, `Read` it in full — this is the session's actual durable work-product when the session involved planning/roadmap/architecture work, and it's easy to miss because it never produces an invocation event the way a `Skill`/`Agent` call does. Unlike the handoff-report-shaped artifacts above, don't run these through the Verify Open Items check — a planning document doesn't carry "Open Items"/commit-SHA claims to re-verify, it just carries current decisions and scope. Because these files are gitignored, there's no git history to diff against for a prior version; for a scope that starts before the current conversation, recovering an earlier state of a `.draft/*.local.md` file requires the user to paste it in, same as any other prior-conversation content (see Phase 1's note above and the Gotchas below).
 
@@ -202,6 +204,7 @@ After Phase 6, verify these gates before presenting output as final:
 - [ ] No two suggestions share the same Detail description — merge duplicates before emitting
 - [ ] Every output artifact found in scope (concept cards, plans, handoff reports, comparison/grader/dev-rules reports) was actually `Read`, not just listed by path
 - [ ] Every Open Items entry found in a re-checked artifact was independently re-verified against current repo state, not copied forward as still-accurate
+- [ ] Every non-resolving commit SHA found in a re-checked artifact was searched for a rebase-merge match and, if found, offered to the user as a direct fix — not just recorded as a Weakness and left stale
 - [ ] Any `.draft/*.local.md` planning document modified in scope was `Read` for its current state, not just listed
 - [ ] The report was persisted to `.claude/output/analyzing-sessions/` and its path confirmed with the standard `📄 ... written:` line
 
