@@ -69,8 +69,8 @@ There is also an optional, ungated-into-the-phase-count **Deep Test** step (see 
 
 If a build-handoff-writer report exists for this target — passed in directly (`plugin-lifecycle-upstream`'s handover includes the path) or found via `Glob('.claude/output/build-handoff-writer/*.md')`, most recent by timestamp if more than one matches — this pipeline treats it as the running record of the build, not a separate artifact:
 
-- **After Phase 2**, dispatch `build-handoff-writer` (via `Agent`) in **update** mode with the existing report's path, plus `plugin-grader`'s score/gates/weakest-component from the just-written report. This folds the audit result into the same document instead of leaving it siloed in `.claude/output/plugin-grader/`.
-- **After Phase 3**, if it ran and produced new commits (see Commit step below), dispatch `build-handoff-writer` again in update mode with those commits and the re-validation result.
+- **After Phase 2**, dispatch `build-handoff-writer` (via `Agent`) in **update** mode with the existing report's path, plus `plugin-grader`'s score/gates/weakest-component from the just-written report. This folds the audit result into the same document instead of leaving it siloed in `.claude/output/plugin-grader/`. The agent has no `Write` tool and returns the full updated report as text — `Write` its returned content back to the same report path yourself.
+- **After Phase 3**, if it ran and produced new commits (see Commit step below), dispatch `build-handoff-writer` again in update mode with those commits and the re-validation result — same write-back-yourself step.
 - If no existing handoff report is found (this pipeline was invoked standalone against a plugin that wasn't built via `plugin-lifecycle-upstream`), skip this step entirely — do not fabricate one.
 
 ## Document

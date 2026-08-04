@@ -82,6 +82,14 @@ def compute_component(data):
             "reason": f"Completeness scored {scores['completeness']} (< 4)",
             "cap": cap,
         })
+    if scores["safety_risk_handling"] < 4:
+        cap = 4.0
+        caps.append(cap)
+        gates_applied.append({
+            "gate": "C_safety_risk_handling",
+            "reason": f"Safety/Risk Handling scored {scores['safety_risk_handling']} (< 4) -- a Critical security finding",
+            "cap": cap,
+        })
     if scores["testing"] == 0:
         cap = 8.0
         caps.append(cap)

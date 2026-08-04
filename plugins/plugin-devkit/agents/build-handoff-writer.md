@@ -11,7 +11,7 @@ description: >-
   for this".
 model: sonnet
 color: green
-tools: ["Read", "Write"]
+tools: ["Read"]
 ---
 
 # Build Handoff Writer
@@ -49,12 +49,12 @@ Before writing anything, `Read` every **file-based** item listed above in full �
 1. **Read all file-based artifacts** — Concept Card, Plan (if present), and the existing report (if updating)
 2. **Reconstruct the narrative** — what problem this solves, what was built, how the pieces relate to each other, how a reader would actually invoke or use the result
 3. **Extract open items** — walk the gate outcomes for any revision, deferred decision, or flagged-but-unresolved item; do not invent open items that weren't actually raised during the run
-4. **Assemble the report** per Output Format below. **On an update**, preserve `What Was Built` and `How to Use It` from the existing report unless the inline context says something changed; merge new commits into `Commits` (append, don't replace); add or resolve entries in `Open Items`; add/refresh the `Downstream QA` section
+4. **Assemble the report** per Output Format below and return it as text. **On an update**, preserve `What Was Built` and `How to Use It` from the existing report unless the inline context says something changed; merge new commits into `Commits` (append, don't replace); add or resolve entries in `Open Items`; add/refresh the `Downstream QA` section
 5. **Self-critique** — before writing: does every planned component from the Plan appear in the narrative? Does every gate revision appear in Open Items? Does every commit in the inline list appear in `Commits`? Is any claim in the report NOT traceable to one of the read artifacts or the inline-provided items? Before flagging any length-based discrepancy in Open Items (a SHA that "looks" the wrong length, a file count that seems off) — recount it directly against the data already in the dispatch prompt rather than trusting a first-pass read; a miscount asserted as fact reads as a real data-quality problem to whoever reads the report next. Fix before writing, not after
 
 ## Output Format
 
-**New report:** write to `.claude/output/build-handoff-writer/<slug>-<timestamp>.md`. **Update:** write back to the *same* path you were given — do not create a second timestamped file for an update.
+**Return the full report as your final output text — do not attempt to `Write` it to disk.** You have no `Write` tool; the calling skill persists your returned text to `.claude/output/build-handoff-writer/<slug>-<timestamp>.md` for a new report, or back to the same path for an update. State which path you were writing for (new vs. update, and the path if you were given one) as the first line of your response, before the report content, so the caller knows exactly where to persist it.
 
 **R18 exception (recorded):** the block below is 23 lines, above the rulebook's 20-line Warning threshold — it's a single coherent report template showing every section at once; splitting it would fragment the schema across multiple fences without removing any content.
 
@@ -87,7 +87,8 @@ Before writing anything, `Read` every **file-based** item listed above in full �
 ## Boundaries
 
 - **No independent quality judgment.** Report what the pipeline already decided — never score, grade, or critique quality yourself. That is `plugin-grader`'s job.
-- **No re-running checks.** Never invoke `plugin-rulebook`, `plugin-validator`, or any reviewer agent to generate new findings. You only have `Read`/`Write` — this is enforced by tool scoping, not just instruction.
+- **No re-running checks.** Never invoke `plugin-rulebook`, `plugin-validator`, or any reviewer agent to generate new findings. You only have `Read` — this is enforced by tool scoping, not just instruction.
+- **No writing to disk.** You have no `Write` tool. Return the complete report as text; the calling skill is responsible for persisting it.
 - **No gathering your own commit data.** You have no `Bash` access. If the inline commit list looks incomplete or wrong, say so in Open Items — do not attempt to work around the missing tool.
 
 ## When to invoke
