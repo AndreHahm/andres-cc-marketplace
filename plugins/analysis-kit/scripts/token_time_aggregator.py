@@ -40,7 +40,7 @@ def aggregate(entries: list[dict]) -> dict:
         "total_tokens": total_tokens,
         "total_duration_ms": total_duration_ms,
         "by_label": dict(by_label),
-        "top_hotspots_by_tokens": [{"label": label, **stats} for label, stats in hotspots[:5]],
+        "top_hotspots_by_tokens": [{"label": label, **stats} for label, stats in hotspots[:10]],
         "scope_note": (
             "Totals cover only entries supplied by the calling skill (typically subagent-dispatch "
             "usage figures) -- not whole-session usage, which no skill can measure directly."

@@ -33,7 +33,14 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("github_token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b")),
     ("slack_token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]+\b")),
-    ("generic_sk_token", re.compile(r"\bsk-[A-Za-z0-9]{20,}\b")),
+    # Anthropic keys (sk-ant-api03-...) contain hyphens, so the character class
+    # must span them -- unlike the removed high-entropy catch-all (see the note
+    # below _PATTERNS), this stays anchored to the literal "sk-" prefix, which
+    # doesn't collide with this plugin's own <scope-slug>-<timestamp> filenames.
+    ("generic_sk_token", re.compile(r"\bsk-[A-Za-z0-9-]{20,}\b")),
+    ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
+    ("jwt_token", re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\b")),
+    ("pem_private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL)),
 ]
 
 # A generic "long mixed-alphanumeric string" entropy heuristic was tried and
