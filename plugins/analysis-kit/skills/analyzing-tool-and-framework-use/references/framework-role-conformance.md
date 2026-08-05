@@ -42,6 +42,14 @@ Detect:
 * companion-generated plans not reviewed against governing-method plans;
 * repeated correction of companion-generated scope.
 
+## GG-SAD/GSD Gate-Order and Phase-Permission Checks
+
+This subsection applies only to the GG-SAD (Governing Method) + GSD (Execution Companion) pairing specifically — no other framework in `assets/framework-signatures.json` has an equivalent gate model defined, so don't generalize these checks to any other detected framework. Run these alongside the Generic Checks above, not instead of them, whenever this pairing is detected.
+
+* **Gate-order:** did GSD begin substantive work (edits, plan generation) only after the applicable GG-SAD gate for that phase had actually evaluated and passed — not merely after GSD's own internal phase counter advanced? A phase transition driven solely by GSD's own state, with no corresponding GG-SAD gate evaluation, is a gate-order violation even if GSD's output looks otherwise correct.
+* **Phase-permission (write boundary):** did GSD avoid writing to artifacts scoped to a GG-SAD phase that hadn't started yet? Check GSD's derived-artifact directory (`.planning/`) for content dated or scoped to a later phase than the one GG-SAD's own state file shows as current.
+* **Completion-claim evidence:** was a phase-completion or gate-passed claim made in GSD's own output (a `.planning/` status note, a ship confirmation) without evidence that the GG-SAD gate itself evaluated it? This is the sequencing counterpart to the Generic Authority checks' "claims a gate has passed without governing-method evaluation" — that check catches the claim itself; this one catches whether the claim's *timing* lines up with when the gate actually ran.
+
 ## Per-Framework Notes
 
 | Framework | Confidence | Notes |
