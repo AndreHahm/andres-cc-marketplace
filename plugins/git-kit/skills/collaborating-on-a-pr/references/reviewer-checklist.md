@@ -24,3 +24,16 @@ review on the files you're looking at), which is exactly what Tier 2's parsing l
 so this skill reuses that parsing step directly (via `Read` on the same reference file) rather than
 forking a second copy of CODEOWNERS-matching logic. Tiers 1 and 3 answer a merge-rights question this
 skill never asks, so they're deliberately skipped.
+
+## Re-mapped Tier 2 Branches
+
+Tier 2 was written to end in a merge verdict (`MERGE ALLOWED`/`MERGE NOT ALLOWED`), which this skill
+never presents — reusing its logic means re-mapping two of its branches to informational output instead:
+
+- **No `.github/CODEOWNERS` file at all** — Tier 2 returns `MERGE NOT ALLOWED` with a bootstrap
+  suggestion. This skill states the fact ("no CODEOWNERS file") without the merge-gate wording or the
+  bootstrap directive; unrestricted reviewing isn't Tier 2's concern to gate here.
+- **`@org/team` entries** — Tier 2's own documented limitation (its step 4) is that it only matches
+  direct `@username` entries, explicitly flagged there as "state this to the user if it matters." This
+  skill carries that caveat forward whenever a matched PR's CODEOWNERS file includes team handles, so a
+  team-covered reviewer isn't told they're unmatched when GitHub itself would count them.
