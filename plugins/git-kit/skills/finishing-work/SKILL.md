@@ -7,7 +7,7 @@ description: >-
   or "get back to a clean main". Never deletes branches or worktrees itself — hands off to `/git-cleanup`
   for that.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr view:*), Bash(git checkout:*), Bash(git pull:*), Bash(git fetch:*), Bash(git status:*), Bash(git worktree:*), Bash(git branch:*)
+allowed-tools: Bash(gh pr view:*), Bash(gh repo view:*), Bash(git checkout:*), Bash(git pull:*), Bash(git fetch:*), Bash(git status:*), Bash(git worktree list:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*)
 ---
 
 # Finishing Work
@@ -31,15 +31,28 @@ branch", "get back to a clean main".
 
 ## Instructions
 
-1. **Confirm the PR actually merged**: `git branch --show-current` (for the report). `gh pr view
-   $ARGUMENTS --json state,mergedAt`. If `state` isn't `MERGED` (still open, or closed without merging),
-   tell the user exactly which state it's in and stop — don't sync main on an assumption.
-2. **Return to main**: `git checkout main`, then `git pull --ff-only`. If that fails (diverged local
-   main), tell the user why and stop rather than force anything.
+1. **Confirm the PR actually merged**: capture the current branch with `git branch --show-current` (used
+   only to detect the mismatch below — step 4's own worktree check uses `headRefName`, not this value).
+   Run `gh pr view $ARGUMENTS --json state,mergedAt,headRefName,url`. If `state` isn't `MERGED` (still
+   open, or closed without merging), tell the user exactly which state it's in and stop — don't sync
+   main on an assumption. If `$ARGUMENTS` was given, check whether the returned `headRefName` differs
+   from the branch just captured, or the returned `url`'s `<owner>/<repo>` segment differs from
+   `gh repo view --json nameWithOwner --jq .nameWithOwner` (the current repository) — on either
+   mismatch, stop and ask via `AskUserQuestion` whether to proceed anyway rather than silently
+   continuing on an unrelated PR's merge state.
+2. **Return to main**: resolve the actual default branch rather than assuming `main` —
+   `git symbolic-ref refs/remotes/origin/HEAD` (falling back to `main` if that fails, e.g. no `origin`
+   remote configured), then `git checkout <resolved-branch>`, then `git pull --ff-only`. If the checkout
+   or pull fails (diverged local branch, or the branch already checked out in another worktree), tell
+   the user why and stop rather than force anything. `allowed-tools` grants `Bash(git checkout:*)`
+   broadly for this step since the resolved branch name is dynamic and can't be statically pinned — this
+   skill never runs the file-restore form (`git checkout -- <path>`), only branch checkout.
 3. **Prune**: `git fetch --prune` to drop stale remote-tracking refs for branches deleted on the remote.
 4. **Verify clean state**: `git status --porcelain` on the current worktree must come back empty. Also
-   run `git worktree list` — if another worktree is still tied to the just-merged branch, flag it
-   (especially if it has uncommitted changes) without touching it.
+   run `git worktree list` and compare against the PR's `headRefName` from step 1 (not the
+   `git branch --show-current` value, which only served step 1's own mismatch check) — if another
+   worktree is still checked out on that specific branch, flag it (especially if it has uncommitted
+   changes) without touching it.
 5. **Hand off**: tell the user local `main` is synced and current, and that `/git-cleanup` is the next
    step to review and delete the merged branch (and worktree, if any). Never invoke `git-cleanup`
    automatically — it has `disable-model-invocation: true` by design and only runs on direct user
@@ -58,5 +71,8 @@ branch", "get back to a clean main".
 **Quality gates:**
 - [ ] Step 1 always checks actual PR state via `gh pr view` — never assumes merged from context alone
 - [ ] A not-yet-merged PR always stops the flow before touching `main`
+- [ ] Step 1 always binds the merge confirmation to a specific branch and repository (`headRefName`,
+      `nameWithOwner`) — never assumes `$ARGUMENTS` refers to the current branch/repo without checking,
+      and always stops to ask on a mismatch rather than continuing silently
 - [ ] Step 5 always tells the user to run `/git-cleanup` themselves — never invokes it via `Skill()`
-- [ ] A diverged local `main` at step 2 always stops rather than force-syncing
+- [ ] A diverged local default branch at step 2 always stops rather than force-syncing
