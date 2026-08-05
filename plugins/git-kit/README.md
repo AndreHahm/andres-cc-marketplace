@@ -1,6 +1,6 @@
 # Git Plugin
 
-Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management.
+Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch lifecycle setup and post-merge sync, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management.
 
 ## Plugin Target
 
@@ -11,7 +11,7 @@ Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, 
 
 ## Overview
 
-`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management. Two `PreToolUse` hooks hard-block raw `git commit`/`gh pr create`/`gh pr merge` calls that bypass these skills — see Hooks below.
+`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management. Two `PreToolUse` hooks hard-block raw `git commit`/`gh pr create`/`gh pr merge` calls that bypass these skills — see Hooks below.
 
 Several skills (`create-pr`, `gh-operations`) require GitHub CLI (`gh`) for full functionality.
 
@@ -90,8 +90,10 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 
 | Skill | Use when |
 |---|---|
+| `starting-work` | Syncing local main and creating a properly named branch (or worktree) to start new work |
 | `commit` | Creating well-formatted commits with conventional commit messages |
 | `create-pr` | Creating pull requests using GitHub CLI with proper templates and formatting |
+| `collaborating-on-a-pr` | Linking a related issue when creating a PR, or acting as a reviewer — commenting, approving, requesting changes, checking CODEOWNERS context |
 | `gh-operations` | Working with pull requests, issues, repositories, workflows, or the GitHub API via `gh` |
 | `git-worktrees` | Working on multiple branches simultaneously without stashing |
 | `git-notes` | Attaching metadata to commits without changing history |
@@ -103,6 +105,7 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 | `github-issue-creator` | Turning raw notes, error logs, or screenshots into a structured GitHub issue markdown file |
 | `dependency-updater` | Scanning package manifests across ecosystems for outdated dependencies, flagging monorepo version conflicts, and proposing updates with confirmation before applying |
 | `merge-pr` | Checking whether a PR is ready to merge (draft/CI/review status), verifying the caller has merge rights, and merging (always with confirmation, never automatically) |
+| `finishing-work` | Syncing back to a clean, current main after a PR merges, before handing off to `git-cleanup` for branch/worktree deletion |
 | `manage-codeowners` | Bootstrapping and maintaining `.github/CODEOWNERS`, a dependency for `merge-pr`'s rights check |
 
 ## Maintenance
