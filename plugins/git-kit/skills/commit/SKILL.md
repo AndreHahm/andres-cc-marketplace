@@ -1,6 +1,11 @@
 ---
 name: commit
-description: Create well-formatted commits with conventional commit messages
+description: >-
+  Create well-formatted git commits with conventional commit messages — staging review, sensitive-file
+  detection, and message confirmation before running `git commit`. Use when committing changes, running
+  `/commit`, asked to "commit this", "create a commit", "commit and push", or amending the last commit
+  with `--amend`. Shapes and executes a single commit's message; for deciding whether to split a diff
+  into multiple commits, see standalone-commits instead.
 argument-hint: Optional flags (--no-verify, --amend, --push) followed by an optional commit message
 model: haiku
 allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git config:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:create-pr)
@@ -9,6 +14,21 @@ allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*)
 # Claude Command: Commit
 
 Your job is to create well-formatted commits with conventional commit messages.
+
+## When to Use
+
+Creating a commit for currently staged (or about-to-be-staged) changes — conventional commit message
+formatting, sensitive-file scanning, staging confirmation, and optional push/PR follow-through. Triggers:
+`/commit`, "commit this", "commit and push", "amend the last commit", or any request to turn staged/
+unstaged changes into a properly formatted commit.
+
+## When NOT to Use
+
+- **Deciding whether to split a diff into multiple commits, ordering multi-file changes into
+  dependency-ordered waves, or picking which of several pending changes to stage first** — that's
+  `standalone-commits`'s job (`Skill(git-kit:standalone-commits)`). `commit` only shapes and executes
+  the message for whatever is already staged; step 10 below is a lightweight "multiple concerns?"
+  signal, not the actual splitting procedure.
 
 ## Flags
 
@@ -57,8 +77,15 @@ CRITICAL: Perform the following steps exactly as described:
    If any are detected, warn the user and unstage them (`git restore --staged <file>`) before continuing.
 8. Performs a `git diff --cached` to understand what changes are being committed
 9. **Test-behavior-change check**: scan the staged diff for any `skills/*/SKILL.md`, `skills/*/references/*.md`, or `agents/*.md` change that alters guidance or instructions — per `.claude/rules/require-tests-for-behavior-changes.md`'s definition (a change to what a component actually does when followed on some input; excludes deterministic script/code logic changes and prose fixes that only restore already-intended behavior). If any staged file matches, ask via `AskUserQuestion`: "This looks like it changes skill/agent behavior. Has it been tested?" with options covering the mechanisms in `require-tests-for-behavior-changes.md` (a `skill-tester` eval run, the Testing & Validation checklist, the trigger-phrase smoke check), plus "No — commit anyway" and "No — stop, let me test first". This ask is mandatory whenever the diff matches — never skip it silently — but the answer, including "commit anyway", is the user's call. On "stop, let me test first", halt here without committing.
-10. Analyzes the diff to determine if multiple distinct logical changes are present
-11. If multiple distinct changes are detected, suggests breaking the commit into multiple smaller commits
+10. **Check whether this is a single logical change**: scan the diff for signs of multiple unrelated
+    concerns (different top-level directories/domains touched, a mix of feature/fix/refactor/docs
+    changes, or unrelated file types changed together). This is a lightweight signal, not a splitting
+    procedure — see step 11.
+11. If step 10 finds signs of multiple concerns, tell the user and point them to
+    `Skill(git-kit:standalone-commits)` for the actual splitting/ordering/wave-planning logic
+    (dependency-ordered waves, acceptance checks, staging workflow) instead of re-deriving a split
+    here. Continue `commit`'s own flow only for the single commit currently staged (or whatever subset
+    the user chooses to keep in this commit).
 12. For each commit (or the single commit if not split), creates a commit message using conventional commit format (no emoji — see Best Practices). Include a body when the reason isn't obvious from the diff alone (recommended, not required — see Best Practices). Include a footer trailer only when it applies: a `BREAKING CHANGE:` trailer when the subject uses `!`, a `Refs:`/`Closes:` trailer when the conversation named a specific issue this commit relates to or resolves, and a `Related-PR:` trailer when the conversation named a specific related PR. Don't ask the user for footer content on every commit — only include a trailer when there's a concrete breaking change, issue, or PR already in view (see Commit Message Footer below).
 13. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly. **Immediately before running `git commit`** (right after confirmation, or right before committing directly when confirmation is off), run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` — this writes the marker git-kit's commit-guard hook requires; it must be written right before the commit, not earlier in this run, since the hook only accepts a marker up to 60 seconds old.
 14. **Amend**: if `--amend` was given, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` immediately before running it, then use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
@@ -101,16 +128,6 @@ Add a footer — a blank line after the subject/body, then one or more trailer l
 | `Related-PR:` | The commit depends on, supersedes, or otherwise relates to another PR | `Related-PR: #<pr-number>` |
 
 Multiple trailers can appear together, one per line. Only include a trailer when the conversation already named a specific issue, PR, or breaking-change detail — don't ask the user to supply one just to fill out the section.
-
-## Guidelines for Splitting Commits
-
-When analyzing the diff, consider splitting commits based on these criteria:
-
-1. **Different concerns**: Changes to unrelated parts of the codebase
-2. **Different types of changes**: Mixing features, fixes, refactoring, etc.
-3. **File patterns**: Changes to different types of files (e.g., source code vs documentation)
-4. **Logical grouping**: Changes that would be easier to understand or review separately
-5. **Size**: Very large changes that would be clearer if broken down
 
 ## Examples
 
