@@ -2,7 +2,7 @@
 name: create-pr
 description: Create pull requests using GitHub CLI with proper templates and formatting
 argument-hint: None required - interactive guide for PR creation
-allowed-tools: Bash(gh pr:*), Bash(gh auth:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Read, Skill(git-kit:commit)
+allowed-tools: Bash(gh pr:*), Bash(gh auth:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:commit)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -65,7 +65,7 @@ Before creating a PR, check for uncommitted changes:
 
 3. **Ask draft vs. ready-to-merge**: use `AskUserQuestion` — "Create this PR as a draft, or ready-to-merge?" with options "Draft (default)" and "Ready-to-merge". Don't assume draft silently; the user may want to skip the draft step entirely (e.g. a small, already-reviewed change). Record the answer as the `--draft` decision for the next step.
 
-4. Use the `gh pr create` command to create a new pull request, including `--draft` only if the previous step's answer was "Draft":
+4. Immediately before creating the PR, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-create create-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then use the `gh pr create` command to create a new pull request, including `--draft` only if the previous step's answer was "Draft":
 
    ```bash
    # Basic command structure (draft)

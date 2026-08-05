@@ -3,7 +3,7 @@ name: commit
 description: Create well-formatted commits with conventional commit messages
 argument-hint: Optional flags (--no-verify, --amend, --push) followed by an optional commit message
 model: haiku
-allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git config:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Read, Skill(git-kit:create-pr)
+allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git config:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:create-pr)
 ---
 
 # Claude Command: Commit
@@ -31,6 +31,7 @@ Staging, commit confirmation, and message-length targets are read from a setting
 | `commit_auto_stage` | `false` | When nothing is staged, ask what to stage instead of auto-staging everything |
 | `commit_first_line_soft_limit` | `50` | Recommended max length for the first line |
 | `commit_first_line_hard_limit` | `72` | Hard max length for the first line |
+| `commit_body_max_lines` | `5` | Recommended max lines for the body, when one is included |
 | `commit_auto_push` | `false` | After a successful commit, push without asking |
 | `push_auto_pr` | `false` | After a successful push (via `--push` or `commit_auto_push`), create a PR without asking (if none is already open) |
 
@@ -40,7 +41,7 @@ Staging, commit confirmation, and message-length targets are read from a setting
 
 CRITICAL: Perform the following steps exactly as described:
 
-1. **Read settings**: Read the git-tracked defaults from `${CLAUDE_PLUGIN_ROOT}/git-kit.settings.json` (`enabled`, `commit_confirm_before_commit`, `commit_auto_stage`, `commit_first_line_soft_limit`, `commit_first_line_hard_limit`, `commit_auto_push`, `push_auto_pr`). Then check for `.claude/git-kit.local.json` in the project root — if it exists and its own `enabled` isn't `false`, its fields override the corresponding default for any field it sets.
+1. **Read settings**: Read the git-tracked defaults from `${CLAUDE_PLUGIN_ROOT}/git-kit.settings.json` (`enabled`, `commit_confirm_before_commit`, `commit_auto_stage`, `commit_first_line_soft_limit`, `commit_first_line_hard_limit`, `commit_body_max_lines`, `commit_auto_push`, `push_auto_pr`). Then check for `.claude/git-kit.local.json` in the project root — if it exists and its own `enabled` isn't `false`, its fields override the corresponding default for any field it sets.
 2. **Trust check (security)**: If `.claude/git-kit.local.json` exists and set `commit_confirm_before_commit`, `commit_auto_stage`, `commit_auto_push`, or `push_auto_pr`, check whether the file is tracked by git: `git ls-files --error-unmatch .claude/git-kit.local.json`. A git-tracked copy could have been committed by anyone with repo write access — including an attacker aiming to silently weaken safety gates for the next person who runs `/commit`. So if the file IS tracked (command exits 0), discard its values for those four fields and use the `git-kit.settings.json` defaults instead, regardless of what the local file says. Only an untracked (genuinely local, gitignored) `.claude/git-kit.local.json` may override any of these gates. The length-limit and `pr_merge_type`/`merge_auto_delete_branch`-style fields aren't security-relevant and may be honored either way, tracked or not.
 3. **Branch check**: Checks if current branch is `master` or `main`. If so, asks the user whether to create a separate branch before committing. If user confirms a new branch is needed, creates one using the pattern `<type>/<description>` (e.g., `feature/add-new-command`)
 4. Unless specified with `--no-verify`, automatically runs pre-commit checks like `pnpm lint` or similar depending on the project language.
@@ -58,9 +59,9 @@ CRITICAL: Perform the following steps exactly as described:
 9. **Test-behavior-change check**: scan the staged diff for any `skills/*/SKILL.md`, `skills/*/references/*.md`, or `agents/*.md` change that alters guidance or instructions — per `.claude/rules/require-tests-for-behavior-changes.md`'s definition (a change to what a component actually does when followed on some input; excludes deterministic script/code logic changes and prose fixes that only restore already-intended behavior). If any staged file matches, ask via `AskUserQuestion`: "This looks like it changes skill/agent behavior. Has it been tested?" with options covering the mechanisms in `require-tests-for-behavior-changes.md` (a `skill-tester` eval run, the Testing & Validation checklist, the trigger-phrase smoke check), plus "No — commit anyway" and "No — stop, let me test first". This ask is mandatory whenever the diff matches — never skip it silently — but the answer, including "commit anyway", is the user's call. On "stop, let me test first", halt here without committing.
 10. Analyzes the diff to determine if multiple distinct logical changes are present
 11. If multiple distinct changes are detected, suggests breaking the commit into multiple smaller commits
-12. For each commit (or the single commit if not split), creates a commit message using conventional commit format (no emoji — see Best Practices)
-13. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly.
-14. **Amend**: if `--amend` was given, use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
+12. For each commit (or the single commit if not split), creates a commit message using conventional commit format (no emoji — see Best Practices). Include a body when the reason isn't obvious from the diff alone (recommended, not required — see Best Practices). Include a footer trailer only when it applies: a `BREAKING CHANGE:` trailer when the subject uses `!`, a `Refs:`/`Closes:` trailer when the conversation named a specific issue this commit relates to or resolves, and a `Related-PR:` trailer when the conversation named a specific related PR. Don't ask the user for footer content on every commit — only include a trailer when there's a concrete breaking change, issue, or PR already in view (see Commit Message Footer below).
+13. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly. **Immediately before running `git commit`** (right after confirmation, or right before committing directly when confirmation is off), run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` — this writes the marker git-kit's commit-guard hook requires; it must be written right before the commit, not earlier in this run, since the hook only accepts a marker up to 60 seconds old.
+14. **Amend**: if `--amend` was given, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` immediately before running it, then use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
 15. **Push**: push after a successful commit when `--push` was given (explicit override, always pushes regardless of setting), or when `commit_auto_push` is `true`. Otherwise, when `commit_auto_push` is `false` and no `--push` flag was given, ask via `AskUserQuestion` whether to push. If push fails because there's no upstream, suggest `git push -u origin <branch>`.
 16. **Auto-PR**: skip this step entirely if `commit` was invoked as a nested dependency from `create-pr`'s own pre-flight check (i.e. this run's instructions say to skip Auto-PR) — `create-pr` is about to create the PR itself right after this run returns, so running this step too would create a duplicate PR or nest `create-pr` inside itself. Otherwise, after a successful push (from step 15, either path), check `gh pr view --json number` for the current branch. If a PR is already open, skip this step entirely. Otherwise: when `push_auto_pr` is `true`, invoke `Skill(git-kit:create-pr)` directly; when `false`, ask via `AskUserQuestion` whether to create one now, and invoke `Skill(git-kit:create-pr)` only on yes.
 17. **Show the result**: commit hash, files changed, insertions/deletions, and push status (if a push happened)
@@ -84,8 +85,22 @@ CRITICAL: Perform the following steps exactly as described:
 - **Breaking changes**: Add `!` before the colon, e.g. `feat!:` or `refactor(api)!:`
 - **Present tense, imperative mood**: Write commit messages as commands (e.g., "add feature" not "added feature")
 - **Concise first line**: Aim for `commit_first_line_soft_limit` characters (default 50), hard limit `commit_first_line_hard_limit` (default 72)
-- **Body (optional)**: 1-2 lines max, explaining WHY the change was made, not WHAT changed (the diff already shows that)
+- **Body (recommended, not required)**: explain WHY the change was made, not WHAT changed (the diff already shows that). Up to `commit_body_max_lines` lines (default 5). A one-line subject is fine when the diff is genuinely self-explanatory — don't pad a body onto a change that doesn't need one.
+- **Footer (optional)**: see Commit Message Footer below for the trailer format (breaking changes, related issues, related PRs)
 - **Emoji**: Do not use emoji in commit messages
+
+## Commit Message Footer
+
+Add a footer — a blank line after the subject/body, then one or more trailer lines — only when it applies. Never fabricate a trailer with no real content behind it.
+
+| Trailer | When to include | Format |
+|---|---|---|
+| `BREAKING CHANGE:` | The subject uses `!` (e.g. `feat!:`) | `BREAKING CHANGE: <what breaks, and migration guidance>` |
+| `Refs:` | The commit relates to an issue without resolving it | `Refs: #<issue-number>` |
+| `Closes:` | The commit resolves an issue (GitHub auto-closes it on merge to the default branch) | `Closes: #<issue-number>` |
+| `Related-PR:` | The commit depends on, supersedes, or otherwise relates to another PR | `Related-PR: #<pr-number>` |
+
+Multiple trailers can appear together, one per line. Only include a trailer when the conversation already named a specific issue, PR, or breaking-change detail — don't ask the user to supply one just to fill out the section.
 
 ## Guidelines for Splitting Commits
 
@@ -112,6 +127,19 @@ Good commit messages (first line only):
 - refactor: simplify error handling logic in parser
 - chore: improve developer tooling setup process
 - style: reorganize component structure for better readability
+
+Commit with a body and footer:
+
+```
+fix(auth)!: require re-authentication after password change
+
+Sessions issued before a password change stayed valid indefinitely,
+so a compromised session survived the one action meant to kill it.
+
+BREAKING CHANGE: existing sessions are invalidated on password change;
+clients must handle a 401 and re-prompt for login.
+Closes: #482
+```
 
 Example of splitting commits:
 - First commit: feat: add new solc version type definitions
