@@ -1,6 +1,6 @@
 # Analysis Kit
 
-Session analysis toolkit for Claude Code: component retrospectives, tool/framework auditing, actor behavior analysis, governance and conflict detection, session/specification comparison, recurring-pattern mining, and classified improvement recommendations — all grounded in a session or date range, with reports persisted for later reference.
+Session analysis toolkit for Claude Code: component retrospectives, tool/framework auditing, actor behavior analysis, governance and conflict detection, session/specification comparison, recurring-pattern mining, cross-report findings review, and classified improvement recommendations — all grounded in a session or date range, with reports persisted for later reference.
 
 ## Plugin Target
 
@@ -15,11 +15,13 @@ Session analysis toolkit for Claude Code: component retrospectives, tool/framewo
 
 ## Overview
 
-`analysis-kit` provides 8 skills over a shared deterministic `scripts/` core (component/rule inventory, framework fingerprinting, structural diffing, sequence mining, usage aggregation — see the Skills table below for what each skill does). Reports from every skill are persisted under `.claude/output/<skill-name>/`, one file per run, so later runs can reference a specific prior report.
+`analysis-kit` provides 9 skills over a shared deterministic `scripts/` core (component/rule inventory, framework fingerprinting, structural diffing, sequence mining, usage aggregation, session parsing, secret redaction — see the Skills table below for what each skill does). Reports from every skill are persisted under `.claude/output/<skill-name>/`, one file per run, so later runs can reference a specific prior report. Before any report is written, every skill runs it through `scripts/redact_secrets.py` — a shared pass that strips common secret-shaped patterns (Authorization/Bearer headers, `.env`-shaped lines, known cloud key prefixes) without ever blocking the write.
 
 This plugin is standalone — it has no dependency on any other plugin.
 
-**Two deliberate scope limits, not oversights:** no skill parses raw Claude Code session-log files — the real format was never confirmed as stable, so every skill works from conversation context plus (for scope before the current conversation) pasted transcripts instead. And `mining-recurring-patterns`' token/time reporting only ever aggregates subagent-dispatch usage figures (the one source of real usage data a skill can actually observe) — it never claims whole-session totals, since no skill can measure those directly.
+**Real session data, where it's available.** Five skills with a date-range scope (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`) first try `scripts/session_parser.py` to parse Claude Code's own local session JSONL (format confirmed against a real file, not guessed), then `scripts/codex_session_parser.py` for a named Codex CLI session file (format unconfirmed, so it's parsed defensively — detect, attempt, report unparseable rather than guess), and only fall back to asking the user to paste transcript excerpts when neither produces usable data. Deliberately not built: a full canonical event schema or byte-offset/event-ID provenance — both scripts report light provenance only (source file, session id, timestamp range). `mining-recurring-patterns`' token/time reporting reflects this: it ranks top-10 tokens/duration by skill invocation when session data is available, and always still ranks top-10 by subagent dispatch (the one source of real usage data every skill can observe regardless of session-file availability) — it never claims whole-session totals, since no skill can measure those directly.
+
+**Shared severity vocabulary.** `references/severity-vocabulary.md` (plugin root, not under any single skill) defines a 4-tier scale (Critical/Major/Minor/Informational) that every skill's own native severity terms — P1/P2/P3, Violated/Compliant/Ambiguous, and so on — map onto, so a reader (or `reviewing-analysis-findings`) can compare two differently-worded severity claims on one consistent basis. It doesn't replace any skill's own vocabulary; each skill keeps its native terms.
 
 **Two more disclosed design choices, recorded here rather than left implicit:** `analyzing-governance-and-conflicts` and `comparing-session-to-specification` both `Glob` a generic `specs/` directory as one of several spec-document search locations — this is unrelated to, and shouldn't be confused with, the low-confidence Spec Kit marker of the same name (`specs/`) in `analyzing-tool-and-framework-use`'s `assets/framework-signatures.json`; the two uses of the string are coincidental, not a shared assumption. Separately, four skills (`analyzing-plugin-components`, `comparing-sessions`, `comparing-session-to-specification`, `generating-analysis-recommendations`) depend on reading prior reports from `.claude/output/`, which is gitignored by convention — this persist-then-read pipeline is an accepted, intentional design choice, not an oversight. It's a deliberate exception to the general rule against referencing a gitignored path as a live dependency, justified on two grounds specific to this case: every consuming site degrades gracefully when the artifact is absent (offers to generate a baseline, skips, or falls back to pasted findings, rather than failing), and the artifacts in question are self-produced by this same plugin's own skills, not an external dependency that could vanish for reasons outside the plugin's control.
 
@@ -70,8 +72,9 @@ cc --plugin-dir /path/to/analysis-kit
 | `analyzing-governance-and-conflicts` | Checking rule/boundary conformance, or finding conflicts between agents, rules, specs, or sessions |
 | `comparing-sessions` | Comparing this session to a prior one, or checking whether a prior session's suggestions were acted on |
 | `comparing-session-to-specification` | Checking whether a session's decisions complied with a specification, architecture, or constitution document |
-| `mining-recurring-patterns` | Finding repeated action sequences, checking for repeated questions, or reviewing subagent token/time hotspots |
+| `mining-recurring-patterns` | Finding repeated action sequences, checking for repeated questions, or reviewing skill/subagent token/time hotspots |
 | `generating-analysis-recommendations` | Turning any finding from another analysis-kit skill into a classified WHAT/WHY/HOW action plan |
+| `reviewing-analysis-findings` | Cross-checking 2+ analysis-kit reports from the same scope for duplicate findings, contradictions, or a severity claim one report's evidence undercuts |
 
 ## Configuration
 

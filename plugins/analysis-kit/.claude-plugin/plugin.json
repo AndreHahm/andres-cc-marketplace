@@ -1,7 +1,7 @@
 {
   "name": "analysis-kit",
   "version": "1.0.0-alpha.1",
-  "description": "Session analysis toolkit for Claude Code: component retrospectives, tool/framework auditing, actor behavior analysis, governance and conflict detection, session/specification comparison, recurring-pattern mining, and classified improvement recommendations — all grounded in a session or date range, with reports persisted for later reference.",
+  "description": "Session analysis toolkit for Claude Code: component retrospectives, tool/framework auditing, actor behavior analysis, governance and conflict detection, session/specification comparison, recurring-pattern mining, cross-report findings review, and classified improvement recommendations — all grounded in a session or date range, with reports persisted for later reference.",
   "author": {
     "name": "Andre Hahm"
   }
