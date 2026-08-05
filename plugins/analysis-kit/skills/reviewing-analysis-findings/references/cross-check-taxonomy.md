@@ -26,11 +26,11 @@ Three categories for classifying a candidate finding pair across two analysis-ki
 
 ## Severity Undercut
 
-**Definition:** one report rates a finding at a given severity (in its own native vocabulary — P1/P2/P3, Violated, Critical, etc.), but another report's own cited evidence for a related or the same finding implies a different severity than the first report claims, once both are translated onto `../../references/severity-vocabulary.md`'s shared scale.
+**Definition:** one report rates a finding at a given severity (in its own native vocabulary — P1/P2/P3, Violated, Critical, etc.), but another report's own cited evidence for a related or the same finding implies a different severity than the first report claims, once both are translated onto `../../../references/severity-vocabulary.md`'s shared scale.
 
 **Detection guidance:**
-- Translate both reports' severity terms into the shared 4-tier scale (Critical/Major/Minor/Informational) using `severity-vocabulary.md`'s mapping table before comparing — don't compare native vocabularies directly, since "P2" and "Violated" aren't inherently comparable without that translation.
+- Translate both reports' severity terms into the shared 4-tier scale (Critical/Major/Minor/Informational) using `../../../references/severity-vocabulary.md`'s mapping table before comparing — don't compare native vocabularies directly, since "P2" and "Violated" aren't inherently comparable without that translation.
 - The undercut has to come from the *other report's own evidence*, not from this skill's own independent judgment about how severe something should be — this skill cross-checks reports against each other, it doesn't re-adjudicate severity from scratch.
 - A common real case: report A calls something Major based on limited evidence; report B, examining the same subject in more depth, cites evidence that would only support Minor (or vice versa, evidence supporting Critical when report A said Major). Either direction counts.
 
-**What to report:** state both reports' severity claims (native term + translated tier), the specific evidence from the undercutting report, and flag the discrepancy — inherit the lower of the two severities as the flagged value (a conservative default until a human resolves which is right), per `severity-vocabulary.md`'s own guidance for this skill's entry in its mapping table.
+**What to report:** state both reports' severity claims (native term + translated tier), the specific evidence from the undercutting report, and flag the discrepancy — inherit the lower of the two severities as the flagged value (a conservative default until a human resolves which is right), per `../../../references/severity-vocabulary.md`'s own guidance for this skill's entry in its mapping table.

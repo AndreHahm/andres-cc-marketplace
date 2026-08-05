@@ -1,6 +1,6 @@
 # Severity Vocabulary
 
-Shared across every `analysis-kit` skill — the first reference file in this plugin that lives outside any single skill's own `references/` directory, since its whole purpose is to be readable by more than one skill.
+Shared across the `analysis-kit` skills that actually rate findings by severity — the first reference file in this plugin that lives outside any single skill's own `references/` directory, since its whole purpose is to be readable by more than one skill. Not every skill has a severity-rated vocabulary to ground: `analyzing-actor-behavior`, `mining-recurring-patterns`, and `comparing-sessions` report findings without a severity scale, and `generating-analysis-recommendations` rates complexity/risk/benefit into priority buckets (Quick Win/Strategic Investment/Nice-to-Have/Reconsider) — a different axis, not a severity scale. Those four skills have no mapping row below because they have nothing to map, not because of an oversight.
 
 This does **not** replace any skill's existing severity terms (P1/P2/P3, Compliant/Violated/Ambiguous, and so on) — each skill keeps its own vocabulary, since that vocabulary is shaped by what the skill actually classifies. This file exists so a reader (or `reviewing-analysis-findings`, comparing two reports from different skills) can ground two differently-worded severity claims on one consistent scale, without either skill having to rename its own terms.
 
