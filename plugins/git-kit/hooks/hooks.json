@@ -1,0 +1,24 @@
+{
+  "description": "Hard-blocks raw git/gh commands that bypass git-kit's own commit/PR skills.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-raw-commit.sh",
+            "timeout": 5,
+            "onError": "warn"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-raw-pr-ops.sh",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ]
+  }
+}

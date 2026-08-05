@@ -11,7 +11,7 @@ Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, 
 
 ## Overview
 
-`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management.
+`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management. Two `PreToolUse` hooks hard-block raw `git commit`/`gh pr create`/`gh pr merge` calls that bypass these skills — see Hooks below.
 
 Several skills (`create-pr`, `gh-operations`) require GitHub CLI (`gh`) for full functionality.
 
@@ -59,6 +59,7 @@ cc --plugin-dir /path/to/git-kit
   "commit_auto_stage": false,
   "commit_first_line_soft_limit": 50,
   "commit_first_line_hard_limit": 72,
+  "commit_body_max_lines": 5,
   "commit_auto_push": false,
   "push_auto_pr": false,
   "pr_merge_type": "REBASE",
@@ -75,6 +76,7 @@ To override any of these per project, run `/create-git-kit-local-json` — it cr
 | `commit_auto_stage` | `false` | When nothing is staged, auto-stage everything (`true`) instead of asking what to stage (`false`) |
 | `commit_first_line_soft_limit` | `50` | Recommended max length for a commit's first line |
 | `commit_first_line_hard_limit` | `72` | Hard max length for a commit's first line |
+| `commit_body_max_lines` | `5` | Recommended max lines for the commit body, when one is included |
 | `commit_auto_push` | `false` | After a successful commit, push without asking |
 | `push_auto_pr` | `false` | After a successful push, create a PR without asking (if none is already open) |
 | `pr_merge_type` | `REBASE` | Merge strategy `merge-pr` uses: `MERGE`, `REBASE`, or `SQUASH` |
@@ -117,6 +119,17 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 - `/sync-branch` - Sync the current feature branch with the latest main branch
 - `/update-branch-name` - Update the current branch name to follow naming conventions
 - `/create-git-kit-local-json` - Create or update `.claude/git-kit.local.json`, seeded from the git-tracked default settings
+
+## Hooks
+
+`git-kit` ships two `PreToolUse` hooks (`hooks/hooks.json`) that hard-block a raw `git commit`, `gh pr create`, or `gh pr merge` invocation that bypasses this plugin's own skills:
+
+- **`guard-raw-commit.sh`** blocks a raw `git commit`. `commit` and `standalone-commits` — the two skills that legitimately run `git commit` directly — are allowlisted.
+- **`guard-raw-pr-ops.sh`** blocks a raw `gh pr create` or `gh pr merge`. `create-pr` and `merge-pr` are allowlisted.
+
+**Mechanism (marker-file handshake):** a `PreToolUse` hook has no way to know which skill is currently active, so each allowlisted skill calls `scripts/write-git-kit-marker.sh <guard-type> <skill-name>` immediately before it runs the guarded command itself. This writes a single-use marker to `$(git rev-parse --git-dir)/git-kit-marker.txt` — inside `.git/`, never `.claude/`, so it can never be accidentally committed regardless of a project's `.gitignore`. The hook checks the marker is present, matches the guard type being attempted, and is no more than 60 seconds old, then **always deletes it** whether or not it matched — a marker can't be reused for a later, unrelated raw command in the same session. Any raw invocation with no fresh, matching marker is denied, with a message pointing at the correct skill (`/commit`, `/create-pr`, `/merge-pr`).
+
+`git-rebase-sync` runs `git rebase`/`git push --force-with-lease` directly, neither of which these hooks guard, so it needs no marker.
 
 ## Attribution
 
