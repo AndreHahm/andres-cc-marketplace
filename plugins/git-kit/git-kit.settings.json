@@ -8,5 +8,6 @@
   "commit_auto_push": false,
   "push_auto_pr": false,
   "pr_merge_type": "REBASE",
-  "merge_auto_delete_branch": true
+  "merge_auto_delete_branch": true,
+  "use_worktree": true
 }

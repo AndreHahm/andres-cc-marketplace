@@ -63,7 +63,8 @@ cc --plugin-dir /path/to/git-kit
   "commit_auto_push": false,
   "push_auto_pr": false,
   "pr_merge_type": "REBASE",
-  "merge_auto_delete_branch": true
+  "merge_auto_delete_branch": true,
+  "use_worktree": true
 }
 ```
 
@@ -81,10 +82,11 @@ To override any of these per project, run `/create-git-kit-local-json` — it cr
 | `push_auto_pr` | `false` | After a successful push, create a PR without asking (if none is already open) |
 | `pr_merge_type` | `REBASE` | Merge strategy `merge-pr` uses: `MERGE`, `REBASE`, or `SQUASH` |
 | `merge_auto_delete_branch` | `true` | After `merge-pr` merges a PR, delete the just-merged branch without asking |
+| `use_worktree` | `true` | Which option `starting-work`'s plain-branch-vs-worktree question recommends by default — the question itself always still asks |
 
 Changes to `.claude/git-kit.local.json` take effect on the next invocation — no restart needed, since settings are read by each skill directly rather than a hook.
 
-**Security:** `commit_confirm_before_commit: false`, `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true` all weaken safety or trigger further automation, so `commit` only honors them from `.claude/git-kit.local.json` when that file is *not* tracked by git — it checks with `git ls-files` before applying any of them. Gitignoring the file (as instructed above, and checked by `/create-git-kit-local-json`) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or trigger unattended pushes/PR creation — `commit` falls back to the git-tracked `git-kit.settings.json` defaults for those fields instead. `pr_merge_type` and `merge_auto_delete_branch` are low-risk (a merge-strategy choice and a reversible single-branch deletion) and are honored from either file, tracked or not. `merge-pr` never auto-merges under any setting — it always asks before merging, and separately verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) first.
+**Security:** `commit_confirm_before_commit: false`, `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true` all weaken safety or trigger further automation, so `commit` only honors them from `.claude/git-kit.local.json` when that file is *not* tracked by git — it checks with `git ls-files` before applying any of them. Gitignoring the file (as instructed above, and checked by `/create-git-kit-local-json`) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or trigger unattended pushes/PR creation — `commit` falls back to the git-tracked `git-kit.settings.json` defaults for those fields instead. `pr_merge_type`, `merge_auto_delete_branch`, and `use_worktree` are low-risk (a merge-strategy choice, a reversible single-branch deletion, and which option a question recommends without ever skipping it) and are honored from either file, tracked or not. `merge-pr` never auto-merges under any setting — it always asks before merging, and separately verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) first.
 
 ## Skills
 

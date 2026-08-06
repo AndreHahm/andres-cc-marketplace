@@ -57,9 +57,19 @@ branch off", "set up a worktree for this feature".
    there instead of guessing or duplicating the list. **If either value fails validation**, tell the
    user why and ask again via `AskUserQuestion` — never pass an invalid type or description forward to
    step 4, the same "stop and explain" discipline step 1 already applies to a diverged main.
-3. **Ask worktree or plain branch**: `AskUserQuestion` — "Create a plain branch, or a separate worktree
-   for this?" See `references/worktree-decision.md` for the tradeoffs to mention if the user wants
-   guidance rather than a snap decision.
+3. **Ask worktree or plain branch**: read `use_worktree` (default `true`) the same way `commit` reads its
+   own settings — `.claude/git-kit.local.json` if it exists and sets the field, else the git-tracked
+   `${CLAUDE_PLUGIN_ROOT}/git-kit.settings.json` default. This field doesn't need the trust-boundary check
+   `commit`'s `commit_confirm_before_commit`/`commit_auto_stage` require — it never skips the question
+   below or triggers any automation on its own, it only changes which option is pre-highlighted, so honor
+   it from either file, tracked or not. Then always ask via `AskUserQuestion` — "Create a plain branch, or
+   a separate worktree for this?" — options "Plain branch" and "Worktree", with whichever `use_worktree`
+   favors listed first and suffixed `(Recommended)`: "Worktree (Recommended)" when `true` (the default,
+   chosen with multiple agents — e.g. Codex CLI alongside Claude Code — potentially working in this same
+   repo, where a separate working directory per piece of work avoids one agent's uncommitted state
+   colliding with another's), "Plain branch (Recommended)" when `false`. The setting never replaces this
+   ask — a human always makes the actual choice. See `references/worktree-decision.md` for the tradeoffs
+   to mention if the user wants guidance rather than a snap decision.
 4. **Create**:
    - Plain branch: `git checkout -b <type>/<description>`.
    - Worktree: compute a default sibling path following `git-worktrees`' own naming convention
@@ -85,11 +95,20 @@ branch off", "set up a worktree for this feature".
 - "rename this branch to match what it does now" → `/update-branch-name`
 - "I just merged, clean this up" → `finishing-work`
 
+**Verify `use_worktree` behavior:**
+- `use_worktree: true` (the default) — confirm step 3's `AskUserQuestion` still fires every time, with
+  "Worktree (Recommended)" listed first
+- `use_worktree: false` — confirm the same question fires, with "Plain branch (Recommended)" listed first
+  instead
+- Either value — confirm the setting never skips the question outright; the user's actual answer at step 3
+  always decides, regardless of which option was pre-highlighted
+
 **Quality gates:**
 - [ ] Step 1 never fast-forwards a diverged local `main` silently — always stops and tells the user
 - [ ] Step 2 never hardcodes the branch-type list — always points at `commit`'s own convention section
 - [ ] Step 2 never passes an invalid type/description forward — always re-asks on validation failure
-- [ ] Step 3's worktree-vs-branch question always uses `AskUserQuestion`, never assumed
+- [ ] Step 3's worktree-vs-branch question always uses `AskUserQuestion`, never assumed — `use_worktree`
+      only changes which option is recommended, it never skips the question
 - [ ] Step 4 never passes an unconstrained worktree-path override to `git worktree add` — always
       validates the character class and rejects any `..` path segment
 - [ ] A dirty working tree at step 1 always stops the flow with a pointer to `commit`, never proceeds
