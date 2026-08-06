@@ -188,6 +188,10 @@ This plugin is part of the `andres-cc-marketplace`. To contribute:
 3. Test locally with `cc --plugin-dir`
 4. Run `plugin-validator` and the relevant reviewer agent(s) before opening a PR
 
+## Known Issues
+
+See [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for external-tool issues discovered while working on this plugin (currently: a Codex CLI Windows sandbox bug found during Codex-integration concept work).
+
 ## Acknowledgments
 
 `plugin-devkit` began as a copy of Anthropic's official `plugin-dev` example plugin ([`anthropics/claude-plugins-official`](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/plugin-dev), Apache License 2.0) and has since incorporated structural ideas from **Reflexive-Claude-Code** by Wei Hung ([`wayne930242/Reflexive-Claude-Code`](https://github.com/wayne930242/Reflexive-Claude-Code), MIT License). See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for full attribution details.
