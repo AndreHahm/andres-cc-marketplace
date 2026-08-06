@@ -9,8 +9,8 @@ set -euo pipefail
 
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <previous-rule-number>" >&2
-  echo "Example: when adding R25, run: $0 24" >&2
-  echo "  (sweeps for stale R1-R24 / R1<en-dash>R24 / \"24 total\" / \"24 enabled\" mentions)" >&2
+  echo "Example: when adding R28, run: $0 27" >&2
+  echo "  (sweeps for stale R1-R27 / R1<en-dash>R27 / \"27 total\" / \"27 enabled\" mentions)" >&2
   exit 1
 fi
 

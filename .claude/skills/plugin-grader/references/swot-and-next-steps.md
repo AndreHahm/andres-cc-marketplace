@@ -8,7 +8,7 @@
 
 Derive every SWOT entry directly from the computed dimension scores and gates — never from free-floating impressions not traceable to a number. This keeps the SWOT auditable against the same data the score came from.
 
-- **Strengths**: every dimension scoring >= 8. State the dimension name and score, e.g. "Rule Compliance (10/10) — all 24 rules PASS."
+- **Strengths**: every dimension scoring >= 8. State the dimension name and score, e.g. "Rule Compliance (10/10) — all 23 enabled rules PASS."
 - **Weaknesses**: every dimension scoring <= 5, plus every triggered gate. State the dimension, score, and the specific finding driving it (from `findings_summary`).
 - **Opportunities**: the single highest-leverage fix per weak dimension — what specific change would move the score, not a generic "improve X." Tie each opportunity to a `prioritized_next_steps` entry.
 - **Threats**: risks external to the component's current content — a signal source it depends on that could drift (e.g. "relies on plugin-rulebook's R13 threshold; a future threshold change would re-grade this component without any edit to it"), or a dependency on another component's behavior that isn't guaranteed stable.
