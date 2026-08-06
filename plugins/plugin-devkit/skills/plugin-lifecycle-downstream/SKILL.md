@@ -147,6 +147,7 @@ Also ask, either alongside the Phase 3 offer or as a standalone follow-up at any
 - [ ] Phases 1-2 never edit a file inside the target plugin, regardless of how small or clearly-correct the fix looks — findings are recorded, not applied, until Phase 3 is explicitly approved (Phase 2's own writes to `.claude/output/` are not exceptions to this — they're outside the target plugin entirely, not a form of "editing a file" this gate restricts)
 - [ ] When a handoff report exists, it is updated in place (same path) — never duplicated into a second timestamped file
 - [ ] Phase 3's commit (if any) always happens after re-validation, never before, and always states the file list/message first
+- [ ] Phase 3's re-validation is either a fresh Phase 1-2 re-run, or an explicitly-disclosed cheaper substitute recorded as a still-open item — never a silent recomputation or partial re-check presented as equivalent to a fresh run
 - [ ] The Document step always runs after Phase 3 (or Phase 2, if Phase 3 was declined) **when Phase 3 was entered via the normal internal flow** — and its own doc-fix commit (if any) is always separate from Phase 3's commit
 - [ ] The Document step is always skipped when Phase 3 was entered via the external entry point — never double-dispatched to `plugin-documentation` alongside the external caller's own Document step
 - [ ] The Audit Report and any handoff-report update each get the standard `📄 ... written:`/`updated:` link line before the content summary
