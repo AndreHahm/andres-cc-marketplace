@@ -117,6 +117,8 @@ Group findings by conflict category, then by rule. Close with a short Top Action
 📄 Governance and Conflict Report written: `.claude/output/analyzing-governance-and-conflicts/<scope-slug>-<timestamp>.md`
 ```
 
+**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/*/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+
 ## Gotchas
 
 - **Absence of evidence ≠ absence of use.** Rules in `.claude/rules/` load automatically — check the directory even if a rule was never explicitly mentioned in conversation.
@@ -133,6 +135,7 @@ After Phase 5, verify before presenting output as final:
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
 - [ ] The drafted report was run through `redact_secrets.py` before the final `Write` — never written directly from the scratch draft
 - [ ] Every recurring error tracked in Phase 4 has both a taxonomy category and a resolved/unresolved/workaround status — never left uncategorized
+- [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when 2+ reports exist for this scope) was printed after the `📄 ... written:` line
 
 ## Reference Guide
 

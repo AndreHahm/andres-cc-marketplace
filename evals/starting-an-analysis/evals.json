@@ -1,0 +1,14 @@
+{
+  "skill_name": "starting-an-analysis",
+  "skill_path": "plugins/analysis-kit/skills/starting-an-analysis",
+  "description": "Guided front door for analysis-kit's 7 report-producing analysis skills.",
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "Ambiguous analysis request triggers guided disambiguation",
+      "prompt": "I want to start a post-session retrospective but I'm not sure which analysis-kit skill fits.",
+      "expected_output": "Skill activates and presents Phase 1's two-tier AskUserQuestion analysis-type picker, without assuming a type or dispatching to any downstream skill yet.",
+      "files": []
+    }
+  ]
+}

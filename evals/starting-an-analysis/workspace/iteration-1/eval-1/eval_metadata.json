@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/analysis-kit/skills/starting-an-analysis",
+  "assertions": [
+    {"text": "Response presents an AskUserQuestion-style multiple-choice pick for analysis type (Phase 1), not free-text guessing", "type": "functionality", "target": "response"},
+    {"text": "The Tier 1 options offered are a genuine attempt at the 4-option grouping from SKILL.md (single-session component performance / agents-tools-frameworks / rules-conflicts-patterns / compare two things), not an arbitrary list", "type": "quality", "target": "response"},
+    {"text": "No downstream skill (analyzing-*, comparing-*, generating-analysis-recommendations, reviewing-analysis-findings) is dispatched in this same turn — Phase 3's confirm-before-dispatch gate should block that", "type": "structure", "target": "response"},
+    {"text": "Response does not crash, error, or produce malformed/incomplete output", "type": "presence", "target": "response"}
+  ]
+}
