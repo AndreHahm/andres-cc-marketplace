@@ -30,7 +30,7 @@ For anything worth a full WHAT/WHY/HOW plan before deciding further, invoke `enh
 
 Reformat the approved deltas into a list matching `plugin-grader`'s real `prioritized_next_steps` schema — same reshaping as `improve-a-plugin.md` Step 3 (`rank`, `action`, `dimension` if one applies, `points_gain_estimate` as a rough estimate, `lifts_gate` always `null`).
 
-Invoke `plugin-lifecycle-downstream` (via `Skill`) targeting the plugin being enhanced, using its documented external Phase 3 entry (see `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md` Phase 3's Entry condition) with this list — skip Phases 1-2, same reasoning as `improve-a-plugin.md` Step 3. Do not reimplement apply → re-validate → commit here.
+Invoke `plugin-lifecycle-downstream` (via `Skill`) targeting the plugin being enhanced, using its documented external Phase 3 entry (see `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md` Phase 3's Entry condition) with this list — skip Phases 1-2, same reasoning as `improve-a-plugin.md` Step 3. Do not reimplement apply → re-validate → commit here — nor its Open-PR/Branch-scope pre-flight checks, which downstream's own Phase 3 already runs.
 
 **Exit criteria:** Downstream's Phase 3 reports all approved deltas applied and re-validated (fully or partially), with its own commit(s) already made.
 

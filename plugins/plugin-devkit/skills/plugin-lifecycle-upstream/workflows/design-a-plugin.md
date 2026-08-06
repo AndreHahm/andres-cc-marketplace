@@ -2,6 +2,10 @@
 
 The complete Ideate → Plan → Design → Build → Test procedure, one phase at a time. Follow this exactly — do not skip a gate.
 
+## Pre-Flight Check: Open PR
+
+Before Phase 1's own Actions — the very first thing this procedure does: run the Open-PR check from `plugin-rulebook/references/branch-and-pr-preflight.md`. If an open PR is found for the current branch, ask (merge-first / continue-anyway) before proceeding to Phase 1. If none is found, proceed straight into Phase 1 with no ask.
+
 ## Phase 1: Ideate
 
 **Entry:** `$ARGUMENTS` is a rough idea, or no Concept Card/Plan was found by Auto-Detection.
@@ -64,6 +68,7 @@ Present the component inventory and functional groups. Ask via `AskUserQuestion`
 **Entry:** Phase 3's gate passed.
 
 **Actions:**
+0. **Pre-flight: branch-scope check.** This is the first actual disk write in the whole pipeline (Phases 1-3 only ever write drafted content into the conversation or artifacts under `.claude/output/`) — before Action 1, run the Branch-scope check from `plugin-rulebook/references/branch-and-pr-preflight.md`. If the current branch isn't scoped (on `main`/`master`, or doesn't match `<type>/<description>`), ask (new-branch / continue-anyway) before proceeding. If already scoped, proceed with no ask.
 1. Invoke `plugin-development` (via `Skill`) to scaffold the plugin directory and write all designed component content from Phase 3.
 2. If the plugin directory already exists (resuming a partial build), confirm with the user before any overwrite — per `plugin-development`'s own confirm-before-overwrite discipline.
 

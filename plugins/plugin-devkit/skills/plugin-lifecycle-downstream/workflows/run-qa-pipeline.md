@@ -2,6 +2,10 @@
 
 The complete Validate → Audit+Report → Fix procedure. Phases 1-2 run automatically; Phase 3 is opt-in.
 
+## Pre-Flight: Token Cost Notice
+
+Before Phase 1's own Actions — the very first thing this procedure does, on every invocation: state plainly that this pipeline's reviewer/grader fan-out (`plugin-rulebook`, `plugin-validator`, `dependency-reviewer`, `security-reviewer`, then `plugin-grader`'s own per-component dispatch) can use enough tokens to meaningfully affect a 5-hour usage window, and ask via `AskUserQuestion`: "Continue" / "Stop — let me check usage first". Only proceed to Phase 1 on "Continue". See SKILL.md's "Token Cost Notice" for the full rationale — this step is that notice's actual procedure.
+
 ## Phase 1: Validate
 
 **Entry:** A plugin path is given or resolved from context.
@@ -55,6 +59,7 @@ Present a narrative summary to the user: overall score, any triggered gates, wea
 **Entry:** User opted in via the SKILL.md's "Suggested Next Step" prompt (the normal case — Phases 1-2 of *this* run produced the list), **or** an external caller invokes this skill directly at Phase 3 with an already-produced `prioritized_next_steps`-shaped list (each entry: `rank`, `action`, `dimension`, `points_gain_estimate`, `lifts_gate` — the exact shape `plugin-grader` writes, per `plugin-grader/references/output-schema.md`). The external-entry case exists for callers that already ran their own audit-equivalent step and don't need Phases 1-2 re-run — e.g. `plugin-lifecycle-maintenance`'s `improve-a-plugin`/`enhance-a-plugin` workflows, which derive their list from `analyzing-sessions`/`plugin-comparison` findings rather than a fresh `plugin-grader` audit. **Provenance caveat:** the only validation applied here is that the supplied list has the shape `plugin-grader` writes (`rank`/`action`/`dimension`/`points_gain_estimate`/`lifts_gate`) — this pipeline trusts the caller to have sourced the list legitimately and cannot itself verify where it actually came from.
 
 **Actions:**
+0. **Pre-flight: Open-PR and Branch-scope checks.** Phase 3 is the only phase that writes to the target plugin — before Action 1, run both checks from `plugin-rulebook/references/branch-and-pr-preflight.md`. Open-PR check: if the current branch already has an open PR, ask (merge-first / continue-anyway). Branch-scope check: if the current branch isn't scoped (`main`/`master`, or doesn't match `<type>/<description>`), ask (new-branch / continue-anyway). Both checks apply to whichever branch/repo the target plugin actually lives in — for the normal case this is the current working branch; run each independently, since a branch can fail one check without failing the other (see the reference file's "Why Two Separate Checks" section).
 1. Invoke the `enhancement-suggestor` agent (via `Agent`) against the findings list — Phase 2's own `prioritized_next_steps`/`swot.weaknesses` in the normal case, or the externally-supplied list in the external-entry case (pass an empty `swot.weaknesses` if the caller didn't supply one; `enhancement-suggestor` tolerates this).
 2. Present the classified WHAT/WHY/HOW plan to the user, then use `AskUserQuestion` (multi-select) — question: "Which Quick Wins should be applied?", one option per Quick Win — to get per-item approval.
 3. For each Quick Win the user approved: apply via the matching development skill (`skill-development`/`agent-development`/etc.) or `skill-improver-loop` for automated structural fix-review cycles, per `enhancement-suggestor`'s own "Implementing any of these is a separate step" closing note.

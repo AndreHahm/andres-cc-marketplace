@@ -12,7 +12,7 @@ description: >-
   plugin-lifecycle-downstream for QA once Test completes. For a single already-designed
   component, use the matching Design skill directly instead of this pipeline.
 argument-hint: "[rough idea, or path to an existing Concept Card/Plan]"
-allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git:*) Bash(*/test-agent-trigger.sh:*) TaskCreate TaskUpdate
+allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(git branch:*) Bash(gh pr view:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) TaskCreate TaskUpdate
 ---
 
 # Plugin Lifecycle: Upstream
@@ -22,6 +22,13 @@ Guides plugin creation through five gated phases — Ideate, Plan, Design, Build
 ## Quick Start
 
 For the common case (a rough idea, nothing built yet): run all five phases in order, stopping for approval between each, then commit and write the handoff report. See [design-a-plugin.md](workflows/design-a-plugin.md) for the full phase-by-phase procedure.
+
+## Pre-Flight Checks
+
+Two checks, run at different points in the pipeline — see `plugin-rulebook/references/branch-and-pr-preflight.md` for the exact procedure behind both:
+
+- **Open-PR check** — runs once, before Phase 1 starts (design-a-plugin.md's own first step, ahead of even Auto-Detection Logic below). Catches starting new work on a branch that already has an unmerged PR open.
+- **Branch-scope check** — runs once, right before Phase 4 (Build)'s first actual disk write — not earlier, since Phases 1-3 never write to disk (see "Design never touches disk" below). Catches building on `main`/`master` or an unscoped branch name.
 
 ## Workflow Selection
 
@@ -60,11 +67,11 @@ Before starting, check what already exists to avoid redundant work:
 | 2. Plan | `plugin-planning` | Component inventory + depth plan |
 | 3. Design | `skill-development` / `agent-development` / `command-development` / `hook-development` / `rule-development` (one per planned component, grouped by the plan's functional groups) | Designed component content, ready to write |
 | 4. Build | `plugin-development` | Scaffolded plugin directory on disk |
-| 5. Test | `skill-tester` (fast pass/fail mode, per skill component) / `agent-development`'s `scripts/test-agent-trigger.sh` (bounded smoke check, per agent component) / one manually-followed live trial against real data (per command component) | Per-component pass/fail/skipped smoke-check results |
+| 5. Test | `skill-tester` (fast pass/fail mode, per skill component) / `agent-development`'s `scripts/test-agent-trigger.sh` (bounded smoke check, per agent component) / `hook-development`'s `scripts/test-hook.sh` (bounded smoke check, per hook component) / one manually-followed live trial against real data (per command component) | Per-component pass/fail/skipped smoke-check results |
 
 There is no separate "Specify" phase — each Design skill listed above already produces complete, ready-to-write component content (full `SKILL.md`/agent `.md`/command `.md` text), so a distinct specification step would just be a redundant hop for this plugin's own skill set.
 
-Phase 5 covers skill, agent, and command components. Command components have no dispatchable quick-test tool (they aren't `Skill()`-invocable), so their bounded check is a manually-followed live trial instead: `Read` the command file and follow its documented Steps once against one small, representative real input — not a fabricated one — confirming it runs without crashing and produces plausible output. This closes a real gap: a 3-command pipeline once passed `plugin-rulebook`'s structural check cleanly but shipped with 2 functional bugs (a multi-line-command normalization bug and a session-selection bug) that were only caught later by manually running it against real data — rulebook compliance checks structure/naming/formatting, never logic. Hook and rule components still have no dedicated quick-test tool in this plugin; they remain listed in the Test results as "skipped — no quick-test tool available" rather than silently omitted, so that narrower gap stays visible in both the gate and the handoff report.
+Phase 5 covers skill, agent, hook, and command components. Command components have no dispatchable quick-test tool (they aren't `Skill()`-invocable), so their bounded check is a manually-followed live trial instead: `Read` the command file and follow its documented Steps once against one small, representative real input — not a fabricated one — confirming it runs without crashing and produces plausible output. This closes a real gap: a 3-command pipeline once passed `plugin-rulebook`'s structural check cleanly but shipped with 2 functional bugs (a multi-line-command normalization bug and a session-selection bug) that were only caught later by manually running it against real data — rulebook compliance checks structure/naming/formatting, never logic. Hook components have a real quick-test tool (`hook-development/scripts/test-hook.sh`) and get a bounded dispatch, same spirit as the agent/skill checks. Rule components still have no dedicated quick-test tool in this plugin; they remain listed in the Test results as "skipped — no quick-test tool available" rather than silently omitted, so that narrower gap stays visible in both the gate and the handoff report.
 
 **Phase 5 is a bounded smoke check, not exhaustive correctness testing.** At most 3 checks run: confirm the new component doesn't crash the harness and the test tooling itself works in this session — not that every declared trigger phrase fires correctly, and not a full eval/unit-test suite. Exhaustive per-trigger-phrase testing and eval suites are `plugin-lifecycle-downstream`'s optional Deep Test step, gated behind an explicit user decision (plugin-rulebook R26) since they run a nested LLM call per trigger phrase — real cost that a "quick" gate must not spend by default. If reaching a Phase 5 result took more than the bounded check — a tool crash, a debugging detour, an unplanned retry — state this to the user in plain language before Gate 5, not folded silently into a clean pass/fail line (plugin-rulebook R25).
 
@@ -109,11 +116,15 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 6. **Commit and handoff** — confirm the Commit step never runs before Phase 5's gate is approved, and the handoff report (create call) always includes the resulting commit SHA(s)
 7. **Document step, nothing to update** — confirm "no doc update needed" is presented as a normal outcome, not silently skipped without being stated, and that the handoff report still runs even when Document made no changes
 8. **Design produces no disk writes** — confirm no `Write`/`Edit` tool call targets a real component path during Phase 3, regardless of how the designed content is presented at Gate 3; the component's files exist on disk only once Phase 4 (Build) has run following Gate 3 approval
+9. **Open-PR check, PR exists** — the current branch already has an open PR; confirm this is asked about (with the merge-first/continue-anyway options) before Phase 1 starts, not silently ignored
+10. **Open-PR check, no PR** — no PR exists for the current branch; confirm the pipeline proceeds straight into Phase 1 with no ask
+11. **Branch-scope check, unscoped branch** — current branch is `main`/`master` or doesn't match `<type>/<description>`; confirm this fires right before Phase 4's first write (not earlier, not later) and offers both the new-branch and continue-anyway options
+12. **Branch-scope check, already scoped** — current branch already matches the convention; confirm Phase 4 proceeds with no ask
 
 **Quality gates:**
 - [ ] Every phase transition is gated by explicit `AskUserQuestion` approval — never silent
 - [ ] Auto-detection always runs before Phase 1 starts — never assumes a cold start
-- [ ] No phase's substantive work is done by this skill directly — always dispatched via `Skill`/`Agent` (two narrow, named exceptions in Phase 5: the agent-component check calls `test-agent-trigger.sh` directly via the scoped `Bash(*/test-agent-trigger.sh:*)` tool, since the script is a deterministic offline check with no LLM step; the command-component check is manually followed directly against the command's own documented Steps, since commands have no `Skill()`-invocable dispatch target at all — neither is substantive delegated work in the sense this gate is guarding against)
+- [ ] No phase's substantive work is done by this skill directly — always dispatched via `Skill`/`Agent` (three narrow, named exceptions in Phase 5: the agent-component check calls `test-agent-trigger.sh` directly via the scoped `Bash(*/agent-development/scripts/test-agent-trigger.sh:*)` tool, and the hook-component check calls `test-hook.sh` directly via the scoped `Bash(*/hook-development/scripts/test-hook.sh:*)` tool, since both scripts are deterministic offline checks with no LLM step; the command-component check is manually followed directly against the command's own documented Steps, since commands have no `Skill()`-invocable dispatch target at all — none of the three is substantive delegated work in the sense this gate is guarding against)
 - [ ] Phase 3 (Design) never calls `Write`/`Edit` against a real component path — designed content stays in the conversation until Gate 3 is approved and Phase 4 (Build) begins
 - [ ] Phase 5's per-component results always distinguish pass / fail / skipped — a skipped component type is never presented as if it passed
 - [ ] Phase 5 never runs a component's full trigger-phrase battery or an eval suite — that's `plugin-lifecycle-downstream`'s optional, user-gated Deep Test step
@@ -122,18 +133,24 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 - [ ] The Document step always runs after the Commit step, and its own doc-fix commit (if any) is always separate from the build's own commit
 - [ ] The downstream handoff offer uses `AskUserQuestion`, never auto-invoked without asking
 - [ ] Every gate that follows a written artifact opens with the standard `📄 ... written:` link line, before the content summary
+- [ ] The Open-PR check always runs before Phase 1 starts, and always uses `AskUserQuestion` (merge-first / continue-anyway) when an open PR is found — never silently skipped or hard-blocked with no escape hatch
+- [ ] The Branch-scope check always runs right before Phase 4's first write — never earlier (Phases 1-3 write nothing) and never skipped — and always uses `AskUserQuestion` (new branch / continue-anyway) when the current branch isn't scoped
 
 ## Reference Guide
 
 | Resource | Purpose |
 |---|---|
 | `workflows/design-a-plugin.md` | Full 5-phase procedure with gate criteria per phase |
+| `plugin-rulebook/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-downstream` and `plugin-lifecycle-maintenance` |
+| `git-kit:starting-work` | Branch-scope check's "create a new branch" option |
+| `git-kit:merge-pr` | Open-PR check's "merge it first" option |
 | `plugin-ideation` skill | Phase 1 |
 | `plugin-planning` skill | Phase 2 |
 | `skill-development` / `agent-development` / `command-development` / `hook-development` / `rule-development` | Phase 3, one per component type |
 | `plugin-development` skill | Phase 4 |
 | `skill-tester` skill | Phase 5, fast pass/fail mode, skill components |
-| `agent-development/scripts/test-agent-trigger.sh` | Phase 5, agent components — bounded smoke check only, called directly via the scoped `Bash(*/test-agent-trigger.sh:*)` tool (no subagent dispatch); full battery moved to `plugin-lifecycle-downstream`'s optional Deep Test step |
+| `agent-development/scripts/test-agent-trigger.sh` | Phase 5, agent components — bounded smoke check only, called directly via the scoped `Bash(*/agent-development/scripts/test-agent-trigger.sh:*)` tool (no subagent dispatch); full battery moved to `plugin-lifecycle-downstream`'s optional Deep Test step |
+| `hook-development/scripts/test-hook.sh` | Phase 5, hook components — bounded smoke check only, called directly via the scoped `Bash(*/hook-development/scripts/test-hook.sh:*)` tool (no subagent dispatch), same reasoning as the agent-component check |
 | (manually-followed, no dispatch target) | Phase 5, command components — one live trial against real data, since commands aren't `Skill()`-invocable and have no dedicated test tool |
 | `plugin-documentation` skill | Document step, after Commit and before the handoff report — authors doc updates and runs its own `human-doc-reviewer` QA internally |
 | `build-handoff-writer` agent | Post-Commit handoff report (create), before the downstream offer |

@@ -12,7 +12,7 @@ description: >-
   plugin-lifecycle-downstream for QA once Test completes. For a single already-designed
   component, use the matching Design skill directly instead of this pipeline.
 argument-hint: "[rough idea, or path to an existing Concept Card/Plan]"
-allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) TaskCreate TaskUpdate
+allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(git branch:*) Bash(gh pr view:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) TaskCreate TaskUpdate
 ---
 
 # Plugin Lifecycle: Upstream
@@ -22,6 +22,13 @@ Guides plugin creation through five gated phases — Ideate, Plan, Design, Build
 ## Quick Start
 
 For the common case (a rough idea, nothing built yet): run all five phases in order, stopping for approval between each, then commit and write the handoff report. See [design-a-plugin.md](workflows/design-a-plugin.md) for the full phase-by-phase procedure.
+
+## Pre-Flight Checks
+
+Two checks, run at different points in the pipeline — see `plugin-rulebook/references/branch-and-pr-preflight.md` for the exact procedure behind both:
+
+- **Open-PR check** — runs once, before Phase 1 starts (design-a-plugin.md's own first step, ahead of even Auto-Detection Logic below). Catches starting new work on a branch that already has an unmerged PR open.
+- **Branch-scope check** — runs once, right before Phase 4 (Build)'s first actual disk write — not earlier, since Phases 1-3 never write to disk (see "Design never touches disk" below). Catches building on `main`/`master` or an unscoped branch name.
 
 ## Workflow Selection
 
@@ -109,6 +116,10 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 6. **Commit and handoff** — confirm the Commit step never runs before Phase 5's gate is approved, and the handoff report (create call) always includes the resulting commit SHA(s)
 7. **Document step, nothing to update** — confirm "no doc update needed" is presented as a normal outcome, not silently skipped without being stated, and that the handoff report still runs even when Document made no changes
 8. **Design produces no disk writes** — confirm no `Write`/`Edit` tool call targets a real component path during Phase 3, regardless of how the designed content is presented at Gate 3; the component's files exist on disk only once Phase 4 (Build) has run following Gate 3 approval
+9. **Open-PR check, PR exists** — the current branch already has an open PR; confirm this is asked about (with the merge-first/continue-anyway options) before Phase 1 starts, not silently ignored
+10. **Open-PR check, no PR** — no PR exists for the current branch; confirm the pipeline proceeds straight into Phase 1 with no ask
+11. **Branch-scope check, unscoped branch** — current branch is `main`/`master` or doesn't match `<type>/<description>`; confirm this fires right before Phase 4's first write (not earlier, not later) and offers both the new-branch and continue-anyway options
+12. **Branch-scope check, already scoped** — current branch already matches the convention; confirm Phase 4 proceeds with no ask
 
 **Quality gates:**
 - [ ] Every phase transition is gated by explicit `AskUserQuestion` approval — never silent
@@ -122,12 +133,17 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 - [ ] The Document step always runs after the Commit step, and its own doc-fix commit (if any) is always separate from the build's own commit
 - [ ] The downstream handoff offer uses `AskUserQuestion`, never auto-invoked without asking
 - [ ] Every gate that follows a written artifact opens with the standard `📄 ... written:` link line, before the content summary
+- [ ] The Open-PR check always runs before Phase 1 starts, and always uses `AskUserQuestion` (merge-first / continue-anyway) when an open PR is found — never silently skipped or hard-blocked with no escape hatch
+- [ ] The Branch-scope check always runs right before Phase 4's first write — never earlier (Phases 1-3 write nothing) and never skipped — and always uses `AskUserQuestion` (new branch / continue-anyway) when the current branch isn't scoped
 
 ## Reference Guide
 
 | Resource | Purpose |
 |---|---|
 | `workflows/design-a-plugin.md` | Full 5-phase procedure with gate criteria per phase |
+| `plugin-rulebook/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-downstream` and `plugin-lifecycle-maintenance` |
+| `git-kit:starting-work` | Branch-scope check's "create a new branch" option |
+| `git-kit:merge-pr` | Open-PR check's "merge it first" option |
 | `plugin-ideation` skill | Phase 1 |
 | `plugin-planning` skill | Phase 2 |
 | `skill-development` / `agent-development` / `command-development` / `hook-development` / `rule-development` | Phase 3, one per component type |
