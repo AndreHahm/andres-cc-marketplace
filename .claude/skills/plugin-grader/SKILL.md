@@ -9,10 +9,11 @@ description: >-
   hard gates for critical issues, dimension-by-dimension reasoning, a SWOT
   summary, and prioritized next steps as structured JSON. Use when the
   user asks to 'grade this plugin', 'rank this skill', 'score this Claude
-  Code plugin', 'rate this skill and suggest improvements', or 'rank this
-  plugin from 1 to 10'.
+  Code plugin', 'rate this skill and suggest improvements', 'rank this
+  plugin from 1 to 10', or 'grade this rule' — skill/agent/command/hook/rule
+  are all gradeable target types.
 argument-hint: "[target]"
-allowed-tools: Read Grep Glob Agent Skill Write Bash(python:*) Bash(date:*)
+allowed-tools: Read Grep Glob Agent Skill Write Bash(python scripts/compute_score.py:*) Bash(date:*)
 ---
 
 # Plugin Grader
@@ -79,10 +80,11 @@ Also run the Testing static heuristic directly (no dispatch): `Glob` for `evals/
 **Plugin mode** — dispatch the above per component (batched across all components), **plus**, run once across the whole set (not once per component):
 - `activation-reviewer` in whole-plugin mode → feeds `activation_critical`
 - `consistency-reviewer` across all components → feeds `consistency_critical`
+- `plugin-validator` in its default Full-review mode → structural/manifest findings feed each named component's `structure_architecture` dimension alongside `skilldir-reviewer`/the type-matched reviewer (the same "dispatch once, distribute per-component" shape as `activation-reviewer`/`consistency-reviewer` above, not a per-component re-dispatch — `plugin-validator` has no per-component invocation mode of its own outside its Batch mode, which is for splitting a large *sweep*, not for scoping to one target)
 
 **Fast mode** (`--fast` or "quick grade" in the request): skip `scripts-reviewer`, `consistency-reviewer`, and `security-reviewer` dispatches. `robustness` defaults to `is_na: true` (score 10), `maintainability` derives from `skilldir-reviewer`'s duplication axis alone, and `safety_risk_handling` derives from `plugin-rulebook` R6/R9 findings alone. Note the reduced fidelity in `notes.inspection_limits` — never silently present a fast-mode score as equivalent to a full one.
 
-**Reuse pre-supplied findings — don't re-dispatch a check that already ran.** If the caller (typically `plugin-lifecycle-downstream`, reusing its own Phase 1 Validate results) supplies `plugin-rulebook` and/or `security-reviewer` findings for some or all of the target(s) in scope, use those directly for `rule_compliance`/`safety_risk_handling` scoring instead of dispatching `Skill(plugin-rulebook)`/`security-reviewer` again for the same component. This applies per-component: pre-supplied findings that only cover some components (e.g. from a Scoped Phase 1 run) don't excuse skipping the rest — dispatch fresh for whichever components weren't already covered. A full-mode whole-plugin `security-reviewer` report isn't pre-split by component the way a `plugin-rulebook` batch report is, but every finding in it already cites the specific file(s)/component(s) it applies to — extract per-component findings from that one report rather than treating "not pre-split" as a reason to re-dispatch.
+**Reuse pre-supplied findings — don't re-dispatch a check that already ran.** If the caller (typically `plugin-lifecycle-downstream`, reusing its own Phase 1 Validate results) supplies `plugin-rulebook`, `plugin-validator`, and/or `security-reviewer` findings for some or all of the target(s) in scope, use those directly for `rule_compliance`/`structure_architecture`/`safety_risk_handling` scoring instead of dispatching `Skill(plugin-rulebook)`/`plugin-validator`/`security-reviewer` again for the same component. This applies per-component: pre-supplied findings that only cover some components (e.g. from a Scoped Phase 1 run) don't excuse skipping the rest — dispatch fresh for whichever components weren't already covered. A full-mode whole-plugin `security-reviewer` or `plugin-validator` report isn't pre-split by component the way a `plugin-rulebook` batch report is, but every finding in it already cites the specific file(s)/component(s) it applies to — extract per-component findings from that one report rather than treating "not pre-split" as a reason to re-dispatch.
 
 ### 4. Score Dimensions and Compute
 
@@ -129,6 +131,7 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 1. **Single skill, clean** — grade a skill with no findings from any dispatched reviewer; confirm all 12 dimensions score 10 and `final_score` is 10.0 with no gates
 2. **Rule compliance gate** — grade a target with a known REQUIRED rule violation; confirm Gate A fires and `final_score` is capped at 6.0
 2a. **Safety gate** — grade a target with a Critical `safety_risk_handling` finding (e.g. `Bash(*)`); confirm Gate C fires and `final_score` is capped at 4.0, even when every other dimension scores 10
+2b. **Testing gate** — grade a target with `testing == 0.0` (no `evals/`, no Testing & Validation section of its own); confirm Gate D fires, `final_score` is capped at 8.0, and the output includes the literal comment `"Missing verification."` exactly as `gates-and-rollup.md` specifies
 3. **Gate stacking** — construct an input triggering both Gate A and Gate B; confirm `final_score` uses the *lower* of the two caps (5.0), not the first one found. Also confirm stacking Gate B and Gate C uses 4.0 (the lower of the two), since Gate C is now the lowest cap of the four
 4. **N/A dimension** — grade a component with no `scripts/`; confirm `robustness` scores 10 with `is_na: true`, not excluded from the weighted sum
 5. **Plugin rollup with one broken component** — construct component scores where one is < 3; confirm Gate P3 fires and `weakest_component` is reported even though the mean looks acceptable
@@ -137,6 +140,7 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 **Quality gates:**
 - [ ] `scripts/compute_score.py` is always invoked for the weighted sum and gate math — never hand-computed
 - [ ] Every entry in `gates_applied` has a non-empty `reason`
+- [ ] Gate D always emits the literal `"Missing verification."` comment when `testing` scores 0.0 — never a paraphrase
 - [ ] Type-matched reviewer dispatch never sends all five `*-reviewer` agents for a single target
 - [ ] The written report path is always under `.claude/output/plugin-grader/`
 - [ ] The Step 8 `enhancement-suggestor` offer uses `AskUserQuestion` and is never auto-invoked
