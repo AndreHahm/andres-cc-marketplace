@@ -1,0 +1,739 @@
+# Plugin Manifest Reference
+
+Complete reference for `plugin.json` configuration.
+
+## File Location
+
+**Required path**: `.claude-plugin/plugin.json`
+
+The manifest MUST be in the `.claude-plugin/` directory at the plugin root. Claude Code will not recognize plugins without this file in the correct location.
+
+## Required vs. Recommended Fields
+
+`plugin.json` itself is optional. When it is present, **only `name` is officially required** by the platform — every other field below is optional as far as Claude Code is concerned.
+
+This project's own publishing policy is stricter: for plugins intended for distribution, treat `description`, `version`, `author`, a README, and marketplace metadata as required before publishing. That stricter bar is internal policy, not a platform requirement — don't present it to users as an official schema rule.
+
+## Complete Field Reference
+
+### Core Fields
+
+#### name (required)
+
+**Type**: String
+**Format**: kebab-case
+**Example**: `"test-automation-suite"`
+
+The unique identifier for the plugin. Used for:
+- Plugin identification in Claude Code
+- Conflict detection with other plugins
+- Command namespacing (optional)
+
+**Requirements**:
+- Must be unique across all installed plugins
+- Use only lowercase letters, numbers, and hyphens
+- No spaces or special characters
+- Start with a letter
+- End with a letter or number
+
+**Validation**:
+```javascript
+/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
+```
+
+**Examples**:
+- ✅ Good: `api-tester`, `code-review`, `git-workflow-automation`
+- ❌ Bad: `API Tester`, `code_review`, `-git-workflow`, `test-`
+
+#### version
+
+**Type**: String
+**Format**: Semantic versioning (MAJOR.MINOR.PATCH)
+**Example**: `"2.1.0"`
+**Default**: `"0.1.0"` if not specified
+
+Semantic versioning guidelines:
+- **MAJOR**: Incompatible API changes, breaking changes
+- **MINOR**: New functionality, backward-compatible
+- **PATCH**: Bug fixes, backward-compatible
+
+**Pre-release versions**:
+- `"1.0.0-alpha.1"` - Alpha release
+- `"1.0.0-beta.2"` - Beta release
+- `"1.0.0-rc.1"` - Release candidate
+
+**Examples**:
+- `"0.1.0"` - Initial development
+- `"1.0.0"` - First stable release
+- `"1.2.3"` - Patch update to 1.2
+- `"2.0.0"` - Major version with breaking changes
+
+**Version resolution fallback chain:** Claude Code resolves a plugin's effective version in this order: explicit `version` in `plugin.json` → the marketplace entry's version → the git commit SHA → `"unknown"`. If an explicit version is set, users receive updates only when that version changes — for stable published plugins, set and bump an explicit semantic version; for fast-moving internal plugins, omitting an explicit version lets the git commit SHA drive updates instead.
+
+#### description
+
+**Type**: String
+**Length**: 50-200 characters recommended
+**Example**: `"Automates code review workflows with style checks and automated feedback"`
+
+Brief explanation of plugin purpose and functionality.
+
+**Best practices**:
+- Focus on what the plugin does, not how
+- Use active voice
+- Mention key features or benefits
+- Keep under 200 characters for marketplace display
+
+**Examples**:
+- ✅ "Generates comprehensive test suites from code analysis and coverage reports"
+- ✅ "Integrates with Jira for automatic issue tracking and sprint management"
+- ❌ "A plugin that helps you do testing stuff"
+- ❌ "This is a very long description that goes on and on about every single feature..."
+
+### Metadata Fields
+
+#### $schema
+
+**Type**: String
+**Example**: `"https://anthropic.com/schemas/plugin.json"`
+
+Optional JSON Schema URL for editor tooling (autocomplete, inline validation). Ignored by Claude Code itself at load time — purely an authoring aid.
+
+#### displayName
+
+**Type**: String
+**Example**: `"Enterprise DevOps Toolkit"`
+**Version**: Requires Claude Code v2.1.143 or later.
+
+Human-readable name shown in UI surfaces (marketplace listings, `/plugin` menu) — distinct from the kebab-case `name` field, which is the machine identifier used for installation and namespacing.
+
+#### author
+
+**Type**: Object
+**Fields**: name (required), email (optional), url (optional)
+
+```json
+{
+  "author": {
+    "name": "Jane Developer",
+    "email": "jane@example.com",
+    "url": "https://janedeveloper.com"
+  }
+}
+```
+
+**Use cases**:
+- Credit and attribution
+- Contact for support or questions
+- Marketplace display
+- Community recognition
+
+#### homepage
+
+**Type**: String (URL)
+**Example**: `"https://docs.example.com/plugins/my-plugin"`
+
+Link to plugin documentation or landing page.
+
+**Should point to**:
+- Plugin documentation site
+- Project homepage
+- Detailed usage guide
+- Installation instructions
+
+**Not for**:
+- Source code (use `repository` field)
+- Issue tracker (include in documentation)
+- Personal websites (use `author.url`)
+
+#### repository
+
+**Type**: String (URL) or Object
+**Example**: `"https://github.com/user/plugin-name"`
+
+Source code repository location.
+
+**String format**:
+```json
+{
+  "repository": "https://github.com/user/plugin-name"
+}
+```
+
+**Object format** (detailed):
+```json
+{
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/plugin-name.git",
+    "directory": "packages/plugin-name"
+  }
+}
+```
+
+**Use cases**:
+- Source code access
+- Issue reporting
+- Community contributions
+- Transparency and trust
+
+#### license
+
+**Type**: String
+**Format**: SPDX identifier
+**Example**: `"MIT"`
+
+Software license identifier.
+
+**Common licenses**:
+- `"MIT"` - Permissive, popular choice
+- `"Apache-2.0"` - Permissive with patent grant
+- `"GPL-3.0"` - Copyleft
+- `"BSD-3-Clause"` - Permissive
+- `"ISC"` - Permissive, similar to MIT
+- `"UNLICENSED"` - Proprietary, not open source
+
+**Full list**: [SPDX license list](https://spdx.org/licenses/)
+
+**Multiple licenses**:
+```json
+{
+  "license": "(MIT OR Apache-2.0)"
+}
+```
+
+#### keywords
+
+**Type**: Array of strings
+**Example**: `["testing", "automation", "ci-cd", "quality-assurance"]`
+
+Tags for plugin discovery and categorization.
+
+**Best practices**:
+- Use 5-10 keywords
+- Include functionality categories
+- Add technology names
+- Use common search terms
+- Avoid duplicating plugin name
+
+**Categories to consider**:
+- Functionality: `testing`, `debugging`, `documentation`, `deployment`
+- Technologies: `typescript`, `python`, `docker`, `aws`
+- Workflows: `ci-cd`, `code-review`, `git-workflow`
+- Domains: `web-development`, `data-science`, `devops`
+
+#### defaultEnabled
+
+**Type**: Boolean
+**Default**: `true`
+**Example**: `"defaultEnabled": false`
+
+Controls whether the plugin installs already enabled.
+
+**Set to `false`** for plugins that:
+- Add cost (paid API calls, metered services)
+- Contact external services
+- Start background services
+- Broaden tool scope (e.g., grant broad `Bash` access)
+
+Users can review and explicitly enable such plugins rather than having them active by default.
+
+#### dependencies
+
+**Type**: Array of strings or objects
+**Example**: `["shared-utils", "org-linter@marketplace"]`
+
+Other plugins this plugin requires. Claude Code enables declared dependencies transitively when this plugin is enabled, and supports pruning orphaned dependencies when it is removed.
+
+**String form** (name only, or `name@marketplace`):
+```json
+{
+  "dependencies": ["shared-utils", "org-linter@marketplace"]
+}
+```
+
+**Object form** (version-pinned):
+```json
+{
+  "dependencies": [
+    { "name": "secrets-vault", "version": "~2.1.0" }
+  ]
+}
+```
+
+**Use cases**:
+- Splitting shared components (skills, agents, hooks) into a common dependency plugin
+- Ensuring a required companion plugin is present before this plugin's components run
+- Pinning a dependency to a compatible version range (object form) when the dependency's API isn't stable across majors
+
+**Note**: dependency resolution is validated during install, enable, update, disable, and prune workflows — declare dependencies explicitly rather than assuming a companion plugin is already present.
+
+#### userConfig
+
+**Type**: Object
+**Example**: `{ "api_endpoint": { "type": "string", "title": "API endpoint", "description": "Base URL of the service" } }`
+
+User-configurable values prompted at enable time. Each option requires `type` (`string`, `number`, `boolean`, `directory`, or `file`), `title`, and `description`.
+
+```json
+{
+  "userConfig": {
+    "api_endpoint": {
+      "type": "string",
+      "title": "Deploy API endpoint",
+      "description": "Base URL of the deployment status API"
+    },
+    "api_key": {
+      "type": "string",
+      "title": "API Key",
+      "description": "Secret key for authentication",
+      "sensitive": true
+    }
+  }
+}
+```
+
+**Use cases**:
+- Values referenced in `mcpServers`, `lspServers`, `hooks`, or `monitors` commands via `${user_config.<key>}`
+- Values exposed as `CLAUDE_PLUGIN_OPTION_<KEY>` environment variables
+- Set `"sensitive": true` to mask input and store the value in the system keychain rather than plain config
+
+#### channels
+
+**Type**: Array of objects
+**Example**: `[{ "server": "telegram-bot" }]`
+
+Message-injection channels (Telegram/Slack/Discord-style) that let an external service push messages into a session. Each entry needs `server` matching a key in `mcpServers`.
+
+**Use cases**:
+- A plugin that bridges an external chat platform into Claude Code's conversation
+
+### Component Path Fields
+
+#### skills
+
+**Type**: String or Array of strings
+**Default**: `["./skills"]`
+**Example**: `"./custom-skills"`
+
+Additional directories or files containing Agent Skills.
+
+**Format**: Same as `commands` field
+
+**Use cases**:
+- Grouping skills by domain
+- Loading skills from plugin dependencies
+
+#### commands
+
+**Type**: String or Array of strings
+**Default**: `["./commands"]`
+**Example**: `"./cli-commands"`
+
+Additional directories or files containing command definitions.
+
+**Single path**:
+```json
+{
+  "commands": "./custom-commands"
+}
+```
+
+**Multiple paths**:
+```json
+{
+  "commands": [
+    "./commands",
+    "./admin-commands",
+    "./experimental-commands"
+  ]
+}
+```
+
+**Behavior**: Supplements default `commands/` directory (does not replace)
+
+**Use cases**:
+- Organizing commands by category
+- Separating stable from experimental commands
+- Loading commands from shared locations
+
+#### agents
+
+**Type**: String or Array of strings
+**Default**: `["./agents"]`
+**Example**: `"./specialized-agents"`
+
+Additional directories or files containing agent definitions.
+
+**Format**: Same as `commands` field
+
+**Use cases**:
+- Grouping agents by specialization
+- Separating general-purpose from task-specific agents
+- Loading agents from plugin dependencies
+
+#### hooks
+
+**Type**: String (path to JSON file) or Object (inline configuration)
+**Default**: `"./hooks/hooks.json"`
+
+Hook configuration location or inline definition.
+
+**File path**:
+```json
+{
+  "hooks": "./config/hooks.json"
+}
+```
+
+**Inline configuration**:
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/validate.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Use cases**:
+- Simple plugins: Inline configuration (< 50 lines)
+- Complex plugins: External JSON file
+- Multiple hook sets: Separate files for different contexts
+
+#### mcpServers
+
+**Type**: String (path to JSON file) or Object (inline configuration)
+**Default**: `./.mcp.json`
+
+MCP server configuration location or inline definition.
+
+**File path**:
+```json
+{
+  "mcpServers": "./.mcp.json"
+}
+```
+
+**Inline configuration**:
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/servers/github-mcp.js"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+**Use cases**:
+- Simple plugins: Single inline server (< 20 lines)
+- Complex plugins: External `.mcp.json` file
+- Multiple servers: Always use external file
+
+#### outputStyles
+
+**Type**: String or Array of strings
+**Default**: `["./output-styles"]`
+**Example**: `"./output-styles/terse.md"`
+
+Markdown files (with `name`+`description` frontmatter) that adjust Claude's response formatting — not CSS. A custom value **replaces** the default `output-styles/` directory.
+
+See `references/output-styles.md` for the full component reference.
+
+#### themes
+
+**Type**: String or Array of strings
+**Default**: `["./themes"]`
+**Example**: `"./themes/dracula.json"`
+
+JSON color-preset files (`{name, base, overrides}`) shown in `/theme`. A custom value **replaces** the default `themes/` directory.
+
+**Migration note:** top-level `themes` still works today, but `claude plugin validate` already warns about it — a future release will require the `experimental.themes` form instead.
+
+See `references/themes.md` for the full component reference.
+
+#### lspServers
+
+**Type**: String (path to `.lsp.json`) or Object (inline configuration)
+**Default**: `./.lsp.json`
+
+Language Server Protocol configuration location or inline definition — additive with the default `.lsp.json` (values combine rather than replace).
+
+```json
+{
+  "lspServers": {
+    "go": {
+      "command": "gopls",
+      "args": ["serve"],
+      "extensionToLanguage": { ".go": "go" }
+    }
+  }
+}
+```
+
+See `references/lsp-servers.md` for the full field list (`transport`, `env`, `initializationOptions`, `restartOnCrash`, etc.).
+
+#### monitors
+
+**Type**: String or Array of strings
+**Default**: `["./monitors/monitors.json"]`
+**Example**: `"./monitors.json"`
+
+Background watcher configs — a custom value **replaces** the default `monitors/monitors.json`.
+
+> **Version**: Requires Claude Code v2.1.105 or later.
+
+**Migration note:** top-level `monitors` still works today, but `claude plugin validate` already warns about it — a future release will require the `experimental.monitors` form instead.
+
+See `references/monitors.md` for the full component reference.
+
+## Path Resolution
+
+### Relative Path Rules
+
+All paths in component fields must follow these rules:
+
+1. **Must be relative**: No absolute paths
+2. **Must start with `./`**: Indicates relative to plugin root
+3. **Cannot use `../`**: No parent directory navigation
+4. **Forward slashes only**: Even on Windows
+
+**Examples**:
+- ✅ `"./commands"`
+- ✅ `"./src/commands"`
+- ✅ `"./configs/hooks.json"`
+- ❌ `"/Users/name/plugin/commands"`
+- ❌ `"commands"` (missing `./`)
+- ❌ `"../shared/commands"`
+- ❌ `".\\commands"` (backslash)
+
+### Resolution Order
+
+When Claude Code loads components:
+
+1. **Default directories**: Scans standard locations first
+   - `./commands/`
+   - `./agents/`
+   - `./skills/`
+   - `./hooks/hooks.json`
+   - `./.mcp.json`
+
+2. **Custom paths**: Scans paths specified in manifest
+   - Paths from `commands` field
+   - Paths from `agents` field
+   - Files from `hooks` and `mcpServers` fields
+
+3. **Merge behavior**: Components from all locations load
+   - No overwriting
+   - All discovered components register
+   - Name conflicts cause errors
+
+## Validation
+
+### Manifest Validation
+
+Claude Code validates the manifest on plugin load:
+
+**Syntax validation**:
+- Valid JSON format
+- No syntax errors
+- Correct field types
+
+**Field validation**:
+- `name` field present and valid format
+- `version` follows semantic versioning (if present)
+- Paths are relative with `./` prefix
+- URLs are valid (if present)
+
+**Component validation**:
+- Referenced paths exist
+- Hook and MCP configurations are valid
+- No circular dependencies
+
+### Validation Modes
+
+`claude plugin validate` has two modes:
+- **Default**: unrecognized top-level `plugin.json` fields are reported as warnings only — the plugin still loads.
+- **`--strict`**: treats those warnings as errors, failing validation.
+
+Recommend `claude plugin validate --strict` in CI for plugins intended for publication, so schema drift is caught before release. Use the default (non-strict) mode during local development, where unknown fields are expected while iterating.
+
+### Common Validation Errors
+
+**Invalid name format**:
+```json
+{
+  "name": "My Plugin"  // ❌ Contains spaces
+}
+```
+Fix: Use kebab-case
+```json
+{
+  "name": "my-plugin"  // ✅
+}
+```
+
+**Absolute path**:
+```json
+{
+  "commands": "/Users/name/commands"  // ❌ Absolute path
+}
+```
+Fix: Use relative path
+```json
+{
+  "commands": "./commands"  // ✅
+}
+```
+
+**Missing ./ prefix**:
+```json
+{
+  "hooks": "hooks/hooks.json"  // ❌ No ./
+}
+```
+Fix: Add ./ prefix
+```json
+{
+  "hooks": "./hooks/hooks.json"  // ✅
+}
+```
+
+**Invalid version**:
+```json
+{
+  "version": "1.0"  // ❌ Not semantic versioning
+}
+```
+Fix: Use MAJOR.MINOR.PATCH
+```json
+{
+  "version": "1.0.0"  // ✅
+}
+```
+
+## Minimal vs. Complete Examples
+
+### Minimal Plugin
+
+Bare minimum for a working plugin:
+
+```json
+{
+  "name": "hello-world"
+}
+```
+
+Relies entirely on default directory discovery.
+
+### Recommended Plugin
+
+Good metadata for distribution:
+
+```json
+{
+  "name": "code-review-assistant",
+  "version": "1.0.0",
+  "description": "Automates code review with style checks and suggestions",
+  "author": {
+    "name": "Jane Developer",
+    "email": "jane@example.com"
+  },
+  "homepage": "https://docs.example.com/code-review",
+  "repository": "https://github.com/janedev/code-review-assistant",
+  "license": "MIT",
+  "keywords": ["code-review", "automation", "quality", "ci-cd"]
+}
+```
+
+### Complete Plugin
+
+Full configuration with all features:
+
+**R18 exception (recorded):** the example below intentionally exceeds the rulebook's 30-line code-block threshold — a whole-manifest illustration where splitting would remove the pedagogical value of seeing a realistic complete plugin.json in one place.
+
+```json
+{
+  "name": "enterprise-devops",
+  "version": "2.3.1",
+  "description": "Comprehensive DevOps automation for enterprise CI/CD pipelines",
+  "author": {
+    "name": "DevOps Team",
+    "email": "devops@company.com",
+    "url": "https://company.com/devops"
+  },
+  "homepage": "https://docs.company.com/plugins/devops",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/company/devops-plugin.git"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "devops",
+    "ci-cd",
+    "automation",
+    "kubernetes",
+    "docker",
+    "deployment"
+  ],
+  "commands": [
+    "./commands",
+    "./admin-commands"
+  ],
+  "agents": "./specialized-agents",
+  "hooks": "./config/hooks.json",
+  "mcpServers": "./.mcp.json"
+}
+```
+
+## Plugin-Root settings.json
+
+A plugin root may include a `settings.json` with default configuration. Only a limited, currently-supported set of keys is honored there — it is not the same key space as user/project `settings.json`. Do not assume an arbitrary Claude Code setting works inside a plugin's `settings.json`; validate the key against the current plugin reference before adding it.
+
+## Best Practices
+
+### Metadata
+
+1. **Always include version**: Track changes and updates
+2. **Write clear descriptions**: Help users understand plugin purpose
+3. **Provide contact information**: Enable user support
+4. **Link to documentation**: Reduce support burden
+5. **Choose appropriate license**: Match project goals
+
+### Paths
+
+1. **Use defaults when possible**: Minimize configuration
+2. **Organize logically**: Group related components
+3. **Document custom paths**: Explain why non-standard layout used
+4. **Test path resolution**: Verify on multiple systems
+
+### Maintenance
+
+1. **Bump version on changes**: Follow semantic versioning
+2. **Update keywords**: Reflect new functionality
+3. **Keep description current**: Match actual capabilities
+4. **Maintain changelog**: Track version history
+5. **Update repository links**: Keep URLs current
+
+### Distribution
+
+1. **Complete metadata before publishing**: All fields filled
+2. **Test on clean install**: Verify plugin works without dev environment
+3. **Validate manifest**: Use validation tools
+4. **Include README**: Document installation and usage
+5. **Specify license file**: Include LICENSE file in plugin root

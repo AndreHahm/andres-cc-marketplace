@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "SKILL.md has frontmatter with name and description",
+      "passed": true,
+      "evidence": "Lines 1-8: ---\\nname: skill-csv-converter\\ndescription: Convert CSV..."
+    },
+    {
+      "text": "Description includes specific trigger phrases",
+      "passed": true,
+      "evidence": "Description: 'Create NEW Claude Code skills...', 'building new skills', 'converting slash commands'"
+    },
+    {
+      "text": "Body is <500 lines and includes 'Quick Start' section",
+      "passed": true,
+      "evidence": "SKILL.md body: 387 lines total, includes '## Quick Start' at line 23"
+    },
+    {
+      "text": "References/ directory has one-level nesting",
+      "passed": true,
+      "evidence": "references/: csv-parsing.md, examples.md (no subdirectories)"
+    },
+    {
+      "text": "All reference links in SKILL.md body have corresponding .md files",
+      "passed": true,
+      "evidence": "Body mentions: references/csv-parsing.md (exists), references/examples.md (exists)"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

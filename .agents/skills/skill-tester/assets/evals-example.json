@@ -1,0 +1,21 @@
+{
+  "skill_name": "skill-development",
+  "skill_path": "skills/skill-development/SKILL.md",
+  "description": "Test skill creation workflow and best practices guidance",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Create new skill from scratch",
+      "prompt": "Create a new Claude Code skill for converting CSV files to JSON. Include SKILL.md with frontmatter, body instructions, and references organized by workflow stage.",
+      "expected_output": "Complete skill structure with SKILL.md (name, description), references/ for detailed guides, clear trigger phrases, <500 line body",
+      "files": ["SKILL.md", "references/csv-parsing.md", "scripts/converter.py"]
+    },
+    {
+      "id": 2,
+      "name": "Convert slash command to skill",
+      "prompt": "Convert the ~/.claude/commands/format-json slash command (existing formatter) into a project-scoped skill at myproject/.claude/skills/json-formatter/",
+      "expected_output": "Skill structure: SKILL.md with frontmatter, body instructions, correct scope designation (project-scoped), preserved functionality",
+      "files": ["SKILL.md"]
+    }
+  ]
+}
