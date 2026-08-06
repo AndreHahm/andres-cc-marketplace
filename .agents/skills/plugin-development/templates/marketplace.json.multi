@@ -1,0 +1,43 @@
+{
+  "$schema": "https://anthropic.com/schemas/marketplace.json",
+  "name": "{{MARKETPLACE_NAME}}",
+  "version": "1.0.0",
+  "description": "{{MARKETPLACE_DESCRIPTION}}",
+  "owner": {
+    "name": "{{OWNER_NAME}}",
+    "email": "{{OWNER_EMAIL}}"
+  },
+  "metadata": {
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "{{PLUGIN1_NAME}}",
+      "description": "{{PLUGIN1_DESCRIPTION}}",
+      "version": "1.0.0",
+      "source": "./plugins/{{PLUGIN1_NAME}}",
+      "category": "development",
+      "keywords": ["keyword1", "keyword2"]
+    },
+    {
+      "name": "{{PLUGIN2_NAME}}",
+      "description": "{{PLUGIN2_DESCRIPTION}}",
+      "version": "1.0.0",
+      "source": {
+        "source": "github",
+        "repo": "{{GITHUB_USER}}/{{PLUGIN2_NAME}}"
+      },
+      "category": "productivity"
+    },
+    {
+      "name": "{{PLUGIN3_NAME}}",
+      "description": "{{PLUGIN3_DESCRIPTION}}",
+      "version": "1.0.0",
+      "source": {
+        "source": "url",
+        "url": "https://{{GIT_HOST}}/{{PLUGIN3_NAME}}.git"
+      },
+      "category": "security"
+    }
+  ]
+}

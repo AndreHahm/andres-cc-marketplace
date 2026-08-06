@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/schemas/plugin.json",
+  "name": "{{PLUGIN_NAME}}",
+  "version": "1.0.0",
+  "description": "{{PLUGIN_DESCRIPTION}}",
+  "author": {
+    "name": "{{AUTHOR_NAME}}",
+    "email": "{{AUTHOR_EMAIL}}",
+    "url": "{{AUTHOR_URL}}"
+  },
+  "homepage": "{{HOMEPAGE_URL}}",
+  "repository": "{{REPOSITORY_URL}}",
+  "license": "MIT",
+  "keywords": ["{{KEYWORD1}}", "{{KEYWORD2}}", "{{KEYWORD3}}"],
+  "skills": "./skills/",
+  "commands": "./commands/",
+  "agents": "./agents/"
+}

@@ -1,0 +1,375 @@
+# Anti-Patterns in Skill Creation
+
+Learn from common mistakes that prevent skills from activating, executing clearly, or integrating well. Each category shows ❌ BAD examples and ✅ GOOD alternatives.
+
+## Table of Contents
+- [Activation Anti-Patterns](#activation-anti-patterns)
+  - [Vague Description](#vague-description)
+  - [Missing Trigger Phrases](#missing-trigger-phrases)
+  - [Generic Category Instead of Action](#generic-category-instead-of-action)
+  - [Quoted Multiline Description](#quoted-multiline-description)
+- [Structure Anti-Patterns](#structure-anti-patterns)
+  - [Nested Reference Chains](#nested-reference-chains)
+  - [Over-Engineering Structure](#over-engineering-structure)
+  - [No Quick Start](#no-quick-start)
+  - [Unclear Reference Links](#unclear-reference-links)
+- [Content Anti-Patterns](#content-anti-patterns)
+  - [Theoretical Background Before Examples](#theoretical-background-before-examples)
+  - [Large Inline Code Blocks](#large-inline-code-blocks)
+  - [Overly Detailed Troubleshooting](#overly-detailed-troubleshooting)
+  - [Generic Placeholder Names](#generic-placeholder-names)
+  - [Exceeding 500 Lines](#exceeding-500-lines)
+- [Writing Style Anti-Patterns](#writing-style-anti-patterns)
+  - [Verbose Explanations](#verbose-explanations)
+  - [Conversational Style](#conversational-style)
+  - [Redundant Context](#redundant-context)
+  - [Redundant Descriptions](#redundant-descriptions)
+  - [Nested Formatting](#nested-formatting)
+- [Tool Scoping Anti-Patterns](#tool-scoping-anti-patterns)
+  - [Overly Broad Bash Access](#overly-broad-bash-access)
+  - [Requesting Unnecessary Tools](#requesting-unnecessary-tools)
+  - [No Tool Scoping at All](#no-tool-scoping-at-all)
+
+---
+
+## Activation Anti-Patterns
+
+**Problem:** Skill never triggers when users need it because description lacks specificity.
+
+### Vague Description
+
+❌ **BAD:**
+```yaml
+description: >-
+  A helpful skill for working with documents.
+```
+**Why it fails:** Claude won't recognize when to activate. "Working with documents" matches everything and nothing.
+
+✅ **GOOD:**
+```yaml
+description: >-
+  Extract text from PDF files using OCR. Use when analyzing PDFs, reading scanned documents,
+  or extracting structured data from forms. Supports encrypted PDFs.
+```
+**Why it works:** Specific trigger phrases ("extract text", "PDF", "OCR", "scanned documents") match real user requests.
+
+### Missing Trigger Phrases
+
+❌ **BAD:**
+```yaml
+description: >-
+  A utility for code validation.
+```
+**Problem:** No action verbs or domain context. Won't trigger on "validate my code" or "check for errors".
+
+✅ **GOOD:**
+```yaml
+description: >-
+  Validate PHP code syntax and detect errors. Use when checking code for syntax errors,
+  before committing to git, or analyzing Laravel code quality.
+```
+
+### Generic Category Instead of Action
+
+❌ **BAD:**
+```yaml
+name: file-helper
+description: >-
+  Helps with file operations.
+```
+
+✅ **GOOD:**
+```yaml
+name: pdf-text-extractor
+description: >-
+  Extract text and structured data from PDF files. Use when analyzing PDFs,
+  converting to markdown, or reading scanned documents.
+```
+
+### Quoted Multiline Description
+
+❌ **BAD:**
+```yaml
+name: pdf-text-extractor
+description: "Extract text and structured data from PDF files. Use when analyzing PDFs,
+  converting to markdown, or reading scanned documents."
+```
+
+**Problem:** Quoted multiline strings break YAML parsing or include escaped characters. This causes manifest generation issues and tool compatibility problems.
+
+✅ **GOOD:**
+```yaml
+name: pdf-text-extractor
+description: >-
+  Extract text and structured data from PDF files. Use when analyzing PDFs,
+  converting to markdown, or reading scanned documents.
+```
+
+**Why it works:** The `>-` syntax (block scalar with strip) is YAML's correct format for multiline text. It's readable, parseable, and compatible with all tools that consume skill manifests.
+
+**Key rule:** Multiline descriptions **always use `>-`**, never quotes. Single-line descriptions can use quotes or no quotes; multiline must use `>-`.
+
+---
+
+## Structure Anti-Patterns
+
+**Problem:** Skill has correct content but organized poorly, making it hard for Claude to find what's needed.
+
+### Nested Reference Chains
+
+❌ **BAD:**
+```
+skill-name/
+├── SKILL.md
+└── references/
+    ├── guide.md
+    │   (links to)
+    └── advanced-topics/
+        └── patterns.md
+            (links to)
+            └── edge-cases.md
+```
+**Problem:** Claude may partially read files, missing context from nested chains.
+
+✅ **GOOD:**
+```
+skill-name/
+├── SKILL.md (links directly to both)
+└── references/
+    ├── guide.md
+    ├── patterns.md
+    └── edge-cases.md
+```
+**Why it works:** One level deep. Claude reads all files at same level together.
+
+### Over-Engineering Structure
+
+❌ **BAD:** Building elaborate multi-level agent hierarchies, deep reference trees, or complex routing for a skill that answers a simple question.
+
+✅ **GOOD:** Match complexity to the task. A skill that summarizes a file needs Read and Write — not a pipeline with subagents, validators, and retry logic.
+
+**Rule:** If the skill could be a five-line SKILL.md, don't make it fifty.
+
+### No Quick Start
+
+❌ **BAD:**
+```markdown
+# Skill Name
+
+## Overview
+This skill processes files using advanced algorithms...
+
+## Architecture
+The system is built on several layers...
+
+## Configuration
+To configure the skill, you need to...
+```
+**Problem:** Claude must read extensive content before doing anything.
+
+✅ **GOOD:**
+````markdown
+# Skill Name
+
+## Quick Start
+
+Process a file:
+```bash
+python scripts/process.py input.txt
+```
+
+## Core Workflow
+[3-5 steps with examples]
+````
+
+### Unclear Reference Links
+
+❌ **BAD:**
+```markdown
+For more information, see `references/docs.md`.
+```
+**Problem:** "docs.md" tells Claude nothing about what's inside.
+
+✅ **GOOD:**
+```markdown
+For error handling patterns specific to this skill, see `references/error-handling.md`.
+For complex skill guidelines, see `references/complex-skills-patterns.md`.
+```
+
+---
+
+## Content Anti-Patterns
+
+**Problem:** SKILL.md includes content that violates the 80% rule or lacks clarity.
+
+### Theoretical Background Before Examples
+
+❌ **BAD:**
+````markdown
+## PDF Processing
+
+PDF files use a complex format with streams and objects. Understanding the
+internal structure is key to effective extraction...
+
+[3 paragraphs of theory]
+
+### Example
+```python
+extract_text("file.pdf")
+```
+````
+
+✅ **GOOD:**
+````markdown
+## Extract Text
+
+Extract text from PDF:
+```python
+import pdfplumber
+with pdfplumber.open("file.pdf") as pdf:
+    text = pdf.pages[0].extract_text()
+```
+
+For theory and advanced patterns, see `references/pdf-architecture.md`.
+````
+
+### Large Inline Code Blocks
+
+❌ **BAD:** Embedding 30-line scripts or full function implementations inline in SKILL.md.
+
+✅ **GOOD:** Move any code block over ~10 lines to `references/` or `scripts/`. Keep inline examples minimal — show the call pattern, not the full implementation.
+
+### Overly Detailed Troubleshooting
+
+❌ **BAD:** SKILL.md includes full troubleshooting section with 20 error cases.
+
+✅ **GOOD:** SKILL.md mentions "For troubleshooting, see `references/troubleshooting.md`" (supplementary, <20% cases).
+
+### Generic Placeholder Names
+
+❌ **BAD:**
+````markdown
+## Example
+
+Process your data:
+```python
+process_data(your_data)
+```
+````
+**Problem:** Claude doesn't know what "data" means.
+
+✅ **GOOD:**
+````markdown
+## Example
+
+Extract contact names from a CSV:
+```python
+import csv
+with open("contacts.csv") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        print(row["name"])
+```
+````
+
+### Exceeding 500 Lines
+
+❌ **BAD:** SKILL.md body is 800 lines, with comprehensive guides inlined.
+
+✅ **GOOD:** SKILL.md body is 280 lines; guides moved to `references/`.
+
+---
+
+## Writing Style Anti-Patterns
+
+**Problem:** Writing style wastes tokens, adds noise, or creates inconsistency in the SKILL.md.
+
+### Verbose Explanations
+
+❌ **BAD:** "This step is important because it ensures that the model has sufficient context to make an informed decision..."
+
+✅ **GOOD:** Delete the meta-commentary. Write the rule directly. If the WHY matters, one sentence maximum.
+
+### Conversational Style
+
+❌ **BAD:** "Let's see how to process this file." / "Now we need to consider..."
+
+✅ **GOOD:** "Process the file:" / "Consider:" — imperative, direct, no filler.
+
+### Redundant Context
+
+❌ **BAD:** Repeating the same information in the intro, in a section header, and again in a checklist.
+
+✅ **GOOD:** Say it once, in the most actionable location. If the same fact appears twice, delete one instance.
+
+### Redundant Descriptions
+
+❌ **BAD:** Repeating the frontmatter `description` field verbatim in the first paragraph of SKILL.md body.
+
+✅ **GOOD:** The body starts with something the description doesn't say — context, principles, or a quick-start action.
+
+### Nested Formatting
+
+❌ **BAD:** `**Bold label**: \`**more bold inside backtick**\`` — double emphasis causes visual noise and rendering inconsistencies.
+
+✅ **GOOD:** Pick one: bold for labels, backticks for code/names. Do not nest them.
+
+---
+
+## Tool Scoping Anti-Patterns
+
+**Problem:** Skill requests too many permissions, violating principle of least privilege.
+
+### Overly Broad Bash Access
+
+❌ **BAD:**
+```yaml
+allowed-tools: Read,Write,Bash(*)
+```
+**Problem:** Skill can execute ANY command (delete files, modify system, etc.).
+
+✅ **GOOD:**
+```yaml
+allowed-tools: Read,Write,Bash(python:*,grep:*)
+```
+**Why it works:** Only Python and grep commands allowed.
+
+### Requesting Unnecessary Tools
+
+❌ **BAD:**
+```yaml
+allowed-tools: Read,Write,Edit,Bash(*),Task(*)
+```
+**Problem:** Skill doesn't need all these. Principle of least privilege violated.
+
+✅ **GOOD:**
+```yaml
+allowed-tools: Read,Write,Bash(git:*)
+```
+(Only what's actually used in the skill.)
+
+### No Tool Scoping at All
+
+❌ **BAD:** Omit `allowed-tools` field entirely.
+
+✅ **GOOD:** Always specify, even for simple skills:
+```yaml
+allowed-tools: Read
+```
+
+---
+
+## Summary: Prevention Checklist
+
+When creating or reviewing a skill, ask:
+
+- ✅ Does description include specific trigger phrases (not just "processing", "helping", "utility")?
+- ✅ Is reference structure one level deep (no chains)?
+- ✅ Does Quick Start appear first (before theory)?
+- ✅ Are examples concrete (real files, real data)?
+- ✅ Is SKILL.md body <500 lines?
+- ✅ Is 80% rule applied (supplementary content moved to references)?
+- ✅ Are tool permissions minimal (only what's needed)?
+- ✅ Is the writing style direct and imperative (no conversational filler)?
+- ✅ Is each piece of information stated exactly once?
+- ✅ Are inline code examples under ~10 lines?

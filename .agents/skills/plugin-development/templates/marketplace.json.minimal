@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/schemas/marketplace.json",
+  "name": "{{MARKETPLACE_NAME}}",
+  "description": "{{MARKETPLACE_DESCRIPTION}}",
+  "owner": {
+    "name": "{{OWNER_NAME}}",
+    "email": "{{OWNER_EMAIL}}"
+  },
+  "plugins": [
+    {
+      "name": "{{PLUGIN_NAME}}",
+      "description": "{{PLUGIN_DESCRIPTION}}",
+      "source": "./plugins/{{PLUGIN_NAME}}",
+      "category": "development"
+    }
+  ]
+}
