@@ -3,7 +3,7 @@ name: merge-pr
 description: >-
   Check whether the current branch's (or a given) pull request is ready to merge — not draft, all required status checks passing, no outstanding change-request reviews — report readiness clearly, and if ready, ask before merging. Verifies the current user actually has merge rights (repo owner, CODEOWNERS match, or collaborator permission) before executing. Use when checking if a PR is ready to merge, merging a PR, or asked "can I merge this" / "is this ready".
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr:*), Bash(gh api:*), Bash(gh repo:*), Read, Skill(git-kit:manage-codeowners)
+allowed-tools: Bash(gh pr:*), Bash(gh api:*), Bash(gh repo:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:manage-codeowners), Skill(git-kit:finishing-work)
 ---
 
 # Merge PR
@@ -26,7 +26,8 @@ Check whether a PR is ready to merge, tell the user its status, and — only if 
 3. **Merge-rights check** (only runs once the PR is confirmed ready): follow the 3-tier procedure in `references/merge-rights-check.md` exactly — do not improvise a shortcut. It ends in either `MERGE ALLOWED` or `MERGE NOT ALLOWED` (with the specific reason). If `MERGE NOT ALLOWED` because `.github/CODEOWNERS` is missing, ask via `AskUserQuestion` whether to invoke `Skill(git-kit:manage-codeowners)` now to bootstrap one; otherwise (any other `MERGE NOT ALLOWED` reason) tell the user which tier failed and stop.
 4. **Confirm**: if `MERGE ALLOWED`, use `AskUserQuestion` to show the PR (number, title, readiness summary) and ask whether to merge now. Only proceed on explicit confirmation.
 5. **Read settings**: read `pr_merge_type` (`MERGE`/`REBASE`/`SQUASH`, default `REBASE`) and `merge_auto_delete_branch` (default `true`) the same way `commit` does — `.claude/git-kit.local.json` if it exists and sets the field, else the git-tracked `${CLAUDE_PLUGIN_ROOT}/git-kit.settings.json` default. Neither field needs the trust-boundary check `commit`'s `commit_confirm_before_commit`/`commit_auto_stage` require — both are low-risk (a merge strategy choice, and a reversible branch deletion), so honor them from either file, tracked or not.
-6. **Execute the merge**: run `gh pr merge $ARGUMENTS --merge`, `--rebase`, or `--squash` matching `pr_merge_type`, adding `--delete-branch` if `merge_auto_delete_branch` is `true`. If `merge_auto_delete_branch` is `false`, merge without `--delete-branch`, then afterward ask separately via `AskUserQuestion` whether to delete the branch; on yes, delete it with `gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>` (a merge that already happened can't be re-run with `--delete-branch`; this stays within the skill's existing GitHub-API scope rather than adding a local `git push` grant). Report the result: merge commit/method used, and whether the branch was deleted.
+6. **Execute the merge**: immediately before merging, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-merge merge-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier, and never before step 4's confirmation). Then run `gh pr merge $ARGUMENTS --merge`, `--rebase`, or `--squash` matching `pr_merge_type`, adding `--delete-branch` if `merge_auto_delete_branch` is `true`. If `merge_auto_delete_branch` is `false`, merge without `--delete-branch`, then afterward ask separately via `AskUserQuestion` whether to delete the branch; on yes, delete it with `gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>` (a merge that already happened can't be re-run with `--delete-branch`; this stays within the skill's existing GitHub-API scope rather than adding a local `git push` grant). Report the result: merge commit/method used, and whether the branch was deleted.
+7. **Offer post-merge sync**: after a successful merge, ask via `AskUserQuestion` — "Run `finishing-work` now to sync local `main` and check for cleanup?" — options "Yes — sync now" / "No — skip". If yes, invoke `Skill(git-kit:finishing-work)` with this PR's number/URL so it can bind its own merge-confirmation check to the exact PR just merged rather than re-resolving the current branch's PR. This exists specifically so a successful merge doesn't rely on the user remembering to separately invoke `finishing-work` afterward — a real gap that let branches from at least two earlier merges sit locally, undiscovered, for multiple days. Never skip this ask or auto-invoke `finishing-work` without it: `finishing-work` switches the current checkout to `main`, which can be disruptive if the user is about to start other work on the just-merged branch's follow-up.
 
 ## Boundaries
 
@@ -34,3 +35,15 @@ Check whether a PR is ready to merge, tell the user its status, and — only if 
 - Never touches CODEOWNERS content or branch protection rules — strictly read-only against both. If CODEOWNERS needs to change, that's `manage-codeowners`'s job.
 - The merge-rights check runs inline in this skill — it is not a separate dispatched skill or agent, and it does not use or maintain any locally-cached collaborator-permission file; the collaborator-permission check is always a live API call.
 - Does not resolve review comments or generate a changeset summary — that's `explain-pr-changes`'s job. This skill's only relationship to review state is the coarse "no outstanding CHANGES_REQUESTED" gate in step 2.
+- Never invokes `finishing-work` without asking first (step 7) — a successful merge alone is not implicit consent to switch the current checkout to `main`.
+
+## Testing & Validation
+
+1. **Post-merge sync accepted** — after a successful merge, confirm step 7's `AskUserQuestion` fires and, on "Yes", `Skill(git-kit:finishing-work)` is invoked with the just-merged PR's number/URL, not a re-resolved current-branch PR
+2. **Post-merge sync declined** — confirm the skill still reports the merge result cleanly on "No — skip", without invoking `finishing-work`
+3. **Merge fails or is never reached** (readiness/rights check fails, user declines the step-4 confirmation) — confirm step 7 never fires; it's conditioned on a successful merge, not on the skill having run at all
+
+**Quality gates:**
+- [ ] Step 7 always uses `AskUserQuestion` — never auto-invokes `finishing-work` unconditionally
+- [ ] Step 7 only runs after step 6's merge actually succeeded — never on a failed or skipped merge
+- [ ] `finishing-work` is always invoked with the specific PR just merged, not left to re-resolve an ambiguous "current branch" PR
