@@ -73,3 +73,9 @@ Unlike the guidelines above, this section is specific to this marketplace, not a
 Plugin names use `<domain>-kit` or `<domain>-devkit` — exactly one hyphen, placed immediately before the `kit`/`devkit` suffix, regardless of whether the domain itself is one word or several (e.g. `git-kit`, `plugin-devkit`, `python-devkit`).
 
 **Not yet decided:** which suffix (`-kit` vs. `-devkit`) or prefix applies when — that requires first defining the actual list of suffixes/prefixes and their intended meaning. Tracked as an open item in `plugin-rulebook`'s `references/naming-conventions.md`; not implemented as a rulebook check until that list exists.
+
+## Marketplace-Specific: No Scratch Files at Repo Root
+
+Never write temporary, test, or scratch files to the repository root. Always use the session's scratchpad directory instead — watch for bare relative filenames (e.g. `Write("test-output.json", ...)`), which silently resolve to the current working directory (often the repo root) rather than the scratchpad.
+
+**Why:** an untracked file at repo root is unnecessary clutter even when it can be deleted normally, and on machines where local permissions deny `rm` at the repo root (a personal/local setting, not a project-wide guarantee — check your own environment rather than assuming), such a file becomes permanent since it can't be cleaned up afterward at all. This has independently happened in at least two separate sessions under that exact local-permission constraint (a plugin-devkit session, and a scratch file left by an `analysis-kit` build's own smoke testing), confirming it's a recurring failure mode worth preventing outright, not one-off bad luck. Enforcement here is prose-only (no backing hook blocks a repo-root write) — a deliberate, disclosed tradeoff, not an oversight.
