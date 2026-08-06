@@ -11,7 +11,7 @@ description: >-
   development framework a project relies on, checking whether a framework's
   companion tool stayed within its subordinate role, or building tool/framework
   optimization suggestions.
-allowed-tools: Read Glob Grep Write Bash(python */analysis-kit/scripts/framework_fingerprint.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
+allowed-tools: Read Glob Grep Write AskUserQuestion Bash(python */analysis-kit/scripts/framework_fingerprint.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 
@@ -112,7 +112,7 @@ Produce:
 📄 Tool and Framework Analysis Report written: `.claude/output/analyzing-tool-and-framework-use/<scope-slug>-<timestamp>.md`
 ```
 
-**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/*/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
 
 ## Gotchas
 
@@ -143,4 +143,5 @@ After Phase 5, verify these gates before presenting output as final:
 | `references/framework-role-conformance.md` | Generic GM/execution-companion role-conformance checklist, plus per-framework confidence notes and GG-SAD/GSD's Gate-Order and Phase-Permission Checks | Phase 2 (confidence notes), Phase 4 (checks) |
 | `assets/framework-signatures.json` | Marker paths per known framework, consumed by `scripts/framework_fingerprint.py` | Phase 2 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions used across analysis-kit | When a finding's severity needs grounding against other skills' reports |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/analyzing-tool-and-framework-use/` | Where this skill's own reports are persisted, one file per run | Phase 5 (write) |

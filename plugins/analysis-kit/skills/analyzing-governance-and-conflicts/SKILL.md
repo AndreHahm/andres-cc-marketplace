@@ -117,7 +117,7 @@ Group findings by conflict category, then by rule. Close with a short Top Action
 📄 Governance and Conflict Report written: `.claude/output/analyzing-governance-and-conflicts/<scope-slug>-<timestamp>.md`
 ```
 
-**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/*/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
 
 ## Gotchas
 
@@ -144,4 +144,5 @@ After Phase 5, verify before presenting output as final:
 | `references/conflict-taxonomy.md` | The four conflict categories with detection patterns | Phase 3 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions used across analysis-kit | When a finding's severity needs grounding against other skills' reports |
 | `references/governance-conformance-checklist.md` | Rule-conformance evaluation patterns | Phase 2 |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/analyzing-governance-and-conflicts/` | Where this skill's own reports are persisted, one file per run | Phase 5 (write) |

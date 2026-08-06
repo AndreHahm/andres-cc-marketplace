@@ -11,7 +11,7 @@ description: >-
   directly. Use when finding repeated command patterns, checking whether
   the same question was asked more than once, or reviewing where subagent
   time and tokens went this session.
-allowed-tools: Read Glob Write Bash(python */analysis-kit/scripts/sequence_miner.py:*) Bash(python */analysis-kit/scripts/token_time_aggregator.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
+allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/sequence_miner.py:*) Bash(python */analysis-kit/scripts/token_time_aggregator.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 
@@ -80,7 +80,7 @@ This deterministically finds subsequences that repeat at or above the default th
 
 Check three sub-patterns, per `references/pattern-mining-methodology.md`:
 
-- **Memory-recall patterns** — `Glob` `.claude/output/{analyzing,comparing,mining,generating,reviewing}-*/*.md` (for a prior analysis-kit report) and any `CLAUDE.md` for relevant memory/context; did the project have such context available but not consulted where it clearly should have been?
+- **Memory-recall patterns** — `Glob` `.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/*.md` (analysis-kit's own 9 report directories named explicitly, not a prefix wildcard that would also match `plugin-devkit`'s unrelated `analyzing-sessions` output directory, for a prior analysis-kit report) and any `CLAUDE.md` for relevant memory/context; did the project have such context available but not consulted where it clearly should have been?
 - **Repeated-question loops** — did the same or a near-identical `AskUserQuestion` get asked more than once in the scope, without new information justifying re-asking?
 - **Retry loops** — from Phase 2's mined subsequences, which represent a failing command retried without an intervening change, versus a legitimate multi-step retry with a real fix in between?
 
@@ -110,7 +110,7 @@ Group findings by category (recurring sequences, recalls/loops, usage hotspots).
 📄 Recurring Pattern Report written: `.claude/output/mining-recurring-patterns/<scope-slug>-<timestamp>.md`
 ```
 
-**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/*/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
 
 ## Gotchas
 
@@ -137,4 +137,5 @@ After Phase 5, verify before presenting output as final:
 | File | Purpose | When to read |
 |---|---|---|
 | `references/pattern-mining-methodology.md` | Action-token abstraction examples, automation-candidate criteria, recall/loop detection patterns | Phase 2, Phase 3 |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/mining-recurring-patterns/` | Where this skill's own reports are persisted, one file per run | Phase 5 (write) |
