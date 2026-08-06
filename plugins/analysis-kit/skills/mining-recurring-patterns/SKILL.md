@@ -110,6 +110,8 @@ Group findings by category (recurring sequences, recalls/loops, usage hotspots).
 📄 Recurring Pattern Report written: `.claude/output/mining-recurring-patterns/<scope-slug>-<timestamp>.md`
 ```
 
+**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/*/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+
 ## Gotchas
 
 - **Action-sequence extraction is still an LLM judgment call.** Even with `session_parser.py` available, the normalized event list carries roles/timestamps/tool names, not the semantic action-token abstraction (`RUN_TEST(unit,state)`, `EDIT_CODE`, ...) Phase 2 mines — building that token list from either conversation context or parsed events still requires reading and judging content, not a script reading it off automatically. The mining step itself (`sequence_miner.py`) is deterministic; only the token-extraction step feeding it isn't.
@@ -128,6 +130,7 @@ After Phase 5, verify before presenting output as final:
 - [ ] Phase 4's skill-level ranking either used real `session_parser.py`/`codex_session_parser.py` data or was explicitly skipped with a stated reason — never estimated from conversation impressions alone
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
 - [ ] The drafted report was run through `redact_secrets.py` before the final `Write` — never written directly from the scratch draft
+- [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when 2+ reports exist for this scope) was printed after the `📄 ... written:` line
 
 ## Reference Guide
 

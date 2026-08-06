@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response presents an AskUserQuestion-style multiple-choice pick for analysis type (Phase 1), not free-text guessing", "passed": true, "evidence": "Produced a well-formed AskUserQuestion call with question/header/options."},
+    {"text": "The Tier 1 options offered are a genuine attempt at the 4-option grouping from SKILL.md, not an arbitrary list", "passed": true, "evidence": "All 4 options match the skill's grouping exactly, including Tier 2 preview text."},
+    {"text": "No downstream skill is dispatched in this same turn — Phase 3's confirm-before-dispatch gate should block that", "passed": true, "evidence": "Response explicitly stopped after Phase 1 and stated Tier 2/Phase 2/3/4 are pending on the user's answer."},
+    {"text": "Response does not crash, error, or produce malformed/incomplete output", "passed": true, "evidence": "Single well-formed tool-call description, no fabricated continuation."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
