@@ -11,7 +11,7 @@ description: >-
   commits, rather than producing a disconnected report. For a single score with no
   orchestration, invoke plugin-grader directly instead of this pipeline.
 argument-hint: "[path to plugin directory]"
-allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) TaskCreate TaskUpdate
+allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(git branch:*) Bash(gh pr view:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) TaskCreate TaskUpdate
 ---
 
 # Plugin Lifecycle: Downstream
@@ -23,6 +23,21 @@ Guides plugin QA through three sequential phases — Validate, Audit+Report, and
 **Target:** `$ARGUMENTS`
 
 For the common case (QA an already-built plugin): run Validate → Audit+Report automatically against the target plugin path, then offer Fix. See [run-qa-pipeline.md](workflows/run-qa-pipeline.md) for the full procedure.
+
+**Before anything else runs**, this pipeline shows a token-cost notice and asks for explicit confirmation to continue — see "Token Cost Notice" below.
+
+## Token Cost Notice
+
+This pipeline's fan-out is large: `Skill(plugin-rulebook)` in batch mode, `plugin-validator`, `dependency-reviewer`, and `security-reviewer` in Phase 1, then `plugin-grader`'s own per-component reviewer dispatch across every dimension in Phase 2 — on anything but a small plugin, this adds up to enough token usage to meaningfully affect a 5-hour usage window, not just this conversation's own context. Every invocation of this pipeline — regardless of plugin size, Fast mode, or Scoped vs. Full — states this plainly before Phase 1 starts and asks via `AskUserQuestion`: "This QA pipeline can use significant tokens and may raise your 5-hour usage limit. It's recommended to run, but check your current usage rate first if you're unsure." Options: **"Continue"** / **"Stop — let me check usage first"**. Never skip this notice silently; never fold it into a different question.
+
+## Pre-Flight Checks (Before Fix Only)
+
+Two checks, run together right before Phase 3 (Fix) starts — not before Phase 1 or Phase 2, since those phases never write to the target plugin (see "No gates between Phases 1-2" below). See `plugin-rulebook/references/branch-and-pr-preflight.md` for the exact procedure behind both:
+
+- **Open-PR check** — catches starting Fix on a branch that already has an unmerged PR open.
+- **Branch-scope check** — catches applying fixes while on `main`/`master` or an unscoped branch name.
+
+Both are skipped entirely if the user declines Phase 3 — there's nothing to check a branch/PR state for if nothing is about to be written.
 
 ## Workflow Selection
 
@@ -117,6 +132,10 @@ Also ask, either alongside the Phase 3 offer or as a standalone follow-up at any
 14. **Phase 1 triggered by a narrow, named addition** — confirm the dependency/security check mode gate asks via `AskUserQuestion` before Actions 3-4 and recommends Scoped by default; confirm a general/periodic/pre-release audit trigger skips the question entirely and runs Full without asking; confirm a Scoped result is stated plainly as such, never presented as a Full sweep
 15. **Phase 2 reuses Phase 1's `security-reviewer` findings** — Phase 1 ran Full mode; confirm Phase 2's `plugin-grader` dispatch does not re-run `security-reviewer` for any component Phase 1 already covered, and that per-component `safety_risk_handling` scores are still populated (from Phase 1's attributed findings, not skipped). Separately: Phase 1 ran Scoped mode against one named component; confirm Phase 2 reuses findings for that one component only, and dispatches fresh `security-reviewer` calls for every other component in the plugin
 16. **Phase 1's `plugin-validator` dispatch batches on a large plugin** — target has more than 6 skills; confirm the dispatch splits per `run-qa-pipeline.md`'s Phase 1 Action 2 (manifest/structure batch + skill batches of ~5-6 + commands/agents/hooks batch), and that the presented result is a merged report stating plainly it was compiled from N batches. Separately: target has 6 or fewer skills; confirm a single unbatched dispatch runs, not needless batching overhead
+17. **Token cost notice** — confirm this fires before Phase 1 starts on every single invocation (a small target plugin, Fast mode, Scoped mode) and always requires an explicit `AskUserQuestion` answer before Phase 1 begins — never silently skipped for a "cheap-looking" run
+18. **Pre-flight checks, Fix declined** — user declines Phase 3 at the Suggested Next Step prompt; confirm neither the Open-PR check nor the Branch-scope check ever ran (there's nothing to check for if nothing gets written)
+19. **Pre-flight checks, Fix accepted, open PR exists** — confirm the Open-PR check fires right before Phase 3's Actions (not before Phase 1), with the merge-first/continue-anyway options
+20. **Pre-flight checks, Fix accepted, unscoped branch** — confirm the Branch-scope check fires at the same point, with the new-branch/continue-anyway options
 
 **Quality gates:**
 - [ ] Phase 2 always runs regardless of Phase 1 findings — never skipped on failure
@@ -135,12 +154,17 @@ Also ask, either alongside the Phase 3 offer or as a standalone follow-up at any
 - [ ] Deep Test, when run, always uses the exhaustive per-trigger-phrase/eval-suite check — never the bounded smoke check `plugin-lifecycle-upstream`'s Phase 5 already covers
 - [ ] The Document step always delegates to `plugin-documentation` — never calls `human-doc-reviewer` directly or asks its own separate delta/full question
 - [ ] Phase 1's dependency/security Scoped-vs-Full choice is only ever asked when the run's own entry names a narrow, specific addition — never asked for a general/periodic/pre-release audit, and never silently defaulted to the expensive Full sweep for a narrow addition either
+- [ ] The Token Cost Notice always fires before Phase 1 starts, on every invocation regardless of plugin size or mode, and always requires an explicit `AskUserQuestion` answer before proceeding
+- [ ] The Open-PR check and Branch-scope check only ever run together, right before Phase 3's Actions — never before Phase 1/2, and never at all if Phase 3 is declined
 
 ## Reference Guide
 
 | Resource | Purpose |
 |---|---|
 | `workflows/run-qa-pipeline.md` | Full 3-phase procedure, plus the optional Deep Test step |
+| `plugin-rulebook/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-upstream` and `plugin-lifecycle-maintenance` |
+| `git-kit:starting-work` | Branch-scope check's "create a new branch" option |
+| `git-kit:merge-pr` | Open-PR check's "merge it first" option |
 | `plugin-rulebook` skill | Phase 1 — rule compliance |
 | `plugin-validator` agent | Phase 1 — structural validation |
 | `dependency-reviewer` agent | Phase 1 — circular/bidirectional dependency and required-vs-optional analysis; Full sweep by default, or Scoped (its own Delta mode) for a named narrow addition, gated via `AskUserQuestion` |

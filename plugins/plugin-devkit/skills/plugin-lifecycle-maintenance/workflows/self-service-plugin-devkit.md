@@ -194,6 +194,10 @@ plugin).
    unreviewed changes to a shipped plugin the moment they land, and deserves the same
    "the human always picks" discipline as everything else in this skill, even if one
    combined yes/no is faster than N individual breaking-change gates.
+4a. **Pre-flight: branch-scope check.** Step 5 is Service 6's first actual disk write (steps 1-4 only
+   gather, classify, and confirm) — before Step 5, run the Branch-scope check from
+   `plugin-rulebook/references/branch-and-pr-preflight.md`. If the current branch isn't scoped, ask
+   (new-branch / continue-anyway) before proceeding.
 5. Apply approved candidates via the matching Design skill (via `Skill`:
    `skill-development`/`agent-development`/etc.), same as every other lifecycle
    workflow's Fix step — never a direct `Edit` from this workflow itself.
@@ -212,12 +216,18 @@ common, valid outcome, not a failure of the check).
 
 **Entry:** none beyond invocation.
 
-**Actions:** Invoke `plugin-documentation` (via `Skill`) targeting `plugin-devkit` — it
-reads plugin-devkit's actual current state and runs its own built-in `human-doc-reviewer`
-QA pass internally. `plugin-documentation` has no `Bash`/git access and cannot commit —
-if the user keeps its authored changes (per its own keep/revise/discard gate), this
-service stages and commits them itself (via this workflow's own `Bash(git:*)`), stating
-the file list and message first, same discipline as every other commit in this plugin.
+**Actions:**
+1. **Pre-flight: branch-scope check.** `plugin-documentation` writes doc files directly
+   (via its own `Edit`/`Write`) as soon as it authors content, before this service ever
+   gets to a commit step — before invoking it, run the Branch-scope check from
+   `plugin-rulebook/references/branch-and-pr-preflight.md`. If the current branch isn't
+   scoped, ask (new-branch / continue-anyway) before proceeding.
+2. Invoke `plugin-documentation` (via `Skill`) targeting `plugin-devkit` — it
+   reads plugin-devkit's actual current state and runs its own built-in `human-doc-reviewer`
+   QA pass internally. `plugin-documentation` has no `Bash`/git access and cannot commit —
+   if the user keeps its authored changes (per its own keep/revise/discard gate), this
+   service stages and commits them itself (via this workflow's own `Bash(git:*)`), stating
+   the file list and message first, same discipline as every other commit in this plugin.
 
 **Exit criteria:** `plugin-documentation`'s own exit criteria — "no update needed" is a
 valid, common outcome; any kept changes are committed by this service before the check
@@ -261,6 +271,12 @@ caveat at the skill level).
    `AskUserQuestion` always runs before step 5 applies anything, including a
    candidate set that classified entirely as non-breaking — no candidate ever reaches
    step 5 without this confirmation having happened first
+9. **Self-improvement, branch-scope check** — confirm step 4a always runs after step 4's
+   confirmation and before step 5's apply, and that an unscoped branch is asked about
+   (new-branch / continue-anyway) rather than silently applying fixes to `main`
+10. **Self-documentation, branch-scope check** — confirm the check runs before
+    `plugin-documentation` is invoked (not after, and not only right before the commit),
+    since `plugin-documentation` itself writes doc files directly once it authors content
 
 **Quality gates:**
 - [ ] Self-review and self-evaluation always default to scoped; full sweep is always an
@@ -277,3 +293,7 @@ caveat at the skill level).
       pre-filter `Grep`
 - [ ] Self-improvement runs the shared Document Step after any applied fix's
       commit, same as the other 3 workflows
+- [ ] Self-improvement's branch-scope check (step 4a) always runs after step 4's
+      confirmation and before step 5's apply — never earlier (steps 1-4 write nothing)
+- [ ] Self-documentation's branch-scope check always runs before `plugin-documentation`
+      is invoked, not deferred until the commit step
