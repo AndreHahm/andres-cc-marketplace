@@ -11,7 +11,7 @@ description: >-
   retrospective just produced several analysis-kit reports and a sanity
   check across them is wanted, or when asking whether two analysis-kit
   reports actually agree with each other.
-allowed-tools: Read Glob Write Bash(python */analysis-kit/scripts/comparator.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
+allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/comparator.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
 argument-hint: [2+ paths to persisted analysis-kit reports, or "latest N"]
 ---
 
@@ -19,7 +19,7 @@ argument-hint: [2+ paths to persisted analysis-kit reports, or "latest N"]
 
 Cross-check two or more analysis-kit reports from the same scope for duplicate findings, contradictions, and severity claims one report's evidence undercuts.
 
-This skill reviews *other reports*, not production code or a live session — it exists because each of `analysis-kit`'s other 8 skills produces its report independently, with nothing checking whether two reports from the same retrospective actually agree with each other.
+This skill reviews *other reports*, not production code or a live session — it exists because each of `analysis-kit`'s other report-producing skills produces its report independently, with nothing checking whether two reports from the same retrospective actually agree with each other.
 
 ## Quick Start
 
@@ -28,7 +28,7 @@ This skill reviews *other reports*, not production code or a live session — it
 3. Classify findings pairs per `references/cross-check-taxonomy.md` — Duplicate, Contradiction, or Severity Undercut (Phase 3).
 4. Review the report, then check the persisted path.
 
-**Arguments:** `$ARGUMENTS` — optionally, 2+ paths to persisted analysis-kit reports, or `"latest N"` to use the N most recently modified reports found under `.claude/output/{analyzing,comparing,mining,generating,reviewing}-*/`. If omitted, ask the user which reports to cross-check.
+**Arguments:** `$ARGUMENTS` — optionally, 2+ paths to persisted analysis-kit reports, or `"latest N"` to use the N most recently modified reports found under `.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/`. If omitted, ask the user which reports to cross-check.
 
 ## When to Use
 
@@ -45,7 +45,7 @@ This skill reviews *other reports*, not production code or a live session — it
 
 ## Phase 1: Identify the Report Paths
 
-If 2+ paths were supplied as arguments, use them. If `"latest N"` was supplied, `Glob('.claude/output/{analyzing,comparing,mining,generating,reviewing}-*/*.md')` — narrowed to analysis-kit's own report-path convention, same narrowing `comparing-sessions` and `generating-analysis-recommendations` already apply — and take the N most recently modified. Otherwise ask via `AskUserQuestion` which reports to cross-check, or whether to use the latest N found.
+If 2+ paths were supplied as arguments, use them. If `"latest N"` was supplied, `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/*.md')` — analysis-kit's own 9 report directories named explicitly, same convention `comparing-sessions` and `generating-analysis-recommendations` already apply — and take the N most recently modified. Otherwise ask via `AskUserQuestion` which reports to cross-check, or whether to use the latest N found.
 
 Require at least 2 paths — a single report has nothing to cross-check against. If only one resolves, say so and stop rather than producing an empty cross-check.
 
@@ -104,4 +104,5 @@ After Phase 4, verify these gates before presenting output as final:
 |---|---|---|
 | `references/cross-check-taxonomy.md` | Duplicate/Contradiction/Severity Undercut definitions and detection guidance | Phase 3 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions used to judge Severity Undercut findings | Phase 3 |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 / Persist step restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/reviewing-analysis-findings/` | Where this skill's own reports are persisted, one file per run | Phase 4 (write) |

@@ -50,6 +50,7 @@ For date-range retrospectives or deep taxonomy guidance, read the full phases be
 - **Full permission-candidate extraction across session transcripts** — this skill's own Permission Friction note (Phase 6) is a qualitative observation only, not a systematic scan; use a dedicated permission-audit tool for that if your project has one
 - **Which external tools or developer frameworks a session used** — counting tool/framework invocations, or auto-detecting a project's framework, is `analyzing-tool-and-framework-use`'s job; this skill assesses component *behavior quality* (SWOT, self-critique), not tool/framework inventory
 - **Actor behavior in the moment** (was a sub-agent's dispatch appropriate, what did the human correct or contribute, how did work hand off between agents) — use `analyzing-actor-behavior` instead; this skill assesses a component's *structural/SWOT quality*, not actor behavior in the moment
+- **A retrospective request that names no specific analysis type** (e.g. a bare "run a retrospective on this session" or "analyze this session" with no mention of component/skill performance, tools/frameworks, actor behavior, governance/rules, recurring patterns, or a session/spec comparison) — use `starting-an-analysis` instead to pick the right analysis type first; this skill fires directly only when the request already names component/skill/agent/rule performance specifically
 
 ## Phase 1: Scope
 
@@ -199,7 +200,7 @@ Close with **Top 5 Actions**: the five highest-impact suggestions across all com
 📄 Session Analysis Report written: `.claude/output/analyzing-plugin-components/<scope-slug>-<timestamp>.md`
 ```
 
-**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/*/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
 
 Use one file per run (`<scope-slug>-<timestamp>.md`) as the persistence convention — this lets a later run in the same project link back to a specific prior retro instead of re-deriving one, and gives the Verify Open Items check above something concrete to point future re-checks at. If `.claude/output/analyzing-plugin-components/` already contains files from an older, different naming convention, don't migrate or delete them before persisting a new report — `Glob` the directory first only if a specific old file's content matters for the current run.
 
@@ -240,4 +241,5 @@ After Phase 6, verify these gates before presenting output as final:
 | `references/critique-reflection-framework.md` | Question sets per category; rationalizations to reject | Phase 4 |
 | `references/suggestion-taxonomy.md` | Priority tiers, type definitions, merge rules, examples | Phase 5 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions this skill's P1/P2/P3 priority tiers map onto | When a suggestion's priority needs grounding against other skills' reports |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/analyzing-plugin-components/` | Where this skill's own reports are persisted, one file per run | Phase 6 (write), Phase 2 of a later run (read, if in scope) |

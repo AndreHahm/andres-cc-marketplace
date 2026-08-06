@@ -95,7 +95,7 @@ Group findings by actor, then by pattern. Close with a short Top Actions list (h
 📄 Actor Behavior Report written: `.claude/output/analyzing-actor-behavior/<scope-slug>-<timestamp>.md`
 ```
 
-**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/*/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
 
 ## Gotchas
 
@@ -120,4 +120,5 @@ After Phase 6, verify before presenting output as final:
 |---|---|---|
 | `references/actor-behavior-taxonomy.md` | Agent-behavior and human-behavior signal categories | Phase 3, Phase 4 |
 | `references/handoff-flow-patterns.md` | Cross-agent handoff pattern categories | Phase 5 |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/analyzing-actor-behavior/` | Where this skill's own reports are persisted, one file per run | Phase 6 (write) |

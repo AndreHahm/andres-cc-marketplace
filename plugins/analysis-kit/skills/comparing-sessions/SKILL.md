@@ -45,7 +45,7 @@ Compare two Claude Code sessions structurally and semantically, using two persis
 
 ## Phase 1: Identify the Two Reports
 
-The "current" side is either a freshly-run analysis-kit report from this session, or the current conversation's own findings if no report has been persisted yet. The "prior" side is a report path supplied as an argument, `"latest"` (Glob `.claude/output/{analyzing,comparing,mining,generating,reviewing}-*/*.md` — narrowed to analysis-kit's own report-path convention, not the entire `.claude/output/` tree, which routinely holds hundreds of unrelated reports from other plugins/skills — for the most recently modified matching report), or a report the user names directly.
+The "current" side is either a freshly-run analysis-kit report from this session, or the current conversation's own findings if no report has been persisted yet. The "prior" side is a report path supplied as an argument, `"latest"` (Glob `.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/*.md` — analysis-kit's own 9 report directories named explicitly, not a prefix wildcard, since a prefix like `analyzing-*` also matches `plugin-devkit`'s unrelated `analyzing-sessions` output directory — for the most recently modified matching report), or a report the user names directly.
 
 If no persisted report exists for the current session's findings yet, offer to run the relevant analysis skill first (e.g. `analyzing-plugin-components`) rather than comparing against nothing.
 
@@ -75,7 +75,7 @@ Structure findings as: **Consistencies** (what held steady), **Divergences** (wh
 📄 Session Comparison Report written: `.claude/output/comparing-sessions/<scope-slug>-<timestamp>.md`
 ```
 
-**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/*/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
 
 ## Gotchas
 
@@ -99,4 +99,5 @@ After Phase 4, verify before presenting output as final:
 | File | Purpose | When to read |
 |---|---|---|
 | `references/comparison-dimensions.md` | What counts as comparable between two sessions | Phase 3 |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 / Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/comparing-sessions/` | Where this skill's own reports are persisted, one file per run | Phase 4 (write) |
