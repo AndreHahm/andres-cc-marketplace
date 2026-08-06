@@ -1,6 +1,6 @@
 # Analysis Kit
 
-Session analysis toolkit for Claude Code: component retrospectives, tool/framework auditing, actor behavior analysis, governance and conflict detection, session/specification comparison, recurring-pattern mining, cross-report findings review, and classified improvement recommendations — all grounded in a session or date range, with reports persisted for later reference.
+Session analysis toolkit for Claude Code: component retrospectives, tool/framework auditing, actor behavior analysis, governance and conflict detection, session/specification comparison, recurring-pattern mining, cross-report findings review, and classified improvement recommendations — all grounded in a session or date range, with reports persisted for later reference, and a guided front door (`starting-an-analysis`) that picks the right analysis type without needing to already know the other skills' names.
 
 ## Plugin Target
 
@@ -15,7 +15,7 @@ Session analysis toolkit for Claude Code: component retrospectives, tool/framewo
 
 ## Overview
 
-`analysis-kit` provides 9 skills over a shared deterministic `scripts/` core (component/rule inventory, framework fingerprinting, structural diffing, sequence mining, usage aggregation, session parsing, secret redaction — see the Skills table below for what each skill does). Reports from every skill are persisted under `.claude/output/<skill-name>/`, one file per run, so later runs can reference a specific prior report. Before any report is written, every skill runs it through `scripts/redact_secrets.py` — a shared pass that strips common secret-shaped patterns (Authorization/Bearer headers, `.env`-shaped lines, known cloud key prefixes) without ever blocking the write.
+`analysis-kit` provides 10 skills over a shared deterministic `scripts/` core (component/rule inventory, framework fingerprinting, structural diffing, sequence mining, usage aggregation, session parsing, secret redaction — see the Skills table below for what each skill does). Reports from every skill are persisted under `.claude/output/<skill-name>/`, one file per run, so later runs can reference a specific prior report. Before any report is written, every skill runs it through `scripts/redact_secrets.py` — a shared pass that strips common secret-shaped patterns (Authorization/Bearer headers, `.env`-shaped lines, known cloud key prefixes) without ever blocking the write.
 
 This plugin is standalone — it has no dependency on any other plugin.
 
@@ -23,7 +23,7 @@ This plugin is standalone — it has no dependency on any other plugin.
 
 **Shared severity vocabulary.** `references/severity-vocabulary.md` (plugin root, not under any single skill) defines a 4-tier scale (Critical/Major/Minor/Informational) that the skills with a severity-rated vocabulary — P1/P2/P3, Violated/Compliant/Ambiguous, and so on — map onto, so a reader (or `reviewing-analysis-findings`) can compare two differently-worded severity claims on one consistent basis. It doesn't replace any skill's own vocabulary; each skill keeps its native terms. Not every skill rates findings by severity (see the reference file itself for which ones don't and why).
 
-**Two more disclosed design choices, recorded here rather than left implicit:** `analyzing-governance-and-conflicts` and `comparing-session-to-specification` both `Glob` a generic `specs/` directory as one of several spec-document search locations — this is unrelated to, and shouldn't be confused with, the low-confidence Spec Kit marker of the same name (`specs/`) in `analyzing-tool-and-framework-use`'s `assets/framework-signatures.json`; the two uses of the string are coincidental, not a shared assumption. Separately, six skills (`analyzing-plugin-components`, `comparing-sessions`, `comparing-session-to-specification`, `generating-analysis-recommendations`, `mining-recurring-patterns`, `reviewing-analysis-findings`) depend on reading prior reports from `.claude/output/`, which is gitignored by convention — this persist-then-read pipeline is an accepted, intentional design choice, not an oversight. It's a deliberate exception to the general rule against referencing a gitignored path as a live dependency, justified on two grounds specific to this case: every consuming site degrades gracefully when the artifact is absent (offers to generate a baseline, skips, or falls back to pasted findings, rather than failing), and the artifacts in question are self-produced by this same plugin's own skills, not an external dependency that could vanish for reasons outside the plugin's control.
+**Two more disclosed design choices, recorded here rather than left implicit:** `analyzing-governance-and-conflicts` and `comparing-session-to-specification` both `Glob` a generic `specs/` directory as one of several spec-document search locations — this is unrelated to, and shouldn't be confused with, the low-confidence Spec Kit marker of the same name (`specs/`) in `analyzing-tool-and-framework-use`'s `assets/framework-signatures.json`; the two uses of the string are coincidental, not a shared assumption. Separately, seven skills (`analyzing-plugin-components`, `comparing-sessions`, `comparing-session-to-specification`, `generating-analysis-recommendations`, `mining-recurring-patterns`, `reviewing-analysis-findings`, `starting-an-analysis`) depend on reading prior reports from `.claude/output/`, which is gitignored by convention — this persist-then-read pipeline is an accepted, intentional design choice, not an oversight. It's a deliberate exception to the general rule against referencing a gitignored path as a live dependency, justified on two grounds specific to this case: every consuming site degrades gracefully when the artifact is absent (offers to generate a baseline, skips, or falls back to pasted findings, rather than failing), and the artifacts in question are self-produced by this same plugin's own skills, not an external dependency that could vanish for reasons outside the plugin's control.
 
 ## Prerequisites
 
@@ -44,6 +44,11 @@ cc --plugin-dir /path/to/analysis-kit
 ## Quick Start
 
 ```bash
+# Not sure which analysis type fits? Start here — it asks, scopes, confirms, runs, then offers the next step.
+> /starting-an-analysis
+
+# Already know the skill you want? Invoke it directly:
+
 # Post-session component retrospective, current conversation
 > /analyzing-plugin-components
 
@@ -57,15 +62,17 @@ cc --plugin-dir /path/to/analysis-kit
 > /generating-analysis-recommendations .claude/output/analyzing-plugin-components/this-conversation-2026-08-01T12-00-00Z.md
 ```
 
-1. Choose scope — this conversation, a start date, or today (most skills), or a report/document path (the comparison and recommendation skills).
-2. Each skill runs its own deterministic first step (a shared script, or a component inventory) before any semantic interpretation.
-3. Review findings in priority order.
-4. Act on the recommendations, then check the persisted report path — or hand a specific finding to `generating-analysis-recommendations` for a concrete plan.
+1. Not sure which analysis type fits, or want the whole analyze → expand-findings flow walked through step by step? Run `starting-an-analysis` — it picks the type, asks for scope, confirms before running anything, then offers the next step once a report exists.
+2. Already know the skill you want? Invoke it directly and choose scope yourself — this conversation, a start date, or today (most skills), or a report/document path (the comparison and recommendation skills).
+3. Each skill runs its own deterministic first step (a shared script, or a component inventory) before any semantic interpretation.
+4. Review findings in priority order.
+5. Act on the recommendations, then check the persisted report path — or hand a specific finding to `generating-analysis-recommendations` for a concrete plan.
 
 ## Skills
 
 | Skill | Use when |
 |---|---|
+| `starting-an-analysis` | Not already knowing which of the 7 analysis skills below fits — a guided front door that picks the type, scopes it, confirms before running, and offers the next step afterward |
 | `analyzing-plugin-components` | Running a post-session retrospective, auditing skill/agent/rule performance, or building a prioritized improvement backlog from a session or date range |
 | `analyzing-tool-and-framework-use` | Auditing which external tools or developer frameworks a session actually used, or checking whether a framework's execution companion stayed within its subordinate role |
 | `analyzing-actor-behavior` | Assessing agent behavior, human-vs-agent contribution, or cross-agent handoff/flow patterns |
