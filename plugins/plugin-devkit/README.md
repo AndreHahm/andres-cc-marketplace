@@ -4,14 +4,14 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-devkit` ships **33 skills**, **23 agents**, **16 commands**, and `PreToolUse`/`Stop`/`PostToolUse` hooks. Skills fall into six broad groups:
+`plugin-devkit` ships **35 skills**, **23 agents**, **16 commands**, and `PreToolUse`/`Stop`/`PostToolUse` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
 | **Component authoring** | `agent-development`, `command-development`, `hook-development`, `skill-development`, `workflow-skill-development`, `mcp-integration` |
 | **Plugin structure & governance** | `plugin-development`, `plugin-rulebook`, `upstream-sources-registry`, `plugin-settings`, `plugin-evaluation`, `marketplace-development`, `plugin-documentation` |
-| **Skill quality & lifecycle** | `skill-refiner-interactive`, `skill-improver-loop`, `skill-tester`, `skill-security`, `skill-stocktake`, `skill-maintenance` |
-| **Plugin lifecycle** | `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance` |
+| **Skill quality & lifecycle** | `component-prototyping`, `skill-refiner-interactive`, `skill-improver-loop`, `skill-tester`, `skill-security`, `skill-stocktake`, `skill-maintenance` |
+| **Plugin lifecycle** | `using-plugin-devkit`, `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance` |
 | **Planning & analysis** | `plugin-ideation`, `plugin-planning`, `plugin-comparison`, `plugin-grader`, `analyzing-sessions`, `verify-agent-citations` |
 | **`.claude/rules/` pipeline** | `rule-development`, `rules-extract`, `rules-merge`, `rules-apply`, `rules-review` |
 
@@ -70,6 +70,7 @@ cc --plugin-dir /path/to/plugin-devkit
 
 | Skill | Use when |
 |---|---|
+| `using-plugin-devkit` | Not already knowing which of the three pipelines below fits — a guided front door that picks the entry point, confirms before dispatch, and names the lighter single-skill alternative when a full pipeline is overkill |
 | `plugin-lifecycle-upstream` | Creating a new plugin/component end-to-end — Ideate, Plan, Design, Build, Test, Commit, Document, Handoff |
 | `plugin-lifecycle-downstream` | QA-ing an existing plugin — Validate, Audit+Report, optional Fix, and Document |
 | `plugin-lifecycle-maintenance` | Evolving an already-built plugin — retro-driven improvement, comparison-driven enhancement, keeping plugin-devkit's own rules current against official docs, or plugin-devkit's own on-demand self-service checks against itself |
@@ -174,10 +175,11 @@ Twenty-three specialized agents, seventeen of which are quality-gate reviewers c
 
 ## Quick Start
 
-1. **Building a component?** Ask directly — "create a hook that validates file writes," "add an MCP server for Postgres," "write a rule about early returns" — the matching skill activates automatically.
-2. **Reviewing what you built?** Invoke the matching reviewer agent, or run `plugin-validator` for a full structural pass.
-3. **Iterating on a skill?** Use `/skill-improver` for an automated fix-review loop, or `skill-refiner-interactive` for operator-guided refinement.
-4. **Rolling out org-wide conventions?** `rules-extract` → `rules-merge` → `rules-apply`.
+1. **Not sure where to start?** Run `using-plugin-devkit` — it asks what you're trying to do, then routes to `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance`, or a lighter single-skill alternative.
+2. **Building a component?** Ask directly — "create a hook that validates file writes," "add an MCP server for Postgres," "write a rule about early returns" — the matching skill activates automatically.
+3. **Reviewing what you built?** Invoke the matching reviewer agent, or run `plugin-validator` for a full structural pass.
+4. **Iterating on a skill?** Use `/skill-improver` for an automated fix-review loop, or `skill-refiner-interactive` for operator-guided refinement.
+5. **Rolling out org-wide conventions?** `rules-extract` → `rules-merge` → `rules-apply`.
 
 ## Contributing
 

@@ -14,7 +14,7 @@ description: >-
   steps. Not for a single, already-known fix — edit directly or use the matching Design
   skill.
 argument-hint: "[workflow: improve|enhance|self-upstream|self-service] [target]"
-allowed-tools: Read Skill Agent Edit Write Bash(git:*) TaskCreate TaskUpdate
+allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git:*) Bash(gh pr view:*) Bash(date:*) Bash(*/agent-cost-tracker.py:*) TaskCreate TaskUpdate
 ---
 
 # Plugin Lifecycle: Maintenance
@@ -23,20 +23,31 @@ Guides an already-shipped plugin through four maintenance workflows — each one
 
 ## Quick Start
 
-Identify which workflow the request matches and jump to its file:
+1. **Open-PR check** — before identifying which workflow to run, check for an open PR on the current branch: see "Pre-Flight Checks" below. This runs once per invocation, regardless of which of the 4 workflows the request resolves to.
+2. Identify which workflow the request matches and jump to its file:
 
 | Workflow | Purpose |
 |---|---|
 | [improve-a-plugin.md](workflows/improve-a-plugin.md) | Retro-driven: `analyzing-sessions` finds issues from session behavior, human picks, hand off to Fix |
 | [enhance-a-plugin.md](workflows/enhance-a-plugin.md) | Comparison-driven: `plugin-comparison` finds gaps against another target, human picks, hand off to Fix |
-| [self-upstream-plugin-devkit.md](workflows/self-upstream-plugin-devkit.md) | Keeps `plugin-devkit`'s own rules current against official Codex docs — bulk or single-rule mode |
+| [self-upstream-plugin-devkit.md](workflows/self-upstream-plugin-devkit.md) | Keeps `plugin-devkit`'s own rules current against official Claude Code docs — bulk or single-rule mode |
 | [self-service-plugin-devkit.md](workflows/self-service-plugin-devkit.md) | Plugin-devkit's own on-demand self-checks against itself — 7 services: self-reflexion, self-review, self-validation, self-evaluation, self-grading, self-improvement, self-documentation |
+
+## Pre-Flight Checks
+
+Two checks, shared with `plugin-lifecycle-upstream` and `plugin-lifecycle-downstream` — see `plugin-rulebook/references/branch-and-pr-preflight.md` for the exact procedure behind both:
+
+- **Open-PR check** — runs once, centrally, in Quick Start step 1 above, before any of the 4 workflows starts — not duplicated inside each workflow file.
+- **Branch-scope check** — runs once per workflow, right before that workflow's own first actual write, since each workflow's write point differs:
+  - `improve-a-plugin` / `enhance-a-plugin`: no separate check needed here — both hand off entirely to `plugin-lifecycle-downstream`'s Phase 3 (Fix) at their own Step 3, and Phase 3 now runs this exact check itself (see `plugin-lifecycle-downstream/SKILL.md`'s own "Pre-Flight Checks (Before Fix Only)"). Adding a second check here would just ask the same question twice.
+  - `self-upstream-plugin-devkit`: runs before Bulk mode's Step 6 (`/implement-dev-rules`) and before Single-Rule mode's Step 3 (`/update-dev-rule`) — see that workflow file.
+  - `self-service-plugin-devkit`: runs before Service 6's Step 5 (apply approved candidates) and before Service 7's own commit — see that workflow file.
 
 ## When to Use
 
 - Acting on `analyzing-sessions`' retrospective findings instead of just reading the report and manually applying fixes one at a time
 - Acting on `plugin-comparison`'s findings after comparing this plugin to an adjacent one
-- Periodically confirming `plugin-devkit`'s own rules (frontmatter fields, tool-scoping syntax, size thresholds) still match current official Codex documentation
+- Periodically confirming `plugin-devkit`'s own rules (frontmatter fields, tool-scoping syntax, size thresholds) still match current official Claude Code documentation
 - Running an on-demand self-check of plugin-devkit against itself (reflection, review, validation, evaluation, grading, improvement, or documentation)
 - Wanting one guided, gated path from "here's a report" to "here's a tested, documented, committed fix" — rather than manually chaining `analyzing-sessions`/`plugin-comparison`/the dev-rules commands, `enhancement-suggestor`, a Design skill, and a commit yourself
 
@@ -47,6 +58,7 @@ Identify which workflow the request matches and jump to its file:
 - A routine, single-change "should this update propagate" decision right after finishing other work — use `skill-maintenance` instead; that skill is a lightweight per-change decision/routing aid, not a multi-phase pipeline
 - QA on a plugin with no specific finding-source driving the work — use `plugin-lifecycle-downstream` directly (this skill's `improve-a-plugin`/`enhance-a-plugin` workflows hand off to `plugin-lifecycle-downstream`'s own Fix phase rather than duplicating it)
 - Building a new plugin or component from scratch — use `plugin-lifecycle-upstream`
+- Not sure which of the three lifecycle pipelines fits — use `using-plugin-devkit` to confirm first
 
 ## Boundaries
 
@@ -72,7 +84,7 @@ Use `TaskCreate` at the start of whichever workflow runs, one task per major ste
 
 ## Testing & Validation
 
-This is a **manual-review checklist**, not a claim that every item below has eval coverage. Current eval evidence (`evals/plugin-lifecycle-maintenance/`, `skill-tester` Quick Workflow, 9 evals across 3 iterations, 25/25 assertions passing) covers trigger-phrase accuracy and scenarios 1, 2, 4, 5, 6, and 7 for the first 3 workflows (scenario 6's eval-7 record predates the Document step's `plugin-documentation`-delegation rewrite — eval-9 re-verifies it against the current architecture) — scenario 3 (bulk mode) and the 5 quality gates below have not yet been eval-tested; treat them as design-review-verified only until eval coverage is extended. **The `self-service-plugin-devkit` workflow (4th) has zero eval coverage as of this writing** — its own Build/Test pass verified only link resolution and trigger-phrase non-collision (see `workflows/self-service-plugin-devkit.md`'s own Testing & Validation section), not evals; the new "run a self-check on plugin-devkit" trigger phrase is likewise untested by the trigger-accuracy evals above.
+This is a **manual-review checklist**, not a claim that every item below has eval coverage. Current eval evidence (`evals/plugin-lifecycle-maintenance/`, `skill-tester` Quick Workflow, 9 evals across 3 iterations, 25/25 assertions passing) covers trigger-phrase accuracy and scenarios 1, 2, 4, 5, 6, and 7 for the first 3 workflows (scenario 6's eval-7 record predates the Document step's `plugin-documentation`-delegation rewrite — eval-9 re-verifies it against the current architecture) — scenario 3 (bulk mode) and the 7 quality gates below have not yet been eval-tested; treat them as design-review-verified only until eval coverage is extended. **The `self-service-plugin-devkit` workflow (4th) has zero eval coverage as of this writing** — its own Build/Test pass verified only link resolution and trigger-phrase non-collision (see `workflows/self-service-plugin-devkit.md`'s own Testing & Validation section), not evals; the new "run a self-check on plugin-devkit" trigger phrase is likewise untested by the trigger-accuracy evals above.
 
 1. **improve-a-plugin, findings exist** — confirm `analyzing-sessions` runs, the human is asked which suggestions to act on via `AskUserQuestion`, and the hand-off to `plugin-lifecycle-downstream`'s Fix phase happens rather than a reimplemented apply step
 2. **enhance-a-plugin, findings exist** — same shape, confirm `plugin-comparison` is the finding source and the same Fix-phase hand-off happens
@@ -81,6 +93,10 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 5. **No findings / no gaps** — confirm each workflow stops cleanly and states nothing needed action, rather than forcing a fix
 6. **Document step, nothing to update** — confirm "no doc update needed" is presented as a normal outcome, not silently skipped without being stated
 7. **Document step delegates to plugin-documentation** — confirm the Document step invokes `plugin-documentation` (not `human-doc-reviewer` directly) and does not ask its own separate delta/full question first — `plugin-documentation` owns that decision internally
+8. **Open-PR check, centralized** — confirm it runs exactly once in Quick Start step 1, before workflow routing, regardless of which of the 4 workflows the request resolves to — and confirm `improve-a-plugin`/`enhance-a-plugin` don't run a second copy of it inside their own Step 1
+9. **Branch-scope check, improve-a-plugin/enhance-a-plugin** — confirm neither workflow runs its own branch-scope check, and that `plugin-lifecycle-downstream`'s Phase 3 pre-flight check is what actually covers this case when Step 3 hands off
+10. **Branch-scope check, self-upstream-plugin-devkit** — confirm it fires before Bulk Step 6 and before Single-Rule Step 3, not earlier (Steps 1-5/1-2 only read/report/plan, no writes) and not later (both steps are the actual write point)
+11. **Branch-scope check, self-service-plugin-devkit** — confirm it fires before Service 6 Step 5 and before Service 7's own commit, and does not fire for Services 1-5 (none of which write to the plugin)
 
 **Quality gates:**
 - [ ] Every workflow's human-decision point uses `AskUserQuestion` — never an automatic selection
@@ -90,12 +106,17 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 - [ ] The Document step always delegates to `plugin-documentation` — never calls `human-doc-reviewer` directly or asks its own separate delta/full question
 - [ ] The optional Handover offer uses `AskUserQuestion`, never auto-invoked without asking
 - [ ] Every written artifact (Retro/Comparison/Rules/Gap/Plan/Implementation Report) gets the standard `📄 ... written:` link line before its content summary — Single-Rule mode's chat-only outputs excepted
+- [ ] The Open-PR check runs exactly once per invocation, centrally in Quick Start, before any workflow's own Actions — never duplicated inside a workflow file
+- [ ] The Branch-scope check always runs immediately before each workflow's own actual write step, never earlier and never skipped — `improve-a-plugin`/`enhance-a-plugin` rely on `plugin-lifecycle-downstream`'s Phase 3 gate instead of running their own
 
 ## Reference Guide
 
 | Resource | Purpose |
 |---|---|
 | `workflows/improve-a-plugin.md` | Retro-driven improvement, full procedure |
+| `plugin-rulebook/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-upstream` and `plugin-lifecycle-downstream` |
+| `git-kit:starting-work` | Branch-scope check's "create a new branch" option |
+| `git-kit:merge-pr` | Open-PR check's "merge it first" option |
 | `workflows/enhance-a-plugin.md` | Comparison-driven enhancement, full procedure |
 | `workflows/self-upstream-plugin-devkit.md` | Bulk and single-rule modernization against official docs, full procedure |
 | `workflows/self-service-plugin-devkit.md` | Plugin-devkit's own 7 on-demand self-checks against itself, full procedure (includes the shared cost-gated dispatch pattern used by self-review/self-evaluation) |

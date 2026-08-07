@@ -58,6 +58,7 @@ Two checks, shared with `plugin-lifecycle-upstream` and `plugin-lifecycle-downst
 - A routine, single-change "should this update propagate" decision right after finishing other work — use `skill-maintenance` instead; that skill is a lightweight per-change decision/routing aid, not a multi-phase pipeline
 - QA on a plugin with no specific finding-source driving the work — use `plugin-lifecycle-downstream` directly (this skill's `improve-a-plugin`/`enhance-a-plugin` workflows hand off to `plugin-lifecycle-downstream`'s own Fix phase rather than duplicating it)
 - Building a new plugin or component from scratch — use `plugin-lifecycle-upstream`
+- Not sure which of the three lifecycle pipelines fits — use `using-plugin-devkit` to confirm first
 
 ## Boundaries
 

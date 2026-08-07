@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/using-plugin-devkit/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output does NOT ask the four-option 'What are you trying to do with plugin-devkit?' picker question",
+      "type": "functionality",
+      "target": "agent output"
+    },
+    {
+      "text": "Output proceeds directly toward plugin-lifecycle-upstream (or describes doing so), consistent with the skill's own 'When NOT to Use' bullet for an already-named skill/pipeline",
+      "type": "functionality",
+      "target": "agent output"
+    },
+    {
+      "text": "Output's reasoning explicitly notes that the exact pipeline was already named in the request",
+      "type": "quality",
+      "target": "agent output"
+    }
+  ]
+}

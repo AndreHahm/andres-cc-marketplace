@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/using-plugin-devkit/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output describes/performs a first AskUserQuestion for Phase 1's picker, selecting 'QA or audit an existing plugin' -> plugin-lifecycle-downstream",
+      "type": "functionality",
+      "target": "agent output"
+    },
+    {
+      "text": "Output describes/performs a SECOND, distinct AskUserQuestion for Phase 2 ('Run plugin-lifecycle-downstream for this?') before any dispatch",
+      "type": "functionality",
+      "target": "agent output"
+    },
+    {
+      "text": "The two gates (Phase 1 pick, Phase 2 confirm) are never collapsed into a single question or skipped",
+      "type": "structure",
+      "target": "agent output"
+    }
+  ]
+}

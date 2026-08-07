@@ -4,12 +4,14 @@ description: >-
   Orchestrates the full downstream plugin QA lifecycle — Validate, Audit, Report, and
   optional Fix — as one guided pipeline, dispatching to plugin-rulebook and
   plugin-validator for Validate, plugin-grader for Audit+Report, and enhancement-suggestor
-  plus skill-improver-loop for Fix. Use when the user asks to "run full QA on this
-  plugin", "validate and audit this plugin", "run the downstream workflow", or completes
-  plugin-lifecycle-upstream's Test phase and wants to QA the result. Updates the same
-  build-handoff-writer report upstream created, folding in QA results and any Fix-phase
-  commits, rather than producing a disconnected report. For a single score with no
-  orchestration, invoke plugin-grader directly instead of this pipeline.
+  plus skill-improver-loop for Fix. Use when the user names this pipeline or workflow
+  directly — "run full QA on this plugin", "run the downstream workflow" — or completes
+  plugin-lifecycle-upstream's Test phase and wants to QA the result. A bare, first-touch
+  "audit this plugin" with nothing else specified should go through `using-plugin-devkit`
+  first to confirm full-pipeline depth (vs. `plugin-grader` alone) is wanted. Updates the
+  same build-handoff-writer report upstream created, folding in QA results and any
+  Fix-phase commits, rather than producing a disconnected report. For a single score with
+  no orchestration, invoke plugin-grader directly instead of this pipeline.
 argument-hint: "[path to plugin directory]"
 allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(git branch:*) Bash(gh pr view:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) TaskCreate TaskUpdate
 ---
@@ -57,6 +59,7 @@ Both are skipped entirely if the user declines Phase 3 — there's nothing to ch
 - Just a compliance check on one component, not a whole-plugin QA pass — use `Skill(plugin-rulebook)` directly
 - Just a weighted score with SWOT and next steps, no separate Validate step wanted — use `plugin-grader` directly (it already includes rule-compliance as one of its 12 dimensions)
 - Fixing a specific already-known issue — edit directly or use `skill-improver-loop`, skip the full pipeline
+- A bare, first-touch "audit this plugin" with no other context — use `using-plugin-devkit` to confirm scope first
 
 ## The Three Phases
 

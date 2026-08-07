@@ -1,0 +1,16 @@
+{
+  "dimensions": {
+    "structure_architecture": {"counts": {"critical": 0, "major": 0, "minor": 0}},
+    "content_quality": {"counts": {"critical": 0, "major": 0, "minor": 0}, "contradiction_found": false},
+    "rule_compliance": {"counts": {"critical": 0, "major": 0, "minor": 1}},
+    "completeness": {"counts": {"critical": 1, "major": 2, "minor": 4}},
+    "maintainability": {"counts": {"critical": 0, "major": 0, "minor": 0}},
+    "robustness": {"score": 10, "is_na": true},
+    "simplicity": {"score": 10},
+    "testing": {"score": 8},
+    "uniqueness": {"counts": {"critical": 2, "major": 0, "minor": 0}},
+    "safety_risk_handling": {"counts": {"critical": 0, "major": 0, "minor": 4}},
+    "efficiency": {"score": 10},
+    "actionability": {"score": 9.5}
+  }
+}
