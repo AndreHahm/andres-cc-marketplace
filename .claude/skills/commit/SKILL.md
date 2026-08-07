@@ -8,7 +8,7 @@ description: >-
   into multiple commits, see standalone-commits instead.
 argument-hint: Optional flags (--no-verify, --amend, --push) followed by an optional commit message
 model: haiku
-allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git config:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:create-pr)
+allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:create-pr)
 ---
 
 # Claude Command: Commit
@@ -31,6 +31,9 @@ unstaged changes into a properly formatted commit.
   signal, not the actual splitting procedure.
 
 ## Flags
+
+Parse `$ARGUMENTS` for these flags (each may appear alone or combined with the others, in any order,
+optionally followed by a commit message to use instead of generating one):
 
 | Flag | Effect |
 |------|--------|
@@ -86,7 +89,7 @@ CRITICAL: Perform the following steps exactly as described:
     (dependency-ordered waves, acceptance checks, staging workflow) instead of re-deriving a split
     here. Continue `commit`'s own flow only for the single commit currently staged (or whatever subset
     the user chooses to keep in this commit).
-12. For each commit (or the single commit if not split), creates a commit message using conventional commit format (no emoji — see Best Practices). Include a body when the reason isn't obvious from the diff alone (recommended, not required — see Best Practices). Include a footer trailer only when it applies: a `BREAKING CHANGE:` trailer when the subject uses `!`, a `Refs:`/`Closes:` trailer when the conversation named a specific issue this commit relates to or resolves, and a `Related-PR:` trailer when the conversation named a specific related PR. Don't ask the user for footer content on every commit — only include a trailer when there's a concrete breaking change, issue, or PR already in view (see Commit Message Footer below).
+12. Creates a commit message for the currently staged changes using conventional commit format (no emoji — see Best Practices). Include a body when the reason isn't obvious from the diff alone (recommended, not required — see Best Practices). Include a footer trailer only when it applies: a `BREAKING CHANGE:` trailer when the subject uses `!`, a `Refs:`/`Closes:` trailer when the conversation named a specific issue this commit relates to or resolves, and a `Related-PR:` trailer when the conversation named a specific related PR. Don't ask the user for footer content on every commit — only include a trailer when there's a concrete breaking change, issue, or PR already in view (see Commit Message Footer below).
 13. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly. **Immediately before running `git commit`** (right after confirmation, or right before committing directly when confirmation is off), run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` — this writes the marker git-kit's commit-guard hook requires; it must be written right before the commit, not earlier in this run, since the hook only accepts a marker up to 60 seconds old.
 14. **Amend**: if `--amend` was given, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` immediately before running it, then use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
 15. **Push**: push after a successful commit when `--push` was given (explicit override, always pushes regardless of setting), or when `commit_auto_push` is `true`. Otherwise, when `commit_auto_push` is `false` and no `--push` flag was given, ask via `AskUserQuestion` whether to push. If push fails because there's no upstream, suggest `git push -u origin <branch>`.
@@ -97,7 +100,7 @@ CRITICAL: Perform the following steps exactly as described:
 
 - **Verify before committing**: Ensure code is linted, builds correctly, and documentation is updated
 - **Atomic commits**: Each commit should contain related changes that serve a single purpose
-- **Split large changes**: If changes touch multiple concerns, split them into separate commits
+- **Split large changes**: If changes touch multiple concerns, split them into separate commits (see `standalone-commits` for the actual splitting/ordering procedure)
 - **Conventional commit format**: Use the format `<type>(scope): <description>` where type is one of:
   - `feat`: A new feature
   - `fix`: A bug fix
@@ -158,15 +161,8 @@ clients must handle a 401 and re-prompt for login.
 Closes: #482
 ```
 
-Example of splitting commits:
-- First commit: feat: add new solc version type definitions
-- Second commit: docs: update documentation for new solc versions
-- Third commit: chore: update package.json dependencies
-- Fourth commit: feat: add type definitions for new API endpoints
-- Fifth commit: feat: improve concurrency handling in worker threads
-- Sixth commit: fix: resolve linting issues in new code
-- Seventh commit: test: add unit tests for new solc version features
-- Eighth commit: fix: update dependencies with security vulnerabilities
+For splitting a diff into multiple commits — ordering, wave-planning, deciding what's reviewable on its
+own — see `Skill(git-kit:standalone-commits)`; that skill owns the full procedure and worked examples.
 
 ## Branch Naming Convention
 
@@ -209,14 +205,20 @@ When committing on `master` or `main`, the command will ask if you want to creat
 - If no files are staged, you'll be asked what to stage — nothing is auto-staged unless `commit_auto_stage: true` is set (via `.claude/git-kit.local.json` or the git-tracked `git-kit.settings.json` defaults)
 - Staged files matching sensitive patterns (`.env`, `*secret*`, `*.key`, `*.pem`, `*password*`, `*token*`, SSH/cloud keys, `.npmrc`/`.pgpass`/`.netrc`) are flagged and unstaged automatically
 - The commit message will be constructed based on the changes detected
-- Before committing, the command will review the diff to identify if multiple commits would be more appropriate
-- If suggesting multiple commits, it will help you stage and commit the changes separately
+- Before committing, the command signals when the diff shows signs of multiple unrelated concerns and
+  points you to `standalone-commits` for the actual split — it doesn't perform the split itself
 - Always reviews the commit diff to ensure the message matches the changes
 - You'll be asked to confirm the generated message before the commit runs, unless `commit_confirm_before_commit: false` is set — but that setting (along with `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true`) is only honored from `.claude/git-kit.local.json` when it isn't tracked by git; a git-tracked copy can never silently weaken any of these gates, and the skill falls back to the safe defaults in `git-kit.settings.json` instead
 - `--amend` warns before rewriting an already-pushed commit; `--push` pushes after a successful commit (an explicit override that always pushes) and suggests `git push -u origin <branch>` if there's no upstream; without `--push`, a push still happens automatically if `commit_auto_push: true`, otherwise you're asked
 - After a push, if no PR is already open for the branch, a PR gets created automatically when `push_auto_pr: true`, otherwise you're asked whether to create one
 
 ## Testing & Validation
+
+**Verify this skill does NOT activate on:**
+- "split this diff into separate commits" / "break this up into multiple commits" / "how should I order
+  these changes into waves" → these route to `standalone-commits`, not `commit`; step 10's "multiple
+  concerns?" signal exists to catch this mid-flow (a diff that looks split-worthy once already staged),
+  not to make `commit` a second entry point for a request to split in the first place
 
 Step 9 (Test-behavior-change check) has never been exercised through a genuine `Skill(commit)` invocation as of this writing — every commit that added or touched it was made via raw `git commit` with a hand-run approximation of the gate instead. The next time this skill is invoked for real against a staged skill/agent behavior change, verify:
 
@@ -225,5 +227,6 @@ Step 9 (Test-behavior-change check) has never been exercised through a genuine `
 - [ ] Step 9 sits correctly in sequence — fires after step 8's `git diff --cached`, before step 10's multiple-change analysis, without disrupting the flow
 - [ ] Step 9's ask and step 13's separate confirm-before-commit ask don't read as a confusing back-to-back double prompt when both fire in the same run
 - [ ] "Stop, test first" actually halts before any commit runs
+- [ ] Step 10's "multiple concerns?" signal fires without `commit` attempting to perform the split itself — step 11 always redirects to `Skill(git-kit:standalone-commits)` rather than re-deriving a split
 
 A `skill-tester` blind-comparison eval is the heavier alternative `require-tests-for-behavior-changes.md` names first, but `commit` is a `model: haiku`, heavily interactive skill built around several `AskUserQuestion` steps — an awkward fit for blind A/B comparison. This checklist is the pragmatic mechanism the rule explicitly permits instead ("a documented Testing & Validation section... concrete scenarios, pass/fail criteria").
