@@ -2,7 +2,7 @@
 name: standalone-commits
 description: >-
   Make commits reviewable and auditable as self-contained units, order multi-file changes into atomic dependency-ordered waves, and decide which of several pending changes to stage first. Use when planning commits, 'split this into commits', 'break this up', 'commit strategy', splitting work into waves, staging changes, reviewing branch history, deciding whether a commit is too broad, too tiny, incomplete, or hard to revert, prioritizing which change to stage next, or filtering pending changes down to what's relevant to the current PR.
-allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(gh pr view:*)
+allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(gh pr view:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*)
 ---
 
 # Standalone Commits
@@ -93,7 +93,7 @@ This matters most when several unrelated concerns accumulate before a single sta
 3. Stage only files and hunks that prove that claim.
 4. Re-read the staged diff with `git diff --staged`.
 5. Run focused verification for that staged state when practical.
-6. Commit with a message that names the outcome and explains the reason when needed.
+6. Immediately before committing, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit standalone-commits` — this writes the marker git-kit's commit-guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then commit with a message that names the outcome and explains the reason when needed.
 
 Prefer file-level staging when files cleanly map to the commit claim. Use hunk staging when one file contains multiple concerns.
 
