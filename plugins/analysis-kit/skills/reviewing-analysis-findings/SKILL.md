@@ -104,5 +104,5 @@ After Phase 4, verify these gates before presenting output as final:
 |---|---|---|
 | `references/cross-check-taxonomy.md` | Duplicate/Contradiction/Severity Undercut definitions and detection guidance | Phase 3 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions used to judge Severity Undercut findings | Phase 3 |
-| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 / Persist step restate inline | Background — sweep this file's site list when editing either |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Arguments block / Phase 1 restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/reviewing-analysis-findings/` | Where this skill's own reports are persisted, one file per run | Phase 4 (write) |

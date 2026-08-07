@@ -24,9 +24,12 @@ analysis-kit's own 9 report directories, named explicitly rather than matched by
 
 ## Sites That Restate These Facts
 
-Every site below must match this file. If you change either definition here, update all of them in the same pass:
+Every site below must match this file. If you change either definition here, update all of them in the same pass. Paths are relative to `plugins/analysis-kit/`. **Note on the anti-pattern example above:** the prefix-wildcard pattern shown in "Why explicit, not a prefix wildcard" is a deliberate counter-example kept for documentation — do not count it as a stale site to fix.
 
-- `starting-an-analysis/SKILL.md` — Phase 2 (scope-slug per chosen type), Phase 5 step 1 (glob)
-- `analyzing-plugin-components/SKILL.md`, `analyzing-tool-and-framework-use/SKILL.md`, `analyzing-actor-behavior/SKILL.md`, `analyzing-governance-and-conflicts/SKILL.md`, `mining-recurring-patterns/SKILL.md`, `comparing-sessions/SKILL.md`, `comparing-session-to-specification/SKILL.md` — each skill's own Persist step (scope-slug) and Next-step block (glob)
-- `generating-analysis-recommendations/SKILL.md` — Phase 1 (glob)
-- `reviewing-analysis-findings/SKILL.md` — Phase 1 (glob, two sites)
+- `skills/starting-an-analysis/SKILL.md` — Phase 5 step 1 (glob). (This skill's own body has no `<scope-slug>` derivation step of its own — Phase 5 just reads whatever scope-slug the dispatched skill produced, via the same glob.)
+- `skills/analyzing-plugin-components/SKILL.md`, `skills/analyzing-tool-and-framework-use/SKILL.md`, `skills/analyzing-actor-behavior/SKILL.md`, `skills/analyzing-governance-and-conflicts/SKILL.md` — each skill's own Persist step (scope-slug) and Next-step block (glob)
+- `skills/mining-recurring-patterns/SKILL.md` — Phase 3 memory-recall (glob), Persist step (scope-slug), Next-step block (glob) — three sites
+- `skills/comparing-sessions/SKILL.md` — Phase 1 "latest" resolution (glob), Persist step (scope-slug), Next-step block (glob) — three sites
+- `skills/comparing-session-to-specification/SKILL.md` — Persist step (scope-slug), Next-step block (glob)
+- `skills/generating-analysis-recommendations/SKILL.md` — Phase 1 (glob)
+- `skills/reviewing-analysis-findings/SKILL.md` — Arguments block (glob) and Phase 1 (glob) — two sites

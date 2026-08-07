@@ -137,5 +137,5 @@ After Phase 5, verify before presenting output as final:
 | File | Purpose | When to read |
 |---|---|---|
 | `references/pattern-mining-methodology.md` | Action-token abstraction examples, automation-candidate criteria, recall/loop detection patterns | Phase 2, Phase 3 |
-| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 3 memory-recall / Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/mining-recurring-patterns/` | Where this skill's own reports are persisted, one file per run | Phase 5 (write) |
