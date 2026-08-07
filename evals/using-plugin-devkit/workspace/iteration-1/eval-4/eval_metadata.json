@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/plugin-devkit/skills/using-plugin-devkit/SKILL.md",
+  "assertions": [
+    {
+      "text": "Phase 1's four-option AskUserQuestion is asked (or described), with 'Not sure / something else' selected or clearly the best-fitting option",
+      "type": "functionality",
+      "target": "agent output"
+    },
+    {
+      "text": "Phase 2 is explicitly skipped, with the output stating why (per the skill's own instruction to skip Phase 2 entirely on this branch)",
+      "type": "functionality",
+      "target": "agent output"
+    },
+    {
+      "text": "The output asks what the actual need is in plain terms, rather than forcing the request into one of the three pipelines",
+      "type": "quality",
+      "target": "agent output"
+    }
+  ]
+}

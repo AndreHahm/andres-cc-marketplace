@@ -1,0 +1,21 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/using-plugin-devkit/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output describes/performs an AskUserQuestion call asking 'What are you trying to do with plugin-devkit?' with up to 4 options (Build / QA-audit / Fix-improve / Not sure)",
+      "type": "functionality",
+      "target": "agent output"
+    },
+    {
+      "text": "The 'Build something new' option is pre-highlighted or clearly favored, matching the prompt's own wording",
+      "type": "quality",
+      "target": "agent output"
+    },
+    {
+      "text": "No pipeline (plugin-lifecycle-upstream/-downstream/-maintenance) is invoked or described as invoked before Phase 1's question is asked",
+      "type": "functionality",
+      "target": "agent output"
+    }
+  ]
+}

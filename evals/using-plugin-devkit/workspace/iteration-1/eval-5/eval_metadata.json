@@ -1,0 +1,21 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/plugin-devkit/skills/using-plugin-devkit/SKILL.md",
+  "assertions": [
+    {
+      "text": "Output recognizes a lifecycle pipeline (plugin-lifecycle-upstream) is already running, citing the skill's own 'Mid-pipeline already' When NOT to Use bullet",
+      "type": "quality",
+      "target": "agent output"
+    },
+    {
+      "text": "Output does NOT ask Phase 1's four-option picker question",
+      "type": "functionality",
+      "target": "agent output"
+    },
+    {
+      "text": "Output defers entirely to the already-running pipeline rather than inserting itself",
+      "type": "functionality",
+      "target": "agent output"
+    }
+  ]
+}

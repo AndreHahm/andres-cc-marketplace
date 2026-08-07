@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output recognizes a lifecycle pipeline is already running, citing the skill's own 'Mid-pipeline already' bullet",
+      "passed": true,
+      "evidence": "response.md lines 7-12: quotes the exact 'Mid-pipeline already' bullet and matches it against the user's message."
+    },
+    {
+      "text": "Output does NOT ask Phase 1's four-option picker question",
+      "passed": true,
+      "evidence": "response.md line 16: 'None called... Phase 1's picker never runs.' The hypothetical Phase 1 text on line 18 is explicitly marked 'for completeness... this branch is not taken here', not an actual call."
+    },
+    {
+      "text": "Output defers entirely to the already-running pipeline rather than inserting itself",
+      "passed": true,
+      "evidence": "response.md lines 20-22, 29: recommends continuing plugin-lifecycle-upstream's Build phase directly, states using-plugin-devkit 'has nothing further to contribute.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

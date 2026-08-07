@@ -6,11 +6,13 @@ description: >-
   the matching Design skill per component (skill-development, agent-development,
   command-development, hook-development, rule-development), plugin-development for
   scaffolding, and skill-tester/agent-development's trigger-test script for a quick
-  post-Build check. Use when the user asks to "build a plugin from scratch", "run the full
-  plugin creation pipeline", "guide me through creating a plugin", or "start the upstream
-  workflow". Commits the build, writes a handoff report, and hands off to
-  plugin-lifecycle-downstream for QA once Test completes. For a single already-designed
-  component, use the matching Design skill directly instead of this pipeline.
+  post-Build check. Use when the user names this pipeline directly ("build a plugin from
+  scratch", "run the full plugin creation pipeline", "start the upstream workflow") or
+  resumes from an existing Concept Card/Plan — a bare "help me build a plugin" goes
+  through `using-plugin-devkit` first instead. Commits the build, writes a handoff
+  report, and hands off to plugin-lifecycle-downstream for QA once Test completes. For a
+  single already-designed component, use the matching Design skill directly instead of
+  this pipeline.
 argument-hint: "[rough idea, or path to an existing Concept Card/Plan]"
 allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(git branch:*) Bash(gh pr view:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) TaskCreate TaskUpdate
 ---
@@ -58,6 +60,7 @@ Before starting, check what already exists to avoid redundant work:
 - A single, already-well-understood component — use the matching Design skill directly (`skill-development`, `agent-development`, `command-development`, `hook-development`, `rule-development`); this pipeline's overhead isn't worth it for one obvious skill
 - QA on an already-built plugin — use `plugin-lifecycle-downstream` (or `plugin-grader` directly for a one-shot score)
 - Just scaffolding files with a manifest already decided — use `plugin-development` directly, skipping Ideate/Plan/Design
+- A bare, first-touch "help me build a plugin" with no other context — use `using-plugin-devkit` to confirm this is the right pipeline (vs. a single Design skill) first
 
 ## The Five Phases
 

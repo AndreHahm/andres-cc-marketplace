@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output describes/performs a first AskUserQuestion for Phase 1's picker, selecting 'QA or audit an existing plugin' -> plugin-lifecycle-downstream",
+      "passed": true,
+      "evidence": "response.md lines 15-49: 'AskUserQuestion call #1', option 2 'QA or audit an existing plugin' marked [PRE-HIGHLIGHTED / RECOMMENDED]; Phase 1 exit condition line 49 states plugin-lifecycle-downstream selected."
+    },
+    {
+      "text": "Output describes/performs a SECOND, distinct AskUserQuestion for Phase 2 ('Run plugin-lifecycle-downstream for this?') before any dispatch",
+      "passed": true,
+      "evidence": "response.md lines 57-70: 'AskUserQuestion call #2', question text 'Run plugin-lifecycle-downstream for this?', occurring before the Phase 3 dispatch point (lines 74-80)."
+    },
+    {
+      "text": "The two gates (Phase 1 pick, Phase 2 confirm) are never collapsed into a single question or skipped",
+      "passed": true,
+      "evidence": "The two calls are separately labeled '#1' and '#2' under distinct '## Phase 1' and '## Phase 2' headings, each with its own question/options block."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

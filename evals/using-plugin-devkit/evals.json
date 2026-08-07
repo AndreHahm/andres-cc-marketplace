@@ -1,0 +1,42 @@
+{
+  "skill_name": "using-plugin-devkit",
+  "skill_path": "plugins/plugin-devkit/skills/using-plugin-devkit/SKILL.md",
+  "description": "Guided front door for plugin-devkit that routes a vague/open-ended request to plugin-lifecycle-upstream, -downstream, or -maintenance, gated by a confirm-before-dispatch step.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Vague build request activates Phase 1 routing",
+      "prompt": "I want to build a new plugin but I'm not sure where to start.",
+      "expected_output": "Recognizes no specific skill/pipeline was named, asks Phase 1's four-option AskUserQuestion ('What are you trying to do with plugin-devkit?'), pre-highlighting 'Build something new' given the prompt. Does not dispatch any pipeline before this question is asked.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Already-named pipeline is not intercepted",
+      "prompt": "Run plugin-lifecycle-upstream to build a new skill for handling CSV validation.",
+      "expected_output": "Per the skill's own When NOT to Use, recognizes the exact pipeline is already named and does not insert the Phase 1 picker question at all; proceeds directly toward plugin-lifecycle-upstream instead.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "Confirm-before-dispatch gate holds",
+      "prompt": "I want to audit my plugin for quality issues but I'm not sure which plugin-devkit tool handles that.",
+      "expected_output": "Phase 1 asks the four-option picker and selects 'QA or audit an existing plugin' -> plugin-lifecycle-downstream. A separate, second AskUserQuestion (Phase 2: 'Run plugin-lifecycle-downstream for this?') is asked before any dispatch — the two gates are never collapsed into one question or skipped.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "Not sure / something else branch is a legitimate outcome",
+      "prompt": "I'm working on plugin-devkit stuff but honestly not sure what I need right now.",
+      "expected_output": "Phase 1's picker is asked; the 'Not sure / something else' option is selected or clearly the best fit. Phase 2 is explicitly skipped (per the skill's own instruction: 'On Not sure/something else from Phase 1, skip this phase entirely'). The agent asks what the actual need is in plain terms instead of forcing the request into one of the three pipelines.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "Does not insert itself mid-pipeline",
+      "prompt": "We're already in the middle of plugin-lifecycle-upstream's Phase 3 (Build) for a new skill. Let's continue building the next component.",
+      "expected_output": "Recognizes that a lifecycle pipeline is already running (per the skill's own When NOT to Use: 'Mid-pipeline already... this skill has nothing to add') and does not insert its own Phase 1 picker at all — defers entirely to the already-running pipeline.",
+      "files": []
+    }
+  ]
+}

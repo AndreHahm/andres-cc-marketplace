@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output does NOT ask the four-option 'What are you trying to do with plugin-devkit?' picker question",
+      "passed": true,
+      "evidence": "response.md line 21: 'Running Phase 1's AskUserQuestion picker ... would be redundant theater'; line 37: 'No AskUserQuestion was called, in Phase 1 or Phase 2'. No question block appears anywhere in the file."
+    },
+    {
+      "text": "Output proceeds directly toward plugin-lifecycle-upstream (or describes doing so), consistent with the skill's own 'When NOT to Use' bullet for an already-named skill/pipeline",
+      "passed": true,
+      "evidence": "response.md lines 23-29 quote the exact 'When NOT to Use' bullet and state the correct next action is invoking Skill(plugin-lifecycle-upstream) directly."
+    },
+    {
+      "text": "Output's reasoning explicitly notes that the exact pipeline was already named in the request",
+      "passed": true,
+      "evidence": "response.md line 17: 'The user's request explicitly names the pipeline: \"Run plugin-lifecycle-upstream...\"'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

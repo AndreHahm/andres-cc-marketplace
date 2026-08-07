@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output describes/performs an AskUserQuestion call asking 'What are you trying to do with plugin-devkit?' with up to 4 options (Build / QA-audit / Fix-improve / Not sure)",
+      "passed": true,
+      "evidence": "response.md lines 15-22: exact question text 'What are you trying to do with plugin-devkit?' followed by all 4 documented options in order."
+    },
+    {
+      "text": "The 'Build something new' option is pre-highlighted or clearly favored, matching the prompt's own wording",
+      "passed": true,
+      "evidence": "response.md line 19: 'Build something new *(pre-highlighted/recommended)*'; line 24 gives explicit reasoning tying it to the prompt's wording."
+    },
+    {
+      "text": "No pipeline (plugin-lifecycle-upstream/-downstream/-maintenance) is invoked or described as invoked before Phase 1's question is asked",
+      "passed": true,
+      "evidence": "Dispatch is described only in Phase 3 (lines 54-60), strictly after Phase 1 (lines 11-30) and Phase 2 (lines 33-50); never actually invoked, only named as the stopping point."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
