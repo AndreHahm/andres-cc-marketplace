@@ -114,4 +114,4 @@ The dispatched skill's own printed Next-step line already named the natural foll
 | File | Purpose | When to read |
 |---|---|---|
 | `references/analysis-type-guide.md` | One-paragraph disambiguation for each of the 7 report-producing skills, reused from their own SKILL.md descriptions | Phase 1 |
-| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 2/5 restate inline | Background — sweep this file's site list when editing either |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 5 restates inline | Read before Phase 5 |

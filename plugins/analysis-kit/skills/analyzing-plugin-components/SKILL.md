@@ -7,9 +7,12 @@ description: >-
   in scope and re-verifying their stated open items against current repo state rather than
   trusting them at face value. Generates classified improvement suggestions grouped by
   component and priority, persisted to .claude/output/analyzing-plugin-components/.
-  Use when running a post-session retrospective, auditing skill or agent performance, building
-  an improvement backlog, or identifying systemic issues across skills, agents, and rules from
-  a session or date range.
+  Use when a request already names component/skill/agent/rule performance
+  specifically — auditing skill or agent performance, building an
+  improvement backlog, or identifying systemic issues across skills,
+  agents, and rules from a session or date range. A bare, typeless "run a
+  retrospective" or "analyze this session" request routes to
+  `starting-an-analysis` instead.
 allowed-tools: Read Glob Grep Write Bash(python */analysis-kit/scripts/component_inventory.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(git log:*) Bash(git show:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
@@ -33,7 +36,7 @@ For date-range retrospectives or deep taxonomy guidance, read the full phases be
 
 ## When to Use
 
-- Post-session retrospective after completing a development task
+- Post-session retrospective that already names component/skill/agent/rule performance specifically, after completing a development task — a bare, typeless "run a retrospective" request routes to `starting-an-analysis` instead
 - Auditing how skills, sub-agents, commands, or rules performed during a session
 - Building an improvement backlog from multiple observed failures
 - After acting on improvement suggestions that affect skill behavior, validate the fix with your own test or eval process before considering it resolved
