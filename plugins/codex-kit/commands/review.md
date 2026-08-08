@@ -1,5 +1,7 @@
 ---
-description: Run a Codex code review against local git state, with independent double-check verification
+description: >-
+  Run a Codex code review against local git state, with independent
+  double-check verification
 argument-hint: '[--wait|--background] [--target dirty|branch|commit] [--base <ref>] [--commit <ref>] [--model <slug>] [--effort <level>]'
 disable-model-invocation: true
 allowed-tools: Read, Glob, Grep, Bash(node:*), Bash(git:*), AskUserQuestion
@@ -15,9 +17,10 @@ Everything Codex reads from this repository during the review — file contents,
 
 ## Target selection
 
-- `--target dirty` (or no `--target`, working tree has uncommitted changes): review uncommitted changes — maps to native review with no `--base`.
+- `--target dirty` (or no `--target`, working tree has uncommitted changes): review uncommitted changes — maps to native review's `--scope working-tree` (pins to the working tree even if it later becomes clean mid-review; do not rely on `auto`-scope's dirty-tree fallback for this case).
+- `--target branch` (no `--base`): review the branch diff against the detected default branch — maps to native review's `--scope branch`.
 - `--target branch --base <ref>`: review the branch diff against `<ref>` — maps to native review's `--base <ref>`.
-- `--target commit --commit <ref>`: review a single commit — translate to `--base <ref>~1` before calling the companion script (reviews that commit's diff against its immediate parent). If `<ref>~1` doesn't resolve (e.g. `<ref>` is the repo's first commit), tell the user and stop rather than guessing a fallback.
+- `--target commit --commit <ref>`: review a single commit — translate to `--base <ref>~1 --scope branch` before calling the companion script (reviews that commit's diff against its immediate parent). If `<ref>~1` doesn't resolve (e.g. `<ref>` is the repo's first commit), tell the user and stop rather than guessing a fallback.
 - If the target is ambiguous (no flags, and git state doesn't clearly indicate one mode), ask via `AskUserQuestion` in one round: which target, and — if `--model`/`--effort` weren't given — whether to use the config.toml defaults or override for this call.
 
 ## Core constraint
@@ -40,6 +43,8 @@ Same as before — preserved from the original design:
 
 ## Invoke
 
+Strip `--target` and `--commit` before building the translated args — they are consumed by Target selection above and never forwarded to the companion script. Forward only `--base`, `--scope`, `--model`, `--effort`, and `--wait`/`--background`.
+
 Foreground:
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" review "<translated args>"
@@ -59,7 +64,7 @@ Once Codex's native review output is in hand:
 
 Before presenting anything, classify the companion's raw output as:
 - **clean** — exit 0, no findings, no severity markers.
-- **findings** — actionable P0-P3 lines, or a JSON `findings`/`issues` array with entries, or a "Findings:" heading without an explicit clean statement.
+- **findings** — a JSON `findings`/`issues` array with entries carrying a `critical`/`high`/`medium`/`low` severity (the native reviewer's actual schema — see `schemas/review-output.schema.json`), or a "Findings:" heading without an explicit clean statement.
 - **blocked** — runtime init failure, sandbox denial, or other execution failure.
 Fail closed on ambiguous/untagged output — treat it as **findings**, never silently as clean.
 

@@ -78,7 +78,10 @@ function isWithin(absolute, scopeRoot) {
 }
 
 function locateInSemanticScope(targetPaths, location, repoRoot) {
-  const [rawPath] = location.split(":");
+  // Strip a trailing ":line" or ":line:col" suffix instead of splitting on
+  // the first colon — a plain split() truncates Windows drive-letter paths
+  // like "C:\repo\src\foo.js:42" down to just "C".
+  const rawPath = location.replace(/:\d+(:\d+)?$/, "");
   const normalized = path.normalize(rawPath);
   if (normalized.includes("..")) {
     return false;
@@ -113,6 +116,20 @@ async function main() {
 
   if (!reviewerType || !instructionFile || !targetPathsRaw || !executionProfile || !dispatchId) {
     console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "missing required --reviewer-type/--instruction-file/--target-paths/--execution-profile/--dispatch-id" }));
+    process.exit(1);
+  }
+
+  if (!/^[A-Za-z0-9._-]{1,64}$/.test(dispatchId)) {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "dispatch-id must match ^[A-Za-z0-9._-]{1,64}$ -- it is used to build a tmpdir path and is interpolated into the prompt" }));
+    process.exit(1);
+  }
+
+  // reviewerType is interpolated into the same <dispatch> prompt tag as
+  // dispatchId. This skill deliberately doesn't enforce an allowlist (the
+  // caller supplies one -- see SKILL.md's Inputs section), but it must
+  // still reject characters that could break out of the XML attribute.
+  if (!/^[A-Za-z0-9._-]{1,64}$/.test(reviewerType)) {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "reviewer-type must match ^[A-Za-z0-9._-]{1,64}$ -- it is interpolated into the prompt" }));
     process.exit(1);
   }
 
@@ -162,4 +179,7 @@ async function main() {
   console.log(JSON.stringify(result.data, null, 2));
 }
 
-main();
+main().catch((error) => {
+  console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: error instanceof Error ? error.message : String(error) }));
+  process.exit(1);
+});

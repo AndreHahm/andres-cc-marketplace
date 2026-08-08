@@ -26,7 +26,7 @@ This checks, and reports on explicitly:
 
 - Codex CLI presence and version
 - Node.js and npm presence
-- Python 3 presence (required only if you plan to use `--persist-model`/`--persist-effort`)
+- Python 3 presence (required by the `codex-session-lookup` skill; not needed for `--persist-model`/`--persist-effort`, which are pure Node)
 - `jq` presence (optional)
 - Codex CLI authentication status
 - Current `~/.codex/config.toml` `model`/`model_reasoning_effort` values — this is codex-kit's default model/effort source for every command and skill; nothing is written here unless you explicitly pass `--persist-model`/`--persist-effort`

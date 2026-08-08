@@ -1,6 +1,11 @@
 ---
 name: codex-prompt-protocol
-description: "Internal reference for codex-kit's own components — prompt-composition vocabulary, companion invocation protocol, the double-check evaluation framework, and Codex CLI/model reference. Not user-invocable; other codex-kit components Read these files directly rather than duplicating their content."
+description: >-
+  Internal reference for codex-kit's own components — prompt-composition
+  vocabulary, companion invocation protocol, the double-check evaluation
+  framework, and Codex CLI/model reference. Not user-invocable; other
+  codex-kit components Read these files directly rather than duplicating
+  their content.
 disable-model-invocation: true
 allowed-tools: ["Read"]
 ---

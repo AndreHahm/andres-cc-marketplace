@@ -1,8 +1,15 @@
 ---
 name: codex-peer-review
-description: "Validate Claude's own analysis, design, or recommendation against Codex before presenting it to the user. Use manually/on-request only — e.g. \"get a second opinion from codex before we commit to this\", \"codex peer review this design\". Not a proactive/automatic trigger (codex-kit deliberately narrowed this from the original design's 'fires before every recommendation' behavior — too many silent Codex calls by default)."
+description: >-
+  Validate Claude's own analysis, design, or recommendation against Codex
+  before presenting it to the user. Use manually/on-request only — e.g. "get
+  a second opinion from codex before we commit to this", "codex peer review
+  this design". Not a proactive/automatic trigger (codex-kit deliberately
+  narrowed this from the original design's 'fires before every
+  recommendation' behavior — too many silent Codex calls by default). For
+  verifying an existing written plan/document file, use codex-verify instead.
 argument-hint: "[--base <ref>] [question or design summary]"
-allowed-tools: ["Bash", "AskUserQuestion", "Agent"]
+allowed-tools: ["Bash(node:*)", "AskUserQuestion", "Agent", "WebSearch"]
 ---
 
 # Peer validation of Claude's own output
@@ -13,8 +20,8 @@ Catches blind spots in single-perspective analysis by running Codex in parallel 
 
 ## Command selection (the #1 mistake to avoid)
 
-- Reviewing **actual code changes** (a diff): use `codex-companion.mjs review --base <ref>`.
-- Validating a **design, plan, refactoring proposal, or answer to a question** (no diff to point at): use `codex-companion.mjs task` with the position written out as the prompt.
+- Reviewing **actual code changes** (a diff): use `${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs review --base <ref>`.
+- Validating a **design, plan, refactoring proposal, or answer to a question** (no diff to point at): use `${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs task` with the position written out as the prompt.
 Using the wrong one is the most common failure mode — check which case applies before invoking.
 
 ## Round 1
@@ -23,7 +30,7 @@ State Claude's position with its supporting evidence. Send it to Codex (`--json`
 
 ## Round 2
 
-Respond to Codex's Round 1 evidence using `codex exec resume <thread-id>` (or the companion's resume equivalent). Attempt synthesis.
+Respond to Codex's Round 1 evidence using `${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs task --resume-last`. Attempt synthesis.
 
 ## Classify the outcome
 

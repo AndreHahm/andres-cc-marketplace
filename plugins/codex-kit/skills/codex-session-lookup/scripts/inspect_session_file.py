@@ -24,13 +24,15 @@ def read_jsonl_meta(path: str) -> dict[str, Any] | None:
                 return payload.get("payload", {})
             if payload.get("session"):
                 return payload.get("session")
-            return payload
     return None
 
 
 def read_json_meta(path: str) -> dict[str, Any] | None:
     with open(path, "r", encoding="utf-8") as handle:
-        data = json.load(handle)
+        try:
+            data = json.load(handle)
+        except json.JSONDecodeError:
+            return None
     if isinstance(data, dict):
         return data.get("session") or data
     return None

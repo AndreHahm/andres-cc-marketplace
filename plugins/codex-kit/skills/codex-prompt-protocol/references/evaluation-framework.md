@@ -4,16 +4,19 @@ Shared evaluation methodology for all codex-advisor skills. Every skill reads th
 
 ## Peer AI Evaluation
 
-Treat Codex as a peer, not an authority. For each finding:
+Treat Codex as a peer, not an authority. For each finding, classify into exactly one of five categories:
 
 - **Agree**: Confirm with additional context if useful
 - **Disagree**: Explain why with evidence — read the actual code first
 - **Nuance**: Add context Codex may have missed
+- **False Positive (hallucination)**: the cited file/function/line does not exist in the current source tree
+- **Uncited — verification deferred**: the finding has no concrete citation to check against
 
 ### Rules
 
 - Do NOT blindly agree. Codex can hallucinate file paths, line numbers, and function names.
 - Always read the actual code to verify claims about specific files before agreeing or disagreeing.
+- In Phase 4, read only what Codex cited — never whole files "for context".
 - If you genuinely disagree, present both perspectives and let the user decide.
 - Preserve Codex output verbatim. Claude's evaluation comes AFTER, not instead of.
 - Frame disagreements as peer discussion, not correction.

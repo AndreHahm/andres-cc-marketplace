@@ -1,10 +1,17 @@
 ---
 name: plugin-marketplace-review
-description: "Thin CI orchestration skill for this repository's own marketplace: runs Delta Validate and Delta Audit against a pull request's merge-base diff, dispatching changed components to their matching reviewers through the Codex bridge. Invoked by the separate CI pipeline's GitHub Actions workflow, not interactively."
-allowed-tools: ["Bash", "Read", "Grep", "Glob"]
+description: >-
+  Thin CI orchestration skill for this repository's own marketplace: runs
+  Delta Validate and Delta Audit against a pull request's merge-base diff,
+  dispatching changed components to their matching reviewers through the
+  Codex bridge. Invoked by the separate CI pipeline's GitHub Actions
+  workflow, not interactively.
+allowed-tools: ["Bash(node:*)", "Read", "Grep", "Glob"]
 ---
 
 # Marketplace PR review orchestrator (component #19)
+
+**Status: not yet operational.** This skill's required input (`ReviewScope`, produced by `scripts/marketplace_ci/review.py`) does not exist anywhere in this repository yet — it belongs to a separate CI-pipeline initiative that has not shipped that module. Until it exists, this skill has no way to obtain its own input and cannot run.
 
 Built on `codex-review-bridge` (component #18). Per `.draft/2026-08-07-plugin-marketplace-ci-design.md`'s "Marketplace review skill" section — a thin orchestration skill, not a duplicate rulebook.
 

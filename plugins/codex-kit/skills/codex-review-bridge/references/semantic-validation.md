@@ -2,15 +2,23 @@
 
 Schema conformance is necessary but not sufficient — a structurally valid response can still cite a nonexistent file, escape scope, contradict its own verdict, or fabricate evidence.
 
-Checks, in order:
+## Currently implemented (in `scripts/bridge-invoke.mjs`'s `semanticallyValidate`)
 
-1. `contract_version` is supported.
-2. `dispatch.id`, `reviewer`, `backend`, `target_paths` match the request.
-3. Every cited path is normalized, remains inside the allowed target scope, and exists on disk.
-4. Every cited line number is valid for the current file (file has at least that many lines).
-5. Finding IDs are unique.
-6. `axis` and `severity` belong to the reviewer's allowed values (caller-supplied allowlist).
-7. `verdict` follows the reviewer's own deterministic pass/fail rule (e.g. "FAIL if any critical/major finding exists").
-8. No undeclared inspection limit that would invalidate the review (e.g. Codex silently skipped a target file without disclosing it in `inspection_limits`).
+1. `dispatch.id` and `dispatch.reviewer` match the request (`backend`/`target_paths` are not yet cross-checked).
+2. Every cited path is normalized, remains inside the allowed target scope, and exists on disk.
+3. Finding IDs are unique.
 
-Any failed check returns a `semantic_validation_failure` typed failure (see `typed-failures.md`) rather than passing the finding through. This validation does not prove the model's reasoning was correct — it only proves the response is internally consistent and grounded in files that actually exist. Paired evaluation (comparing this bridge's output against a Claude-native reviewer on the same target) is what supplies the empirical quality check this deterministic pass cannot.
+Any failed check returns a `semantic_validation_failure` typed failure (see `typed-failures.md`) rather than passing the finding through.
+
+## Not yet implemented
+
+These were part of the original design and are tracked as follow-up work, not currently enforced:
+
+- `contract_version` support check.
+- Full `dispatch.backend`/`dispatch.target_paths` cross-check (only `id`/`reviewer` are checked today).
+- Cited line-number validity (only the path portion of `location` is checked; the line number is not verified against the file's actual line count).
+- `axis`/`severity` against the reviewer's own allowlist (currently only schema-typed, not allowlist-checked).
+- `verdict` following the reviewer's own deterministic pass/fail rule.
+- Undeclared-inspection-limit detection.
+
+This validation does not prove the model's reasoning was correct — even once complete, it only proves the response is internally consistent and grounded in files that actually exist. Paired evaluation (comparing this bridge's output against a Claude-native reviewer on the same target) is what supplies the empirical quality check this deterministic pass cannot.

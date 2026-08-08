@@ -1,18 +1,22 @@
 ---
-description: Check Codex CLI readiness, sandbox viability, and config; optionally toggle the stop-time review gate
+description: >-
+  Check Codex CLI readiness, sandbox viability, and config; optionally
+  toggle the stop-time review gate
 argument-hint: '[--enable-review-gate|--disable-review-gate] [--persist-model <slug>] [--persist-effort <level>]'
 allowed-tools: Bash(node:*), Bash(npm:*), AskUserQuestion
 ---
 
 Raw slash-command arguments: `$ARGUMENTS`
 
-Run:
+Validate `$ARGUMENTS` against the whitelist in the `argument-hint` above (`--enable-review-gate`, `--disable-review-gate`, `--persist-model <slug>`, `--persist-effort <level>`) before running anything — do not interpolate the raw argument string into a shell command. Parse it yourself, reject/`AskUserQuestion` on anything unrecognized, then pass only the validated, individually-quoted flags:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" setup --json $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" setup --json
 ```
 
-This reports, every time, on: Codex CLI presence/version, Node/npm presence, Python 3 presence (required for `--persist-*`), `jq` presence (optional), Codex authentication status, current `~/.codex/config.toml` `model`/`model_reasoning_effort` values, and whether Codex's read-only sandbox actually works on this platform.
+(append validated `--enable-review-gate`/`--disable-review-gate`/`--persist-model "<value>"`/`--persist-effort "<value>"` flags as separate, quoted arguments to the command above — never as a single unquoted `$ARGUMENTS` blob.)
+
+This reports, every time, on: Codex CLI presence/version, Node/npm presence, Python 3 presence (required by the codex-session-lookup skill, not by `--persist-*` — that path is pure Node), `jq` presence (optional), Codex authentication status, current `~/.codex/config.toml` `model`/`model_reasoning_effort` values, and whether Codex's read-only sandbox actually works on this platform.
 
 If Codex is unavailable and npm is available:
 - Use `AskUserQuestion` exactly once to ask whether Claude should install Codex now.

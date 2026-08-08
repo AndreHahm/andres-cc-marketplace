@@ -1,5 +1,7 @@
 ---
-description: Run a Codex review that challenges the implementation approach and design choices, with independent double-check verification
+description: >-
+  Run a Codex review that challenges the implementation approach and design
+  choices, with independent double-check verification
 argument-hint: '[--wait|--background] [--target dirty|branch|commit] [--base <ref>] [--commit <ref>] [--model <slug>] [--effort <level>] [--no-preview] [focus ...]'
 disable-model-invocation: true
 allowed-tools: Read, Glob, Grep, Bash(node:*), Bash(git:*), AskUserQuestion
@@ -22,6 +24,8 @@ Unlike `/codex-kit:review`, this command accepts extra positional focus text aft
 Before launching, show the user the exact command that will run (translated flags + focus text) in a fenced code block. `AskUserQuestion` exactly once: `Approve — execute as shown` / `Needs changes` / `Cancel`. On "Needs changes," apply their edit and re-display; no loop limit. On "Cancel," stop.
 
 ## Invoke
+
+Strip `--target`, `--commit`, and `--no-preview` before building the translated args — they are consumed by this command's own target-selection and preview-gate logic above, never forwarded to the companion script. Forward only `--base`, `--scope`, `--model`, `--effort`, `--wait`/`--background`, and the focus text itself.
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" adversarial-review "<translated args + focus text>"

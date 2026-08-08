@@ -25,7 +25,7 @@ CODEX_COMPANION="${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs"
 `codex-companion.mjs` path inside the user's plugin install and prints it.
 It exits 1 with `Official Codex plugin not found. ...` on stderr if the
 plugin is absent — this is the `setup` error category (see §6). Redirect
-the user to `/codex-setup` and stop.
+the user to `/codex-kit:setup` and stop.
 
 ---
 
@@ -41,10 +41,10 @@ accepted by `parseArgs` but not printed in usage.
 |------|------|--------|----------|
 | `--base <ref>` | value | documented | yes |
 | `--scope <auto\|working-tree\|branch>` | value | documented | yes |
-| `--model <m>` | value | parser-only | **yes** — `executeReviewRun :358-371` → `runAppServerReview` (`lib/codex.mjs:1002`) → `startThread({ model })` (`lib/codex.mjs:1010-1015`). codex-advisor still routes `--model` through `apply-codex-config.py` for **consistency across skills** and so the value persists for the next session — not because the flag is ignored. |
+| `--model <m>` | value | parser-only | **yes** — `executeReviewRun` → `runAppServerReview` (`lib/codex.mjs`) → `startThread({ model })`. Passed as a per-call companion flag directly; not written to `config.toml` unless the skill/command explicitly offers `--persist`. |
 | `--cwd <path>` | value | parser-only | yes |
 | `--json` | bool | parser-only | yes |
-| `--effort <level>` | — | **NOT REGISTERED** | `valueOptions` at `:714` is `["base", "scope", "model", "cwd"]`. `--effort` becomes silent prompt corruption (§3). codex-advisor sets it via `~/.codex/config.toml` (`model_reasoning_effort`). |
+| `--effort <level>` | value | parser-only | **yes** — registered in `handleReviewCommand`'s `valueOptions` and threaded through `executeReviewRun` → `runAppServerReview` → `startThread({ effort })`. |
 | `--background` | bool | documented in `:80` | **NO — silent no-op** (see §3) |
 | `--wait` | bool | documented in `:80` | **NO — silent no-op** (see §3) |
 | (positional focus text) | — | — | **rejected** by `validateNativeReviewRequest` (`:271-284`) |
@@ -297,7 +297,7 @@ Never retry silently. Never swallow errors. Never blame the user.
 | `unknown revision` / `bad revision` | bad-input | `git rev-parse` | Show `git branch --list`, AskUserQuestion |
 | `does not support custom focus text` | wrong-skill | `:274` | Should NOT fire from codex-advisor: Phase 1 strips focus text and offers the adversarial redirect. If it fires, Phase 1 was skipped → SKILL.md regression. |
 | `Provide a prompt, a prompt file, piped stdin, or use --resume-last.` | prompt-empty | `:654` | Pattern B failed before consuming stdin. Common cause: `cat` failed and `set -o pipefail` was missing, OR a positional arg overrode stdin (§3). |
-| `Task <id> is still running. Use /codex:status before continuing it.` | concurrency-conflict | `:343` | Previous Codex task in flight. Show user the active jobId, stop. Do NOT silently cancel. |
+| `Task <id> is still running. Use /codex-kit:status before continuing it.` | concurrency-conflict | `:343` | Previous Codex task in flight. Show user the active jobId, stop. Do NOT silently cancel. |
 | `Unsupported reasoning effort "<value>"` | bad-input | `:114-125` | codex-rescue: effort must be `{none, minimal, low, medium, high, xhigh}`. Re-prompt via AskUserQuestion. |
 | `Choose either --resume/--resume-last or --fresh.` | bad-input | `:780` | codex-rescue: ANALYZE produced conflicting flags. Re-prompt. |
 | `Missing value for --<key>` | bad-input | `lib/args.mjs:39,63` | Phase 1 should have caught this → ANALYZE regression. |
