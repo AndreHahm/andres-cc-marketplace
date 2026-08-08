@@ -1,7 +1,12 @@
 ---
 name: codex-review-bridge
-description: "Generic, reviewer-agnostic bridge to Codex: takes an arbitrary reviewer instruction body, target paths, and output schema, returns a validated structured findings envelope. Invoked by other components (e.g. plugin-marketplace-review) or plugins, not directly by end users in normal conversation."
-allowed-tools: ["Bash", "Read"]
+description: >-
+  Generic, reviewer-agnostic bridge to Codex: takes an arbitrary reviewer
+  instruction body, target paths, and output schema, returns a validated
+  structured findings envelope. Invoked by other components (e.g.
+  plugin-marketplace-review) or plugins, not directly by end users in normal
+  conversation.
+allowed-tools: ["Bash(node:*)", "Read"]
 ---
 
 # Generic Codex review bridge (component #18)
@@ -16,7 +21,7 @@ Built on component #17's `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`)
 - `instructionBody` — the reviewer's own instruction text (frontmatter stripped by the caller before passing it in).
 - `targetPaths` — files/directories in scope.
 - `schemaPath` — path to the canonical envelope schema (`references/envelope-schema.md` documents its shape; `scripts/bridge-invoke.mjs` bundles the actual JSON Schema).
-- `executionProfile` — must be an acceptable isolated profile (a working read-only sandbox, a container with the repo mounted read-only, or an equivalent isolated CI job). If none is available, this skill does not silently downgrade — it returns an `isolation_profile_unavailable` typed failure (scope-expansion gap #4) and the caller decides what to do (e.g. fall back to a Claude-native reviewer).
+- `executionProfile` — must be an acceptable isolated profile (a working read-only sandbox, a container with the repo mounted read-only, or an equivalent isolated CI job). Currently `bridge-invoke.mjs` only checks for the literal string `"danger-full-access"` and rejects that one value with an `isolation_profile_unavailable` typed failure (scope-expansion gap #4); it does not yet record which of the other profile values was passed or thread it into `runCodexExec`/the returned envelope's `provenance.execution_profile` — every non-`danger-full-access` value currently behaves identically. The caller still decides what to do on rejection (e.g. fall back to a Claude-native reviewer).
 - `dispatchId` — supplied by the caller; ties this run's scratch directory and output to exactly one invocation.
 
 ## Content trust boundary
@@ -42,7 +47,7 @@ See `references/envelope-schema.md` for the full field list (`contract_version`,
 
 ## Semantic validation (deterministic, before returning)
 
-Beyond schema conformance: every cited path must be normalized, in-scope, and exist; every cited line must exist in that file; finding IDs must be unique; `axis`/`severity` must come from the reviewer's own allowlist; `verdict` must follow the reviewer's deterministic pass/fail rule. See `references/semantic-validation.md`. A structurally valid but semantically wrong response (e.g. a hallucinated file) is rejected before it reaches the caller.
+Beyond schema conformance, a deterministic pass checks the response for internal consistency (e.g. a hallucinated file) before it reaches the caller. See `references/semantic-validation.md` for exactly which checks are implemented today versus tracked as follow-up work — don't assume the full original check list is enforced.
 
 ## Typed failures
 

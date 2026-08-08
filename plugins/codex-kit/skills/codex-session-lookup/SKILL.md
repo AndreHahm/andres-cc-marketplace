@@ -1,6 +1,9 @@
 ---
 name: codex-session-lookup
-description: "Look up or inspect Codex CLI's own session/history files. Use when asked to find a Codex session, resume a specific Codex session, or inspect a Codex session file's metadata."
+description: >-
+  Look up or inspect Codex CLI's own session/history files. Use when asked to
+  find a Codex session, resume a specific Codex session, or inspect a Codex
+  session file's metadata.
 allowed-tools: ["Bash(python3:*)"]
 ---
 
@@ -12,7 +15,7 @@ Read-only. Operates on Codex CLI's own local state under `~/.codex/`, not on Cla
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find_session_id.py" --query "<text>"
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find_session_id.py" --last 5
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find_session_id.py" --limit 5
 ```
 
 Searches `~/.codex/history.jsonl`; outputs tab-separated `session_id`, timestamp, and a truncated prompt (140 chars, use `--full` for the complete text).

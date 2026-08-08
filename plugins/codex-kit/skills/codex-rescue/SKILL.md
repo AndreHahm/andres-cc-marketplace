@@ -1,8 +1,17 @@
 ---
 name: codex-rescue
-description: "Delegate an implementation task to Codex, then Claude reviews the result. Use when asked \"codex rescue\", \"delegate to codex\", \"have codex do it\", or wants Codex to implement or fix something. If this project has enabled the auto-heuristic delegation toggle (decision #9), also consider proactively after 2+ failed attempts at a complex backend/algorithmic task — otherwise wait for an explicit request."
+description: >-
+  Delegate an implementation task to Codex, then Claude reviews the result.
+  Use when asked "codex rescue", "delegate to codex", "have codex do it", or
+  wants Codex to implement or fix something. If this project has enabled the
+  auto-heuristic delegation toggle (decision #9), also consider proactively
+  after 2+ failed attempts at a complex backend/algorithmic task — otherwise
+  wait for an explicit request. Not for multi-phase plan-validate-implement-
+  review workflows on complex or security/performance-critical features — use
+  codex-plan-loop for those; codex-rescue is a single delegate-then-review
+  pass, not an iterative validation loop.
 argument-hint: "task description [--write] [--model MODEL] [--effort LEVEL] [--resume-last|--resume|--fresh] [--no-preview] [--persist] [--governed]"
-allowed-tools: ["Bash", "Read", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node:*)", "Bash(git:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Codex Task Delegation + Double-Check
@@ -94,9 +103,9 @@ Relay the resulting `Persisted to ~/.codex/config.toml: ...` line verbatim. With
 Parsed: task="implement login rate limiter", write=true, resume=(last)
 ```
 
-Order: apply-codex-config.py output first, Parsed line second. (Model/effort already shown by the apply script — don't duplicate them in Parsed.)
+Print the Parsed line before invoking Phase 2.
 
-For edge cases, read `${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §7`.
+For edge cases, read `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §7`.
 
 ### Wrap the task in prompt blocks
 
@@ -306,7 +315,7 @@ Inspect the returned JSON:
 - `status === "completed"` → proceed to fetch result
 - `status === "failed"` → categorize per §6, save failure report
 - `waitTimedOut === true` and `status` still `queued`/`running` → re-call (iteration budget permitting)
-- 6 iterations exhausted → `wait-timeout` (§6). Do NOT silently cancel; leave the job running. Show the user the JOB_ID and suggest `/codex:status <JOB_ID>` for manual follow-up.
+- 6 iterations exhausted → `wait-timeout` (§6). Do NOT silently cancel; leave the job running. Show the user the JOB_ID and suggest `/codex-kit:status <JOB_ID>` for manual follow-up.
 
 Fetch the final result:
 
@@ -314,11 +323,11 @@ Fetch the final result:
 node "$CODEX_COMPANION" result "<literal JOB_ID>" --json
 ```
 
-Full error table: `${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §6`.
+Full error table: `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §6`.
 
 Notable cases:
 
-- `Task <id> is still running. Use /codex:status before continuing it.` → a previous task is still in flight. Show the user the active jobId and stop. Never silently cancel.
+- `Task <id> is still running. Use /codex-kit:status before continuing it.` → a previous task is still in flight. Show the user the active jobId and stop. Never silently cancel.
 - `Stored job <id> is missing its task request payload.` → detached worker couldn't load the request. `recovery-impossible`. Save failure report.
 
 ---
@@ -327,7 +336,7 @@ Notable cases:
 
 Now — and **only now** — you may read the code.
 
-Read `${CLAUDE_PLUGIN_ROOT}/references/evaluation.md`.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/evaluation-framework.md`.
 
 ### If Codex made code changes (`--write`)
 
@@ -348,7 +357,7 @@ For each changed file:
 
 ### If Codex returned investigation results (read-only)
 
-Apply the Peer AI Evaluation in `evaluation.md`:
+Apply the Peer AI Evaluation from `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/evaluation-framework.md`:
 
 - **Agree** — claim matches the code
 - **Disagree** — claim contradicts the code, with evidence
@@ -391,11 +400,11 @@ rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_
 
 ## Gotchas
 
-- **`--model` / `--effort` go through `apply-codex-config.py`, not the companion.** config.toml becomes the single source of truth; routing keeps every codex-advisor skill identical, lets the value persist for the next session without re-typing, and is the only way to set `effort` for review/adversarial (whose `valueOptions = [base, scope, model, cwd]` does not include effort). `apply-codex-config.py` writes whatever it's given without judging it — Codex is the authority on valid models and efforts, so a bad value surfaces there, not here.
+- **`--model` / `--effort` are passed as companion flags directly on the Phase 2 `task` invocation, not written to `config.toml`**, unless the user explicitly opts in with `--persist` (see the Model/effort section above). Codex is the authority on valid models and efforts, so a bad value surfaces there, not here.
 - **Never combine `--resume` / `--resume-last` with `--fresh`.** The companion rejects the combination (`:750`).
 - **Never pass a positional argument with Pattern B's stdin pipe.** `readTaskPrompt` short-circuits on `positionalPrompt || readStdinIfPiped()` (`:619`); a positional silently drops the entire task description.
 - **`--wait` on task is silent prompt corruption.** It becomes part of the task prompt body. ANALYZE must reject it.
 - **Do NOT explore the repo in Phase 1.** The point of delegation is that Codex builds the context. Exploring biases the double-check.
 
 For the full shared gotchas list, read
-`${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §10`.
+`${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §10`.

@@ -1,8 +1,11 @@
 ---
 name: codex-research
-description: "Deep-dive research using Codex with Claude's cross-model synthesis. Use when asked \"codex research\", \"deep dive with codex\", \"investigate this topic\". Not for code review or plan verification."
+description: >-
+  Deep-dive research using Codex with Claude's cross-model synthesis. Use
+  when asked "codex research", "deep dive with codex", "investigate this
+  topic". Not for code review or plan verification.
 argument-hint: "topic [path/to/document.md] [--model SLUG] [--effort LEVEL] [--no-preview]"
-allowed-tools: ["Bash", "Read", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Codex Research + Cross-Model Synthesis
@@ -13,8 +16,8 @@ document) to Codex **without loading the document into your own
 context**, then synthesize Codex's findings with your own independent
 analysis.
 
-For code review use `/codex-review`. For plan verification use
-`/codex-verify`.
+For code review use `/codex-kit:review`. For plan verification, use the
+`codex-verify` skill.
 
 ## Execution Contract
 
@@ -41,7 +44,7 @@ Unknown flags silently become task prompt content (`readTaskPrompt
 
 ### Parse `$ARGUMENTS`
 
-**Whitelist for this skill:** `--model <slug>`, `--effort <level>` (skill-level, route through `apply-codex-config.py` — never reach the companion). The topic and optional document path are other skill inputs, not companion flags.
+**Whitelist for this skill:** `--model <slug>`, `--effort <level>` (skill-level, passed as companion flags directly on the Phase 2 invocation — see Model/effort below). The topic and optional document path are other skill inputs, not companion flags.
 
 Rules:
 
@@ -51,7 +54,7 @@ Rules:
 - **Mixed** (topic + path) → both, in the blind payload template.
 - **Meta-instructions addressed to YOU** (e.g. "in Korean", "quickly", "thoroughly" — often typed in the user's own language) → obey for your own behavior, never include in the prompt.
 - **No args** → `AskUserQuestion`: "What should I research?"
-- **Unknown flags** (e.g., `--base`, `--write`, `--foo`) → `AskUserQuestion`. research has no companion flags to forward. `--model`/`--effort` are the only skill-level flags and route through `apply-codex-config.py`, not the companion.
+- **Unknown flags** (e.g., `--base`, `--write`, `--foo`) → `AskUserQuestion`. `--model`/`--effort` are the only skill-level flags and are passed as companion flags directly (see Model/effort below).
 - **`--no-preview`** → skip Phase 1.5 draft review. Power users who trust the translation.
 
 ### If a document was provided, validate it
@@ -138,9 +141,9 @@ Parsed: topic="GraphQL vs tRPC in 2026", doc=(none)
 Parsed: topic="performance regression analysis", doc="benchmarks/results.md" (DOC_LINES=512)
 ```
 
-Order: apply-codex-config.py output first, Parsed line second. Remember the literal `PROMPT_FILE`, `JOB_JSON_FILE`, and (if any) `USER_DOC` paths.
+Remember the literal `PROMPT_FILE`, `JOB_JSON_FILE`, and (if any) `USER_DOC` paths.
 
-For edge cases, read `${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §7` (ANALYZE rules) and `§8` (blind-payload details).
+For edge cases, read `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §7` (ANALYZE rules) and `§8` (blind-payload details).
 
 ---
 
@@ -254,7 +257,7 @@ node "$CODEX_COMPANION" status --wait "<literal JOB_ID>" \
 - `completed` → fetch result
 - `failed` → categorize per §6, save failure report
 - `waitTimedOut === true` + queued/running → re-call
-- Cap exhausted → `wait-timeout` (§6). Show JOB_ID, suggest `/codex:status <JOB_ID>`.
+- Cap exhausted → `wait-timeout` (§6). Show JOB_ID, suggest `/codex-kit:status <JOB_ID>`.
 
 Fetch result:
 
@@ -262,7 +265,7 @@ Fetch result:
 node "$CODEX_COMPANION" result "<literal JOB_ID>" --json
 ```
 
-Full error table: `${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §6`.
+Full error table: `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §6`.
 
 ---
 
@@ -271,7 +274,7 @@ Full error table: `${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §6`.
 Now you may verify claims, read the context document (if any), and
 synthesize.
 
-Read `${CLAUDE_PLUGIN_ROOT}/references/evaluation.md`.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/evaluation-framework.md`.
 
 For each substantive claim in Codex's findings:
 
@@ -362,4 +365,4 @@ rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_
   absolute paths; Bash shell variables do not survive across calls.
 
 For the full shared gotchas list, read
-`${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §10`.
+`${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §10`.

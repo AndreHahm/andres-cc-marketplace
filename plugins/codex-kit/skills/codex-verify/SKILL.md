@@ -1,8 +1,13 @@
 ---
 name: codex-verify
-description: "Verify a plan or document using Codex as independent reviewer with PASS/FAIL verdict. Use when asked \"codex verify\", \"verify this plan\", \"review this doc for issues\"."
-argument-hint: "path/to/document.md [--model SLUG] [--effort LEVEL] [--no-preview]"
-allowed-tools: ["Bash", "Read", "Grep", "Glob", "AskUserQuestion"]
+description: >-
+  Verify a plan or document using Codex as independent reviewer with
+  PASS/FAIL verdict. Use when asked "codex verify", "verify this plan",
+  "review this doc for issues". For validating Claude's own not-yet-written
+  analysis or design (no document to point at), use codex-peer-review
+  instead.
+argument-hint: "path/to/document.md [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
+allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Codex Document Verification + Double-Check
@@ -12,7 +17,7 @@ independent review of a plan or document. Your job is to hand the
 document to Codex **without ever loading it into your own context**, so
 your follow-up evaluation is genuinely independent.
 
-For code review use `/codex-review`. For research use `/codex-research`.
+For code review use `/codex-kit:review`. For research, use the `codex-research` skill.
 
 ## Execution Contract
 
@@ -33,7 +38,7 @@ The blind-payload pattern (`cat "$DOC" >> "$PROMPT_FILE"`) redirects to
 a file, not stdout, so your context stays clean.
 
 Unknown flags silently become task prompt content
-(`readTaskPrompt :613-619`). Phase 1 is the only safety net.
+(`codex-companion.mjs`'s `readTaskPrompt`). Phase 1 is the only safety net.
 
 ---
 
@@ -41,7 +46,7 @@ Unknown flags silently become task prompt content
 
 ### Parse `$ARGUMENTS`
 
-**Whitelist for this skill:** `--model <slug>`, `--effort <level>` (skill-level, route through `apply-codex-config.py` — never reach the companion). The document path is another skill input, not a companion flag.
+**Whitelist for this skill:** `--model <slug>`, `--effort <level>` (skill-level, passed as companion flags directly on the Phase 2 invocation — see Model/effort below), `--persist` (opt-in, see Model/effort below), `resume [follow-up]` (pass `--resume-last` to the companion). The document path is another skill input, not a companion flag.
 
 Rules:
 
@@ -50,7 +55,7 @@ Rules:
 - **Multiple paths** → `AskUserQuestion` which one.
 - **Meta-instructions addressed to YOU** (e.g. "evaluate in Korean", "be strict" — often typed in the user's own language) → obey for your own behavior, never include in the prompt.
 - **No args** → `AskUserQuestion`: "What document should I verify?"
-- **Unknown flags** (e.g., `--base`, `--write`, `--foo`) → `AskUserQuestion`. verify has no companion flags to forward. `--model`/`--effort` are skill-level and route through `apply-codex-config.py`.
+- **Unknown flags** (e.g., `--base`, `--write`, `--foo`) → `AskUserQuestion`. `--model`/`--effort`/`--persist` are skill-level and handled per the whitelist above, not forwarded as arbitrary companion flags.
 - **`--no-preview`** → skip Phase 1.5 draft review. Power users who trust the translation.
 
 ### Resolve the document path
@@ -136,9 +141,9 @@ printf '\n</document>\n' >> "$PROMPT_FILE"
 Parsed: doc="docs/plan.md" (DOC_LINES=247), payload=PROMPT_FILE
 ```
 
-Order: apply-codex-config.py output first, Parsed line second. Remember the literal `PROMPT_FILE`, `JOB_JSON_FILE`, and `USER_DOC` paths. They are needed in later phases.
+Remember the literal `PROMPT_FILE`, `JOB_JSON_FILE`, and `USER_DOC` paths. They are needed in later phases.
 
-For edge cases, read `${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §7` (ANALYZE rules) and `§8` (blind-payload details).
+For edge cases, read `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §7` (ANALYZE rules) and `§8` (blind-payload details).
 
 ---
 
@@ -222,12 +227,15 @@ Use `AskUserQuestion` exactly once:
 ## Phase 2: Invoke (Pattern B — stdin pipe to `task --background`)
 
 ```bash
-# NEVER pass a positional arg — readTaskPrompt short-circuits on
-# positionalPrompt (:619), silently dropping the entire blind payload.
+# NEVER pass a positional arg — codex-companion.mjs's readTaskPrompt
+# short-circuits on a positional prompt, silently dropping the entire
+# blind payload.
 # --model/--effort: include only if the user passed them this call.
+# --resume-last: include only if `resume [follow-up]` was parsed in Phase 1.
 cat "<literal PROMPT_FILE path>" | node "$CODEX_COMPANION" task --background --json \
   --model "<literal model, omit line if not provided>" \
   --effort "<literal effort, omit line if not provided>" \
+  --resume-last \
   > "<literal JOB_JSON_FILE path>" 2> "<literal JOB_JSON_FILE path>.stderr" \
   || { echo "task launch failed:" >&2; cat "<literal JOB_JSON_FILE path>.stderr" >&2; exit 1; }
 
@@ -255,7 +263,7 @@ node "$CODEX_COMPANION" status --wait "<literal JOB_ID>" \
 - `status === "completed"` → fetch result
 - `status === "failed"` → categorize per §6, save failure report
 - `waitTimedOut === true` with `queued`/`running` → re-call
-- 6 iterations exhausted → `wait-timeout` (§6). Show JOB_ID, suggest `/codex:status <JOB_ID>`.
+- 6 iterations exhausted → `wait-timeout` (§6). Show JOB_ID, suggest `/codex-kit:status <JOB_ID>`.
 
 Fetch result:
 
@@ -263,7 +271,7 @@ Fetch result:
 node "$CODEX_COMPANION" result "<literal JOB_ID>" --json
 ```
 
-Full error table: `${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §6`.
+Full error table: `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §6`.
 
 ---
 
@@ -271,7 +279,7 @@ Full error table: `${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §6`.
 
 **Now you read the document.** Not before.
 
-Read `${CLAUDE_PLUGIN_ROOT}/references/evaluation.md` (Peer AI
+Read `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/evaluation-framework.md` (Peer AI
 Evaluation + Self-Bias Awareness).
 
 **Self-bias warning:** if Claude authored the document (same session),
@@ -357,4 +365,4 @@ rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_
   catches.
 
 For the full shared gotchas list, read
-`${CLAUDE_PLUGIN_ROOT}/references/companion-usage.md §10`.
+`${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §10`.
