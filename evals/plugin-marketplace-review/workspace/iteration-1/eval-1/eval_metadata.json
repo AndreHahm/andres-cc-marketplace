@@ -1,0 +1,4 @@
+{"eval_id":"eval-1","skill_path":"plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md","assertions":[
+{"text":"Response describes Delta Validate running before Delta Audit","type":"functionality","target":"response text"},
+{"text":"Response explicitly states whole-plugin plugin-validator/plugin-grader are NOT run","type":"presence","target":"response text"}
+]}

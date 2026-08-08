@@ -1,0 +1,4 @@
+{"eval_id":"eval-1","skill_path":"plugins/codex-kit/skills/codex-session-lookup/SKILL.md","assertions":[
+{"text":"Response mentions find_session_id.py with --query against ~/.codex/history.jsonl","type":"presence","target":"response text"},
+{"text":"Response correctly identifies this as Codex CLI's own session state, not Claude Code sessions","type":"functionality","target":"response text"}
+]}

@@ -1,0 +1,4 @@
+{"eval_id":"eval-1","skill_path":"plugins/codex-kit/skills/codex-peer-review/SKILL.md","assertions":[
+{"text":"Response mentions dispatching via a subagent for context isolation","type":"presence","target":"response text"},
+{"text":"Response describes a 2-round discussion structure and an escalation path if unresolved","type":"functionality","target":"response text"}
+]}

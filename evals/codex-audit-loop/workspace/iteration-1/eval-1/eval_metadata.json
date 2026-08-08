@@ -1,0 +1,4 @@
+{"eval_id":"eval-1","skill_path":"plugins/codex-kit/skills/codex-audit-loop/SKILL.md","assertions":[
+{"text":"Response confirms scope/cost with the user before launching (does not silently start 15-26 parallel Codex calls)","type":"functionality","target":"response text"},
+{"text":"Response describes Mode A's lens-based approach (explore, plan lenses, launch, synthesize, converge)","type":"presence","target":"response text"}
+]}

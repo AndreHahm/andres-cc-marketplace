@@ -1,0 +1,4 @@
+{"eval_id":"eval-1","skill_path":"plugins/codex-kit/skills/codex-verify/SKILL.md","assertions":[
+{"text":"Response describes not reading the document's content before Codex completes (blind-payload pattern)","type":"functionality","target":"response text"},
+{"text":"Response mentions a PASS/FAIL verdict format with P1 (blocking) vs P2 (recommendation) severity","type":"presence","target":"response text"}
+]}
