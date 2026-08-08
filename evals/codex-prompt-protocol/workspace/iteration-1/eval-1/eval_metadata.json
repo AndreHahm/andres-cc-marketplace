@@ -1,0 +1,4 @@
+{"eval_id":"eval-1","skill_path":"plugins/codex-kit/skills/codex-prompt-protocol/SKILL.md","assertions":[
+{"text":"Response correctly identifies references/prompt-blocks.md as the XML tag vocabulary source","type":"presence","target":"response text"},
+{"text":"Response correctly identifies references/error-taxonomy.md as the error category source","type":"presence","target":"response text"}
+]}

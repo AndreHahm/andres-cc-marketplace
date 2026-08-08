@@ -1,0 +1,4 @@
+{"eval_id":"eval-1","skill_path":"plugins/codex-kit/skills/codex-research/SKILL.md","assertions":[
+{"text":"Response recognizes topic-only mode (no document to attach)","type":"functionality","target":"response text"},
+{"text":"Response describes independently verifying/synthesizing findings rather than just relaying Codex's output verbatim","type":"presence","target":"response text"}
+]}

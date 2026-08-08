@@ -1,0 +1,4 @@
+{"eval_id":"eval-1","skill_path":"plugins/codex-kit/skills/codex-plan-loop/SKILL.md","assertions":[
+{"text":"Response describes writing a plan first, before implementation","type":"functionality","target":"response text"},
+{"text":"Response states a concrete convergence/exit condition for the iteration loop (not just 'until quality standards are met')","type":"quality","target":"response text"}
+]}

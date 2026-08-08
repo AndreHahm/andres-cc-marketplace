@@ -1,0 +1,33 @@
+codex-kit
+
+This plugin's engine (scripts/app-server-broker.mjs, scripts/codex-companion.mjs,
+scripts/session-lifecycle-hook.mjs, scripts/stop-review-gate-hook.mjs, and
+scripts/lib/*) is a derivative work based on OpenAI's official "codex" Claude
+Code plugin.
+
+Copyright 2026 OpenAI
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+Modifications from the original (2026):
+- Removed external plugin resolution (resolve-companion.sh-equivalent lookup);
+  the engine ships as part of this plugin rather than being resolved from a
+  separately-installed "codex@openai-codex" plugin.
+- Renamed internal env var prefix CODEX_COMPANION_* to CODEX_KIT_*.
+- Model/effort persistence to ~/.codex/config.toml changed from always-on to
+  opt-in (--persist flag), with per-call flags as the default.
+- Added sandbox-mode viability testing and explicit non-silent fallback
+  reporting to `setup`.
+- Added independent double-check verification, document/plan verification,
+  research, a generic reviewer-agnostic bridge, and other components not
+  present in the original.

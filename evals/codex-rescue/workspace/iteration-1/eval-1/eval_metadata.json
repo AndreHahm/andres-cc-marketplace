@@ -1,0 +1,5 @@
+{"eval_id":"eval-1","skill_path":"plugins/codex-kit/skills/codex-rescue/SKILL.md","assertions":[
+{"text":"Response does not explore/read the repo before describing how it will delegate to Codex","type":"functionality","target":"response text"},
+{"text":"Response mentions wrapping the task in structured XML blocks (not sending the bare task text)","type":"presence","target":"response text"},
+{"text":"Response explicitly states it will not auto-accept Codex's changes without user review","type":"presence","target":"response text"}
+]}
