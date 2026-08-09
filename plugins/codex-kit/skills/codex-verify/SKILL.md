@@ -238,7 +238,11 @@ cat "<literal PROMPT_FILE path>" | node "$CODEX_COMPANION" task --background --j
   --resume-last \
   > "<literal JOB_JSON_FILE path>" 2> "<literal JOB_JSON_FILE path>.stderr" \
   || { echo "task launch failed:" >&2; cat "<literal JOB_JSON_FILE path>.stderr" >&2; exit 1; }
+```
 
+`--resume-last` is a bare boolean flag (no value) — include the entire `--resume-last \` line only when `resume [follow-up]` was parsed in Phase 1; omit the whole line otherwise. `--model`/`--effort` each omit only their own line when unset, independently of the resume decision.
+
+```bash
 # Capture jobId (node, not python — avoid host assumptions)
 JOB_ID=$(node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!j.jobId)throw new Error("no jobId");process.stdout.write(j.jobId);}catch(e){process.stderr.write("JOB_ID parse failed: "+e.message+"\n");process.exit(1);}' "<literal JOB_JSON_FILE path>") \
   || { echo "raw companion stdout:" >&2; cat "<literal JOB_JSON_FILE path>" >&2; exit 1; }

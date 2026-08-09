@@ -6,10 +6,11 @@ description: >-
   wants Codex to implement or fix something. If this project has enabled the
   auto-heuristic delegation toggle (decision #9), also consider proactively
   after 2+ failed attempts at a complex backend/algorithmic task — otherwise
-  wait for an explicit request. Not for multi-phase plan-validate-implement-
-  review workflows on complex or security/performance-critical features — use
-  codex-plan-loop for those; codex-rescue is a single delegate-then-review
-  pass, not an iterative validation loop.
+  wait for an explicit request. Not for multi-phase
+  plan-validate-implement-review workflows on complex or
+  security/performance-critical features — use codex-plan-loop for those;
+  codex-rescue is a single delegate-then-review pass, not an iterative
+  validation loop.
 argument-hint: "task description [--write] [--model MODEL] [--effort LEVEL] [--resume-last|--resume|--fresh] [--no-preview] [--persist] [--governed]"
 allowed-tools: ["Bash(node:*)", "Bash(git:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
