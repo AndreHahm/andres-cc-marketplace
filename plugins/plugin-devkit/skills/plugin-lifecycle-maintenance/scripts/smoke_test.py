@@ -44,27 +44,34 @@ def check_referenced_files():
 
 
 def check_bash_grants():
-    # Only "scoped `Bash(...)`" counts as a real invocation instruction — a bare mention
-    # elsewhere (e.g. an illustrative example) is not an instruction to invoke it. Checked
-    # across SKILL.md and every workflows/*.md file, since real invocations live in both.
+    # Unlike plugin-lifecycle-upstream/-downstream, this skill's prose never uses the
+    # "scoped `Bash(...)`" phrasing — it cites Bash grants in shorthand instead
+    # (`` `Bash(date:*)` for the cutoff timestamp``, `` `Bash(git log/diff)` ``), which
+    # wouldn't exact-match the frontmatter's own canonical grant strings either. So the
+    # meaningful check here is: does each granted Bash(<cmd>:*) scope's base <cmd> word
+    # actually appear somewhere in the body (SKILL.md + every workflows/*.md file)? An
+    # unused grant is an R6 least-privilege smell even without exact-string phrasing.
     fm_text = SKILL_MD.read_text(encoding="utf-8")
     header_end = fm_text.find("\n---\n", 4) + 5
     frontmatter = fm_text[:header_end]
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    granted = set(re.findall(r"Bash\([^)]*\)", fm_line_match.group(1))) if fm_line_match else set()
+    if not fm_line_match:
+        return True, "no allowed-tools line found (skip)"
+    granted_cmds = re.findall(r"Bash\(([\w.*/-]+?)(?::|\))", fm_line_match.group(1))
+    granted_cmds = [c.lstrip("*/") for c in granted_cmds]
 
-    referenced = set(re.findall(r"scoped `(Bash\([^)]*\))", fm_text[header_end:]))
+    body = fm_text[header_end:]
     for wf in sorted((SKILL_DIR / "workflows").glob("*.md")):
-        referenced |= set(re.findall(r"scoped `(Bash\([^)]*\))", wf.read_text(encoding="utf-8")))
+        body += "\n" + wf.read_text(encoding="utf-8")
 
-    missing = referenced - granted
-    if missing:
-        return False, "body invokes Bash scope(s) missing from allowed-tools: " + ", ".join(sorted(missing))
-    return True, "every scoped Bash invocation is granted"
+    unused = [cmd for cmd in granted_cmds if not re.search(rf"\b{re.escape(cmd)}\b", body)]
+    if unused:
+        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(sorted(set(unused)))
+    return True, "every granted Bash command is invoked somewhere in the body"
 
 
 def check_phase_sequence():
-    # This skill's 3 workflow files each number independently (a fresh "Step 1"/"Service 1"
+    # This skill's 4 workflow files each number independently (a fresh "Step 1"/"Service 1"
     # per file, not a shared global sequence) — checked per file, not merged across files.
     workflows_dir = SKILL_DIR / "workflows"
     if not workflows_dir.exists():
