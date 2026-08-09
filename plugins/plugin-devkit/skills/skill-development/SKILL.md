@@ -48,7 +48,12 @@ Skills are instructions **for Claude**, not documentation for people. Always ask
 
 Skill directory structure:
 - `SKILL.md` (required) — instructions and navigation
-- `scripts/` — executable code for deterministic tasks
+- `scripts/` — executable code for deterministic tasks. A skill's own smoke test, when it has one, lives
+  here as `scripts/smoke_test.*` (Python or JS/TS, per the plugin's declared language) — persisted and
+  git-tracked so `plugin-lifecycle-upstream`'s Test phase and `skill-tester` can re-run it later, instead
+  of a scratchpad script that gets written once and discarded. Mirrors how `agent-development`'s
+  `test-agent-trigger.sh` and `hook-development`'s `test-hook.sh` already work for their component types.
+  This is a going-forward convention for new/touched skills, not a retroactive backfill.
 - `references/` — docs loaded into context as needed
 - `assets/` — output templates, image files
 - `agents/` — subagent specs (graders, comparators, analyzers)
