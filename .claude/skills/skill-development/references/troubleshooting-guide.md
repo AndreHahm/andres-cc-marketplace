@@ -203,6 +203,15 @@ description: Use for <type> files
 description: Use for [type] files
 ```
 
+This applies to the frontmatter `description` field only, not skill body content. A skill whose job is
+constructing prompts for a different model that itself prefers XML-structured prompts (e.g. Codex/GPT-5.4
+— see `codex-kit`'s `codex-research`, `codex-verify`, and `codex-rescue` skills, whose body content
+embeds tags like `<task>`, `<grounding_rules>`, `<verification_loop>` as prompt-payload scaffolding) is
+not a violation of this rule. The installed `openai-codex/codex` plugin's own `gpt-5-4-prompting` skill
+explicitly prescribes XML tags for that target model — do not "fix" XML tags found in a skill's body
+without first checking whether they're payload content for a downstream model rather than Claude Code's
+own instruction structure.
+
 ### Forbidden names
 
 Skill names cannot contain "claude" or "anthropic" (reserved).
