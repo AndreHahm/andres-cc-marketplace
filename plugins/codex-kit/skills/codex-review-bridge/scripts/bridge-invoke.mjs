@@ -139,6 +139,25 @@ async function main() {
   }
 
   const targetPaths = targetPathsRaw.split(",").map((p) => p.trim());
+
+  // Trust-boundary containment check: the reviewer instructions must not be
+  // one of the files under review. Without this, content in scope for the
+  // review (e.g. a PR that modifies its own reviewer definition) could
+  // rewrite the very instructions that judge it. This is a narrow,
+  // mechanical check -- it catches the direct case (instruction file is
+  // itself a target path, or lives under a target directory) but callers
+  // are still responsible for sourcing instructionBody from a trusted
+  // checkout (e.g. merge-base, not the PR branch) per SKILL.md's Inputs.
+  const resolvedInstructionFile = path.resolve(cwd, instructionFile);
+  const instructionUnderTarget = targetPaths.some((p) => {
+    const resolvedTarget = path.resolve(cwd, p);
+    return isWithin(resolvedInstructionFile, resolvedTarget);
+  });
+  if (instructionUnderTarget) {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "instruction-file resolves inside one of target-paths -- the reviewer instructions cannot be one of the files under review" }));
+    process.exit(1);
+  }
+
   const instructionBody = fs.readFileSync(instructionFile, "utf8");
 
   const prompt = [

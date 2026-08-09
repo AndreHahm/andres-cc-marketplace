@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import os from "node:os";
@@ -40,12 +41,12 @@ export async function waitForBrokerEndpoint(endpoint, timeoutMs = 2000) {
   return false;
 }
 
-export async function sendBrokerShutdown(endpoint) {
+export async function sendBrokerShutdown(endpoint, token = null) {
   await new Promise((resolve) => {
     const socket = connectToEndpoint(endpoint);
     socket.setEncoding("utf8");
     socket.on("connect", () => {
-      socket.write(`${JSON.stringify({ id: 1, method: "broker/shutdown", params: {} })}\n`);
+      socket.write(`${JSON.stringify({ id: 1, method: "broker/shutdown", params: { token } })}\n`);
     });
     socket.on("data", () => {
       socket.end();
@@ -56,11 +57,11 @@ export async function sendBrokerShutdown(endpoint) {
   });
 }
 
-export function spawnBrokerProcess({ scriptPath, cwd, endpoint, pidFile, logFile, env = process.env }) {
+export function spawnBrokerProcess({ scriptPath, cwd, endpoint, pidFile, logFile, token, env = process.env }) {
   const logFd = fs.openSync(logFile, "a");
   const child = spawn(process.execPath, [scriptPath, "serve", "--endpoint", endpoint, "--cwd", cwd, "--pid-file", pidFile], {
     cwd,
-    env,
+    env: { ...env, CODEX_KIT_APP_SERVER_TOKEN: token },
     detached: true,
     stdio: ["ignore", logFd, logFd]
   });
@@ -89,7 +90,7 @@ export function loadBrokerSession(cwd) {
 export function saveBrokerSession(cwd, session) {
   const stateDir = resolveStateDir(cwd);
   fs.mkdirSync(stateDir, { recursive: true });
-  fs.writeFileSync(resolveBrokerStateFile(cwd), `${JSON.stringify(session, null, 2)}\n`, "utf8");
+  fs.writeFileSync(resolveBrokerStateFile(cwd), `${JSON.stringify(session, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
 }
 
 export function clearBrokerSession(cwd) {
@@ -131,6 +132,7 @@ export async function ensureBrokerSession(cwd, options = {}) {
   const sessionDir = createBrokerSessionDir();
   const endpointFactory = options.createBrokerEndpoint ?? createBrokerEndpoint;
   const endpoint = endpointFactory(sessionDir, options.platform);
+  const token = options.createBrokerToken ? options.createBrokerToken() : crypto.randomBytes(32).toString("hex");
   const pidFile = path.join(sessionDir, "broker.pid");
   const logFile = path.join(sessionDir, "broker.log");
   const scriptPath =
@@ -143,6 +145,7 @@ export async function ensureBrokerSession(cwd, options = {}) {
     endpoint,
     pidFile,
     logFile,
+    token,
     env: options.env ?? process.env
   });
 
@@ -161,6 +164,7 @@ export async function ensureBrokerSession(cwd, options = {}) {
 
   const session = {
     endpoint,
+    token,
     pidFile,
     logFile,
     sessionDir,

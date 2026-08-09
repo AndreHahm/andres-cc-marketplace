@@ -5,7 +5,15 @@ disable-model-invocation: true
 allowed-tools: Bash(node:*), Glob
 ---
 
-!`node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" result "$ARGUMENTS"`
+Raw slash-command arguments: `$ARGUMENTS`
+
+Validate `$ARGUMENTS` against the whitelist in the `argument-hint` above (`[job-id]`) before running anything — do not interpolate the raw argument string into a shell command. A `job-id`, if present, must match `^[A-Za-z0-9._-]+$`. Reject/`AskUserQuestion` on anything else, then run:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" result
+```
+
+(append the validated `<job-id>` as its own quoted argument if one was given — never as a single unquoted `$ARGUMENTS` blob.)
 
 Present the full command output to the user. Do not summarize or condense it. Preserve all details including:
 - Job ID and status

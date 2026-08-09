@@ -7,7 +7,15 @@ disable-model-invocation: true
 allowed-tools: Bash(node:*), Glob
 ---
 
-!`node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" status "$ARGUMENTS"`
+Raw slash-command arguments: `$ARGUMENTS`
+
+Validate `$ARGUMENTS` against the whitelist in the `argument-hint` above (`[job-id]`, `--wait`, `--timeout-ms <ms>`, `--all`) before running anything — do not interpolate the raw argument string into a shell command. A `job-id`, if present, must match `^[A-Za-z0-9._-]+$`; `--timeout-ms`'s value must be a positive integer. Reject/`AskUserQuestion` on anything else, then run:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" status
+```
+
+(append the validated `<job-id>`/`--wait`/`--timeout-ms "<value>"`/`--all` as separate, individually-quoted arguments — never as a single unquoted `$ARGUMENTS` blob.)
 
 If the user did not pass a job ID:
 - Render the command output as a single Markdown table for the current and past runs in this session.

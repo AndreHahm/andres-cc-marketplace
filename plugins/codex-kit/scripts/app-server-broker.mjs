@@ -10,6 +10,7 @@ import { BROKER_BUSY_RPC_CODE, CodexAppServerClient } from "./lib/app-server.mjs
 import { parseBrokerEndpoint } from "./lib/broker-endpoint.mjs";
 
 const STREAMING_METHODS = new Set(["turn/start", "review/start", "thread/compact/start"]);
+const BROKER_AUTH_RPC_CODE = -32002;
 
 function buildStreamThreadIds(method, params, result) {
   const threadIds = new Set();
@@ -59,6 +60,11 @@ async function main() {
     throw new Error("Missing required --endpoint.");
   }
 
+  const token = process.env.CODEX_KIT_APP_SERVER_TOKEN;
+  if (!token) {
+    throw new Error("Missing required CODEX_KIT_APP_SERVER_TOKEN environment variable -- the broker refuses to start unauthenticated.");
+  }
+
   const cwd = options.cwd ? path.resolve(process.cwd(), options.cwd) : process.cwd();
   const endpoint = String(options.endpoint);
   const listenTarget = parseBrokerEndpoint(endpoint);
@@ -70,6 +76,7 @@ async function main() {
   let activeStreamSocket = null;
   let activeStreamThreadIds = null;
   const sockets = new Set();
+  const authenticatedSockets = new Set();
 
   function clearSocketOwnership(socket) {
     if (activeRequestSocket === socket) {
@@ -144,6 +151,14 @@ async function main() {
         }
 
         if (message.id !== undefined && message.method === "initialize") {
+          if (message.params?.token !== token) {
+            send(socket, {
+              id: message.id,
+              error: buildJsonRpcError(BROKER_AUTH_RPC_CODE, "Unauthorized: missing or incorrect broker token.")
+            });
+            continue;
+          }
+          authenticatedSockets.add(socket);
           send(socket, {
             id: message.id,
             result: {
@@ -158,12 +173,27 @@ async function main() {
         }
 
         if (message.id !== undefined && message.method === "broker/shutdown") {
+          if (!authenticatedSockets.has(socket) && message.params?.token !== token) {
+            send(socket, {
+              id: message.id,
+              error: buildJsonRpcError(BROKER_AUTH_RPC_CODE, "Unauthorized: missing or incorrect broker token.")
+            });
+            continue;
+          }
           send(socket, { id: message.id, result: {} });
           await shutdown(server);
           process.exit(0);
         }
 
         if (message.id === undefined) {
+          continue;
+        }
+
+        if (!authenticatedSockets.has(socket)) {
+          send(socket, {
+            id: message.id,
+            error: buildJsonRpcError(BROKER_AUTH_RPC_CODE, "Unauthorized: send an authenticated \"initialize\" request first.")
+          });
           continue;
         }
 
@@ -224,11 +254,13 @@ async function main() {
 
     socket.on("close", () => {
       sockets.delete(socket);
+      authenticatedSockets.delete(socket);
       clearSocketOwnership(socket);
     });
 
     socket.on("error", () => {
       sockets.delete(socket);
+      authenticatedSockets.delete(socket);
       clearSocketOwnership(socket);
     });
   });
