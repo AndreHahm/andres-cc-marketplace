@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Persisted smoke test for skill-development: frontmatter validity, referenced-file
-existence, and Bash-scope grant consistency between the body and allowed-tools."""
+existence, and Bash-scope grant usage consistency."""
 import re
 import sys
 import pathlib
@@ -23,9 +23,13 @@ def check_frontmatter():
 
 
 def check_referenced_files():
+    # This skill's body cites paths both as bare `references/foo.md` and as
+    # `${CLAUDE_SKILL_DIR}/references/foo.md` — both forms must be checked, or the
+    # majority of this file's real references silently go unverified.
     text = SKILL_MD.read_text(encoding="utf-8")
+    pattern = r"`(?:\$\{CLAUDE_SKILL_DIR\}/)?(references/[\w.-]+\.md|scripts/[\w./-]+)`"
     missing = []
-    for match in re.finditer(r"`(references/[\w.-]+\.md|scripts/[\w./-]+)`", text):
+    for match in re.finditer(pattern, text):
         path = SKILL_DIR / match.group(1)
         if not path.exists():
             missing.append(match.group(1))
@@ -35,19 +39,23 @@ def check_referenced_files():
 
 
 def check_bash_grants():
-    # Only "scoped `Bash(...)`" counts as a real invocation instruction — see plugin-grader's
-    # own smoke test for the same rationale (a bare mention elsewhere, e.g. an illustrative
-    # example, is not an instruction to invoke it).
+    # This skill doesn't use the "scoped `Bash(...)`" invocation phrasing the lifecycle
+    # skills use — its body cites commands as literal invocation examples instead
+    # (e.g. "python -m scripts.aggregate_benchmark", "mkdir -p ..."). So the meaningful
+    # check here is: does each granted Bash(<cmd>:*) scope's <cmd> actually appear as a
+    # word-boundary command mention in the body? An unused grant is an R6 least-privilege
+    # smell even when nothing in the body's own phrasing names the grant explicitly.
     text = SKILL_MD.read_text(encoding="utf-8")
     header_end = text.find("\n---\n", 4) + 5
     frontmatter, body = text[:header_end], text[header_end:]
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    granted = set(re.findall(r"Bash\([^)]*\)", fm_line_match.group(1))) if fm_line_match else set()
-    referenced = set(re.findall(r"scoped `(Bash\([^)]*\))", body))
-    missing = referenced - granted
-    if missing:
-        return False, "body invokes Bash scope(s) missing from allowed-tools: " + ", ".join(sorted(missing))
-    return True, "every scoped Bash invocation in the body is granted"
+    if not fm_line_match:
+        return True, "no allowed-tools line found (skip)"
+    granted_cmds = re.findall(r"Bash\(([\w.-]+):", fm_line_match.group(1))
+    unused = [cmd for cmd in granted_cmds if not re.search(rf"\b{re.escape(cmd)}\b", body)]
+    if unused:
+        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(sorted(set(unused)))
+    return True, "every granted Bash command is invoked somewhere in the body"
 
 
 CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants]
