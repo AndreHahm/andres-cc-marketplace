@@ -50,8 +50,9 @@ Skill directory structure:
 - `SKILL.md` (required) — instructions and navigation
 - `scripts/` — executable code for deterministic tasks. A skill's own smoke test, when it has one, lives
   here as `scripts/smoke_test.*` (Python or JS/TS, per the plugin's declared language) — persisted and
-  git-tracked so `plugin-lifecycle-upstream`'s Test phase and `skill-tester` can re-run it later, instead
-  of a scratchpad script that gets written once and discarded. Mirrors how `agent-development`'s
+  git-tracked so `plugin-lifecycle-upstream`'s Test phase, `plugin-lifecycle-downstream`'s Test phase (via
+  the `smoke-tester` agent for a batch sweep), and `skill-tester` can re-run it later, instead of a
+  scratchpad script that gets written once and discarded. Mirrors how `agent-development`'s
   `test-agent-trigger.sh` and `hook-development`'s `test-hook.sh` already work for their component types.
   This is a going-forward convention for new/touched skills, not a retroactive backfill.
 - `references/` — docs loaded into context as needed
@@ -365,6 +366,7 @@ Adapt technical vocabulary to the user's apparent familiarity:
 
 **Quality gates:**
 - `quick_validate.py` passes without errors
+- `scripts/smoke_test.py` passes (this skill's own persisted smoke test)
 - Description trigger rate ≥80% verified via `run_loop.py`
 - `claude plugin validate .` passes
 - All Markdown links inside the skill directory resolve — broken links are caught during review, not left for the user to discover
@@ -428,6 +430,7 @@ Run `quick_validate.py`, then work through the full pre-release checklist at `${
 | `${CLAUDE_SKILL_DIR}/scripts/repair_skill.py` | Diagnose and repair skill loading failures | Skill Repair section |
 | `${CLAUDE_SKILL_DIR}/scripts/scan_skills.py` | Inventory all skills with metadata and usage statistics | Skill Consolidation step 1 |
 | `${CLAUDE_SKILL_DIR}/scripts/analyze_similarity.py` | Find merge candidates by trigger/keyword overlap | Skill Consolidation step 2 |
+| `${CLAUDE_SKILL_DIR}/scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) | Before packaging / after any SKILL.md edit |
 | `plugin-rulebook` skill | Plugin-level rules — invoke before finalizing to check naming, language, formatting, tool-scoping, and external-reference compliance | Phase 5 (before packaging) |
 | `references/skill-creator-original.md` | Original skill-creator methodology | Background reference |
 | `CHANGELOG.md` | Change history for this skill | Reference |

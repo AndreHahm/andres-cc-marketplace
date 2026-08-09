@@ -140,6 +140,7 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 4. **N/A dimension** — grade a component with no `scripts/`; confirm `robustness` scores 10 with `is_na: true`, not excluded from the weighted sum
 5. **Plugin rollup with one broken component** — construct component scores where one is < 3; confirm Gate P3 fires and `weakest_component` is reported even though the mean looks acceptable
 6. **Fast mode** — confirm `scripts-reviewer`/`consistency-reviewer`/`security-reviewer` are skipped and `notes.inspection_limits` states this
+7. **Self-check** — `scripts/smoke_test.py` passes (this skill's own persisted smoke test), re-run after any SKILL.md edit
 
 **Quality gates:**
 - [ ] `scripts/compute_score.py` is always invoked for the weighted sum and gate math — never hand-computed
@@ -160,6 +161,7 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 | `references/output-schema.md` | JSON shapes for the script's input/output and the final written report |
 | `references/swot-and-next-steps.md` | Score-driven SWOT derivation and prioritized-next-steps ranking |
 | `scripts/compute_score.py` | Deterministic weighted-sum and gate-application script — the only source of truth for this arithmetic |
+| `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run before packaging or after any SKILL.md edit |
 | `assets/example-output.json` | A complete worked example of the final report JSON |
 | `plugin-rulebook` skill | Rule Compliance dimension's signal source |
 | `enhancement-suggestor` agent | Turns the written report's `prioritized_next_steps` into a full WHAT/WHY/HOW plan (Step 8) |
