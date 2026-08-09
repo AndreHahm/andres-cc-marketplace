@@ -4,7 +4,7 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-devkit` ships **35 skills**, **23 agents**, **16 commands**, and `PreToolUse`/`Stop`/`PostToolUse` hooks. Skills fall into six broad groups:
+`plugin-devkit` ships **35 skills**, **24 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
@@ -98,7 +98,7 @@ cc --plugin-dir /path/to/plugin-devkit
 
 ## Agents
 
-Twenty-three specialized agents, seventeen of which are quality-gate reviewers cross-checked by `plugin-validator`:
+Twenty-four specialized agents, seventeen of which are quality-gate reviewers cross-checked by `plugin-validator`:
 
 | Agent | Purpose |
 |---|---|
@@ -125,6 +125,7 @@ Twenty-three specialized agents, seventeen of which are quality-gate reviewers c
 | `plugin-inspector` | Inspects a plugin or component and produces a structured capability portfolio |
 | `enhancement-suggestor` | Turns review/validation/comparison/test findings into a classified WHAT/WHY/HOW improvement plan |
 | `build-handoff-writer` | Writes/updates the build handoff report combining narrative, commits, and open items for a pipeline run |
+| `smoke-tester` | Runs each named skill's persisted `scripts/smoke_test.*` and aggregates pass/fail/skipped/blocked/error results for a batch or whole-plugin sweep |
 
 ## Commands
 
@@ -158,10 +159,13 @@ Twenty-three specialized agents, seventeen of which are quality-gate reviewers c
 | `/implement-dev-rules` | Execute a verified plan file-by-file, verifying each change |
 | `/update-dev-rule` | Update a stale rule and everything it affects, then report the changes |
 
-**Maintenance:**
+**Permissions:**
 
 | Command | Purpose |
 |---|---|
+| `/apply-permissions` | Write confirmed permission entries from `/verify-permissions` into `settings.local.json` (default) or `settings.json` (explicit promotion), gated by tiered confirmation |
+| `/find-permissions` | Scan past session transcripts for Bash commands with no matching permission rule and produce a candidate report |
+| `/verify-permissions` | Classify candidate permissions from `/find-permissions`, and audit every existing settings entry, for risky or destructive commands that belong in `ask`/`deny` instead of `allow` |
 | `/trim-permissions` | Consolidate `.claude/settings.local.json`'s permission allowlist -- exact duplicates, wildcard-subsumed entries, and one-off literal commands, tiered by confidence |
 
 ## Hooks
@@ -172,6 +176,8 @@ Twenty-three specialized agents, seventeen of which are quality-gate reviewers c
 - **`Stop`** → `stop-hook.sh` — drives the iterative skill-improvement loop's stop-cycle logic
 - **`PostToolUse`** (matcher `Write|Edit`) → `rulebook-check.sh` — enforces `plugin-rulebook` compliance on edited components; `hooks-schema-check.sh` — validates any edited `hooks.json` against its schema
 - **`PostToolUse`** (matcher `^(Agent|Skill|Bash)$`) → `r26-expensive-action-check.sh` — log-only, best-effort runtime check for R26 (Expensive-Action Opt-In) violations on Agent/Skill dispatches and scoped Bash calls
+- **`PostToolUse`** (matcher `^(Agent|Bash)$`) → `r25-overhead-disclosure-check.sh` — log-only, best-effort reminder for R25 (Unplanned-Overhead Disclosure) on Agent/Bash retries
+- **`PostToolUseFailure`** (matcher `^(Agent|Bash)$`) → `r25-overhead-disclosure-check.sh` — feeds the same R25 reminder's failure-tracking state when an Agent/Bash call itself fails
 
 ## Quick Start
 

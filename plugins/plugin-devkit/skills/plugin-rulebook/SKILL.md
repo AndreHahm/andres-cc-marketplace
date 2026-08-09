@@ -141,6 +141,8 @@ Skill and agent frontmatter must not include command-only or unsupported fields.
 
 **Tool completeness:** Every tool invoked in the command or skill body must be declared in `allowed-tools`. Scan the body for tool name references (`Bash`, `Write`, `Edit`, `Glob`, `Grep`, `Read`, `WebFetch`, `WebSearch`, etc.) — any tool called but absent from `allowed-tools` is a REQUIRED violation.
 
+**Agent files — this scoping table does not apply the same way (verified against current official docs, code.claude.com/docs/en/sub-agents):** an agent's `tools` frontmatter field has no documented Bash-scoping syntax at all — the only parenthetical-scoping form the platform supports there is `Agent(agent_type, ...)`, a specifically-documented mechanism for restricting which subagents can be spawned, not a general pattern applicable to other tools. A `Bash(cmd:*)`-style entry inside an agent's `tools` array (as opposed to a skill/command's `allowed-tools` string) is therefore a FAIL in the opposite direction from the usual case: it doesn't function as scoping, so it should be replaced with bare `Bash` (the correct, and only, form for granting Bash to an agent) rather than "fixed" by tightening the scope further. Flag a scoped-Bash entry found in an agent's `tools` field as REQUIRED — replace with bare `Bash`. This distinction was confirmed after three independent reviewer passes disagreed on it (two flagged the pattern as invalid, one found an internal `agent-development` reference template using it as apparent precedent — that template was itself propagating the same mistake, not real platform support).
+
 **Violation:** Body instructs Claude to run a shell command (Bash) but `Bash(...)` is absent from `allowed-tools`.
 
 ---
@@ -492,3 +494,5 @@ Whether a rule traces back to an official Claude Code doc, and whether that doc 
 | `${CLAUDE_SKILL_DIR}/references/compact-rule-checklist.md` | Pattern/violation/severity table for all 23 enabled rules, no narrative — read by the `plugin-rulebook-checker` agent instead of this file, to avoid re-reading full teaching prose on every isolated/backgrounded dispatch |
 | `${CLAUDE_SKILL_DIR}/references/allowed-languages.md` | R24 full whitelist/banned/exempt lists, worked violation examples, and fix guidance |
 | `${CLAUDE_SKILL_DIR}/references/suggested-additional-rules.md` | R11/R12/R15/R16 — disabled-by-default rules and why each might be worth enabling |
+| `${CLAUDE_SKILL_DIR}/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, and `plugin-lifecycle-maintenance` |
+| `${CLAUDE_SKILL_DIR}/references/open-item-discipline.md` | Phase-Completion check, Pre-Commit Disclosure, and downstream's proactive offer — shared by all three lifecycle skills |
