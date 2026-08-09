@@ -71,8 +71,8 @@ cc --plugin-dir /path/to/plugin-devkit
 | Skill | Use when |
 |---|---|
 | `using-plugin-devkit` | Not already knowing which of the three pipelines below fits — a guided front door that picks the entry point, confirms before dispatch, and names the lighter single-skill alternative when a full pipeline is overkill |
-| `plugin-lifecycle-upstream` | Creating a new plugin/component end-to-end — Ideate, Plan, Design, Build, Test, Commit, Document, Handoff |
-| `plugin-lifecycle-downstream` | QA-ing an existing plugin — Validate, Audit+Report, optional Fix, and Document |
+| `plugin-lifecycle-upstream` | Creating a new plugin/component end-to-end — Ideate, Plan, Design, Build, Self-Review, Test, Commit, Document, Handoff |
+| `plugin-lifecycle-downstream` | QA-ing an existing plugin — Validate, Audit+Report, optional Fix, Test, Self-Review, and Document |
 | `plugin-lifecycle-maintenance` | Evolving an already-built plugin — retro-driven improvement, comparison-driven enhancement, keeping plugin-devkit's own rules current against official docs, or plugin-devkit's own on-demand self-service checks against itself |
 
 ### Planning & Analysis

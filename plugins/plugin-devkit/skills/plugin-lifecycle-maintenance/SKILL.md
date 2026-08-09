@@ -14,7 +14,7 @@ description: >-
   steps. Not for a single, already-known fix — edit directly or use the matching Design
   skill.
 argument-hint: "[workflow: improve|enhance|self-upstream|self-service] [target]"
-allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git:*) Bash(gh pr view:*) Bash(date:*) Bash(*/agent-cost-tracker.py:*) TaskCreate TaskUpdate
+allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git:*) Bash(gh pr view:*) Bash(date:*) Bash(*/agent-cost-tracker.py:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) TaskCreate TaskUpdate
 ---
 
 # Plugin Lifecycle: Maintenance
@@ -42,6 +42,10 @@ Two checks, shared with `plugin-lifecycle-upstream` and `plugin-lifecycle-downst
   - `improve-a-plugin` / `enhance-a-plugin`: no separate check needed here — both hand off entirely to `plugin-lifecycle-downstream`'s Phase 3 (Fix) at their own Step 3, and Phase 3 now runs this exact check itself (see `plugin-lifecycle-downstream/SKILL.md`'s own "Pre-Flight Checks (Before Fix Only)"). Adding a second check here would just ask the same question twice.
   - `self-upstream-plugin-devkit`: runs before Bulk mode's Step 6 (`/implement-dev-rules`) and before Single-Rule mode's Step 3 (`/update-dev-rule`) — see that workflow file.
   - `self-service-plugin-devkit`: runs before Service 6's Step 5 (apply approved candidates) and before Service 7's own commit — see that workflow file.
+
+## Open-Item Discipline
+
+Before any workflow step is treated as complete — and again immediately before that workflow's own Commit step — check for that step's own unresolved open, pending, or broken items (e.g. a sub-agent dispatch cancelled by a session limit) and disclose them rather than silently treating the step as complete. See `plugin-rulebook/references/open-item-discipline.md` for the exact procedure, shared with `plugin-lifecycle-upstream` and `plugin-lifecycle-downstream`. Unlike `plugin-lifecycle-downstream`, none of this skill's 4 workflows run the reference file's "Downstream's Proactive Offer" — that step is specific to `plugin-lifecycle-downstream` alone.
 
 ## When to Use
 
@@ -97,6 +101,8 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 9. **Branch-scope check, improve-a-plugin/enhance-a-plugin** — confirm neither workflow runs its own branch-scope check, and that `plugin-lifecycle-downstream`'s Phase 3 pre-flight check is what actually covers this case when Step 3 hands off
 10. **Branch-scope check, self-upstream-plugin-devkit** — confirm it fires before Bulk Step 6 and before Single-Rule Step 3, not earlier (Steps 1-5/1-2 only read/report/plan, no writes) and not later (both steps are the actual write point)
 11. **Branch-scope check, self-service-plugin-devkit** — confirm it fires before Service 6 Step 5 and before Service 7's own commit, and does not fire for Services 1-5 (none of which write to the plugin)
+12. **improve-a-plugin/enhance-a-plugin, Test and Self-Review reuse** — confirm Steps 4-5 in both workflows don't re-invoke or duplicate `plugin-lifecycle-downstream`'s own Phase 4 (Test)/Phase 5 (Self-Review), which already ran automatically as part of Step 3's hand-off once Phase 3 applied a change — and confirm Steps 4-5 are stated as skipped (not silently omitted) when Step 3 applied nothing
+13. **self-improvement, Test and Self-Review (Service 6, steps 6-7)** — confirm both are scoped to only the component(s) step 5 actually applied a change to, never the whole plugin; confirm step 7's findings are presented unscored; and confirm step 6's `smoke-tester` batch dispatch is used only for a large touched-skill set and only for the skill components in it, with any touched agent/hook/command/rule going through its own per-type tool directly
 
 **Quality gates:**
 - [ ] Every workflow's human-decision point uses `AskUserQuestion` — never an automatic selection
@@ -108,6 +114,9 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 - [ ] Every written artifact (Retro/Comparison/Rules/Gap/Plan/Implementation Report) gets the standard `📄 ... written:` link line before its content summary — Single-Rule mode's chat-only outputs excepted
 - [ ] The Open-PR check runs exactly once per invocation, centrally in Quick Start, before any workflow's own Actions — never duplicated inside a workflow file
 - [ ] The Branch-scope check always runs immediately before each workflow's own actual write step, never earlier and never skipped — `improve-a-plugin`/`enhance-a-plugin` rely on `plugin-lifecycle-downstream`'s Phase 3 gate instead of running their own
+- [ ] `improve-a-plugin`/`enhance-a-plugin` never re-invoke or duplicate `plugin-lifecycle-downstream`'s Phase 4 (Test)/Phase 5 (Self-Review) — Steps 4-5 in both workflows only give that already-automatic coverage its own place in the step numbering
+- [ ] `self-improvement`'s Test (step 6) and Self-Review (step 7) are always scoped to only the component(s) step 5 touched, and step 7's findings are never scored into anything resembling `plugin-grader`'s output
+- [ ] Every workflow's Pre-Commit Disclosure check (`plugin-rulebook/references/open-item-discipline.md`) runs immediately before that workflow's own commit, and its result (including "no open items") is always stated alongside the file list/message
 
 ## Reference Guide
 
@@ -115,6 +124,7 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 |---|---|
 | `workflows/improve-a-plugin.md` | Retro-driven improvement, full procedure |
 | `plugin-rulebook/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-upstream` and `plugin-lifecycle-downstream` |
+| `plugin-rulebook/references/open-item-discipline.md` | Phase/step-completion check (every workflow step) and Pre-Commit Disclosure (before every workflow's own commit), shared with `plugin-lifecycle-upstream` and `plugin-lifecycle-downstream` |
 | `git-kit:starting-work` | Branch-scope check's "create a new branch" option |
 | `git-kit:merge-pr` | Open-PR check's "merge it first" option |
 | `workflows/enhance-a-plugin.md` | Comparison-driven enhancement, full procedure |
@@ -123,7 +133,8 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 | `analyzing-sessions` skill | Finding source for `improve-a-plugin`; also the SWOT/critique engine `self-reflexion` hands session digests to |
 | `plugin-comparison` skill | Finding source for `enhance-a-plugin` |
 | `enhancement-suggestor` agent | Expands a chosen suggestion/delta into a full WHAT/WHY/HOW plan |
-| `plugin-lifecycle-downstream` skill | Reused Fix phase (apply/re-validate/commit) for `improve-a-plugin`/`enhance-a-plugin`; also `self-validation`'s Phase 1+2 dispatch |
+| `plugin-lifecycle-downstream` skill | Reused Fix phase (apply/re-validate/commit), plus its own Phase 4 (Test)/Phase 5 (Self-Review) that continue automatically after Fix, for `improve-a-plugin`/`enhance-a-plugin`; also `self-validation`'s Phase 1+2 dispatch |
+| `plugin-grader/references/rubric.md` | Type-Matched Reviewer Table — `self-improvement`'s Self-Review step (Service 6, step 7), and the Self-Review step `improve-a-plugin`/`enhance-a-plugin` reuse via `plugin-lifecycle-downstream`'s own Phase 5 |
 | `plugin-grader` skill | `self-grading`'s standalone dispatch target |
 | `plugin-documentation` skill | `self-documentation`'s dispatch target |
 | `skill-tester` skill | `self-evaluation`'s dispatch target |

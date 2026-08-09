@@ -1,6 +1,6 @@
 # Run the QA Pipeline: Full Downstream Procedure
 
-The complete Validate → Audit+Report → Fix procedure. Phases 1-2 run automatically; Phase 3 is opt-in.
+The complete Validate → Audit+Report → Fix → Test → Self-Review procedure. Phases 1-2 run automatically; Phase 3 is opt-in; Phases 4-5 run automatically once Phase 3 has applied at least one change, with no separate ask.
 
 ## Pre-Flight: Token Cost Notice
 
@@ -64,20 +64,60 @@ Present a narrative summary to the user: overall score, any triggered gates, wea
 2. Present the classified WHAT/WHY/HOW plan to the user, then use `AskUserQuestion` (multi-select) — question: "Which Quick Wins should be applied?", one option per Quick Win — to get per-item approval.
 3. For each Quick Win the user approved: apply via the matching development skill (`skill-development`/`agent-development`/etc.) or `skill-improver-loop` for automated structural fix-review cycles, per `enhancement-suggestor`'s own "Implementing any of these is a separate step" closing note.
 4. After fixes are applied, run Phase 1-2 against the target to confirm improvement — in the normal case this is a re-run; in the external-entry case it's Phase 1-2's first run against this target within the current invocation. Either way, do not assume the fix worked without validating it through Phase 1-2's own checks. **This re-run must independently re-read the actual current file content — never accept the applied-fix list itself as evidence the fix landed correctly.** Re-dispatch the same reviewer type(s) that originally found each fixed finding, against the live post-fix files, not against a description of what was changed. A real instance from this plugin's own use: a re-validation pass that did this caught 3 fixes that had landed incompletely (a glob-narrowing pattern applied to 2 of 3 required sites, documentation left describing a script's pre-fix behavior after the script itself changed, a reciprocal cross-reference fix that reached a skill's `SKILL.md` but not its own `references/` file) and 2 new regressions the fix pass itself introduced — none of which a self-report from the fix step would have surfaced. **A cheaper substitute (a `compute_score.py` recomputation against known fixes instead of a fresh reviewer dispatch, or a targeted re-check of only the specific reviewer(s) that found each fix instead of the full Phase 1-2 set) is a legitimate choice when cost warrants it — but it must be stated plainly as a substitution, not silently presented as equivalent to a fresh Phase 1-2 run.** Two independent post-Fix reports in this plugin's own history skipped a fresh re-dispatch entirely (one used a recomputation, the other ran only 2 targeted reviewer re-checks) without either one ever completing a full Phase 1-2 re-run afterward — both disclosed the gap in their own text, which is the right instinct, but neither treated "get a real updated score" as a still-open follow-up action, so the gap stayed open indefinitely rather than being closed later.
-5. Once re-validation confirms the fixes, state the exact file list and commit message, then use `AskUserQuestion` — question: "Commit these changes?", options: "Commit" / "Don't commit yet" — before staging and committing per this repo's standard git-commit conventions (message ends with the `Co-Authored-By` line; never `--no-verify`). This requires its own confirmation — do not fold it into the Quick Win approval from step 2, since the user approved the *content* of the fix there, not yet the *commit*.
-6. Run `git log -1`/`git show --stat` to capture the resulting commit SHA, message, and touched files, then dispatch `build-handoff-writer` (via `Agent`) in **update** mode with those commits and the re-validation result — same skip-if-no-report rule as Phase 2. The agent returns the full updated report as text (no `Write` tool) — `Write` it back to the same report path before presenting the link line:
+5. Once re-validation confirms the fixes, run the Pre-Commit Disclosure check from `plugin-rulebook/references/open-item-discipline.md` — collect any open item surfaced so far this run (a Phase-Completion gap from Phase 1's batched dispatches, an un-re-validated cheaper-substitute item from step 4 above) and state it plainly alongside the file list and commit message next, not folded silently into the commit. Then state the exact file list and commit message, and use `AskUserQuestion` — question: "Commit these changes?", options: "Commit" / "Don't commit yet" — before staging and committing per this repo's standard git-commit conventions (message ends with the `Co-Authored-By` line; never `--no-verify`). This requires its own confirmation — do not fold it into the Quick Win approval from step 2, since the user approved the *content* of the fix there, not yet the *commit*.
+6. Run `git log -1`/`git show --stat` to capture the resulting commit SHA, message, and touched files. Hold the `build-handoff-writer` update dispatch until after Phase 5 below — folding in the commit info together with Phase 4's test results and Phase 5's Self-Review findings in one update call, rather than two separate ones back-to-back.
+
+**Exit criteria:** All user-approved fixes applied, re-validated, and committed, or the user stops mid-list (partial application is fine — report which items were applied vs. deferred, and commit only what was actually applied). **Re-validated means one of:** a fresh Phase 1-2 re-run against the live post-fix files (the default expectation), or an explicitly-disclosed cheaper substitute per step 4 above, recorded as a named open item (not just a footnote) so a later reader — or a later `improve-a-plugin` retro — treats "get a real updated score" as still-outstanding work rather than assuming the substitute already closed it.
+
+## Phase 4: Test
+
+**Entry:** Phase 3 applied at least one change (fully or partially — see Phase 3's own exit criteria). **Skipped entirely** if Phase 3 was declined, or ran but the user approved zero Quick Wins.
+
+**Actions:**
+1. For each component Phase 3 actually touched, run the same bounded smoke check `plugin-lifecycle-upstream`'s Phase 6 (Test) uses for that component type — reusing the identical tools rather than inventing a second check:
+   - Skill → invoke `skill-tester` (via `Skill`) in fast pass/fail mode. If the skill has a persisted `scripts/smoke_test.*` (per `skill-development/SKILL.md`'s "About Skills" section), run that directly first — it's the more targeted, deterministic check; fall back to `skill-tester`'s own bounded check if the skill has none.
+   - Agent → run `agent-development/scripts/test-agent-trigger.sh` directly via the scoped `Bash(*/agent-development/scripts/test-agent-trigger.sh:*)` tool, same no-second-argument single-phrase form as upstream's Phase 6.
+   - Hook → run `hook-development/scripts/test-hook.sh` directly via the scoped `Bash(*/hook-development/scripts/test-hook.sh:*)` tool against representative sample input.
+   - Command → manually follow the command's documented Steps once against one small, representative real input, same safety boundary as upstream's Phase 6 (stop before any mutating step without confirmation).
+   - Rule → no dedicated quick-test tool; record as "skipped — no quick-test tool available."
+2. **Batch/multi-component sweep:** when Phase 3 touched more than a small handful of **skill** components in this run, dispatch the `smoke-tester` agent (via `Agent`) instead of running each skill's check one at a time — pass it the list of touched skill paths; it locates each one's persisted `scripts/smoke_test.*`, runs it, and returns one consolidated pass/fail/skipped/error result per skill (invoke it in Structured Output Mode here, since this result feeds step 3's per-component recording rather than being read by a person directly). `smoke-tester` is scoped to skills only — it does not run agent/hook/command/rule checks, so any non-skill components in the touched set still go through Action 1's own per-type tools individually, batch sweep or not. For a small handful of touched skills, running each through Action 1 directly (skipping the agent-dispatch overhead) is also fine — this batch path exists for the many-skills case, not as a mandatory detour for one or two.
+3. Collect one pass/fail/skipped result per touched component, with a one-line reason for any fail or skip — same recording convention as upstream's Phase 6.
+
+**Exit criteria:** Every component Phase 3 touched has a recorded test result, or Phase 4 was skipped entirely per its Entry condition above.
+
+Present the per-component results as part of Phase 5's own presentation below — Phase 4 has no separate gate of its own; a failing result here is disclosed alongside Phase 5's findings rather than blocking progress into Self-Review, since the two are meant to be read together as one "does the fix actually hold up" picture.
+
+## Phase 5: Self-Review
+
+**Entry:** Same as Phase 4 — Phase 3 applied at least one change. **Skipped entirely** under the same condition Phase 4 is skipped.
+
+**Actions:**
+1. For each component Phase 3 actually touched — not the whole plugin, that full scored sweep is this pipeline's own Phase 2 Audit, already run — dispatch the type-matched `*-reviewer` agent(s) (via `Agent`) per `plugin-grader/references/rubric.md`'s Type-Matched Reviewer Table:
+   - Skill → `skill-reviewer` (SKILL.md) + `skilldir-reviewer` (everything else in the skill's directory)
+   - Agent → `subagent-reviewer`
+   - Command → `command-reviewer`
+   - Hook → `hook-reviewer`
+   - Rule → `rule-reviewer`
+2. Collect each reviewer's findings as-is. **Do not score, weight, or roll these findings up into anything resembling `plugin-grader`'s output** — no `dimensions`, no `plugin_final_score`, no `prioritized_next_steps`. This is the same non-duplication discipline `plugin-lifecycle-upstream`'s Phase 5 (Self-Review) applies, reused here against Phase 3's touched components instead of a fresh build's just-written ones.
+3. **Phase-completion check:** before presenting the combined Phase 4+5 result, check whether any of Phase 4's or Phase 5's own dispatches were cancelled, errored, or left incomplete — see `plugin-rulebook/references/open-item-discipline.md`'s Phase-Completion Check.
+
+**Exit criteria:** Every component Phase 3 touched has a recorded reviewer findings list (however short), or a disclosed gap per step 3, or Phase 5 was skipped entirely per its Entry condition above.
+
+If Phase 4-5 ran, present Phase 4's test results and Phase 5's findings together as one combined post-Fix summary. If either surfaces a Critical/FAIL-equivalent result, state this plainly — it does not automatically re-open Phase 3, but the user should know before the Document step below runs.
+
+## Handoff Report Update (After Phases 3-5)
+
+Regardless of whether Phase 4-5 actually ran (they're skipped, per their own Entry condition, whenever Phase 3 applied nothing) — once Phase 3 has finished, dispatch `build-handoff-writer` (via `Agent`) in **update** mode with Phase 3's commit info (gathered at the end of Phase 3 above) and, if Phase 4-5 ran, their test results and findings too. Skip silently only if no handoff report exists for this target, same skip-if-no-report rule as Phase 2. The agent returns the full updated report as text (no `Write` tool) — `Write` it back to the same report path before presenting the link line:
 
 ```
 📄 Build Handoff Report updated: `<report path>`
 ```
 
-**Exit criteria:** All user-approved fixes applied, re-validated, and committed, or the user stops mid-list (partial application is fine — report which items were applied vs. deferred, and commit only what was actually applied). **Re-validated means one of:** a fresh Phase 1-2 re-run against the live post-fix files (the default expectation), or an explicitly-disclosed cheaper substitute per step 4 above, recorded as a named open item (not just a footnote) so a later reader — or a later `improve-a-plugin` retro — treats "get a real updated score" as still-outstanding work rather than assuming the substitute already closed it.
-
 ## Deep Test (Optional)
 
-**Entry:** The user opted in via the SKILL.md's "Suggested Next Step" prompt, at any point after Phase 1 has run (alongside the Phase 3 offer, or as a standalone follow-up later). Independent of Phases 1-3 — does not require Phase 2 or Phase 3 to have run first, and does not block them from running.
+**Entry:** The user opted in via the SKILL.md's "Suggested Next Step" prompt, at any point after Phase 1 has run (alongside the Phase 3 offer, or as a standalone follow-up later). Independent of Phases 1-5 — does not require Phase 2, Phase 3, or Phases 4-5 to have run first, and does not block them from running.
 
-This is where the exhaustive testing `plugin-lifecycle-upstream`'s own Phase 5 deliberately does NOT run belongs — Phase 5 only smoke-checks that a new component doesn't crash the harness (at most 3 bounded checks); this step is the full, expensive pass, opt-in only (plugin-rulebook R26).
+This is where the exhaustive testing `plugin-lifecycle-upstream`'s own Phase 6 deliberately does NOT run belongs — Phase 6 only smoke-checks that a new component doesn't crash the harness (at most 3 bounded checks), and this pipeline's own Phase 4 (Test) reuses that same bounded check against Fix's output; this step is the full, expensive pass, opt-in only (plugin-rulebook R26).
 
 **Actions:**
 1. For each agent component in scope: run `agent-development/scripts/test-agent-trigger.sh` directly via the scoped `Bash(*/agent-development/scripts/test-agent-trigger.sh:*)` tool — no subagent dispatch. The script is a deterministic, offline check with no LLM step inside it, so there is nothing here that benefits from `general-purpose`'s isolation or justifies paying its full tool-schema cost. Run it against the component's complete "When to invoke" phrase set (not the single-phrase bounded check upstream already ran) — every phrase, both should-trigger and should-not-trigger.
@@ -93,9 +133,9 @@ Present a summary: per-component pass/fail counts, any specific failing phrases 
 
 ## Document
 
-**Entry:** Phase 3 just completed via the normal internal flow (per its exit criteria above), or the user declined Phase 3 at the "Suggested Next Step" prompt. **Skip this step entirely if Phase 3 was entered via the external entry point** — see `SKILL.md`'s "Document" section for why (the external caller already runs its own Document step).
+**Entry:** Phase 5 just completed (or Phase 4-5 were skipped because Phase 3 applied nothing) via the normal internal flow, or the user declined Phase 3 at the "Suggested Next Step" prompt. **Skip this step entirely if Phase 3 was entered via the external entry point** — see `SKILL.md`'s "Document" section for why (the external caller already runs its own Document step).
 
-See `SKILL.md`'s "Document" section for the full procedure — identical here. Locally: after `plugin-documentation` returns and any kept doc changes are committed (separately from Phase 3's own commit), if a handoff report exists for this target dispatch `build-handoff-writer` (via `Agent`) in **update** mode with the doc-fix commit, if one landed — same skip-if-no-report rule as Phase 2/3. This can be folded into the same update call as Phase 3's, if Phase 3 also ran and hasn't been reported yet; otherwise it's its own update call.
+See `SKILL.md`'s "Document" section for the full procedure — identical here. Locally: after `plugin-documentation` returns and any kept doc changes are committed (separately from Phase 3's own commit), if a handoff report exists for this target dispatch `build-handoff-writer` (via `Agent`) in **update** mode with the doc-fix commit, if one landed — same skip-if-no-report rule as Phase 2/3-5. This can be folded into the same update call as the Phases 3-5 handoff update above, if that hasn't been reported yet; otherwise it's its own update call.
 
 **Exit criteria:** `plugin-documentation` ran and its findings were presented; either no doc changes were needed (stated plainly) or kept doc changes were applied and committed. Or: this step was skipped because Phase 3 was entered externally.
 
