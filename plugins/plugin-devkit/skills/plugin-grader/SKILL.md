@@ -65,6 +65,10 @@ skill (has `SKILL.md`) / agent (a file in `agents/`) / command (a file in `comma
 
 ### 3. Dispatch Reviewers
 
+Before launching the dispatch, print a status line — e.g. "Dispatching N reviewers in parallel — this
+typically takes several minutes..." — since agent dispatches run silently with no built-in progress
+streaming; without this, a long dispatch is indistinguishable from a stuck one.
+
 **Component mode** — in a single message, launch in parallel:
 - `skilldir-reviewer` (skills with non-`SKILL.md` files only)
 - The type-matched `*-reviewer` from `references/rubric.md`
