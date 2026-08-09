@@ -31,6 +31,7 @@ Skills must be **measured, not assumed**. This pipeline provides systematic evid
 - **Validating plugin structure** — use the `plugin-validator` agent for manifest and directory checks.
 - **Testing during initial skill authoring (Phase 3 of skill creation, before the skill is finalized)** — use `skill-development`'s own Phase 3 workflow; switch to this skill once the skill exists and you need a dedicated with/baseline benchmark or a multi-iteration comparison.
 - **Automated structural fix-review loops until skill-reviewer passes** — use `skill-improver-loop` instead; this skill iterates on empirical eval/benchmark data, not skill-reviewer's structural findings.
+- **Sweeping a batch of skills' persisted smoke-test scripts in one pass** — use the `smoke-tester` agent instead (Structured Output Mode available) when more than a small handful of skills need a quick pass/fail/skipped/error check; this skill's Quick Workflow is for one skill's eval-based validation, not a multi-skill persisted-script sweep.
 
 ## Core Principles
 
