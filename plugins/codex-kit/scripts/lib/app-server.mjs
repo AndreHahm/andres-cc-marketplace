@@ -20,6 +20,7 @@ const PLUGIN_MANIFEST_URL = new URL("../../.claude-plugin/plugin.json", import.m
 const PLUGIN_MANIFEST = JSON.parse(fs.readFileSync(PLUGIN_MANIFEST_URL, "utf8"));
 
 export const BROKER_ENDPOINT_ENV = "CODEX_KIT_APP_SERVER_ENDPOINT";
+export const BROKER_TOKEN_ENV = "CODEX_KIT_APP_SERVER_TOKEN";
 export const BROKER_BUSY_RPC_CODE = -32001;
 
 /** @type {ClientInfo} */
@@ -304,7 +305,8 @@ class BrokerCodexAppServerClient extends AppServerClientBase {
 
     await this.request("initialize", {
       clientInfo: this.options.clientInfo ?? DEFAULT_CLIENT_INFO,
-      capabilities: this.options.capabilities ?? DEFAULT_CAPABILITIES
+      capabilities: this.options.capabilities ?? DEFAULT_CAPABILITIES,
+      token: this.options.brokerToken ?? null
     });
     this.notify("initialized", {});
   }
@@ -335,18 +337,23 @@ class BrokerCodexAppServerClient extends AppServerClientBase {
 export class CodexAppServerClient {
   static async connect(cwd, options = {}) {
     let brokerEndpoint = null;
+    let brokerToken = null;
     if (!options.disableBroker) {
       brokerEndpoint = options.brokerEndpoint ?? options.env?.[BROKER_ENDPOINT_ENV] ?? process.env[BROKER_ENDPOINT_ENV] ?? null;
+      brokerToken = options.brokerToken ?? options.env?.[BROKER_TOKEN_ENV] ?? process.env[BROKER_TOKEN_ENV] ?? null;
       if (!brokerEndpoint && options.reuseExistingBroker) {
-        brokerEndpoint = loadBrokerSession(cwd)?.endpoint ?? null;
+        const existing = loadBrokerSession(cwd);
+        brokerEndpoint = existing?.endpoint ?? null;
+        brokerToken = brokerToken ?? existing?.token ?? null;
       }
       if (!brokerEndpoint && !options.reuseExistingBroker) {
         const brokerSession = await ensureBrokerSession(cwd, { env: options.env });
         brokerEndpoint = brokerSession?.endpoint ?? null;
+        brokerToken = brokerToken ?? brokerSession?.token ?? null;
       }
     }
     const client = brokerEndpoint
-      ? new BrokerCodexAppServerClient(cwd, { ...options, brokerEndpoint })
+      ? new BrokerCodexAppServerClient(cwd, { ...options, brokerEndpoint, brokerToken })
       : new SpawnedCodexAppServerClient(cwd, options);
     await client.initialize();
     return client;

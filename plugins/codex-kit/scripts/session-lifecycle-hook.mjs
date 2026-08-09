@@ -4,7 +4,7 @@ import fs from "node:fs";
 import process from "node:process";
 
 import { terminateProcessTree } from "./lib/process.mjs";
-import { BROKER_ENDPOINT_ENV } from "./lib/app-server.mjs";
+import { BROKER_ENDPOINT_ENV, BROKER_TOKEN_ENV } from "./lib/app-server.mjs";
 import {
   clearBrokerSession,
   LOG_FILE_ENV,
@@ -92,18 +92,20 @@ async function handleSessionEnd(input) {
     (process.env[BROKER_ENDPOINT_ENV]
       ? {
           endpoint: process.env[BROKER_ENDPOINT_ENV],
+          token: process.env[BROKER_TOKEN_ENV] ?? null,
           pidFile: process.env[PID_FILE_ENV] ?? null,
           logFile: process.env[LOG_FILE_ENV] ?? null
         }
       : null);
   const brokerEndpoint = brokerSession?.endpoint ?? null;
+  const brokerToken = brokerSession?.token ?? null;
   const pidFile = brokerSession?.pidFile ?? null;
   const logFile = brokerSession?.logFile ?? null;
   const sessionDir = brokerSession?.sessionDir ?? null;
   const pid = brokerSession?.pid ?? null;
 
   if (brokerEndpoint) {
-    await sendBrokerShutdown(brokerEndpoint);
+    await sendBrokerShutdown(brokerEndpoint, brokerToken);
   }
 
   cleanupSessionJobs(cwd, input.session_id || process.env[SESSION_ID_ENV]);

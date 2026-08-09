@@ -239,42 +239,29 @@ Use `AskUserQuestion` exactly once:
 `task --background` is honored by the companion (`:758-790` →
 `enqueueBackgroundTask`). It returns a job payload immediately.
 
+Notes on the template below (kept out of the fence to save space, not because they're optional):
+- **`--write`**: include for implementation (default ON); omit for read-only.
+- **`--model`/`--effort`**: include only if the user passed them this call (decision #4 — per-call flags by default); omit either line to fall back to `config.toml`.
+- **`--resume-last`/`--resume`/`--fresh`**: mutually exclusive bare boolean flags (no value) — include the one flag line matching what Phase 1 parsed, omit all three lines if none apply.
+- **Never pass a positional arg** — `codex-companion.mjs`'s `readTaskPrompt` short-circuits on a positional prompt, silently dropping stdin.
+- Write the approved **wrapped** prompt from Phase 1.5 (or Phase 1 if `--no-preview`) — never the bare task text.
+
 ```bash
 set -o pipefail
 CODEX_COMPANION="${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs"
-
 mkdir -p "${CLAUDE_PLUGIN_DATA}/tmp"
 TS=$(date +%s%N)
 PROMPT_FILE="${CLAUDE_PLUGIN_DATA}/tmp/rescue-prompt-${TS}.txt"
 JOB_JSON_FILE="${CLAUDE_PLUGIN_DATA}/tmp/rescue-job-${TS}.json"
 PRE_LIST="${CLAUDE_PLUGIN_DATA}/tmp/rescue-pre-${TS}.list"
 PRE_SHA="${CLAUDE_PLUGIN_DATA}/tmp/rescue-pre-${TS}.sha"
-echo "PROMPT_FILE=$PROMPT_FILE"
-echo "JOB_JSON_FILE=$JOB_JSON_FILE"
-echo "PRE_LIST=$PRE_LIST"
-echo "PRE_SHA=$PRE_SHA"
-
-# Snapshot current repo state — file names only, no contents
+echo "PROMPT_FILE=$PROMPT_FILE"; echo "JOB_JSON_FILE=$JOB_JSON_FILE"
+echo "PRE_LIST=$PRE_LIST"; echo "PRE_SHA=$PRE_SHA"
 git status --porcelain > "$PRE_LIST" 2>/dev/null || true
 git rev-parse HEAD > "$PRE_SHA"
-
-# Write the approved WRAPPED prompt from Phase 1.5 — <task> with the
-# user's verbatim text plus the Phase 1 blocks. With --no-preview the
-# preview is skipped, but the wrapping is NOT: write the wrapped prompt
-# assembled in Phase 1, never the bare task text.
 cat > "$PROMPT_FILE" <<'EOF'
 <literal approved wrapped XML prompt from Phase 1.5 (or the Phase 1 wrapped prompt if --no-preview)>
 EOF
-
-# Launch via stdin pipe. Each flag line below is optional — include only
-# what Phase 1 parsed. Omit the entire line for flags not provided.
-# --write: include for implementation (default ON); omit for read-only.
-# --model/--effort: include only if the user passed them this call (decision
-#   #4 — per-call flags by default). Omit both to let the companion fall
-#   back to config.toml's existing values.
-# --resume-last/--resume/--fresh: mutually exclusive; omit if none.
-# NEVER pass a positional arg — readTaskPrompt short-circuits on
-# positionalPrompt (:619), silently dropping stdin.
 cat "$PROMPT_FILE" | node "$CODEX_COMPANION" task --background --json \
   --write \
   --model "<literal model, omit line if not provided>" \
@@ -282,8 +269,6 @@ cat "$PROMPT_FILE" | node "$CODEX_COMPANION" task --background --json \
   --resume-last \
   > "$JOB_JSON_FILE" 2> "${JOB_JSON_FILE}.stderr" \
   || { echo "task launch failed:" >&2; cat "${JOB_JSON_FILE}.stderr" >&2; exit 1; }
-
-# Capture jobId — use node (already a dependency)
 JOB_ID=$(node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!j.jobId)throw new Error("no jobId");process.stdout.write(j.jobId);}catch(e){process.stderr.write("JOB_ID parse failed: "+e.message+"\n");process.exit(1);}' "$JOB_JSON_FILE") \
   || { echo "raw companion stdout:" >&2; cat "$JOB_JSON_FILE" >&2; exit 1; }
 echo "JOB_ID=$JOB_ID"
