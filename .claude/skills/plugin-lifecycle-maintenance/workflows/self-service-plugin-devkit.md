@@ -201,9 +201,29 @@ plugin).
 5. Apply approved candidates via the matching Design skill (via `Skill`:
    `skill-development`/`agent-development`/etc.), same as every other lifecycle
    workflow's Fix step — never a direct `Edit` from this workflow itself.
-6. Re-validate (`Skill(plugin-rulebook)` at minimum) and commit, same discipline as
-   `improve-a-plugin.md` Step 3.
-7. If any fix was applied and committed, run `SKILL.md`'s shared "The Document Step"
+6. **Test:** for each component step 5 touched, run the same bounded smoke check
+   `plugin-lifecycle-downstream`'s own Phase 4 (Test) uses — reusing its per-type tools
+   (`skill-tester`, `agent-development/scripts/test-agent-trigger.sh`,
+   `hook-development/scripts/test-hook.sh`, a manual command trial for a command) rather
+   than a third copy of the same logic. For more than a small handful of touched
+   *skill* components in one run, dispatch the `smoke-tester` agent (Structured Output
+   Mode) for a batch sweep of just those skills instead of running each one
+   individually — it is scoped to skills only, so any touched agent/hook/command/rule
+   still goes through its own per-type tool directly regardless of batch size.
+7. **Self-Review:** dispatch the type-matched `*-reviewer` agent(s) (via `Agent`) — per
+   `plugin-grader/references/rubric.md`'s Type-Matched Reviewer Table — against only the
+   component(s) step 5 touched, never the whole plugin (Service 3's own full-plugin
+   sweep, via `plugin-lifecycle-downstream`'s Phase 1-2, already covers that ground on
+   its own separate invocation). Collect findings as-is; do not score, weight, or roll
+   them into anything resembling `plugin-grader`'s output — step 8's re-validation below
+   is a `Skill(plugin-rulebook)` compliance re-check, not a `plugin-grader` re-score, and
+   this step doesn't produce one either.
+8. Re-validate (`Skill(plugin-rulebook)` at minimum) and commit, same discipline as
+   `improve-a-plugin.md` Step 3. Before committing, run the Pre-Commit Disclosure check
+   from `plugin-rulebook/references/open-item-discipline.md` — state any open item
+   surfaced in steps 1-7 (including an unresolved Self-Review finding from step 7)
+   alongside the file list and commit message, not folded silently into the commit.
+9. If any fix was applied and committed, run `SKILL.md`'s shared "The Document Step"
    procedure — same as the other 3 workflows. Skip this sub-step entirely if nothing was
    applied (everything got routed to the normal gate instead and none of it was approved).
 
@@ -277,6 +297,19 @@ caveat at the skill level).
 10. **Self-documentation, branch-scope check** — confirm the check runs before
     `plugin-documentation` is invoked (not after, and not only right before the commit),
     since `plugin-documentation` itself writes doc files directly once it authors content
+11. **Self-improvement, Test step (step 6)** — confirm the per-type smoke checks run only
+    against the component(s) step 5 actually touched, that a batch of more than a small
+    handful of touched *skill* components dispatches `smoke-tester` (Structured Output
+    Mode) for just those skills, and that any touched agent/hook/command/rule in the same
+    batch still goes through its own per-type tool directly
+12. **Self-improvement, Self-Review step (step 7)** — confirm the type-matched
+    `*-reviewer` agent(s) are dispatched only against step 5's touched component(s), and
+    that the findings are presented unscored — never rolled into a `plugin-grader`-shaped
+    score/SWOT/`prioritized_next_steps`
+13. **Self-improvement, Pre-Commit Disclosure (step 8)** — confirm the disclosure check
+    from `plugin-rulebook/references/open-item-discipline.md` always runs before step 8's
+    commit, and that an unresolved Self-Review finding from step 7 is named explicitly
+    alongside the file list/message rather than silently dropped
 
 **Quality gates:**
 - [ ] Self-review and self-evaluation always default to scoped; full sweep is always an
@@ -297,3 +330,9 @@ caveat at the skill level).
       confirmation and before step 5's apply — never earlier (steps 1-4 write nothing)
 - [ ] Self-documentation's branch-scope check always runs before `plugin-documentation`
       is invoked, not deferred until the commit step
+- [ ] Self-improvement's Test (step 6) and Self-Review (step 7) are always scoped to only
+      step 5's touched component(s) — never a whole-plugin sweep, and step 7's findings
+      are never scored into anything resembling `plugin-grader`'s output
+- [ ] Self-improvement's Pre-Commit Disclosure always runs immediately before step 8's
+      commit, and its result (including "no open items") is always stated alongside the
+      file list/message

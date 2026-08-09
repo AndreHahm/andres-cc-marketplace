@@ -3,12 +3,12 @@ name: build-handoff-writer
 description: >-
   Use this agent when a plugin-lifecycle-upstream pipeline run completes its Test
   phase and Commit step and a handoff report is needed, when plugin-lifecycle-downstream
-  needs to fold Validate/Audit/Fix results and new commits into that same report, or
-  when the user explicitly asks for a walkthrough or handoff summary of what was just
-  built. Typical triggers include plugin-lifecycle-upstream's own automatic post-Commit
-  dispatch, plugin-lifecycle-downstream's post-Phase-2 and post-Phase-3 update dispatch,
-  and a direct request like "summarize what we just built" or "write a handoff report
-  for this".
+  needs to fold Validate/Audit/Fix/Test/Self-Review results and new commits into that
+  same report, or when the user explicitly asks for a walkthrough or handoff summary of
+  what was just built. Typical triggers include plugin-lifecycle-upstream's own automatic
+  post-Commit dispatch, plugin-lifecycle-downstream's post-Phase-2 and post-Phase-5
+  update dispatch, and a direct request like "summarize what we just built" or "write a
+  handoff report for this".
 model: sonnet
 color: green
 tools: ["Read"]
@@ -37,7 +37,7 @@ You receive, as prompt context, two kinds of input — do not treat them the sam
 - A summary of each Design-phase gate outcome (approved as-is, or revised — and if revised, what changed and why)
 - The Build summary from `plugin-development` (files created, directory tree)
 - The commit list for this build (SHA, one-line message, files touched per commit) — gathered by the calling orchestrator via `git log`/`git show`, not by you; you have no `Bash` access and are not expected to verify it independently
-- Quick-test results, if Phase 5 (Test) ran (per-component pass/fail/skipped, with skip reason for untested types)
+- Quick-test results, if Phase 6 (Test) ran (per-component pass/fail/skipped, with skip reason for untested types), and Self-Review findings if Phase 5 ran
 - On an **update** call only: downstream QA results (score, gates, weakest component from `plugin-grader`'s report) and any new commits made during a Fix phase
 
 ## Load Context
@@ -93,7 +93,7 @@ Before writing anything, `Read` every **file-based** item listed above in full �
 
 ## When to invoke
 
-- `plugin-lifecycle-upstream` dispatches this agent automatically after the Commit step that follows Phase 5 (Test), before offering the downstream-QA handoff — this is the **create** call
-- `plugin-lifecycle-downstream` dispatches this agent again after Phase 2 (Audit+Report), and again after Phase 3 (Fix) if it runs, to fold downstream results and any new commits into the *same* report — this is the **update** call
+- `plugin-lifecycle-upstream` dispatches this agent automatically after the Commit step that follows Phase 6 (Test), before offering the downstream-QA handoff — this is the **create** call
+- `plugin-lifecycle-downstream` dispatches this agent again after Phase 2 (Audit+Report), and again after Phase 5 (Self-Review) — once Phases 3-5 have run, or Phase 3 ran but applied nothing — to fold downstream results and any new commits into the *same* report — this is the **update** call
 - A user directly asks "summarize what we just built" or "write a handoff report for this plugin/component"
 - A user resuming a prior session asks "what did we build last time and what's left open"

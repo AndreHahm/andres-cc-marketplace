@@ -76,37 +76,55 @@ For a single-component addition to an already-existing plugin (this pipeline's m
 
 **Exit criteria:** All planned components exist on disk in the correct plugin structure.
 
-**GATE 4:** Present the build summary (files created, directory tree). Ask via `AskUserQuestion`: proceed to Test / revise specific components / stop. Do not proceed until approved.
+**GATE 4:** Present the build summary (files created, directory tree). Ask via `AskUserQuestion`: proceed to Self-Review / revise specific components / stop. Do not proceed until approved.
 
-## Phase 5: Test
+## Phase 5: Self-Review
 
 **Entry:** Phase 4's gate passed.
 
 **Actions:**
-1. For each built component, dispatch a bounded smoke check by type — see SKILL.md's "Phase 5 is a bounded smoke check, not exhaustive correctness testing" section for the full rationale (why this is bounded, and where exhaustive testing actually lives):
+1. For each component Phase 4 (Build) actually wrote in this run — not the whole plugin, and not any pre-existing sibling component this run didn't touch — dispatch the type-matched `*-reviewer` agent(s) (via `Agent`), per `plugin-grader/references/rubric.md`'s Type-Matched Reviewer Table:
+   - Skill → `skill-reviewer` (SKILL.md) + `skilldir-reviewer` (everything else in the skill's directory)
+   - Agent → `subagent-reviewer`
+   - Command → `command-reviewer`
+   - Hook → `hook-reviewer`
+   - Rule → `rule-reviewer`
+2. Collect each reviewer's findings as-is — Critical/Major/Minor or FAIL/ADVISORY, whatever that reviewer's own report format is. **Do not score, weight, or roll these findings up into anything resembling `plugin-grader`'s output** — no `dimensions`, no `plugin_final_score`, no `prioritized_next_steps`. See SKILL.md's "Self-Review is deliberately lighter than `plugin-lifecycle-downstream`'s Audit phase" section for the full rationale behind keeping this pass unscored and narrowly scoped.
+3. **Phase-completion check:** before presenting GATE 5, check whether any of this phase's own reviewer dispatches were cancelled, errored, or left incomplete (e.g. a session-limit interruption mid-dispatch) — see `plugin-rulebook/references/open-item-discipline.md`'s Phase-Completion Check. Disclose any such gap plainly rather than presenting GATE 5 as if every dispatched reviewer actually completed.
+
+**Exit criteria:** Every component Phase 4 wrote in this run has a recorded reviewer result (a findings list, however short), or a disclosed gap per step 3 above.
+
+**GATE 5:** Present the findings, grouped by component. Ask via `AskUserQuestion`: proceed to Test / fix findings first (returns to Phase 3/4 for the affected component) / stop. A component with an unresolved Critical/FAIL-equivalent finding should normally route back for a fix, not proceed as-is — same spirit as GATE 6 (Test)'s failing-component guidance below. Do not proceed until approved.
+
+## Phase 6: Test
+
+**Entry:** Phase 5's gate passed.
+
+**Actions:**
+1. For each built component, dispatch a bounded smoke check by type — see SKILL.md's "Phase 6 is a bounded smoke check, not exhaustive correctness testing" section for the full rationale (why this is bounded, and where exhaustive testing actually lives):
    - Skill → invoke `skill-tester` (via `Skill`) in its fast pass/fail mode — not the full baseline-comparison benchmark
    - Agent → run `agent-development/scripts/test-agent-trigger.sh <agent-file>` directly via the scoped `Bash(*/agent-development/scripts/test-agent-trigger.sh:*)` tool — no subagent dispatch. The script is a deterministic, offline check with no LLM step inside it, so there is nothing here that benefits from `general-purpose`'s isolation or justifies paying its full tool-schema cost. Call it with **no second argument** (auto-derive mode) against a single representative "should trigger" phrase from the new agent's own "When to invoke" section — the second positional argument is a path to a phrases FILE, not an inline phrase string; passing an inline phrase there is a real, previously-hit usage mistake, not a valid form. If that single check passes cleanly, stop there. If it fails or crashes, run the same script (at most 2 more times, for a 3-check cap total) against 1-2 already-existing, known-good peer agents, same no-second-argument form, to isolate whether the failure is the new component's own issue or a bug in the shared tool — the diagnostic pattern that surfaced a real encoding bug in the tool itself during this plugin's own `permission-reviewer` build. The script only reads the agent file and simulates trigger phrases offline — it does not invoke the live harness, so it isn't blocked by the "new agent needs a session restart before the harness registers it" limitation
    - Hook → run `hook-development/scripts/test-hook.sh <hook-script> <sample-input.json>` directly via the scoped `Bash(*/hook-development/scripts/test-hook.sh:*)` tool — no subagent dispatch, same reasoning as the agent-component check (deterministic, offline, no LLM step). Use representative sample input matching the hook's actual event type; confirm it runs without crashing and returns a plausible exit code (0/2, not an unexpected crash).
-   - Command → no dispatchable quick-test tool exists (commands aren't `Skill()`-invocable) — instead, `Read` the command file and manually follow its documented Steps once against one small, representative real input, not a fabricated one. Confirm it runs without crashing and produces plausible output; do not exhaustively cover every flag/branch. See SKILL.md's Phase 5 section for why this manual live-trial exists (a real gap it closes). **Safety boundary:** before executing any Step that would commit, delete, push, or otherwise mutate state beyond the local working tree, stop and confirm with the user first — or skip that specific step, note it was skipped, and continue the trial for the remaining non-mutating steps. The live-trial's purpose is confirming the command runs without crashing and produces plausible output, not exercising every mutating side effect unsupervised.
+   - Command → no dispatchable quick-test tool exists (commands aren't `Skill()`-invocable) — instead, `Read` the command file and manually follow its documented Steps once against one small, representative real input, not a fabricated one. Confirm it runs without crashing and produces plausible output; do not exhaustively cover every flag/branch. See SKILL.md's Phase 6 section for why this manual live-trial exists (a real gap it closes). **Safety boundary:** before executing any Step that would commit, delete, push, or otherwise mutate state beyond the local working tree, stop and confirm with the user first — or skip that specific step, note it was skipped, and continue the trial for the remaining non-mutating steps. The live-trial's purpose is confirming the command runs without crashing and produces plausible output, not exercising every mutating side effect unsupervised.
    - Rule → no dedicated quick-test tool exists yet; record as "skipped — no quick-test tool available", do not silently omit
 2. Collect one pass/fail/skipped result per component, with a one-line reason for any fail or skip.
-3. **Disclose unplanned overhead:** if reaching a result required more than the single representative check — a tool crash, a peer-comparison detour, an unplanned retry — state this to the user in plain language as part of presenting GATE 5, not folded silently into a clean-looking pass/fail line (plugin-rulebook R25).
+3. **Disclose unplanned overhead:** if reaching a result required more than the single representative check — a tool crash, a peer-comparison detour, an unplanned retry — state this to the user in plain language as part of presenting GATE 6, not folded silently into a clean-looking pass/fail line (plugin-rulebook R25).
 
 **Exit criteria:** Every built component has a recorded test result (pass, fail, or skipped-with-reason).
 
-**GATE 5:** Present the per-component test results. Ask via `AskUserQuestion`: proceed to Commit + Handoff / revise a specific component / stop. A failing component should normally route back to Phase 3/4 for that component, not be committed as-is. Do not proceed until approved.
+**GATE 6:** Present the per-component test results. Ask via `AskUserQuestion`: proceed to Commit + Handoff / revise a specific component / stop. A failing component should normally route back to Phase 3/4 for that component, not be committed as-is. Do not proceed until approved.
 
 ## Commit
 
-After GATE 5 is approved, stage exactly the files this pipeline run created or changed and commit them, per this repo's standard git-commit conventions (message ends with the `Co-Authored-By` line; never `--no-verify`; never bundle in unrelated unstaged changes). State the file list and commit message as part of presenting GATE 5 so the one approval covers both proceeding and committing — do not treat this as a second silent step after the gate. After committing, run `git log -1`/`git show --stat` to capture the commit SHA, message, and touched-file list for the handoff report.
+After GATE 6 is approved, run the Pre-Commit Disclosure check from `plugin-rulebook/references/open-item-discipline.md` — surface any open item from Phases 1-6 (including any Self-Review finding the user chose not to act on at GATE 5) alongside the file list and message below, not silently folded into the commit. Then stage exactly the files this pipeline run created or changed and commit them, per this repo's standard git-commit conventions (message ends with the `Co-Authored-By` line; never `--no-verify`; never bundle in unrelated unstaged changes). State the file list and commit message as part of presenting GATE 6 so the one approval covers both proceeding and committing — do not treat this as a second silent step after the gate. After committing, run `git log -1`/`git show --stat` to capture the commit SHA, message, and touched-file list for the handoff report.
 
 ## Document
 
 After the Commit step, invoke `plugin-documentation` (via `Skill`) against the plugin's human-facing docs (README.md, CHANGELOG.md, CONTRIBUTING.md, etc.) to draft whatever update the newly built components require — it reads the plugin's actual current state and runs its own built-in `human-doc-reviewer` QA pass on what it writes, so this step no longer needs to invoke `human-doc-reviewer` separately or hand-apply its findings. "No update needed" is a common, valid outcome, not a failure, and does not block progress to the handoff report below. Present the authored diff and `plugin-documentation`'s own review findings; ask via `AskUserQuestion` whether to keep the changes as-is, revise, or discard. Stage and commit any kept doc changes **separately** from the build commit above — state the file list and message first. This step produces no persisted report of its own (only direct doc edits plus an optional commit), so no `📄 ... written:` line applies here.
 
-**Post-Commit handoff report:** invoke `build-handoff-writer` (via `Agent`) in **create** mode with the Concept Card, Plan (if any), Design gate summaries, the Build summary, Phase 5's test results, and the commit info gathered above — including a doc-fix commit if Document produced one. This runs automatically — no separate gate, since GATE 5's approval already covers it. The agent has no `Write` tool and returns the full report as text — get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`) and `Write` its returned content to `.claude/output/build-handoff-writer/<slug>-<timestamp>.md` yourself before presenting GATE 6.
+**Post-Commit handoff report:** invoke `build-handoff-writer` (via `Agent`) in **create** mode with the Concept Card, Plan (if any), Design gate summaries, the Build summary, Phase 5's Self-Review findings, Phase 6's test results, and the commit info gathered above — including a doc-fix commit if Document produced one. This runs automatically — no separate gate, since GATE 6's approval already covers it. The agent has no `Write` tool and returns the full report as text — get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`) and `Write` its returned content to `.claude/output/build-handoff-writer/<slug>-<timestamp>.md` yourself before presenting GATE 7.
 
-**GATE 6:** Present the artifact link first, then the summary:
+**GATE 7:** Present the artifact link first, then the summary:
 
 ```
 📄 Build Handoff Report written: `.claude/output/build-handoff-writer/<slug>-<timestamp>.md`
