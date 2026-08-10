@@ -171,6 +171,11 @@ WARNING: ../proj-auth has uncommitted changes:
 These changes will be LOST if you remove this worktree.
 ```
 
+**Check for session locks:** `git worktree list --verbose` shows `locked: <reason>` for any locked
+worktree (`starting-work` locks every worktree it creates — see its own Instructions). A locked worktree
+recommended for deletion needs an unlock step before `git worktree remove` — note this against that
+worktree in the analysis rather than only discovering it when the removal command itself fails.
+
 ### GATE 1: Present Complete Analysis
 
 Present everything in ONE comprehensive view. Group related branches together. See `assets/analysis-report-template.md` for the full example layout (related branch groups, individual branch categories, worktrees, and summary).
@@ -199,7 +204,8 @@ git branch -D feat/api-v2
 git branch -D feat/api-refactor
 git branch -D feat/api-final
 
-# Worktrees
+# Worktrees (unlock first if session-locked, per Phase 4's lock check)
+git worktree unlock ../proj-auth
 git worktree remove ../proj-auth
 
 Confirm? (yes/no)
@@ -218,10 +224,14 @@ git branch -D feat/api
 git branch -D feat/api-v2
 git branch -D feat/api-refactor
 git branch -D feat/api-final
+git worktree unlock ../proj-auth
 git worktree remove ../proj-auth
 ```
 
-If a deletion fails, report the error and continue with remaining deletions.
+If a deletion fails, report the error and continue with remaining deletions. If `git worktree remove`
+fails specifically because the worktree is still locked (the unlock step above was skipped, or a lock was
+added after Phase 4's check), report this distinctly from a generic removal failure — say plainly that it's
+locked and by which reason, rather than surfacing git's raw error text unexplained.
 
 ### Phase 6: Report
 
@@ -252,6 +262,9 @@ If a deletion fails, report the error and continue with remaining deletions.
 3. **Use correct delete command** - `-d` for merged, `-D` for squash-merged/superseded
 4. **Never touch protected branches** - main, master, develop, release/* (filtered programmatically)
 5. **Block dirty worktree removal** - Refuse without explicit data loss acknowledgment
+6. **Unlock before removing** - A session-locked worktree (per Phase 4's lock check) gets
+   `git worktree unlock` immediately before `git worktree remove`, never `--force` as a substitute for
+   unlocking — `--force` bypasses the dirty-worktree safeguard in Safety Rule 5 too, not just the lock
 6. **Group related branches** - Don't scatter them across categories
 
 ## Rationalizations to Reject

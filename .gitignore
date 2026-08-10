@@ -17,6 +17,8 @@ reports/events/
 !.claude/
 !.codex/
 !.agents/
+.claude/worktrees/
+.codex/worktrees/
 
 
 #Ignore vscode AI rules
