@@ -45,7 +45,7 @@ Same as before — preserved from the original design:
 
 ## Invoke
 
-Strip `--target` and `--commit` before building the translated args — they are consumed by Target selection above and never forwarded to the companion script. Forward only the validated `--base`, `--scope`, `--model`, `--effort`, and `--wait`/`--background` values, each as its own separate, individually-quoted argument — never as a single unquoted `$ARGUMENTS`/translated-args blob.
+Strip `--target`, `--commit`, and `--wait`/`--background` before building the translated args — `--target`/`--commit` are consumed by Target selection above, and `--wait`/`--background` are consumed by Execution mode rules above (they select foreground vs. background *dispatch*, per the Foreground/Background split below); none of these four are forwarded to the companion script. Forward only the validated `--base`, `--scope`, `--model`, `--effort` values, each as its own separate, individually-quoted argument — never as a single unquoted `$ARGUMENTS`/translated-args blob.
 
 Foreground:
 ```bash

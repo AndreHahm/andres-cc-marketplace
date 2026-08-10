@@ -7,6 +7,11 @@
 // message is framed as evidence, never as instructions, and stays inside its
 // own delimited block rather than the <task> element.
 //
+// readHookInput is exported but not exercised here: it reads real stdin (fd 0)
+// via fs.readFileSync, which would hang this test without a piped input --
+// its empty/malformed-JSON paths are simple enough (a JSON.parse call) that
+// this is judged an acceptable gap rather than worth an injectable-input refactor.
+//
 // Run from plugins/codex-kit/: node scripts/smoke-tests/stop-review-gate-hook.mjs
 
 import { parseStopReviewOutput, buildStopReviewPrompt } from "../stop-review-gate-hook.mjs";

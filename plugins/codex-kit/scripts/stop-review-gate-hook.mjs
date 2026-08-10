@@ -184,7 +184,20 @@ function main() {
   logNote(runningTaskNote);
 }
 
-const isEntryPoint = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+function computeIsEntryPoint() {
+  if (!process.argv[1]) {
+    return false;
+  }
+  try {
+    const invoked = fs.realpathSync(path.resolve(process.argv[1]));
+    const current = fs.realpathSync(fileURLToPath(import.meta.url));
+    return process.platform === "win32" ? invoked.toLowerCase() === current.toLowerCase() : invoked === current;
+  } catch {
+    return false;
+  }
+}
+
+const isEntryPoint = computeIsEntryPoint();
 if (isEntryPoint) {
   try {
     main();

@@ -27,7 +27,7 @@ Before launching, show the user the exact command that will run (translated flag
 
 ## Invoke
 
-Strip `--target`, `--commit`, and `--no-preview` before building the translated args — they are consumed by this command's own target-selection and preview-gate logic above, never forwarded to the companion script. Forward the validated `--base`, `--scope`, `--model`, `--effort`, `--wait`/`--background` values and the focus text, each as its own separate, individually-quoted argument — never concatenated into one blob string.
+Strip `--target`, `--commit`, `--no-preview`, and `--wait`/`--background` before building the translated args — `--target`/`--commit`/`--no-preview` are consumed by this command's own target-selection and preview-gate logic above, and `--wait`/`--background` are consumed by Execution mode rules (they select foreground vs. background *dispatch*, matching `/codex-kit:review`'s own Invoke behavior); none of these five are forwarded to the companion script. Forward the validated `--base`, `--scope`, `--model`, `--effort` values and the focus text, each as its own separate, individually-quoted argument — never concatenated into one blob string.
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" adversarial-review --base "<value>" --scope "<value>" --model "<value>" --effort "<value>" "<focus text>"
