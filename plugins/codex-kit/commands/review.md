@@ -4,8 +4,10 @@ description: >-
   double-check verification
 argument-hint: '[--wait|--background] [--target dirty|branch|commit] [--base <ref>] [--commit <ref>] [--model <slug>] [--effort <level>]'
 disable-model-invocation: true
-allowed-tools: Read, Glob, Grep, Bash(node:*), Bash(git:*), Bash(mkdir:*), Write, AskUserQuestion
+allowed-tools: Read, Bash(node */scripts/codex-companion.mjs:*), Bash(git status:*), Bash(git diff:*), Bash(git rev-parse:*), Bash(mkdir:*), Write, AskUserQuestion
 ---
+
+> **Invocation:** Run as `/codex-kit:review` in the Claude Code prompt. This command cannot be invoked via `Skill()` — it must be triggered as a slash command.
 
 Run a Codex review through the shared built-in reviewer, then independently verify Codex's findings before presenting them.
 
@@ -49,7 +51,7 @@ Strip `--target`, `--commit`, and `--wait`/`--background` before building the tr
 
 Foreground:
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" review --base "<value>" --scope "<value>" --model "<value>" --effort "<value>"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" review --json --base "<value>" --scope "<value>" --model "<value>" --effort "<value>"
 ```
 (include only the flags actually present after validation; omit any not given.) Background: launch the same command via `Bash(..., run_in_background: true)`; don't call `BashOutput` or wait in this turn — tell the user to check `/codex-kit:status`.
 

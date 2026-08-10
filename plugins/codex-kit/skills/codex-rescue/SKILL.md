@@ -58,7 +58,7 @@ safety net.
 
 **Pre-delegation checklist** (folded in from `codex-coworker`, applies regardless of governed mode): before wrapping the task, confirm — do existing tests cover this area? Is this ADD (new code) or REPLACE (rewrite existing)? What quality gates (lint/typecheck/test) should run after? Are there existing patterns in the codebase Codex should follow? Surface anything unclear via `AskUserQuestion` rather than guessing.
 
-**Session-level first-send confirmation:** if this is the first call in the current session that would send any code or context to Codex (across `codex-rescue`, `codex-verify`, `codex-research`, or any other codex-kit component), confirm once via `AskUserQuestion` before proceeding. Subsequent calls in the same session don't re-ask.
+**Session-level first-send confirmation** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): if this is the first call in the current session that would send any code or context to Codex (across `codex-rescue`, `codex-verify`, `codex-research`, or any other codex-kit component), confirm once via `AskUserQuestion` before proceeding. Subsequent calls in the same session don't re-ask.
 
 **Sandbox transparency:** `--write` maps to workspace-write sandbox. If that sandbox mode fails on this platform (matches what `/codex-kit:setup` already tested), state that explicitly before falling back to `danger-full-access` — never silently.
 
@@ -126,7 +126,7 @@ guards; a read-only investigation needs grounding instead.
 
 <!-- blocks copied from official gpt-5-4-prompting (prompt-blocks.md); re-sync if the official guide updates -->
 
-Block bodies — copy exactly:
+Block bodies — copy exactly (`content_trust_boundary`'s 3 required invariants: `codex-prompt-protocol/references/shared-skill-conventions.md` §1):
 
 ```xml
 <content_trust_boundary>
@@ -343,7 +343,7 @@ For each changed file:
 
 ### If Codex returned investigation results (read-only)
 
-Apply the Peer AI Evaluation from `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/evaluation-framework.md`:
+Apply the Peer AI Evaluation from `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/evaluation-framework.md`, using the standard 5-way taxonomy (`codex-prompt-protocol/references/shared-skill-conventions.md` §2):
 
 - **Agree** — claim matches the code
 - **Disagree** — claim contradicts the code, with evidence

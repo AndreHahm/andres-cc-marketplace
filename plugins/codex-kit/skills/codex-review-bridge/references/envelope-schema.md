@@ -5,29 +5,11 @@ This is codex-kit's canonical findings envelope — every reviewer dispatched th
 ```json
 {
   "contract_version": "1",
-  "dispatch": {
-    "id": "audit-2026-08-08-security-reviewer-001",
-    "reviewer": "security-reviewer",
-    "backend": "codex",
-    "target_paths": ["plugins/example/skills/example/SKILL.md"]
-  },
-  "provenance": {
-    "provider": "openai",
-    "model": "reported-model-id",
-    "cli_version": "reported-cli-version",
-    "execution_profile": "container-read-only"
-  },
+  "dispatch": { "id": "audit-...-001", "reviewer": "security-reviewer", "backend": "codex", "target_paths": ["plugins/example/skills/example/SKILL.md"] },
+  "provenance": { "provider": "openai", "model": "reported-model-id", "cli_version": "reported-cli-version", "execution_profile": "container-read-only" },
   "findings": [
-    {
-      "id": "M1",
-      "severity": "major",
-      "axis": "reviewer-defined-axis",
-      "location": "plugins/example/skills/example/SKILL.md:42",
-      "evidence": "Concise observed evidence",
-      "finding": "What is wrong and why it matters",
-      "fix": "Specific recommended remediation",
-      "confidence": "high"
-    }
+    { "id": "M1", "severity": "major", "axis": "reviewer-defined-axis", "location": "plugins/example/skills/example/SKILL.md:42",
+      "evidence": "Concise observed evidence", "finding": "What is wrong and why it matters", "fix": "Specific recommended remediation", "confidence": "high" }
   ],
   "verdict": "pass",
   "inspection_limits": []

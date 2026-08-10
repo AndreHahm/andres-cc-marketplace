@@ -102,7 +102,7 @@ review a specific commit, use `--base <sha>~1 --scope branch`.
 
 | Flag | Type | Notes |
 |------|------|-------|
-| `--source <path>` | value | Claude session `.jsonl` to import. Falls back to `CODEX_COMPANION_TRANSCRIPT_PATH` env (`resolveClaudeSessionPath` in `lib/claude-session-transfer.mjs`) when omitted. |
+| `--source <path>` | value | Claude session `.jsonl` to import. Falls back to `CODEX_KIT_TRANSCRIPT_PATH` env (`resolveClaudeSessionPath` in `lib/claude-session-transfer.mjs`) when omitted. |
 | `--json` | bool | |
 | `--cwd <path>` | value | Accepted by `handleTransfer`'s `valueOptions` but **not shown in `printUsage`'s transfer line** — don't copy the usage line as the full flag set. |
 
@@ -278,10 +278,12 @@ cap, surface as `wait-timeout` (§6).
   rendered text format is not stable across releases.
 - Parse jobId with `node -e '...'` (already a runtime dependency). Do NOT
   grep / regex the rendered output.
-- **Pattern A:** jobId is embedded in the final `$OUT_FILE` payload
-  (alongside `review`, `target`, `threadId`, `codex`). It is the
-  `threadId` or inside the `codex` object depending on review type — read
-  the actual payload, don't guess the key.
+- **Pattern A:** there is no `jobId` field in Pattern A's output — the
+  relevant identifier is `payload.threadId`, at the top level of the
+  `$OUT_FILE` payload, in the same location for both `review` and
+  `adversarial-review`. Pattern A doesn't use companion-side job IDs at
+  all; it relies on Claude's own `run_in_background`/`BashOutput` bash_id
+  instead (see §4).
 - **Pattern B:** jobId is in the immediate response from
   `task --background --json` as `{"jobId": "...", "status": "queued", ...}`.
 - **Always set `set -o pipefail`** before any `cat file | node ...` or
@@ -300,9 +302,10 @@ blame the user.
 
 | Pattern in stderr (verbatim where quoted) | Category | Source | Action |
 |-------------------|----------|--------|--------|
-| `not authenticated` / `OPENAI_API_KEY` | auth | `lib/codex.mjs` status detail, surfaced through the companion | Suggest `codex login` |
+| `not authenticated` | auth | `lib/codex.mjs`'s `buildAuthStatus` default `detail` field | Suggest `codex login` |
+| `OPENAI_API_KEY` (stderr substring match) | auth | `lib/codex-exec.mjs`'s `runCodexExec` only — a primitive `codex-companion.mjs` never calls directly; used by `codex-review-bridge` instead (see `codex-review-bridge/references/typed-failures.md`) | Suggest `codex login` |
 | `Codex CLI is not installed or is missing required runtime support.` | setup | `getCodexAvailability` check, thrown at multiple call sites in `lib/codex.mjs` | Companion resolves fine but the actual `codex` CLI it shells out to isn't installed. Direct to `npm install -g @openai/codex`, then `/codex-kit:setup`. Not transfer-specific — any subcommand that needs a live app-server hits this. |
-| `not a git repository` | environment | `lib/git.mjs`'s `ensureGitRepository` | Tell user, stop |
+| `This command must run inside a Git repository.` | environment | `lib/git.mjs`'s `ensureGitRepository` | Tell user, stop |
 | `unknown revision` / `bad revision` | bad-input | `git rev-parse` (git's own error, not this codebase's) | Show `git branch --list`, AskUserQuestion |
 | ``does not support custom focus text`` | wrong-skill | `validateNativeReviewRequest` | Should NOT fire from a codex-kit task/review skill: Phase 1 strips focus text and offers the adversarial redirect. If it fires, Phase 1 was skipped → SKILL.md regression. |
 | `Provide a prompt, a prompt file, piped stdin, or use --resume-last.` | prompt-empty | `requireTaskRequest` | Pattern B failed before consuming stdin. Common cause: `cat` failed and `set -o pipefail` was missing, OR a positional arg overrode stdin (§3). |
@@ -314,7 +317,7 @@ blame the user.
 | JSON parse error on companion stdout | unexpected-format | n/a | Companion output format changed. Show raw stdout/stderr, abort, ask user to report. |
 | Pattern A 30-min cap exceeded | wait-timeout | n/a (Claude-side) | `KillShell` the bash_id; if `$OUT_FILE` parses as JSON treat as partial, else `recovery-impossible`. |
 | (no stderr — silently corrupted prompt) | silent-flag-corruption | `lib/args.mjs`'s `parseArgs` + `readTaskPrompt` | **NOT detectable post-hoc.** Only Phase 1 ANALYZE whitelisting prevents it. If Codex echoes an unknown flag back as task content, treat as Phase 1 regression and AskUserQuestion. |
-| `Could not identify the current Claude transcript. Retry with --source <path-to-claude-jsonl>.` | setup/transcript-missing | `lib/claude-session-transfer.mjs`'s `resolveClaudeSessionPath` | No `CODEX_COMPANION_TRANSCRIPT_PATH` env and no `--source`. Ask the user to pass `--source` manually. |
+| `Could not identify the current Claude transcript. Retry with --source <path-to-claude-jsonl>.` | setup/transcript-missing | `lib/claude-session-transfer.mjs`'s `resolveClaudeSessionPath` | No `CODEX_KIT_TRANSCRIPT_PATH` env and no `--source`. Ask the user to pass `--source` manually. |
 | `Codex can import Claude sessions only from <dir>: <path>` | bad-input | `lib/claude-session-transfer.mjs` | Source path resolved outside `~/.claude/projects/`. Show the offending path, do not retry with a modified path automatically. |
 | `Timed out waiting for Codex to finish importing the Claude session.` | wait-timeout | `lib/codex.mjs`'s `EXTERNAL_AGENT_IMPORT_TIMEOUT_MS = 2 * 60 * 1000` | Import RPC didn't complete in 2 min. Abort, don't retry silently — re-running may just return the same ledger-cached thread (see next row) or hit the same stall. |
 | (same file + same content re-imported → existing `threadId` returned) | **not an error** | ledger dedup against `external_agent_session_imports.json` in `lib/codex.mjs` | Normal behavior, not a failure to surface as one. Codex recognizes the identical `sourcePath` + `content_sha256` pair and returns the prior thread instead of creating a duplicate. |

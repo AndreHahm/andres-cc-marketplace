@@ -16,7 +16,7 @@ This skill has no user-facing trigger. It exists so every other codex-kit compon
 
 | Reference | Covers |
 |---|---|
-| `references/prompt-blocks.md` | The XML tag vocabulary (`task`, `structured_output_contract`, `grounding_rules`, `completeness_contract`, `verification_loop`, `action_safety`, `dig_deeper_nudge`, `compact_output_contract`, `content_trust_boundary`) used across `codex-rescue`, `codex-verify`, `codex-research`, and the Stop-gate prompt |
+| `references/prompt-blocks.md` | The XML tag vocabulary (`task`, `structured_output_contract`, `grounding_rules`, `completeness_contract`, `verification_loop`, `action_safety`, `dig_deeper_nudge`, `compact_output_contract`) used across `codex-rescue`, `codex-verify`, `codex-research`, and the Stop-gate prompt — `content_trust_boundary` is defined separately in `references/shared-skill-conventions.md` §1 |
 | `references/invocation-protocol.md` | How to call `codex-companion.mjs` correctly: flag whitelists per subcommand, Pattern A (background+poll, for review/adversarial-review) vs. Pattern B (stdin pipe to `task --background`, for rescue/verify/research), job ID capture |
 | `references/evaluation-framework.md` | The double-check taxonomy (Agreed/Disagreed/Nuanced/False Positive/Uncited), self-bias awareness, agreement-level summary format |
 | `references/cli-reference.md` | Internal engineering reference for codex-kit's own bundled scripts: model/effort resolution mechanics (never a hardcoded model list), sandbox-mode flags, the stdin-non-TTY hang gotcha, timeout/crash recovery |

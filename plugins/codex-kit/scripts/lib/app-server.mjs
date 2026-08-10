@@ -238,6 +238,14 @@ class SpawnedCodexAppServerClient extends AppServerClientBase {
 
     this.closed = true;
 
+    if (!this.proc) {
+      // initialize() threw before the child process was ever spawned --
+      // no exit event will ever fire, so resolve directly rather than
+      // hang on exitPromise forever.
+      this.handleExit(null);
+      return;
+    }
+
     if (this.readline) {
       this.readline.close();
     }
@@ -318,9 +326,14 @@ class BrokerCodexAppServerClient extends AppServerClientBase {
     }
 
     this.closed = true;
-    if (this.socket) {
-      this.socket.end();
+    if (!this.socket) {
+      // initialize() threw before the socket was ever created (e.g. a
+      // malformed endpoint) -- no 'close'/'error' event will ever fire,
+      // so resolve directly rather than hang on exitPromise forever.
+      this.handleExit(null);
+      return;
     }
+    this.socket.end();
     await this.exitPromise;
   }
 

@@ -7,6 +7,7 @@ description: >-
   Codex bridge. Invoked by the separate CI pipeline's GitHub Actions
   workflow, not interactively.
 allowed-tools: ["Bash(node:*)", "Read", "Grep", "Glob"]
+disable-model-invocation: true
 ---
 
 # Marketplace PR review orchestrator
