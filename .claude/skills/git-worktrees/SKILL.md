@@ -1,7 +1,7 @@
 ---
 name: git-worktrees
 description: >-
-  Use when working on multiple branches simultaneously, context switching without stashing, reviewing PRs while developing, testing in isolation, or comparing implementations across branches - provides git worktree commands and workflow patterns for parallel development with multiple working directories.
+  Use when working on multiple branches simultaneously, context switching without stashing, reviewing PRs while developing, testing in isolation, or comparing implementations across branches - provides git worktree commands and workflow patterns for parallel development with multiple working directories. For creating the first worktree/branch to begin a new piece of work (main-sync, branch-naming validation, worktree-vs-branch choice), see `starting-work` instead — this skill is reference material for ongoing multi-worktree management, not the entry point for starting new work.
 allowed-tools: Bash(git worktree:*), Bash(git status:*), Bash(git diff:*), Bash(git checkout:*), Bash(git cherry-pick:*), Bash(git merge:*), Bash(git reset:*), Bash(git log:*), Bash(git fetch:*), Bash(diff:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Bash(bun:*), Bash(pip:*), Bash(cargo:*), Bash(go:*), Bash(bundle:*), Bash(composer:*)
 ---
 
@@ -18,6 +18,11 @@ Git worktrees enable checking out multiple branches simultaneously in separate d
 `starting-work`'s *automated* flow uses a different default, `.claude/worktrees/<description>` (or
 `.codex/worktrees/` for a Codex CLI session), locked to the creating session — see that skill for why.
 Neither supersedes the other; they're two different use cases (manual vs. session-lifecycle-managed).
+
+## When NOT to Use
+
+- **Starting a brand-new piece of work** (syncing main, validating a branch name, choosing worktree vs.
+  plain branch before the first commit) — that's `starting-work`'s job.
 
 ## Core Concepts
 
