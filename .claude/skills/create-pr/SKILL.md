@@ -1,8 +1,8 @@
 ---
 name: create-pr
-description: Create pull requests using GitHub CLI with proper templates and formatting
-argument-hint: None required - interactive guide for PR creation
-allowed-tools: Bash(gh pr:*), Bash(gh auth:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:commit)
+description: Create pull requests using GitHub CLI with proper templates, draft-vs-ready confirmation, and formatting
+argument-hint: (optional) an issue number to close or reference — otherwise an interactive guide
+allowed-tools: Bash(gh pr:*), Bash(gh auth:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -84,6 +84,19 @@ Before creating a PR, check for uncommitted changes:
    # Create PR with proper template structure (ready-to-merge)
    gh pr create --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main
    ```
+
+5. **Issue-linking hand-off**: skip this step entirely if `create-pr` was invoked as a nested dependency
+   from `collaborating-on-a-pr`'s own Path A (i.e. **this run's own instructions explicitly say to skip
+   it** — Path A step 1 always passes that instruction alongside its closing-reference request; do not
+   infer the skip from context or caller identity, only from the instruction actually being present) —
+   that flow already verifies the closing/referencing line itself right after this skill returns, so doing
+   it here too would duplicate the same check. Otherwise: if `$ARGUMENTS` or the conversation named a
+   related issue this PR should close or reference, invoke `Skill(git-kit:collaborating-on-a-pr)` — explicitly instructing it,
+   as part of this invocation, to run only its Path A step 2 (verify the `Closes #<N>`/`Refs #<N>` line
+   landed in the body just created, patching it via `gh pr edit --body-file` if not) and **never to
+   re-invoke `create-pr`**, since the PR already exists. This mirrors the Pre-flight Checks section's own
+   pattern above (an explicit skip-instruction passed at invocation time to break a would-be loop) and
+   reuses `collaborating-on-a-pr`'s verify-and-patch logic instead of re-deriving it here.
 
 ## Best Practices
 
