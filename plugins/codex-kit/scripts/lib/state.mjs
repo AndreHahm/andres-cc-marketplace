@@ -116,32 +116,81 @@ export function saveState(cwd, state) {
 }
 
 const LOCK_TIMEOUT_MS = 5000;
-const LOCK_STALE_MS = 10000;
 const LOCK_RETRY_MS = 20;
+
+// Liveness, not age, decides staleness: a lock is only ever stolen from a
+// dead PID, never from one that's simply been holding it a while (a slow
+// disk under a long critical section must never look the same as a crashed
+// holder -- see the state-lock TOCTOU/liveness fixes this replaces).
+function isPidAlive(pid) {
+  if (!pid) {
+    return false;
+  }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code !== "ESRCH";
+  }
+}
+
+function readLockPayload(path) {
+  try {
+    return JSON.parse(fs.readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+// Atomically claims removal rights to whatever currently sits at lockFile
+// via rename (POSIX/NTFS rename is atomic), then re-reads the *staged*
+// copy and compares it against the payload this call itself judged dead.
+// If a live holder replaced the lock between our read and the rename, the
+// staged content won't match -- put it back untouched rather than trust
+// the earlier read.
+function tryStealStaleLock(lockFile) {
+  const holder = readLockPayload(lockFile);
+  if (holder && isPidAlive(holder.pid)) {
+    return;
+  }
+  const stagingPath = `${lockFile}.stale-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    fs.renameSync(lockFile, stagingPath);
+  } catch {
+    return; // Already gone or already re-acquired by someone else -- fine, just retry.
+  }
+  const staged = readLockPayload(stagingPath);
+  const stillMatchesDeadHolder = holder && staged && staged.pid === holder.pid && staged.token === holder.token;
+  if (!stillMatchesDeadHolder && staged) {
+    // A live holder's lock got caught in our steal -- restore it. If the
+    // path was already reclaimed by a fresh acquire in the meantime, this
+    // rename fails and that's fine: a valid lock is already in place.
+    try {
+      fs.renameSync(stagingPath, lockFile);
+      return;
+    } catch {
+      // fall through to discard the staged (now-orphaned) copy
+    }
+  }
+  fs.rmSync(stagingPath, { force: true });
+}
 
 function acquireStateLock(cwd) {
   ensureStateDir(cwd);
   const lockFile = `${resolveStateFile(cwd)}.lock`;
+  const token = `${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const start = Date.now();
   while (true) {
     try {
       const fd = fs.openSync(lockFile, "wx");
-      fs.writeFileSync(fd, String(process.pid));
+      fs.writeFileSync(fd, JSON.stringify({ pid: process.pid, token }));
       fs.closeSync(fd);
-      return lockFile;
+      return { lockFile, token };
     } catch (error) {
       if (error.code !== "EEXIST") {
         throw error;
       }
-      try {
-        const stat = fs.statSync(lockFile);
-        if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
-          fs.rmSync(lockFile, { force: true });
-          continue;
-        }
-      } catch {
-        continue;
-      }
+      tryStealStaleLock(lockFile);
       if (Date.now() - start > LOCK_TIMEOUT_MS) {
         throw new Error(`Timed out acquiring state lock: ${lockFile}`);
       }
@@ -151,18 +200,25 @@ function acquireStateLock(cwd) {
   }
 }
 
-function releaseStateLock(lockFile) {
-  fs.rmSync(lockFile, { force: true });
+function releaseStateLock(lock) {
+  // Only delete if the lock still shows our own token -- if it doesn't
+  // (or is already gone), releasing here would delete a lock we no longer
+  // actually own.
+  const current = readLockPayload(lock.lockFile);
+  if (!current || current.token !== lock.token) {
+    return;
+  }
+  fs.rmSync(lock.lockFile, { force: true });
 }
 
 export function updateState(cwd, mutate) {
-  const lockFile = acquireStateLock(cwd);
+  const lock = acquireStateLock(cwd);
   try {
     const state = loadState(cwd);
     mutate(state);
     return saveState(cwd, state);
   } finally {
-    releaseStateLock(lockFile);
+    releaseStateLock(lock);
   }
 }
 

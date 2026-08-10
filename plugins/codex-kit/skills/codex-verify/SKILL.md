@@ -137,38 +137,26 @@ focus areas — so the user can verify or customize the review framing.
 Show the XML prompt header (everything except the `<document>` body)
 in a fenced code block, plus document info:
 
+**R18 exception (recorded):** the fenced example below is a literal rendering of what gets shown to the user for approval — trimming it further would mean the preview no longer matches what Phase 1.5 actually displays.
+
 ````
 **Verification prompt to send to Codex:**
 
 ```xml
 <task>
-You are a brutally honest technical reviewer. Review the following document for
-material issues that would cause implementation failure.
-Focus areas:
-- Logical gaps and unstated assumptions
-- Missing error handling or edge cases
-- Overcomplexity (is there a simpler approach?)
-- Feasibility risks (what could go wrong?)
-- Missing dependencies or sequencing issues
-- Internal contradictions or ambiguous requirements
+Brutally honest technical review for material issues causing implementation failure.
+Focus: logical gaps, missing error handling/edge cases, overcomplexity, feasibility
+risks, missing/wrong dependency sequencing, internal contradictions.
 </task>
-
 <structured_output_contract>
-Return a structured verdict:
-1. PASS or FAIL (with clear reasons)
-2. Blocking issues (P1) — must fix before proceeding
-3. Recommendations (P2) — non-blocking improvements
+1. PASS or FAIL (with clear reasons). 2. Blocking issues (P1). 3. Recommendations (P2).
 Be direct. No compliments. Just the problems.
 </structured_output_contract>
-
 <grounding_rules>
-Ground every finding in the document text. Cite specific sections.
-Do not speculate about issues not evidenced in the document.
+Ground every finding in the document text, citing specific sections. No speculation.
 </grounding_rules>
-
 <completeness_contract>
-Review the entire document before finalizing.
-Check for interactions between sections that may create contradictions.
+Review the entire document; check for cross-section contradictions.
 </completeness_contract>
 ```
 

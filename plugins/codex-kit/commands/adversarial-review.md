@@ -4,8 +4,10 @@ description: >-
   choices, with independent double-check verification
 argument-hint: '[--wait|--background] [--target dirty|branch|commit] [--base <ref>] [--commit <ref>] [--model <slug>] [--effort <level>] [--no-preview] [focus ...]'
 disable-model-invocation: true
-allowed-tools: Read, Glob, Grep, Bash(node:*), Bash(git:*), Bash(mkdir:*), Write, AskUserQuestion
+allowed-tools: Read, Bash(node */scripts/codex-companion.mjs:*), Bash(git status:*), Bash(git diff:*), Bash(git rev-parse:*), Bash(mkdir:*), Write, AskUserQuestion
 ---
+
+> **Invocation:** Run as `/codex-kit:adversarial-review` in the Claude Code prompt. This command cannot be invoked via `Skill()` — it must be triggered as a slash command.
 
 Run an adversarial Codex review that challenges the chosen implementation, design choices, tradeoffs, and assumptions — not just a stricter defect pass — then independently verify Codex's findings.
 
@@ -30,7 +32,7 @@ Before launching, show the user the exact command that will run (translated flag
 Strip `--target`, `--commit`, `--no-preview`, and `--wait`/`--background` before building the translated args — `--target`/`--commit`/`--no-preview` are consumed by this command's own target-selection and preview-gate logic above, and `--wait`/`--background` are consumed by Execution mode rules (they select foreground vs. background *dispatch*, matching `/codex-kit:review`'s own Invoke behavior); none of these five are forwarded to the companion script. Forward the validated `--base`, `--scope`, `--model`, `--effort` values and the focus text, each as its own separate, individually-quoted argument — never concatenated into one blob string.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" adversarial-review --base "<value>" --scope "<value>" --model "<value>" --effort "<value>" "<focus text>"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" adversarial-review --json --base "<value>" --scope "<value>" --model "<value>" --effort "<value>" "<focus text>"
 ```
 (include only the flags actually present after validation; omit any not given. The focus text, if any, is always the final positional argument, quoted on its own — never appended to a flag's value.)
 
