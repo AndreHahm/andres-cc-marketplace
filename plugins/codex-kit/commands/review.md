@@ -53,7 +53,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" review --base "<value>"
 ```
 (include only the flags actually present after validation; omit any not given.) Background: launch the same command via `Bash(..., run_in_background: true)`; don't call `BashOutput` or wait in this turn — tell the user to check `/codex-kit:status`.
 
-Sandbox is always read-only for review. If a call fails specifically because the sandbox mode isn't available on this platform (matches what `setup` already tested), **state that explicitly** before falling back to `danger-full-access` — never fall back silently (scope-expansion gap #4).
+Sandbox is always read-only for review. If a call fails specifically because the sandbox mode isn't available on this platform (matches what `setup` already tested), **state that explicitly** before falling back to `danger-full-access` — never fall back silently.
 
 ## Phase 4: Double-check (always on, no flag to disable)
 

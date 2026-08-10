@@ -115,10 +115,55 @@ export function saveState(cwd, state) {
   return nextState;
 }
 
+const LOCK_TIMEOUT_MS = 5000;
+const LOCK_STALE_MS = 10000;
+const LOCK_RETRY_MS = 20;
+
+function acquireStateLock(cwd) {
+  ensureStateDir(cwd);
+  const lockFile = `${resolveStateFile(cwd)}.lock`;
+  const start = Date.now();
+  while (true) {
+    try {
+      const fd = fs.openSync(lockFile, "wx");
+      fs.writeFileSync(fd, String(process.pid));
+      fs.closeSync(fd);
+      return lockFile;
+    } catch (error) {
+      if (error.code !== "EEXIST") {
+        throw error;
+      }
+      try {
+        const stat = fs.statSync(lockFile);
+        if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
+          fs.rmSync(lockFile, { force: true });
+          continue;
+        }
+      } catch {
+        continue;
+      }
+      if (Date.now() - start > LOCK_TIMEOUT_MS) {
+        throw new Error(`Timed out acquiring state lock: ${lockFile}`);
+      }
+      const buffer = new Int32Array(new SharedArrayBuffer(4));
+      Atomics.wait(buffer, 0, 0, LOCK_RETRY_MS);
+    }
+  }
+}
+
+function releaseStateLock(lockFile) {
+  fs.rmSync(lockFile, { force: true });
+}
+
 export function updateState(cwd, mutate) {
-  const state = loadState(cwd);
-  mutate(state);
-  return saveState(cwd, state);
+  const lockFile = acquireStateLock(cwd);
+  try {
+    const state = loadState(cwd);
+    mutate(state);
+    return saveState(cwd, state);
+  } finally {
+    releaseStateLock(lockFile);
+  }
 }
 
 export function generateJobId(prefix = "job") {

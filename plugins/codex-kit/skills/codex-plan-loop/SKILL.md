@@ -59,3 +59,30 @@ Classify findings by severity. Save to `${CLAUDE_PLUGIN_DATA}/codex-loop/phase5_
 Apply fixes for Critical/Major findings, then send the fix diff back to Codex via `codex-companion.mjs task --resume-last` (session continuity, same companion path as every other phase in this loop — never the raw `codex exec` CLI). **Concrete exit condition** (codex-kit's own addition — the vague "quality standards met" from the original design was flagged as a defect and replaced): stop iterating when either (a) two consecutive rounds report only Minor/Info findings, or (b) all Critical/Major findings from the prior round are confirmed fixed in this round's review. Log every round in `${CLAUDE_PLUGIN_DATA}/codex-loop/iterations.md`. Discuss with the user (not silently auto-resolve) if a Critical/Major finding persists past 3 rounds.
 
 Severity-gated response: Critical → fix immediately. Architectural → discuss with the user. Minor/Info → document, don't block.
+
+---
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "run a codex-claude loop for adding a new caching layer" (complex, security-sensitive)
+- An explicit request for dual-AI review or plan-validate-implement-review
+
+**Verify it does NOT activate on:**
+- A simple one-off fix or prototype → `codex-rescue`
+- A single implementation/fix task with no up-front plan-validation need → `codex-rescue`
+
+**Concrete scenarios to check:**
+1. Phase 3's decision gate on "revise" → loops back to Phase 1 with feedback incorporated, logs the iteration, never silently proceeds to implementation.
+2. Phase 6's convergence check: two consecutive rounds report only Minor/Info → loop stops, does not force a 3rd round.
+3. A Critical/Major finding persists past 3 rounds → discussed with the user, never silently auto-resolved.
+4. `--security-focus` is present → Phase 2 validation always runs at `xhigh` effort, not the config default.
+
+**Current test coverage:**
+- `evals/codex-plan-loop/evals.json` — 1 defined scenario (6-phase structure, concrete convergence condition). Definition only — not yet run and graded.
+- No persisted smoke test exists for this skill (its Codex calls aren't mechanically testable the way a fixed prompt template is — each phase's payload depends on the actual plan/diff content).
+
+**Quality gates:**
+- [ ] Every phase's scratch artifact is written under `${CLAUDE_PLUGIN_DATA}/codex-loop/`, never the repo root
+- [ ] The convergence check never loops past a genuinely met stop condition
+- [ ] A persisting Critical/Major finding is always surfaced to the user, never silently dropped

@@ -3,9 +3,10 @@ name: codex-verify
 description: >-
   Verify a plan or document using Codex as independent reviewer with
   PASS/FAIL verdict. Use when asked "codex verify", "verify this plan",
-  "review this doc for issues". For validating Claude's own not-yet-written
-  analysis or design (no document to point at), use codex-peer-review
-  instead.
+  "review this doc for issues". Not for open-ended investigation or
+  deep-dive research on a topic/document — use codex-research for that.
+  For validating Claude's own not-yet-written analysis or design (no
+  document to point at), use codex-peer-review instead.
 argument-hint: "path/to/document.md [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
 allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
@@ -39,6 +40,8 @@ a file, not stdout, so your context stays clean.
 
 Unknown flags silently become task prompt content
 (`codex-companion.mjs`'s `readTaskPrompt`). Phase 1 is the only safety net.
+
+**Session-level first-send confirmation** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): if this is the first call in the current session sending anything to Codex — across `codex-rescue`, `codex-verify`, `codex-research`, or any other codex-kit component — confirm once via `AskUserQuestion` before proceeding.
 
 ---
 
@@ -263,12 +266,15 @@ Evaluation + Self-Bias Awareness).
 acknowledge it: "Note: I authored this — extra honesty required." Don't
 rationalize away valid catches.
 
-For each of Codex's findings:
+For each of Codex's findings, classify using the standard 5-way taxonomy
+(`codex-prompt-protocol/references/shared-skill-conventions.md` §2):
 
-- **Valid catch** — "Codex caught this. I missed it during planning."
-  Read the cited document section to confirm.
-- **Already considered** — "I considered this: [reason]." Cite the
-  document section that addresses it.
+- **Agree** ("valid catch") — "Codex caught this. I missed it during
+  planning." Read the cited document section to confirm.
+- **Disagree** ("already considered") — "I considered this: [reason]."
+  Cite the document section that addresses it.
+- **Nuance** — real insight, but missing context the document actually
+  provides elsewhere. Cite the section that supplies it.
 - **False Positive (hallucination)** — Codex cited a document section
   that does **not exist**, or misread what the section says. Read the
   cited section to confirm.
@@ -330,7 +336,7 @@ rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_
   empty. `cat "$USER_DOC"` alone would dump content into Claude's
   context. The `>> "$PROMPT_FILE"` is load-bearing.
 - **Never pass a positional argument with Pattern B's stdin pipe.**
-  `readTaskPrompt` short-circuits on `positionalPrompt || readStdinIfPiped()` (`:619`); a positional silently drops the entire blind payload.
+  `readTaskPrompt` short-circuits on `positionalPrompt || readStdinIfPiped()`; a positional silently drops the entire blind payload.
 - **`set -o pipefail` is mandatory.** Without it, a cat-side failure
   sends 0 bytes and the companion's `prompt-empty` error masks the root
   cause.
@@ -343,3 +349,30 @@ rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_
 
 For the full shared gotchas list, read
 `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §10`.
+
+---
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "codex verify docs/my-plan.md", "verify this plan", "review this doc for issues"
+- `resume [follow-up]` against a document already sent this session
+
+**Verify it does NOT activate on:**
+- Validating Claude's own not-yet-written analysis (no document) → `codex-peer-review`
+- Open-ended investigation or research on a topic/document → `codex-research`
+
+**Concrete scenarios to check:**
+1. The document path doesn't exist or is empty → fails at Phase 1's `test -f`/`test -s` check, before ever touching Codex.
+2. Phase 1-3 never `Read`/`Grep`/`Glob` the document — confirmed by the blind-payload pattern (`cat >> $PROMPT_FILE`, stdout stays empty).
+3. Phase 4: a Codex-cited document section that doesn't exist → classified "False Positive (hallucination)", never presented as a real finding.
+4. Any P1 (blocking) issue present → final verdict is FAIL, never PASS.
+
+**Current test coverage:**
+- `evals/codex-verify/evals.json` — 1 defined scenario (blind-payload pattern, PASS/FAIL verdict with P1/P2 split). Definition only — not yet run and graded.
+- `scripts/smoke-tests/codex-verify-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc and the `--persist` argument-hint; does not exercise a real Codex call.
+
+**Quality gates:**
+- [ ] The document is never `Read` before Phase 4
+- [ ] Verdict is always PASS or FAIL — never left ambiguous
+- [ ] Phase 4 classification always uses the 5-way taxonomy (`shared-skill-conventions.md` §2), never a shortened set

@@ -1,6 +1,6 @@
 # Canonical findings envelope
 
-Adopted in full from `CODEX_INTEGRATION_V2.md` (scope-expansion decision #6 — no partial adoption).
+This is codex-kit's canonical findings envelope — every reviewer dispatched through `codex-review-bridge` returns exactly this shape, with no partial/reviewer-specific variants.
 
 ```json
 {

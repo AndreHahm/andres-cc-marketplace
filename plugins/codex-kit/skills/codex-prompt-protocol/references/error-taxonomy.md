@@ -1,6 +1,6 @@
 # Error / failure taxonomy
 
-Shared by every codex-kit component's error handling. This is the same category set `scripts/lib/codex-exec.mjs`'s `FAILURE_CATEGORIES` uses in code (component #17/#18's typed-failure object) — this file is the human-readable reference for it, sourced originally from Wave 2's `companion-usage.md` §6 error table and extended per scope-expansion gap #7.
+Shared by every codex-kit component's error handling. This is the same category set `scripts/lib/codex-exec.mjs`'s `FAILURE_CATEGORIES` uses in code — this file is the human-readable reference for it.
 
 | Category | Meaning | Typical trigger |
 |---|---|---|
@@ -18,4 +18,4 @@ Shared by every codex-kit component's error handling. This is the same category 
 
 **Rule every component follows:** never convert a failure into an empty findings list or a silently "clean" result. Every failure is one of the categories above, with a `detail` string carrying concrete evidence (truncated stderr, the specific check that failed) — never just the bare category name.
 
-**Interactive vs. programmatic consumers:** components with a human in the loop (`codex-rescue`, `codex-verify`, `codex-research`, the review commands) surface these as prose error messages with next-step suggestions. `codex-review-bridge` (component #18) and anything built on it return the category as a structured `{ok: false, category, detail}` object instead — same taxonomy, different presentation layer.
+**Interactive vs. programmatic consumers:** components with a human in the loop (`codex-rescue`, `codex-verify`, `codex-research`, the review commands) surface these as prose error messages with next-step suggestions. `codex-review-bridge` and anything built on it return the category as a structured `{ok: false, category, detail}` object instead — same taxonomy, different presentation layer.

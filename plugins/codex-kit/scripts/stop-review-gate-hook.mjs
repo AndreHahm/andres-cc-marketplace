@@ -13,7 +13,11 @@ import { sortJobsNewestFirst } from "./lib/job-control.mjs";
 import { SESSION_ID_ENV } from "./lib/tracked-jobs.mjs";
 import { resolveWorkspaceRoot } from "./lib/workspace.mjs";
 
-const STOP_REVIEW_TIMEOUT_MS = 15 * 60 * 1000;
+// Must stay comfortably under hooks.json's Stop timeout (600s, the platform's
+// documented ceiling) so this internal timeout fires gracefully -- with a
+// proper "timed out" error message -- before the platform hard-kills the
+// process with no graceful-shutdown chance.
+const STOP_REVIEW_TIMEOUT_MS = 9 * 60 * 1000;
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(SCRIPT_DIR, "..");
 const STOP_REVIEW_TASK_MARKER = "Run a stop-gate review of the previous Claude turn.";
@@ -113,7 +117,7 @@ function runStopReview(cwd, input = {}) {
     return {
       ok: false,
       reason:
-        "The stop-time Codex review task timed out after 15 minutes. Run /codex-kit:review --wait manually or bypass the gate."
+        "The stop-time Codex review task timed out after 9 minutes. Run /codex-kit:review --wait manually or bypass the gate."
     };
   }
 
@@ -144,7 +148,7 @@ function main() {
 
   // Infinite-loop guard: if a prior invocation of this same Stop hook
   // already emitted decision: "block" and Claude Code re-invoked it on
-  // the re-continuation, do not re-run the (up to 15-minute) review —
+  // the re-continuation, do not re-run the (up to 9-minute) review —
   // allow the stop through instead of blocking again for the same reason.
   if (input.stop_hook_active) {
     return;
