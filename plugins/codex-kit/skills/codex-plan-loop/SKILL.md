@@ -9,7 +9,7 @@ description: >-
   task that doesn't need an up-front plan-validation phase — use codex-rescue
   for those.
 argument-hint: "feature description [--security-focus] [--performance-focus] [--model SLUG] [--effort LEVEL]"
-allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm:*)", "Read", "Write", "Edit", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Read", "Write", "Edit", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Plan → Validate → Implement → Review → Iterate
