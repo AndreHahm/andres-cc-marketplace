@@ -4,7 +4,10 @@ All notable changes to this plugin are documented here.
 
 ## [Unreleased]
 
-- None yet.
+- Scoped `codex-review-bridge`'s and `codex-session-lookup`'s `allowed-tools` grants to match their stated read-only/no-write claims (`codex-session-lookup`'s 2 backing scripts also renamed to kebab-case); removed `codex-audit-loop`'s raw `Bash(codex:*)` grant and added rollback/failure-handling guidance to its Mode C fix-and-merge loop.
+- `/codex-kit:review` and `/codex-kit:adversarial-review` now validate `$ARGUMENTS` against a whitelist (no more raw-blob interpolation) and save a report to `${CLAUDE_PLUGIN_DATA}/reviews/` on every run, success or failure.
+- `/codex-kit:transfer`'s `--source` path validation switched from a denylist to an allowlist.
+- Restructured the Stop hook's review-gate prompt so the previous turn's assistant message is framed as evidence in its own delimited block, never as part of the task instructions.
 
 ## [1.0.0-alpha.1] - 2026-08-08
 
