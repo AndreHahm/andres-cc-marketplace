@@ -1,6 +1,6 @@
 # codex-kit
 
-Delegate work to OpenAI's Codex CLI from Claude Code, with independent verification instead of blind trust: native and adversarial code review, task rescue with diff double-check, document/plan verification, cross-model research, job/session management, an optional stop-time quality gate, and a generic reviewer-agnostic bridge for CI/audit use cases including this repository's own PR pipeline. Bundles its own Codex engine — replaces OpenAI's official `codex` plugin rather than depending on it.
+Delegate work to OpenAI's Codex CLI from Claude Code, with independent verification instead of blind trust: native and adversarial code review, task rescue with diff double-check, document/plan verification, cross-model research, job/session management, an optional stop-time quality gate, and a generic reviewer-agnostic bridge for CI/audit use cases (its integration into this repository's own PR pipeline is not yet operational — see the Skills table below). Bundles its own Codex engine — replaces OpenAI's official `codex` plugin rather than depending on it.
 
 ## Installation
 
@@ -18,7 +18,7 @@ cc --plugin-dir /path/to/plugins/codex-kit
 
 ## Usage
 
-Run `/codex-kit:review` to run a native Codex code review against your working tree, with an independent double-check pass that reads only the files/lines Codex cited and classifies each finding as Agreed/Disagreed/Nuanced/False Positive/Uncited before presenting anything to you. This command is deliberately not model-invocable (`disable-model-invocation: true`) — it must be typed as a slash command, not triggered by natural-language phrasing.
+Run `/codex-kit:review` to run a native Codex code review against your working tree, with an independent double-check pass that reads only the files/lines Codex cited and classifies each finding as Agreed/Disagreed/Nuanced/False Positive/Uncited before presenting anything to you. Every finding is saved to `${CLAUDE_PLUGIN_DATA}/reviews/` on both success and failure. All commands except `/codex-kit:setup` are deliberately not model-invocable (`disable-model-invocation: true`) — they must be typed as a slash command, never triggered by natural-language phrasing.
 
 ## Commands
 
