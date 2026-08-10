@@ -29,6 +29,10 @@ unstaged changes into a properly formatted commit.
   `standalone-commits`'s job (`Skill(git-kit:standalone-commits)`). `commit` only shapes and executes
   the message for whatever is already staged; step 10 below is a lightweight "multiple concerns?"
   signal, not the actual splitting procedure.
+- **Creating a fresh branch before any changes exist** — that's `starting-work`
+  (`Skill(git-kit:starting-work)`), which also handles the worktree-vs-branch choice and main-sync that
+  step 3 below doesn't. Step 3's branch check stays as a fallback for someone already mid-edit on
+  `main`/`master`; it isn't a substitute for deliberately starting new work through `starting-work`.
 
 ## Flags
 
@@ -66,7 +70,7 @@ CRITICAL: Perform the following steps exactly as described:
 
 1. **Read settings**: Read the git-tracked defaults from `${CLAUDE_PLUGIN_ROOT}/git-kit.settings.json` (`enabled`, `commit_confirm_before_commit`, `commit_auto_stage`, `commit_first_line_soft_limit`, `commit_first_line_hard_limit`, `commit_body_max_lines`, `commit_auto_push`, `push_auto_pr`). Then check for `.claude/git-kit.local.json` in the project root — if it exists and its own `enabled` isn't `false`, its fields override the corresponding default for any field it sets.
 2. **Trust check (security)**: If `.claude/git-kit.local.json` exists and set `commit_confirm_before_commit`, `commit_auto_stage`, `commit_auto_push`, or `push_auto_pr`, check whether the file is tracked by git: `git ls-files --error-unmatch .claude/git-kit.local.json`. A git-tracked copy could have been committed by anyone with repo write access — including an attacker aiming to silently weaken safety gates for the next person who runs `/commit`. So if the file IS tracked (command exits 0), discard its values for those four fields and use the `git-kit.settings.json` defaults instead, regardless of what the local file says. Only an untracked (genuinely local, gitignored) `.claude/git-kit.local.json` may override any of these gates. The length-limit and `pr_merge_type`/`merge_auto_delete_branch`-style fields aren't security-relevant and may be honored either way, tracked or not.
-3. **Branch check**: Checks if current branch is `master` or `main`. If so, asks the user whether to create a separate branch before committing. If user confirms a new branch is needed, creates one using the pattern `<type>/<description>` (e.g., `feature/add-new-command`)
+3. **Branch check**: Checks if current branch is `master` or `main`. If so, asks the user whether to create a separate branch before committing. If user confirms a new branch is needed, creates one using the pattern `<type>/<description>` (e.g., `feature/add-new-command`). This is a fallback for someone already mid-edit on `main`/`master` — if no changes exist yet, point at `Skill(git-kit:starting-work)` instead, which also syncs `main` and asks about a worktree.
 4. Unless specified with `--no-verify`, automatically runs pre-commit checks like `pnpm lint` or similar depending on the project language.
 5. Checks which files are staged with `git status`
 6. **Staging**: If 0 files are staged — when `commit_auto_stage` is `true`, stage everything with `git add -A`; otherwise show the unstaged files and ask the user what to stage (or whether `git add -A` is appropriate). **Never auto-stage without confirmation unless `commit_auto_stage` is explicitly enabled.**
@@ -116,6 +120,7 @@ CRITICAL: Perform the following steps exactly as described:
 - **Present tense, imperative mood**: Write commit messages as commands (e.g., "add feature" not "added feature")
 - **Concise first line**: Aim for `commit_first_line_soft_limit` characters (default 50), hard limit `commit_first_line_hard_limit` (default 72)
 - **Body (recommended, not required)**: explain WHY the change was made, not WHAT changed (the diff already shows that). Up to `commit_body_max_lines` lines (default 5). A one-line subject is fine when the diff is genuinely self-explanatory — don't pad a body onto a change that doesn't need one.
+- **Audience**: describe the change in terms any repo reader understands — never a local-machine-specific path, a symptom as it appeared in one session's terminal, or context ("fixed the issue from my last session") that means nothing outside this one environment.
 - **Footer (optional)**: see Commit Message Footer below for the trailer format (breaking changes, related issues, related PRs)
 - **Emoji**: Do not use emoji in commit messages
 
@@ -228,5 +233,7 @@ Step 9 (Test-behavior-change check) has never been exercised through a genuine `
 - [ ] Step 9's ask and step 13's separate confirm-before-commit ask don't read as a confusing back-to-back double prompt when both fire in the same run
 - [ ] "Stop, test first" actually halts before any commit runs
 - [ ] Step 10's "multiple concerns?" signal fires without `commit` attempting to perform the split itself — step 11 always redirects to `Skill(git-kit:standalone-commits)` rather than re-deriving a split
+- [ ] Generated commit messages never contain a local-machine-specific path, terminal-session symptom description, or session context — only content a reader of the shared repo history would understand
+- [ ] A request to commit while on `main`/`master` with nothing staged yet points at `starting-work`; step 3's own branch-creation fallback only fires for someone already mid-edit
 
 A `skill-tester` blind-comparison eval is the heavier alternative `require-tests-for-behavior-changes.md` names first, but `commit` is a `model: haiku`, heavily interactive skill built around several `AskUserQuestion` steps — an awkward fit for blind A/B comparison. This checklist is the pragmatic mechanism the rule explicitly permits instead ("a documented Testing & Validation section... concrete scenarios, pass/fail criteria").

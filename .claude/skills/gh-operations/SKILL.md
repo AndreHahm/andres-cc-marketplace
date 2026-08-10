@@ -1,7 +1,15 @@
 ---
 name: gh-operations
 description: >-
-  Provides a GitHub operations command reference using gh CLI and GitHub API — listing, viewing, editing, commenting on, and reviewing pull requests; managing issues, repository settings, and GitHub Actions workflows; querying API endpoints; and handling GitHub workflows in enterprise or public GitHub environments. Use when listing/viewing/reviewing/commenting on PRs, managing issues, or automating GitHub Actions/API calls. For creating a new PR use `create-pr` (template + pre-commit handling); for merging a PR use `merge-pr` (readiness + merge-rights checks) — this skill does not do either.
+  Provides a GitHub operations command reference using gh CLI and GitHub API — listing, viewing, and
+  editing pull requests; managing issues, repository settings, and GitHub Actions workflows; querying API
+  endpoints; and handling GitHub workflows in enterprise or public GitHub environments. Use when
+  listing/viewing/editing PRs, managing issues, or automating GitHub Actions/API calls. For creating a
+  new PR use `create-pr` (template + pre-commit handling), for merging a PR use `merge-pr`
+  (readiness + merge-rights checks), and for reviewer actions (approve/comment/request-changes) with
+  CODEOWNERS context use `collaborating-on-a-pr` — this skill does not do any of the three; the `gh pr
+  review`/`gh pr comment` examples below are raw reference material only, not a recommendation to run
+  them standalone for a real review.
 allowed-tools: Bash(gh:*)
 ---
 
@@ -14,7 +22,8 @@ This skill provides comprehensive guidance for GitHub operations using the `gh` 
 ## When to Use This Skill
 
 This skill activates for tasks involving:
-- Viewing, editing, commenting on, and reviewing pull requests (not creating — see `create-pr` — and not merging — see `merge-pr`)
+- Viewing and editing pull requests (not creating — see `create-pr`; not merging — see `merge-pr`; not a
+  reviewer action with CODEOWNERS context — see `collaborating-on-a-pr`)
 - Managing GitHub issues or repository settings
 - Querying GitHub API endpoints (REST or GraphQL)
 - Working with GitHub Actions workflows
@@ -26,16 +35,16 @@ This skill activates for tasks involving:
 
 ### Pull Requests
 
-**Not for:** creating a PR (→ `create-pr`) or merging a PR (→ `merge-pr`).
+**Not for:** creating a PR (→ `create-pr`), merging a PR (→ `merge-pr`), or a reviewer action —
+approve/comment/request-changes with CODEOWNERS context (→ `collaborating-on-a-pr`).
 
 ```bash
 # List and view PRs
 gh pr list --state open
 gh pr view 123
 
-# Manage PRs
-gh pr review 123 --approve
-gh pr comment 123 --body "LGTM"
+# Edit PR metadata (not a review action)
+gh pr edit 123 --add-label needs-triage
 ```
 
 See `references/pr-operations.md` for comprehensive PR workflows
