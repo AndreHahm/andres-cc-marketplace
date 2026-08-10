@@ -50,7 +50,7 @@
     {
       "name": "codex-kit",
       "source": "./plugins/codex-kit",
-      "description": "Delegate work to OpenAI's Codex CLI from Claude Code, with independent verification instead of blind trust: native and adversarial code review, task rescue with diff double-check, document/plan verification, cross-model research, job/session management, an optional stop-time quality gate, and a generic reviewer-agnostic bridge for CI/audit use cases including this repository's own PR pipeline. Bundles its own Codex engine — replaces OpenAI's official codex plugin rather than depending on it.",
+      "description": "Delegate work to OpenAI's Codex CLI from Claude Code, with independent verification instead of blind trust: native and adversarial code review, task rescue with diff double-check, document/plan verification, cross-model research, job/session management, an optional stop-time quality gate, and a generic reviewer-agnostic bridge for CI/audit use cases (its integration into this repository's own PR pipeline is not yet operational). Bundles its own Codex engine — replaces OpenAI's official codex plugin rather than depending on it.",
       "version": "1.0.0-alpha.1",
       "author": {
         "name": "Andre Hahm",

@@ -407,6 +407,8 @@ invocations — Bash spawns a fresh shell each call. Use timestamps and
 have Claude **remember the absolute path** printed in Phase 1 stdout,
 then re-inject it literally in every later Bash call.
 
+**Step 1 — set up paths and temp file naming:**
+
 ```bash
 set -o pipefail
 CODEX_COMPANION="${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs"
@@ -417,8 +419,11 @@ PROMPT_FILE="${CLAUDE_PLUGIN_DATA}/tmp/<skill>-prompt-${TS}.txt"
 JOB_JSON_FILE="${CLAUDE_PLUGIN_DATA}/tmp/<skill>-job-${TS}.json"
 echo "PROMPT_FILE=$PROMPT_FILE"
 echo "JOB_JSON_FILE=$JOB_JSON_FILE"
+```
 
-# Header via heredoc — no document content yet
+**Step 2 — assemble the header via heredoc (no document content yet):**
+
+```bash
 cat > "$PROMPT_FILE" <<'EOF'
 <task>
 ...skill-specific task block...
@@ -429,8 +434,11 @@ cat > "$PROMPT_FILE" <<'EOF'
 
 <document>
 EOF
+```
 
-# Input validation only — never load content.
+**Step 3 — validate and append the document (input validation only — never load content):**
+
+```bash
 # Replace <literal doc path> with the path parsed from $ARGUMENTS.
 test -f "<literal doc path>" || { echo "File not found: <literal doc path>" >&2; exit 1; }
 test -s "<literal doc path>" || { echo "File is empty: <literal doc path>" >&2; exit 1; }
@@ -442,8 +450,11 @@ cat "<literal doc path>" >> "$PROMPT_FILE"
 
 # Close XML
 printf '\n</document>\n' >> "$PROMPT_FILE"
+```
 
-# Phase 2 — launch via stdin pipe (no positional!)
+**Step 4 — launch via stdin pipe (no positional!) and capture the job ID:**
+
+```bash
 cat "$PROMPT_FILE" | node "$CODEX_COMPANION" task --background --json \
   > "$JOB_JSON_FILE" 2> "${JOB_JSON_FILE}.stderr" \
   || { echo "task launch failed:" >&2; cat "${JOB_JSON_FILE}.stderr" >&2; exit 1; }

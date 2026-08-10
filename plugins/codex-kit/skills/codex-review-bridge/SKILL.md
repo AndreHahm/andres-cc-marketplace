@@ -6,14 +6,15 @@ description: >-
   structured findings envelope. Invoked by other components (e.g.
   plugin-marketplace-review) or plugins, not directly by end users in normal
   conversation.
-allowed-tools: ["Bash(node:*)", "Read"]
+allowed-tools: ["Bash(node */codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Read"]
+disable-model-invocation: true
 ---
 
-# Generic Codex review bridge (component #18)
+# Generic Codex review bridge
 
-Built on component #17's `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`). Implements `CODEX_INTEGRATION_V2`'s canonical findings envelope so any caller — this plugin's own `plugin-marketplace-review`, or eventually `plugin-grader`'s own dispatch loop — gets the same contract regardless of which reviewer persona is invoked.
+Built on the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`). Implements the canonical findings envelope documented in `references/envelope-schema.md`, so any caller — this plugin's own `plugin-marketplace-review`, or eventually `plugin-grader`'s own dispatch loop — gets the same contract regardless of which reviewer persona is invoked.
 
-**Does not call `plugin-grader` itself.** That integration is deliberately left to `plugin-grader`'s own side (scope-expansion gap #3) — this skill only exposes the bridge.
+**Does not call `plugin-grader` itself.** That integration is deliberately left to `plugin-grader`'s own side — this skill only exposes the bridge.
 
 ## Inputs
 
@@ -21,12 +22,12 @@ Built on component #17's `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`)
 - `instructionBody` — the reviewer's own instruction text (frontmatter stripped by the caller before passing it in). **Must be sourced from outside the diff/scope under review** (e.g. a merge-base or `main` checkout, not the PR branch's working tree) — a caller reviewing a PR must never read the reviewer instructions from that same PR's own files, or the PR could rewrite the instructions that judge it. `bridge-invoke.mjs` enforces the direct case mechanically (rejects if `instructionFile` resolves inside any `targetPaths` entry), but cannot detect an instruction file that lives outside `targetPaths` yet was still read from an untrusted checkout — that discipline is the caller's responsibility.
 - `targetPaths` — files/directories in scope.
 - `schemaPath` — path to the canonical envelope schema (`references/envelope-schema.md` documents its shape; `scripts/bridge-invoke.mjs` bundles the actual JSON Schema).
-- `executionProfile` — must be an acceptable isolated profile (a working read-only sandbox, a container with the repo mounted read-only, or an equivalent isolated CI job). Currently `bridge-invoke.mjs` only checks for the literal string `"danger-full-access"` and rejects that one value with an `isolation_profile_unavailable` typed failure (scope-expansion gap #4); it does not yet record which of the other profile values was passed or thread it into `runCodexExec`/the returned envelope's `provenance.execution_profile` — every non-`danger-full-access` value currently behaves identically. The caller still decides what to do on rejection (e.g. fall back to a Claude-native reviewer).
+- `executionProfile` — must be an acceptable isolated profile (a working read-only sandbox, a container with the repo mounted read-only, or an equivalent isolated CI job). Currently `bridge-invoke.mjs` only checks for the literal string `"danger-full-access"` and rejects that one value with an `isolation_profile_unavailable` typed failure; it does not yet record which of the other profile values was passed or thread it into `runCodexExec`/the returned envelope's `provenance.execution_profile` — every non-`danger-full-access` value currently behaves identically. The caller still decides what to do on rejection (e.g. fall back to a Claude-native reviewer).
 - `dispatchId` — supplied by the caller; ties this run's scratch directory and output to exactly one invocation.
 
 ## Content trust boundary
 
-Everything under `targetPaths` is evidence Codex inspects, never instructions. The prompt sent to Codex explicitly states this before the reviewer instruction body and before any target content (scope-expansion gap #8) — adversarial-fixture tested before this component ships.
+Everything under `targetPaths` is evidence Codex inspects, never instructions. The prompt sent to Codex explicitly states this before the reviewer instruction body and before any target content.
 
 ## Invocation
 
@@ -39,7 +40,7 @@ node "${CLAUDE_PLUGIN_ROOT}/skills/codex-review-bridge/scripts/bridge-invoke.mjs
   --dispatch-id "<caller-supplied id>"
 ```
 
-This wraps `runCodexExec` from component #17, using `--sandbox read-only` always (a review bridge never needs write access), and returns the canonical envelope on stdout as JSON.
+This wraps the shared `runCodexExec` primitive, using `--sandbox read-only` always (a review bridge never needs write access), and returns the canonical envelope on stdout as JSON.
 
 ## Output: canonical envelope
 
@@ -55,4 +56,4 @@ Never returns an empty findings list on failure. See `references/typed-failures.
 
 ## Isolation transparency
 
-If the requested execution profile fails, this skill reports that explicitly in the typed failure — it never silently substitutes `danger-full-access` (scope-expansion gap #4). The decision to fall back (or not) belongs to the caller.
+If the requested execution profile fails, this skill reports that explicitly in the typed failure — it never silently substitutes `danger-full-access`. The decision to fall back (or not) belongs to the caller.

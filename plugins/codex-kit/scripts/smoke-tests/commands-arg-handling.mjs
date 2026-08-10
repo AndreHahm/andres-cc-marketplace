@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Smoke test: commands/status.md, result.md, transfer.md, cancel.md
+// Smoke test: commands/status.md, result.md, transfer.md, cancel.md, review.md, adversarial-review.md
 //
 // These commands were converted from `!`-prefixed shell pre-execution
 // (which interpolated a raw, unquoted $ARGUMENTS blob) to model-run bash
@@ -83,6 +83,41 @@ console.log("\n=== transfer: rejects a source path containing shell metacharacte
     threw = true;
   }
   check("transfer with a nonexistent --source path fails rather than silently succeeding", threw);
+}
+
+console.log("\n=== review: individually-quoted flags reach the script correctly (fails fast pre-Codex on a bad --scope, never hangs or calls Codex) ===");
+{
+  let threw = false;
+  let stderrText = "";
+  try {
+    execFileSync("node", ["scripts/codex-companion.mjs", "review", "--scope", "bogus", "--json"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+  } catch (e) {
+    threw = true;
+    stderrText = (e.stderr ?? e.stdout ?? "").toString();
+  }
+  check("review --scope <val> --json (separate quoted args) is parsed and fails fast on an unsupported scope", threw);
+  check("the failure is the expected validation message, not a crash or hang", stderrText.includes("Unsupported review scope"), stderrText.slice(0, 200));
+}
+
+console.log("\n=== adversarial-review: same fail-fast path, with a trailing focus-text argument ===");
+{
+  let threw = false;
+  let stderrText = "";
+  try {
+    execFileSync(
+      "node",
+      ["scripts/codex-companion.mjs", "adversarial-review", "--scope", "bogus", "--json", "check for injection in the login handler"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    );
+  } catch (e) {
+    threw = true;
+    stderrText = (e.stderr ?? e.stdout ?? "").toString();
+  }
+  check("adversarial-review --scope <val> --json <focus text> (focus text as its own trailing arg) is parsed and fails fast", threw);
+  check("the failure is the expected validation message, not a crash or hang", stderrText.includes("Unsupported review scope"), stderrText.slice(0, 200));
 }
 
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);

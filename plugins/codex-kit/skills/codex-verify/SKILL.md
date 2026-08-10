@@ -7,7 +7,7 @@ description: >-
   analysis or design (no document to point at), use codex-peer-review
   instead.
 argument-hint: "path/to/document.md [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
-allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Codex Document Verification + Double-Check
@@ -102,9 +102,9 @@ cat "<literal doc path>" >> "$PROMPT_FILE"
 printf '\n</document>\n' >> "$PROMPT_FILE"
 ```
 
-### Model/effort (per-call by default — decision #4)
+### Model/effort (per-call by default)
 
-`--model <slug>` / `--effort <level>`, when given, are passed as **companion flags directly** on the Phase 2 `task` invocation — not written to `config.toml`. If neither flag is given, the companion falls back to whatever's already in `~/.codex/config.toml` (decision #7).
+`--model <slug>` / `--effort <level>`, when given, are passed as **companion flags directly** on the Phase 2 `task` invocation — not written to `config.toml`. If neither flag is given, the companion falls back to whatever's already in `~/.codex/config.toml` (codex-kit's default model/effort source of truth).
 
 **`--persist` (opt-in only):** if the user explicitly passes `--persist` alongside `--model`/`--effort`, confirm via `AskUserQuestion` first (config.toml is global, affects every Codex invocation until changed again), then run `node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" setup --json --persist-model "<literal clean model>" --persist-effort "<literal clean effort>"` and relay its result verbatim. Without `--persist`, nothing is written globally.
 

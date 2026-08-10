@@ -4,7 +4,7 @@ description: >-
   Delegate an implementation task to Codex, then Claude reviews the result.
   Use when asked "codex rescue", "delegate to codex", "have codex do it", or
   wants Codex to implement or fix something. If this project has enabled the
-  auto-heuristic delegation toggle (decision #9), also consider proactively
+  auto-heuristic delegation toggle, also consider proactively
   after 2+ failed attempts at a complex backend/algorithmic task — otherwise
   wait for an explicit request. Not for multi-phase
   plan-validate-implement-review workflows on complex or
@@ -12,7 +12,7 @@ description: >-
   codex-rescue is a single delegate-then-review pass, not an iterative
   validation loop.
 argument-hint: "task description [--write] [--model MODEL] [--effort LEVEL] [--resume-last|--resume|--fresh] [--no-preview] [--persist] [--governed]"
-allowed-tools: ["Bash(node:*)", "Bash(git:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node:*)", "Bash(git:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Codex Task Delegation + Double-Check
@@ -54,13 +54,13 @@ safety net.
 
 ## Phase 0: Governance + session gate (codex-kit additions)
 
-**Governed mode (`--governed`, opt-in, component #16):** if passed — or if this project's config enables governed mode by default — before doing anything else, check for a `.codex/` directory or root `AGENTS.md` authorization marker. If absent, refuse to send the task to Codex and explain that governed mode requires explicit repo opt-in (per Wave 4 `codex-delegate-2`'s authorization gate). If present, minimize what's sent: diff + acceptance criteria only, never the full task context, conversation history, or unrelated files.
+**Governed mode (`--governed`, opt-in):** if passed — or if this project's config enables governed mode by default — before doing anything else, check for a `.codex/` directory or root `AGENTS.md` authorization marker. If absent, refuse to send the task to Codex and explain that governed mode requires explicit repo opt-in (per Wave 4 `codex-delegate-2`'s authorization gate). If present, minimize what's sent: diff + acceptance criteria only, never the full task context, conversation history, or unrelated files.
 
 **Pre-delegation checklist** (folded in from `codex-coworker`, applies regardless of governed mode): before wrapping the task, confirm — do existing tests cover this area? Is this ADD (new code) or REPLACE (rewrite existing)? What quality gates (lint/typecheck/test) should run after? Are there existing patterns in the codebase Codex should follow? Surface anything unclear via `AskUserQuestion` rather than guessing.
 
-**Session-level first-send confirmation (decision #8):** if this is the first call in the current session that would send any code or context to Codex (across `codex-rescue`, `codex-verify`, `codex-research`, or any other codex-kit component), confirm once via `AskUserQuestion` before proceeding. Subsequent calls in the same session don't re-ask.
+**Session-level first-send confirmation:** if this is the first call in the current session that would send any code or context to Codex (across `codex-rescue`, `codex-verify`, `codex-research`, or any other codex-kit component), confirm once via `AskUserQuestion` before proceeding. Subsequent calls in the same session don't re-ask.
 
-**Sandbox transparency (scope-expansion gap #4):** `--write` maps to workspace-write sandbox. If that sandbox mode fails on this platform (matches what `/codex-kit:setup` already tested), state that explicitly before falling back to `danger-full-access` — never silently.
+**Sandbox transparency:** `--write` maps to workspace-write sandbox. If that sandbox mode fails on this platform (matches what `/codex-kit:setup` already tested), state that explicitly before falling back to `danger-full-access` — never silently.
 
 ---
 
@@ -70,7 +70,7 @@ You are a translator. Use LM intelligence, not regex tables.
 
 **Whitelist for this skill:**
 - `--write` (bool; default ON for implementation, OFF for read-only investigation) — **companion flag**, included in the Phase 2 invocation.
-- `--model <slug>`, `--effort <level>` — **skill-level flags**, passed as **companion flags directly** on the Phase 2 invocation (decision #4 — per-call by default; see the Model/effort section below for the opt-in `--persist` path). The alias `spark` auto-expands to `gpt-5.3-codex-spark`. Every other value is passed through as given — Codex owns the model/effort lists and settles them at run time. If a value looks like an obvious typo, `AskUserQuestion` rather than letting it propagate.
+- `--model <slug>`, `--effort <level>` — **skill-level flags**, passed as **companion flags directly** on the Phase 2 invocation (per-call by default; see the Model/effort section below for the opt-in `--persist` path). The alias `spark` auto-expands to `gpt-5.3-codex-spark`. Every other value is passed through as given — Codex owns the model/effort lists and settles them at run time. If a value looks like an obvious typo, `AskUserQuestion` rather than letting it propagate.
 - `--resume-last` / `--resume` / `--fresh` — mutually exclusive companion flags. Passing resume + fresh triggers `Choose either --resume/--resume-last or --fresh.` (`:750`). If ANALYZE produces a conflict, `AskUserQuestion`; never forward both.
 - `--no-preview` (bool) — skip Phase 1.5 draft review. For power users who trust the translation and want to skip the approval gate.
 - `--persist` (bool) — see the Model/effort section below; writes `--model`/`--effort` globally to `config.toml` instead of (in addition to) passing them per-call.
@@ -86,9 +86,9 @@ becomes the `<task>` body — you wrap it in prompt blocks below (see
 - **Unknown flag** (e.g., `--foo`, `--background`, `--wait`) → `AskUserQuestion`. `--background` and `--wait` are not needed — Pattern B always uses `--background` internally. `--wait` on task is **silent prompt corruption**; we never accept it.
 - **Ambiguous effort / model value** → `AskUserQuestion`.
 
-### Model/effort (per-call by default — decision #4)
+### Model/effort (per-call by default)
 
-`--model <slug>` / `--effort <level>`, when given, are passed as **companion flags directly** on the Phase 2 `task` invocation (the companion already accepts `--model`/`--effort` natively) — not written to `config.toml`. If neither flag is given, the companion falls back to whatever's already in `~/.codex/config.toml` (codex-kit's default model/effort source of truth — decision #7).
+`--model <slug>` / `--effort <level>`, when given, are passed as **companion flags directly** on the Phase 2 `task` invocation (the companion already accepts `--model`/`--effort` natively) — not written to `config.toml`. If neither flag is given, the companion falls back to whatever's already in `~/.codex/config.toml` (codex-kit's default model/effort source of truth).
 
 **`--persist` (opt-in only):** if the user explicitly passes `--persist` alongside `--model`/`--effort`, confirm via `AskUserQuestion` first (config.toml is global — this changes every Codex invocation until changed again, not just this call), then run:
 
@@ -120,7 +120,7 @@ Pick the blocks by task type — `--write` is the signal. An
 implementation or fix mutates the repo, so it needs scope + verification
 guards; a read-only investigation needs grounding instead.
 
-- **Always:** `<task>` — the approved task text, verbatim — and `<content_trust_boundary>` (scope-expansion gap #8, added by codex-kit — not part of the original block set).
+- **Always:** `<task>` — the approved task text, verbatim — and `<content_trust_boundary>` (a codex-kit addition, not part of the original block set).
 - **`--write` ON (implement / fix):** add `<completeness_contract>`, `<verification_loop>`, `<action_safety>`.
 - **`--write` OFF (read-only investigation):** add `<completeness_contract>`, `<grounding_rules>`.
 
@@ -241,7 +241,7 @@ Use `AskUserQuestion` exactly once:
 
 Notes on the template below (kept out of the fence to save space, not because they're optional):
 - **`--write`**: include for implementation (default ON); omit for read-only.
-- **`--model`/`--effort`**: include only if the user passed them this call (decision #4 — per-call flags by default); omit either line to fall back to `config.toml`.
+- **`--model`/`--effort`**: include only if the user passed them this call (per-call flags by default); omit either line to fall back to `config.toml`.
 - **`--resume-last`/`--resume`/`--fresh`**: mutually exclusive bare boolean flags (no value) — include the one flag line matching what Phase 1 parsed, omit all three lines if none apply.
 - **Never pass a positional arg** — `codex-companion.mjs`'s `readTaskPrompt` short-circuits on a positional prompt, silently dropping stdin.
 - Write the approved **wrapped** prompt from Phase 1.5 (or Phase 1 if `--no-preview`) — never the bare task text.
