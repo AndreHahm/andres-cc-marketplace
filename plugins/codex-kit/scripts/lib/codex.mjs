@@ -619,9 +619,10 @@ async function withAppServer(cwd, fn) {
     await client.close();
     return result;
   } catch (error) {
-    const brokerRequested = client?.transport === "broker" || Boolean(process.env[BROKER_ENDPOINT_ENV]);
+    const wasBrokerTransport = client?.transport === "broker" || error?.transport === "broker";
+    const brokerRequested = wasBrokerTransport || Boolean(process.env[BROKER_ENDPOINT_ENV]);
     const shouldRetryDirect =
-      (client?.transport === "broker" && error?.rpcCode === BROKER_BUSY_RPC_CODE) ||
+      (wasBrokerTransport && error?.rpcCode === BROKER_BUSY_RPC_CODE) ||
       (brokerRequested && (error?.code === "ENOENT" || error?.code === "ECONNREFUSED"));
 
     if (client) {

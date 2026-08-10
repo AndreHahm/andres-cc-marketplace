@@ -41,3 +41,29 @@ For each named branch vs. `--base`: confirm via `AskUserQuestion` before switchi
 ## Boundaries
 
 Never creates PRs, deploys, or posts comments without explicit authority. Mode A is pure read/analysis — it never mutates the working tree. Mode B switches branches (confirmed via `AskUserQuestion` first) but never commits, pushes, or merges. Only Mode C pushes and merges, and only with an explicit `AskUserQuestion` confirmation immediately before each merge (step 5 above) — never automatically. Never fabricates a finding: every lens is instructed to ground findings in cited `file:line` or fail closed.
+
+---
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "run a full codex audit of the whole project across many lenses until convergence"
+- An explicit request for review-until-convergence, multi-branch comparison, or verify-and-fix
+
+**Verify it does NOT activate on:**
+- A single small PR, commit, or uncommitted diff → `/codex-kit:review`
+
+**Concrete scenarios to check:**
+1. Any mode launched → `AskUserQuestion` confirms scope and cost first; never launches silently.
+2. Mode C step 4: a fix group's build/test gate fails and can't be resolved → that group's worktree is removed and dropped from the merge set; other groups are not blocked.
+3. Mode C step 5: CI comes back red on a pushed SHA → merging stops for that round, the group's worktree/branch is left in place (never force-pushed/force-merged), and blocked groups are reported to the user.
+4. A lens returns a finding with no `file:line` citation → fails closed, never fabricated as if grounded.
+
+**Current test coverage:**
+- `evals/codex-audit-loop/evals.json` — 1 defined scenario (cost/scope confirmation, Mode A's explore-plan-launch-synthesize-converge phases). Definition only — not yet run and graded.
+- No persisted smoke test exists for this skill (its output depends on 15-26 live parallel Codex calls against real project state, not a fixed template).
+
+**Quality gates:**
+- [ ] Every mode always confirms scope/cost via `AskUserQuestion` before launching
+- [ ] Mode A and Mode B never mutate committed history; only Mode C pushes/merges, and only per-group with confirmation
+- [ ] A build/test-gate failure in one fix group never blocks the others

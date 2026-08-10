@@ -355,7 +355,15 @@ export class CodexAppServerClient {
     const client = brokerEndpoint
       ? new BrokerCodexAppServerClient(cwd, { ...options, brokerEndpoint, brokerToken })
       : new SpawnedCodexAppServerClient(cwd, options);
-    await client.initialize();
+    try {
+      await client.initialize();
+    } catch (error) {
+      await client.close().catch(() => {});
+      if (error instanceof Error) {
+        error.transport = brokerEndpoint ? "broker" : "spawned";
+      }
+      throw error;
+    }
     return client;
   }
 }

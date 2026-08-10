@@ -1,14 +1,14 @@
 # Codex CLI reference
 
-Consolidated from Wave 3's `codex-cli`, `codex-cli-2`, and `codex-exec` skills (folded in per shortlist exclusion-row reconsideration — see `codex-kit-component-shortlist.md`'s "second scope-expansion" section). This is internal engineering reference for codex-kit's own scripts (`scripts/lib/codex-exec.mjs`, `scripts/codex-companion.mjs`) — not a user-facing CLI tutorial; end users interact with codex-kit's own commands/skills, never raw `codex exec`.
+This is internal engineering reference for codex-kit's own scripts (`scripts/lib/codex-exec.mjs`, `scripts/codex-companion.mjs`) — not a user-facing CLI tutorial; end users interact with codex-kit's own commands/skills, never raw `codex exec`.
 
 ## Model / effort
 
-codex-kit never hardcodes a model name (decision #7) — every component reads `model`/`model_reasoning_effort` from the user's own `~/.codex/config.toml` by default, with per-call `--model`/`--effort` overrides where a component exposes them. Do not add a hardcoded model list here; Codex CLI owns that list and it changes over time.
+codex-kit never hardcodes a model name — every component reads `model`/`model_reasoning_effort` from the user's own `~/.codex/config.toml` by default, with per-call `--model`/`--effort` overrides where a component exposes them. Do not add a hardcoded model list here; Codex CLI owns that list and it changes over time.
 
 ## Sandbox / automation flags
 
-- `--sandbox read-only` / `--sandbox workspace-write` / `--sandbox danger-full-access` — always pass explicitly (never omit and rely on a default). codex-kit's own rule: any fallback to `danger-full-access` must be reported to the user explicitly, never silently (scope-expansion gap #4).
+- `--sandbox read-only` / `--sandbox workspace-write` / `--sandbox danger-full-access` — always pass explicitly (never omit and rely on a default). codex-kit's own rule: any fallback to `danger-full-access` must be reported to the user explicitly, never silently.
 - `--skip-git-repo-check` — bypass the git-repo requirement; only use after explicit user confirmation, since it has security implications the user should be aware of.
 
 ## The stdin-hang gotcha
@@ -27,4 +27,4 @@ Codex CLI reads stdin whenever stdin is non-TTY. In a subprocess/script context,
 
 ## `--output-schema` / `--output-last-message`
 
-The pattern component #17's primitive builds on: `codex exec --output-schema <schema-file> --output-last-message <output-file>` constrains the final response to JSON matching the supplied schema and writes it to a file rather than relying on parsing stdout (which also carries progress/transcript noise). Every object in a schema passed this way should set `additionalProperties: false` to avoid the model padding its response with unrequested fields.
+The pattern the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`) builds on: `codex exec --output-schema <schema-file> --output-last-message <output-file>` constrains the final response to JSON matching the supplied schema and writes it to a file rather than relying on parsing stdout (which also carries progress/transcript noise). Every object in a schema passed this way should set `additionalProperties: false` to avoid the model padding its response with unrequested fields.

@@ -47,3 +47,30 @@ For unresolved disagreements, use WebSearch (or a configured research MCP tool, 
 Present the final report to the user in one of three shapes: **Agreement** (both aligned, brief), **Resolved Disagreement** (both positions + the synthesis + why), or **External Research Arbitration** (both positions + escalation findings, unresolved). This session-level outcome vocabulary is intentionally separate from the per-finding Agreed/Disagreed/Nuanced/False-Positive/Uncited taxonomy other codex-kit components use — this skill validates a *position*, not individual findings.
 
 Never ask before Round 1 or Round 2 — only the escalation and final-output steps involve the user directly, keeping the loop itself autonomous once invoked.
+
+---
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "get a second opinion from codex before we commit to this design"
+- "codex peer review this design" (explicit, manual request only)
+
+**Verify it does NOT activate on:**
+- Proactively, without an explicit request — this skill deliberately has no automatic trigger
+- Verifying an existing written plan/document file → `codex-verify`
+
+**Concrete scenarios to check:**
+1. A code-diff question routed to `task` instead of `review --base` (the #1 mistake this skill names) → wrong command selected, review the Command selection section.
+2. Round 2 converges → outcome classified "Resolved disagreement", not silently reported as "Agreement".
+3. A security or architecture-conflict disagreement → escalates immediately, skipping the normal 2-round wait.
+4. An unresolved disagreement after escalation → both positions and the escalation source are presented; no invented tiebreak.
+
+**Current test coverage:**
+- `evals/codex-peer-review/evals.json` — 1 defined scenario (subagent dispatch, 2-round protocol, escalation path). Definition only — not yet run and graded.
+- No persisted smoke test exists for this skill (its output depends on Claude's own position and Codex's live response, not a fixed template).
+
+**Quality gates:**
+- [ ] Never asks the user before Round 1 or Round 2
+- [ ] Always dispatches via a subagent, never inline in the main conversation
+- [ ] A security/architecture/breaking-change disagreement always skips straight to escalation

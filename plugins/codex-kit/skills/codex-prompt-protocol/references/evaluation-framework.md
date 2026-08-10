@@ -1,6 +1,6 @@
 # Double-Check Evaluation Framework
 
-Shared evaluation methodology for all codex-advisor skills. Every skill reads this after receiving Codex output.
+Shared evaluation methodology for codex-kit's task/review skills. Every skill reads this after receiving Codex output.
 
 ## Peer AI Evaluation
 

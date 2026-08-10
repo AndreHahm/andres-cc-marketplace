@@ -47,7 +47,7 @@ your double-check and wastes turns.
 | 5 REPORT + SAVE | Write report file | n/a |
 
 Unknown flags are silently joined into the **task prompt** by the
-companion (`readTaskPrompt :613-619`). Phase 1 whitelist is the only
+companion (`readTaskPrompt`). Phase 1 whitelist is the only
 safety net.
 
 ---
@@ -71,7 +71,7 @@ You are a translator. Use LM intelligence, not regex tables.
 **Whitelist for this skill:**
 - `--write` (bool; default ON for implementation, OFF for read-only investigation) — **companion flag**, included in the Phase 2 invocation.
 - `--model <slug>`, `--effort <level>` — **skill-level flags**, passed as **companion flags directly** on the Phase 2 invocation (per-call by default; see the Model/effort section below for the opt-in `--persist` path). The alias `spark` auto-expands to `gpt-5.3-codex-spark`. Every other value is passed through as given — Codex owns the model/effort lists and settles them at run time. If a value looks like an obvious typo, `AskUserQuestion` rather than letting it propagate.
-- `--resume-last` / `--resume` / `--fresh` — mutually exclusive companion flags. Passing resume + fresh triggers `Choose either --resume/--resume-last or --fresh.` (`:750`). If ANALYZE produces a conflict, `AskUserQuestion`; never forward both.
+- `--resume-last` / `--resume` / `--fresh` — mutually exclusive companion flags. Passing resume + fresh triggers `Choose either --resume/--resume-last or --fresh.` (`handleTask`). If ANALYZE produces a conflict, `AskUserQuestion`; never forward both.
 - `--no-preview` (bool) — skip Phase 1.5 draft review. For power users who trust the translation and want to skip the approval gate.
 - `--persist` (bool) — see the Model/effort section below; writes `--model`/`--effort` globally to `config.toml` instead of (in addition to) passing them per-call.
 - `--governed` (bool) — see Phase 0 above.
@@ -236,7 +236,7 @@ Use `AskUserQuestion` exactly once:
 
 ## Phase 2: Invoke (Pattern B — companion `--background` + stdin pipe)
 
-`task --background` is honored by the companion (`:758-790` →
+`task --background` is honored by the companion (`handleTask` →
 `enqueueBackgroundTask`). It returns a job payload immediately.
 
 Notes on the template below (kept out of the fence to save space, not because they're optional):
@@ -387,10 +387,39 @@ rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_
 ## Gotchas
 
 - **`--model` / `--effort` are passed as companion flags directly on the Phase 2 `task` invocation, not written to `config.toml`**, unless the user explicitly opts in with `--persist` (see the Model/effort section above). Codex is the authority on valid models and efforts, so a bad value surfaces there, not here.
-- **Never combine `--resume` / `--resume-last` with `--fresh`.** The companion rejects the combination (`:750`).
-- **Never pass a positional argument with Pattern B's stdin pipe.** `readTaskPrompt` short-circuits on `positionalPrompt || readStdinIfPiped()` (`:619`); a positional silently drops the entire task description.
+- **Never combine `--resume` / `--resume-last` with `--fresh`.** The companion rejects the combination.
+- **Never pass a positional argument with Pattern B's stdin pipe.** `readTaskPrompt` short-circuits on `positionalPrompt || readStdinIfPiped()`; a positional silently drops the entire task description.
 - **`--wait` on task is silent prompt corruption.** It becomes part of the task prompt body. ANALYZE must reject it.
 - **Do NOT explore the repo in Phase 1.** The point of delegation is that Codex builds the context. Exploring biases the double-check.
 
 For the full shared gotchas list, read
 `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md §10`.
+
+---
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "codex rescue: add input validation to the login form"
+- "delegate to codex", "have codex do it" (with a described task)
+- 2+ failed attempts at a complex backend task, when the auto-heuristic toggle is enabled
+
+**Verify it does NOT activate on:**
+- A multi-phase plan-validate-implement-review request → `codex-plan-loop`
+- "verify this plan" / "review this doc" (no implementation task) → `codex-verify`
+
+**Concrete scenarios to check:**
+1. A vague task ("fix it") → `AskUserQuestion` for clarification, never repo exploration to guess intent.
+2. `--resume-last` and `--fresh` both present → `AskUserQuestion`, never forward both to the companion.
+3. An unknown flag (`--foo`) → `AskUserQuestion`, never silently forwarded (would become prompt-corrupting content).
+4. Phase 4 double-check: a Codex-cited file/function that doesn't exist in the current tree → classified "False Positive (hallucination)", never presented as a real finding.
+
+**Current test coverage:**
+- `evals/codex-rescue/evals.json` — 1 defined scenario (basic delegation, Phase 0 governance checklist, no repo exploration before Phase 2, no auto-accept). Definition only — not yet run and graded.
+- `scripts/smoke-tests/codex-rescue-prompt-assembly.mjs` — mechanically verifies the Phase 2 prompt-assembly template and the resume-flag omission logic; does not exercise a real Codex call.
+
+**Quality gates:**
+- [ ] Phase 1 never explores the repo before Codex runs
+- [ ] An unknown flag never reaches the companion as a forwarded flag
+- [ ] `--write` OFF always uses `<grounding_rules>` instead of `<verification_loop>`/`<action_safety>`
+- [ ] Phase 5 always writes a report, success or failure

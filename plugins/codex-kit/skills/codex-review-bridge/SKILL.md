@@ -57,3 +57,29 @@ Never returns an empty findings list on failure. See `references/typed-failures.
 ## Isolation transparency
 
 If the requested execution profile fails, this skill reports that explicitly in the typed failure — it never silently substitutes `danger-full-access`. The decision to fall back (or not) belongs to the caller.
+
+---
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- Nothing conversational — this skill is invoked by other components (`plugin-marketplace-review`, `plugin-grader`), not directly by end users
+
+**Verify it does NOT run with:**
+- `--execution-profile danger-full-access` — always rejected with an `isolation_profile_unavailable` typed failure
+- An `--instruction-file` that resolves inside `--target-paths` — always rejected (a reviewer must not be able to read its own judging instructions from the scope it's judging)
+
+**Concrete scenarios to check:**
+1. `--instruction-file` exactly equal to the (only) `--target-paths` entry → rejected, same as the nested case.
+2. A target path that's merely prefix-similar to (but not actually nested inside) another target path → not falsely treated as nested (no false-positive containment rejection).
+3. A Codex response citing a file outside `--target-paths` → the semantic-validation pass catches this before the envelope reaches the caller.
+4. Any failure path → a typed failure with a `category`/`detail`, never an empty findings list standing in for "nothing to report."
+
+**Current test coverage:**
+- `evals/codex-review-bridge/evals.json` — 1 defined scenario (allowlist check, evidence-not-instructions framing, canonical envelope). Definition only — not yet run and graded.
+- `scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs` — directly exercises `bridge-invoke.mjs`'s containment check (self-referential rejection, exact-match rejection, prefix-similar-but-not-nested non-false-positive, a legitimately trusted outside-scope file). This is real script-level coverage, not a template check.
+
+**Quality gates:**
+- [ ] `--execution-profile danger-full-access` is always rejected, never silently substituted
+- [ ] An instruction file resolving inside the reviewed scope is always rejected
+- [ ] Every failure path returns a typed failure, never an empty findings list

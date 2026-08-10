@@ -45,3 +45,5 @@ Codex's read-only/workspace-write sandbox can fail on some platforms (a known Wi
 ```
 
 Runs a Codex-side check on your prior turn's edits before Claude Code is allowed to stop the session, independent of and complementary to codex-kit's own double-check layer (which checks Codex's output, not the other way around).
+
+**This gate fails open, not closed.** It only blocks the session from stopping when Codex's review actually returns a `BLOCK` verdict. Every other outcome — the gate isn't set up yet, the review times out (9 min), the review process errors, or its output can't be parsed — lets the session stop normally, the same as if the gate weren't enabled at all. This is a deliberate design choice (a mis-firing review shouldn't be able to trap a session), but it means the gate is a best-effort second check, not a guaranteed one: a Codex outage or a slow response silently means no review happened for that turn.

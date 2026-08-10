@@ -41,8 +41,21 @@ export async function waitForBrokerEndpoint(endpoint, timeoutMs = 2000) {
   return false;
 }
 
-export async function sendBrokerShutdown(endpoint, token = null) {
+export async function sendBrokerShutdown(endpoint, token = null, timeoutMs = 2000) {
   await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      socket.destroy();
+      finish();
+    }, timeoutMs);
     const socket = connectToEndpoint(endpoint);
     socket.setEncoding("utf8");
     socket.on("connect", () => {
@@ -50,10 +63,10 @@ export async function sendBrokerShutdown(endpoint, token = null) {
     });
     socket.on("data", () => {
       socket.end();
-      resolve();
+      finish();
     });
-    socket.on("error", resolve);
-    socket.on("close", resolve);
+    socket.on("error", finish);
+    socket.on("close", finish);
   });
 }
 

@@ -12,14 +12,35 @@ allowed-tools: ["Read"]
 
 # codex-kit prompt & invocation protocol
 
-This skill has no user-facing trigger. It exists so every other codex-kit component reads one canonical source instead of each maintaining its own copy of the same knowledge — consolidating what would otherwise be 4+ overlapping reference docs (per `codex-kit-component-shortlist.md` component #11).
+This skill has no user-facing trigger. It exists so every other codex-kit component reads one canonical source instead of each maintaining its own copy of the same knowledge.
 
-| Reference | Source | Covers |
-|---|---|---|
-| `references/prompt-blocks.md` | Wave 1 `gpt-5-4-prompting` | The XML tag vocabulary (`task`, `structured_output_contract`, `grounding_rules`, `completeness_contract`, `verification_loop`, `action_safety`, `dig_deeper_nudge`, `compact_output_contract`, `content_trust_boundary`) used across `codex-rescue`, `codex-verify`, `codex-research`, and the Stop-gate prompt |
-| `references/invocation-protocol.md` | Wave 2 `companion-usage.md` | How to call `codex-companion.mjs` correctly: flag whitelists per subcommand, Pattern A (background+poll, for review/adversarial-review) vs. Pattern B (stdin pipe to `task --background`, for rescue/verify/research), job ID capture |
-| `references/evaluation-framework.md` | Wave 2 `evaluation.md` | The double-check taxonomy (Agreed/Disagreed/Nuanced/False Positive/Uncited), self-bias awareness, agreement-level summary format |
-| `references/cli-reference.md` | Wave 3 `codex-cli`/`codex-cli-2`/`codex-exec` | Codex CLI model list, automation-mode/sandbox-mode flags, the stdin-non-TTY hang gotcha, timeout/crash recovery |
-| `references/error-taxonomy.md` | Wave 2 `companion-usage.md` §6 + scope-expansion gap #7 | The full error/failure category table shared by every component's error handling, and the basis for component #18's typed-failure object |
+| Reference | Covers |
+|---|---|
+| `references/prompt-blocks.md` | The XML tag vocabulary (`task`, `structured_output_contract`, `grounding_rules`, `completeness_contract`, `verification_loop`, `action_safety`, `dig_deeper_nudge`, `compact_output_contract`, `content_trust_boundary`) used across `codex-rescue`, `codex-verify`, `codex-research`, and the Stop-gate prompt |
+| `references/invocation-protocol.md` | How to call `codex-companion.mjs` correctly: flag whitelists per subcommand, Pattern A (background+poll, for review/adversarial-review) vs. Pattern B (stdin pipe to `task --background`, for rescue/verify/research), job ID capture |
+| `references/evaluation-framework.md` | The double-check taxonomy (Agreed/Disagreed/Nuanced/False Positive/Uncited), self-bias awareness, agreement-level summary format |
+| `references/cli-reference.md` | Internal engineering reference for codex-kit's own bundled scripts: model/effort resolution mechanics (never a hardcoded model list), sandbox-mode flags, the stdin-non-TTY hang gotcha, timeout/crash recovery |
+| `references/error-taxonomy.md` | The full error/failure category table shared by every component's error handling, and the basis for `codex-review-bridge`'s typed-failure object |
+| `references/shared-skill-conventions.md` | Conventions specific to `codex-rescue`/`codex-verify`/`codex-research`'s shared 5-phase shape: the `content_trust_boundary` block's required invariants, the double-check taxonomy applied to that trio, and the session-level first-send confirmation gate |
 
 Any codex-kit component needing prompt-composition guidance, invocation mechanics, evaluation vocabulary, or CLI/model details should `Read` the relevant reference file directly rather than re-deriving or duplicating this content.
+
+---
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- Nothing conversational — `disable-model-invocation: true`, and it has no user-facing trigger by design. Other codex-kit components `Read` its reference files directly; this skill itself is never invoked.
+
+**Concrete scenarios to check:**
+1. Every reference file listed in the table above actually exists at the stated path.
+2. Each reference file's content matches what the table's "Covers" column claims (no stale description after an edit to the underlying file).
+3. A cited symbol/function name (e.g. `handleReviewCommand`, `readTaskPrompt`) in `invocation-protocol.md` resolves to something that actually exists in `scripts/codex-companion.mjs`/`scripts/lib/*.mjs`.
+
+**Current test coverage:**
+- `evals/codex-prompt-protocol/evals.json` — 1 defined scenario (locating the XML tag vocabulary and error taxonomy without claiming to be user-invocable). Definition only — not yet run and graded, though this skill has no independent runtime behavior beyond "is it read correctly," so a graded eval adds limited value here.
+
+**Quality gates:**
+- [ ] Every table row's reference file exists at the stated path
+- [ ] `invocation-protocol.md`'s citations use symbol names, not line numbers, so they don't drift when the cited file is edited
+- [ ] `disable-model-invocation: true` stays set — this skill should never be model-selected
