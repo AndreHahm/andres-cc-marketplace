@@ -4,12 +4,14 @@ description: >-
   double-check verification
 argument-hint: '[--wait|--background] [--target dirty|branch|commit] [--base <ref>] [--commit <ref>] [--model <slug>] [--effort <level>]'
 disable-model-invocation: true
-allowed-tools: Read, Glob, Grep, Bash(node:*), Bash(git:*), AskUserQuestion
+allowed-tools: Read, Glob, Grep, Bash(node:*), Bash(git:*), Bash(mkdir:*), Write, AskUserQuestion
 ---
 
 Run a Codex review through the shared built-in reviewer, then independently verify Codex's findings before presenting them.
 
 Raw slash-command arguments: `$ARGUMENTS`
+
+Validate `$ARGUMENTS` against the whitelist in the `argument-hint` above (`--wait`/`--background`, `--target dirty|branch|commit`, `--base <ref>`, `--commit <ref>`, `--model <slug>`, `--effort <level>`) before running anything — do not interpolate the raw argument string into a shell command. This command takes no free-form positional text (see Argument handling below). Reject/`AskUserQuestion` on anything outside the whitelist.
 
 ## Trust boundary
 
@@ -43,13 +45,13 @@ Same as before — preserved from the original design:
 
 ## Invoke
 
-Strip `--target` and `--commit` before building the translated args — they are consumed by Target selection above and never forwarded to the companion script. Forward only `--base`, `--scope`, `--model`, `--effort`, and `--wait`/`--background`.
+Strip `--target` and `--commit` before building the translated args — they are consumed by Target selection above and never forwarded to the companion script. Forward only the validated `--base`, `--scope`, `--model`, `--effort`, and `--wait`/`--background` values, each as its own separate, individually-quoted argument — never as a single unquoted `$ARGUMENTS`/translated-args blob.
 
 Foreground:
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" review "<translated args>"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" review --base "<value>" --scope "<value>" --model "<value>" --effort "<value>"
 ```
-Background: launch the same command via `Bash(..., run_in_background: true)`; don't call `BashOutput` or wait in this turn — tell the user to check `/codex-kit:status`.
+(include only the flags actually present after validation; omit any not given.) Background: launch the same command via `Bash(..., run_in_background: true)`; don't call `BashOutput` or wait in this turn — tell the user to check `/codex-kit:status`.
 
 Sandbox is always read-only for review. If a call fails specifically because the sandbox mode isn't available on this platform (matches what `setup` already tested), **state that explicitly** before falling back to `danger-full-access` — never fall back silently (scope-expansion gap #4).
 
@@ -71,3 +73,13 @@ Fail closed on ambiguous/untagged output — treat it as **findings**, never sil
 ## Present
 
 Show Codex's findings (verbatim structure — file paths, severity, exactly as reported) alongside the double-check classification for each one. Never fix anything mentioned. Stop after presenting; ask the user which issues, if any, they want addressed.
+
+## Report + save
+
+```bash
+mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
+```
+
+**Success:** save to `${CLAUDE_PLUGIN_DATA}/reviews/review-<YYYYMMDD-HHMMSS>.md` with the target selection, Codex's output verbatim, and the double-check classification per finding.
+
+**Failure:** save to `${CLAUDE_PLUGIN_DATA}/reviews/review-<YYYYMMDD-HHMMSS>-failed.md` with the failure category and captured stderr.

@@ -16,5 +16,6 @@ All notable changes to this plugin are documented here.
 - Task delegation with diff double-check (`codex-rescue`), document/plan verification (`codex-verify`), and cross-model research (`codex-research`).
 - Job and session management (`/codex-kit:status`, `/codex-kit:result`, `/codex-kit:cancel`, `/codex-kit:transfer`).
 - Optional stop-time review gate (`/codex-kit:setup --enable-review-gate`).
-- A generic, reviewer-agnostic bridge (`codex-review-bridge`) and a thin CI orchestration skill for this repository's own marketplace PR pipeline (`plugin-marketplace-review`).
+- A generic, reviewer-agnostic bridge (`codex-review-bridge`) and a thin CI orchestration skill for this repository's own marketplace PR pipeline (`plugin-marketplace-review`, **not yet operational** — its required `ReviewScope` input doesn't exist in this repository yet).
 - Sandbox-mode viability check in `/codex-kit:setup`, with explicit (never silent) fallback reporting if `danger-full-access` is required.
+- Dual-AI plan-validate-implement-review loop (`codex-plan-loop`), lightweight design/analysis peer review (`codex-peer-review`), whole-project multi-lens audit with an optional independently-verified fix loop (`codex-audit-loop`), Codex CLI session lookup/inspection (`codex-session-lookup`), and the shared internal reference hub for this plugin's own prompt-assembly and invocation conventions (`codex-prompt-protocol`, not user-invocable).

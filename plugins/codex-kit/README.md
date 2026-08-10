@@ -43,7 +43,7 @@ Run `/codex-kit:review` to run a native Codex code review against your working t
 | `codex-peer-review` | Validate Claude's own analysis, design, or recommendation against Codex before presenting it to the user |
 | `codex-audit-loop` | Whole-project multi-lens Codex audit, optionally with independently-verified autonomous fixing (explicitly opt-in) |
 | `codex-review-bridge` | Generic, reviewer-agnostic bridge to Codex — invoked by other components, not directly by end users |
-| `plugin-marketplace-review` | Thin CI orchestration skill for this repository's own marketplace PR pipeline |
+| `plugin-marketplace-review` | Thin CI orchestration skill for this repository's own marketplace PR pipeline. **Not yet operational** — its required input (`ReviewScope`, produced by `scripts/marketplace_ci/review.py`) doesn't exist in this repository yet, so it currently has no way to run. |
 | `codex-session-lookup` | Look up or inspect Codex CLI's own session/history files |
 | `codex-prompt-protocol` | Internal reference for codex-kit's own components — not user-invocable |
 

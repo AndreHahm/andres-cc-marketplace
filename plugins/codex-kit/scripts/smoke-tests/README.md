@@ -11,6 +11,7 @@ node scripts/smoke-tests/broker-rpc-auth.mjs
 node scripts/smoke-tests/codex-rescue-prompt-assembly.mjs
 node scripts/smoke-tests/codex-verify-prompt-assembly.mjs
 node scripts/smoke-tests/codex-research-prompt-assembly.mjs
+node scripts/smoke-tests/stop-review-gate-hook.mjs
 ```
 
 Or all at once:
@@ -23,7 +24,8 @@ for f in scripts/smoke-tests/*.mjs; do node "$f" || echo "FAILED: $f"; done
 
 | File | Component | What it verifies |
 |---|---|---|
-| `commands-arg-handling.mjs` | `commands/status.md`, `result.md`, `transfer.md`, `cancel.md` | The underlying `codex-companion.mjs` subcommands still work when invoked as separate, individually-quoted arguments (the pattern these commands now instruct the model to use, instead of interpolating a raw `$ARGUMENTS` blob). |
+| `commands-arg-handling.mjs` | `commands/status.md`, `result.md`, `transfer.md`, `cancel.md`, `review.md`, `adversarial-review.md` | The underlying `codex-companion.mjs` subcommands still work when invoked as separate, individually-quoted arguments (the pattern these commands now instruct the model to use, instead of interpolating a raw `$ARGUMENTS` blob). The `review`/`adversarial-review` cases use a deliberately-invalid `--scope` value so the check exercises real argument parsing while failing fast, before ever reaching Codex — these two never spawn a real review. |
+| `stop-review-gate-hook.mjs` | `hooks/hooks.json`'s Stop hook (`scripts/stop-review-gate-hook.mjs`) | The hook's exported `parseStopReviewOutput`/`buildStopReviewPrompt` functions directly: ALLOW/BLOCK/malformed-output decision logic, and that the previous turn's assistant message lands inside its own delimited `<claude_response_evidence>` block (not `<task>`) with explicit trust-boundary framing text present. |
 | `codex-review-bridge-trust-boundary.mjs` | `skills/codex-review-bridge/scripts/bridge-invoke.mjs` | The containment check rejects an `--instruction-file` that resolves inside `--target-paths` (the self-referential-reviewer-instructions case), and does not false-positive on a legitimately trusted, outside-scope instruction file. |
 | `broker-rpc-auth.mjs` | `scripts/app-server-broker.mjs`, `scripts/lib/broker-lifecycle.mjs` | The broker's token-based RPC authentication: rejects no token, rejects a wrong token, accepts the correct token, rejects any request on a never-authenticated socket, and shuts down cleanly with the correct token. Spawns a real broker process. |
 | `codex-rescue-prompt-assembly.mjs` | `skills/codex-rescue/SKILL.md`'s Phase 2 heredoc | The condensed prompt-assembly template still produces valid, parseable output and the `JOB_ID`-extraction one-liner still works against a representative job JSON payload. |

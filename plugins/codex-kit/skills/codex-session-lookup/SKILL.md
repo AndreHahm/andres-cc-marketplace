@@ -4,7 +4,7 @@ description: >-
   Look up or inspect Codex CLI's own session/history files. Use when asked to
   find a Codex session, resume a specific Codex session, or inspect a Codex
   session file's metadata.
-allowed-tools: ["Bash(python3:*)"]
+allowed-tools: ["Bash(python3 */codex-session-lookup/scripts/find-session-id.py:*)", "Bash(python3 */codex-session-lookup/scripts/inspect-session-file.py:*)"]
 ---
 
 # Codex session lookup (utility)
@@ -14,8 +14,8 @@ Read-only. Operates on Codex CLI's own local state under `~/.codex/`, not on Cla
 ## Find a session by query or recency
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find_session_id.py" --query "<text>"
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find_session_id.py" --limit 5
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find-session-id.py" --query "<text>"
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find-session-id.py" --limit 5
 ```
 
 Searches `~/.codex/history.jsonl`; outputs tab-separated `session_id`, timestamp, and a truncated prompt (140 chars, use `--full` for the complete text).
@@ -23,7 +23,7 @@ Searches `~/.codex/history.jsonl`; outputs tab-separated `session_id`, timestamp
 ## Inspect a session file
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/inspect_session_file.py" <path-to-rollout-file> [--id-only]
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/inspect-session-file.py" <path-to-rollout-file> [--id-only]
 ```
 
 Reads a `~/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-*.jsonl` (or `.json`) file and prints its session metadata (id, timestamp, cwd), or just the session ID with `--id-only`.
