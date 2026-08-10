@@ -41,7 +41,8 @@ allowed=false
 
 if [ -f "$MARKER" ]; then
   read -r guard ts _skill < "$MARKER" || true
-  if [ "$guard" = "$GUARD_TYPE" ] && [ -n "${ts:-}" ] && [ $((now - ts)) -le 60 ]; then
+  case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
+  if [ "$guard" = "$GUARD_TYPE" ] && [ -n "$ts" ] && [ $((now - ts)) -le 60 ]; then
     allowed=true
   fi
   rm -f "$MARKER"  # always consume -- single use regardless of outcome
