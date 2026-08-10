@@ -107,31 +107,12 @@ gh pr checkout 123
 
 ## PR Comments and Reviews
 
-### Adding Comments
-
-```bash
-# Add comment to PR
-gh pr comment 123 --body "Your comment here"
-
-# Add comment from file
-gh pr comment 123 --body-file comment.txt
-```
-
-### Reviewing PRs
-
-```bash
-# Add review comment
-gh pr review 123 --comment --body "Review comments"
-
-# Approve PR
-gh pr review 123 --approve
-
-# Approve with comment
-gh pr review 123 --approve --body "LGTM! Great work."
-
-# Request changes
-gh pr review 123 --request-changes --body "Please fix X"
-```
+**Not for here:** `gh pr comment` and `gh pr review` (comment/approve/request-changes) are git-kit's
+reviewer-action guard hooks' guarded commands — a raw invocation of either is hard-blocked outside
+`collaborating-on-a-pr`, which adds CODEOWNERS context and a structured action choice these bare commands
+skip. Use `Skill(git-kit:collaborating-on-a-pr)` for a real review; the commands are not reproduced here
+as runnable reference material to avoid documenting a sequence that fails at runtime without the skill's
+marker handshake.
 
 ---
 
@@ -207,11 +188,12 @@ gh pr list --label "wip" --json number -q '.[].number' | \
 # Add label to all open PRs
 gh pr list --state open --json number -q '.[].number' | \
   xargs -I {} gh pr edit {} --add-label "needs-review"
-
-# Approve all PRs from specific author
-gh pr list --author username --json number -q '.[].number' | \
-  xargs -I {} gh pr review {} --approve
 ```
+
+Bulk-approving PRs (`gh pr review {} --approve` in a loop) is not reproduced here: `gh pr review` is
+guarded outside `collaborating-on-a-pr`, and that skill reviews one PR at a time with its own CODEOWNERS
+check and action confirmation, not a bulk loop. There is currently no supported one-shot bulk-approve
+path in git-kit.
 
 ---
 

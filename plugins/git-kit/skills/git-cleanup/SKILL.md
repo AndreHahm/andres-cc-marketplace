@@ -265,7 +265,7 @@ locked and by which reason, rather than surfacing git's raw error text unexplain
 6. **Unlock before removing** - A session-locked worktree (per Phase 4's lock check) gets
    `git worktree unlock` immediately before `git worktree remove`, never `--force` as a substitute for
    unlocking — `--force` bypasses the dirty-worktree safeguard in Safety Rule 5 too, not just the lock
-6. **Group related branches** - Don't scatter them across categories
+7. **Group related branches** - Don't scatter them across categories
 
 ## Rationalizations to Reject
 

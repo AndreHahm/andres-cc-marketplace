@@ -1,6 +1,10 @@
 ---
 name: create-pr
-description: Create pull requests using GitHub CLI with proper templates, draft-vs-ready confirmation, and formatting
+description: >-
+  Create pull requests using GitHub CLI with proper templates, draft-vs-ready confirmation, and
+  formatting. Use when creating a new PR, running `/create-pr`, or asked to "open a PR", "create a pull
+  request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
+  an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference — otherwise an interactive guide
 allowed-tools: Bash(gh pr:*), Bash(gh auth:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr)
 ---

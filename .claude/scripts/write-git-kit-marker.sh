@@ -6,7 +6,8 @@
 # `git checkout -b` / `git switch -c` / `gh pr review` / `gh pr comment` through.
 #
 # Called by the allowlisted skills (commit, standalone-commits, create-pr,
-# merge-pr) immediately before they run the guarded command themselves --
+# merge-pr, starting-work, collaborating-on-a-pr) immediately before they run
+# the guarded command themselves --
 # the marker must be fresh (<=60s old, checked by the hook) and is consumed
 # on first use, so writing it any earlier than "right before the guarded
 # command" risks it going stale or being consumed by an unrelated call.
