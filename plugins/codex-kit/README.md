@@ -18,7 +18,7 @@ cc --plugin-dir /path/to/plugins/codex-kit
 
 ## Usage
 
-Run `/codex-kit:review` to run a native Codex code review against your working tree, with an independent double-check pass that reads only the files/lines Codex cited and classifies each finding as Agreed/Disagreed/Nuanced/False Positive/Uncited before presenting anything to you. Every finding is saved to `${CLAUDE_PLUGIN_DATA}/reviews/` on both success and failure. All commands except `/codex-kit:setup` are deliberately not model-invocable (`disable-model-invocation: true`) — they must be typed as a slash command, never triggered by natural-language phrasing.
+Run `/codex-kit:review` to run a native Codex code review against your working tree, with an independent double-check pass that reads only the files/lines Codex cited and classifies each finding as Agreed/Disagreed/Nuanced/False Positive/Uncited before presenting anything to you. Every finding is saved to `${CLAUDE_PLUGIN_DATA}/reviews/` on both success and failure. All 7 commands are deliberately not model-invocable (`disable-model-invocation: true`) — they must be typed as a slash command, never triggered by natural-language phrasing.
 
 ## Commands
 
