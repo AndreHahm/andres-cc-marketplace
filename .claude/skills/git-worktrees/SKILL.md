@@ -13,6 +13,12 @@ Git worktrees enable checking out multiple branches simultaneously in separate d
 
 **Core principle:** One worktree per active branch. Switch contexts by changing directories, not branches.
 
+**Two different defaults, intentionally:** this skill's own examples below use sibling directories
+(`../project-feature`) for manual, ad-hoc worktree management — that default still applies here.
+`starting-work`'s *automated* flow uses a different default, `.claude/worktrees/<description>` (or
+`.codex/worktrees/` for a Codex CLI session), locked to the creating session — see that skill for why.
+Neither supersedes the other; they're two different use cases (manual vs. session-lifecycle-managed).
+
 ## Core Concepts
 
 | Concept | Description |

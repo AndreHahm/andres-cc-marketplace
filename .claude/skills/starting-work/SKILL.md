@@ -7,7 +7,7 @@ description: >-
   against git-kit's <type>/<description> convention and offers a worktree as an alternative to a plain
   branch checkout.
 argument-hint: (optional) branch type and description, e.g. "feature add-user-auth"
-allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Read
+allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read
 ---
 
 # Starting Work
@@ -70,18 +70,34 @@ branch off", "set up a worktree for this feature".
    colliding with another's), "Plain branch (Recommended)" when `false`. The setting never replaces this
    ask — a human always makes the actual choice. See `references/worktree-decision.md` for the tradeoffs
    to mention if the user wants guidance rather than a snap decision.
-4. **Create**:
+4. **Create**: immediately before either branch-creating command below, run
+   `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-branch-create starting-work` — this writes
+   the marker git-kit's branch-creation guard requires; it must be written right before the command runs,
+   not earlier, since the hook only accepts a marker up to 60 seconds old.
    - Plain branch: `git checkout -b <type>/<description>`.
-   - Worktree: compute a default sibling path following `git-worktrees`' own naming convention
-     (`../<repo-dir-name>-<description>`), show it to the user for confirmation or override. If the user
-     supplies an override, constrain it: letters, digits, hyphens, underscores, forward slashes, and
-     periods only (no shell metacharacters), it must not contain a `..` path segment, and it must resolve
-     to a location alongside or below the repo's parent directory — not step 2's kebab-case rule, which
-     is stricter than a filesystem path needs to be. If the override doesn't meet this, tell the user why
-     and ask again rather than passing it through. Then `git worktree add -b <type>/<description> <path>`.
+   - Worktree: compute a default path at `.claude/worktrees/<description>` (this skill only ever runs
+     under Claude Code; the equivalent path for a Codex CLI session would be `.codex/worktrees/<description>`
+     — both are gitignored). This is `starting-work`'s own default for a session-lifecycle-managed
+     worktree — distinct from `git-worktrees`' sibling-directory convention (`../project-feature`), which
+     stays the right default for manual, ad-hoc worktree management outside this automated flow; see that
+     skill's own note on the two use cases. Show the computed path to the user for confirmation or
+     override. If the user supplies an override, constrain
+     it: letters, digits, hyphens, underscores, forward slashes, and periods only (no shell
+     metacharacters), it must not contain a `..` path segment, and it must resolve to a location either
+     (a) inside this repo under `.claude/worktrees/` or `.codex/worktrees/`, or (b) alongside/below the
+     repo's parent directory (the old sibling convention, still supported as an explicit override) — not
+     step 2's kebab-case rule, which is stricter than a filesystem path needs to be. If the override
+     doesn't meet this, tell the user why and ask again rather than passing it through. Then
+     `git worktree add -b <type>/<description> <path>`, followed immediately by
+     `git worktree lock <path> --reason "claude session"` so the worktree can't be removed by
+     `git worktree remove` (without `--force`) until it's explicitly unlocked — `git-cleanup` knows to
+     unlock a session-locked worktree before removing it once its branch is safe to delete.
 5. **Report**: the branch (or worktree path) just created, current location, and — for a worktree —
-   that `cd`-ing into the worktree path is needed before working there. Mention `git-worktrees` has
-   further operations (compare, merge, cleanup) if multiple worktrees end up in play.
+   that `cd`-ing into the worktree path is needed before working there, and that it's now locked to this
+   session: when the work here is done, `finishing-work`/`/git-cleanup` handles unlocking and removal —
+   don't `git worktree remove --force` it directly, since that bypasses the lock as a safety signal that
+   this worktree is still in active use. Mention `git-worktrees` has further operations (compare, merge,
+   cleanup) if multiple worktrees end up in play.
 
 ## Testing & Validation
 
@@ -111,6 +127,15 @@ branch off", "set up a worktree for this feature".
       only changes which option is recommended, it never skips the question
 - [ ] Step 4 never passes an unconstrained worktree-path override to `git worktree add` — always
       validates the character class and rejects any `..` path segment
+- [ ] Step 4's default worktree path is always `.claude/worktrees/<description>` (or `.codex/worktrees/`
+      for a Codex CLI session) — never the old sibling-directory convention, unless the user explicitly
+      overrides to one
+- [ ] Every worktree Step 4 creates is locked (`git worktree lock`) immediately after `git worktree add`
+      — never left unlocked
+- [ ] Step 5's report always mentions the worktree is session-locked and points at
+      `finishing-work`/`/git-cleanup` for removal — never suggests `git worktree remove --force` directly
+- [ ] Step 4 always writes the `git-branch-create` marker immediately before `git checkout -b` /
+      `git worktree add -b`, never earlier in the run
 - [ ] A dirty working tree at step 1 always stops the flow with a pointer to `commit`, never proceeds
 
 ## Reference Guide
