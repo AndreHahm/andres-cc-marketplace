@@ -204,11 +204,13 @@ Files that import nothing come first. Files that import everything come last.
 For multi-wave work:
 
 ```bash
-# Create feature branch
-git checkout -b feat/my-feature
+# Create the feature branch first via Skill(git-kit:starting-work) -- raw
+# `git checkout -b` is hard-blocked by git-kit's branch-creation guard outside it.
 
 # Wave 1
 # ... make changes ...
+# (each wave's commit goes through this skill's own Staging Workflow step 6,
+# which writes the marker git-kit's commit guard requires)
 git add <files> && git commit -m "feat(scope): wave 1 description"
 
 # Wave 2
