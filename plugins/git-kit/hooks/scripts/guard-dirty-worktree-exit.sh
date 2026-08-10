@@ -55,7 +55,11 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   # Trimmed to a whole-message match, not a substring search -- a real override
   # is a short, deliberate command, never text embedded inside a longer PR
   # body, tool result, or system-reminder block quoted in the transcript.
-  LAST_USER_MSG=$(jq -rs '
+  # Bounded to the transcript's tail: the override, if present, is always the
+  # most recent user turn, and Stop must stay quick -- an unbounded jq -rs
+  # over a long session's full JSONL both wastes time and risks a timeout,
+  # which (per Stop's own timeout semantics) fails this guard open.
+  LAST_USER_MSG=$(tail -n 200 "$TRANSCRIPT_PATH" 2>/dev/null | jq -rs '
     [.[] | select(.type == "user" and (.message.role // empty) == "user")]
     | if length == 0 then "" else
         last | .message.content
@@ -64,7 +68,7 @@ if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
           end
       end
     | gsub("^\\s+|\\s+$"; "")
-  ' -- "$TRANSCRIPT_PATH" 2>/dev/null || echo "")
+  ' 2>/dev/null || echo "")
   LAST_USER_MSG_LOWER=$(printf '%s' "$LAST_USER_MSG" | tr '[:upper:]' '[:lower:]')
   if [ "$LAST_USER_MSG_LOWER" = "exit anyway" ]; then
     exit 0

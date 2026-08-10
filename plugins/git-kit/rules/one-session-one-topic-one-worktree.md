@@ -2,8 +2,9 @@
 
 ## When this applies
 
-Starting any new piece of work through `starting-work`, or deciding whether to keep working in a
-session's already-bound worktree versus starting something unrelated in it.
+Starting any new piece of work through `starting-work`; deciding whether to keep working in a session's
+already-bound worktree versus starting something unrelated in it; or deciding whether to open a *second*
+worktree for a new topic while an earlier topic's worktree from the same session is still open.
 
 ## Rule
 
@@ -26,3 +27,13 @@ worktree with mixed topics is more likely to get force-deleted along with unrela
 by mistake. One worktree per topic keeps `git-cleanup`'s merged/unmerged/dirty analysis meaningful — it
 can trust that "this worktree's branch merged" means "this worktree is done," which isn't true if a
 second, unrelated topic is still active in the same directory.
+
+The symmetric, session-level half of the Rule — don't leave one topic's worktree open while starting a
+second, unrelated one under the same session — exists for a different reason: the Stop exit-guard
+(`guard-dirty-worktree-exit.sh`) checks only the worktree the session's current working directory is
+actually in at the moment the agent's turn ends, not every worktree that session has ever locked. If a
+session locks worktree A for one topic, then moves into worktree B for a second, unrelated topic without
+finishing A first, a Stop event fired while sitting in B checks only B — A's dirty or unmerged state goes
+unchecked at that moment, even though A is still locked and still at risk. Finishing one topic (and
+leaving its worktree) before starting the next keeps the guard checking the worktree that's actually in
+flight, rather than leaving an earlier one silently unprotected.
