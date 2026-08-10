@@ -11,7 +11,7 @@ Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, 
 
 ## Overview
 
-`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management. Four `PreToolUse` hooks hard-block raw commands that bypass these skills, and a `Stop` hook guards exiting a dirty session-locked worktree — see Hooks below.
+`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management. Four `PreToolUse` hooks hard-block raw commands that bypass these skills, a `Stop` hook guards exiting a dirty session-locked worktree, and two rules document the plugin's worktree and lifecycle-routing conventions — see Hooks and Rules below.
 
 Several skills (`create-pr`, `gh-operations`) require GitHub CLI (`gh`) for full functionality.
 
@@ -138,6 +138,13 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 **Mechanism (marker-file handshake, the 4 `PreToolUse` guards only):** a `PreToolUse` hook has no way to know which skill is currently active, so each allowlisted skill calls `scripts/write-git-kit-marker.sh <guard-type> <skill-name>` immediately before it runs the guarded command itself. This writes a single-use marker to `$(git rev-parse --git-dir)/git-kit-marker.txt` — inside `.git/`, never `.claude/`, so it can never be accidentally committed regardless of a project's `.gitignore`. The hook checks the marker is present, matches the guard type being attempted, and is no more than 60 seconds old, then **always deletes it** whether or not it matched — a marker can't be reused for a later, unrelated raw command in the same session. Any raw invocation with no fresh, matching marker is denied, with a message pointing at the correct skill (`/commit`, `/create-pr`, `/merge-pr`, `starting-work`, `collaborating-on-a-pr`).
 
 `git-rebase-sync` runs `git rebase`/`git push --force-with-lease` directly, neither of which these hooks guard, so it needs no marker.
+
+## Rules
+
+`git-kit` ships two behavioral rules (`rules/`, auto-loaded each session):
+
+- **`one-session-one-topic-one-worktree`** — a worktree created for a session is scoped to one topic; don't accumulate unrelated work in it, and don't leave one topic's worktree open while starting another under the same session.
+- **`route-through-git-kit-lifecycle-skills`** — documents the full lifecycle chain (`starting-work` → `commit` → `create-pr`/`collaborating-on-a-pr` → `merge-pr` → `finishing-work`) for discoverability. The `PreToolUse` hard-block hooks above already enforce most of this mechanically; this rule is the human-readable statement of the same chain, not a second enforcement mechanism.
 
 ## Attribution
 
