@@ -17,6 +17,16 @@ blanket grant "couldn't be narrowed further," which was wrong — `Bash(git bise
 `git bisect run <command>`, letting a bisect session execute an arbitrary command per commit, which this
 skill never documents or uses.
 
+**On the test-command tool grants:** `Bash(npm:*)`, `Bash(yarn:*)`, `Bash(pnpm:*)`, `Bash(pip:*)`,
+`Bash(pytest:*)`, `Bash(cargo:*)`, and `Bash(go:*)` stay blanket per-tool, unlike the `git bisect` grant
+above — deliberately, not by oversight. Automatic mode's whole point (step 2 below) is running *the test
+command the user supplies*, verbatim, at each bisect step: `npm test`, `npm run test:unit`, `cargo test
+--release`, `go test ./...`, `pytest -k pattern`, `pip install -e . && pytest`, and any other legitimate
+invocation shape of these tools are all in scope. Narrowing to a fixed subcommand list (e.g. only
+`Bash(npm test:*)`) would silently break that documented feature for any test command that doesn't match
+the fixed list, which defeats the reason this mode exists. The Test-command scope note just below already
+documents the *set* of tools covered; this note documents why each one stays unscoped within itself.
+
 ## Instructions
 
 1. **Check current state**: run `git status`, `git branch --show-current`, and `git bisect log 2>/dev/null || echo "No active bisect session"` to see if a session is already in progress.

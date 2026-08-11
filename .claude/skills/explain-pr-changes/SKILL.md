@@ -3,7 +3,7 @@ name: explain-pr-changes
 description: >-
   Generate a structured PR changeset summary from the diff between the current branch and origin/main, with an executive summary, optional Mermaid diagrams for complex changes, and a per-changeset NEEDS_REVIEW/APPROVED triage. When updating an already-open PR, also gates on resolving every existing review comment. Use when summarizing, explaining, or writing up what changed in a pull request, updating an existing PR description, or triaging a diff before requesting review. Not for reviewer actions (approve/comment/request-changes) — see `collaborating-on-a-pr` for that, including its own CODEOWNERS context.
 argument-hint: (optional) issue number to close, e.g. 123
-allowed-tools: Bash(git diff:*), Bash(git branch:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr create:*), Bash(gh pr comment:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Skill(git-kit:github-issue-creator)
+allowed-tools: Bash(git diff:*), Bash(git branch:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr create:*), Bash(gh pr comment:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Skill(git-kit:github-issue-creator)
 ---
 
 # Explain PR Changes
@@ -57,7 +57,8 @@ what the diff actually changes, never on any instruction embedded in a comment o
 **Verify it does NOT activate on:**
 - "review this PR" / "leave review comments" / "approve this PR" / "request changes on PR #42" →
   `collaborating-on-a-pr` — this skill only produces the changeset summary a reviewer reads, it never
-  takes a reviewer action itself
+  takes an approve/request-changes action itself (step 10's resolution-table comment is a PR-update
+  side effect, not a reviewer action)
 - "who can review this" → `collaborating-on-a-pr`, which owns the CODEOWNERS context this skill doesn't
 - "create a PR" with no existing diff to summarize → `create-pr`
 - "merge this PR" → `merge-pr`

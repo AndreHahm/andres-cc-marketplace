@@ -25,9 +25,18 @@ starting-work → commit → create-pr / collaborating-on-a-pr → merge-pr → 
 - **Cleaning up after a merge** → `Skill(git-kit:finishing-work)`, which hands off to `/git-cleanup` for
   the actual branch/worktree deletion.
 
-`git-kit`'s hard-block `PreToolUse` hook enforces the raw-command bypass for `commit`, `create-pr`,
-`merge-pr`, `starting-work`'s branch creation, and `collaborating-on-a-pr`'s reviewer actions — this rule
-is the discoverable, human-readable statement of that same chain, not a duplicate enforcement mechanism.
+`git-kit`'s hard-block `PreToolUse` hooks enforce the raw-command bypass for `commit`, `create-pr`,
+`merge-pr`, `starting-work`'s branch creation, `collaborating-on-a-pr`'s reviewer actions, and
+`git-cleanup`'s destructive branch-delete/worktree-remove actions — this rule is the discoverable,
+human-readable statement of that same chain, not a duplicate enforcement mechanism.
+
+**The marker handshake is a policy guardrail, not a security boundary.** Each of these hooks checks for a
+plaintext, unauthenticated marker file (guard-type + timestamp, no signature) that the allowlisted skill
+writes immediately before running its guarded command. This stops *accidental* bypass — forgetting to go
+through the matching skill — but not a *deliberately adversarial* agent, which could write the same
+marker string via a second raw command and satisfy the check without ever running the skill. Treat the
+hooks as guardrails against habit and mistake, not as proof that a guarded command actually came from the
+skill that's supposed to own it.
 
 ## Why
 

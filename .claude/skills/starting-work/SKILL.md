@@ -7,7 +7,7 @@ description: >-
   against git-kit's <type>/<description> convention and offers a worktree as an alternative to a plain
   branch checkout.
 argument-hint: (optional) branch type and description, e.g. "feature add-user-auth"
-allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Glob, Write
+allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Glob, Write
 ---
 
 # Starting Work
@@ -46,7 +46,7 @@ branch off", "set up a worktree for this feature".
    `references/worktree-decision.md` for why this branch-off-a-branch case is legitimate (e.g. stacking
    related work).
    Verify `git status --porcelain` is clean before proceeding; if not, tell the user to commit or stash
-   first (point at `Skill(git-kit:commit)`) and stop here.
+   first (point at the `commit` skill) and stop here.
 2. **Resolve the branch name**: use `$ARGUMENTS` if it supplies a type and description; otherwise ask
    via `AskUserQuestion` for both, one at a time. Validate:
    - Type: a single lowercase word, no slashes or spaces.
@@ -99,7 +99,11 @@ branch off", "set up a worktree for this feature".
      history, not untracked files): if `.claude/settings.local.json` exists in the main worktree root,
      copy it to the same relative path in the new worktree, only if the destination doesn't already
      exist there (never clobber). Also `Glob` the main worktree for `**/CLAUDE.local.md` and copy each
-     match found into the same relative path in the new worktree, same no-clobber rule.
+     match found into the same relative path in the new worktree, same no-clobber rule — but first drop
+     any match under a vendored/third-party tree (`node_modules/`, `.venv/`) or this plugin's own
+     `.temp/` directory, since a bare `**/CLAUDE.local.md` pattern would otherwise sweep those too;
+     `Glob` itself has no exclude syntax, so filter the match list before copying rather than trying to
+     encode the exclusion into the pattern.
 5. **Report**: the branch (or worktree path) just created, current location, and — for a worktree —
    that `cd`-ing into the worktree path is needed before working there, and that it's now locked to this
    session: when the work here is done, `finishing-work`/`/git-cleanup` handles unlocking and removal —

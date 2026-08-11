@@ -7,7 +7,7 @@ description: >-
   that closes #123", or "who can review this". Wraps create-pr for issue-linking rather than duplicating
   its flow, and reuses merge-pr's CODEOWNERS check for reviewer context.
 argument-hint: (optional) PR number or URL, and/or an issue number to link — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr view:*), Bash(gh pr review:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user --jq:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Write, Skill(git-kit:create-pr)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr review:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user --jq:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, Skill(git-kit:create-pr)
 ---
 
 # Collaborating on a PR
@@ -55,12 +55,14 @@ specifically to prevent `create-pr` ↔ `collaborating-on-a-pr` from calling eac
    itself. This mirrors `create-pr`'s own existing pattern of passing an explicit instruction into a nested
    `Skill()` call (its pre-flight `commit` invocation tells `commit` to skip Auto-PR) — an instruction
    passed at invocation time, not shared state or a file. Both instructions are required, not just (a) —
-   omitting (b) is what would let `create-pr` ↔ `collaborating-on-a-pr` call each other in a loop.
+   omitting (b) is what would let `create-pr` ↔ `collaborating-on-a-pr` call each other in a loop. See
+   `create-pr`'s own "Loop-Breaker Convention" section for the shared rationale across both of its
+   bidirectional pairs.
 2. After it returns, verify: `gh pr view --json body -q .body`. If the closing/referencing line isn't
    present in the returned body, compose the updated body (existing body, a real blank line, then the
    `Closes #<N>`/`Refs #<N>` line) and write it with the `Write` tool to a scratch file — an absolute
-   path under the system temp directory, e.g. `/tmp/git-kit-pr-body-<PR-number>.md` — then run
-   `gh pr edit --body-file <that path>`. **Never place the fetched body text inside a shell-interpolated
+   path under the session's scratchpad/temp directory, e.g. `<scratchpad-dir>/git-kit-pr-body-<PR-number>.md`
+   — then run `gh pr edit --body-file <that path>`. **Never place the fetched body text inside a shell-interpolated
    string, and never inside a heredoc either**: PR content is writable by anyone with repo access (per
    this skill's own data-not-instructions boundary above), and a heredoc's own terminator line is just
    as spoofable by a crafted PR body as a quoted string is — `Write`ing the content as a tool parameter,

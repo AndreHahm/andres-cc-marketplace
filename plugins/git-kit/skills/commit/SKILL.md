@@ -8,7 +8,7 @@ description: >-
   into multiple commits, see standalone-commits instead.
 argument-hint: Optional flags (--no-verify, --amend, --push) followed by an optional commit message
 model: haiku
-allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:create-pr)
+allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Read, Skill(git-kit:create-pr)
 ---
 
 # Claude Command: Commit
@@ -26,11 +26,11 @@ unstaged changes into a properly formatted commit.
 
 - **Deciding whether to split a diff into multiple commits, ordering multi-file changes into
   dependency-ordered waves, or picking which of several pending changes to stage first** — that's
-  `standalone-commits`'s job (`Skill(git-kit:standalone-commits)`). `commit` only shapes and executes
+  `standalone-commits`'s job (run the `standalone-commits` skill). `commit` only shapes and executes
   the message for whatever is already staged; step 10 below is a lightweight "multiple concerns?"
   signal, not the actual splitting procedure.
 - **Creating a fresh branch before any changes exist** — that's `starting-work`
-  (`Skill(git-kit:starting-work)`), which also handles the worktree-vs-branch choice and main-sync that
+  (run the `starting-work` skill), which also handles the worktree-vs-branch choice and main-sync that
   step 3 below doesn't. Step 3's branch check stays as a fallback for someone already mid-edit on
   `main`/`master`; it isn't a substitute for deliberately starting new work through `starting-work`.
 
@@ -70,18 +70,21 @@ CRITICAL: Perform the following steps exactly as described:
 
 1. **Read settings**: Read the git-tracked defaults from `${CLAUDE_PLUGIN_ROOT}/git-kit.settings.json` (`enabled`, `commit_confirm_before_commit`, `commit_auto_stage`, `commit_first_line_soft_limit`, `commit_first_line_hard_limit`, `commit_body_max_lines`, `commit_auto_push`, `push_auto_pr`). Then check for `.claude/git-kit.local.json` in the project root — if it exists and its own `enabled` isn't `false`, its fields override the corresponding default for any field it sets.
 2. **Trust check (security)**: If `.claude/git-kit.local.json` exists and set `commit_confirm_before_commit`, `commit_auto_stage`, `commit_auto_push`, or `push_auto_pr`, check whether the file is tracked by git: `git ls-files --error-unmatch .claude/git-kit.local.json`. A git-tracked copy could have been committed by anyone with repo write access — including an attacker aiming to silently weaken safety gates for the next person who runs `/commit`. So if the file IS tracked (command exits 0), discard its values for those four fields and use the `git-kit.settings.json` defaults instead, regardless of what the local file says. Only an untracked (genuinely local, gitignored) `.claude/git-kit.local.json` may override any of these gates. The length-limit and `pr_merge_type`/`merge_auto_delete_branch`-style fields aren't security-relevant and may be honored either way, tracked or not.
-3. **Branch check**: Checks if current branch is `master` or `main`. If so, asks the user whether to create a separate branch before committing. If user confirms a new branch is needed, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-branch-create commit` immediately before creating the branch — this writes the marker git-kit's branch-creation guard requires; it must be written right before `git checkout -b`, not earlier. Then create the branch using the pattern `<type>/<description>` (e.g., `feature/add-new-command`). This is a fallback for someone already mid-edit on `main`/`master` — if no changes exist yet, point at `Skill(git-kit:starting-work)` instead, which also syncs `main` and asks about a worktree.
+3. **Branch check**: Checks if current branch is `master` or `main`. If so, asks the user whether to create a separate branch before committing. If user confirms a new branch is needed, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-branch-create commit` immediately before creating the branch — this writes the marker git-kit's branch-creation guard requires; it must be written right before `git checkout -b`, not earlier. Then create the branch using the pattern `<type>/<description>` (e.g., `feature/add-new-command`). This is a fallback for someone already mid-edit on `main`/`master` — if no changes exist yet, point at the `starting-work` skill instead, which also syncs `main` and asks about a worktree.
 4. Unless specified with `--no-verify`, automatically runs pre-commit checks like `pnpm lint` or similar depending on the project language.
 5. Checks which files are staged with `git status`
 6. **Staging**: If 0 files are staged — when `commit_auto_stage` is `true`, stage everything with `git add -A`; otherwise show the unstaged files and ask the user what to stage (or whether `git add -A` is appropriate). **Never auto-stage without confirmation unless `commit_auto_stage` is explicitly enabled.**
-7. **Check for sensitive files** among the now-staged files. **NEVER commit:**
-   - `.env`, `.env.*` files
-   - `*secret*`, `*credential*`, `*.key`, `*.pem`
-   - `*password*`, `*token*` files
-   - SSH/cloud private keys: `id_rsa`, `id_ed25519`, `id_ecdsa`, `id_dsa`, `service-account.json`, `*.p12`, `*.pfx`, `*.jks`
-   - Credential config files: `.npmrc`, `.pgpass`, `.netrc`
+7. **Check for sensitive files** among the now-staged files: run
+   `"${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh"` with the staged file list to check them against
+   the fixed sensitive-filename patterns (`.env`/`.env.*`, `*secret*`/`*credential*`/`*.key`/`*.pem`,
+   `*password*`/`*token*`, SSH/cloud private keys `id_rsa`/`id_ed25519`/`id_ecdsa`/`id_dsa`/
+   `service-account.json`/`*.p12`/`*.pfx`/`*.jks`, and credential config files `.npmrc`/`.pgpass`/
+   `.netrc`). If any are flagged, warn the user and unstage them (`git restore --staged <file>`) before
+   continuing.
 
-   If any are detected, warn the user and unstage them (`git restore --staged <file>`) before continuing.
+   **Limitation:** this check matches staged *filenames* only — it does not inspect staged diff content
+   for embedded credential-shaped strings (API keys, tokens) in a file whose name doesn't match one of
+   these patterns. A key pasted into an otherwise-unflagged file's content is not caught by this step.
 8. Performs a `git diff --cached` to understand what changes are being committed
 9. **Test-behavior-change check**: scan the staged diff for any `skills/*/SKILL.md`, `skills/*/references/*.md`, or `agents/*.md` change that alters guidance or instructions — per `.claude/rules/require-tests-for-behavior-changes.md`'s definition (a change to what a component actually does when followed on some input; excludes deterministic script/code logic changes and prose fixes that only restore already-intended behavior). If any staged file matches, ask via `AskUserQuestion`: "This looks like it changes skill/agent behavior. Has it been tested?" with options covering the mechanisms in `require-tests-for-behavior-changes.md` (a `skill-tester` eval run, the Testing & Validation checklist, the trigger-phrase smoke check), plus "No — commit anyway" and "No — stop, let me test first". This ask is mandatory whenever the diff matches — never skip it silently — but the answer, including "commit anyway", is the user's call. On "stop, let me test first", halt here without committing.
 10. **Check whether this is a single logical change**: scan the diff for signs of multiple unrelated
@@ -89,7 +92,7 @@ CRITICAL: Perform the following steps exactly as described:
     changes, or unrelated file types changed together). This is a lightweight signal, not a splitting
     procedure — see step 11.
 11. If step 10 finds signs of multiple concerns, tell the user and point them to
-    `Skill(git-kit:standalone-commits)` for the actual splitting/ordering/wave-planning logic
+    the `standalone-commits` skill for the actual splitting/ordering/wave-planning logic
     (dependency-ordered waves, acceptance checks, staging workflow) instead of re-deriving a split
     here. Continue `commit`'s own flow only for the single commit currently staged (or whatever subset
     the user chooses to keep in this commit).
@@ -167,7 +170,7 @@ Closes: #482
 ```
 
 For splitting a diff into multiple commits — ordering, wave-planning, deciding what's reviewable on its
-own — see `Skill(git-kit:standalone-commits)`; that skill owns the full procedure and worked examples.
+own — see the `standalone-commits` skill; that skill owns the full procedure and worked examples.
 
 ## Branch Naming Convention
 
@@ -232,7 +235,7 @@ Step 9 (Test-behavior-change check) has never been exercised through a genuine `
 - [ ] Step 9 sits correctly in sequence — fires after step 8's `git diff --cached`, before step 10's multiple-change analysis, without disrupting the flow
 - [ ] Step 9's ask and step 13's separate confirm-before-commit ask don't read as a confusing back-to-back double prompt when both fire in the same run
 - [ ] "Stop, test first" actually halts before any commit runs
-- [ ] Step 10's "multiple concerns?" signal fires without `commit` attempting to perform the split itself — step 11 always redirects to `Skill(git-kit:standalone-commits)` rather than re-deriving a split
+- [ ] Step 10's "multiple concerns?" signal fires without `commit` attempting to perform the split itself — step 11 always redirects to the `standalone-commits` skill rather than re-deriving a split
 - [ ] Generated commit messages never contain a local-machine-specific path, terminal-session symptom description, or session context — only content a reader of the shared repo history would understand
 - [ ] A request to commit while on `main`/`master` with nothing staged yet points at `starting-work`; step 3's own branch-creation fallback only fires for someone already mid-edit
 

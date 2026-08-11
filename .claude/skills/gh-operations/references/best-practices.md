@@ -354,7 +354,7 @@ GH_DEBUG=1 gh pr list
 GH_DEBUG=api gh pr create --title "Test"
 
 # Full HTTP trace
-GH_DEBUG=api,http gh api repos/{owner}/{repo}
+GH_DEBUG=api,http gh api repos/{owner}/{repo}/pulls
 ```
 
 ### Testing API Calls

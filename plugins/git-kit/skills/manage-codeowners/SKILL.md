@@ -2,7 +2,7 @@
 name: manage-codeowners
 description: >-
   Bootstrap, view, and maintain a repo's .github/CODEOWNERS file — create one seeded with the repo owner as a catch-all if it doesn't exist yet, add/update/remove path-owner entries, and validate syntax. Use when asked to set up CODEOWNERS, add a codeowner, check who owns a file/path, or when merge-pr reports no CODEOWNERS file exists.
-allowed-tools: Bash(gh repo:*), Read, Write, Edit
+allowed-tools: Bash(gh repo view:*), Read, Write, Edit
 ---
 
 # Manage CODEOWNERS

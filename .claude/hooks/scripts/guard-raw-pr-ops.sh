@@ -7,6 +7,24 @@
 # of commands and has its own guard-type values.
 set -euo pipefail
 
+# Fail closed, not open: if jq isn't available, the script below can't parse
+# INPUT and would otherwise crash -- which, under this hook's "onError": "warn"
+# registration, lets the tool call proceed with just a warning. Emit an
+# explicit deny instead, so a missing dependency can't silently defeat this
+# guard.
+if ! command -v jq >/dev/null 2>&1; then
+  cat <<'EOF'
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "git-kit's PR-operations guard requires `jq`, which isn't available in this environment -- install jq or this guard cannot verify the command is safe."
+  }
+}
+EOF
+  exit 0
+fi
+
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
