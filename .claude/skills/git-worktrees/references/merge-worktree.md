@@ -46,6 +46,10 @@ CRITICAL: Perform the following steps exactly as described:
    - Best for: Taking different files from different worktrees
    - Commands: `git checkout <branch1> -- <path1>`, `git checkout <branch2> -- <path2>`, then one `git commit` for the combined result
 
+   **Strategy F: git restore** (Git 2.23+, alternative to `git checkout` for file restoration)
+   - Best for: Restoring specific files from another branch without touching the branch pointer, using the newer `git restore` command
+   - Commands: `git restore --source=<branch> -- <path>` for a complete file, or `git restore -p --source=<branch> -- <path>` for interactive hunk selection
+
 5. **Execute the selected strategy**:
    - If the user wants to review changes first, use the comparison techniques from `SKILL.md`'s own worktree-comparison guidance before merging
    - Execute git commands for the chosen strategy
@@ -72,6 +76,7 @@ CRITICAL: Perform the following steps exactly as described:
 | **Cherry-Pick Selective** | Need a commit but not all its changes | `git cherry-pick --no-commit` + selective staging |
 | **Manual Merge** | Full branch merge with control | `git merge --no-commit` + selective staging |
 | **Multi-Source** | Combining files from multiple branches | Multiple `git checkout <branch> -- <path>` |
+| **git restore** | Same as Selective File/Interactive Patch, via the newer command (Git 2.23+) | `git restore --source=<branch> -- <path>` |
 
 ## Examples
 

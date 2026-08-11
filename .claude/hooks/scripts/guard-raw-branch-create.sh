@@ -17,11 +17,12 @@ INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
-if [ "$TOOL_NAME" != "Bash" ] || [ -z "$COMMAND" ]; then
+if { [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "PowerShell" ]; } || [ -z "$COMMAND" ]; then
   exit 0
 fi
 
-GIT_PREFIX='(^|[;&|]|[[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+'
+# git(\.exe)? also catches the literal `git.exe` invocation PowerShell callers sometimes use.
+GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+'
 MATCH=false
 if echo "$COMMAND" | grep -qE "${GIT_PREFIX}checkout([[:space:]]+-[^[:space:]]+)*[[:space:]]+-[bB]([[:space:]]|\$)"; then
   MATCH=true

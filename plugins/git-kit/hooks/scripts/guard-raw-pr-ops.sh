@@ -11,7 +11,7 @@ INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
-if [ "$TOOL_NAME" != "Bash" ] || [ -z "$COMMAND" ]; then
+if { [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "PowerShell" ]; } || [ -z "$COMMAND" ]; then
   exit 0
 fi
 
@@ -19,12 +19,13 @@ GUARD_TYPE=""
 SKILL_NAME=""
 GH_SUBCOMMAND=""
 SKILL_HANDLES=""
-if echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$)'; then
+# gh(\.exe)? also catches the literal `gh.exe` invocation PowerShell callers sometimes use.
+if echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+create([[:space:]]|$)'; then
   GUARD_TYPE="gh-pr-create"
   SKILL_NAME="create-pr"
   GH_SUBCOMMAND="gh pr create"
   SKILL_HANDLES="template resolution, draft-vs-ready confirmation, and pre-flight commit checks"
-elif echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)'; then
+elif echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)'; then
   GUARD_TYPE="gh-pr-merge"
   SKILL_NAME="merge-pr"
   GH_SUBCOMMAND="gh pr merge"

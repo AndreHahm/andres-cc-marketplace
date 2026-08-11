@@ -2,7 +2,7 @@
 name: git-notes
 description: >-
   Use when adding metadata to commits without changing history, tracking review status, test results, code quality annotations, or supplementing commit messages post-hoc - provides git notes commands and patterns for attaching non-invasive metadata to Git objects.
-allowed-tools: Bash(git notes:*), Bash(git log:*), Bash(git config:*), Bash(git push:*), Bash(git fetch:*)
+allowed-tools: Bash(git notes:*), Bash(git log:*), Bash(git config notes.:*), Bash(git config --add notes.:*), Bash(git push:*), Bash(git fetch:*)
 ---
 
 # Git Notes
@@ -67,12 +67,7 @@ git config notes.rewriteMode concatenate
 
 ## Common Mistakes
 
-| Mistake | Fix |
-|---------|-----|
-| Notes not showing in log | Specify ref: `git log --notes=reviews` or configure `notes.displayRef` |
-| Notes lost after rebase | Enable: `git config notes.rewrite.rebase true` |
-| Notes not on remote | Push explicitly: `git push origin refs/notes/commits` |
-| "Note already exists" error | Use `-f` to overwrite or `append` to add |
+See `references/troubleshooting.md` for common git notes mistakes and their fixes (notes not showing in log, notes lost after rebase, notes not on remote, "note already exists" errors).
 
 ## Best Practices
 
@@ -319,46 +314,7 @@ git notes merge --abort
 
 ## Configuration Options
 
-### Git Config
-
-```bash
-# Set default notes ref
-git config notes.displayRef refs/notes/reviews
-
-# Display multiple notes refs
-git config --add notes.displayRef refs/notes/testing
-
-# Set merge strategy for notes
-git config notes.mergeStrategy union
-
-# Set merge strategy for specific namespace
-git config notes.reviews.mergeStrategy theirs
-
-# Preserve notes during rebase
-git config notes.rewrite.rebase true
-
-# Preserve notes during amend
-git config notes.rewrite.amend true
-
-# Set rewrite mode
-git config notes.rewriteMode concatenate
-```
-
-### Sample .gitconfig
-
-```gitconfig
-[notes]
-    displayRef = refs/notes/reviews
-    displayRef = refs/notes/testing
-    mergeStrategy = union
-
-[notes "reviews"]
-    mergeStrategy = theirs
-
-[notes.rewrite]
-    rebase = true
-    amend = true
-```
+See `references/notes-configuration.md` for git config options controlling notes display, merge strategy, and rewrite preservation, plus a sample `.gitconfig` block.
 
 ## Workflow Examples
 
@@ -435,3 +391,28 @@ git log --format="%H" --author="Alice" --since="2024-01-01" | \
 # Remove notes from range of commits
 git log --format="%H" HEAD~10..HEAD | xargs git notes remove --ignore-missing
 ```
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "add a note to this commit about the test results"
+- "track review status without changing the commit message"
+- "annotate this commit with a code quality note"
+- "record an audit trail against these commits, post-hoc"
+
+**Verify it does NOT activate on:**
+- "write a commit message for these changes" → `commit`
+- "find the commit that broke this test" → `git-bisect`
+- "sync this branch onto the latest main" → `git-rebase-sync`
+
+**Quality gates:**
+- [ ] Notes are always added via `git notes add`/`append`, never by rewriting or amending the commit
+      message — non-invasive per Core Concepts
+- [ ] Notes outside the default category always specify `--ref`, never rely on the default
+      `refs/notes/commits` namespace, per Best Practices
+- [ ] Notes intended to survive a rebase always set `git config notes.rewrite.rebase true` beforehand —
+      see `references/notes-configuration.md`
+- [ ] Sharing notes with a team always pushes/fetches the specific `refs/notes/<name>` ref explicitly —
+      notes don't sync via a plain `git push`/`git fetch`
+- [ ] Accumulating note history always uses `append` over `add -f`, per Best Practices, unless
+      intentionally overwriting
