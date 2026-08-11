@@ -36,15 +36,15 @@ CRITICAL: Perform the following steps exactly as described:
 
    **Strategy C: Cherry-Pick with Selective Staging** (for specific commits)
    - Best for: Applying a commit but excluding some changes
-   - Commands: `git cherry-pick --no-commit <commit>` → review staged changes → `git reset HEAD -- <unwanted>` and `git checkout -- <unwanted>` to drop what you don't want → `git commit`
+   - Commands: `git cherry-pick --no-commit <commit>` → review staged changes → `git reset HEAD -- <unwanted>` and `git checkout -- <unwanted>` to drop what you don't want → hand off to the `commit` skill (raw `git commit` is guarded)
 
    **Strategy D: Manual Merge with Conflicts** (for complex merges)
    - Best for: Full branch merge with control over resolution
-   - Commands: `git merge --no-commit <branch>` → review and selectively stage/unstage → resolve conflicts if any → `git commit`
+   - Commands: `git merge --no-commit <branch>` → review and selectively stage/unstage → resolve conflicts if any → hand off to the `commit` skill (raw `git commit` is guarded)
 
    **Strategy E: Multi-Worktree Selective Merge** (combining from multiple sources)
    - Best for: Taking different files from different worktrees
-   - Commands: `git checkout <branch1> -- <path1>`, `git checkout <branch2> -- <path2>`, then one `git commit` for the combined result
+   - Commands: `git checkout <branch1> -- <path1>`, `git checkout <branch2> -- <path2>`, then hand off to the `commit` skill for the combined result (raw `git commit` is guarded)
 
    **Strategy F: git restore** (Git 2.23+, alternative to `git checkout` for file restoration)
    - Best for: Restoring specific files from another branch without touching the branch pointer, using the newer `git restore` command
@@ -54,7 +54,7 @@ CRITICAL: Perform the following steps exactly as described:
    - If the user wants to review changes first, use the comparison techniques from `SKILL.md`'s own worktree-comparison guidance before merging
    - Execute git commands for the chosen strategy
    - Handle any conflicts that arise
-   - Confirm changes before final commit
+   - Once the working tree/staging area has what the user wants, hand off to the `commit` skill for the final commit — raw `git commit` is guarded and isn't this workflow's job
 
 6. **Post-merge summary**: Display what was merged:
    - Files changed/added/removed
@@ -154,12 +154,13 @@ git worktree list
 # Remove specific worktree (clean state required)
 git worktree remove ../project-feature
 
-# Force remove (discards uncommitted changes)
-git worktree remove --force ../project-feature
-
 # Clean up stale worktree references
 git worktree prune
 ```
+
+For a worktree with uncommitted changes still in it, that's a forced removal — hand off to `git-cleanup`,
+which gates `--force`/`-f` behind explicit user confirmation; the raw form is guarded and isn't this
+workflow's job.
 
 Ask about cleanup after each successful merge to help maintain a tidy workspace.
 
@@ -173,7 +174,7 @@ Ask about cleanup after each successful merge to help maintain a tidy workspace.
 - Show the conflicted files
 - Open files and resolve conflicts (look for `<<<<<<<` markers)
 - Stage resolved files with `git add <file>`
-- Continue with `git commit`
+- Hand off to the `commit` skill to finish (raw `git commit` is guarded)
 
 **"Commit not found" when cherry-picking**
 - Ensure the commit hash is correct
