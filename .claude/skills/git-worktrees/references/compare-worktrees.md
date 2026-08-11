@@ -36,6 +36,8 @@ CRITICAL: Perform the following steps exactly as described:
    diff <worktree1>/<path> <worktree2>/<path>
    # Or for unified diff format:
    diff -u <worktree1>/<path> <worktree2>/<path>
+   # Or a visual diff with the user's preferred tool:
+   code --diff <worktree1>/<path> <worktree2>/<path>
    ```
 
    **For directories between worktrees:**

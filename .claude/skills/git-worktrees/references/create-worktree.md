@@ -1,6 +1,6 @@
 # How to Create Worktree
 
-Workflow to create and set up git worktrees for parallel development, with automatic detection and installation of project dependencies.
+Workflow to create and set up git worktrees for parallel development, with automatic dependency detection and confirmed (not automatic) installation.
 
 ## Instructions
 
@@ -54,15 +54,19 @@ CRITICAL: Perform the following steps exactly as described:
       - `yarn.lock` -> Use `yarn install`
       - `package-lock.json` or default -> Use `npm install`
 
-   g. **Automatic setup**: Automatically run dependency installation:
+   g. **Setup, with confirmation**: A checked-out branch's dependency manifests and any install/postinstall
+      scripts they trigger are as untrusted as the rest of the branch content — ask via `AskUserQuestion`
+      before running anything: "Run `<detected install command>` to install dependencies in the new
+      worktree?" (options: "Install" / "Skip"). Only on "Install":
       - cd to worktree and run the detected install command
       - Report progress: "Installing dependencies with [package manager]..."
       - If installation fails, report the error but continue with worktree creation summary
+      On "Skip", note in the summary that dependencies were not installed and how to install them manually.
 
 6. **Summary**: Display summary of created worktrees:
    - Worktree path
    - Branch name (full name with prefix)
-   - Setup status (dependencies installed or failed)
+   - Setup status (dependencies installed, skipped, or failed)
    - Quick navigation command: `cd <worktree-path>`
 
 ## Worktree Path Convention
@@ -141,7 +145,7 @@ Project built successfully
 
 ### Quick Feature Branch
 
-User asks to create a worktree for "new dashboard" → branch `feature/new-dashboard`, worktree created, dependencies installed, ready to code.
+User asks to create a worktree for "new dashboard" → branch `feature/new-dashboard`, worktree created, dependencies installed after confirming, ready to code.
 
 ### Hotfix While Feature In Progress
 
@@ -165,7 +169,7 @@ User asks for a spike worktree for "new architecture" → branch `spike/new-arch
 
 - **Sibling directories**: Worktrees are always created as sibling directories (using `../`) to keep the workspace organized. Never create worktrees inside the main repository.
 
-- **Automatic dependency installation**: Detect the project type and package manager, then run the appropriate install command without prompting.
+- **Dependency installation, with confirmation**: Detect the project type and package manager, then ask via `AskUserQuestion` before running the install command — a freshly checked-out branch's install/postinstall scripts are untrusted content, same as any other branch content.
 
 - **Remote tracking**: For remote branches, create worktrees with proper tracking setup (`--track` flag) so pulls/pushes work correctly.
 

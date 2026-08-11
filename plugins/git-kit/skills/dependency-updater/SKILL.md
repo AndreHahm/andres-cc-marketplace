@@ -2,7 +2,7 @@
 name: dependency-updater
 description: >-
   Scan a project's package manifests across ecosystems (Python, JavaScript/npm, Rust, Go) for outdated dependencies, detect version conflicts across a monorepo, and propose updates with explicit confirmation before applying any change. Use when checking for outdated dependencies, planning a dependency bump, auditing dependency freshness, or asked to update packages across a repo or monorepo.
-allowed-tools: Glob, Read, Edit, Bash(uv:*), Bash(pip:*), Bash(npm:*), Bash(cargo:*), Bash(go:*), Bash(git diff:*), Bash(git status:*)
+allowed-tools: Glob, Read, Edit, Bash(uv:*), Bash(pip:*), Bash(pip-audit:*), Bash(npm:*), Bash(cargo:*), Bash(go:*), Bash(git diff:*), Bash(git status:*)
 ---
 
 # Dependency Updater
@@ -39,3 +39,32 @@ When the same dependency is bumped across multiple manifests in one pass, keep e
 - Does not migrate code for breaking API changes introduced by a major bump — it reports the bump, the user (or a separate coding pass) handles the migration.
 - Does not run the project's test suite or CI checks.
 - Does not depend on any other plugin, agent, or hook — every step above uses only this repo's own manifests and each ecosystem's own CLI tooling.
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "check for outdated dependencies"
+- "plan a dependency bump" / "update packages across the repo"
+- "audit dependency freshness" / "are there any version conflicts across the monorepo"
+
+**Verify it does NOT activate on:**
+- "install this new package" → not this skill; it only updates versions already present in a manifest
+- "migrate this code for the breaking changes in the new major version" → not this skill; it reports the
+  bump, a separate coding pass handles the migration
+- "run the test suite" → not this skill; it reminds the user to test but never runs tests itself
+
+**Quality gates:**
+- [ ] Step 1 collects every manifest match across the monorepo (root and nested package/plugin
+      directories) — never stops at the first match
+- [ ] Step 4's version conflicts are always flagged separately from ordinary outdated-version findings —
+      never merged into the same table row
+- [ ] Step 5's security-advisory check always skips silently when no advisory tool is available — never
+      fails the whole scan over one missing tool
+- [ ] Step 7 always gates on `AskUserQuestion` before any manifest edit — no update is ever applied
+      without explicit approval
+- [ ] Step 9's lockfile regeneration always asks a second, separate confirmation — never rides along with
+      step 7's approval
+- [ ] The Monorepo Consistency section's rule is honored: a dependency bumped across multiple manifests in
+      one pass never ends up on mismatched versions, and an unresolvable conflict is always surfaced rather
+      than resolved silently
+- [ ] Step 11 never runs the project's test suite automatically — only reminds the user to run it

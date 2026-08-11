@@ -10,6 +10,12 @@ allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash
 
 Safely clean up accumulated git worktrees and local branches by categorizing them into: safely deletable (merged), potentially related (similar themes), and active work (keep).
 
+**On the `Bash(git -C:*)` grant:** this is broad by necessity, not oversight — Phase 4's dirty-state and
+gitignored-content checks run `git -C <worktree-path> status --porcelain[--ignored]` against a worktree
+path that's only known at runtime, and `Bash(prefix:*)` permission syntax can't express "any `-C <path>`
+but only followed by `status`" without a wrapper script. Reviewed 2026-08-11 (git-kit retro follow-up);
+no narrower grant is expressible with the current permission syntax.
+
 ## When to Use
 
 - When the user has accumulated many local branches and worktrees
@@ -145,6 +151,11 @@ skill whose Core Principle is "never delete anything without explicit user confi
 read-only and sufficient. If the ignored-file list is long (e.g. `node_modules/`, `.venv/`), show only the
 top-level entries plus a count rather than every path, so the warning stays readable.
 
+**Exclude `.claude/settings.local.json` and any `**/CLAUDE.local.md`** from this warning — `starting-work`
+now copies both into every worktree it creates from the main worktree's own copy, so a worktree's version
+is a duplicate, not the only copy; deleting the worktree does not lose them the way an untracked `.env` or
+scratch file would. Do not list these two patterns under "will also be deleted" below.
+
 **Display warnings prominently:**
 
 ```markdown
@@ -154,7 +165,6 @@ WARNING: ../proj-auth has uncommitted changes:
 
 Ignored (not tracked by git, will also be deleted):
   .env
-  .claude/settings.local.json
 
 These changes will be LOST if you remove this worktree.
 ```

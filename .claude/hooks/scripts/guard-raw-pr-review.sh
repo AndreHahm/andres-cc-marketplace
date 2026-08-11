@@ -19,14 +19,15 @@ INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
-if [ "$TOOL_NAME" != "Bash" ] || [ -z "$COMMAND" ]; then
+if { [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "PowerShell" ]; } || [ -z "$COMMAND" ]; then
   exit 0
 fi
 
 GH_SUBCOMMAND=""
-if echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh[[:space:]]+pr[[:space:]]+review([[:space:]]|$)'; then
+# gh(\.exe)? also catches the literal `gh.exe` invocation PowerShell callers sometimes use.
+if echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+review([[:space:]]|$)'; then
   GH_SUBCOMMAND="gh pr review"
-elif echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh[[:space:]]+pr[[:space:]]+comment([[:space:]]|$)'; then
+elif echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+comment([[:space:]]|$)'; then
   GH_SUBCOMMAND="gh pr comment"
 else
   exit 0

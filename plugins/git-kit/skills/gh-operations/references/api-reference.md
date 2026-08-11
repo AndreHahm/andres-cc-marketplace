@@ -18,12 +18,12 @@ This reference provides comprehensive documentation for GitHub REST and GraphQL 
 
 All API calls via `gh api` automatically use the authenticated token from `gh auth login`.
 
-```bash
-# Check authentication status
-gh auth status
+**Reference only** — `gh auth` is deliberately excluded from this skill's `allowed-tools` (see
+`SKILL.md`'s "Authentication and Configuration" section); this skill never runs the command below itself.
 
-# View current token (use cautiously)
-gh auth status --show-token
+```bash
+# Check authentication status (reference only — not run by this skill)
+gh auth status
 ```
 
 **API Headers:**

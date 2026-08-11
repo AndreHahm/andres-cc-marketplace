@@ -264,7 +264,7 @@ git worktree remove ../project-feature-2
 
 ## Comparing and Merging Changes Between Worktrees
 
-See `references/selective-merge-techniques.md` for file-level comparison, single-file merge, cherry-picking, and selective multi-worktree merge techniques.
+See `references/compare-worktrees.md` for file-level comparison and `references/merge-worktree.md` for single-file merge, cherry-picking, and selective multi-worktree merge techniques.
 
 ## Directory Structure Conventions
 
@@ -397,11 +397,31 @@ When removing worktrees:
 - [ ] Use `git worktree remove`, not `rm -rf`
 - [ ] Run `git worktree prune` if directory was deleted manually
 
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "compare files between my worktrees"
+- "merge changes from the feature worktree into main"
+- "set up a worktree so I can review this PR without stashing"
+- "cherry-pick this commit from another worktree"
+
+**Verify it does NOT activate on:**
+- "start a new branch for the auth refactor" → `starting-work`
+- "sync my current branch with main" → `/sync-branch`
+- "I just merged, clean this up" → `finishing-work`
+
+**Quality gates:**
+- [ ] Creating a worktree never runs the detected install command without an `AskUserQuestion`
+      confirmation first (`references/create-worktree.md` step 5g)
+- [ ] Merge strategies never execute without the user having chosen one — either through the guided
+      flow or an explicit request naming the strategy
+- [ ] Cleanup always uses `git worktree remove` (or `--force` when explicitly confirmed), never `rm -rf`
+- [ ] Comparisons stay read-only — `diff`/`git diff` only, no file writes
+
 ## Related Workflows
 
 Detailed step-by-step procedures for specific worktree operations are in `references/`:
 
-- `references/create-worktree.md` — create and set up a worktree, with automatic dependency detection and installation
+- `references/create-worktree.md` — create and set up a worktree, with automatic dependency detection and confirmed (not automatic) installation
 - `references/compare-worktrees.md` — compare files/directories between worktrees or branches
 - `references/merge-worktree.md` — merge or selectively cherry-pick changes from a worktree into the current branch
-- `references/selective-merge-techniques.md` — file-level comparison, single-file merge, and cherry-picking between worktrees

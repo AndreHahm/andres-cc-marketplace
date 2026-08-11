@@ -104,3 +104,28 @@ Code: 403
 ## Additional Context
 Was working yesterday - possible permission/config change or service regression
 ~~~
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "turn this error log into a GitHub issue"
+- "here's a voice note about a bug, write it up as an issue"
+- "I have a screenshot of a bug, create an issue for it"
+- pasted stack trace + "write this up as a structured issue"
+
+**Verify it does NOT activate on:**
+- "create a PR for this" → `create-pr`
+- "review this PR and leave comments" → `collaborating-on-a-pr`
+- "who owns this file/path" → `manage-codeowners`
+- "list open issues on this repo" → `gh-operations`
+
+**Quality gates:**
+- [ ] Every generated issue follows the structure in `assets/issue-template.md` — never a freeform format
+- [ ] Output is always written as a markdown file in `/issues/` at the repo root, named
+      `YYYY-MM-DD-short-description.md` — never elsewhere
+- [ ] Severity is always matched to impact per the documented Critical/High/Medium/Low definitions —
+      never assigned arbitrarily
+- [ ] Sensitive data (project names, user IDs, etc.) is always placeholdered (`[PROJECT_NAME]`,
+      `[USER_ID]`) — never left as real values pulled from raw input
+- [ ] Image/GIF references always use the `![Description](attachment-name.png)` inline format
+- [ ] Missing context is only inferred from conversation/memory already available — never fabricated

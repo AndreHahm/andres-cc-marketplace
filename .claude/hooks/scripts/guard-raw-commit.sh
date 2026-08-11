@@ -19,13 +19,18 @@ INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
-if [ "$TOOL_NAME" != "Bash" ] || [ -z "$COMMAND" ]; then
+if { [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "PowerShell" ]; } || [ -z "$COMMAND" ]; then
   exit 0
 fi
 
 # Match `git commit` as a standalone subcommand invocation -- not a mention of
 # the word "commit" elsewhere (e.g. `git log --grep=commit`, `echo "commit this"`).
-if ! echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])git[[:space:]]+commit([[:space:]]|$)'; then
+# `git(\.exe)?` also catches the literal `git.exe` invocation PowerShell callers
+# sometimes use. The optional `-C <dir>`/`-c <k>=<v>` group catches an interposed
+# global option (e.g. git-cleanup's own `Bash(git -C:*)` grant) -- same prefix
+# pattern guard-raw-branch-create.sh already uses.
+GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+-[Cc][[:space:]]+[^[:space:]]+)?[[:space:]]+'
+if ! echo "$COMMAND" | grep -qE "${GIT_PREFIX}commit([[:space:]]|\$)"; then
   exit 0
 fi
 

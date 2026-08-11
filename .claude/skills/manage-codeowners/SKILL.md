@@ -24,3 +24,30 @@ Create and maintain `.github/CODEOWNERS`. This file is a load-bearing dependency
 - Only writes `.github/CODEOWNERS` — never touches branch protection rules or repo collaborator settings (those are separate GitHub concepts this skill doesn't manage).
 - Bootstrap always asks first — never silently creates the file.
 - Does not verify that a listed `@username`/`@org/team` actually exists or has repo access — GitHub itself surfaces that mismatch in its UI; duplicating that check here would need extra API calls for a low-value guard.
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "set up a CODEOWNERS file for this repo"
+- "add a codeowner for the /docs path"
+- "who owns this file/path"
+- "merge-pr says there's no CODEOWNERS file, can you create one"
+
+**Verify it does NOT activate on:**
+- "check if I have merge rights on this PR" → `merge-pr`
+- "who can review this PR" → `collaborating-on-a-pr`
+- "look up repo settings via the API" → `gh-operations`
+- "start a new branch for this" → `starting-work`
+
+**Quality gates:**
+- [ ] Bootstrap (file missing) always confirms via `AskUserQuestion` before writing — never silently
+      creates the file
+- [ ] Bootstrap always seeds a single catch-all line (`* @<owner>`) using the actual repo owner from
+      `gh repo view`, plus an explanatory header comment
+- [ ] Add/update always accounts for "last matching line wins" — flags when a new pattern needs to go
+      below an earlier broader one to take precedence
+- [ ] Remove always confirms via `AskUserQuestion` before deleting a line — never removes silently
+- [ ] Validate syntax always flags a line missing an owner token or using a bare username without `@`
+- [ ] Never touches branch protection rules or repo collaborator settings — CODEOWNERS file only
+- [ ] Never verifies that a listed `@username`/`@org/team` actually exists or has access — documented as
+      an intentional non-check, not a gap

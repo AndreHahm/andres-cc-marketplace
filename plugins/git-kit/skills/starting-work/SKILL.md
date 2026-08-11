@@ -7,7 +7,7 @@ description: >-
   against git-kit's <type>/<description> convention and offers a worktree as an alternative to a plain
   branch checkout.
 argument-hint: (optional) branch type and description, e.g. "feature add-user-auth"
-allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read
+allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Glob, Write
 ---
 
 # Starting Work
@@ -95,6 +95,11 @@ branch off", "set up a worktree for this feature".
      `git worktree lock <path> --reason "claude session"` so the worktree can't be removed by
      `git worktree remove` (without `--force`) until it's explicitly unlocked — `git-cleanup` knows to
      unlock a session-locked worktree before removing it once its branch is safe to delete.
+     Then copy over local, gitignored config `git worktree add` doesn't carry (it only shares tracked
+     history, not untracked files): if `.claude/settings.local.json` exists in the main worktree root,
+     copy it to the same relative path in the new worktree, only if the destination doesn't already
+     exist there (never clobber). Also `Glob` the main worktree for `**/CLAUDE.local.md` and copy each
+     match found into the same relative path in the new worktree, same no-clobber rule.
 5. **Report**: the branch (or worktree path) just created, current location, and — for a worktree —
    that `cd`-ing into the worktree path is needed before working there, and that it's now locked to this
    session: when the work here is done, `finishing-work`/`/git-cleanup` handles unlocking and removal —

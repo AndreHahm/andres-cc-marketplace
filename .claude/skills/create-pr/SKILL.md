@@ -174,6 +174,36 @@ To simplify PR creation with consistent descriptions, you can create a template 
 gh pr create --draft --title "feat(scope): Your title" --body-file pr-template.md --base main
 ```
 
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "open a PR" / "create a pull request" / "push this and make a PR"
+- "create a PR" with no issue mentioned
+- `/create-pr`
+
+**Verify it does NOT activate on:**
+- "create a PR that closes #123" → `collaborating-on-a-pr` (Path A wraps this skill, but the issue-linking
+  request itself routes there first)
+- "review this PR" / "approve this PR" / "request changes on PR #42" → `collaborating-on-a-pr`
+- "summarize this PR's changes" / "update this PR's description" → `explain-pr-changes`
+- "merge this PR" / "is this ready to merge" → `merge-pr`
+
+**Quality gates:**
+- [ ] Uncommitted changes are always routed through `Skill(git-kit:commit)` before PR creation — never
+      skipped
+- [ ] The nested `commit` invocation always instructs it to skip its own Auto-PR step — never omitted,
+      which would risk a duplicate PR
+- [ ] The template resolution always re-checks for `.github/pull_request_template.md` rather than reusing
+      a stale copy from a previous run
+- [ ] Draft-vs-ready-to-merge is always asked via `AskUserQuestion` — never assumed to be draft
+- [ ] The `gh-pr-create` marker is always written immediately before `gh pr create`, never earlier in the
+      run
+- [ ] The Issue-linking hand-off step is always skipped when invoked as a nested dependency from
+      `collaborating-on-a-pr`'s Path A (per its own explicit skip-instruction) — never run twice for the
+      same issue reference
+- [ ] PR titles and descriptions are always in English, matching the template's exact section headers —
+      never a custom section not in the resolved template
+
 ## Related Documentation
 
 - [PR Template](.github/pull_request_template.md) — project template; falls back to `assets/pull_request_template.md` if absent (see Resolve PR Template above)

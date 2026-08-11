@@ -10,7 +10,7 @@ description: >-
   CODEOWNERS context use `collaborating-on-a-pr` — this skill does not do any of the three; the `gh pr
   review`/`gh pr comment` examples below are raw reference material only, not a recommendation to run
   them standalone for a real review.
-allowed-tools: Bash(gh:*)
+allowed-tools: Bash(gh pr:*), Bash(gh issue:*), Bash(gh repo view:*), Bash(gh repo clone:*), Bash(gh repo create:*), Bash(gh repo set-default:*), Bash(gh workflow:*), Bash(gh run:*), Bash(gh api:*), Bash(gh config:*)
 ---
 
 # GitHub Operations
@@ -107,14 +107,18 @@ For complex queries requiring multiple related resources, use GraphQL. See `refe
 
 ## Authentication and Configuration
 
+**The `gh auth` examples below are reference material only** — `allowed-tools` deliberately excludes
+`gh auth` (credential/identity surface, same reasoning as excluding `gh secret`/`gh variable`/`gh repo
+delete`), so this skill never runs them itself. Run them yourself outside this skill if needed.
+
 ```bash
-# Login to GitHub
+# Login to GitHub (reference only — not run by this skill)
 gh auth login
 
-# Login to GitHub Enterprise
+# Login to GitHub Enterprise (reference only — not run by this skill)
 gh auth login --hostname github.enterprise.com
 
-# Check authentication status
+# Check authentication status (reference only — not run by this skill)
 gh auth status
 
 # Set default repository
@@ -158,6 +162,31 @@ gh workflow run workflow-name                               # Run workflow
 gh repo view --web                                          # Open repo in browser
 gh api repos/{owner}/{repo}/pulls/{pr_number}              # Direct API call
 ```
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "list open PRs" / "view PR 123" / "check PR status"
+- "manage GitHub issues" / "create an issue for this bug"
+- "run this GitHub Actions workflow" / "query the GitHub API for pull request details"
+
+**Verify it does NOT activate on:**
+- "create a PR" / "open a pull request" → `create-pr`
+- "merge this PR" / "is this ready to merge" → `merge-pr`
+- "review this PR" / "approve this PR" / "request changes on PR #42" → `collaborating-on-a-pr`
+
+**Quality gates:**
+- [ ] PR creation, merging, and reviewer-action requests are always redirected to `create-pr`, `merge-pr`,
+      and `collaborating-on-a-pr` respectively — never handled directly from this skill's own reference
+      material
+- [ ] The `gh pr review`/`gh pr comment` examples in this skill are never run standalone as a real review
+      action — they stay reference material only, per this skill's own description
+- [ ] The LINEAR/`NOLINEAR:` PR title convention is always presented as an optional, org-specific example
+      — never asserted as this project's actual convention
+- [ ] `allowed-tools` stays scoped to its current narrowed grant (`gh pr`, `gh issue`, `gh repo`
+      view/clone/create/set-default, `gh workflow`, `gh run`, `gh api`, `gh config`) — it never silently
+      widens back to a blanket `Bash(gh:*)`, and never gains `gh secret`, `gh auth`, `gh repo delete`, or
+      `gh variable`
 
 ## Resources
 
