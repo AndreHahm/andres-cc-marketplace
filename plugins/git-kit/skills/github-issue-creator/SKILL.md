@@ -9,6 +9,9 @@ allowed-tools: Write, Read
 
 Transform messy input (error logs, voice notes, screenshots) into clean, actionable GitHub issues.
 
+**Not for filing directly on GitHub** — this skill only writes a local markdown draft under `issues/`; it
+has no `Bash`/`gh` access. Filing a real, live GitHub issue (via `gh issue create`) is `gh-operations`' job.
+
 ## Output Template
 
 Use the structure in `assets/issue-template.md` for every generated issue — see the Examples section below for what it looks like filled in.
@@ -119,6 +122,8 @@ running from [LOCAL_PATH] with token [REDACTED_TOKEN].
 - "review this PR and leave comments" → `collaborating-on-a-pr`
 - "who owns this file/path" → `manage-codeowners`
 - "list open issues on this repo" → `gh-operations`
+- "file this as a real GitHub issue" / "create an issue on GitHub for this bug" → `gh-operations` (its
+  `gh issue create`); this skill only drafts a local markdown file, never files a live issue
 
 **Quality gates:**
 - [ ] Every generated issue follows the structure in `assets/issue-template.md` — never a freeform format

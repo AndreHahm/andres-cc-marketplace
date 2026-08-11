@@ -175,13 +175,16 @@ gh api repos/{owner}/{repo}/actions/runs                   # Direct API call (se
 
 **Verify this skill activates on:**
 - "list open PRs" / "view PR 123" / "check PR status"
-- "manage GitHub issues" / "create an issue for this bug"
+- "list open issues" / "close issue 456" / "add a label to this issue" / "bulk-edit these issues"
 - "run this GitHub Actions workflow" / "query the GitHub API for pull request details"
 
 **Verify it does NOT activate on:**
 - "create a PR" / "open a pull request" → `create-pr`
 - "merge this PR" / "is this ready to merge" → `merge-pr`
 - "review this PR" / "approve this PR" / "request changes on PR #42" → `collaborating-on-a-pr`
+- "turn this bug report/error log/screenshot into a structured issue" → `github-issue-creator`, which
+  drafts a local markdown file in `issues/` — this skill has no `Write` access and can't produce that
+  draft; it only files/lists/manages issues that are already clear, structured requests
 
 **Quality gates:**
 - [ ] PR creation, merging, and reviewer-action requests are always redirected to `create-pr`, `merge-pr`,
