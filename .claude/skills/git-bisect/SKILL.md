@@ -3,7 +3,7 @@ name: git-bisect
 description: >-
   Guides an automated or manual git bisect session to find the exact commit that introduced a regression, running a test command at each step or walking the user through manual good/bad decisions. Use when hunting for the commit that broke a test, a feature, a build, or introduced a performance regression.
 allowed-tools: Bash(git bisect start:*), Bash(git bisect good:*), Bash(git bisect bad:*), Bash(git bisect log:*), Bash(git bisect reset:*), Bash(git show:*), Bash(git branch:*), Bash(git status:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Bash(pip:*), Bash(pytest:*), Bash(cargo:*), Bash(go:*)
-argument-hint: [good-commit] [bad-commit] | --auto [test-command] | --reset | --continue
+argument-hint: '[good-commit] [bad-commit] | --auto [test-command] | --reset | --continue'
 ---
 
 # Git Bisect Helper

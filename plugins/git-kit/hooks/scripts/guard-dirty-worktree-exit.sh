@@ -15,6 +15,32 @@ set -euo pipefail
 
 INPUT=$(cat)
 
+# Fail closed, not open: if jq isn't available, every call below would crash
+# under set -e -- which, under this hook's "onError": "warn" registration,
+# lets the turn end with just a warning, silently disabling the exact
+# dirty-worktree-loss protection this hook exists to provide. Emit an
+# explicit block instead, so a missing dependency can't silently defeat it --
+# same fail-closed pattern the 5 PreToolUse guard scripts already use.
+#
+# Loop-safety without jq: a hard block here must still honor stop_hook_active
+# the same way the jq-based check below does, or a session with no jq at all
+# would block forever with no way to ever finish a turn. Check the raw JSON
+# text for the field with grep instead -- crude, but doesn't need jq to avoid
+# an infinite loop.
+if ! command -v jq >/dev/null 2>&1; then
+  if echo "$INPUT" | grep -qE '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then
+    exit 0 # already continuing from a previous block -- avoid an infinite loop
+  fi
+  cat <<'EOF'
+{
+  "decision": "block",
+  "reason": "git-kit's dirty-worktree-exit guard requires `jq`, which isn't available in this environment -- install jq so this guard can verify whether the session's bound worktree has unprotected work before the turn ends. Say \"exit anyway\" and try again to override once, if you're sure nothing needs protecting.",
+  "systemMessage": "Dirty-worktree-exit guard requires jq -- install it to restore this protection, or say \"exit anyway\" to override once."
+}
+EOF
+  exit 0
+fi
+
 STOP_HOOK_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false')
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
   exit 0 # already continuing from a previous block -- avoid an infinite loop
