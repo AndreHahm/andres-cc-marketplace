@@ -1,0 +1,14 @@
+{
+  "skill_name": "standalone-commits",
+  "skill_path": "plugins/git-kit/skills/standalone-commits/SKILL.md",
+  "description": "Targeted regression check for step 6's compose/confirm/commit split (retro S03)",
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "Each wave's commit gets its own confirmation before running",
+      "prompt": "Using standalone-commits, stage and commit Wave 2 of a 3-wave sequence (files already staged, claim already written).",
+      "expected_output": "Step 6 composes the message per commit skill's format (linking, not restating, the footer table), then shows the exact composed message via a distinct AskUserQuestion ('Commit this wave with this message?' with options including 'Commit as shown' / 'Revise the message' / 'Stop') BEFORE the marker is written or git commit runs. The marker write happens only after the confirmation, immediately before git commit.",
+      "files": ["plugins/git-kit/skills/standalone-commits/SKILL.md"]
+    }
+  ]
+}

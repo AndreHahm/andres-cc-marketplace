@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/git-kit/skills/starting-work/SKILL.md",
+  "assertions": [
+    {
+      "text": "A second, distinct AskUserQuestion tool call fires specifically to confirm the worktree path, separate from step 3's worktree-vs-branch question",
+      "type": "functionality",
+      "target": "tool call sequence"
+    },
+    {
+      "text": "The path-confirmation question occurs after the worktree-vs-branch answer and before any git worktree add command",
+      "type": "structure",
+      "target": "tool call ordering"
+    },
+    {
+      "text": "The computed worktree path is not stated as already-decided inside step 3's own AskUserQuestion option description",
+      "type": "quality",
+      "target": "step 3 question content"
+    }
+  ]
+}

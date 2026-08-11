@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md",
+  "assertions": [
+    {
+      "text": "The literal Phase 3 transition line is emitted before any Edit/Write against the target plugin",
+      "type": "functionality",
+      "target": "workflow trace"
+    },
+    {
+      "text": "Action 2's per-item AskUserQuestion approval is recorded before the edit, even though the finding is adjacent to work already done this session",
+      "type": "functionality",
+      "target": "workflow trace"
+    },
+    {
+      "text": "No edit is applied based on the 'directly adjacent to what I touched this session' rationalization alone",
+      "type": "quality",
+      "target": "workflow trace"
+    }
+  ]
+}

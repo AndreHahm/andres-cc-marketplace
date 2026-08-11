@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A second, distinct AskUserQuestion tool call fires specifically to confirm the worktree path, separate from step 3's worktree-vs-branch question",
+      "passed": true,
+      "evidence": "SKILL.md Step 3 (line 65-66) asks 'Create a plain branch, or a separate worktree for this?' Options: 'Worktree (Recommended)' / 'Plain branch'. SKILL.md Step 4 (line 83-84) explicitly requires a separate AskUserQuestion: 'Create the worktree at `<path>`?' with options 'Use this path' / 'Enter a different path'. Trace shows two distinct tool calls: #5 (Step 3) and #7 (Step 4)."
+    },
+    {
+      "text": "The path-confirmation question occurs after the worktree-vs-branch answer and before any git worktree add command",
+      "passed": true,
+      "evidence": "Trace sequence (tools 5-9): (5) Step 3 AskUserQuestion 'worktree or branch?' → user answers Worktree → (6) marker script → (7) Step 4 AskUserQuestion 'path confirmation?' → user answers 'use this path' → (8) git worktree add. SKILL.md line 73 states marker runs 'immediately before either branch-creating command', and line 94 shows git worktree add runs after the path question."
+    },
+    {
+      "text": "The computed worktree path is not stated as already-decided inside step 3's own AskUserQuestion option description",
+      "passed": true,
+      "evidence": "SKILL.md Step 3 options (lines 65-66) are literally 'Plain branch' and 'Worktree' with no path component. Lines 85-86 explicitly state: 'Don't rely on step 3's worktree-vs-branch question to also cover the path (its own options only ever say \"Plain branch\" / \"Worktree\" — never fold the computed path into that option's description text as a substitute for asking here).' Step 3 asks *whether*, Step 4 asks *where*."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

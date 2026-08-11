@@ -7,7 +7,7 @@ description: >-
   (concept cards, plans, handoff reports) in scope and re-verifying their stated open items
   against current repo state rather than trusting them at face value. Generates classified
   improvement suggestions grouped by component and priority, persisted to
-  .Codex/output/analyzing-sessions/. Use when running a post-session retrospective,
+  .codex/output/analyzing-sessions/. Use when running a post-session retrospective,
   auditing skill or agent performance, building an improvement backlog, or identifying systemic
   issues across skills, agents, and rules from a session or date range.
 allowed-tools: Read Glob Grep Write Edit Agent Bash(git:* date:*)
@@ -38,7 +38,7 @@ For date-range retrospectives or deep taxonomy guidance, read the full phases be
 ## When NOT to Use
 
 - **Real-time monitoring** — this skill is retrospective; it analyzes past behavior, not live state
-- **No `.Codex/` components were active** — if no skills, agents, commands, or rules were involved, there is nothing to analyze
+- **No `.codex/` components were active** — if no skills, agents, commands, or rules were involved, there is nothing to analyze
 - **Single-component review** — use `skill-reviewer` for one skill or `plugin-validator` for one plugin; this skill adds overhead without benefit for isolated reviews
 - **Code quality** — use `/code-review` for diff analysis; this skill covers skill and agent behavior, not code correctness
 - **Want the retrospective's suggestions applied, tested, documented, and committed as a guided pipeline, not just surfaced** — use `plugin-lifecycle-maintenance`'s `improve-a-plugin` workflow after this skill's report is produced; this skill stops at "Top 5 Actions," it never applies them
@@ -67,16 +67,19 @@ questions: [
 ]
 ```
 
-If "From a start date" → ask for the date. If sessions from prior conversations are in scope, ask the user to paste in relevant transcript excerpts or summaries — Codex cannot read past conversation history directly.
+If "From a start date" → ask for the date. If sessions from prior conversations are in scope, check for
+on-disk transcripts first — see "Prior-session data" in Gotchas below for the resolution procedure. Only
+ask the user to paste in transcript excerpts or summaries when no matching file exists on disk for the
+requested scope.
 
 ## Phase 2: Component Inventory
 
 **Run these Globs first, unconditionally — before evaluating scope or waiting for confirmation:**
-- `Glob(pattern='*', path='.Codex/output')` — output artifacts from prior runs
-- `Glob(pattern='*.md', path='.Codex/rules')` — rules that load automatically, often without being mentioned in conversation
+- `Glob(pattern='*', path='.codex/output')` — output artifacts from prior runs
+- `Glob(pattern='*.md', path='.codex/rules')` — rules that load automatically, often without being mentioned in conversation
 - `Glob(pattern='*.local.md', path='.draft')` — local, gitignored planning documents (e.g. a roadmap or architecture draft) — this repo's only recurring `*.local.md` convention lives here, not under `.temp/` or elsewhere in `.draft/`; don't broaden the pattern to those, they hold staged plugin source components, not planning documents
 
-**Use the `path` parameter form above, not a bare relative pattern like `Glob('.Codex/rules/*.md')`** — on at least one observed environment, a pattern with a literal leading `.Codex/` segment silently returned no results even though matching files existed, while pointing `path` directly at the target directory with a bare pattern resolved correctly. A silent false negative here means rules or prior output artifacts go uncounted without any visible error, so treat an empty result from either call as suspect: retry once with a broader pattern (e.g. `Glob(pattern='**/*', path='.Codex/rules')`) before concluding the category is genuinely empty.
+**Use the `path` parameter form above, not a bare relative pattern like `Glob('.codex/rules/*.md')`** — on at least one observed environment, a pattern with a literal leading `.codex/` segment silently returned no results even though matching files existed, while pointing `path` directly at the target directory with a bare pattern resolved correctly. A silent false negative here means rules or prior output artifacts go uncounted without any visible error, so treat an empty result from either call as suspect: retry once with a broader pattern (e.g. `Glob(pattern='**/*', path='.codex/rules')`) before concluding the category is genuinely empty.
 
 These seed the inventory regardless of scope. Then identify every additional component from the current conversation context.
 
@@ -96,9 +99,9 @@ Record any discrepancy found — an item marked open that's actually resolved, a
 |---|---|
 | **Skill** | Slash-command invocations that loaded a `SKILL.md` (e.g. `/skill-refiner-interactive`) — **or** a skill's `SKILL.md`/`references/*.md`/`scripts/*` files that were directly edited this session, even without an invocation event (see note below) |
 | **Sub-agent** | Agent tool spawns (named agent type or description used) |
-| **Command** | `.Codex/commands/*.md` invocations |
+| **Command** | `.codex/commands/*.md` invocations |
 | **Workflow-skill** | Skills invoked as sub-steps inside another skill's workflow |
-| **Rule** | `.Codex/rules/*.md` files loaded and applied during the session |
+| **Rule** | `.codex/rules/*.md` files loaded and applied during the session |
 
 **Invoked vs. edited components:** both count, and both get their own SWOT — but frame them differently. An *invoked* component is assessed on how well it performed when run (did its checks fire, did its output need correction). An *edited* component (one whose files you modified as a task, without ever loading it via `Skill`/`Agent`) is assessed on how well its existing structure/docs supported making that edit correctly, and what defects the edit surfaced. Don't skip edited components just because there's no invocation event to point to as evidence — the edit itself is the evidence.
 
@@ -183,13 +186,13 @@ Output two views.
 
 Close with **Top 5 Actions**: the five highest-impact suggestions across all components, in order.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`) and `Write` the full Phase 3-6 output to `.Codex/output/analyzing-sessions/<scope-slug>-<timestamp>.md`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). Present the confirmation as its own line before the rest of Phase 6's output:
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`) and `Write` the full Phase 3-6 output to `.codex/output/analyzing-sessions/<scope-slug>-<timestamp>.md`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). Present the confirmation as its own line before the rest of Phase 6's output:
 
 ```
-📄 Session Analysis Report written: `.Codex/output/analyzing-sessions/<scope-slug>-<timestamp>.md`
+📄 Session Analysis Report written: `.codex/output/analyzing-sessions/<scope-slug>-<timestamp>.md`
 ```
 
-**This per-run-file format (`<scope-slug>-<timestamp>.md`, one file per run) is the canonical convention going forward** — resolved as of 2026-07-24. `.Codex/output/analyzing-sessions/` also contains older files from a prior per-component-file convention (one file per component analyzed, predating this format); those are not migrated or deleted by this decision, and don't need to be before persisting a new report — `Glob` the directory first only if a specific old file's content matters for the current run. Persisting in the per-run format lets other components (notably `plugin-lifecycle-maintenance`'s `improve-a-plugin` workflow) link back to a specific retro run instead of re-deriving one, and gives the Verify-Open-Items check above something concrete to point future re-checks at.
+**This per-run-file format (`<scope-slug>-<timestamp>.md`, one file per run) is the canonical convention going forward** — resolved as of 2026-07-24. `.codex/output/analyzing-sessions/` also contains older files from a prior per-component-file convention (one file per component analyzed, predating this format); those are not migrated or deleted by this decision, and don't need to be before persisting a new report — `Glob` the directory first only if a specific old file's content matters for the current run. Persisting in the per-run format lets other components (notably `plugin-lifecycle-maintenance`'s `improve-a-plugin` workflow) link back to a specific retro run instead of re-deriving one, and gives the Verify-Open-Items check above something concrete to point future re-checks at.
 
 **Suggested next step:** for any P1/P2 suggestion, ask with `AskUserQuestion`: "Expand this suggestion into a full WHAT/WHY/HOW action plan using enhancement-suggestor?" — options "Yes" / "No". If yes, invoke the `enhancement-suggestor` agent (via `Agent`) against that suggestion — this skill's own suggestions are intentionally terse (one line + Detail) for cross-component scanning. Never invoke it without asking first.
 
@@ -206,15 +209,23 @@ After Phase 6, verify these gates before presenting output as final:
 - [ ] Every Open Items entry found in a re-checked artifact was independently re-verified against current repo state, not copied forward as still-accurate
 - [ ] Every non-resolving commit SHA found in a re-checked artifact was searched for a rebase-merge match and, if found, offered to the user as a direct fix — not just recorded as a Weakness and left stale
 - [ ] Any `.draft/*.local.md` planning document modified in scope was `Read` for its current state, not just listed
-- [ ] The report was persisted to `.Codex/output/analyzing-sessions/` and its path confirmed with the standard `📄 ... written:` line
+- [ ] The report was persisted to `.codex/output/analyzing-sessions/` and its path confirmed with the standard `📄 ... written:` line
+- [ ] A date-range scope always checks `~/.codex/sessions/` for on-disk transcripts first — the user is only asked to paste transcripts when no matching file exists on disk
 
 ## Gotchas
 
-- **Absence of evidence ≠ absence of use.** Rules in `.Codex/rules/` load automatically — check the directory even if they were never mentioned in conversation.
+- **Absence of evidence ≠ absence of use.** Rules in `.codex/rules/` load automatically — check the directory even if they were never mentioned in conversation.
 - **`.draft/*.local.md` planning documents are gitignored, so they have no git history to fall back on.** If a scope needs a *prior* version of one (not just its current state), there's no `git log`/`git show` to recover it — same limitation as "Prior-session data" below, ask the user to paste it.
 - **Weakness vs. Threat confusion.** Weaknesses are internal to the component (a missing gate, a wrong threshold). Threats are external (a stale dependency, an upstream change that will break the component). Do not cross-file them.
 - **Over-suggestion.** Not every observation earns a suggestion. If two components produced the same fixable pattern, emit one cross-cutting suggestion, not two identical ones.
-- **Prior-session data.** Codex cannot read past conversation history. For sessions before the current one, prompt the user to paste transcripts or summaries before Phase 2.
+- **Prior-session data — check on-disk transcripts before asking the user to paste anything.** Codex
+  session transcripts are stored at `~/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-*.jsonl` (or `.json`) —
+  see `codex-session-lookup`'s own `inspect-session-file.py` for reading one file's metadata (id,
+  timestamp, cwd) to confirm it's the right session before mining it. Filter candidates by mtime/directory
+  date against the requested range, then run a cheap `Grep` pre-filter before any full read of a large
+  transcript — for a large transcript, delegate the digest extraction to a background agent dispatch
+  rather than reading it directly in this conversation. Only when no matching transcript file exists on
+  disk for the requested scope does this fall back to asking the user to paste transcripts or summaries.
 - **Self-referential sessions.** When `analyzing-sessions` is itself one of the components being analyzed, the assessment is inherently limited — the skill cannot objectively observe its own execution from outside. Note this explicitly in the SWOT weakness quadrant rather than producing inflated self-assessments.
 - **Don't trust an artifact's own "Open Items" section at face value.** A handoff report (or similar) reflects what its author believed was true at write time — it is not re-verified just by existing. Treat every "still open" or "resolved" claim as a hypothesis to check against current repo state (Phase 2's Verify Open Items step), not a fact to relay forward. An artifact that's wrong about its own open items is itself a finding about the component that produced it, not noise to filter out.
 - **Verify prior-state claims before writing them into a commit message or report — including this skill's own.** A claim like "this is new" or "X didn't exist before" is a testable assertion about current repo state, the same category as an artifact's Open Items claim above. This skill's own persistence feature was once introduced with exactly this unverified claim ("prior versions only ever showed the report in chat") — false, since an older per-component-file convention already existed on disk and was never checked for first. `Glob`/`Read` the relevant directory before asserting novelty, whether the claim is about another component or about this one.
@@ -227,5 +238,5 @@ After Phase 6, verify these gates before presenting output as final:
 | `references/critique-reflection-framework.md` | Question sets per category; rationalizations to reject | Phase 4 |
 | `references/suggestion-taxonomy.md` | Priority tiers, type definitions, merge rules, examples | Phase 5 |
 | `enhancement-suggestor` agent | Expands a single P1/P2 suggestion into a full classified WHAT/WHY/HOW plan | Phase 6, on request |
-| `.Codex/output/analyzing-sessions/` | Where this skill's own reports are persisted, one file per run | Phase 6 (write), Phase 2 of a later run (read, if in scope) |
+| `.codex/output/analyzing-sessions/` | Where this skill's own reports are persisted, one file per run | Phase 6 (write), Phase 2 of a later run (read, if in scope) |
 | `plugin-lifecycle-maintenance`'s `improve-a-plugin` workflow | Typical downstream consumer — takes this skill's persisted report and drives it through a human-decision gate into an applied, committed fix | After this skill's report is produced |

@@ -67,7 +67,10 @@ questions: [
 ]
 ```
 
-If "From a start date" → ask for the date. If sessions from prior conversations are in scope, ask the user to paste in relevant transcript excerpts or summaries — Claude cannot read past conversation history directly.
+If "From a start date" → ask for the date. If sessions from prior conversations are in scope, check for
+on-disk transcripts first — see "Prior-session data" in Gotchas below for the resolution procedure and
+its cost discipline. Only ask the user to paste in transcript excerpts or summaries when no matching file
+exists on disk for the requested scope.
 
 ## Phase 2: Component Inventory
 
@@ -207,6 +210,7 @@ After Phase 6, verify these gates before presenting output as final:
 - [ ] Every non-resolving commit SHA found in a re-checked artifact was searched for a rebase-merge match and, if found, offered to the user as a direct fix — not just recorded as a Weakness and left stale
 - [ ] Any `.draft/*.local.md` planning document modified in scope was `Read` for its current state, not just listed
 - [ ] The report was persisted to `.claude/output/analyzing-sessions/` and its path confirmed with the standard `📄 ... written:` line
+- [ ] A date-range scope always checks `~/.claude/projects/` for on-disk transcripts first (including sibling worktree-scoped directories) — the user is only asked to paste transcripts when no matching file exists on disk
 
 ## Gotchas
 
@@ -214,7 +218,22 @@ After Phase 6, verify these gates before presenting output as final:
 - **`.draft/*.local.md` planning documents are gitignored, so they have no git history to fall back on.** If a scope needs a *prior* version of one (not just its current state), there's no `git log`/`git show` to recover it — same limitation as "Prior-session data" below, ask the user to paste it.
 - **Weakness vs. Threat confusion.** Weaknesses are internal to the component (a missing gate, a wrong threshold). Threats are external (a stale dependency, an upstream change that will break the component). Do not cross-file them.
 - **Over-suggestion.** Not every observation earns a suggestion. If two components produced the same fixable pattern, emit one cross-cutting suggestion, not two identical ones.
-- **Prior-session data.** Claude cannot read past conversation history. For sessions before the current one, prompt the user to paste transcripts or summaries before Phase 2.
+- **Prior-session data — check on-disk transcripts before asking the user to paste anything.** Session
+  transcripts are stored at `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl`, where `<encoded-cwd>`
+  replaces every path separator, drive-letter colon, and literal dot with `-` (full encoding rule and
+  fallback-matching procedure: `.claude/commands/find-permissions.md`'s Step 1-2 — don't restate it here,
+  follow it). **Also check sibling directories** for the same project: a session run inside a git worktree
+  of this repo is recorded under its own encoded directory (e.g.
+  `<repo>--claude-worktrees-<topic>` or `<repo>-<worktree-dir-name>`, depending on the worktree's actual
+  path), not inside the primary checkout's directory — `Glob('~/.claude/projects/*')` and match on the
+  repo's leaf folder name as a prefix, not just the exact primary-checkout encoding, and state which
+  directories were selected before proceeding. Filter candidates by mtime against the requested date
+  range, then run a **cheap `Grep` pre-filter before any full `Read`** (this is what keeps cost bounded —
+  see `plugin-lifecycle-maintenance`'s `self-service-plugin-devkit.md` Service 1 for the same pattern
+  applied to a narrower plugin-devkit-only scope). For a transcript too large to read directly, delegate
+  the digest extraction to a background `Agent` dispatch rather than reading it inline in this
+  conversation. Only when no matching transcript file exists on disk for the requested scope does this
+  fall back to asking the user to paste transcripts or summaries.
 - **Self-referential sessions.** When `analyzing-sessions` is itself one of the components being analyzed, the assessment is inherently limited — the skill cannot objectively observe its own execution from outside. Note this explicitly in the SWOT weakness quadrant rather than producing inflated self-assessments.
 - **Don't trust an artifact's own "Open Items" section at face value.** A handoff report (or similar) reflects what its author believed was true at write time — it is not re-verified just by existing. Treat every "still open" or "resolved" claim as a hypothesis to check against current repo state (Phase 2's Verify Open Items step), not a fact to relay forward. An artifact that's wrong about its own open items is itself a finding about the component that produced it, not noise to filter out.
 - **Verify prior-state claims before writing them into a commit message or report — including this skill's own.** A claim like "this is new" or "X didn't exist before" is a testable assertion about current repo state, the same category as an artifact's Open Items claim above. This skill's own persistence feature was once introduced with exactly this unverified claim ("prior versions only ever showed the report in chat") — false, since an older per-component-file convention already existed on disk and was never checked for first. `Glob`/`Read` the relevant directory before asserting novelty, whether the claim is about another component or about this one.
