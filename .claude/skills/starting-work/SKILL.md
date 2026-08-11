@@ -80,8 +80,11 @@ branch off", "set up a worktree for this feature".
      — both are gitignored). This is `starting-work`'s own default for a session-lifecycle-managed
      worktree — distinct from `git-worktrees`' sibling-directory convention (`../project-feature`), which
      stays the right default for manual, ad-hoc worktree management outside this automated flow; see that
-     skill's own note on the two use cases. Show the computed path to the user for confirmation or
-     override. If the user supplies an override, constrain
+     skill's own note on the two use cases. Confirm the computed path with its own `AskUserQuestion` —
+     "Create the worktree at `<path>`?" — options "Use this path" / "Enter a different path". Don't rely
+     on step 3's worktree-vs-branch question to also cover the path (its own options only ever say
+     "Plain branch" / "Worktree" — never fold the computed path into that option's description text as a
+     substitute for asking here). If the user supplies an override, constrain
      it: letters, digits, hyphens, underscores, forward slashes, and periods only (no shell
      metacharacters), it must not contain a `..` path segment, and it must resolve to a location either
      (a) inside this repo under `.claude/worktrees/` or `.codex/worktrees/`, or (b) alongside/below the
@@ -119,6 +122,14 @@ branch off", "set up a worktree for this feature".
 - Either value — confirm the setting never skips the question outright; the user's actual answer at step 3
   always decides, regardless of which option was pre-highlighted
 
+**Verify the worktree-path confirmation:**
+- Worktree chosen at step 3, default path accepted at step 4's own `AskUserQuestion` — confirm
+  `git worktree add` runs with the computed default path
+- Worktree chosen at step 3, path overridden at step 4 — confirm the override goes through the existing
+  character-class/`..`-segment/location validation before being passed to `git worktree add`
+- Confirm the computed path is never mentioned inside step 3's own option description text as a substitute
+  for step 4's own question — step 3 asks *whether*, step 4 asks *where*
+
 **Quality gates:**
 - [ ] Step 1 never fast-forwards a diverged local `main` silently — always stops and tells the user
 - [ ] Step 2 never hardcodes the branch-type list — always points at `commit`'s own convention section
@@ -127,6 +138,8 @@ branch off", "set up a worktree for this feature".
       only changes which option is recommended, it never skips the question
 - [ ] Step 4 never passes an unconstrained worktree-path override to `git worktree add` — always
       validates the character class and rejects any `..` path segment
+- [ ] Step 4 always fires its own `AskUserQuestion` for the worktree path before `git worktree add` runs —
+      a path mentioned only inside step 3's option description never satisfies this
 - [ ] Step 4's default worktree path is always `.claude/worktrees/<description>` (or `.codex/worktrees/`
       for a Codex CLI session) — never the old sibling-directory convention, unless the user explicitly
       overrides to one
