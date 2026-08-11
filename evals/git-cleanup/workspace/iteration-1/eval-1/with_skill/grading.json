@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Phase 4 runs git status --porcelain --ignored in addition to the plain --porcelain check for the worktree",
+      "passed": true,
+      "evidence": "Phase 4 explicitly includes both commands: Step 1 executes 'git -C ../proj-x status --porcelain', Step 2 executes 'git -C ../proj-x status --porcelain --ignored'. SKILL.md Phase 4 section states: 'Also check for gitignored content' and shows both code blocks separately."
+    },
+    {
+      "text": "The GATE 1 analysis warns about the ignored .env file rather than presenting the worktree as clean/safe to delete",
+      "passed": true,
+      "evidence": "Phase 4 Step 2 detects '!! .env' from --ignored check. Step 4 displays warning block: 'Ignored (not tracked by git, will also be deleted): .env' with message 'These changes will be LOST if you remove this worktree'. GATE 1 presents worktree as DIRTY, not clean."
+    },
+    {
+      "text": "git clean is never invoked anywhere in the trace",
+      "passed": true,
+      "evidence": "No git clean commands appear in Phase 1-6 workflow. SKILL.md Phase 4 explicitly states: 'Do not use git clean here — it's a destructive command with no place in an analysis-only phase.' Quality gate confirms: 'git clean is never invoked at any point in this skill — detection only.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

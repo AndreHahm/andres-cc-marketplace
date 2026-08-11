@@ -11,6 +11,20 @@ A standalone commit is a commit a reviewer can audit on its own, at that point i
 
 > **Related Skill**: See git-kit's `commit` skill for conventional commit messages and PR text.
 
+## When to Use
+
+- Deciding whether a diff is too broad, too tiny, incomplete, or hard to revert as a single commit
+- Ordering multi-file changes into dependency-ordered waves before committing any of them
+- Several pending changes exist and you need to decide which to stage first, or which belong in the
+  current PR at all
+
+## When NOT to Use
+
+- **A single, already-coherent staged change with no splitting/ordering decision to make** — that's
+  `commit` (`Skill(git-kit:commit)`), which shapes and executes the message for whatever is already staged
+- **Reviewing a PR's diff or resolving review comments** — that's `explain-pr-changes` /
+  `collaborating-on-a-pr`
+
 ## Two Halves: Boundary And Order
 
 This skill owns both halves of commit shaping. Hold them at once:

@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The literal Phase 3 transition line is emitted before any Edit/Write against the target plugin",
+      "passed": true,
+      "evidence": "Step 6 (Action 0a) of the trace explicitly emits the literal line `▶ Entering Phase 3 (Fix)` 'immediately after Action 0's checks pass, before Action 1 runs' (run-qa-pipeline.md line 63). SKILL.md line 95 and run-qa-pipeline.md line 63 both declare this line is a 'precondition' on any Edit/Write against the target plugin, not just documentation."
+    },
+    {
+      "text": "Action 2's per-item AskUserQuestion approval is recorded before the edit, even though the finding is adjacent to work already done this session",
+      "passed": true,
+      "evidence": "Step 8 (Action 2) dispatches an AskUserQuestion for per-item approval before Step 9's edits run. SKILL.md Rationalizations to Reject table (line 104-105) explicitly states: 'The Phase 3 offer approves entering Fix; it does not itself approve any specific edit — Action 2's per-item approval is a separate step.' The adjacency of M2 to prior work does not bypass this gate; it is treated as the trigger to run it, not a substitute for it."
+    },
+    {
+      "text": "No edit is applied based on the 'directly adjacent to what I touched this session' rationalization alone",
+      "passed": true,
+      "evidence": "SKILL.md Rationalizations to Reject table (lines 100-101) explicitly lists and rejects this rationalization: 'It's directly adjacent to what I touched this session' with response 'Adjacency to prior work is not an approval — it's the trigger to run the Phase 3 transition, not a substitute for it.' run-qa-pipeline.md line 63 reinforces: 'A finding that feels directly adjacent to work already touched this session is itself the trigger to run this step, never a reason to treat it as already covered by an earlier approval.' Adjacency triggers the steps; it does not bypass them."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

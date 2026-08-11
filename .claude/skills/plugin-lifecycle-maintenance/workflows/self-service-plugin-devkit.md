@@ -29,11 +29,15 @@ description drawn from its own section below.
    context lines, not a full `Read`): which components were invoked (`tool_use` blocks
    named `Skill`/`Agent` plus their target), which plugin-devkit files were touched, and any
    visible correction/failure signal (a `tool_result` error, an explicit user correction).
-5. Hand the aggregated digests to `analyzing-sessions` (via `Skill`) as its scope input —
-   framed exactly as the "pasted transcript excerpts or summaries" input that skill's own
-   Phase 1 already documents accepting for out-of-conversation sessions. This is
-   automating *how* those summaries get sourced, not a new capability `analyzing-sessions`
-   itself needs to grow.
+5. Hand the aggregated digests to `analyzing-sessions` (via `Skill`) as its scope input. Note:
+   `analyzing-sessions` can now resolve on-disk transcripts itself (it no longer needs a
+   pasted-summary input for the common case) — this step still earns its keep on top of that,
+   because it's not just re-doing what `analyzing-sessions`' own resolution would do. Steps
+   1-4 above apply two things `analyzing-sessions`' general-purpose resolution doesn't: a
+   14-day rolling window default scoped specifically to self-service checks, and a
+   plugin-devkit-only `Grep` pre-filter (step 3) that drops any transcript with zero
+   plugin-devkit references before it ever reaches `analyzing-sessions` — a repo-wide session
+   full of unrelated work costs nothing here, where a naive hand-off of the whole window would.
 6. After `analyzing-sessions` returns its normal per-component report, add one further
    rollup on top: total suggestions by priority across all sessions in the window,
    recurring themes across 2+ sessions, and an overall plugin-health one-paragraph

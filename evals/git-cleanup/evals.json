@@ -1,0 +1,14 @@
+{
+  "skill_name": "git-cleanup",
+  "skill_path": "plugins/git-kit/skills/git-cleanup/SKILL.md",
+  "description": "Targeted regression check for Phase 4's gitignored-content detection fix (retro S05)",
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "Worktree with only gitignored content is flagged, not reported clean",
+      "prompt": "Run /git-cleanup. Among the worktrees found, one at '../proj-x' has git status --porcelain returning empty (no tracked/untracked changes), but git status --porcelain --ignored returns '!! .env'.",
+      "expected_output": "Phase 4 runs both --porcelain and --porcelain --ignored for this worktree, and the analysis presented at GATE 1 includes an 'Ignored (not tracked by git, will also be deleted):' warning listing .env, rather than reporting the worktree as clean/safe to delete.",
+      "files": ["plugins/git-kit/skills/git-cleanup/SKILL.md"]
+    }
+  ]
+}

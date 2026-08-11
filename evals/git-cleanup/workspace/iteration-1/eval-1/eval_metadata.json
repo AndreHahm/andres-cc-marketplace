@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/git-kit/skills/git-cleanup/SKILL.md",
+  "assertions": [
+    {
+      "text": "Phase 4 runs git status --porcelain --ignored in addition to the plain --porcelain check for the worktree",
+      "type": "functionality",
+      "target": "Phase 4 commands"
+    },
+    {
+      "text": "The GATE 1 analysis warns about the ignored .env file rather than presenting the worktree as clean/safe to delete",
+      "type": "quality",
+      "target": "GATE 1 presented analysis"
+    },
+    {
+      "text": "git clean is never invoked anywhere in the trace",
+      "type": "structure",
+      "target": "tool calls"
+    }
+  ]
+}

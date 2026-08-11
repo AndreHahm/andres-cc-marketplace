@@ -3,17 +3,23 @@
 ## When this applies
 
 Any point in a workflow where: a decision was made at an `AskUserQuestion` checkpoint (an interview,
-ideation, or config-style question) and a later step would change, bypass, or act against it; existing
-functionality or behavior is about to be silently removed or changed; or a workflow phase in a multi-phase
-pipeline skill is about to be skipped rather than explicitly run or explicitly deferred with a stated
-reason.
+ideation, or config-style question) and a later step would change, bypass, or act against it; a workflow's
+own documentation names a required `AskUserQuestion` gate before some action, and that action is about to
+run without the gate having actually fired yet; existing functionality or behavior is about to be silently
+removed or changed; or a workflow phase in a multi-phase pipeline skill is about to be skipped rather than
+explicitly run or explicitly deferred with a stated reason.
 
 ## Rule
 
-- **Never silently override a checkpoint decision.** If a decision made at an `AskUserQuestion` step turns
-  out to need changing — because it's infeasible, because new information contradicts it, because a fix
-  would otherwise violate it — stop and re-ask via `AskUserQuestion` before proceeding. Don't substitute
-  your own judgment for the user's already-made answer.
+- **Never silently override or bypass a checkpoint — including a gate that hasn't fired yet.** This
+  covers two related cases: (1) a decision already made at an `AskUserQuestion` step turns out to need
+  changing — because it's infeasible, because new information contradicts it, because a fix would
+  otherwise violate it — stop and re-ask before proceeding, rather than substituting your own judgment for
+  the user's already-made answer; and (2) a workflow's own documentation names a required `AskUserQuestion`
+  gate before some action (e.g. "requires asking the user first"), and that gate simply hasn't been
+  triggered yet when the action is about to run — this is equally in scope, not a lesser case, since
+  skipping a required-but-not-yet-invoked ask is the same failure as overriding an already-given answer,
+  just earlier in the sequence.
 - **Never silently remove or change existing functionality or behavior.** State plainly what changed and
   why, even when the change is small, obviously correct, or "adjacent to work already done this session."
 - **Never silently skip a workflow phase.** Either run the phase, or state explicitly that it's being

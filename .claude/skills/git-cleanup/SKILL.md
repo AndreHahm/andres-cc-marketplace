@@ -21,6 +21,10 @@ Safely clean up accumulated git worktrees and local branches by categorizing the
 - Do not use for remote branch management (this is local cleanup only)
 - Do not use for repository maintenance tasks like gc or prune
 - Not designed for headless or non-interactive automation (requires user confirmations at two gates)
+- Cannot run from a session sandboxed to a worktree checkout — this command needs to operate on the
+  primary checkout's branch/worktree list, and a worktree-sandboxed session cannot `cd` there. Run it from
+  a session started in the primary checkout instead. See `finishing-work`'s hand-off note for the same
+  constraint on the more common path into this skill.
 
 ## Core Principle: SAFETY FIRST
 
@@ -29,8 +33,10 @@ Safely clean up accumulated git worktrees and local branches by categorizing the
 ## Critical Implementation Notes
 
 See [references/critical-implementation-notes.md](references/critical-implementation-notes.md) for the
-squash-merge `-D` requirement, the branch-grouping-before-categorization procedure, and the PR-history
-investigation commands. Read it before Phase 2 (Group Related Branches) and Phase 3 (Categorize).
+squash-merge `-D` requirement and the PR-history investigation commands — the branch-grouping procedure
+itself is already fully covered by Phase 2 below, so the reference file doesn't restate it. Read the
+reference before Phase 3 (Categorize) for the squash-merge nuance; the PR-history commands apply
+specifically to `[gone]` branches within Phase 2/3.
 
 ## Workflow
 

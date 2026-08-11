@@ -1,0 +1,14 @@
+{
+  "skill_name": "starting-work",
+  "skill_path": "plugins/git-kit/skills/starting-work/SKILL.md",
+  "description": "Targeted regression check for the step 4 worktree-path confirmation fix (retro S04)",
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "Worktree path gets its own explicit confirmation",
+      "prompt": "Start a new piece of work for 'feature add-caching' using starting-work. Current branch is main, clean working tree, synced. When asked whether to use a plain branch or a worktree, answer: Worktree.",
+      "expected_output": "After the worktree-vs-branch AskUserQuestion is answered 'Worktree', a SECOND, distinct AskUserQuestion call fires specifically confirming the computed worktree path (e.g. '.claude/worktrees/add-caching') before any git worktree add command runs. The path is not stated as already-decided inside the worktree-vs-branch question's own option text.",
+      "files": ["plugins/git-kit/skills/starting-work/SKILL.md"]
+    }
+  ]
+}

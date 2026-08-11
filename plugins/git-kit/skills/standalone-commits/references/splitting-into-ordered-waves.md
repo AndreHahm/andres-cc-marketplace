@@ -209,16 +209,16 @@ For multi-wave work:
 # `git checkout -b` is hard-blocked by git-kit's branch-creation guard outside it.
 
 # Wave 1
-# ... make changes ...
-# (each wave's commit goes through this skill's own Staging Workflow step 6,
-# which writes the marker git-kit's commit guard requires)
-git add <files> && git commit -m "feat(scope): wave 1 description"
+git add <files>
+# ... commit via this skill's own Staging Workflow step 6a/6b/6c: compose the
+# message, confirm it via AskUserQuestion, then write-git-kit-marker.sh + git commit
 
 # Wave 2
-# ... make changes ...
-git add <files> && git commit -m "feat(scope): wave 2 description"
+git add <files>
+# ... commit via step 6a/6b/6c again -- each wave gets its own confirmation,
+# never a bare `git commit -m` and never one confirmation covering the whole sequence
 
-# ... continue waves ...
+# ... continue waves, each through its own 6a/6b/6c ...
 
 # When done, all waves are individual commits on the branch
 # PR shows clean history of how the feature evolved

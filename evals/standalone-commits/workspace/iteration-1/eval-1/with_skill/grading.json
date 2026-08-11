@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "An AskUserQuestion showing the exact composed commit message fires before the marker-write step",
+      "passed": true,
+      "evidence": "SKILL.md step 6b prescribes AskUserQuestion with 'show the exact composed message' (line 98-99), positioned before step 6c's marker-write. Trace Tool Call 2 (AskUserQuestion) executes at step 6b, before Tool Call 3 (write-git-kit-marker.sh) at step 6c.1."
+    },
+    {
+      "text": "The marker-write (write-git-kit-marker.sh) happens after the confirmation, immediately before git commit, not before the confirmation",
+      "passed": true,
+      "evidence": "SKILL.md line 100-101 explicitly states 'write it right before this step, not earlier, and after 6b's confirmation — not before it'. Trace shows AskUserQuestion (6b confirmation) → marker-write (6c.1) → git commit (6c.2). Marker-write is conditional on user selecting 'Commit as shown', never executing before confirmation."
+    },
+    {
+      "text": "The composed message references commit skill's conventional-format and footer sections rather than restating the type list or trailer table inline",
+      "passed": true,
+      "evidence": "SKILL.md step 6a (line 97-98) explicitly directs to 'link to those sections rather than restating the type list or trailer table here'. The skill documentation itself cites 'commit skill's \"Best Practices for Commits\" (conventional format) and \"Commit Message Footer\" sections' by name, avoids inline restatement of type enum or footer structure, maintaining consistency between skills."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/git-kit/skills/standalone-commits/SKILL.md",
+  "assertions": [
+    {
+      "text": "An AskUserQuestion showing the exact composed commit message fires before the marker-write step",
+      "type": "functionality",
+      "target": "tool call ordering"
+    },
+    {
+      "text": "The marker-write (write-git-kit-marker.sh) happens after the confirmation, immediately before git commit, not before the confirmation",
+      "type": "structure",
+      "target": "tool call ordering"
+    },
+    {
+      "text": "The composed message references commit skill's conventional-format and footer sections rather than restating the type list or trailer table inline",
+      "type": "quality",
+      "target": "step 6a composition"
+    }
+  ]
+}

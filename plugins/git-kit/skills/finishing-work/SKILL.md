@@ -43,10 +43,17 @@ branch", "get back to a clean main".
 2. **Return to main**: resolve the actual default branch rather than assuming `main` —
    `git symbolic-ref refs/remotes/origin/HEAD` (falling back to `main` if that fails, e.g. no `origin`
    remote configured), then `git checkout <resolved-branch>`, then `git pull --ff-only`. If the checkout
-   or pull fails (diverged local branch, or the branch already checked out in another worktree), tell
-   the user why and stop rather than force anything. `allowed-tools` grants `Bash(git checkout:*)`
-   broadly for this step since the resolved branch name is dynamic and can't be statically pinned — this
-   skill never runs the file-restore form (`git checkout -- <path>`), only branch checkout.
+   or pull fails, tell the user why and stop rather than force anything — three distinct reasons, not just
+   one: a diverged local branch; the resolved branch already checked out in another worktree (git refuses
+   with "already used by worktree"); or **this session is itself sandboxed to a worktree checkout** rather
+   than the primary checkout — a worktree-sandboxed session cannot `cd` out to the primary repo root, so
+   even a successful-looking checkout here would switch the *worktree's own* branch, not the primary
+   checkout's, leaving the actual goal (a synced primary `main`) unmet. Tell the user plainly which of the
+   three applies, and — for the sandboxed case specifically — that they need to run `finishing-work` (and
+   subsequently `/git-cleanup`) from a session started in the primary checkout instead. `allowed-tools`
+   grants `Bash(git checkout:*)` broadly for this step since the resolved branch name is dynamic and can't
+   be statically pinned — this skill never runs the file-restore form (`git checkout -- <path>`), only
+   branch checkout.
 3. **Prune**: `git fetch --prune` to drop stale remote-tracking refs for branches deleted on the remote.
 4. **Verify clean state**: `git status --porcelain` on the current worktree must come back empty. Also
    run `git worktree list` and compare against the PR's `headRefName` from step 1 (not the
@@ -56,7 +63,9 @@ branch", "get back to a clean main".
 5. **Hand off**: tell the user local `main` is synced and current, and that `/git-cleanup` is the next
    step to review and delete the merged branch (and worktree, if any). Never invoke `git-cleanup`
    automatically — it has `disable-model-invocation: true` by design and only runs on direct user
-   invocation.
+   invocation. **If this session is sandboxed to a worktree checkout**, remind them here too:
+   `/git-cleanup` needs to run from a session started in the primary checkout, not from inside the
+   worktree — the same constraint step 2 above stops on, not a separate one.
 
 ## Testing & Validation
 
@@ -75,4 +84,6 @@ branch", "get back to a clean main".
       `nameWithOwner`) — never assumes `$ARGUMENTS` refers to the current branch/repo without checking,
       and always stops to ask on a mismatch rather than continuing silently
 - [ ] Step 5 always tells the user to run `/git-cleanup` themselves — never invokes it via `Skill()`
+- [ ] A session sandboxed to a worktree checkout is told plainly, at both step 2 and step 5, that it
+      cannot complete the sync/hand-off from there — never left to discover the `cd` failure on its own
 - [ ] A diverged local default branch at step 2 always stops rather than force-syncing
