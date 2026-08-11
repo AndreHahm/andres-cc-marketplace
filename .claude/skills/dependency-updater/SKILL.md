@@ -2,7 +2,7 @@
 name: dependency-updater
 description: >-
   Scan a project's package manifests across ecosystems (Python, JavaScript/npm, Rust, Go) for outdated dependencies, detect version conflicts across a monorepo, and propose updates with explicit confirmation before applying any change. Use when checking for outdated dependencies, planning a dependency bump, auditing dependency freshness, or asked to update packages across a repo or monorepo.
-allowed-tools: Glob, Read, Edit, Bash(uv:*), Bash(pip:*), Bash(pip-audit:*), Bash(npm:*), Bash(cargo:*), Bash(go:*), Bash(git diff:*), Bash(git status:*)
+allowed-tools: Glob, Read, Edit, Bash(uv pip list:*), Bash(uv lock:*), Bash(pip list:*), Bash(pip-audit:*), Bash(npm outdated:*), Bash(npm audit:*), Bash(npm install:*), Bash(cargo outdated:*), Bash(cargo update:*), Bash(go list:*), Bash(go mod tidy:*), Bash(git diff:*), Bash(git status:*)
 ---
 
 # Dependency Updater

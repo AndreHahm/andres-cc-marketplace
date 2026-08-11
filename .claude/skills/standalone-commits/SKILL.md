@@ -2,7 +2,7 @@
 name: standalone-commits
 description: >-
   Make commits reviewable and auditable as self-contained units, order multi-file changes into atomic dependency-ordered waves, and decide which of several pending changes to stage first. Use when planning commits, 'split this into commits', 'break this up', 'commit strategy', splitting work into waves, staging changes, reviewing branch history, deciding whether a commit is too broad, too tiny, incomplete, or hard to revert, prioritizing which change to stage next, or filtering pending changes down to what's relevant to the current PR.
-allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(gh pr view:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*)
+allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(gh pr view:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read
 ---
 
 # Standalone Commits

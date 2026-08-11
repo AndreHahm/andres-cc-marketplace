@@ -2,7 +2,7 @@
 name: github-issue-creator
 description: >-
   Convert raw notes, error logs, voice dictation, or screenshots into crisp GitHub-flavored markdown issue reports. Use when the user pastes bug info, error messages, or informal descriptions and wants a structured GitHub issue. Supports images/GIFs for visual evidence.
-allowed-tools: Write
+allowed-tools: Write, Read
 ---
 
 # GitHub Issue Creator
@@ -15,7 +15,7 @@ Use the structure in `assets/issue-template.md` for every generated issue — se
 
 ## Output Location
 
-**Create issues as markdown files** in `/issues/` directory at the repo root. Use naming convention: `YYYY-MM-DD-short-description.md`
+**Create issues as markdown files** in `issues/` directory at the repo root. Use naming convention: `YYYY-MM-DD-short-description.md`
 
 ## Guidelines
 
@@ -25,7 +25,7 @@ Use the structure in `assets/issue-template.md` for every generated issue — se
 
 **Infer missing context**: If user mentions "same project" or "the dashboard", use context from conversation or memory to fill in specifics.
 
-**Placeholder sensitive data**: Use `[PROJECT_NAME]`, `[USER_ID]`, etc. for anything that might be sensitive.
+**Placeholder sensitive data**: Use `[PROJECT_NAME]`, `[USER_ID]`, etc. for anything that might be sensitive. Raw notes, error logs, voice dictation, and screenshots commonly carry more than just those two — also redact or flag email addresses (`[EMAIL]`), tokens/API keys (`[REDACTED_TOKEN]`), internal hostnames (`[INTERNAL_HOST]`), session IDs (`[SESSION_ID]`), and absolute filesystem paths containing usernames (`[LOCAL_PATH]`) before writing the generated issue file.
 
 **Match severity to impact**:
 - Critical: Service down, data loss, security issue
@@ -71,7 +71,7 @@ Required 3 retry attempts before successful deployment
 ---
 
 **Input (error paste)**:
-> Error: PERMISSION_DENIED when publishing to Teams channel. Code: 403. Was working yesterday.
+> Error: PERMISSION_DENIED when publishing to Teams channel. Code: 403. Was working yesterday. Reported by jane.doe@acme.com, running from C:\Users\jdoe\projects\teams-agent with token YOUR_API_KEY_HERE.
 
 **Output**:
 ~~~markdown
@@ -102,7 +102,8 @@ Code: 403
 **High** - Blocks Teams integration, regression from previous working state
 
 ## Additional Context
-Was working yesterday - possible permission/config change or service regression
+Was working yesterday - possible permission/config change or service regression. Reported by [EMAIL],
+running from [LOCAL_PATH] with token [REDACTED_TOKEN].
 ~~~
 
 ## Testing & Validation
@@ -121,11 +122,13 @@ Was working yesterday - possible permission/config change or service regression
 
 **Quality gates:**
 - [ ] Every generated issue follows the structure in `assets/issue-template.md` — never a freeform format
-- [ ] Output is always written as a markdown file in `/issues/` at the repo root, named
+- [ ] Output is always written as a markdown file in `issues/` at the repo root, named
       `YYYY-MM-DD-short-description.md` — never elsewhere
 - [ ] Severity is always matched to impact per the documented Critical/High/Medium/Low definitions —
       never assigned arbitrarily
-- [ ] Sensitive data (project names, user IDs, etc.) is always placeholdered (`[PROJECT_NAME]`,
-      `[USER_ID]`) — never left as real values pulled from raw input
+- [ ] Sensitive data (project names, user IDs, emails, tokens/API keys, internal hostnames, session IDs,
+      absolute filesystem paths, etc.) is always placeholdered (`[PROJECT_NAME]`, `[USER_ID]`, `[EMAIL]`,
+      `[REDACTED_TOKEN]`, `[INTERNAL_HOST]`, `[SESSION_ID]`, `[LOCAL_PATH]`) — never left as real values
+      pulled from raw input
 - [ ] Image/GIF references always use the `![Description](attachment-name.png)` inline format
 - [ ] Missing context is only inferred from conversation/memory already available — never fabricated

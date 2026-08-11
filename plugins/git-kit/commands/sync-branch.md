@@ -1,18 +1,9 @@
 ---
-description: Sync feature branch with the latest main branch.
+description: Sync feature branch with main via git-rebase-sync.
 argument-hint: [target]
-allowed-tools: Bash(git fetch:*), Bash(git rebase:*), Bash(git push:*), Bash(git branch:*)
+allowed-tools: Skill(git-kit:git-rebase-sync)
 disable-model-invocation: true
 ---
 
-1. Fetch latest upstream refs: `git fetch origin --prune`.
-2. Identify target branch: $ARGUMENTS if given, otherwise `main`.
-3. Rebase current branch onto the target identified in step 2 (substitute the actual branch name — do not use shell parameter expansion like `${target:-main}`, since `$ARGUMENTS` is a literal text substitution, not a shell environment variable):
-   ```bash
-   git rebase origin/<target-branch>
-   ```
-4. Resolve any conflicts
-5. Force-with-lease push to update the PR:
-   ```bash
-   git push --force-with-lease origin $(git branch --show-current)
-   ```
+1. Identify target branch: $ARGUMENTS if given, otherwise let `git-rebase-sync` resolve the repository's default branch itself.
+2. Invoke `Skill(git-kit:git-rebase-sync)`, passing the target branch identified in step 1 as its `args` (omit `args` when no explicit target was given, so the skill falls back to the GitHub default branch). `git-rebase-sync` performs the actual rebase, conflict resolution, and force-with-lease push — including its own `AskUserQuestion` confirmations and pre-rebase backup ref — this command no longer runs `git rebase`/`git push` directly.

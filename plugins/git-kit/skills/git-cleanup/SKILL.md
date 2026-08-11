@@ -3,7 +3,7 @@ name: git-cleanup
 description: >-
   Safely analyzes and cleans up local git branches and worktrees by categorizing them as merged, squash-merged, superseded, or active work.
 disable-model-invocation: true
-allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Read, Grep
+allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/phase1-analysis.sh:*), Read, Grep
 ---
 
 # Git Cleanup
@@ -48,7 +48,7 @@ specifically to `[gone]` branches within Phase 2/3.
 
 ### Phase 1: Comprehensive Analysis
 
-Gather ALL information upfront before any categorization. Read `scripts/phase1-analysis.sh` and run each of its git commands individually: it resolves the default branch, lists local branches and worktrees, fetches/prunes, and for each non-protected branch reports unmerged and unpushed commits.
+Gather ALL information upfront before any categorization. Run `"${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/phase1-analysis.sh"` directly via `Bash` — it resolves the default branch, lists local branches and worktrees, fetches/prunes, gets merged-branch and recent PR-merge history, and for each non-protected branch (protected names excluded via the script's own `grep -vE` filter) reports unmerged and unpushed commits. Read its output rather than re-deriving these git calls by hand.
 
 **Note on branch names:** Git branch names can contain characters that break shell expansion. Always quote `"$branch"` in commands.
 
@@ -213,16 +213,22 @@ Confirm? (yes/no)
 
 ### Phase 5: Execute
 
-Run each deletion as a **separate command** so partial failures don't block remaining deletions. Report the result of each:
+Run each deletion as a **separate command** so partial failures don't block remaining deletions. Report the result of each. Immediately before each `git branch -D` call — never earlier, since git-kit's guard hook only accepts a marker up to 60 seconds old — run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup`. This writes the marker git-kit's destructive-cleanup guard requires before it will let a raw `git branch -D` targeting a protected branch name through — the same marker-handshake pattern every other git-kit skill uses before its own guarded command. Plain `git branch -d` (lowercase, already-merged-only) and plain `git worktree remove` (no `--force`) aren't guarded and need no marker; only `git worktree remove --force`/`-f` does, since a plain removal already refuses on a dirty or locked worktree via git's own safeguard.
 
 ```bash
 git branch -d fix/typo
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/login
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-v2
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-refactor
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-final
 git worktree unlock ../proj-auth
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git worktree remove ../proj-auth
 ```
 
@@ -258,7 +264,10 @@ locked and by which reason, rather than surfacing git's raw error text unexplain
 1. **Never invoke automatically** - Only run when user explicitly uses `/git-cleanup`
 2. **Two confirmation gates only** - Analysis review, then deletion confirmation
 3. **Use correct delete command** - `-d` for merged, `-D` for squash-merged/superseded
-4. **Never touch protected branches** - main, master, develop, release/* (filtered programmatically)
+4. **Never touch protected branches** - main, master, develop, release/* are excluded from Phase 1's
+   per-branch commit-analysis loop by `scripts/phase1-analysis.sh`'s own `grep -vE` filter (run directly,
+   not just read), and any raw `git branch -D` that still targets one of these names is additionally
+   hard-blocked by git-kit's `guard-raw-destructive-cleanup.sh` PreToolUse hook
 5. **Block dirty worktree removal** - Refuse without explicit data loss acknowledgment. "Dirty" covers
    gitignored content too, not just tracked/untracked-but-not-ignored changes — `git status --porcelain`
    alone misses gitignored files entirely, so Phase 4's `--ignored` check is what actually completes this

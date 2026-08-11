@@ -15,6 +15,24 @@
 # .git/ itself is never tracked, by git's own design.
 set -euo pipefail
 
+# Fail closed, not open: if jq isn't available, the script below can't parse
+# INPUT and would otherwise crash -- which, under this hook's "onError": "warn"
+# registration, lets the tool call proceed with just a warning. Emit an
+# explicit deny instead, so a missing dependency can't silently defeat this
+# guard.
+if ! command -v jq >/dev/null 2>&1; then
+  cat <<'EOF'
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "git-kit's raw-command guard requires `jq`, which isn't available in this environment -- install jq or this guard cannot verify the command is safe."
+  }
+}
+EOF
+  exit 0
+fi
+
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
@@ -26,10 +44,13 @@ fi
 # Match `git commit` as a standalone subcommand invocation -- not a mention of
 # the word "commit" elsewhere (e.g. `git log --grep=commit`, `echo "commit this"`).
 # `git(\.exe)?` also catches the literal `git.exe` invocation PowerShell callers
-# sometimes use. The optional `-C <dir>`/`-c <k>=<v>` group catches an interposed
-# global option (e.g. git-cleanup's own `Bash(git -C:*)` grant) -- same prefix
-# pattern guard-raw-branch-create.sh already uses.
-GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+-[Cc][[:space:]]+[^[:space:]]+)?[[:space:]]+'
+# sometimes use. The repeating group catches zero or more interposed global
+# options -- `-C <dir>`/`-c <k>=<v>` (each a separate space-delimited value
+# token) or any other single-token `-`/`--` flag (e.g. `--no-pager`) -- so
+# stacked options like `git -c a=b -c c=d commit` or `git --no-pager commit`
+# can't bypass this guard. Same prefix pattern guard-raw-branch-create.sh
+# already uses.
+GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--?[^[:space:]]+))*[[:space:]]+'
 if ! echo "$COMMAND" | grep -qE "${GIT_PREFIX}commit([[:space:]]|\$)"; then
   exit 0
 fi
