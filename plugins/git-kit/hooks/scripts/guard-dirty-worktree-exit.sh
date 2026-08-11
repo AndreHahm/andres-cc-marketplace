@@ -66,7 +66,7 @@ if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
 fi
 
 UNMERGED=false
-DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@') || true
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 if [ -n "$(git log "origin/$DEFAULT_BRANCH"..HEAD --oneline 2>/dev/null)" ]; then
   UNMERGED=true

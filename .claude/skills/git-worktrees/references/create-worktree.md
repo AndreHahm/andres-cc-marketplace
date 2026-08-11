@@ -154,9 +154,10 @@ When done with a worktree in a clean state, use the proper removal command:
 git worktree remove ../myproject-add-auth
 ```
 
-For a worktree with uncommitted changes, that's a forced removal — hand off to `git-cleanup`, which gates
-`--force`/`-f` behind explicit user confirmation before running it; the raw form is guarded and isn't this
-workflow's job.
+For a worktree with uncommitted changes, that's a forced removal — tell the user to run `/git-cleanup`
+themselves (it has `disable-model-invocation: true`, so it can't be invoked here even indirectly), which
+gates `--force`/`-f` behind explicit user confirmation before running it; the raw form is guarded and
+isn't this workflow's job.
 
 Never use `rm -rf` to delete worktrees - always use `git worktree remove` (or `git-cleanup` for the forced case).
 

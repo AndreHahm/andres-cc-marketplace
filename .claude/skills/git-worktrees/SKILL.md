@@ -108,10 +108,11 @@ git worktree list --porcelain
 git worktree remove ../feature-x
 ```
 
-**Need to discard uncommitted changes to force a removal?** That's `git-cleanup`'s job — it gates
-`git worktree remove --force`/`-f` behind explicit user confirmation before running it. git-kit's
-`guard-raw-destructive-cleanup.sh` hook hard-blocks the raw forced form from any skill not on its
-allowlist, this skill included.
+**Need to discard uncommitted changes to force a removal?** Not this skill's job — `git-cleanup` has
+`disable-model-invocation: true`, so it can't be invoked here even indirectly; tell the user to run
+`/git-cleanup` themselves. It gates `git worktree remove --force`/`-f` behind explicit user confirmation
+before running it. git-kit's `guard-raw-destructive-cleanup.sh` hook hard-blocks the raw forced form from
+any skill not on its allowlist, this skill included.
 
 ### Move a Worktree
 
@@ -368,8 +369,9 @@ cd ../project-experiment
 
 If the experiment is discarded and the worktree is clean, `git worktree remove ../project-experiment`
 (plain removal) is enough. If it needs to be discarded with uncommitted changes still present, that's a
-forced removal — use `git-cleanup`, which gates `--force` behind explicit confirmation; the raw form is
-guarded and isn't this skill's job.
+forced removal — tell the user to run `/git-cleanup` themselves (it has `disable-model-invocation: true`,
+so it can't be invoked here even indirectly), which gates `--force` behind explicit confirmation; the raw
+form is guarded and isn't this skill's job.
 
 ## Verification Checklist
 

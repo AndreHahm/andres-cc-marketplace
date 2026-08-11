@@ -158,9 +158,10 @@ git worktree remove ../project-feature
 git worktree prune
 ```
 
-For a worktree with uncommitted changes still in it, that's a forced removal — hand off to `git-cleanup`,
-which gates `--force`/`-f` behind explicit user confirmation; the raw form is guarded and isn't this
-workflow's job.
+For a worktree with uncommitted changes still in it, that's a forced removal — tell the user to run
+`/git-cleanup` themselves (it has `disable-model-invocation: true`, so it can't be invoked here even
+indirectly), which gates `--force`/`-f` behind explicit user confirmation; the raw form is guarded and
+isn't this workflow's job.
 
 Ask about cleanup after each successful merge to help maintain a tidy workspace.
 
