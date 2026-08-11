@@ -28,48 +28,9 @@ Safely clean up accumulated git worktrees and local branches by categorizing the
 
 ## Critical Implementation Notes
 
-### Squash-Merged Branches Require Force Delete
-
-**IMPORTANT:** `git branch -d` will ALWAYS fail for squash-merged branches because git cannot detect that the work was incorporated. This is expected behavior, not an error.
-
-When you identify a branch as squash-merged:
-- Plan to use `git branch -D` (force delete) from the start
-- Do NOT try `git branch -d` first and then ask again for `-D` - this wastes user confirmations
-- In the confirmation step, show `git branch -D` for squash-merged branches
-
-### Group Related Branches BEFORE Categorization
-
-**MANDATORY:** Before categorizing individual branches, group them by name prefix:
-
-```bash
-# Extract common prefixes from branch names
-# e.g., feat/auth-*, feat/api-*, fix/login-*
-```
-
-Branches sharing a prefix (e.g., `feat/api`, `feat/api-v2`, `feat/api-refactor`) are almost certainly related iterations. Analyze them as a group:
-
-1. Find the oldest and newest by commit date
-2. Check if newer branches contain commits from older ones
-3. Check which PRs merged work from each
-4. Determine if older branches are superseded
-
-Present related branches together with a clear recommendation, not scattered across categories.
-
-### Thorough PR History Investigation
-
-Don't rely on simple keyword matching. For `[gone]` branches:
-
-```bash
-# 1. Get the branch's commits that aren't in default branch
-git log --oneline "$default_branch".."$branch"
-
-# 2. Search default branch for PRs that incorporated this work
-# Search by: branch name, commit message keywords, PR numbers
-git log --oneline "$default_branch" | grep -iE "(branch-name|keyword|#[0-9]+)"
-
-# 3. For related branch groups, trace which PRs merged which work
-git log --oneline "$default_branch" | grep -iE "(#[0-9]+)" | head -20
-```
+See [references/critical-implementation-notes.md](references/critical-implementation-notes.md) for the
+squash-merge `-D` requirement, the branch-grouping-before-categorization procedure, and the PR-history
+investigation commands. Read it before Phase 2 (Group Related Branches) and Phase 3 (Categorize).
 
 ## Workflow
 
@@ -161,12 +122,33 @@ git -C <worktree-path> status --porcelain
 git status --porcelain
 ```
 
+**Also check for gitignored content** — `git status --porcelain` never lists gitignored files, tracked
+or not, so a worktree can carry a `.env`, a local settings override, or other gitignored content that this
+check alone would silently miss:
+
+```bash
+# For each worktree path
+git -C <worktree-path> status --porcelain --ignored
+
+# For current directory
+git status --porcelain --ignored
+```
+
+Do not use `git clean` here — it's a destructive command with no place in an analysis-only phase of a
+skill whose Core Principle is "never delete anything without explicit user confirmation." `--ignored` is
+read-only and sufficient. If the ignored-file list is long (e.g. `node_modules/`, `.venv/`), show only the
+top-level entries plus a count rather than every path, so the warning stays readable.
+
 **Display warnings prominently:**
 
 ```markdown
 WARNING: ../proj-auth has uncommitted changes:
   M  src/auth.js
   ?? new-file.txt
+
+Ignored (not tracked by git, will also be deleted):
+  .env
+  .claude/settings.local.json
 
 These changes will be LOST if you remove this worktree.
 ```
@@ -261,7 +243,10 @@ locked and by which reason, rather than surfacing git's raw error text unexplain
 2. **Two confirmation gates only** - Analysis review, then deletion confirmation
 3. **Use correct delete command** - `-d` for merged, `-D` for squash-merged/superseded
 4. **Never touch protected branches** - main, master, develop, release/* (filtered programmatically)
-5. **Block dirty worktree removal** - Refuse without explicit data loss acknowledgment
+5. **Block dirty worktree removal** - Refuse without explicit data loss acknowledgment. "Dirty" covers
+   gitignored content too, not just tracked/untracked-but-not-ignored changes — `git status --porcelain`
+   alone misses gitignored files entirely, so Phase 4's `--ignored` check is what actually completes this
+   rule's coverage
 6. **Unlock before removing** - A session-locked worktree (per Phase 4's lock check) gets
    `git worktree unlock` immediately before `git worktree remove`, never `--force` as a substitute for
    unlocking — `--force` bypasses the dirty-worktree safeguard in Safety Rule 5 too, not just the lock
@@ -280,3 +265,10 @@ These are common shortcuts that lead to data loss. Reject them:
 | "I'll just delete all the `[gone]` branches" | `[gone]` only means the remote was deleted. The local branch may have unpushed commits. |
 | "The user seems to want everything deleted" | Always present analysis first. Let the user choose what to delete. |
 | "The branch has commits not in main, so it has unpushed work" | "Not in main" ≠ "not pushed". A branch can be synced with its remote but not merged to main. Always check `git log origin/<branch>..<branch>`. |
+| "It's gitignored, so it's not important" | Gitignored means *not in git history* — it is often the only copy of a `.env`, a local override, or uncommitted scratch output. Absence from git is not evidence of unimportance. |
+
+## Testing & Validation
+
+See [references/testing-and-validation.md](references/testing-and-validation.md) for activation
+triggers/non-triggers, the Phase 4 gitignored-content detection scenarios, and the full quality-gates
+checklist.

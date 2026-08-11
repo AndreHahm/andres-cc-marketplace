@@ -130,10 +130,11 @@ Files: App files that consume the new types.
    - Re-read `git diff --staged` against the wave claim
    - Ensure no errors introduced
 
-4. **Commit the wave**
-   - Use conventional commit format
-   - Message describes what this wave accomplishes
-   - Body can list specific changes
+4. **Commit the wave** — via the parent skill's own Staging Workflow step 6 (compose / confirm / commit):
+   compose the message using conventional commit format, describing what this wave accomplishes (body can
+   list specific changes); show it via `AskUserQuestion` for confirmation before committing; then write the
+   marker (`write-git-kit-marker.sh`) immediately before running `git commit`. Don't shortcut this into a
+   single "just commit it" step — each wave gets its own confirmation, not one covering the whole sequence.
 
 5. **Repeat for next wave**
 
