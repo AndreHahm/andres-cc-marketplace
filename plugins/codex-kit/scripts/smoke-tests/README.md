@@ -12,6 +12,7 @@ node scripts/smoke-tests/codex-rescue-prompt-assembly.mjs
 node scripts/smoke-tests/codex-verify-prompt-assembly.mjs
 node scripts/smoke-tests/codex-research-prompt-assembly.mjs
 node scripts/smoke-tests/stop-review-gate-hook.mjs
+node scripts/smoke-tests/codex-config-toml-sections.mjs
 ```
 
 Or all at once:
@@ -31,6 +32,7 @@ for f in scripts/smoke-tests/*.mjs; do node "$f" || echo "FAILED: $f"; done
 | `codex-rescue-prompt-assembly.mjs` | `skills/codex-rescue/SKILL.md`'s Phase 2 heredoc | The condensed prompt-assembly template still produces valid, parseable output and the `JOB_ID`-extraction one-liner still works against a representative job JSON payload. |
 | `codex-verify-prompt-assembly.mjs` | `skills/codex-verify/SKILL.md`'s payload-assembly heredoc | The condensed `<content_trust_boundary>`/`<task>`/`<structured_output_contract>`/`<grounding_rules>`/`<completeness_contract>`/`<document>` heredoc still produces well-formed, balanced XML with the document body correctly appended. |
 | `codex-research-prompt-assembly.mjs` | `skills/codex-research/SKILL.md`'s payload-assembly heredoc | Same as above, for research's tag set (`<content_trust_boundary>`/`<task>`/`<structured_output_contract>`/`<research_mode>`/`<citation_rules>`/`<grounding_rules>`). |
+| `codex-config-toml-sections.mjs` | `scripts/lib/codex-config.mjs` | The section-aware TOML read/write fix: a root-absent key never leaks a same-named key from inside a `[table]`, and writing a new root key never corrupts an existing table. Tests the pure text-transform functions directly against in-memory strings only — never touches a real `~/.codex/config.toml`. |
 
 ## When to re-run
 

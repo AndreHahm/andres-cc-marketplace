@@ -3,12 +3,13 @@ name: codex-verify
 description: >-
   Verify a plan or document using Codex as independent reviewer with
   PASS/FAIL verdict. Use when asked "codex verify", "verify this plan",
-  "review this doc for issues". Not for open-ended investigation or
-  deep-dive research on a topic/document — use codex-research for that.
-  For validating Claude's own not-yet-written analysis or design (no
-  document to point at), use codex-peer-review instead.
+  "review this doc for issues", or to resume a prior verification.
+  Not for open-ended investigation or deep-dive research on a
+  topic/document — use codex-research for that. For validating Claude's
+  own not-yet-written analysis or design (no document to point at), use
+  codex-peer-review instead.
 argument-hint: "path/to/document.md [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
-allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Codex Document Verification + Double-Check

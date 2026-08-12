@@ -7,8 +7,8 @@ description: >-
   /codex-kit:review instead). Use only when the user explicitly asks for a
   complete multi-lens whole-project review, review-until-convergence,
   multi-branch comparison, or verify-and-fix across isolated worktrees. This
-  is expensive (15-26 parallel Codex calls) — confirm the user wants that
-  scale before running.
+  is expensive (3-20 parallel Codex calls per round, for up to 10 rounds
+  until convergence) — confirm the user wants that scale before running.
 argument-hint: "[--mode audit|compare|fix] [--branches <b1,b2,...>] [--base <ref>]"
 allowed-tools: ["Bash(node:*)", "Bash(git:*)", "Read", "Grep", "Glob", "AskUserQuestion", "Agent"]
 ---
@@ -21,7 +21,7 @@ Three modes. **Confirm scope and cost with the user via `AskUserQuestion` before
 
 1. **Explore**: dispatch 1-3 subagents to survey project structure, invariants, high-risk modules.
 2. **Plan lenses**: derive 3-20 independent lenses (distinct failure surfaces/subsystems) from the exploration — score candidates on yield, severity-ceiling, orthogonality, groundability; land where one more lens would just re-read files already covered.
-3. **Launch**: fire one Codex review per lens in parallel via `${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs adversarial-review` per lens (never a raw `codex exec` — always through this shared companion script, same as every other codex-kit component), each with a distinct focus prompt.
+3. **Launch**: fire one Codex review per lens in parallel via `${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs adversarial-review` per lens (never a raw `codex exec` — always through this shared companion script, same as every other codex-kit component), each with a distinct focus prompt. Background + poll per Pattern A (`codex-prompt-protocol/references/invocation-protocol.md §4`).
 4. **Synthesize**: deduplicate findings by (file, defect-class); track status new/still-open/fixed-verified/regressed across rounds.
 5. **Converge**: repeat up to 10 rounds. Stop when a round returns only trivial findings, or two consecutive rounds add no new substantive findings, or all confirmed substantive findings are fixed/accepted.
 
@@ -61,7 +61,7 @@ Never creates PRs, deploys, or posts comments without explicit authority. Mode A
 
 **Current test coverage:**
 - `evals/codex-audit-loop/evals.json` — 1 defined scenario (cost/scope confirmation, Mode A's explore-plan-launch-synthesize-converge phases). Definition only — not yet run and graded.
-- No persisted smoke test exists for this skill (its output depends on 15-26 live parallel Codex calls against real project state, not a fixed template).
+- No persisted smoke test exists for this skill (its output depends on 3-20 live parallel Codex calls per round against real project state, not a fixed template).
 
 **Quality gates:**
 - [ ] Every mode always confirms scope/cost via `AskUserQuestion` before launching

@@ -22,8 +22,26 @@ function readConfigText() {
   }
 }
 
-function extractTopLevelKey(text, key) {
-  const match = text.match(new RegExp(`^${key}\\s*=\\s*"([^"]*)"`, "m"));
+// TOML section boundary: everything before the first `[table]`/`[[array]]`
+// header line is the root document; a bare `key = value` line anywhere
+// after that header belongs to that table, not the root. A regex with no
+// section awareness would match (and, on write, silently overwrite) a
+// same-named key inside e.g. `[profiles.work]` as if it were the global
+// default -- a real, silent-corruption risk on a file outside this
+// plugin's own directory. Splitting here confines both read and write to
+// the root region only.
+function splitAtFirstSection(text) {
+  const match = text.match(/^\s*\[/m);
+  if (!match) {
+    return { root: text, rest: "" };
+  }
+  const index = match.index;
+  return { root: text.slice(0, index), rest: text.slice(index) };
+}
+
+export function extractTopLevelKey(text, key) {
+  const { root } = splitAtFirstSection(text);
+  const match = root.match(new RegExp(`^${key}\\s*=\\s*"([^"]*)"`, "m"));
   return match ? match[1] : undefined;
 }
 
@@ -38,14 +56,15 @@ export function readCodexConfig() {
   };
 }
 
-function setOrInsertTopLevelKey(text, key, value) {
+export function setOrInsertTopLevelKey(text, key, value) {
   const line = `${key} = "${value}"`;
   const pattern = new RegExp(`^${key}\\s*=.*$`, "m");
-  if (pattern.test(text)) {
-    return text.replace(pattern, line);
+  const { root, rest } = splitAtFirstSection(text);
+  if (pattern.test(root)) {
+    return root.replace(pattern, line) + rest;
   }
-  const separator = text.length && !text.endsWith("\n") ? "\n" : "";
-  return `${text}${separator}${line}\n`;
+  const separator = root.length && !root.endsWith("\n") ? "\n" : "";
+  return `${root}${separator}${line}\n${rest}`;
 }
 
 // Opt-in only (decision #4) — callers must gate this behind an explicit

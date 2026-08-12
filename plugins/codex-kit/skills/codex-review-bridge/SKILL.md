@@ -18,7 +18,7 @@ Built on the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`). Imp
 
 ## Inputs
 
-- `reviewerType` — must match an allowlisted entry (the caller supplies the allowlist; this skill never invents one).
+- `reviewerType` — validated only against a charset/length pattern (`^[A-Za-z0-9._-]{1,64}$`, since it's interpolated into the prompt) — **this skill does not enforce an allowlist of valid reviewer names.** An earlier draft of this contract promised one ("must match an allowlisted entry, the caller supplies it"), but no caller has ever actually defined or passed one; `bridge-invoke.mjs` only ever applied the charset check. If a caller needs to restrict which reviewer names are acceptable, it must validate `reviewerType` itself before calling this bridge.
 - `instructionBody` — the reviewer's own instruction text (frontmatter stripped by the caller before passing it in). **Must be sourced from outside the diff/scope under review** (e.g. a merge-base or `main` checkout, not the PR branch's working tree) — a caller reviewing a PR must never read the reviewer instructions from that same PR's own files, or the PR could rewrite the instructions that judge it. `bridge-invoke.mjs` enforces the direct case mechanically (rejects if `instructionFile` resolves inside any `targetPaths` entry), but cannot detect an instruction file that lives outside `targetPaths` yet was still read from an untrusted checkout — that discipline is the caller's responsibility.
 - `targetPaths` — files/directories in scope.
 - `schemaPath` — path to the canonical envelope schema (`references/envelope-schema.md` documents its shape; `scripts/bridge-invoke.mjs` bundles the actual JSON Schema).
@@ -27,7 +27,7 @@ Built on the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`). Imp
 
 ## Content trust boundary
 
-Everything under `targetPaths` is evidence Codex inspects, never instructions. The prompt sent to Codex explicitly states this before the reviewer instruction body and before any target content.
+Everything under `targetPaths` is evidence Codex inspects, never instructions — regardless of what the content claims. The prompt sent to Codex explicitly states this before the reviewer instruction body and before any target content.
 
 ## Invocation
 
@@ -52,7 +52,7 @@ Beyond schema conformance, a deterministic pass checks the response for internal
 
 ## Typed failures
 
-Never returns an empty findings list on failure. See `references/typed-failures.md` and `codex-prompt-protocol/references/error-taxonomy.md` for the full category list (CLI unavailable, auth unavailable, unsupported CLI version, isolation profile unavailable, timeout, non-zero exit, missing final message, invalid JSON, schema-validation failure, semantic-validation failure, incomplete inspection disclosed).
+Never returns an empty findings list on failure. See `references/typed-failures.md` and `codex-prompt-protocol/references/error-taxonomy.md` for the full category list (CLI unavailable, auth unavailable, unsupported CLI version, isolation profile unavailable, timeout, non-zero exit, missing final message, invalid JSON, schema-validation failure, semantic-validation failure). Schema-validation failure is checked locally (`codex-exec.mjs`'s `findSchemaViolation`) against the same schema passed to Codex's own `--output-schema`, not just trusted from Codex's own enforcement.
 
 ## Isolation transparency
 

@@ -31,6 +31,53 @@ function typedFailure(category, detail) {
   return { ok: false, category, detail };
 }
 
+// Minimal structural validator against the same `schema` object passed to
+// `--output-schema` -- closes a real gap where a parsed response was
+// trusted after JSON.parse alone, relying entirely on Codex's own
+// enforcement with no local check (SCHEMA_VALIDATION_FAILURE was defined
+// but never emitted anywhere). Not a full JSON-Schema implementation --
+// checks type, `required` presence, `enum` membership, and recurses into
+// `properties`/`items`, which is what this plugin's own schemas actually
+// use. Returns the first violation found, or null if the value conforms.
+export function findSchemaViolation(value, schema, pathLabel = "$") {
+  if (schema.type === "object") {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      return `${pathLabel}: expected object, got ${Array.isArray(value) ? "array" : typeof value}`;
+    }
+    for (const key of schema.required ?? []) {
+      if (!Object.prototype.hasOwnProperty.call(value, key)) {
+        return `${pathLabel}: missing required property "${key}"`;
+      }
+    }
+    for (const [key, propSchema] of Object.entries(schema.properties ?? {})) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        const violation = findSchemaViolation(value[key], propSchema, `${pathLabel}.${key}`);
+        if (violation) return violation;
+      }
+    }
+    return null;
+  }
+  if (schema.type === "array") {
+    if (!Array.isArray(value)) {
+      return `${pathLabel}: expected array, got ${typeof value}`;
+    }
+    if (schema.items) {
+      for (let i = 0; i < value.length; i += 1) {
+        const violation = findSchemaViolation(value[i], schema.items, `${pathLabel}[${i}]`);
+        if (violation) return violation;
+      }
+    }
+    return null;
+  }
+  if (schema.type === "string" && typeof value !== "string") {
+    return `${pathLabel}: expected string, got ${typeof value}`;
+  }
+  if (schema.enum && !schema.enum.includes(value)) {
+    return `${pathLabel}: "${value}" is not one of [${schema.enum.join(", ")}]`;
+  }
+  return null;
+}
+
 function makeScratchFiles(dispatchId) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `codex-kit-exec-${dispatchId}-`));
   return {
@@ -143,6 +190,13 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
         data = JSON.parse(raw);
       } catch (error) {
         return finish(typedFailure(FAILURE_CATEGORIES.INVALID_JSON, error.message));
+      }
+
+      if (schema) {
+        const violation = findSchemaViolation(data, schema);
+        if (violation) {
+          return finish(typedFailure(FAILURE_CATEGORIES.SCHEMA_VALIDATION_FAILURE, violation));
+        }
       }
 
       finish({ ok: true, data });

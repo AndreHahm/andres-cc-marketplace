@@ -1,9 +1,12 @@
 ---
 name: codex-session-lookup
 description: >-
-  Look up or inspect Codex CLI's own session/history files. Use when asked to
-  find a Codex session, resume a specific Codex session, or inspect a Codex
-  session file's metadata.
+  Look up or inspect Codex CLI's own session/history files — this only
+  locates a session ID or reads its metadata; it never resumes anything
+  itself. Use when asked to find a Codex session, locate a session ID to
+  resume manually, or inspect a Codex session file's metadata. To actually
+  continue a prior rescue/verify/research task, use that component's own
+  `--resume`/`--resume-last`.
 allowed-tools: ["Bash(python3 */codex-session-lookup/scripts/find-session-id.py:*)", "Bash(python3 */codex-session-lookup/scripts/inspect-session-file.py:*)"]
 ---
 
