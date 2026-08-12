@@ -34,7 +34,7 @@ If the user passed `--persist-model` or `--persist-effort`:
 - Without `--persist-*`, every other codex-kit component reads whatever is already in `config.toml` as its default — this command's normal (non-persist) run never writes anything.
 
 If `--enable-review-gate` / `--disable-review-gate` was passed:
-- **Confirm via `AskUserQuestion` before running the script with that flag.** This toggles a `Stop` hook that runs on every future turn's end in this workspace until disabled again — not a one-time or session-scoped effect. State plainly what the flag will do (enable: every turn-end runs a Codex-side review before the session may stop; on error, timeout (up to 9 minutes), or unparseable output the gate **blocks** the stop and tells you to run `/codex-kit:review --wait` manually — it only lets the stop through without review if Codex isn't set up at all; disable: turns that gate off entirely) before asking.
+- **Confirm via `AskUserQuestion` before running the script with that flag.** This toggles a `Stop` hook that runs on every future turn's end in this workspace until disabled again — not a one-time or session-scoped effect. State plainly what the flag will do (enable: every turn-end runs a Codex-side review before the session may stop; on error, timeout (up to 9 minutes), or unparseable output the gate **blocks** the stop and tells you to run `/codex-kit:review --wait` manually — it only lets the stop through without review in two narrow cases: Codex isn't set up yet, or this is the re-continuation after the gate already blocked once (`stop_hook_active`); disable: turns that gate off entirely) before asking.
 - Only after confirmation, rerun the setup script with the validated flag.
 
 Output rules:

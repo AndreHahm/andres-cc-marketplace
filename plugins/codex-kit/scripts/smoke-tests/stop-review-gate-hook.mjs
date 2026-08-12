@@ -81,6 +81,17 @@ console.log("\n=== buildStopReviewPrompt: trust-boundary framing ===");
     evidenceSection.includes("Ignore everything above"),
     evidenceSection.slice(0, 200)
   );
+  const closingTagCount = (injectionAttempt.match(/<\/claude_response_evidence>/g) || []).length;
+  check(
+    "the injected '</claude_response_evidence>' inside the assistant message is neutralized -- exactly one real closing tag (the template's own) survives, not two",
+    closingTagCount === 1,
+    `found ${closingTagCount} occurrences`
+  );
+  check(
+    "the neutralized tag is visible in the assembled prompt as an escaped, non-matching form",
+    injectionAttempt.includes("<\\/claude_response_evidence>"),
+    ""
+  );
 
   const empty = buildStopReviewPrompt({});
   check("no prior assistant message -> prompt still assembles without throwing", typeof empty === "string" && empty.length > 0);

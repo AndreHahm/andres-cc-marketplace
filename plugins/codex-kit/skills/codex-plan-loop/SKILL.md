@@ -9,7 +9,7 @@ description: >-
   task that doesn't need an up-front plan-validation phase — use codex-rescue
   for those.
 argument-hint: "feature description [--security-focus] [--performance-focus] [--model SLUG] [--effort LEVEL]"
-allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Read", "Write", "Edit", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(git rev-parse:*)", "Bash(git status:*)", "Read", "Write", "Edit", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Plan → Validate → Implement → Review → Iterate
@@ -42,6 +42,8 @@ Both: classify issues Critical / Major / Minor / Info, citing the specific plan 
 `AskUserQuestion`: "Revise the plan and re-validate, or proceed to implementation?" — if revise, loop back to Phase 1 with the feedback incorporated; log the iteration in `${CLAUDE_PLUGIN_DATA}/codex-loop/iterations.md`.
 
 ## Phase 4: Implement
+
+**Before the first edit, capture a rollback anchor:** `git rev-parse HEAD` (or, if the working tree already has unrelated uncommitted changes, note that explicitly instead of silently mixing this loop's edits into them). If Phase 5/6 later concludes the implementation approach itself was unsound — not just needing more fixes, but a wrong direction Phase 3's plan-validation should have caught — stop, tell the user the anchor SHA and which files this loop touched, and offer to revert to it before replanning. Do not silently keep iterating fixes on top of a design the user hasn't confirmed is worth salvaging.
 
 Claude implements step-by-step per the approved plan. Save to `${CLAUDE_PLUGIN_DATA}/codex-loop/implementation.md`.
 
@@ -77,6 +79,7 @@ Severity-gated response: Critical → fix immediately. Architectural → discuss
 2. Phase 6's convergence check: two consecutive rounds report only Minor/Info → loop stops, does not force a 3rd round.
 3. A Critical/Major finding persists past 3 rounds → discussed with the user, never silently auto-resolved.
 4. `--security-focus` is present → Phase 2 validation always runs at `xhigh` effort, not the config default.
+5. Phase 4 always captures a rollback anchor (`git rev-parse HEAD`, or an explicit note if the tree already had unrelated uncommitted changes) before the first edit.
 
 **Current test coverage:**
 - `evals/codex-plan-loop/evals.json` — 1 defined scenario (6-phase structure, concrete convergence condition). Definition only — not yet run and graded.

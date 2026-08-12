@@ -8,7 +8,7 @@ Schema conformance is necessary but not sufficient — a structurally valid resp
 2. Every cited path is normalized, remains inside the allowed target scope, and exists on disk.
 3. Finding IDs are unique.
 
-Any failed check returns a `semantic_validation_failure` typed failure (see `typed-failures.md`) rather than passing the finding through.
+Any failed check returns a `semantic_validation_failure` typed failure rather than passing the finding through.
 
 ## Not yet implemented
 

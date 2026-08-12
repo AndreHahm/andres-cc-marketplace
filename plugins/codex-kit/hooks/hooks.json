@@ -32,7 +32,8 @@
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/stop-review-gate-hook.mjs\"",
             "timeout": 600,
-            "onError": "warn"
+            "onError": "warn",
+            "statusMessage": "Running Codex stop-time review gate (can take up to 9 minutes)..."
           }
         ]
       }
