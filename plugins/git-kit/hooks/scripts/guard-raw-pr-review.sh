@@ -41,16 +41,13 @@ if { [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "PowerShell" ]; } || [ -z "
   exit 0
 fi
 
-GH_SUBCOMMAND=""
-# gh(\.exe)? also catches the literal `gh.exe` invocation PowerShell callers sometimes use.
-if echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+review([[:space:]]|$)'; then
-  GH_SUBCOMMAND="gh pr review"
-elif echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+comment([[:space:]]|$)'; then
-  GH_SUBCOMMAND="gh pr comment"
-else
-  exit 0
-fi
-
+# Consume our own marker on every Bash/PowerShell call, before the subcommand
+# match below -- not just on the call that turns out to match. See
+# guard-raw-destructive-cleanup.sh's header comment for the full rationale
+# (consuming only inside the match branch let a marker survive its full 60s
+# TTL through any number of intervening non-matching commands). Only a marker
+# whose `guard` field is this guard's own type ("gh-pr-review") is touched --
+# a marker written for a sibling guard is left alone.
 GIT_DIR=$(git rev-parse --git-dir 2>/dev/null) || exit 0 # not in a git repo -- nothing to guard
 MARKER="$GIT_DIR/git-kit-marker.txt"
 
@@ -59,11 +56,24 @@ allowed=false
 
 if [ -f "$MARKER" ]; then
   read -r guard ts _skill < "$MARKER" || true
-  case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
-  if [ "$guard" = "gh-pr-review" ] && [ -n "$ts" ] && [ $((now - ts)) -le 60 ]; then
-    allowed=true
+  guard="${guard:-}"  # defensive: a concurrent/partial read under `set -u` must degrade to "no marker", never crash
+  if [ "$guard" = "gh-pr-review" ]; then
+    case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
+    if [ -n "$ts" ] && [ $((now - ts)) -le 60 ]; then
+      allowed=true
+    fi
+    rm -f "$MARKER" # consume as soon as seen -- single use, regardless of whether this call turns out to match below
   fi
-  rm -f "$MARKER" # always consume -- single use regardless of outcome
+fi
+
+GH_SUBCOMMAND=""
+# gh(\.exe)? also catches the literal `gh.exe` invocation PowerShell callers sometimes use.
+if echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+review([[:space:]]|$)'; then
+  GH_SUBCOMMAND="gh pr review"
+elif echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+comment([[:space:]]|$)'; then
+  GH_SUBCOMMAND="gh pr comment"
+else
+  exit 0
 fi
 
 if [ "$allowed" = true ]; then

@@ -74,6 +74,7 @@ allowed=false
 
 if [ -f "$MARKER" ]; then
   read -r guard ts _skill < "$MARKER" || true
+  guard="${guard:-}"  # defensive: a concurrent/partial read under `set -u` must degrade to "no marker", never crash
   if [ "$guard" = "git-cleanup-destructive" ]; then
     case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
     if [ -n "$ts" ] && [ $((now - ts)) -le 60 ]; then

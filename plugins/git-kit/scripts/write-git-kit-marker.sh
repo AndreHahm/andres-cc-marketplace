@@ -27,4 +27,14 @@ case "$GUARD_TYPE" in
 esac
 
 GIT_DIR=$(git rev-parse --git-dir 2>/dev/null) || { echo "Error: not inside a git repository" >&2; exit 1; }
-echo "$GUARD_TYPE $(date +%s) $SKILL_NAME" > "$GIT_DIR/git-kit-marker.txt"
+MARKER="$GIT_DIR/git-kit-marker.txt"
+
+# Write atomically: a plain truncating redirect lets a concurrent guard-script
+# read observe a momentarily empty or partially-written file, since Claude
+# Code can dispatch independent tool calls in parallel within one turn.
+# Writing to a unique temp file in the same directory then renaming into
+# place means any reader sees either the complete old marker or the complete
+# new one, never a partial write -- rename is atomic on the same filesystem.
+TMP="$MARKER.tmp.$$"
+echo "$GUARD_TYPE $(date +%s) $SKILL_NAME" > "$TMP"
+mv -f "$TMP" "$MARKER"

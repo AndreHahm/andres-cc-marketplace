@@ -228,7 +228,7 @@ When committing on `master` or `main`, the command will ask if you want to creat
   concerns?" signal exists to catch this mid-flow (a diff that looks split-worthy once already staged),
   not to make `commit` a second entry point for a request to split in the first place
 
-**Verified live, 2026-08-11:** `commit` was invoked for real (`Skill(commit)`, not a raw `git commit`) roughly 5 times across that session's fix-batch commits, including the final round-2 commit `2160f56` — step 9 fired correctly on every behavior-changing commit in that run. Re-run this checklist after the next behavior-changing invocation to keep it current, rather than treating this date as a permanent guarantee:
+**Verified live, 2026-08-11:** `commit` was invoked for real (`Skill(commit)`, not a raw `git commit`) roughly 5 times across that session's fix-batch commits, including the final commit of that session's second fix batch (`2160f56`) — step 9 fired correctly on every behavior-changing commit in that run. That live run confirmed step 9 fires and gates correctly in real use; it did not walk each item below individually, so the checkboxes stay unchecked pending a full manual pass — re-run this checklist (and check off what it confirms) after the next behavior-changing invocation, rather than treating this date as a permanent guarantee:
 
 - [ ] The staged-diff scan actually fires — a change to `skills/*/SKILL.md`, `skills/*/references/*.md`, or `agents/*.md` content triggers the `AskUserQuestion`; an unrelated change (docs, scripts, config) does not
 - [ ] The `AskUserQuestion` presents the options as written in step 9's prose (the testing-mechanism choices, plus "commit anyway" and "stop, test first")
