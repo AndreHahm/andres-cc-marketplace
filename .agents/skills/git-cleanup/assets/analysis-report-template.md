@@ -40,6 +40,17 @@ Recommendation: Delete all 4 (work is in main)
 | Path | Branch | Status |
 |------|--------|--------|
 | ../proj-auth | feat/auth | STALE (merged) |
+| ../proj-billing | feat/billing | DIRTY (uncommitted + ignored content) |
+
+```
+WARNING: ../proj-billing has uncommitted changes:
+  M  src/billing.js
+
+Ignored (not tracked by git, will also be deleted):
+  .env
+
+These changes will be LOST if you remove this worktree.
+```
 
 ---
 

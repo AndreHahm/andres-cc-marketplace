@@ -2,6 +2,14 @@
 
 This reference provides comprehensive documentation for GitHub REST and GraphQL APIs, focusing on common operations accessible via `gh api`.
 
+**Reference only, in part:** `SKILL.md`'s `allowed-tools` grant for `gh api` is narrower than everything
+documented below — it covers `issues`, `branches`, `commits`, `collaborators`, `releases`,
+`actions/workflows`, `actions/runs`, `actions/jobs`, `search/repositories`, `search/code`, `search/issues`,
+and `rate_limit`. The entire Pull Requests API section and the entire GraphQL API section below are
+reference-only material — no prefix grant can cover their read operations without also covering their
+write operations (PR merge, PR reviews, webhooks, GraphQL mutations), the same reference-only treatment
+`SKILL.md`'s Authentication section already gives `gh auth`.
+
 ## Table of Contents
 
 1. [Authentication](#authentication)
@@ -18,12 +26,12 @@ This reference provides comprehensive documentation for GitHub REST and GraphQL 
 
 All API calls via `gh api` automatically use the authenticated token from `gh auth login`.
 
-```bash
-# Check authentication status
-gh auth status
+**Reference only** — `gh auth` is deliberately excluded from this skill's `allowed-tools` (see
+`SKILL.md`'s "Authentication and Configuration" section); this skill never runs the command below itself.
 
-# View current token (use cautiously)
-gh auth status --show-token
+```bash
+# Check authentication status (reference only — not run by this skill)
+gh auth status
 ```
 
 **API Headers:**
@@ -31,6 +39,14 @@ gh auth status --show-token
 - `X-GitHub-Api-Version: 2022-11-28` (recommended)
 
 ## Pull Requests API
+
+**Reference only** — raw `gh api repos/{owner}/{repo}/pulls...` calls are deliberately excluded from
+this skill's `allowed-tools`: the prefix grant needed to cover the read-only List/Get examples below
+cannot be expressed without also covering the Merge/Create-Review/Request-Reviewers write examples
+further down this section, which this skill must never run (merging is `merge-pr`'s job; reviewer
+actions are `collaborating-on-a-pr`'s job, both with their own gates). Use `gh pr list`/`gh pr view`
+(already granted) for the read operations instead — this section stays as REST-API documentation, not
+runnable material.
 
 ### List Pull Requests
 
@@ -571,6 +587,12 @@ gh api search/issues -f q="is:pr is:merged author:username"
 ```
 
 ## GraphQL API
+
+**Reference only** — `gh api graphql:*` is deliberately excluded from this skill's `allowed-tools`.
+GraphQL mutations (`mergePullRequest`, `addPullRequestReview`, `addComment`, `deleteRef`, and others)
+reach the same write actions this skill must never take, and unlike the REST endpoints above there is no
+prefix grant that can separate GraphQL queries from GraphQL mutations — `gh api graphql` is a single
+endpoint for both. This section stays as documentation only.
 
 ### Basic GraphQL Query
 

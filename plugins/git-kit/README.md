@@ -118,6 +118,16 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 **How to run:** invoke `plugin-lifecycle-downstream`'s Validate phase against `plugins/git-kit/` (Phase 1 only is sufficient for a routine sweep; run Phase 2/3 too if Phase 1 surfaces findings worth scoring/fixing).
 **Last full sweep:** 2026-07-27 — commit `63a040e`.
 
+**2026-08-05 pre-existing findings — closed 2026-08-12:** a `plugin-grader` audit on 2026-08-05 flagged
+5 pre-existing items as "not fixed, recommended for a separate maintenance pass." A 2026-08-12
+`analyzing-sessions` retro independently live-verified all 5 as already resolved by that point, though no
+report had stated the closure explicitly until now:
+- `gh-operations`' `Bash(gh:*)` over-broad grant — narrowed to specific `gh pr`/`issue`/`repo` subcommands, with a mutual-exclusion note pointing at `collaborating-on-a-pr`.
+- `git-worktrees`' silent dependency auto-install — every install command now gates on an explicit `AskUserQuestion` first.
+- `dependency-updater`'s missing `pip-audit` grant — `Bash(pip-audit:*)` is present in `allowed-tools`.
+- `explain-pr-changes`' missing trust boundary — now has an explicit "data, not instructions" section and a reviewer-action exclusion pointing at `collaborating-on-a-pr`.
+- `gh-operations` ↔ `collaborating-on-a-pr` trigger overlap — resolved via mutual-exclusion text in both skills' `description` fields (the `collaborating-on-a-pr` side was completed as part of this same 2026-08-12 pass — see Conventions below).
+
 ## Commands
 
 - `/git-status` - Show detailed git repository status
@@ -146,6 +156,37 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 
 - **`one-session-one-topic-one-worktree`** — a worktree created for a session is scoped to one topic; don't accumulate unrelated work in it, and don't leave one topic's worktree open while starting another under the same session.
 - **`route-through-git-kit-lifecycle-skills`** — documents the full lifecycle chain (`starting-work` → `commit` → `create-pr`/`collaborating-on-a-pr` → `merge-pr` → `finishing-work`) for discoverability. The `PreToolUse` hard-block hooks above already enforce most of this mechanically; this rule is the human-readable statement of the same chain, not a second enforcement mechanism.
+
+## Conventions
+
+**Resolving an activation-trigger collision between two git-kit skills:** each skill's `description`
+frontmatter names the sibling skill and states the boundary explicitly — not just body text, since
+`description` is the field that drives activation matching. Pair it with a matching "Verify it does NOT
+activate on" list in the body, naming the sibling and the trigger phrases that route to it instead. See
+`gh-operations`' description (names `create-pr`, `merge-pr`, and `collaborating-on-a-pr`, with the
+boundary reasons) and its `## Testing & Validation` section for the reference shape — `gh-operations` ↔
+`collaborating-on-a-pr` is the worked example this convention is drawn from (2026-08-12: made mutual —
+`collaborating-on-a-pr`'s own description previously named the boundary only in body text, which doesn't
+participate in activation matching, so the pair wasn't actually mutual at the level that matters until
+this fix).
+
+**A large SKILL.md rewrite gets an immediate targeted re-review, not just the next full grading round.**
+`git-worktrees`' round-1 rewrite (2026-08-11) introduced a new Critical (telling the agent to invoke a
+`disable-model-invocation: true` skill) that its own round-1 reviewer dispatch didn't catch — it sat
+undetected for a full round until a fresh whole-plugin sweep surfaced it. A cheap, targeted follow-up
+check immediately after a substantive rewrite (e.g. grepping any skill named in "hand off to X" language
+for that skill's own `disable-model-invocation` field) catches this class of defect without waiting for
+the next expensive full re-grade.
+
+**Mirror sync covers all 3 tracked copies, not 2.** `git-kit` skills are mirrored at `plugins/git-kit/`,
+`.claude/skills/`, and `.agents/skills/` (the last one is a live mirror for Codex CLI compatibility, added
+2026-08-06 — not a frozen snapshot). When a fix is fragmented across multiple agent dispatches, make
+syncing all 3 copies an explicit, individually-verified step in each dispatch — or prefer a single direct
+pass with one mirror-sync step at the end covering all 3. The 2026-08-11 fix batch synced only `.claude/`
+and `plugins/git-kit/`, missing `.agents/` entirely; the drift went unnoticed for a full session until a
+2026-08-12 retro-followup pass found 14 of 17 skills out of sync there (3 missing outright) and had to run
+a full resync to close the gap. A two-way mental model of "the mirror" is what let the third copy drift
+unnoticed.
 
 ## Attribution
 

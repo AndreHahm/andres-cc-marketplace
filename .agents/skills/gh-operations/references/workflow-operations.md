@@ -247,6 +247,10 @@ gh run list --workflow=build --limit 5 --json databaseId -q '.[].databaseId' | \
 
 ## Workflow Secrets and Variables
 
+**Reference only** — `gh secret` and `gh variable` are deliberately excluded from this skill's
+`allowed-tools` (same credential-adjacent risk class as `gh auth`, see `SKILL.md`'s "Authentication and
+Configuration" section); this skill never runs the commands below itself.
+
 ### Managing Secrets (via API)
 
 ```bash

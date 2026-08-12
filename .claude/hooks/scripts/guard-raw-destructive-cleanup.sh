@@ -53,6 +53,36 @@ fi
 # guard-raw-commit.sh and guard-raw-branch-create.sh already use.
 GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--?[^[:space:]]+))*[[:space:]]+'
 
+# Consume our own marker on every Bash/PowerShell call, before the MATCH
+# check below -- not just on the call that turns out to match. Consuming
+# only inside the MATCH branch (the original ordering) let a
+# "git-cleanup-destructive" marker survive its full 60s TTL untouched
+# through any number of intervening non-matching commands, so a later,
+# unrelated destructive command within that window could still be
+# authorized by a marker meant for an earlier, different command. Reading
+# and consuming here instead shrinks the marker's live window to "the very
+# next Bash/PowerShell call after it was written", matching the single-use
+# intent the write side already documents. Only a marker whose `guard`
+# field is this guard's own type is touched -- a marker written for a
+# sibling guard (`commit`'s, `create-pr`'s, etc.) is left alone so this
+# guard never consumes another guard's single-use token.
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null) || exit 0 # not in a git repo -- nothing to guard
+MARKER="$GIT_DIR/git-kit-marker.txt"
+
+now=$(date +%s)
+allowed=false
+
+if [ -f "$MARKER" ]; then
+  read -r guard ts _skill < "$MARKER" || true
+  if [ "$guard" = "git-cleanup-destructive" ]; then
+    case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
+    if [ -n "$ts" ] && [ $((now - ts)) -le 60 ]; then
+      allowed=true
+    fi
+    rm -f "$MARKER" # consume as soon as seen -- single use, regardless of whether this call turns out to MATCH below
+  fi
+fi
+
 MATCH=false
 
 # `git branch -D <name>` (or the equivalent `-d -f`/`-f -d`/`-df`/`-fd`/
@@ -73,21 +103,6 @@ fi
 
 if [ "$MATCH" != true ]; then
   exit 0
-fi
-
-GIT_DIR=$(git rev-parse --git-dir 2>/dev/null) || exit 0 # not in a git repo -- nothing to guard
-MARKER="$GIT_DIR/git-kit-marker.txt"
-
-now=$(date +%s)
-allowed=false
-
-if [ -f "$MARKER" ]; then
-  read -r guard ts _skill < "$MARKER" || true
-  case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
-  if [ "$guard" = "git-cleanup-destructive" ] && [ -n "$ts" ] && [ $((now - ts)) -le 60 ]; then
-    allowed=true
-  fi
-  rm -f "$MARKER" # always consume -- single use regardless of outcome
 fi
 
 if [ "$allowed" = true ]; then

@@ -2,13 +2,30 @@
 name: git-bisect
 description: >-
   Guides an automated or manual git bisect session to find the exact commit that introduced a regression, running a test command at each step or walking the user through manual good/bad decisions. Use when hunting for the commit that broke a test, a feature, a build, or introduced a performance regression.
-allowed-tools: Bash(git bisect:*), Bash(git show:*), Bash(git branch:*), Bash(git status:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Bash(pip:*), Bash(pytest:*), Bash(cargo:*), Bash(go:*)
-argument-hint: [good-commit] [bad-commit] | --auto [test-command] | --reset | --continue
+allowed-tools: Bash(git bisect start:*), Bash(git bisect good:*), Bash(git bisect bad:*), Bash(git bisect log:*), Bash(git bisect reset:*), Bash(git show:*), Bash(git branch:*), Bash(git status:*), Bash(npm:*), Bash(yarn:*), Bash(pnpm:*), Bash(pip:*), Bash(pytest:*), Bash(cargo:*), Bash(go:*)
+argument-hint: '[good-commit] [bad-commit] | --auto [test-command] | --reset | --continue'
 ---
 
 # Git Bisect Helper
 
 Guide a git bisect session to find the commit that introduced a regression. $ARGUMENTS selects the mode: a good/bad commit pair for manual guided bisect, `--auto [test-command]` for automatic bisect, `--continue` to resume, or `--reset` to abort and clean up.
+
+**On the git bisect grant:** scoped to exactly the 5 subcommands this skill's modes document —
+`start`/`good`/`bad`/`log`/`reset` — each its own explicit `Bash(git bisect <subcommand>:*)` entry rather
+than a blanket `Bash(git bisect:*)`. Corrected 2026-08-11: an earlier version of this note claimed the
+blanket grant "couldn't be narrowed further," which was wrong — `Bash(git bisect:*)` also permits
+`git bisect run <command>`, letting a bisect session execute an arbitrary command per commit, which this
+skill never documents or uses.
+
+**On the test-command tool grants:** `Bash(npm:*)`, `Bash(yarn:*)`, `Bash(pnpm:*)`, `Bash(pip:*)`,
+`Bash(pytest:*)`, `Bash(cargo:*)`, and `Bash(go:*)` stay blanket per-tool, unlike the `git bisect` grant
+above — deliberately, not by oversight. Automatic mode's whole point (step 2 below) is running *the test
+command the user supplies*, verbatim, at each bisect step: `npm test`, `npm run test:unit`, `cargo test
+--release`, `go test ./...`, `pytest -k pattern`, `pip install -e . && pytest`, and any other legitimate
+invocation shape of these tools are all in scope. Narrowing to a fixed subcommand list (e.g. only
+`Bash(npm test:*)`) would silently break that documented feature for any test command that doesn't match
+the fixed list, which defeats the reason this mode exists. The Test-command scope note just below already
+documents the *set* of tools covered; this note documents why each one stays unscoped within itself.
 
 ## Instructions
 
@@ -49,3 +66,30 @@ Once the first bad commit is found, report: the commit hash, author, date, messa
 - Always create a backup branch (step 2) before starting — a bisect session moves `HEAD` repeatedly via `git checkout`, and the backup is the recovery path if anything goes wrong.
 - Never mark a commit good/bad without either a test result (automatic mode) or explicit user confirmation via `AskUserQuestion` (manual mode) — don't guess.
 - If `git bisect` reports the range doesn't reproduce the regression (the given "bad" commit tests good, or vice versa), stop and tell the user rather than continuing with a broken range.
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "find the commit that broke the login test"
+- "bisect this regression"
+- "--auto npm test" / "run an automatic bisect with pytest"
+- "which commit introduced this performance regression"
+
+**Verify it does NOT activate on:**
+- "rebase my branch onto main" → `git-rebase-sync`
+- "add a note to this commit about the test results" → `git-notes`
+- "start a new branch to investigate this bug" → `starting-work`
+- "compare these two branches side by side" → `git-worktrees`
+
+**Quality gates:**
+- [ ] Step 1 always checks for an in-progress bisect session (`git bisect log`) before starting a new one
+- [ ] Step 2 always creates a backup branch before `git bisect start` runs
+- [ ] Automatic mode never marks a commit good/bad without an actual test-command exit code — never guesses
+- [ ] Automatic mode never silently runs a test command outside the `npm`/`yarn`/`pnpm`/`pip`/`pytest`/
+      `cargo`/`go` scope — always tells the user and offers manual mode or a self-run step instead
+- [ ] Manual mode never marks a commit good/bad without explicit `AskUserQuestion` confirmation
+- [ ] `--reset` always runs `git bisect reset` and reports the backup branch — never deletes it automatically
+- [ ] A bisect range that doesn't reproduce the regression always stops and reports to the user rather than
+      continuing with a broken range
+- [ ] The `git bisect` grant stays as 5 explicit per-subcommand entries (`start`/`good`/`bad`/`log`/`reset`)
+      — never collapsed back to a blanket `Bash(git bisect:*)`, which would also permit `git bisect run`
