@@ -13,8 +13,9 @@ Shared by every codex-kit component's error handling. This is the same category 
 | `missing_final_message` | Exited 0 but no `--output-last-message` file was written | file missing after exit |
 | `invalid_json` | The final-message file wasn't valid JSON | `JSON.parse` failure |
 | `schema_validation_failure` | Valid JSON, doesn't match the expected schema | schema check failure |
-| `semantic_validation_failure` | Schema-valid but fails a semantic check (bad citation, wrong verdict, etc.) | see `codex-review-bridge/references/semantic-validation.md` |
-| `incomplete_inspection` | Codex disclosed it couldn't inspect part of the requested scope | non-empty `inspection_limits` on a bridge response |
+| `semantic_validation_failure` | Schema-valid but fails a semantic check | `dispatch.id`/`reviewer` mismatch, a cited path outside the allowed target scope or missing on disk, or a duplicate finding ID (the currently-implemented checks — see `codex-review-bridge/references/semantic-validation.md` for the full list and what's tracked as follow-up but not yet enforced) |
+
+**Not a failure category:** an earlier draft of this taxonomy also included `incomplete_inspection` for "Codex disclosed it couldn't inspect part of the requested scope." Removed from both this table and `scripts/lib/codex-exec.mjs`'s `FAILURE_CATEGORIES` — the envelope schema already carries `inspection_limits` (a required array field) as informational metadata on a normal `ok: true` response, so a partial-inspection disclosure is not itself a failure condition. Callers read `inspection_limits` from a successful envelope rather than branching on a failure category for it.
 
 **Rule every component follows:** never convert a failure into an empty findings list or a silently "clean" result. Every failure is one of the categories above, with a `detail` string carrying concrete evidence (truncated stderr, the specific check that failed) — never just the bare category name.
 

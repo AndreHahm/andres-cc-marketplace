@@ -13,6 +13,7 @@ node scripts/smoke-tests/codex-verify-prompt-assembly.mjs
 node scripts/smoke-tests/codex-research-prompt-assembly.mjs
 node scripts/smoke-tests/stop-review-gate-hook.mjs
 node scripts/smoke-tests/codex-config-toml-sections.mjs
+node scripts/smoke-tests/session-lifecycle-hook.mjs
 ```
 
 Or all at once:
@@ -33,6 +34,7 @@ for f in scripts/smoke-tests/*.mjs; do node "$f" || echo "FAILED: $f"; done
 | `codex-verify-prompt-assembly.mjs` | `skills/codex-verify/SKILL.md`'s payload-assembly heredoc | The condensed `<content_trust_boundary>`/`<task>`/`<structured_output_contract>`/`<grounding_rules>`/`<completeness_contract>`/`<document>` heredoc still produces well-formed, balanced XML with the document body correctly appended. |
 | `codex-research-prompt-assembly.mjs` | `skills/codex-research/SKILL.md`'s payload-assembly heredoc | Same as above, for research's tag set (`<content_trust_boundary>`/`<task>`/`<structured_output_contract>`/`<research_mode>`/`<citation_rules>`/`<grounding_rules>`). |
 | `codex-config-toml-sections.mjs` | `scripts/lib/codex-config.mjs` | The section-aware TOML read/write fix: a root-absent key never leaks a same-named key from inside a `[table]`, and writing a new root key never corrupts an existing table. Tests the pure text-transform functions directly against in-memory strings only — never touches a real `~/.codex/config.toml`. |
+| `session-lifecycle-hook.mjs` | `scripts/session-lifecycle-hook.mjs` | `handleSessionStart`'s `CLAUDE_ENV_FILE` env-var wiring (and its no-op when that env var isn't set), and `cleanupSessionJobs`'s job-filtering logic: a queued/running job for the ending session is dropped, a completed job for that same session survives, and a job belonging to a different session is never touched. Runs entirely under a scratch `CLAUDE_PLUGIN_DATA` directory (never a real state path); test jobs are given no `pid`, so the termination attempt `cleanupSessionJobs` makes is a real no-op, never a signal sent to an actual process. |
 
 ## When to re-run
 

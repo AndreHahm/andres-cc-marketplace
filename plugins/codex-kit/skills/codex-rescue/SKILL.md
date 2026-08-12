@@ -9,7 +9,7 @@ description: >-
   for those; codex-rescue is a single delegate-then-review pass, not an
   iterative validation loop.
 argument-hint: "task description [--write] [--model MODEL] [--effort LEVEL] [--resume-last|--resume|--fresh] [--no-preview] [--persist] [--governed]"
-allowed-tools: ["Bash(node:*)", "Bash(git status:*)", "Bash(git rev-parse:*)", "Bash(git diff:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(node -e:*)", "Bash(git status:*)", "Bash(git rev-parse:*)", "Bash(git diff:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Codex Task Delegation + Double-Check
@@ -421,7 +421,7 @@ For the full shared gotchas list, read
 4. Phase 4 double-check: a Codex-cited file/function that doesn't exist in the current tree → classified "False Positive (hallucination)", never presented as a real finding.
 
 **Current test coverage:**
-- `evals/codex-rescue/evals.json` — 1 defined scenario (basic delegation, Phase 0 governance checklist, no repo exploration before Phase 2, no auto-accept). Definition only — not yet run and graded.
+- `evals/codex-rescue/evals.json` — 1 defined scenario (basic delegation, Phase 0 governance checklist, no repo exploration before Phase 2, no auto-accept). Structurally graded 2026-08-12 (PASS — Phase 0's governance/session gate, the explicit "do NOT explore the repo" instruction, and the "Do NOT auto-accept changes" rule all match the eval's `expected_output`); not a live empirical run.
 - `scripts/smoke-tests/codex-rescue-prompt-assembly.mjs` — mechanically verifies the Phase 2 prompt-assembly template and the resume-flag omission logic; does not exercise a real Codex call.
 
 **Quality gates:**

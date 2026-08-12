@@ -10,12 +10,12 @@ description: >-
   is expensive (3-20 parallel Codex calls per round, for up to 10 rounds
   until convergence) — confirm the user wants that scale before running.
 argument-hint: "[--mode audit|compare|fix] [--branches <b1,b2,...>] [--base <ref>]"
-allowed-tools: ["Bash(node:*)", "Bash(git:*)", "Read", "Grep", "Glob", "AskUserQuestion", "Agent"]
+allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(git:*)", "Read", "Grep", "Glob", "AskUserQuestion", "Agent"]
 ---
 
 # Whole-project multi-lens audit
 
-Three modes. **Confirm scope and cost with the user via `AskUserQuestion` before launching any mode** — this is not a lightweight command.
+Three modes. **Confirm scope and cost with the user via `AskUserQuestion` before launching any mode** — this is not a lightweight command. This confirmation is also this skill's named exception to the session-level first-send gate (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): it runs before any mode's first Codex dispatch, so a separate first-send check would be redundant.
 
 ## Mode A — Multi-lens checkout audit (default)
 
@@ -60,7 +60,7 @@ Never creates PRs, deploys, or posts comments without explicit authority. Mode A
 4. A lens returns a finding with no `file:line` citation → fails closed, never fabricated as if grounded.
 
 **Current test coverage:**
-- `evals/codex-audit-loop/evals.json` — 1 defined scenario (cost/scope confirmation, Mode A's explore-plan-launch-synthesize-converge phases). Definition only — not yet run and graded.
+- `evals/codex-audit-loop/evals.json` — 1 defined scenario (cost/scope confirmation, Mode A's explore-plan-launch-synthesize-converge phases). Structurally graded 2026-08-12 (PASS — the mandatory pre-launch `AskUserQuestion` and Mode A's 5 named phases both match; the eval's own `expected_output` cost figure was stale (`15-26` from an earlier, already-corrected version of this SKILL.md) and has been updated to the current `3-20 per round, up to 10 rounds`); not a live empirical run.
 - No persisted smoke test exists for this skill (its output depends on 3-20 live parallel Codex calls per round against real project state, not a fixed template).
 
 **Quality gates:**

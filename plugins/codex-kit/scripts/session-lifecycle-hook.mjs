@@ -2,6 +2,8 @@
 
 import fs from "node:fs";
 import process from "node:process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { terminateProcessTree } from "./lib/process.mjs";
 import { BROKER_ENDPOINT_ENV, BROKER_TOKEN_ENV } from "./lib/app-server.mjs";
@@ -28,7 +30,7 @@ function readHookInput() {
   return JSON.parse(raw);
 }
 
-function shellEscape(value) {
+export function shellEscape(value) {
   return `'${String(value).replace(/'/g, `'\"'\"'`)}'`;
 }
 
@@ -39,7 +41,7 @@ function appendEnvVar(name, value) {
   fs.appendFileSync(process.env.CLAUDE_ENV_FILE, `export ${name}=${shellEscape(value)}\n`, "utf8");
 }
 
-function cleanupSessionJobs(cwd, sessionId) {
+export function cleanupSessionJobs(cwd, sessionId) {
   if (!cwd || !sessionId) {
     return;
   }
@@ -77,13 +79,13 @@ function cleanupSessionJobs(cwd, sessionId) {
   });
 }
 
-function handleSessionStart(input) {
+export function handleSessionStart(input) {
   appendEnvVar(SESSION_ID_ENV, input.session_id);
   appendEnvVar(TRANSCRIPT_PATH_ENV, input.transcript_path);
   appendEnvVar(PLUGIN_DATA_ENV, process.env[PLUGIN_DATA_ENV]);
 }
 
-async function handleSessionEnd(input) {
+export async function handleSessionEnd(input) {
   const cwd = input.cwd || process.cwd();
   const brokerSession =
     loadBrokerSession(cwd) ??
@@ -132,7 +134,22 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exit(1);
-});
+function computeIsEntryPoint() {
+  if (!process.argv[1]) {
+    return false;
+  }
+  try {
+    const invoked = fs.realpathSync(path.resolve(process.argv[1]));
+    const current = fs.realpathSync(fileURLToPath(import.meta.url));
+    return process.platform === "win32" ? invoked.toLowerCase() === current.toLowerCase() : invoked === current;
+  } catch {
+    return false;
+  }
+}
+
+if (computeIsEntryPoint()) {
+  main().catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exit(1);
+  });
+}

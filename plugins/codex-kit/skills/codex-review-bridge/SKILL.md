@@ -16,6 +16,8 @@ Built on the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`). Imp
 
 **Does not call `plugin-grader` itself.** That integration is deliberately left to `plugin-grader`'s own side — this skill only exposes the bridge.
 
+**Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): this bridge is a generic, reviewer-agnostic dispatch primitive invoked by other components, never directly by a user in normal conversation, so it never asks anything itself. Confirming before content reaches Codex is the calling component's responsibility whenever that caller runs in an interactive session — `plugin-marketplace-review`'s own governance note documents the opposite case (unattended CI, no session to confirm in at all).
+
 ## Inputs
 
 - `reviewerType` — validated only against a charset/length pattern (`^[A-Za-z0-9._-]{1,64}$`, since it's interpolated into the prompt) — **this skill does not enforce an allowlist of valid reviewer names.** An earlier draft of this contract promised one ("must match an allowlisted entry, the caller supplies it"), but no caller has ever actually defined or passed one; `bridge-invoke.mjs` only ever applied the charset check. If a caller needs to restrict which reviewer names are acceptable, it must validate `reviewerType` itself before calling this bridge.
@@ -76,7 +78,7 @@ If the requested execution profile fails, this skill reports that explicitly in 
 4. Any failure path → a typed failure with a `category`/`detail`, never an empty findings list standing in for "nothing to report."
 
 **Current test coverage:**
-- `evals/codex-review-bridge/evals.json` — 1 defined scenario (allowlist check, evidence-not-instructions framing, canonical envelope). Definition only — not yet run and graded.
+- `evals/codex-review-bridge/evals.json` — 1 defined scenario (reviewer-type charset validation, evidence-not-instructions framing, canonical envelope). Structurally graded 2026-08-12 (PASS — the charset/length-only validation, the evidence-not-instructions framing, and the canonical envelope with semantic validation all match; the eval's own `expected_output` previously claimed an allowlist check this skill has never enforced (see "Inputs" above) and has been corrected to match); not a live empirical run.
 - `scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs` — directly exercises `bridge-invoke.mjs`'s containment check (self-referential rejection, exact-match rejection, prefix-similar-but-not-nested non-false-positive, a legitimately trusted outside-scope file). This is real script-level coverage, not a template check.
 
 **Quality gates:**

@@ -23,8 +23,7 @@ export const FAILURE_CATEGORIES = Object.freeze({
   MISSING_FINAL_MESSAGE: "missing_final_message",
   INVALID_JSON: "invalid_json",
   SCHEMA_VALIDATION_FAILURE: "schema_validation_failure",
-  SEMANTIC_VALIDATION_FAILURE: "semantic_validation_failure",
-  INCOMPLETE_INSPECTION: "incomplete_inspection"
+  SEMANTIC_VALIDATION_FAILURE: "semantic_validation_failure"
 });
 
 function typedFailure(category, detail) {

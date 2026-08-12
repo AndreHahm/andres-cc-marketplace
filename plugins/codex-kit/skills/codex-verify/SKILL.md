@@ -9,7 +9,7 @@ description: >-
   own not-yet-written analysis or design (no document to point at), use
   codex-peer-review instead.
 argument-hint: "path/to/document.md [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
-allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(node -e:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Codex Document Verification + Double-Check
@@ -358,7 +358,7 @@ For the full shared gotchas list, read
 4. Any P1 (blocking) issue present → final verdict is FAIL, never PASS.
 
 **Current test coverage:**
-- `evals/codex-verify/evals.json` — 1 defined scenario (blind-payload pattern, PASS/FAIL verdict with P1/P2 split). Definition only — not yet run and graded.
+- `evals/codex-verify/evals.json` — 1 defined scenario (blind-payload pattern, PASS/FAIL verdict with P1/P2 split). Structurally graded 2026-08-12 (PASS — the blind-payload pattern, and the PASS/FAIL verdict with P1 blocking / P2 non-blocking split, both match the eval's `expected_output`); not a live empirical run.
 - `scripts/smoke-tests/codex-verify-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc and the `--persist` argument-hint; does not exercise a real Codex call.
 
 **Quality gates:**

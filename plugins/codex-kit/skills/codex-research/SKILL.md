@@ -7,7 +7,7 @@ description: >-
   changes/diffs (use the /codex-kit:review command for that) or for
   verifying an existing written plan/document (use codex-verify for that).
 argument-hint: "topic [path/to/document.md] [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
-allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(grep:*)", "Bash(rm -f:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(node -e:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(grep:*)", "Bash(rm -f:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Codex Research + Cross-Model Synthesis
@@ -389,7 +389,7 @@ For the full shared gotchas list, read
 6. A document containing a literal `</context_document>` string → Phase 1 refuses before ever sending anything to Codex.
 
 **Current test coverage:**
-- `evals/codex-research/evals.json` — 1 defined scenario (topic-only mode, independent synthesis not just relaying Codex). Definition only — not yet run and graded.
+- `evals/codex-research/evals.json` — 1 defined scenario (topic-only mode, independent synthesis not just relaying Codex). Structurally graded 2026-08-12 (PASS — the documented Topic-only mode and the repeated independent-synthesis-not-an-echo framing both match the eval's `expected_output`); not a live empirical run.
 - `scripts/smoke-tests/codex-research-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc stays under the R18 code-block threshold; does not exercise a real Codex call.
 
 **Quality gates:**

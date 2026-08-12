@@ -2,7 +2,7 @@
 description: Cancel an active background Codex job in this repository
 argument-hint: '[job-id]'
 disable-model-invocation: true
-allowed-tools: Bash(node:*), AskUserQuestion
+allowed-tools: Bash(node */scripts/codex-companion.mjs:*), AskUserQuestion
 ---
 
 Raw slash-command arguments: `$ARGUMENTS`
