@@ -3,15 +3,19 @@ import os from "node:os";
 import path from "node:path";
 
 const CONFIG_PATH = path.join(os.homedir(), ".codex", "config.toml");
-const MODEL_ALIASES = {
+export const MODEL_ALIASES = {
   spark: "gpt-5.3-codex-spark"
 };
 
-function resolveModelAlias(value) {
+// Single source of truth for model-alias resolution, shared with
+// scripts/codex-companion.mjs (which previously kept its own duplicate Map).
+// Lookup is case-insensitive to match how `--model`/`--persist-model` are
+// actually typed on the command line.
+export function resolveModelAlias(value) {
   if (!value) {
     return value;
   }
-  return MODEL_ALIASES[value] ?? value;
+  return MODEL_ALIASES[String(value).toLowerCase()] ?? value;
 }
 
 function readConfigText() {

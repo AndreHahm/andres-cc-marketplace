@@ -21,6 +21,8 @@ Everything else in this command matches `/codex-kit:review`'s target-selection, 
 
 Unlike `/codex-kit:review`, this command accepts extra positional focus text after the flags (e.g. attack hints: "check for SQL injection in the login handler"). Preserve it verbatim — never weaken or rewrite the user's framing.
 
+**Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): the explicit `/codex-kit:adversarial-review` invocation is already the confirmation, and Phase 1.5 below asks again before every call (not just the first in the session) — stronger than the shared gate requires.
+
 ## Phase 1.5: Draft-preview gate
 
 **Skip this phase entirely if `--no-preview` was parsed.**

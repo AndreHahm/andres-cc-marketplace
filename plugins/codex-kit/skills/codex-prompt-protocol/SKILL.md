@@ -16,7 +16,7 @@ This skill has no user-facing trigger. It exists so every other codex-kit compon
 
 | Reference | Covers |
 |---|---|
-| `references/prompt-blocks.md` | The XML tag vocabulary (`task`, `structured_output_contract`, `grounding_rules`, `completeness_contract`, `verification_loop`, `action_safety`, `dig_deeper_nudge`, `compact_output_contract`) used across `codex-rescue`, `codex-verify`, `codex-research`, and the Stop-gate prompt — `content_trust_boundary` is defined separately in `references/shared-skill-conventions.md` §1 |
+| `references/prompt-blocks.md` | The full 14-tag XML vocabulary — `task`, `structured_output_contract`, `compact_output_contract`, `default_follow_through_policy`, `completeness_contract`, `verification_loop`, `missing_context_gating`, `grounding_rules`, `citation_rules`, `action_safety`, `tool_persistence_rules`, `research_mode`, `dig_deeper_nudge`, `progress_updates` — used across `codex-rescue`, `codex-verify`, `codex-research`, and the Stop-gate prompt — `content_trust_boundary` is defined separately in `references/shared-skill-conventions.md` §1 |
 | `references/invocation-protocol.md` | How to call `codex-companion.mjs` correctly: flag whitelists per subcommand, Pattern A (background+poll, for review/adversarial-review) vs. Pattern B (stdin pipe to `task --background`, for rescue/verify/research), job ID capture |
 | `references/evaluation-framework.md` | The double-check taxonomy (Agreed/Disagreed/Nuanced/False Positive/Uncited), self-bias awareness, agreement-level summary format |
 | `references/cli-reference.md` | Internal engineering reference for codex-kit's own bundled scripts: model/effort resolution mechanics (never a hardcoded model list), sandbox-mode flags, the stdin-non-TTY hang gotcha, timeout/crash recovery |
@@ -38,7 +38,7 @@ Any codex-kit component needing prompt-composition guidance, invocation mechanic
 3. A cited symbol/function name (e.g. `handleReviewCommand`, `readTaskPrompt`) in `invocation-protocol.md` resolves to something that actually exists in `scripts/codex-companion.mjs`/`scripts/lib/*.mjs`.
 
 **Current test coverage:**
-- `evals/codex-prompt-protocol/evals.json` — 1 defined scenario (locating the XML tag vocabulary and error taxonomy without claiming to be user-invocable). Definition only — not yet run and graded, though this skill has no independent runtime behavior beyond "is it read correctly," so a graded eval adds limited value here.
+- `evals/codex-prompt-protocol/evals.json` — 1 defined scenario (locating the XML tag vocabulary and error taxonomy without claiming to be user-invocable). Structurally graded 2026-08-12 (PASS — the reference table correctly points to `prompt-blocks.md` and `error-taxonomy.md`, and `disable-model-invocation: true` plus the "no user-facing trigger" prose both hold); this skill has no independent runtime behavior beyond "is it read correctly," so a live empirical run would add limited value here.
 
 **Quality gates:**
 - [ ] Every table row's reference file exists at the stated path

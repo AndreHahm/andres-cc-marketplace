@@ -9,7 +9,7 @@ description: >-
   recommendation' behavior — too many silent Codex calls by default). For
   verifying an existing written plan/document file, use codex-verify instead.
 argument-hint: "[--base <ref>] [question or design summary]"
-allowed-tools: ["Bash(node:*)", "AskUserQuestion", "Agent", "WebSearch"]
+allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "AskUserQuestion", "Agent", "WebSearch"]
 ---
 
 # Peer validation of Claude's own output
@@ -46,7 +46,7 @@ For unresolved disagreements, use WebSearch (or a configured research MCP tool, 
 
 Present the final report to the user in one of three shapes: **Agreement** (both aligned, brief), **Resolved Disagreement** (both positions + the synthesis + why), or **External Research Arbitration** (both positions + escalation findings, unresolved). This session-level outcome vocabulary is intentionally separate from the per-finding Agreed/Disagreed/Nuanced/False-Positive/Uncited taxonomy other codex-kit components use — this skill validates a *position*, not individual findings.
 
-Never ask before Round 1 or Round 2 — only the escalation and final-output steps involve the user directly, keeping the loop itself autonomous once invoked.
+Never ask before Round 1 or Round 2 — only the escalation and final-output steps involve the user directly, keeping the loop itself autonomous once invoked. **Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): this skill is manual/on-request only and never auto-triggered, so the explicit request that invokes it ("codex peer review this design") already is the confirmation — asking again before Round 1 or Round 2 would be redundant with that invocation, not an additional safeguard.
 
 ---
 
@@ -67,7 +67,7 @@ Never ask before Round 1 or Round 2 — only the escalation and final-output ste
 4. An unresolved disagreement after escalation → both positions and the escalation source are presented; no invented tiebreak.
 
 **Current test coverage:**
-- `evals/codex-peer-review/evals.json` — 1 defined scenario (subagent dispatch, 2-round protocol, escalation path). Definition only — not yet run and graded.
+- `evals/codex-peer-review/evals.json` — 1 defined scenario (subagent dispatch, 2-round protocol, escalation path). Structurally graded 2026-08-12 (PASS — the mandatory subagent dispatch, Round 1/Round 2 headings, and the Escalation section all match the eval's `expected_output`); not a live empirical run.
 - No persisted smoke test exists for this skill (its output depends on Claude's own position and Codex's live response, not a fixed template).
 
 **Quality gates:**

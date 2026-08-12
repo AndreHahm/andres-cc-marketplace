@@ -4,7 +4,7 @@ description: >-
   review-gate status
 argument-hint: '[job-id] [--wait] [--timeout-ms <ms>] [--all]'
 disable-model-invocation: true
-allowed-tools: Bash(node:*), Glob
+allowed-tools: Bash(node */scripts/codex-companion.mjs:*), Glob
 ---
 
 Raw slash-command arguments: `$ARGUMENTS`

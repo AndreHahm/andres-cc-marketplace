@@ -29,16 +29,10 @@ three invariants are present, not just that the block exists.
 ## 2. The double-check taxonomy
 
 All three skills' Phase 4 double-check must classify each of Codex's
-findings using exactly this 5-way taxonomy (the same one
-`references/evaluation-framework.md` documents for the rest of codex-kit):
-
-- **Agree** — claim is verified / matches the code or document
-- **Disagree** — claim is wrong, with evidence
-- **Nuance** — real insight, but missing context
-- **False Positive (hallucination)** — Codex cited a file/function/line/
-  document section/source that does **not exist**, or misread it
-- **Uncited** — no concrete citation. Surface as "verification deferred" (or
-  the skill's equivalent phrasing). Never invent a citation.
+findings using exactly the 5-way taxonomy `references/evaluation-framework.md`
+defines (Agree / Disagree / Nuance / False Positive (hallucination) / Uncited)
+— that file is the single canonical definition of each category; this section
+does not restate them, to avoid the two copies drifting apart.
 
 A skill may adapt the *description* of each category to its own domain (e.g.
 verify's "Valid catch" is a legitimate synonym for "Agree" applied to a
@@ -51,8 +45,39 @@ vocabulary each time.
 
 If this is the first call in the current session that would send any code,
 document, or context to Codex — across `codex-rescue`, `codex-verify`,
-`codex-research`, or any other codex-kit component — confirm once via
-`AskUserQuestion` before proceeding. Subsequent calls in the same session
-don't re-ask. This is a session-wide gate, not a per-skill one: a session
-that already confirmed via `codex-rescue` does not need to re-confirm when
-`codex-verify` or `codex-research` is invoked afterward, and vice versa.
+`codex-research`, or any other codex-kit component that checks this gate —
+confirm once via `AskUserQuestion` before proceeding. Subsequent calls in
+the same session don't re-ask. This is a session-wide gate, not a per-skill
+one: a session that already confirmed via `codex-rescue` does not need to
+re-confirm when `codex-verify` or `codex-research` is invoked afterward,
+and vice versa. `codex-plan-loop` also checks this gate, before Phase 2's
+first send.
+
+**Scope — not every Codex-dispatching component checks this gate directly.**
+A component may skip its own check and instead rely on a named exception,
+recorded in that component's own SKILL.md, when it already satisfies the
+same underlying intent (a human confirms before repo/session content leaves
+the machine to an external CLI) through a mechanism of its own:
+
+- **User-invoked slash commands** (`commands/review.md`,
+  `commands/adversarial-review.md`, `commands/transfer.md`): the explicit
+  `/codex-kit:...` invocation itself is the confirmation — a user who just
+  typed the command to run a Codex review or transfer already confirmed
+  that action. `adversarial-review.md`'s own Phase 1.5 preview gate and
+  `transfer.md`'s own explicit per-call confirmation both exceed this
+  gate's bar (per-call, not just first-call in the session).
+- **`codex-peer-review`**: manual/on-request only, never auto-triggered —
+  same reasoning as the slash commands above, the explicit request that
+  invokes it is the confirmation.
+- **`codex-audit-loop`**: its own mandatory cost/scope `AskUserQuestion`
+  runs before any mode launches its first Codex dispatch and covers the
+  same ground.
+- **`codex-review-bridge`**: a generic, reviewer-agnostic bridge invoked by
+  other components, never directly by a user in normal conversation —
+  gating belongs to whichever caller runs in an interactive session, not to
+  the bridge itself (see `plugin-marketplace-review`'s own governance note
+  for its unattended-CI case, where no session exists to confirm in at all).
+
+A component with none of the above must check this gate directly, the same
+way `codex-rescue`/`codex-verify`/`codex-research`/`codex-plan-loop` do —
+silence on this question is not itself an exception.

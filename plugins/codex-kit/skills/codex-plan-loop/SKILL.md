@@ -9,7 +9,7 @@ description: >-
   task that doesn't need an up-front plan-validation phase — use codex-rescue
   for those.
 argument-hint: "feature description [--security-focus] [--performance-focus] [--model SLUG] [--effort LEVEL]"
-allowed-tools: ["Bash(node:*)", "Bash(mkdir:*)", "Bash(git rev-parse:*)", "Bash(git status:*)", "Read", "Write", "Edit", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(git rev-parse:*)", "Bash(git status:*)", "Read", "Write", "Edit", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Plan → Validate → Implement → Review → Iterate
@@ -29,6 +29,8 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/codex-loop"
 Write a detailed implementation plan to `${CLAUDE_PLUGIN_DATA}/codex-loop/plan.md` — overview, steps, assumptions, risks.
 
 ## Phase 2: Validate (Codex)
+
+**Session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): if this is the first call in the current session that would send content to Codex — across this skill, `codex-rescue`, `codex-verify`, or `codex-research` — confirm once via `AskUserQuestion` before proceeding. Skip if a prior call in this session already confirmed.
 
 Send the plan to Codex via `task` (Pattern B, stdin pipe — see `${CLAUDE_PLUGIN_ROOT}/skills/codex-prompt-protocol/references/invocation-protocol.md`):
 
@@ -80,12 +82,14 @@ Severity-gated response: Critical → fix immediately. Architectural → discuss
 3. A Critical/Major finding persists past 3 rounds → discussed with the user, never silently auto-resolved.
 4. `--security-focus` is present → Phase 2 validation always runs at `xhigh` effort, not the config default.
 5. Phase 4 always captures a rollback anchor (`git rev-parse HEAD`, or an explicit note if the tree already had unrelated uncommitted changes) before the first edit.
+6. Phase 2's first Codex send in a session asks the shared first-send confirmation once; a second `codex-plan-loop` invocation in the same session (or a prior `codex-rescue`/`codex-verify`/`codex-research` call) does not re-ask.
 
 **Current test coverage:**
-- `evals/codex-plan-loop/evals.json` — 1 defined scenario (6-phase structure, concrete convergence condition). Definition only — not yet run and graded.
+- `evals/codex-plan-loop/evals.json` — 1 defined scenario (6-phase structure, concrete convergence condition). Structurally graded 2026-08-12 (PASS — SKILL.md's Phase 1-6 headings and Phase 6's concrete two-condition convergence check match the eval's `expected_output`); not a live empirical run.
 - No persisted smoke test exists for this skill (its Codex calls aren't mechanically testable the way a fixed prompt template is — each phase's payload depends on the actual plan/diff content).
 
 **Quality gates:**
 - [ ] Every phase's scratch artifact is written under `${CLAUDE_PLUGIN_DATA}/codex-loop/`, never the repo root
 - [ ] The convergence check never loops past a genuinely met stop condition
 - [ ] A persisting Critical/Major finding is always surfaced to the user, never silently dropped
+- [ ] Phase 2 always checks the shared session-level first-send gate before its first Codex call, never re-asking within the same session

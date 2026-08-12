@@ -50,7 +50,7 @@ Useful alongside `codex-rescue`/`codex-verify`/`codex-research`'s session-resume
 3. A malformed or missing rollout file path → a clear error, not a silent empty result.
 
 **Current test coverage:**
-- `evals/codex-session-lookup/evals.json` — 1 defined scenario (query against `history.jsonl`, correctly identified as Codex CLI's own state, not Claude Code's). Definition only — not yet run and graded.
+- `evals/codex-session-lookup/evals.json` — 1 defined scenario (query against `history.jsonl`, correctly identified as Codex CLI's own state, not Claude Code's). Structurally graded 2026-08-12 (PASS — `find-session-id.py --query`, the `~/.codex/history.jsonl` target, and the read-only/not-Claude-Code-sessions framing all match the eval's `expected_output`); not a live empirical run.
 - No persisted smoke test exists for this skill's Python scripts; they can be run directly against a real `~/.codex/` directory for a quick manual check.
 
 **Quality gates:**

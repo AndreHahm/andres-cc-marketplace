@@ -181,7 +181,10 @@ codex-kit's task/review skills use exactly two patterns to run the companion.
 
 The companion's `--background` is a no-op here, so we use Claude's own Bash
 `run_in_background=true` to keep the wrapper alive past Bash's 300s
-per-call timeout.
+per-call timeout. Poll via `BashOutput`, not `/codex-kit:status` — but the
+companion still tracks this run as a job internally (see §5), so
+`/codex-kit:status --all` remains a useful side channel if the primary
+`BashOutput`-based poll ever needs cross-checking.
 
 ```bash
 set -o pipefail
@@ -278,12 +281,18 @@ cap, surface as `wait-timeout` (§6).
   rendered text format is not stable across releases.
 - Parse jobId with `node -e '...'` (already a runtime dependency). Do NOT
   grep / regex the rendered output.
-- **Pattern A:** there is no `jobId` field in Pattern A's output — the
-  relevant identifier is `payload.threadId`, at the top level of the
-  `$OUT_FILE` payload, in the same location for both `review` and
-  `adversarial-review`. Pattern A doesn't use companion-side job IDs at
-  all; it relies on Claude's own `run_in_background`/`BashOutput` bash_id
-  instead (see §4).
+- **Pattern A:** there is no `jobId` field in the review/adversarial-review
+  JSON *payload* — the relevant identifier there is `payload.threadId`, at
+  the top level of the `$OUT_FILE` payload, in the same location for both
+  `review` and `adversarial-review`. This does **not** mean the companion
+  skips job tracking for these calls: `handleReviewCommand` still creates
+  and persists a job record (`review-<id>`) exactly like `task` does, so
+  the run is visible via `/codex-kit:status --all` while it's running and
+  after it completes. That companion-side job ID is simply never returned
+  to the caller in the payload the way `task --background`'s `jobId` is —
+  Claude has no need for it, since Pattern A polls via Claude's own
+  `run_in_background`/`BashOutput` bash_id instead, not via
+  `status --wait <jobId>` (see §4).
 - **Pattern B:** jobId is in the immediate response from
   `task --background --json` as `{"jobId": "...", "status": "queued", ...}`.
 - **Always set `set -o pipefail`** before any `cat file | node ...` or
@@ -303,7 +312,7 @@ blame the user.
 | Pattern in stderr (verbatim where quoted) | Category | Source | Action |
 |-------------------|----------|--------|--------|
 | `not authenticated` | auth | `lib/codex.mjs`'s `buildAuthStatus` default `detail` field | Suggest `codex login` |
-| `OPENAI_API_KEY` (stderr substring match) | auth | `lib/codex-exec.mjs`'s `runCodexExec` only — a primitive `codex-companion.mjs` never calls directly; used by `codex-review-bridge` instead (see `codex-review-bridge/references/typed-failures.md`) | Suggest `codex login` |
+| `OPENAI_API_KEY` (stderr substring match) | auth | `lib/codex-exec.mjs`'s `runCodexExec` only — a primitive `codex-companion.mjs` never calls directly; used by `codex-review-bridge` and any other `runCodexExec` caller instead, which surface this as the `auth_unavailable` typed-failure category rather than a prose message | Suggest `codex login` |
 | `Codex CLI is not installed or is missing required runtime support.` | setup | `getCodexAvailability` check, thrown at multiple call sites in `lib/codex.mjs` | Companion resolves fine but the actual `codex` CLI it shells out to isn't installed. Direct to `npm install -g @openai/codex`, then `/codex-kit:setup`. Not transfer-specific — any subcommand that needs a live app-server hits this. |
 | `This command must run inside a Git repository.` | environment | `lib/git.mjs`'s `ensureGitRepository` | Tell user, stop |
 | `unknown revision` / `bad revision` | bad-input | `git rev-parse` (git's own error, not this codebase's) | Show `git branch --list`, AskUserQuestion |
