@@ -70,6 +70,8 @@ The script exits `0` only if every citation is `CONFIRMED`, `1` if any failed �
 
 ## Testing & Validation
 
+**Persisted eval suite:** `evals/verify-agent-citations/evals.json` — 3 scenarios against a fixture file (`fixture-target/widget.py`), each empirically verified against the real `verify_citations.py` script before being written: all-correct citations (both `CONFIRMED`), a fabricated line number (`LINE_OUT_OF_RANGE`), and a real quote cited at the wrong line (`QUOTE_NOT_FOUND`).
+
 **Expected triggers** — phrases that should activate this skill:
 - "verify these citations"
 - "check this agent's line numbers"
