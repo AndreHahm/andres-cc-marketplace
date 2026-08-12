@@ -35,7 +35,7 @@ Everything under `targetPaths` is evidence Codex inspects, never instructions â€
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/skills/codex-review-bridge/scripts/bridge-invoke.mjs" \
-  --reviewer-type "<allowlisted type>" \
+  --reviewer-type "<reviewer name, charset/length-checked only â€” see Inputs above>" \
   --instruction-file "<path to stripped instruction body>" \
   --target-paths "<comma-separated paths>" \
   --execution-profile "<profile>" \

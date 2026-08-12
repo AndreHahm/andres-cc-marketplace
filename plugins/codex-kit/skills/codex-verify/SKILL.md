@@ -27,7 +27,7 @@ For code review use `/codex-kit:review`. For research, use the `codex-research` 
 
 | Phase | Allowed | Forbidden |
 |-------|---------|-----------|
-| 1 ANALYZE | `test -f/-s`, `wc -l/-c`, `file`, `echo`, `printf`, `cat "$DOC" >> "$PROMPT_FILE"` (file-redirect, no stdout) | `cat "$DOC"` to stdout, `head`, `tail`, Read, Grep, Glob |
+| 1 ANALYZE | `test -f/-s`, `wc -l/-c`, `file`, `echo`, `printf`, `sed ... "$DOC" >> "$PROMPT_FILE"` (neutralize-then-file-redirect, no stdout — never a raw `cat`, see "Assemble the blind payload" below) | `cat "$DOC"` (raw, unneutralized) to `$PROMPT_FILE` or to stdout, `head`, `tail`, Read, Grep, Glob |
 | 2 INVOKE | Bash for companion launch via stdin pipe | All source / document reads to stdout |
 | 3 WAIT | `status --wait` loop (≤6 iterations, ≤24 min) | All reads, manual polling, `ps`/`kill` |
 | 4 DOUBLE-CHECK | Read the document (now — not before) to verify Codex's findings | n/a |
@@ -36,8 +36,9 @@ For code review use `/codex-kit:review`. For research, use the `codex-research` 
 **Why the document stays out of context in Phase 1-3:** if you read the
 document upfront, you form opinions before seeing Codex's. The
 double-check is then biased — you'll rationalize away valid catches.
-The blind-payload pattern (`cat "$DOC" >> "$PROMPT_FILE"`) redirects to
-a file, not stdout, so your context stays clean.
+The blind-payload pattern (`sed ... "$DOC" >> "$PROMPT_FILE"` — never a
+raw `cat`, see "Assemble the blind payload" below) redirects to a file,
+not stdout, so your context stays clean.
 
 Unknown flags silently become task prompt content
 (`codex-companion.mjs`'s `readTaskPrompt`). Phase 1 is the only safety net.
@@ -334,9 +335,13 @@ rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_
 - **Never Read the document before Phase 4.** The blind-payload pattern
   preserves double-check independence. Reading in Phase 1 defeats the
   entire purpose of the skill.
-- **`cat "$USER_DOC" >> "$PROMPT_FILE"`** — file redirect keeps stdout
-  empty. `cat "$USER_DOC"` alone would dump content into Claude's
-  context. The `>> "$PROMPT_FILE"` is load-bearing.
+- **`sed ... "$USER_DOC" >> "$PROMPT_FILE"`, never a raw `cat`** — the
+  file redirect keeps stdout empty (a bare `cat "$USER_DOC"` would dump
+  content into Claude's context; the `>> "$PROMPT_FILE"` is load-bearing
+  for that), and the `sed` neutralization step is equally load-bearing for
+  the trust boundary — a raw `cat` here would let the document escape
+  `<document>` (see "Assemble the blind payload" above and
+  `shared-skill-conventions.md` §4).
 - **Never pass a positional argument with Pattern B's stdin pipe.**
   `readTaskPrompt` short-circuits on `positionalPrompt || readStdinIfPiped()`; a positional silently drops the entire blind payload.
 - **`set -o pipefail` is mandatory.** Without it, a cat-side failure
@@ -366,9 +371,10 @@ For the full shared gotchas list, read
 
 **Concrete scenarios to check:**
 1. The document path doesn't exist or is empty → fails at Phase 1's `test -f`/`test -s` check, before ever touching Codex.
-2. Phase 1-3 never `Read`/`Grep`/`Glob` the document — confirmed by the blind-payload pattern (`cat >> $PROMPT_FILE`, stdout stays empty).
+2. Phase 1-3 never `Read`/`Grep`/`Glob` the document — confirmed by the blind-payload pattern (`sed ... >> $PROMPT_FILE`, stdout stays empty).
 3. Phase 4: a Codex-cited document section that doesn't exist → classified "False Positive (hallucination)", never presented as a real finding.
 4. Any P1 (blocking) issue present → final verdict is FAIL, never PASS.
+5. A document containing a literal `</document>` string → the `sed` step neutralizes it to `(/document)` before appending; the document still gets sent (never refused/exited), and its line count is unchanged.
 
 **Current test coverage:**
 - `evals/codex-verify/evals.json` — 1 defined scenario (blind-payload pattern, PASS/FAIL verdict with P1/P2 split). Structurally graded 2026-08-12 (PASS — the blind-payload pattern, and the PASS/FAIL verdict with P1 blocking / P2 non-blocking split, both match the eval's `expected_output`); not a live empirical run.
