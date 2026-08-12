@@ -5,10 +5,12 @@
 # Marker handshake: a skill that legitimately runs `git commit` directly
 # (commit, standalone-commits) writes a single line "git-commit <epoch> <skill>"
 # to $(git rev-parse --git-dir)/git-kit-marker.txt right before running it.
-# This hook checks for that marker, requires it to be fresh (<=60s old) and
-# for the right guard type, then always consumes it (deletes it) whether or
-# not it matched -- so a marker can never be reused for a second, unrelated
-# raw command later in the session.
+# This hook consumes a marker matching its own guard type ("git-commit") on
+# every Bash/PowerShell call, before checking whether the current command
+# actually matches -- so a marker can't survive its full 60s TTL untouched
+# through intervening unrelated commands, and can't be reused for a second,
+# unrelated raw command later in the session. A marker for a different guard
+# type is left untouched.
 #
 # The marker lives under .git/ (never .claude/) specifically so it can never
 # be accidentally committed regardless of a consuming project's .gitignore --
