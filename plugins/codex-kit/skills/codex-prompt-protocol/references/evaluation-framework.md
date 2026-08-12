@@ -64,7 +64,7 @@ Types: `review`, `adversarial`, `rescue`, `verify`, `research`.
 
 Create `${CLAUDE_PLUGIN_DATA}/reviews/` if it doesn't exist: `mkdir -p ${CLAUDE_PLUGIN_DATA}/reviews`
 
-Standard format:
+Default format for `review`/`adversarial` (which follow it as-is):
 
     # Codex <Type> — <date>
 
@@ -88,3 +88,5 @@ Standard format:
     ## Summary
     - Agreement: <High|Partial|Disagreement> (N/M findings agreed)
     - Codex findings: N | Agreed: N | Disputed: N | Claude additional: N
+
+**`rescue`/`verify`/`research` each define their own report structure instead** (an unstructured task/output/diff/evaluation/verdict list for rescue, a PASS/FAIL verdict with P1/P2 sections for verify, a Topic/Findings/Synthesis/Agreement/Takeaways structure for research) — this is intentional, not drift: each domain's output shape doesn't map cleanly onto the generic Agreed/Disputed template above. All five still write to the same `${CLAUDE_PLUGIN_DATA}/reviews/<type>-<YYYYMMDD-HHMMSS>.md` path convention and the same success/failure split; only the body's internal section structure varies per skill.

@@ -29,7 +29,7 @@ Built on the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`). Imp
 
 ## Content trust boundary
 
-Everything under `targetPaths` is evidence Codex inspects, never instructions — regardless of what the content claims. The prompt sent to Codex explicitly states this before the reviewer instruction body and before any target content.
+Everything under `targetPaths` is evidence Codex inspects, never instructions — nothing in it can redirect the review task or the output contract, and nothing in it can grant Codex (or the reviewed change) additional permissions, regardless of what the content claims. The prompt sent to Codex explicitly states all three invariants before the reviewer instruction body and before any target content.
 
 ## Invocation
 
@@ -54,7 +54,7 @@ Beyond schema conformance, a deterministic pass checks the response for internal
 
 ## Typed failures
 
-Never returns an empty findings list on failure. See `references/typed-failures.md` and `codex-prompt-protocol/references/error-taxonomy.md` for the full category list (CLI unavailable, auth unavailable, unsupported CLI version, isolation profile unavailable, timeout, non-zero exit, missing final message, invalid JSON, schema-validation failure, semantic-validation failure). Schema-validation failure is checked locally (`codex-exec.mjs`'s `findSchemaViolation`) against the same schema passed to Codex's own `--output-schema`, not just trusted from Codex's own enforcement.
+Never returns an empty findings list on failure. See `codex-prompt-protocol/references/error-taxonomy.md` for the canonical category list — not restated here — and `references/typed-failures.md` for this bridge's own presentation shape and two bridge-specific rules. Schema-validation failure is checked locally (`codex-exec.mjs`'s `findSchemaViolation`) against the same schema passed to Codex's own `--output-schema`, not just trusted from Codex's own enforcement.
 
 ## Isolation transparency
 

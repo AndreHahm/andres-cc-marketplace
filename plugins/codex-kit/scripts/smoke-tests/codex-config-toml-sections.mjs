@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Smoke test: scripts/lib/codex-config.mjs's section-aware TOML read/write
+// Smoke test: scripts/lib/codex-config.mjs's section-aware TOML read/write,
+// plus its single-sourced model-alias resolution.
 //
 // Confirms the fix for a real data-corruption risk: a bare regex with no
 // [table]-header awareness would match (and, on write, silently overwrite)
@@ -7,10 +8,13 @@
 // root-level default. This test exercises the pure text-transform
 // functions (extractTopLevelKey/setOrInsertTopLevelKey) directly against
 // in-memory strings only -- it never touches a real ~/.codex/config.toml.
+// Also covers resolveModelAlias, which scripts/codex-companion.mjs used to
+// duplicate as its own case-sensitive Map before this file became the
+// single source of truth.
 //
 // Run from plugins/codex-kit/: node scripts/smoke-tests/codex-config-toml-sections.mjs
 
-import { extractTopLevelKey, setOrInsertTopLevelKey } from "../lib/codex-config.mjs";
+import { extractTopLevelKey, setOrInsertTopLevelKey, resolveModelAlias, MODEL_ALIASES } from "../lib/codex-config.mjs";
 
 let pass = 0;
 let fail = 0;
@@ -78,6 +82,20 @@ console.log("\n=== A section-less file (no [table] at all) still round-trips cor
   const bare = "";
   const written = setOrInsertTopLevelKey(bare, "model", "first-value");
   check("inserting into an empty file produces a clean single line", written === 'model = "first-value"\n', JSON.stringify(written));
+}
+
+console.log("\n=== resolveModelAlias: case-insensitive lookup, single-sourced ===");
+{
+  check("MODEL_ALIASES defines the 'spark' alias", MODEL_ALIASES.spark === "gpt-5.3-codex-spark", JSON.stringify(MODEL_ALIASES));
+  check("lowercase 'spark' resolves to the full slug", resolveModelAlias("spark") === "gpt-5.3-codex-spark", resolveModelAlias("spark"));
+  check("uppercase 'SPARK' also resolves (case-insensitive)", resolveModelAlias("SPARK") === "gpt-5.3-codex-spark", resolveModelAlias("SPARK"));
+  check("mixed-case 'Spark' also resolves", resolveModelAlias("Spark") === "gpt-5.3-codex-spark", resolveModelAlias("Spark"));
+  check(
+    "a non-alias value passes through unchanged, in its original casing",
+    resolveModelAlias("gpt-4") === "gpt-4",
+    resolveModelAlias("gpt-4")
+  );
+  check("empty/null input passes through as-is, never throws", resolveModelAlias("") === "" && resolveModelAlias(null) === null);
 }
 
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);

@@ -109,6 +109,12 @@ sed -E 's@</[[:space:]]*([a-zA-Z_][a-zA-Z0-9_-]*)[[:space:]]*>@(/\1)@g' "<litera
 printf '\n</document>\n' >> "$PROMPT_FILE"
 ```
 
+**R18 exception (recorded):** the block tags above must be copied exactly
+(this skill's own output schema, not `prompt-blocks.md`'s originals) and
+this launch-and-capture shape is shared verbatim with `codex-research`
+(and closely with `codex-rescue`) — extracting the shared portion to a
+`scripts/` helper is a real future improvement, tracked but not done here.
+
 ### Model/effort (per-call by default)
 
 `--model <slug>` / `--effort <level>`, when given, are passed as **companion flags directly** on the Phase 2 `task` invocation — not written to `config.toml`. If neither flag is given, the companion falls back to whatever's already in `~/.codex/config.toml` (codex-kit's default model/effort source of truth).

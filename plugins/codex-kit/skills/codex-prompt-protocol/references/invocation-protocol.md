@@ -66,7 +66,7 @@ review a specific commit, use `--base <sha>~1 --scope branch`.
 | `--resume` | bool | documented | alias for `resume-last` |
 | `--fresh` | bool | documented | opposite of resume; mutually exclusive with resume/resume-last |
 | `--json` | bool | parser-only | structured output |
-| `--model <m>` | value | documented | accepts `spark` alias (`MODEL_ALIASES` maps it to `gpt-5.3-codex-spark`) |
+| `--model <m>` | value | documented | accepts aliases per `scripts/lib/codex-config.mjs`'s `MODEL_ALIASES` (e.g. `spark`) — the single source of truth for alias expansion, not restated here |
 | `--effort <level>` | value | documented | one of `VALID_REASONING_EFFORTS`: `{none, minimal, low, medium, high, xhigh}` |
 | `--cwd <path>` | value | parser-only | |
 | `--prompt-file <path>` | value | **parser-only** (not in `printUsage`) | read via `readTaskPrompt` |

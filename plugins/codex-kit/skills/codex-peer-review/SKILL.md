@@ -7,7 +7,10 @@ description: >-
   this design". Not a proactive/automatic trigger (codex-kit deliberately
   narrowed this from the original design's 'fires before every
   recommendation' behavior — too many silent Codex calls by default). For
-  verifying an existing written plan/document file, use codex-verify instead.
+  verifying an existing written plan/document file, use codex-verify
+  instead. For a full multi-phase plan-validate-implement-review workflow
+  (not just validating an already-formed position), use codex-plan-loop
+  instead.
 argument-hint: "[--base <ref>] [question or design summary]"
 allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "AskUserQuestion", "Agent", "WebSearch"]
 ---
@@ -46,7 +49,7 @@ For unresolved disagreements, use WebSearch (or a configured research MCP tool, 
 
 ## Output
 
-Present the final report to the user in one of three shapes: **Agreement** (both aligned, brief), **Resolved Disagreement** (both positions + the synthesis + why), or **External Research Arbitration** (both positions + escalation findings, unresolved). This session-level outcome vocabulary is intentionally separate from the per-finding Agreed/Disagreed/Nuanced/False-Positive/Uncited taxonomy other codex-kit components use — this skill validates a *position*, not individual findings.
+Present the final report to the user in one of three shapes: **Agreement** (both aligned, brief), **Resolved Disagreement** (both positions + the synthesis + why), or **External Research Arbitration** (both positions + escalation findings, unresolved). This session-level outcome vocabulary is intentionally separate from the per-finding canonical taxonomy other codex-kit components use (Agree/Disagree/Nuance/False Positive (hallucination)/Uncited — verification deferred, see `codex-prompt-protocol/references/evaluation-framework.md`) — this skill validates a *position*, not individual findings.
 
 Never ask before Round 1 or Round 2 — only the escalation and final-output steps involve the user directly, keeping the loop itself autonomous once invoked. **Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): this skill is manual/on-request only and never auto-triggered, so the explicit request that invokes it ("codex peer review this design") already is the confirmation — asking again before Round 1 or Round 2 would be redundant with that invocation, not an additional safeguard.
 

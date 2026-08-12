@@ -18,8 +18,7 @@ import {
 import { resolveStateFile, updateState } from "./lib/state.mjs";
 import { TRANSCRIPT_PATH_ENV } from "./lib/claude-session-transfer.mjs";
 import { resolveWorkspaceRoot } from "./lib/workspace.mjs";
-
-export const SESSION_ID_ENV = "CODEX_KIT_SESSION_ID";
+import { SESSION_ID_ENV } from "./lib/tracked-jobs.mjs";
 const PLUGIN_DATA_ENV = "CLAUDE_PLUGIN_DATA";
 
 function readHookInput() {
@@ -85,6 +84,13 @@ export function handleSessionStart(input) {
   appendEnvVar(PLUGIN_DATA_ENV, process.env[PLUGIN_DATA_ENV]);
 }
 
+// Budget note: this can await sendBrokerShutdown (default 2s) then acquire
+// a state lock that retries up to LOCK_TIMEOUT_MS (5s, lib/state.mjs) before
+// throwing -- 7s minimum before the rest of teardown even runs. hooks.json's
+// own SessionEnd "timeout" (currently 12s) must stay comfortably above that
+// sum, or the platform force-kills this process mid-cleanup, orphaning the
+// broker and/or the state lock file. Re-check hooks.json's timeout if either
+// of those two constants changes.
 export async function handleSessionEnd(input) {
   const cwd = input.cwd || process.cwd();
   const brokerSession =

@@ -20,8 +20,9 @@ import path from "node:path";
 const scratchRoot = fs.mkdtempSync(path.join(os.tmpdir(), "codex-kit-session-hook-smoke-"));
 process.env.CLAUDE_PLUGIN_DATA = path.join(scratchRoot, "plugin-data");
 
-const { shellEscape, cleanupSessionJobs, handleSessionStart } = await import("../session-lifecycle-hook.mjs");
+const { shellEscape, cleanupSessionJobs, handleSessionStart, handleSessionEnd } = await import("../session-lifecycle-hook.mjs");
 const { saveState, loadState } = await import("../lib/state.mjs");
+const { BROKER_ENDPOINT_ENV } = await import("../lib/app-server.mjs");
 
 let pass = 0;
 let fail = 0;
@@ -119,6 +120,31 @@ console.log("\n=== cleanupSessionJobs: job filtering ===");
     "a running job for a DIFFERENT session is untouched",
     remainingIds.includes("job-running-other-session"),
     remainingIds.join(",")
+  );
+}
+
+console.log("\n=== handleSessionEnd: no-broker-session fallthrough ===");
+{
+  // No broker.json on disk under this scratch workspace, and no
+  // BROKER_ENDPOINT_ENV set -- loadBrokerSession(cwd) returns null and the
+  // env fallback is also null, so brokerEndpoint stays null and
+  // sendBrokerShutdown is skipped entirely. Exercises the rest of the
+  // function (cleanupSessionJobs, teardownBrokerSession, clearBrokerSession)
+  // with no real broker process anywhere in the picture.
+  delete process.env[BROKER_ENDPOINT_ENV];
+  const ws = path.join(scratchRoot, "ws-session-end-no-broker");
+  fs.mkdirSync(ws, { recursive: true });
+
+  let threw = null;
+  try {
+    await handleSessionEnd({ cwd: ws, session_id: "sess-end-test" });
+  } catch (error) {
+    threw = error;
+  }
+  check(
+    "handleSessionEnd completes without throwing when there is no broker session to tear down",
+    threw === null,
+    threw ? String(threw) : ""
   );
 }
 

@@ -4,10 +4,15 @@ description: >-
   Dual-AI plan-validate-implement-review loop with Codex. Use for (1) complex
   feature development requiring validation, (2) high-quality code with
   security/performance concerns, (3) large-scale refactoring, or (4) an
-  explicit request for a codex-claude loop or dual-AI review. Do NOT use for
-  simple one-off fixes or prototypes, nor for a single implementation/fix
-  task that doesn't need an up-front plan-validation phase — use codex-rescue
-  for those.
+  explicit request for a codex-claude loop or dual-AI review that should
+  drive a full plan-validate-implement-review workflow — not a single
+  validation pass on an already-formed Claude position (use codex-peer-review
+  for that). Do NOT use for simple one-off fixes or prototypes, nor for a
+  single implementation/fix task that doesn't need an up-front
+  plan-validation phase — use codex-rescue for those. Nor for a single round
+  of validating Claude's own already-formed analysis/design/recommendation
+  before presenting it — use codex-peer-review for that lighter,
+  on-request-only comparison.
 argument-hint: "feature description [--security-focus] [--performance-focus] [--model SLUG] [--effort LEVEL]"
 allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(git rev-parse:*)", "Bash(git status:*)", "Read", "Write", "Edit", "Grep", "Glob", "AskUserQuestion"]
 ---
