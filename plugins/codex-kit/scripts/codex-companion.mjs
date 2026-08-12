@@ -798,7 +798,7 @@ async function handleReview(argv) {
 async function handleTask(argv) {
   const { options, positionals } = parseCommandInput(argv, {
     valueOptions: ["model", "effort", "cwd", "prompt-file"],
-    booleanOptions: ["json", "write", "resume-last", "resume", "fresh", "background"],
+    booleanOptions: ["json", "write", "resume-last", "resume", "fresh", "background", "print-job-id"],
     aliasMap: {
       m: "model"
     }
@@ -836,6 +836,13 @@ async function handleTask(argv) {
       jobId: job.id
     });
     const { payload } = enqueueBackgroundTask(cwd, job, request);
+    if (options["print-job-id"]) {
+      // Bare jobId on stdout, no JSON wrapper -- lets callers capture it
+      // directly (JOB_ID=$(node "$CODEX_COMPANION" task --background --print-job-id ...))
+      // without shelling out to a JSON parser for a single field.
+      process.stdout.write(`${payload.jobId}\n`);
+      return;
+    }
     outputCommandResult(payload, renderQueuedTaskLaunch(payload), options.json);
     return;
   }

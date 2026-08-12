@@ -248,13 +248,14 @@ readStdinIfPiped()`, so a positional silently short-circuits stdin and
 drops the entire blind payload:
 
 ```bash
-cat "$PROMPT_FILE" | node "$CODEX_COMPANION" task --background --json \
+cat "$PROMPT_FILE" | node "$CODEX_COMPANION" task --background --print-job-id \
   > "$JOB_JSON_FILE" 2> "${JOB_JSON_FILE}.stderr" \
   || { echo "task launch failed:" >&2; cat "${JOB_JSON_FILE}.stderr" >&2; exit 1; }
 
-# Capture jobId — use node (already a dependency) to avoid host-python assumptions
-JOB_ID=$(node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!j.jobId)throw new Error("no jobId");process.stdout.write(j.jobId);}catch(e){process.stderr.write("JOB_ID parse failed: "+e.message+"\n");process.exit(1);}' "$JOB_JSON_FILE") \
-  || { echo "raw companion stdout:" >&2; cat "$JOB_JSON_FILE" >&2; exit 1; }
+# Capture jobId -- --print-job-id makes the companion print the bare id,
+# no JSON parser (and no node -e arbitrary-code grant) needed for this.
+JOB_ID=$(cat "$JOB_JSON_FILE")
+[ -n "$JOB_ID" ] || { echo "raw companion stdout:" >&2; cat "$JOB_JSON_FILE" >&2; exit 1; }
 echo "JOB_ID=$JOB_ID"
 ```
 
@@ -277,10 +278,14 @@ cap, surface as `wait-timeout` (§6).
 
 ## 5. Job ID capture
 
-- Always pass `--json` to commands whose output you intend to parse. The
-  rendered text format is not stable across releases.
-- Parse jobId with `node -e '...'` (already a runtime dependency). Do NOT
-  grep / regex the rendered output.
+- Always pass `--json` to commands whose output you intend to parse as JSON
+  (e.g. `status`/`result`). The rendered text format is not stable across
+  releases.
+- **Pattern B's job ID specifically:** use `task --background --print-job-id`
+  instead of `--json`. The companion prints the bare job ID to stdout with
+  nothing else — capture it with plain `cat`/`$(...)`, never `node -e` (an
+  arbitrary-code grant, not a scoped one — see `plugin-rulebook` R6) or a
+  grep/regex against rendered text.
 - **Pattern A:** there is no `jobId` field in the review/adversarial-review
   JSON *payload* — the relevant identifier there is `payload.threadId`, at
   the top level of the `$OUT_FILE` payload, in the same location for both
@@ -476,13 +481,14 @@ printf '\n</document>\n' >> "$PROMPT_FILE"
 **Step 4 — launch via stdin pipe (no positional!) and capture the job ID:**
 
 ```bash
-cat "$PROMPT_FILE" | node "$CODEX_COMPANION" task --background --json \
+cat "$PROMPT_FILE" | node "$CODEX_COMPANION" task --background --print-job-id \
   > "$JOB_JSON_FILE" 2> "${JOB_JSON_FILE}.stderr" \
   || { echo "task launch failed:" >&2; cat "${JOB_JSON_FILE}.stderr" >&2; exit 1; }
 
-# Capture jobId (use node, not python, to avoid host assumptions)
-JOB_ID=$(node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!j.jobId)throw new Error("no jobId");process.stdout.write(j.jobId);}catch(e){process.stderr.write("JOB_ID parse failed: "+e.message+"\n");process.exit(1);}' "$JOB_JSON_FILE") \
-  || { echo "raw companion stdout:" >&2; cat "$JOB_JSON_FILE" >&2; exit 1; }
+# Capture jobId -- --print-job-id makes the companion print the bare id,
+# no JSON parser (and no node -e arbitrary-code grant) needed for this.
+JOB_ID=$(cat "$JOB_JSON_FILE")
+[ -n "$JOB_ID" ] || { echo "raw companion stdout:" >&2; cat "$JOB_JSON_FILE" >&2; exit 1; }
 echo "JOB_ID=$JOB_ID"
 ```
 

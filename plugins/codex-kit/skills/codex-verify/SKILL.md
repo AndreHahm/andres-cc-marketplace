@@ -9,7 +9,7 @@ description: >-
   own not-yet-written analysis or design (no document to point at), use
   codex-peer-review instead.
 argument-hint: "path/to/document.md [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
-allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(node -e:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(sed:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f */tmp/*:*)", "Read", "Write", "AskUserQuestion"]
 ---
 
 # Codex Document Verification + Double-Check
@@ -102,7 +102,10 @@ Review the entire document before finalizing. Check for interactions between sec
 </completeness_contract>
 <document>
 EOF
-cat "<literal doc path>" >> "$PROMPT_FILE"
+# Neutralize any closing-tag-shaped substring in the document before
+# appending it -- an unguarded raw `cat` here would let the document escape
+# the <document> trust boundary (see shared-skill-conventions.md §4).
+sed -E 's@</[[:space:]]*([a-zA-Z_][a-zA-Z0-9_-]*)[[:space:]]*>@(/\1)@g' "<literal doc path>" >> "$PROMPT_FILE"
 printf '\n</document>\n' >> "$PROMPT_FILE"
 ```
 
@@ -197,7 +200,7 @@ Use `AskUserQuestion` exactly once:
 # blind payload.
 # --model/--effort: include only if the user passed them this call.
 # --resume-last: include only if `resume [follow-up]` was parsed in Phase 1.
-cat "<literal PROMPT_FILE path>" | node "$CODEX_COMPANION" task --background --json \
+cat "<literal PROMPT_FILE path>" | node "$CODEX_COMPANION" task --background --print-job-id \
   --model "<literal model, omit line if not provided>" \
   --effort "<literal effort, omit line if not provided>" \
   --resume-last \
@@ -208,9 +211,10 @@ cat "<literal PROMPT_FILE path>" | node "$CODEX_COMPANION" task --background --j
 `--resume-last` is a bare boolean flag (no value) — include the entire `--resume-last \` line only when `resume [follow-up]` was parsed in Phase 1; omit the whole line otherwise. `--model`/`--effort` each omit only their own line when unset, independently of the resume decision.
 
 ```bash
-# Capture jobId (node, not python — avoid host assumptions)
-JOB_ID=$(node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!j.jobId)throw new Error("no jobId");process.stdout.write(j.jobId);}catch(e){process.stderr.write("JOB_ID parse failed: "+e.message+"\n");process.exit(1);}' "<literal JOB_JSON_FILE path>") \
-  || { echo "raw companion stdout:" >&2; cat "<literal JOB_JSON_FILE path>" >&2; exit 1; }
+# Capture jobId -- the companion prints the bare id (--print-job-id), no
+# JSON parser needed for this one field.
+JOB_ID=$(cat "<literal JOB_JSON_FILE path>")
+[ -n "$JOB_ID" ] || { echo "raw companion stdout:" >&2; cat "<literal JOB_JSON_FILE path>" >&2; exit 1; }
 echo "JOB_ID=$JOB_ID"
 ```
 
@@ -306,7 +310,10 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
 
 **Failure:** save to
 `${CLAUDE_PLUGIN_DATA}/reviews/verify-<YYYYMMDD-HHMMSS>-failed.md` with
-the §6 error category, stderr, and the document path.
+the §6 error category, stderr (truncated to 500 characters, matching
+`codex-exec.mjs`'s own convention — stderr can echo document fragments,
+so cap it), and the document path. Treat this and the success-path report
+as sensitive before sharing.
 
 Clean up temp files using the literal paths captured in Phase 1:
 

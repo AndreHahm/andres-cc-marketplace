@@ -6,7 +6,7 @@ description: >-
   dispatching changed components to their matching reviewers through the
   Codex bridge. Invoked by the separate CI pipeline's GitHub Actions
   workflow, not interactively.
-allowed-tools: ["Bash(node:*)", "Read", "Grep", "Glob"]
+allowed-tools: ["Read", "Grep", "Glob"]
 disable-model-invocation: true
 ---
 
@@ -14,7 +14,7 @@ disable-model-invocation: true
 
 **Status: not yet operational.** This skill's required input (`ReviewScope`, produced by `scripts/marketplace_ci/review.py`) does not exist anywhere in this repository yet — it belongs to a separate CI-pipeline initiative that has not shipped that module. Until it exists, this skill has no way to obtain its own input and cannot run.
 
-**Also not yet ready, independent of the missing input:** this skill's own `allowed-tools` (`Bash(node:*)`, `Read`, `Grep`, `Glob`) doesn't grant what Delta Validate step 1 and step 2 need to actually execute — no `Skill` grant (needed to invoke `plugin-rulebook`), and no scoped Python execution (needed to run the CI pipeline's own `structural_check` function, if that function turns out to be Python rather than Node). Both gaps must be closed alongside — not after — wiring up `ReviewScope`, or those two steps will fail even once the input exists. `Bash(node:*)` is deliberately left un-narrowed for the same reason: unlike every other codex-kit component (each of which only ever calls `scripts/codex-companion.mjs`), whether this skill invokes `node` directly at all — versus solely through `codex-review-bridge`'s own separately-scoped grant — depends on what `structural_check` turns out to be. Narrow this once the actual invocation shape is known, not before.
+**Also not yet ready, independent of the missing input:** this skill's own `allowed-tools` (`Read`, `Grep`, `Glob`) doesn't grant what Delta Validate step 1 and step 2 need to actually execute — no `Skill` grant (needed to invoke `plugin-rulebook`), and no execution grant at all for the CI pipeline's own `structural_check` function (needed by step 2, whether it turns out to be a Node script reached via a scoped `Bash(node */path/to/script:*)` grant or a Python one via `Bash(python3 */path/to/script:*)`). All of these must be closed alongside — not after — wiring up `ReviewScope`, or those steps will fail even once the input exists. No `Bash(node:*)` (or any other execution) grant is carried in the meantime: a skill that cannot run needs no execution privilege, and an earlier, broader `Bash(node:*)` grant here was a real least-privilege violation a security review caught — add the specific scoped grant this skill actually needs once `structural_check`'s real invocation shape is known, not before.
 
 **On a typed failure mid-run:** if a `codex-review-bridge` dispatch returns a typed failure (see `codex-review-bridge/references/typed-failures.md`) partway through Delta Validate or Delta Audit, this skill fails closed — treat the affected component as unreviewed and block the PR pending human review, the same posture branch protection already assumes for a missing required check. Do not fall back to a partial pass/silent skip for that component, since this skill runs unattended with no human in the loop to notice a quietly-incomplete result.
 
