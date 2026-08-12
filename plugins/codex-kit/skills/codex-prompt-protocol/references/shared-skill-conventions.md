@@ -30,9 +30,10 @@ three invariants are present, not just that the block exists.
 
 All three skills' Phase 4 double-check must classify each of Codex's
 findings using exactly the 5-way taxonomy `references/evaluation-framework.md`
-defines (Agree / Disagree / Nuance / False Positive (hallucination) / Uncited)
-— that file is the single canonical definition of each category; this section
-does not restate them, to avoid the two copies drifting apart.
+defines (Agree / Disagree / Nuance / False Positive (hallucination) /
+Uncited — verification deferred) — that file is the single canonical
+definition of each category; this section does not restate their
+definitions, to avoid the two copies drifting apart.
 
 A skill may adapt the *description* of each category to its own domain (e.g.
 verify's "Valid catch" is a legitimate synonym for "Agree" applied to a

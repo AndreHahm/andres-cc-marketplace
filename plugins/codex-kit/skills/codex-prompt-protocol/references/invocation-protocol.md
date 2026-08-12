@@ -181,8 +181,8 @@ codex-kit's task/review skills use exactly two patterns to run the companion.
 
 The companion's `--background` is a no-op here, so we use Claude's own Bash
 `run_in_background=true` to keep the wrapper alive past Bash's 300s
-per-call timeout. Poll via `BashOutput`, not `/codex-kit:status` — but the
-companion still tracks this run as a job internally (see §5), so
+per-call timeout. Poll primarily via `BashOutput`, not `/codex-kit:status` —
+the companion still tracks this run as a job internally (see §5), so
 `/codex-kit:status --all` remains a useful side channel if the primary
 `BashOutput`-based poll ever needs cross-checking.
 
