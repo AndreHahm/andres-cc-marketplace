@@ -2,7 +2,7 @@
 name: standalone-commits
 description: >-
   Make commits reviewable and auditable as self-contained units, order multi-file changes into atomic dependency-ordered waves, and decide which of several pending changes to stage first. Use when planning commits, 'split this into commits', 'break this up', 'commit strategy', splitting work into waves, staging changes, reviewing branch history, deciding whether a commit is too broad, too tiny, incomplete, or hard to revert, prioritizing which change to stage next, or filtering pending changes down to what's relevant to the current PR.
-allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(gh pr view:*)
+allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(gh pr view:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read
 ---
 
 # Standalone Commits
@@ -10,6 +10,20 @@ allowed-tools: Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(gh pr
 A standalone commit is a commit a reviewer can audit on its own, at that point in branch history. It may depend on earlier commits in the same branch, but it should not require future commits to explain, compile, test, or justify it.
 
 > **Related Skill**: See git-kit's `commit` skill for conventional commit messages and PR text.
+
+## When to Use
+
+- Deciding whether a diff is too broad, too tiny, incomplete, or hard to revert as a single commit
+- Ordering multi-file changes into dependency-ordered waves before committing any of them
+- Several pending changes exist and you need to decide which to stage first, or which belong in the
+  current PR at all
+
+## When NOT to Use
+
+- **A single, already-coherent staged change with no splitting/ordering decision to make** — that's
+  `commit` (`Skill(git-kit:commit)`), which shapes and executes the message for whatever is already staged
+- **Reviewing a PR's diff or resolving review comments** — that's `explain-pr-changes` /
+  `collaborating-on-a-pr`
 
 ## Two Halves: Boundary And Order
 
@@ -93,7 +107,14 @@ This matters most when several unrelated concerns accumulate before a single sta
 3. Stage only files and hunks that prove that claim.
 4. Re-read the staged diff with `git diff --staged`.
 5. Run focused verification for that staged state when practical.
-6. Commit with a message that names the outcome and explains the reason when needed.
+6. Commit the staged wave in three parts:
+   - 6a. **Compose** the message per `commit` skill's "Best Practices for Commits" (conventional format) and "Commit Message Footer" sections — link to those sections rather than restating the type list or trailer table here, so the two skills can't drift apart on format. Make the subject name the outcome, not the implementation detail (see "Commit Message Shape" below).
+   - 6b. **Confirm** with `AskUserQuestion` — show the exact composed message and ask "Commit this wave with this message?" — options "Commit as shown" / "Revise the message" / "Stop". "Revise the message" loops back to 6a; "Stop" leaves the wave's files staged but uncommitted.
+   - 6c. **Commit**: immediately before committing, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit standalone-commits` — this writes the marker git-kit's commit-guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier, and after 6b's confirmation — not before it, since a slow confirmation could otherwise let the marker go stale before `git commit` runs). Then run `git commit` with the confirmed message.
+
+   This flow does **not** add `commit`'s step-9 behavior-change test gate — a commit made through this skill is not currently checked against `.claude/rules/require-tests-for-behavior-changes.md` the way a `commit`-skill invocation is. This is a stated gap, not an oversight: if the wave being committed changes skill/agent behavior, apply that rule's applicable testing mechanism yourself before reaching this step.
+
+   A commit made through this skill with no `attributionSkill` tag in its own session transcript is a transcript-metadata artifact of the surrounding harness — not evidence the marker-write step (6c) was skipped. The marker write is rewritten fresh before every wave's own commit by design, since this Staging Workflow is repeated once per wave (see "Wave Planning" above); `guard-raw-commit.sh`'s marker is single-use and consumed on every check regardless of outcome, so a stale or reused marker cannot silently let a later wave's commit through unconfirmed.
 
 Prefer file-level staging when files cleanly map to the commit claim. Use hunk staging when one file contains multiple concerns.
 
@@ -163,3 +184,29 @@ fix(settings): update localStorage call
 ```
 
 Add a body when the reason, invariant, or review boundary is not obvious from the diff.
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "split this diff into separate commits" / "break this up into multiple commits"
+- "how should I order these changes into waves"
+- "is this commit too broad / hard to revert"
+
+**Verify it does NOT activate on:**
+- "commit this" with a single, already-coherent staged change → `commit`
+- "review this PR" → `explain-pr-changes` / `collaborating-on-a-pr`
+
+**Verify the Staging Workflow's commit-confirmation gate (step 6):**
+- A multi-wave sequence (e.g. 4 waves) — confirm each wave gets its own `AskUserQuestion` at step 6b, not
+  one confirmation covering the whole sequence
+- Choosing "Revise the message" at 6b — confirm it loops back to composing (6a), not straight to committing
+- Choosing "Stop" at 6b — confirm the wave's files remain staged but the commit does not run
+- Confirm step 6a's composed message never restates `commit`'s type list or footer-trailer table inline —
+  it links to `commit`'s own sections instead
+
+**Quality gates:**
+- [ ] Step 6 is always split into compose (6a) / confirm (6b) / commit (6c) — never a single undifferentiated
+      "commit with a message" step
+- [ ] The marker write (6c) always happens after 6b's confirmation, never before it
+- [ ] This flow never silently claims `commit`'s step-9 behavior-change test gate applies here — see step
+      6's own stated gap

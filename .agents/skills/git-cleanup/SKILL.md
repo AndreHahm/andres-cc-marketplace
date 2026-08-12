@@ -3,12 +3,18 @@ name: git-cleanup
 description: >-
   Safely analyzes and cleans up local git branches and worktrees by categorizing them as merged, squash-merged, superseded, or active work.
 disable-model-invocation: true
-allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Read, Grep
+allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/phase1-analysis.sh:*), Read, Grep
 ---
 
 # Git Cleanup
 
 Safely clean up accumulated git worktrees and local branches by categorizing them into: safely deletable (merged), potentially related (similar themes), and active work (keep).
+
+**On the `Bash(git -C:*)` grant:** this is broad by necessity, not oversight — Phase 4's dirty-state and
+gitignored-content checks run `git -C <worktree-path> status --porcelain[--ignored]` against a worktree
+path that's only known at runtime, and `Bash(prefix:*)` permission syntax can't express "any `-C <path>`
+but only followed by `status`" without a wrapper script. Reviewed 2026-08-11 (git-kit retro follow-up);
+no narrower grant is expressible with the current permission syntax.
 
 ## When to Use
 
@@ -21,6 +27,10 @@ Safely clean up accumulated git worktrees and local branches by categorizing the
 - Do not use for remote branch management (this is local cleanup only)
 - Do not use for repository maintenance tasks like gc or prune
 - Not designed for headless or non-interactive automation (requires user confirmations at two gates)
+- Cannot run from a session sandboxed to a worktree checkout — this command needs to operate on the
+  primary checkout's branch/worktree list, and a worktree-sandboxed session cannot `cd` there. Run it from
+  a session started in the primary checkout instead. See `finishing-work`'s hand-off note for the same
+  constraint on the more common path into this skill.
 
 ## Core Principle: SAFETY FIRST
 
@@ -28,54 +38,17 @@ Safely clean up accumulated git worktrees and local branches by categorizing the
 
 ## Critical Implementation Notes
 
-### Squash-Merged Branches Require Force Delete
-
-**IMPORTANT:** `git branch -d` will ALWAYS fail for squash-merged branches because git cannot detect that the work was incorporated. This is expected behavior, not an error.
-
-When you identify a branch as squash-merged:
-- Plan to use `git branch -D` (force delete) from the start
-- Do NOT try `git branch -d` first and then ask again for `-D` - this wastes user confirmations
-- In the confirmation step, show `git branch -D` for squash-merged branches
-
-### Group Related Branches BEFORE Categorization
-
-**MANDATORY:** Before categorizing individual branches, group them by name prefix:
-
-```bash
-# Extract common prefixes from branch names
-# e.g., feat/auth-*, feat/api-*, fix/login-*
-```
-
-Branches sharing a prefix (e.g., `feat/api`, `feat/api-v2`, `feat/api-refactor`) are almost certainly related iterations. Analyze them as a group:
-
-1. Find the oldest and newest by commit date
-2. Check if newer branches contain commits from older ones
-3. Check which PRs merged work from each
-4. Determine if older branches are superseded
-
-Present related branches together with a clear recommendation, not scattered across categories.
-
-### Thorough PR History Investigation
-
-Don't rely on simple keyword matching. For `[gone]` branches:
-
-```bash
-# 1. Get the branch's commits that aren't in default branch
-git log --oneline "$default_branch".."$branch"
-
-# 2. Search default branch for PRs that incorporated this work
-# Search by: branch name, commit message keywords, PR numbers
-git log --oneline "$default_branch" | grep -iE "(branch-name|keyword|#[0-9]+)"
-
-# 3. For related branch groups, trace which PRs merged which work
-git log --oneline "$default_branch" | grep -iE "(#[0-9]+)" | head -20
-```
+See [references/critical-implementation-notes.md](references/critical-implementation-notes.md) for the
+squash-merge `-D` requirement and the PR-history investigation commands — the branch-grouping procedure
+itself is already fully covered by Phase 2 below, so the reference file doesn't restate it. Read the
+reference before Phase 3 (Categorize) for the squash-merge nuance; the PR-history commands apply
+specifically to `[gone]` branches within Phase 2/3.
 
 ## Workflow
 
 ### Phase 1: Comprehensive Analysis
 
-Gather ALL information upfront before any categorization. Read `scripts/phase1-analysis.sh` and run each of its git commands individually: it resolves the default branch, lists local branches and worktrees, fetches/prunes, and for each non-protected branch reports unmerged and unpushed commits.
+Gather ALL information upfront before any categorization. Run `"${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/phase1-analysis.sh"` directly via `Bash` — it resolves the default branch, lists local branches and worktrees, fetches/prunes, gets merged-branch and recent PR-merge history, and for each non-protected branch (protected names excluded via the script's own `grep -vE` filter) reports unmerged and unpushed commits. Read its output rather than re-deriving these git calls by hand.
 
 **Note on branch names:** Git branch names can contain characters that break shell expansion. Always quote `"$branch"` in commands.
 
@@ -161,12 +134,37 @@ git -C <worktree-path> status --porcelain
 git status --porcelain
 ```
 
+**Also check for gitignored content** — `git status --porcelain` never lists gitignored files, tracked
+or not, so a worktree can carry a `.env`, a local settings override, or other gitignored content that this
+check alone would silently miss:
+
+```bash
+# For each worktree path
+git -C <worktree-path> status --porcelain --ignored
+
+# For current directory
+git status --porcelain --ignored
+```
+
+Do not use `git clean` here — it's a destructive command with no place in an analysis-only phase of a
+skill whose Core Principle is "never delete anything without explicit user confirmation." `--ignored` is
+read-only and sufficient. If the ignored-file list is long (e.g. `node_modules/`, `.venv/`), show only the
+top-level entries plus a count rather than every path, so the warning stays readable.
+
+**Exclude `.claude/settings.local.json` and any `**/CLAUDE.local.md`** from this warning — `starting-work`
+now copies both into every worktree it creates from the main worktree's own copy, so a worktree's version
+is a duplicate, not the only copy; deleting the worktree does not lose them the way an untracked `.env` or
+scratch file would. Do not list these two patterns under "will also be deleted" below.
+
 **Display warnings prominently:**
 
 ```markdown
 WARNING: ../proj-auth has uncommitted changes:
   M  src/auth.js
   ?? new-file.txt
+
+Ignored (not tracked by git, will also be deleted):
+  .env
 
 These changes will be LOST if you remove this worktree.
 ```
@@ -215,16 +213,22 @@ Confirm? (yes/no)
 
 ### Phase 5: Execute
 
-Run each deletion as a **separate command** so partial failures don't block remaining deletions. Report the result of each:
+Run each deletion as a **separate command** so partial failures don't block remaining deletions. Report the result of each. Immediately before each `git branch -D` call — never earlier, since git-kit's guard hook only accepts a marker up to 60 seconds old — run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup`. This writes the marker git-kit's destructive-cleanup guard requires before it will let a raw `git branch -D` targeting a protected branch name through — the same marker-handshake pattern every other git-kit skill uses before its own guarded command. Plain `git branch -d` (lowercase, already-merged-only) and plain `git worktree remove` (no `--force`) aren't guarded and need no marker; only `git worktree remove --force`/`-f` does, since a plain removal already refuses on a dirty or locked worktree via git's own safeguard.
 
 ```bash
 git branch -d fix/typo
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/login
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-v2
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-refactor
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git branch -D feat/api-final
 git worktree unlock ../proj-auth
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git worktree remove ../proj-auth
 ```
 
@@ -260,8 +264,14 @@ locked and by which reason, rather than surfacing git's raw error text unexplain
 1. **Never invoke automatically** - Only run when user explicitly uses `/git-cleanup`
 2. **Two confirmation gates only** - Analysis review, then deletion confirmation
 3. **Use correct delete command** - `-d` for merged, `-D` for squash-merged/superseded
-4. **Never touch protected branches** - main, master, develop, release/* (filtered programmatically)
-5. **Block dirty worktree removal** - Refuse without explicit data loss acknowledgment
+4. **Never touch protected branches** - main, master, develop, release/* are excluded from Phase 1's
+   per-branch commit-analysis loop by `scripts/phase1-analysis.sh`'s own `grep -vE` filter (run directly,
+   not just read), and any raw `git branch -D` that still targets one of these names is additionally
+   hard-blocked by git-kit's `guard-raw-destructive-cleanup.sh` PreToolUse hook
+5. **Block dirty worktree removal** - Refuse without explicit data loss acknowledgment. "Dirty" covers
+   gitignored content too, not just tracked/untracked-but-not-ignored changes — `git status --porcelain`
+   alone misses gitignored files entirely, so Phase 4's `--ignored` check is what actually completes this
+   rule's coverage
 6. **Unlock before removing** - A session-locked worktree (per Phase 4's lock check) gets
    `git worktree unlock` immediately before `git worktree remove`, never `--force` as a substitute for
    unlocking — `--force` bypasses the dirty-worktree safeguard in Safety Rule 5 too, not just the lock
@@ -280,3 +290,10 @@ These are common shortcuts that lead to data loss. Reject them:
 | "I'll just delete all the `[gone]` branches" | `[gone]` only means the remote was deleted. The local branch may have unpushed commits. |
 | "The user seems to want everything deleted" | Always present analysis first. Let the user choose what to delete. |
 | "The branch has commits not in main, so it has unpushed work" | "Not in main" ≠ "not pushed". A branch can be synced with its remote but not merged to main. Always check `git log origin/<branch>..<branch>`. |
+| "It's gitignored, so it's not important" | Gitignored means *not in git history* — it is often the only copy of a `.env`, a local override, or uncommitted scratch output. Absence from git is not evidence of unimportance. |
+
+## Testing & Validation
+
+See [references/testing-and-validation.md](references/testing-and-validation.md) for activation
+triggers/non-triggers, the Phase 4 gitignored-content detection scenarios, and the full quality-gates
+checklist.

@@ -132,7 +132,7 @@ done
 
 ## Bulk Operations
 
-See `pr-operations.md`'s "Bulk Operations" section for PR-specific bulk-operation examples (close-by-label, add-label, approve-by-author), and `issue-operations.md`'s "Bulk Operations" section for issue-specific ones — this section covers execution *patterns* (parallelism, confirmation) that apply on top of either.
+See `pr-operations.md`'s "Bulk Operations" section for PR-specific bulk-operation examples (close-by-label, add-label — bulk-approve is explicitly not supported, see that section), and `issue-operations.md`'s "Bulk Operations" section for issue-specific ones — this section covers execution *patterns* (parallelism, confirmation) that apply on top of either.
 
 ### Parallel Execution
 
@@ -168,8 +168,12 @@ gh pr list --label "old" --json number,title | \
 
 ### Working with GitHub Enterprise
 
+**The `gh auth`/`GH_TOKEN` lines below are reference only** — `gh auth` is deliberately excluded from
+this skill's `allowed-tools` (see `SKILL.md`'s "Authentication and Configuration" section); this skill
+never runs them itself.
+
 ```bash
-# Authenticate with enterprise hostname
+# Authenticate with enterprise hostname (reference only — not run by this skill)
 gh auth login --hostname github.enterprise.com
 
 # Set environment variable for enterprise
@@ -179,17 +183,17 @@ gh pr list
 # Use with specific host
 gh pr list --hostname github.enterprise.com
 
-# Check current authentication
+# Check current authentication (reference only — not run by this skill)
 gh auth status
 ```
 
 ### Switching Between Instances
 
 ```bash
-# Switch between GitHub.com and Enterprise
+# Switch between GitHub.com and Enterprise (reference only — not run by this skill)
 gh auth switch
 
-# Use specific auth token
+# Use specific auth token (reference only — not run by this skill; illustrates the env var, not a real token)
 GH_TOKEN=ghp_enterprise_token gh pr list --hostname github.enterprise.com
 ```
 
@@ -350,7 +354,7 @@ GH_DEBUG=1 gh pr list
 GH_DEBUG=api gh pr create --title "Test"
 
 # Full HTTP trace
-GH_DEBUG=api,http gh api repos/{owner}/{repo}
+GH_DEBUG=api,http gh api repos/{owner}/{repo}/pulls
 ```
 
 ### Testing API Calls
@@ -416,13 +420,6 @@ gh pr list --json number,title | \
   done
 ```
 
-### Batch Approval Pattern
-
-```bash
-# Review and approve multiple PRs
-gh pr list --author trusted-user --json number -q '.[].number' | \
-  while read -r pr; do
-    gh pr diff "$pr"
-    gh pr review "$pr" --approve --body "LGTM"
-  done
-```
+Bulk-approving PRs in a loop is deliberately not documented here — see `pr-operations.md`'s "Bulk
+Operations" section for why (`gh pr review` is guarded outside `collaborating-on-a-pr`, which reviews
+one PR at a time with its own CODEOWNERS check and confirmation).

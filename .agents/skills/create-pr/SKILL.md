@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference — otherwise an interactive guide
-allowed-tools: Bash(gh pr:*), Bash(gh auth:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr)
+allowed-tools: Bash(gh pr create:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -32,7 +32,8 @@ Check if `gh` is installed, if not follow this instruction to install it:
    # Follow instructions at https://github.com/cli/cli/blob/trunk/docs/install_linux.md
    ```
 
-2. Authenticate with GitHub:
+2. Authenticate with GitHub yourself — this is something you run outside this skill, not a command this
+   skill executes on your behalf:
    ```bash
    gh auth login
    ```
@@ -167,12 +168,54 @@ gh pr edit <PR-NUMBER> --add-reviewer username1,username2
 
 To simplify PR creation with consistent descriptions, you can create a template file:
 
-1. Create a file named `pr-template.md` with your PR template
+1. Create the template at an absolute path under the session's scratchpad/temp directory (e.g.
+   `<scratchpad-dir>/pr-template.md`) — never a bare relative filename like `pr-template.md`, which
+   resolves to the current working directory (often the repo root) rather than a scratch location
 2. Use it when creating PRs:
 
 ```bash
-gh pr create --draft --title "feat(scope): Your title" --body-file pr-template.md --base main
+gh pr create --draft --title "feat(scope): Your title" --body-file <scratchpad-dir>/pr-template.md --base main
 ```
+
+## Loop-Breaker Convention
+
+`create-pr` sits at the center of two bidirectional skill pairs: `create-pr` ↔ `commit` (see Pre-flight
+Checks above) and `create-pr` ↔ `collaborating-on-a-pr` (see the Issue-linking hand-off above). Both
+`commit` and `collaborating-on-a-pr` independently guard against re-entering `create-pr` — or being
+re-invoked by it — by passing an explicit skip-instruction at invocation time, rather than relying on
+shared state or caller identity to detect the loop. Any future caller of either pair must preserve this
+pattern rather than silently dropping it, or the two skills involved can end up calling each other in a
+loop.
+
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "open a PR" / "create a pull request" / "push this and make a PR"
+- "create a PR" with no issue mentioned
+- `/create-pr`
+
+**Verify it does NOT activate on:**
+- "create a PR that closes #123" → `collaborating-on-a-pr` (Path A wraps this skill, but the issue-linking
+  request itself routes there first)
+- "review this PR" / "approve this PR" / "request changes on PR #42" → `collaborating-on-a-pr`
+- "summarize this PR's changes" / "update this PR's description" → `explain-pr-changes`
+- "merge this PR" / "is this ready to merge" → `merge-pr`
+
+**Quality gates:**
+- [ ] Uncommitted changes are always routed through `Skill(git-kit:commit)` before PR creation — never
+      skipped
+- [ ] The nested `commit` invocation always instructs it to skip its own Auto-PR step — never omitted,
+      which would risk a duplicate PR
+- [ ] The template resolution always re-checks for `.github/pull_request_template.md` rather than reusing
+      a stale copy from a previous run
+- [ ] Draft-vs-ready-to-merge is always asked via `AskUserQuestion` — never assumed to be draft
+- [ ] The `gh-pr-create` marker is always written immediately before `gh pr create`, never earlier in the
+      run
+- [ ] The Issue-linking hand-off step is always skipped when invoked as a nested dependency from
+      `collaborating-on-a-pr`'s Path A (per its own explicit skip-instruction) — never run twice for the
+      same issue reference
+- [ ] PR titles and descriptions are always in English, matching the template's exact section headers —
+      never a custom section not in the resolved template
 
 ## Related Documentation
 
