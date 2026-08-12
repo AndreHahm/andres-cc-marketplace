@@ -284,6 +284,8 @@ Key requirements:
 - Use identical output JSON structures (enables aggregation)
 - Send both in the same message (parallel execution)
 
+**Add a synthesis pass when fanning out N parallel instances of the same agent type against related but distinct findings/targets** (not just the with_skill/baseline pair above, which is inherently comparative by design). An agent designed to see a whole finding set at once — to merge overlapping suggestions into one cross-cutting entry rather than N near-duplicate plans — loses that view when split into N parallel single-finding instances: two instances can each independently propose the same underlying fix for two different components without recognizing it's one pattern. After the parallel dispatch returns, run one converge/synthesis pass over the combined results before presenting them, the same shape `plugin-grader`'s whole-plugin rollup already uses (per-component scores computed independently, then one pass over the full set).
+
 ### Pattern: Delegation with Dependencies
 
 Use when the agent needs to reference prior work:
@@ -347,6 +349,7 @@ Main context stays clean regardless of search volume
 | Implicit dependencies — "refine the skill" | Agent doesn't know where the skill file is |
 | Ambiguous success — "let me know when done" | Agent may continue working indefinitely |
 | Running `WebSearch`/`WebFetch` directly in the main context for open-ended research | Pollutes context with raw, unfiltered results the caller must then sift through |
+| Dispatching `general-purpose` without first scanning the available-agent-types listing for a name matching the task's own stated purpose | A purpose-built agent is often cheaper (e.g. a checklist-driven agent reading a compact reference instead of full teaching prose) and more consistent (structured output vs. free narrative) than a `general-purpose` agent re-deriving the same procedure from scratch — confirmed in a real session where `plugin-rulebook-checker` and `enhancement-suggestor` were both bypassed this way for tasks matching their own descriptions almost verbatim |
 
 ### Delegation Prompt Checklist
 

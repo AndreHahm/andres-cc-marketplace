@@ -1,0 +1,28 @@
+{
+  "skill_name": "verify-agent-citations",
+  "skill_path": "plugins/plugin-devkit/skills/verify-agent-citations/SKILL.md",
+  "description": "Mechanically re-check file:line citations and quoted evidence from an agent's report against actual current file content.",
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "All citations genuinely correct",
+      "prompt": "Using the verify-agent-citations skill, verify these citations from an agent's report against the real files on disk: [{\"file\": \"evals/verify-agent-citations/fixture-target/widget.py\", \"line\": 12, \"quote\": \"if \\\"name\\\" not in data:\"}, {\"file\": \"evals/verify-agent-citations/fixture-target/widget.py\", \"line\": 19, \"quote\": \"encoding=\\\"utf-8\\\"\"}]",
+      "expected_output": "Both citations reported CONFIRMED — line 12 and line 19 both exist in widget.py and the quoted text matches nearby content. Script exits 0.",
+      "files": []
+    },
+    {
+      "id": "eval-2",
+      "name": "Fabricated line number (LINE_OUT_OF_RANGE)",
+      "prompt": "Using the verify-agent-citations skill, verify this citation from an agent's report against the real file on disk: [{\"file\": \"evals/verify-agent-citations/fixture-target/widget.py\", \"line\": 500, \"quote\": \"def load_widget(path):\"}]",
+      "expected_output": "Citation reported LINE_OUT_OF_RANGE (widget.py has far fewer than 500 lines) — the skill must not treat this as verified just because the quoted text exists somewhere else in the file. Script exits non-zero.",
+      "files": []
+    },
+    {
+      "id": "eval-3",
+      "name": "Wrong quote at a valid line number (QUOTE_NOT_FOUND)",
+      "prompt": "Using the verify-agent-citations skill, verify this citation from an agent's report against the real file on disk: [{\"file\": \"evals/verify-agent-citations/fixture-target/widget.py\", \"line\": 6, \"quote\": \"raise ValueError(\\\"widget definition missing required 'name' field\\\")\"}]",
+      "expected_output": "Citation reported QUOTE_NOT_FOUND — line 6 exists (it's the open() call inside load_widget) but the quoted text is actually from validate_widget at line 13, well outside the small window checked around line 6. The skill must not accept a real-but-misplaced quote as confirming this citation. Script exits non-zero.",
+      "files": []
+    }
+  ]
+}

@@ -72,6 +72,8 @@ on-disk transcripts first — see "Prior-session data" in Gotchas below for the 
 its cost discipline. Only ask the user to paste in transcript excerpts or summaries when no matching file
 exists on disk for the requested scope.
 
+**Narrow-scope gap-awareness signal:** once the scope is resolved (argument or question), find the newest prior report at `.claude/output/analyzing-sessions/*.md` and read its own header timestamp (UTC, same conversion as the timezone pitfall above) as that report's *end* boundary. Compare it against this run's own scope *start* (the argument or answer just resolved). If this run's scope start is later than the newest prior report's end — i.e. a gap exists between where the last report stopped and where this one begins — state that gap plainly in the final report as its own line, e.g. `Coverage gap: <newest-prior-report-end> → <this-run's-scope-start> — no prior report covers this range.` This does not change what gets analyzed (the run still honors the scope the user chose) — it only makes an otherwise-invisible coverage boundary visible. Repeated narrow-scope runs with no report ever covering the range between them can leave real windows (including an entire new plugin's worth of commits) unreported for days before a later run happens to notice and reconstructs them by hand — a real instance of this happened in this repo's own history.
+
 ## Phase 2: Component Inventory
 
 **Run these Globs first, unconditionally — before evaluating scope or waiting for confirmation:**
@@ -192,7 +194,7 @@ Close with **Top 5 Actions**: the five highest-impact suggestions across all com
 📄 Session Analysis Report written: `.claude/output/analyzing-sessions/<scope-slug>-<timestamp>.md`
 ```
 
-**This per-run-file format (`<scope-slug>-<timestamp>.md`, one file per run) is the canonical convention going forward** — resolved as of 2026-07-24. `.claude/output/analyzing-sessions/` also contains older files from a prior per-component-file convention (one file per component analyzed, predating this format); those are not migrated or deleted by this decision, and don't need to be before persisting a new report — `Glob` the directory first only if a specific old file's content matters for the current run. Persisting in the per-run format lets other components (notably `plugin-lifecycle-maintenance`'s `improve-a-plugin` workflow) link back to a specific retro run instead of re-deriving one, and gives the Verify-Open-Items check above something concrete to point future re-checks at.
+**This per-run-file format (`<scope-slug>-<timestamp>.md`, one file per run) is the canonical convention going forward** — resolved as of 2026-07-24. `.claude/output/analyzing-sessions/` used to also hold an orphaned `history/` subdirectory from a prior per-component-file convention (one file per component analyzed, predating this format) — the 2026-07-24 decision explicitly left those files in place rather than migrating or deleting them. That subdirectory was deleted on 2026-08-12 once a later audit confirmed it was genuinely orphaned (zero references anywhere in the repo, `Glob(pattern='*', path='.claude/output')` in Phase 2 below was the only thing that would ever have surfaced it) — a deliberate reversal of the original "don't delete" decision, recorded here rather than silently overwritten. Persisting in the per-run format lets other components (notably `plugin-lifecycle-maintenance`'s `improve-a-plugin` workflow) link back to a specific retro run instead of re-deriving one, and gives the Verify-Open-Items check above something concrete to point future re-checks at.
 
 **Suggested next step:** for any P1/P2 suggestion, ask with `AskUserQuestion`: "Expand this suggestion into a full WHAT/WHY/HOW action plan using enhancement-suggestor?" — options "Yes" / "No". If yes, invoke the `enhancement-suggestor` agent (via `Agent`) against that suggestion — this skill's own suggestions are intentionally terse (one line + Detail) for cross-component scanning. Never invoke it without asking first.
 
@@ -211,6 +213,7 @@ After Phase 6, verify these gates before presenting output as final:
 - [ ] Any `.draft/*.local.md` planning document modified in scope was `Read` for its current state, not just listed
 - [ ] The report was persisted to `.claude/output/analyzing-sessions/` and its path confirmed with the standard `📄 ... written:` line
 - [ ] A date-range scope always checks `~/.claude/projects/` for on-disk transcripts first (including sibling worktree-scoped directories) — the user is only asked to paste transcripts when no matching file exists on disk
+- [ ] A narrow scope's gap-awareness check (Phase 1) ran, and any real uncovered window it found is stated plainly in the report — never silently absorbed into the narrow scope's own boundary
 
 ## Gotchas
 
