@@ -33,6 +33,36 @@ if { [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "PowerShell" ]; } || [ -z "
   exit 0
 fi
 
+# Consume our own marker on every Bash/PowerShell call, before the subcommand
+# match below determines which of this script's two guard types actually
+# applies. See guard-raw-destructive-cleanup.sh's header comment for the full
+# rationale (consuming only inside the match branch let a marker survive its
+# full 60s TTL through any number of intervening non-matching commands).
+# Unlike the other guards, this script owns two guard types ("gh-pr-create"
+# and "gh-pr-merge") -- a marker is consumed here if it belongs to EITHER of
+# them (before we know which specific subcommand, if any, this call is), but
+# is only treated as authorizing this call once the actual subcommand is
+# known below. A marker written for a sibling guard (a different type
+# entirely) is left alone.
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null) || exit 0  # not in a git repo -- nothing to guard
+MARKER="$GIT_DIR/git-kit-marker.txt"
+
+now=$(date +%s)
+allowed=false
+marker_guard=""
+marker_ts=""
+
+if [ -f "$MARKER" ]; then
+  read -r guard ts _skill < "$MARKER" || true
+  guard="${guard:-}"  # defensive: a concurrent/partial read under `set -u` must degrade to "no marker", never crash
+  if [ "$guard" = "gh-pr-create" ] || [ "$guard" = "gh-pr-merge" ]; then
+    case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
+    marker_guard="$guard"
+    marker_ts="$ts"
+    rm -f "$MARKER"  # consume as soon as seen -- single use, regardless of which (if either) subcommand this call turns out to be
+  fi
+fi
+
 GUARD_TYPE=""
 SKILL_NAME=""
 GH_SUBCOMMAND=""
@@ -52,19 +82,8 @@ else
   exit 0
 fi
 
-GIT_DIR=$(git rev-parse --git-dir 2>/dev/null) || exit 0  # not in a git repo -- nothing to guard
-MARKER="$GIT_DIR/git-kit-marker.txt"
-
-now=$(date +%s)
-allowed=false
-
-if [ -f "$MARKER" ]; then
-  read -r guard ts _skill < "$MARKER" || true
-  case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
-  if [ "$guard" = "$GUARD_TYPE" ] && [ -n "$ts" ] && [ $((now - ts)) -le 60 ]; then
-    allowed=true
-  fi
-  rm -f "$MARKER"  # always consume -- single use regardless of outcome
+if [ "$marker_guard" = "$GUARD_TYPE" ] && [ -n "$marker_ts" ] && [ $((now - marker_ts)) -le 60 ]; then
+  allowed=true
 fi
 
 if [ "$allowed" = true ]; then
