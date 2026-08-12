@@ -9,6 +9,7 @@ For each section of the specification document:
    - **Violated** — evidence found, and it contradicts the section's claims.
    - **Unaddressed** — no evidence either way; the session had no occasion to touch this.
    - **Ambiguous** — evidence exists but doesn't clearly resolve compliant vs. violated, or the spec's own wording is unclear.
+   - **Extra implementation** — code or behavior exists in the session's changes with no corresponding spec section, and no evidence of a stated technical necessity (a required dependency, a bug fix incidental to the change). Don't force this into Unaddressed — Unaddressed is for spec content the session didn't touch; Extra implementation is for implementation the spec never asked for in the first place. This verdict has no spec section to anchor to by definition, so cite the implementation evidence (file/diff) instead of spec text when reporting it.
 
 ## Severity Guidance for Violated Findings
 

@@ -13,7 +13,7 @@ description: >-
   checking whether a session followed its own project rules and
   conventions, finding contradictions between agents/rules/specs, or
   tracking which mistakes keep recurring across sessions.
-allowed-tools: Read Glob Grep Write Bash(python */analysis-kit/scripts/component_inventory.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
+allowed-tools: Read Glob Grep Write AskUserQuestion Bash(python */analysis-kit/scripts/component_inventory.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 
@@ -43,6 +43,7 @@ Assess rule/boundary conformance and detect conflicts across a Claude Code sessi
 - **No `.claude/rules/` exist and no cross-agent/cross-session conflict is suspected** — nothing to analyze
 - **Full structural/semantic comparison between two sessions** — this skill's session-vs-session check only flags an unacknowledged contradiction as one conflict category among several; use `comparing-sessions` for a full structural diff plus trend/recurrence interpretation
 - **A full multi-report cross-check across an entire retrospective** (duplicate findings, contradictions, or severity-claim undercuts spanning more than the current-session-vs-one-prior-report pair this skill checks) — use `reviewing-analysis-findings` instead; this skill's session-vs-session category only flags a single unacknowledged contradiction against one prior report as part of a broader governance pass, not a full N-report sweep across a retrospective
+- **Detecting a repeated failing command/retry loop as a session-level pattern, independent of any rule violation** — use `mining-recurring-patterns` instead; this skill's recurring-error tracking classifies mistakes (including command/test failures) only for rule/governance-conformance purposes, not as a general action-sequence loop-detection pass
 
 ## Phase 1: Scope
 
@@ -111,7 +112,7 @@ Distinguish a genuinely repeated pattern (same category *and* same root cause) f
 
 Group findings by conflict category, then by rule. Close with a short Top Actions list.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, run it through `python "${CLAUDE_PLUGIN_ROOT}/scripts/redact_secrets.py" --input-file <scratch-path>` (never blocks the write — only strips/masks matched secret patterns), and `Write` the *redacted* output to `.claude/output/analyzing-governance-and-conflicts/<scope-slug>-<timestamp>.md`.
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, run it through `python "${CLAUDE_PLUGIN_ROOT}/scripts/redact_secrets.py" --input-file <scratch-path>` (never blocks the write — only strips/masks matched secret patterns), and `Write` the *redacted* output to `.claude/output/analyzing-governance-and-conflicts/<scope-slug>-<timestamp>.md`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`).
 
 ```
 📄 Governance and Conflict Report written: `.claude/output/analyzing-governance-and-conflicts/<scope-slug>-<timestamp>.md`

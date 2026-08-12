@@ -13,7 +13,7 @@ description: >-
   agents, and rules from a session or date range. A bare, typeless "run a
   retrospective" or "analyze this session" request routes to
   `starting-an-analysis` instead.
-allowed-tools: Read Glob Grep Write Bash(python */analysis-kit/scripts/component_inventory.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(git log:*) Bash(git show:*) Bash(date:*)
+allowed-tools: Read Glob Grep Write AskUserQuestion Bash(python */analysis-kit/scripts/component_inventory.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(git log:*) Bash(git show:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 
