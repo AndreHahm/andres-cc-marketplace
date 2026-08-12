@@ -126,10 +126,25 @@ there's no correctness advantage to refusing, only a usability cost.
   ```
 
   This rewrites `</tag>` (and whitespace-padded variants like `</ tag >`) to
-  `(/tag)` — no longer parseable as a closing delimiter, without altering the
-  document's line count or any other content. **Do not use a backslash-based
-  marker here** (e.g. `<\/tag>`, matching `interpolateTemplate`'s own JS
-  output) — a literal `\\` inside a shell command string is not reliably
-  preserved through every layer between authoring and execution on every
-  platform this plugin runs on, which would make the neutralization silently
-  no-op. The paren-based marker above needs no backslash at all.
+  `(/tag)` — not just whitespace-tolerant matching, but a marker that is no
+  longer shaped like a delimiter at all, so a model can't plausibly still
+  read it as the real closing tag the way it arguably still could with a
+  backslash-escaped `<\/tag>` (an earlier version of both this pattern and
+  `interpolateTemplate`'s own JS output used exactly that escaped form,
+  before a security review pointed out it was still tag-shaped — both paths
+  now emit the same `(/tag)` marker).
+
+  **Two separate backslash pitfalls, don't conflate them:** the *output*
+  reaching the model is backslash-free (`(/tag)`, not `<\/tag>`) — that's
+  the property that matters for the trust boundary. Separately, the `sed`
+  command *above* does contain a backslash as `\1` (a regex backreference,
+  substituted with the matched tag name at match time) — this is ordinary
+  `sed` syntax, not something that needs to survive as a literal character
+  in the output, and it is unrelated to a different, real pitfall: a
+  literal double backslash (`\\`, meant to produce one literal `\` character
+  *in the output*) is not reliably preserved through every layer between
+  authoring and execution on every platform this plugin runs on, which
+  would make a backslash-output-based neutralization attempt silently
+  no-op. That pitfall is why `(/tag)` was chosen over `<\/tag>` for the
+  shell path in the first place — not because `sed`'s own `\1` syntax is
+  unsafe, it isn't.

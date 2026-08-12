@@ -107,8 +107,8 @@ console.log("\n=== buildStopReviewPrompt: trust-boundary framing ===");
     `found ${closingTagCount} occurrences`
   );
   check(
-    "the neutralized tag is visible in the assembled prompt as an escaped, non-matching form",
-    injectionAttempt.includes("<\\/claude_response_evidence>"),
+    "the neutralized tag is visible in the assembled prompt as a non-tag-shaped, non-matching form",
+    injectionAttempt.includes("(/claude_response_evidence)"),
     ""
   );
 

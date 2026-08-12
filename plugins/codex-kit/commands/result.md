@@ -2,7 +2,7 @@
 description: Show the stored final output for a finished Codex job in this repository
 argument-hint: '[job-id]'
 disable-model-invocation: true
-allowed-tools: Bash(node */scripts/codex-companion.mjs:*), Glob
+allowed-tools: Bash(node */scripts/codex-companion.mjs:*), Glob, AskUserQuestion
 ---
 
 Raw slash-command arguments: `$ARGUMENTS`

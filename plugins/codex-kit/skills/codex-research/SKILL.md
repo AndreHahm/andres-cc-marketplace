@@ -27,7 +27,7 @@ For code review use `/codex-kit:review`. For plan verification, use the
 
 | Phase | Allowed | Forbidden |
 |-------|---------|-----------|
-| 1 ANALYZE | `test -f/-s`, `wc -l/-c`, `file`, `echo`, `printf`, `cat "$DOC" >> "$PROMPT_FILE"` (file-redirect, no stdout) | `cat "$DOC"` to stdout, `head`, `tail`, Read, Grep, Glob |
+| 1 ANALYZE | `test -f/-s`, `wc -l/-c`, `file`, `echo`, `printf`, `sed ... "$DOC" >> "$PROMPT_FILE"` (neutralize-then-file-redirect, no stdout — never a raw `cat`, see "Document mode" below) | `cat "$DOC"` (raw, unneutralized) to `$PROMPT_FILE` or to stdout, `head`, `tail`, Read, Grep, Glob |
 | 2 INVOKE | Bash for companion launch via stdin pipe | All source / document reads to stdout |
 | 3 WAIT | `status --wait` loop (≤6 iterations, ≤24 min) | All reads, manual polling, `ps`/`kill` |
 | 4 DOUBLE-CHECK | Verify claims against your own knowledge; read the context document (if any) now | n/a |
@@ -366,8 +366,12 @@ rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_
   synthesis just echoes Codex instead of adding independent perspective.
 - **Topic-only mode skips the document append entirely** — don't
   accidentally pass an empty `<context_document>` tag.
-- **`cat "$USER_DOC" >> "$PROMPT_FILE"`** — file redirect keeps stdout
-  empty. Reading the doc to stdout defeats the entire point.
+- **`sed ... "$USER_DOC" >> "$PROMPT_FILE"`, never a raw `cat`** — the
+  file redirect keeps stdout empty (reading the doc to stdout defeats the
+  entire point), and the `sed` neutralization step is equally load-bearing
+  for the trust boundary — a raw `cat` here would let the document escape
+  `<context_document>` (see "Document mode" above and
+  `shared-skill-conventions.md` §4).
 - **Never pass a positional argument with Pattern B's stdin pipe.**
   `readTaskPrompt` short-circuits on `positionalPrompt || readStdinIfPiped()`; a positional silently drops the entire blind payload.
 - **Value is in synthesis.** If Claude reaches the same conclusion
@@ -397,7 +401,7 @@ For the full shared gotchas list, read
 3. Phase 4: Claude reaches the same conclusion as Codex with no new information → the report says so explicitly, rather than padding out synthesis that adds nothing.
 4. A Codex-cited source/fact that doesn't exist or is misrepresented → classified "False Positive (hallucination)".
 5. `resume [follow-up]` → Phase 2's invocation includes `--resume-last`; without it, that line is omitted entirely.
-6. A document containing a literal `</context_document>` string → Phase 1 refuses before ever sending anything to Codex.
+6. A document containing a literal `</context_document>` string → the `sed` step neutralizes it to `(/context_document)` before appending; the document still gets sent (never refused/exited), and its line count is unchanged.
 
 **Current test coverage:**
 - `evals/codex-research/evals.json` — 1 defined scenario (topic-only mode, independent synthesis not just relaying Codex). Structurally graded 2026-08-12 (PASS — the documented Topic-only mode and the repeated independent-synthesis-not-an-echo framing both match the eval's `expected_output`); not a live empirical run.
