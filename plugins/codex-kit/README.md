@@ -18,7 +18,7 @@ cc --plugin-dir /path/to/plugins/codex-kit
 
 ## Usage
 
-Run `/codex-kit:review` to run a native Codex code review against your working tree, with an independent double-check pass that reads only the files/lines Codex cited and classifies each finding as Agreed/Disagreed/Nuanced/False Positive/Uncited before presenting anything to you. Every finding is saved to `${CLAUDE_PLUGIN_DATA}/reviews/` on both success and failure. All 7 commands are deliberately not model-invocable (`disable-model-invocation: true`) — they must be typed as a slash command, never triggered by natural-language phrasing.
+Run `/codex-kit:review` to run a native Codex code review against your working tree, with an independent double-check pass that reads only the files/lines Codex cited and classifies each finding using the canonical Agree/Disagree/Nuance/False Positive (hallucination)/Uncited — verification deferred taxonomy before presenting anything to you. Every finding is saved to `${CLAUDE_PLUGIN_DATA}/reviews/` on both success and failure. All 7 commands are deliberately not model-invocable (`disable-model-invocation: true`) — they must be typed as a slash command, never triggered by natural-language phrasing.
 
 ## Commands
 
@@ -50,6 +50,13 @@ Run `/codex-kit:review` to run a native Codex code review against your working t
 ## Hooks
 
 `SessionStart`/`SessionEnd` spawn and tear down the internal Codex broker process. An optional `Stop` hook (enable via `/codex-kit:setup --enable-review-gate`) runs a Codex-side check on the prior turn before the session is allowed to stop.
+
+## Known Limitations
+
+- **`plugin-marketplace-review` is not yet operational** — its required input (`ReviewScope`) isn't produced anywhere in this repository yet. See the Skills table above and the skill's own SKILL.md for the full detail.
+- **No skill has a live, empirical `skill-tester` run yet** — all 10 codex-kit skills have been structurally graded against their eval's `expected_output` instead (recorded in each skill's own "Testing & Validation" section). See [CONTRIBUTING.md](./CONTRIBUTING.md) for why (several of these skills shell out to the real Codex CLI, so a live run has real external side effects).
+- **`codex-review-bridge`'s `executionProfile` isn't threaded into the returned envelope** — `provenance.execution_profile` is Codex's own self-report, not an echo of the caller's validated request; a caller auditing which isolation profile actually ran can't yet trust this field. See `codex-review-bridge/SKILL.md`'s "Inputs" section.
+- **Six of `codex-review-bridge`'s semantic-validation checks are defined but not yet enforced** — `contract_version` support, full `target_paths` cross-checking, cited line-number validity, `axis`/`severity` allowlist-checking, `verdict` pass/fail-rule consistency, and undeclared-inspection-limit detection. See `codex-review-bridge/references/semantic-validation.md`'s "Not yet implemented" list.
 
 ## Contributing
 

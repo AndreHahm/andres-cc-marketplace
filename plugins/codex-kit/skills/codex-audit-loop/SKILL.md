@@ -9,6 +9,8 @@ description: >-
   multi-branch comparison, or verify-and-fix across isolated worktrees. This
   is expensive (3-20 parallel Codex calls per round, for up to 10 rounds
   until convergence) — confirm the user wants that scale before running.
+  Not for a single implementation/fix task with no whole-project scope —
+  use codex-rescue instead.
 argument-hint: "[--mode audit|compare|fix] [--branches <b1,b2,...>] [--base <ref>]"
 allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(git rev-parse:*)", "Bash(git status:*)", "Bash(git switch:*)", "Bash(git worktree:*)", "Bash(git merge:*)", "Bash(git push:*)", "Read", "Grep", "Glob", "AskUserQuestion", "Agent", "BashOutput", "KillShell"]
 ---
@@ -32,7 +34,7 @@ For each named branch vs. `--base`: confirm via `AskUserQuestion` before switchi
 ## Mode C — Verified fix loop (`--mode fix`, extends Mode A)
 
 1. Run Mode A's Phases 1-3 (or reuse a completed Mode A run).
-2. **Independently verify** every candidate finding via a blind subagent (never told the finding came from Codex) — returns Agreed / Disagreed / Nuanced / False Positive / Uncited, the same 5-way taxonomy every other codex-kit component uses.
+2. **Independently verify** every candidate finding via a blind subagent (never told the finding came from Codex) — returns Agree / Disagree / Nuance / False Positive (hallucination) / Uncited — verification deferred, the canonical 5-way taxonomy (`codex-prompt-protocol/references/evaluation-framework.md`) every other codex-kit component uses.
 3. **Group** confirmed findings into disjoint fix groups by file/subsystem; create one isolated `git worktree` per group. Capture the integration branch's current SHA before the first group starts (`INTEGRATION_SHA`) — this is the rollback anchor for step 5's failure handling below.
 4. **Fix**: each group's fixer reconfirms, implements, adds tests, runs the local build/test gate. If the build/test gate fails and the fixer can't resolve it, mark that group failed, remove its worktree (`git worktree remove`), and drop it from this round's merge set — do not block the other groups.
 5. **Merge**: confirm `AskUserQuestion` authority before merging each group (this is the mode's one destructive step — one confirmation per group, not a single up-front blanket approval). Per group: confirm CI green on the exact pushed SHA, merge it, rebuild the integration branch. **On failure**: if CI comes back red on a pushed SHA, or a merge conflicts, stop merging further groups in this round, leave that group's branch/worktree in place (do not force-push or force-merge), and report which groups landed vs. which are blocked — resume from `INTEGRATION_SHA` for any group that needs to be redone. Remove worktrees for groups that both fixed and merged cleanly; leave failed/blocked groups' worktrees until the user has reviewed them.

@@ -21,7 +21,7 @@ Everything else in this command matches `/codex-kit:review`'s target-selection, 
 
 Unlike `/codex-kit:review`, this command accepts extra positional focus text after the flags (e.g. attack hints: "check for SQL injection in the login handler"). Preserve it verbatim — never weaken or rewrite the user's framing.
 
-**Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): the explicit `/codex-kit:adversarial-review` invocation is already the confirmation, and Phase 1.5 below asks again before every call (not just the first in the session) — stronger than the shared gate requires.
+**Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): the explicit `/codex-kit:adversarial-review` invocation is already the confirmation. Phase 1.5 below also asks again before every call unless `--no-preview` was parsed — in the default case that's stronger than the shared gate requires; with `--no-preview`, only the one-time invocation-is-confirmation reasoning applies, the same as `/codex-kit:review`.
 
 ## Phase 1.5: Draft-preview gate
 
@@ -40,7 +40,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" adversarial-review --js
 
 ## Double-check, extra rigorous
 
-Adversarial framing produces more noise than native review by design — **False Positive is the expected common outcome**, not a red flag about the review itself. Classify every finding with the same Agreed/Disagreed/Nuanced/False Positive/Uncited taxonomy, but expect a higher False-Positive rate here than in `/codex-kit:review`, and say so in the presented summary.
+Adversarial framing produces more noise than native review by design — **False Positive is the expected common outcome**, not a red flag about the review itself. Classify every finding with the same canonical taxonomy `/codex-kit:review` uses (Agree/Disagree/Nuance/False Positive (hallucination)/Uncited — verification deferred, see `codex-prompt-protocol/references/evaluation-framework.md`), but expect a higher False-Positive rate here than in `/codex-kit:review`, and say so in the presented summary.
 
 ## Report + save
 

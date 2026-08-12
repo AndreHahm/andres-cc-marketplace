@@ -14,8 +14,15 @@ export function readJsonFile(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
-export function writeJsonFile(filePath, value) {
-  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+// Atomic: writes to a sibling temp file first, then renames into place.
+// A process killed mid-write (e.g. a hook hitting its own timeout) leaves
+// the original file intact rather than truncated/partial JSON that a
+// later reader's try/catch would silently treat as absent.
+export function writeJsonFile(filePath, value, { mode } = {}) {
+  const tempPath = `${filePath}.tmp-${process.pid}`;
+  const options = mode !== undefined ? { encoding: "utf8", mode } : "utf8";
+  fs.writeFileSync(tempPath, `${JSON.stringify(value, null, 2)}\n`, options);
+  fs.renameSync(tempPath, filePath);
 }
 
 export function safeReadFile(filePath) {

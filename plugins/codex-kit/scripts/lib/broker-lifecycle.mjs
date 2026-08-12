@@ -8,6 +8,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createBrokerEndpoint, parseBrokerEndpoint } from "./broker-endpoint.mjs";
 import { resolveStateDir } from "./state.mjs";
+import { writeJsonFile } from "./fs.mjs";
 
 export const PID_FILE_ENV = "CODEX_KIT_APP_SERVER_PID_FILE";
 export const LOG_FILE_ENV = "CODEX_KIT_APP_SERVER_LOG_FILE";
@@ -103,7 +104,7 @@ export function loadBrokerSession(cwd) {
 export function saveBrokerSession(cwd, session) {
   const stateDir = resolveStateDir(cwd);
   fs.mkdirSync(stateDir, { recursive: true });
-  fs.writeFileSync(resolveBrokerStateFile(cwd), `${JSON.stringify(session, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+  writeJsonFile(resolveBrokerStateFile(cwd), session, { mode: 0o600 });
 }
 
 export function clearBrokerSession(cwd) {

@@ -1,20 +1,12 @@
 # Typed failures
 
-The bridge never returns an empty findings list to signal failure — every failure is one of the categories below, defined in `scripts/lib/codex-exec.mjs`'s `FAILURE_CATEGORIES` (shared with `codex-prompt-protocol/references/error-taxonomy.md`):
+The bridge never returns an empty findings list to signal failure — every failure is one of the categories `scripts/lib/codex-exec.mjs`'s `FAILURE_CATEGORIES` defines, documented once in `codex-prompt-protocol/references/error-taxonomy.md` and not restated here (that file is canonical for the category list itself, to avoid this file's copy drifting out of sync — see its own "Not a failure category" note for why `incomplete_inspection` isn't among them).
 
-| Category | Meaning |
-|---|---|
-| `cli_unavailable` | Codex binary not found on PATH |
-| `auth_unavailable` | Codex CLI not authenticated |
-| `unsupported_cli_version` | Codex CLI rejected a flag this bridge sent — version mismatch |
-| `isolation_profile_unavailable` | The requested execution profile (read-only sandbox, container, etc.) failed — **never silently substituted with `danger-full-access`** |
-| `timeout` | Exceeded the caller-supplied timeout |
-| `non_zero_exit` | Codex exited non-zero for an unclassified reason |
-| `missing_final_message` | Codex exited 0 but wrote no `--output-last-message` file |
-| `invalid_json` | The final-message file wasn't valid JSON |
-| `schema_validation_failure` | Valid JSON, but doesn't match the canonical envelope schema — checked locally in `codex-exec.mjs`'s `findSchemaViolation` after parsing, not just trusted from Codex's own `--output-schema` enforcement |
-| `semantic_validation_failure` | Schema-valid, but failed a `semantic-validation.md` check (bad citation, wrong verdict, etc.) |
+## Bridge-specific presentation
 
-**Not a failure category:** an earlier draft of this list also included `incomplete_inspection` for "Codex disclosed it couldn't inspect part of the requested scope" — removed, since the envelope schema already carries `inspection_limits` (a required array field) as informational metadata on a normal `ok: true` response. Codex disclosing a partial-inspection limit is not itself a failure condition; the caller reads `inspection_limits` from a successful envelope rather than branching on a failure category for it.
+Unlike the interactive components (`codex-rescue`/`codex-verify`/`codex-research`/the review commands), which surface a failure as prose, this bridge returns the category as a structured object: `{ ok: false, category, detail }`. `detail` carries the concrete evidence (truncated stderr, the specific semantic check that failed, etc.) — never just the bare category name alone.
 
-Every typed failure includes a `detail` string with the concrete evidence (truncated stderr, the specific semantic check that failed, etc.) — never just the category name alone.
+## Two rules specific to this bridge
+
+- `isolation_profile_unavailable` is **never silently substituted with `danger-full-access`** — the caller decides whether to fall back, this bridge only reports the failure.
+- `semantic_validation_failure` triggers only for the checks `references/semantic-validation.md` documents as **currently implemented** — that file's own "Not yet implemented" list is authoritative on which checks aren't enforced yet; don't assume every field `references/envelope-schema.md` describes is mechanically verified.

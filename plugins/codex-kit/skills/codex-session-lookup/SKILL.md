@@ -5,8 +5,9 @@ description: >-
   locates a session ID or reads its metadata; it never resumes anything
   itself. Use when asked to find a Codex session, locate a session ID to
   resume manually, or inspect a Codex session file's metadata. To actually
-  continue a prior rescue/verify/research task, use that component's own
-  `--resume`/`--resume-last`.
+  continue a prior task, use that component's own resume path: `codex-rescue`
+  takes `--resume`/`--resume-last`; `codex-verify`/`codex-research` take a
+  bare `resume [follow-up]` argument instead (not a `--resume-last` flag).
 allowed-tools: ["Bash(python3 */codex-session-lookup/scripts/find-session-id.py:*)", "Bash(python3 */codex-session-lookup/scripts/inspect-session-file.py:*)"]
 ---
 

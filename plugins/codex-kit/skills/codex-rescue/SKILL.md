@@ -7,7 +7,10 @@ description: >-
   task. Not for multi-phase plan-validate-implement-review workflows on
   complex or security/performance-critical features — use codex-plan-loop
   for those; codex-rescue is a single delegate-then-review pass, not an
-  iterative validation loop.
+  iterative validation loop. Not for a whole-project, multi-lens fix pass
+  across many files/subsystems — use codex-audit-loop's --mode fix for
+  that; codex-rescue delegates one task to one Codex call, not a
+  coordinated multi-worktree fix loop.
 argument-hint: "task description [--write] [--model MODEL] [--effort LEVEL] [--resume-last|--resume|--fresh] [--no-preview] [--persist] [--governed]"
 allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(git status:*)", "Bash(git rev-parse:*)", "Bash(git diff:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(rm -f */tmp/*:*)", "Read", "Write", "AskUserQuestion"]
 ---
@@ -67,7 +70,7 @@ You are a translator. Use LM intelligence, not regex tables.
 
 **Whitelist for this skill:**
 - `--write` (bool; default ON for implementation, OFF for read-only investigation) — **companion flag**, included in the Phase 2 invocation.
-- `--model <slug>`, `--effort <level>` — **skill-level flags**, passed as **companion flags directly** on the Phase 2 invocation (per-call by default; see the Model/effort section below for the opt-in `--persist` path). The alias `spark` auto-expands to `gpt-5.3-codex-spark`. Every other value is passed through as given — Codex owns the model/effort lists and settles them at run time. If a value looks like an obvious typo, `AskUserQuestion` rather than letting it propagate.
+- `--model <slug>`, `--effort <level>` — **skill-level flags**, passed as **companion flags directly** on the Phase 2 invocation (per-call by default; see the Model/effort section below for the opt-in `--persist` path). The alias `spark` auto-expands per `scripts/lib/codex-config.mjs`'s `MODEL_ALIASES` (the single source of truth for alias expansion — do not hardcode the target slug here). Every other value is passed through as given — Codex owns the model/effort lists and settles them at run time. If a value looks like an obvious typo, `AskUserQuestion` rather than letting it propagate.
 - `--resume-last` / `--resume` / `--fresh` — mutually exclusive companion flags. Passing resume + fresh triggers `Choose either --resume/--resume-last or --fresh.` (`handleTask`). If ANALYZE produces a conflict, `AskUserQuestion`; never forward both.
 - `--no-preview` (bool) — skip Phase 1.5 draft review. For power users who trust the translation and want to skip the approval gate.
 - `--persist` (bool) — see the Model/effort section below; writes `--model`/`--effort` globally to `config.toml` instead of (in addition to) passing them per-call.
@@ -153,6 +156,13 @@ Do not present inferences as facts.
 If a point is a hypothesis, label it clearly.
 </grounding_rules>
 ```
+
+**R18 exception (recorded):** each block body above must be copied exactly
+into the assembled prompt — `prompt-blocks.md` documents these same blocks
+individually, but Phase 2 needs the exact combined text to assemble, and a
+pointer instead of the literal bodies would force an extra file read on
+every single invocation of this phase, not just when authoring or auditing
+the skill.
 
 Assemble the wrapped prompt with `<content_trust_boundary>` **first**
 (per `shared-skill-conventions.md` §1: this block must be positioned
@@ -279,6 +289,14 @@ JOB_ID=$(cat "$JOB_JSON_FILE")
 [ -n "$JOB_ID" ] || { echo "raw companion stdout:" >&2; cat "$JOB_JSON_FILE" >&2; exit 1; }
 echo "JOB_ID=$JOB_ID"
 ```
+
+**R18 exception (recorded):** this template mixes the rescue-specific
+before/after-diff capture (`PRE_LIST`/`PRE_SHA`) with the launch-and-capture
+pattern `codex-verify`/`codex-research` also use — extracting only the
+shared portion to a `scripts/` helper (rather than the whole block) is a
+real future improvement (tracked, not done here), but a partial extraction
+that still leaves the rescue-specific setup inline wouldn't reduce this
+block below the threshold on its own, so it isn't done as a standalone fix.
 
 Each flag line in the template is optional — include only what Phase 1
 parsed. Replace `<literal ...>` values with the actual strings from

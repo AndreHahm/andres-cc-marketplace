@@ -18,6 +18,8 @@ This is codex-kit's canonical findings envelope — every reviewer dispatched th
 
 ## Field semantics
 
+**This describes the contract a conforming reviewer must satisfy — not every field below is mechanically checked before an envelope reaches the caller today.** See `references/semantic-validation.md`'s own "Currently implemented" vs. "Not yet implemented" split for exactly which of these are enforced by `bridge-invoke.mjs`'s `semanticallyValidate` right now (as of this writing: `dispatch.id`/`reviewer` match, in-scope-and-on-disk `location` path, and unique finding IDs — `target_paths` cross-checking, `location`'s line-number validity, `axis`/`severity` allowlist-checking, and `verdict`'s pass/fail-rule consistency are not yet enforced).
+
 - `contract_version` — lets callers reject unknown shapes.
 - `dispatch.id` — ties output to exactly one invocation and scratch directory.
 - `reviewer` / `target_paths` — must match the caller's request.

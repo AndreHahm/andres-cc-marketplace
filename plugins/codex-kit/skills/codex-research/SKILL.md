@@ -105,6 +105,12 @@ Ground claims in evidence. Label hypotheses clearly.
 EOF
 ```
 
+**R18 exception (recorded):** the block tags above must be copied exactly
+(this skill's own output schema, not `prompt-blocks.md`'s originals) and
+this launch shape is shared verbatim with `codex-verify` (and closely with
+`codex-rescue`) — extracting the shared portion to a `scripts/` helper is a
+real future improvement, tracked but not done here.
+
 **Topic-only mode:** if the user gave no document, stop here — the
 payload is complete. Skip the append step below.
 
@@ -186,6 +192,8 @@ Ground claims in evidence. Label hypotheses clearly.
 
 Document: `benchmarks/results.md` (512 lines) — blind-appended as `<context_document>`
 ````
+
+**R18 exception (recorded):** the fenced example above is a literal rendering of what gets shown to the user for approval — trimming it further would mean the preview no longer matches what Phase 1.5 actually displays.
 
 For topic-only mode (no document), omit the Document line.
 
@@ -289,8 +297,8 @@ For each substantive claim in Codex's findings:
   - **Nuance** — real insight, but missing context
   - **False Positive (hallucination)** — Codex cited a source, fact, or
     document passage that does **not exist** or says something different
-  - **Uncited** — no concrete source. Label as "needs verification" and
-    surface to the user. Never invent sources.
+  - **Uncited — verification deferred** — no concrete source. Surface to
+    the user using that canonical phrasing. Never invent sources.
 
 Then **synthesize**:
 

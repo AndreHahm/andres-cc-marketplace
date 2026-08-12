@@ -885,13 +885,20 @@ async function getCodexAuthStatusFromClient(client, cwd) {
   }
 }
 
+// Fast-fail timeout for these two probes -- without it, a hung `codex`
+// binary blocks with no internal backstop; a caller like the Stop hook
+// would then rely solely on its own much longer external timeout (up to
+// 600s) to eventually recover, turning a quick preflight check into a
+// worst-case multi-minute stall.
+const AVAILABILITY_PROBE_TIMEOUT_MS = 5000;
+
 export function getCodexAvailability(cwd) {
-  const versionStatus = binaryAvailable("codex", ["--version"], { cwd });
+  const versionStatus = binaryAvailable("codex", ["--version"], { cwd, timeout: AVAILABILITY_PROBE_TIMEOUT_MS });
   if (!versionStatus.available) {
     return versionStatus;
   }
 
-  const appServerStatus = binaryAvailable("codex", ["app-server", "--help"], { cwd });
+  const appServerStatus = binaryAvailable("codex", ["app-server", "--help"], { cwd, timeout: AVAILABILITY_PROBE_TIMEOUT_MS });
   if (!appServerStatus.available) {
     return {
       available: false,
