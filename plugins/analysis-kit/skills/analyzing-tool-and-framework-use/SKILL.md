@@ -30,7 +30,7 @@ Inventory the external tools a Claude Code session actually used, detect which d
 
 ## When to Use
 
-- Auditing which external tools (CLI utilities, MCP servers, subagents) a session actually invoked, not just mentioned
+- Auditing which external tools (CLI utilities, MCP servers) a session actually invoked, not just mentioned — includes counting *which* subagents were dispatched as a bare inventory item only, not assessing dispatch quality or behavior (see `analyzing-actor-behavior` for that)
 - Identifying which developer framework(s) a project uses, especially when it isn't obvious from conversation alone
 - Checking whether a framework's execution companion (e.g. GSD under GG-SAD) stayed within its subordinate role
 - Building tool-use or framework-configuration optimization suggestions
@@ -40,6 +40,7 @@ Inventory the external tools a Claude Code session actually used, detect which d
 - **No detected framework and no tools beyond Claude Code's own built-ins were used** — nothing to analyze
 - **Per-component (skill/agent/rule) retrospective SWOT** — use `analyzing-plugin-components` instead
 - **Code-level drift between implementation and a specification document** — outside this skill's scope
+- **Sub-agent dispatch-quality assessment** (was the dispatch choice appropriate, how did the agent perform, human-vs-agent contribution) — use `analyzing-actor-behavior` instead; this skill only counts *that* a subagent was invoked as one instance of external-tool usage, not *how well* it performed
 
 ## Phase 1: Scope
 

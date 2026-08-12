@@ -26,10 +26,10 @@ analysis-kit's own 9 report directories, named explicitly rather than matched by
 
 Every site below must match this file. If you change either definition here, update all of them in the same pass. Paths are relative to `plugins/analysis-kit/`. **Note on the anti-pattern example above:** the prefix-wildcard pattern shown in "Why explicit, not a prefix wildcard" is a deliberate counter-example kept for documentation — do not count it as a stale site to fix.
 
-- `skills/starting-an-analysis/SKILL.md` — Phase 5 step 1 (glob). (This skill's own body has no `<scope-slug>` derivation step of its own — Phase 5 just reads whatever scope-slug the dispatched skill produced, via the same glob.)
+- `skills/starting-an-analysis/SKILL.md` — Phase 4 (captures the dispatched skill's actual scope-slug from its printed report path) and Phase 5 step 1 (glob). (This skill's own body has no `<scope-slug>` derivation step of its own — Phase 4 reads whatever scope-slug the dispatched skill actually produced, and Phase 5's glob uses that captured value.)
 - `skills/analyzing-plugin-components/SKILL.md`, `skills/analyzing-tool-and-framework-use/SKILL.md`, `skills/analyzing-actor-behavior/SKILL.md`, `skills/analyzing-governance-and-conflicts/SKILL.md` — each skill's own Persist step (scope-slug) and Next-step block (glob)
 - `skills/mining-recurring-patterns/SKILL.md` — Phase 3 memory-recall (glob), Persist step (scope-slug), Next-step block (glob) — three sites
 - `skills/comparing-sessions/SKILL.md` — Phase 1 "latest" resolution (glob), Persist step (scope-slug), Next-step block (glob) — three sites
 - `skills/comparing-session-to-specification/SKILL.md` — Persist step (scope-slug), Next-step block (glob)
-- `skills/generating-analysis-recommendations/SKILL.md` — Phase 1 (glob)
-- `skills/reviewing-analysis-findings/SKILL.md` — Arguments block (glob) and Phase 1 (glob) — two sites
+- `skills/generating-analysis-recommendations/SKILL.md` — Phase 1 (glob), Persist step (scope-slug) — two sites
+- `skills/reviewing-analysis-findings/SKILL.md` — Arguments block (glob), Phase 1 (glob), Persist step (scope-slug) — three sites

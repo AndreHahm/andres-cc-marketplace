@@ -9,7 +9,7 @@ description: >-
   dispatch, nested-call risk). Use when analyzing agent behavior, auditing
   how subagents performed, comparing human-vs-agent contribution, or
   reviewing how work handed off between multiple agents in a session.
-allowed-tools: Read Glob Write Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
+allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 
@@ -36,7 +36,7 @@ Assess agent behavior, human developer behavior, and cross-agent handoff pattern
 ## When NOT to Use
 
 - **Per-component (skill/agent/rule) retrospective SWOT** — use `analyzing-plugin-components` instead; this skill assesses actor *behavior in the moment*, not a component's structural quality
-- **Tool or framework usage inventory** — use `analyzing-tool-and-framework-use` instead
+- **Tool or framework usage inventory** (a bare count of which CLI utilities, MCP servers, or subagents were invoked) — use `analyzing-tool-and-framework-use` instead; this skill assesses *how well* an invoked subagent performed, not whether/how often it was invoked
 - **No sub-agents were dispatched and no notable human corrections occurred** — nothing to analyze
 
 ## Phase 1: Scope
@@ -89,7 +89,7 @@ Only when 2+ agents were dispatched in the scope. Map the handoff pattern using 
 
 Group findings by actor, then by pattern. Close with a short Top Actions list (highest-impact behavioral findings, in order).
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, run it through `python "${CLAUDE_PLUGIN_ROOT}/scripts/redact_secrets.py" --input-file <scratch-path>` (never blocks the write — only strips/masks matched secret patterns), and `Write` the *redacted* output to `.claude/output/analyzing-actor-behavior/<scope-slug>-<timestamp>.md`.
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, run it through `python "${CLAUDE_PLUGIN_ROOT}/scripts/redact_secrets.py" --input-file <scratch-path>` (never blocks the write — only strips/masks matched secret patterns), and `Write` the *redacted* output to `.claude/output/analyzing-actor-behavior/<scope-slug>-<timestamp>.md`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`).
 
 ```
 📄 Actor Behavior Report written: `.claude/output/analyzing-actor-behavior/<scope-slug>-<timestamp>.md`

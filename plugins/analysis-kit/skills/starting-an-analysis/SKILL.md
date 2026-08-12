@@ -45,6 +45,7 @@ analysis-kit has 10 skills total — this one is the entry point for the 7 that 
 - **Already know the exact skill and scope** — invoking it directly (e.g. `analyzing-actor-behavior 2026-07-01`) skips this skill's own two extra confirmation gates
 - **Running several analysis types back-to-back without stopping between each** — this skill gates every hop by design (confirm-before-dispatch); chaining several types in one uninterrupted pass means calling each skill directly instead
 - **Expanding a finding or cross-checking reports you already have** — go straight to `generating-analysis-recommendations`/`reviewing-analysis-findings`; this skill's own Phase 5 offers them but doesn't add anything beyond what calling them directly gives you
+- **A component/skill/agent/rule retrospective is already the known target** — invoke `analyzing-plugin-components` directly instead of routing through here; this skill's own bare-request framing (see "When to Use" above) exists specifically to catch the typeless case, not to replace a direct call once the type is known
 
 ## Phase 1: Pick an Analysis Type
 
@@ -80,7 +81,9 @@ If `$ARGUMENTS` already supplies this (e.g. a date was included in the original 
 
 Invoke the chosen skill via `Skill` with the confirmed scope. Let it run to completion — it persists its own report and prints its own `📄 ... written:` line followed by its own Next-step suggestion line (every one of analysis-kit's 7 report-producing skills prints this).
 
-**Exit:** the dispatched skill's report is written and its output (including its own Next-step line) has been shown.
+Read the actual `<scope-slug>` value out of the dispatched skill's own printed `📄 ... written:` path (e.g. `.claude/output/analyzing-actor-behavior/this-conversation-2026-08-12T14-00-00Z.md` → `this-conversation`) — Phase 5 needs this concrete value to build its own glob, since this skill has no scope-slug derivation step of its own.
+
+**Exit:** the dispatched skill's report is written, its output (including its own Next-step line) has been shown, and its actual scope-slug has been captured for Phase 5.
 
 ## Phase 5: Offer the Next Hop
 
