@@ -23,6 +23,10 @@ export function interpolateTemplate(template, variables) {
 // (not scoped to today's specific tag names) so it can no longer match a
 // real template delimiter regardless of which tag a caller's template
 // happens to use.
+// Whitespace-tolerant: a model reads `</repository_context >` or
+// `</ repository_context>` as the same closing delimiter a strict XML
+// parser would reject, so the exact-match form alone leaves those variants
+// unneutralized -- widened after a security review found the gap.
 function neutralizeClosingTags(value) {
-  return value.replace(/<\/([a-zA-Z_][a-zA-Z0-9_-]*)>/g, "<\\/$1>");
+  return value.replace(/<\s*\/\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*>/g, "<\\/$1>");
 }

@@ -10,7 +10,7 @@ description: >-
   is expensive (3-20 parallel Codex calls per round, for up to 10 rounds
   until convergence) — confirm the user wants that scale before running.
 argument-hint: "[--mode audit|compare|fix] [--branches <b1,b2,...>] [--base <ref>]"
-allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(git:*)", "Read", "Grep", "Glob", "AskUserQuestion", "Agent"]
+allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(git rev-parse:*)", "Bash(git status:*)", "Bash(git switch:*)", "Bash(git worktree:*)", "Bash(git merge:*)", "Bash(git push:*)", "Read", "Grep", "Glob", "AskUserQuestion", "Agent", "BashOutput", "KillShell"]
 ---
 
 # Whole-project multi-lens audit

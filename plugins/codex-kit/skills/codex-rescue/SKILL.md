@@ -9,7 +9,7 @@ description: >-
   for those; codex-rescue is a single delegate-then-review pass, not an
   iterative validation loop.
 argument-hint: "task description [--write] [--model MODEL] [--effort LEVEL] [--resume-last|--resume|--fresh] [--no-preview] [--persist] [--governed]"
-allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(node -e:*)", "Bash(git status:*)", "Bash(git rev-parse:*)", "Bash(git diff:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(git status:*)", "Bash(git rev-parse:*)", "Bash(git diff:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(rm -f */tmp/*:*)", "Read", "Write", "AskUserQuestion"]
 ---
 
 # Codex Task Delegation + Double-Check
@@ -268,15 +268,15 @@ git rev-parse HEAD > "$PRE_SHA"
 cat > "$PROMPT_FILE" <<'EOF'
 <literal approved wrapped XML prompt from Phase 1.5 (or the Phase 1 wrapped prompt if --no-preview)>
 EOF
-cat "$PROMPT_FILE" | node "$CODEX_COMPANION" task --background --json \
+cat "$PROMPT_FILE" | node "$CODEX_COMPANION" task --background --print-job-id \
   --write \
   --model "<literal model, omit line if not provided>" \
   --effort "<literal effort, omit line if not provided>" \
   --resume-last \
   > "$JOB_JSON_FILE" 2> "${JOB_JSON_FILE}.stderr" \
   || { echo "task launch failed:" >&2; cat "${JOB_JSON_FILE}.stderr" >&2; exit 1; }
-JOB_ID=$(node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!j.jobId)throw new Error("no jobId");process.stdout.write(j.jobId);}catch(e){process.stderr.write("JOB_ID parse failed: "+e.message+"\n");process.exit(1);}' "$JOB_JSON_FILE") \
-  || { echo "raw companion stdout:" >&2; cat "$JOB_JSON_FILE" >&2; exit 1; }
+JOB_ID=$(cat "$JOB_JSON_FILE")
+[ -n "$JOB_ID" ] || { echo "raw companion stdout:" >&2; cat "$JOB_JSON_FILE" >&2; exit 1; }
 echo "JOB_ID=$JOB_ID"
 ```
 
@@ -379,7 +379,10 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
 
 **Failure:** save to
 `${CLAUDE_PLUGIN_DATA}/reviews/rescue-<YYYYMMDD-HHMMSS>-failed.md` with
-the §6 error category and captured stderr.
+the §6 error category and captured stderr, truncated to 500 characters
+(matching `codex-exec.mjs`'s own convention) — stderr can echo fragments
+of repository content, so cap it rather than persisting it unbounded.
+Treat this and the success-path report as sensitive before sharing.
 
 Clean up temp files using literal paths:
 

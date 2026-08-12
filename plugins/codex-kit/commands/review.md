@@ -4,7 +4,7 @@ description: >-
   double-check verification
 argument-hint: '[--wait|--background] [--target dirty|branch|commit] [--base <ref>] [--commit <ref>] [--model <slug>] [--effort <level>]'
 disable-model-invocation: true
-allowed-tools: Read, Bash(node */scripts/codex-companion.mjs:*), Bash(git status:*), Bash(git diff:*), Bash(git rev-parse:*), Bash(mkdir:*), Write, AskUserQuestion
+allowed-tools: Read, Bash(node */scripts/codex-companion.mjs:*), Bash(git status:*), Bash(git diff:*), Bash(git rev-parse:*), Bash(mkdir:*), Write, AskUserQuestion, BashOutput, KillShell
 ---
 
 > **Invocation:** Run as `/codex-kit:review` in the Claude Code prompt. This command cannot be invoked via `Skill()` — it must be triggered as a slash command.
@@ -55,7 +55,9 @@ Foreground:
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" review --json --base "<value>" --scope "<value>" --model "<value>" --effort "<value>"
 ```
-(include only the flags actually present after validation; omit any not given.) Background: launch the same command via `Bash(..., run_in_background: true)`; don't call `BashOutput` or wait in this turn — tell the user to check `/codex-kit:status`.
+(include only the flags actually present after validation; omit any not given.)
+
+Background: launch the same command via `Bash(..., run_in_background: true)` with output redirected to a timestamped `$OUT_FILE`/`$ERR_FILE` pair, per `codex-prompt-protocol/references/invocation-protocol.md` §4's Pattern A launch snippet. Then **poll via `BashOutput`** in this same turn, per that same §4 polling spec (30s cadence, 60s acceptable for a long review, 30-minute cap, terminate on `status === "completed"`). Do **not** tell the user to check `/codex-kit:status` instead of polling — that channel is a side-check only (see §4/§5), never a substitute for finishing this command's own flow. Once `BashOutput` reports completion, read `$OUT_FILE` and continue directly into Phase 4 below — the double-check is unconditional and must still run for a backgrounded review, exactly as for a foreground one; a review that never receives its own double-check is not what this command promises.
 
 Sandbox is always read-only for review. If a call fails specifically because the sandbox mode isn't available on this platform (matches what `setup` already tested), **state that explicitly** before falling back to `danger-full-access` — never fall back silently.
 
@@ -86,4 +88,6 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
 
 **Success:** save to `${CLAUDE_PLUGIN_DATA}/reviews/review-<YYYYMMDD-HHMMSS>.md` with the target selection, Codex's output verbatim, and the double-check classification per finding.
 
-**Failure:** save to `${CLAUDE_PLUGIN_DATA}/reviews/review-<YYYYMMDD-HHMMSS>-failed.md` with the failure category and captured stderr.
+**Failure:** save to `${CLAUDE_PLUGIN_DATA}/reviews/review-<YYYYMMDD-HHMMSS>-failed.md` with the failure category and captured stderr, truncated to 500 characters (matching `codex-exec.mjs`'s own convention) — stderr can echo fragments of the reviewed content, so cap it rather than persisting it unbounded.
+
+**These saved files may contain fragments of reviewed repository content and should be treated as sensitive** — review before sharing or attaching to an issue, the same way any other artifact containing repo excerpts would be.

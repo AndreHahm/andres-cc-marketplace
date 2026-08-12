@@ -7,7 +7,7 @@ description: >-
   changes/diffs (use the /codex-kit:review command for that) or for
   verifying an existing written plan/document (use codex-verify for that).
 argument-hint: "topic [path/to/document.md] [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
-allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(node -e:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(grep:*)", "Bash(rm -f:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(sed:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f */tmp/*:*)", "Read", "Write", "AskUserQuestion"]
 ---
 
 # Codex Research + Cross-Model Synthesis
@@ -111,13 +111,12 @@ payload is complete. Skip the append step below.
 **Document mode:** append the context document via file redirect:
 
 ```bash
-# Refuse if the document contains the literal closing tag -- appending it
-# unguarded would let the document escape the <context_document> trust
-# boundary and inject content Codex reads as being outside it.
-grep -qF '</context_document>' "<literal doc path>" && { echo "Refusing: the document contains a literal '</context_document>' tag, which could escape the trust boundary. Rename or remove that string from the file before retrying." >&2; exit 1; }
 printf '\n<context_document>\n' >> "$PROMPT_FILE"
+# Neutralize any closing-tag-shaped substring in the document before
+# appending it -- an unguarded raw `cat` here would let the document escape
+# the <context_document> trust boundary (see shared-skill-conventions.md §4).
 # Use the literal doc path, NOT a shell variable from a prior Bash call.
-cat "<literal doc path>" >> "$PROMPT_FILE"
+sed -E 's@</[[:space:]]*([a-zA-Z_][a-zA-Z0-9_-]*)[[:space:]]*>@(/\1)@g' "<literal doc path>" >> "$PROMPT_FILE"
 printf '\n</context_document>\n' >> "$PROMPT_FILE"
 ```
 
@@ -222,7 +221,7 @@ Use `AskUserQuestion` exactly once:
 # positionalPrompt, silently dropping the entire blind payload.
 # --model/--effort: include only if the user passed them this call.
 # --resume-last: include only if `resume [follow-up]` was parsed in Phase 1.
-cat "<literal PROMPT_FILE path>" | node "$CODEX_COMPANION" task --background --json \
+cat "<literal PROMPT_FILE path>" | node "$CODEX_COMPANION" task --background --print-job-id \
   --model "<literal model, omit line if not provided>" \
   --effort "<literal effort, omit line if not provided>" \
   --resume-last \
@@ -233,9 +232,10 @@ cat "<literal PROMPT_FILE path>" | node "$CODEX_COMPANION" task --background --j
 `--resume-last` is a bare boolean flag (no value) — include the entire `--resume-last \` line only when `resume [follow-up]` was parsed in Phase 1; omit the whole line otherwise. `--model`/`--effort` each omit only their own line when unset, independently of the resume decision.
 
 ```bash
-# Capture jobId (node, not python)
-JOB_ID=$(node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!j.jobId)throw new Error("no jobId");process.stdout.write(j.jobId);}catch(e){process.stderr.write("JOB_ID parse failed: "+e.message+"\n");process.exit(1);}' "<literal JOB_JSON_FILE path>") \
-  || { echo "raw companion stdout:" >&2; cat "<literal JOB_JSON_FILE path>" >&2; exit 1; }
+# Capture jobId -- the companion prints the bare id (--print-job-id), no
+# JSON parser needed for this one field.
+JOB_ID=$(cat "<literal JOB_JSON_FILE path>")
+[ -n "$JOB_ID" ] || { echo "raw companion stdout:" >&2; cat "<literal JOB_JSON_FILE path>" >&2; exit 1; }
 echo "JOB_ID=$JOB_ID"
 ```
 
@@ -337,7 +337,10 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
 
 **Failure:** save to
 `${CLAUDE_PLUGIN_DATA}/reviews/research-<YYYYMMDD-HHMMSS>-failed.md` with
-the §6 error category, stderr, and topic/document path.
+the §6 error category, stderr (truncated to 500 characters, matching
+`codex-exec.mjs`'s own convention — stderr can echo document fragments,
+so cap it), and topic/document path. Treat this and the success-path
+report as sensitive before sharing.
 
 Clean up temp files using literal paths from Phase 1:
 
