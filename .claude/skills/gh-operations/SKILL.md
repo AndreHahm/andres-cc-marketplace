@@ -36,6 +36,8 @@ This skill activates for tasks involving:
 - Integrating with GitHub Enterprise
 - Automating GitHub operations via CLI or API
 
+The `collaborating-on-a-pr` exclusion above (named sibling, stated criterion, reciprocal) follows this repo's shared convention in `.claude/rules/resolve-activation-overlap-bidirectionally.md`.
+
 ## Core Operations
 
 ### Pull Requests
