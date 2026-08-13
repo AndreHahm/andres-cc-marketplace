@@ -1,0 +1,32 @@
+{
+  "gg-sad": {
+    "label": "GG-SAD (Goal-Gated Specification-Anchored Development)",
+    "confidence": "medium",
+    "markers": [".ggsad/", ".ggsad/config.yaml"],
+    "note": "Sourced from this project's own concept draft, not independently verified against an official GG-SAD specification."
+  },
+  "gsd": {
+    "label": "GSD",
+    "confidence": "medium",
+    "markers": [".planning/", ".gsd/"],
+    "note": "Sourced from this project's own concept draft (.planning/ as GSD's derived-artifact directory), not independently verified against GSD's own documentation."
+  },
+  "openspec": {
+    "label": "OpenSpec",
+    "confidence": "low",
+    "markers": ["openspec/", ".openspec/"],
+    "note": "Marker paths unconfirmed against the actual tool's real directory convention -- verify and correct before relying on this signature."
+  },
+  "speckit": {
+    "label": "Spec Kit",
+    "confidence": "low",
+    "markers": [".specify/", "specs/"],
+    "note": "Marker paths unconfirmed against the actual tool's real directory convention -- verify and correct before relying on this signature."
+  },
+  "bmad": {
+    "label": "BMAD",
+    "confidence": "low",
+    "markers": [".bmad-core/", "bmad/"],
+    "note": "Marker paths unconfirmed against the actual tool's real directory convention -- verify and correct before relying on this signature."
+  }
+}
