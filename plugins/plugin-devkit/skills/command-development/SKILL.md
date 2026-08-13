@@ -29,6 +29,14 @@ allowed-tools: Read Write Edit Glob Skill
 - **Creating hooks** — use `hook-development`; hooks respond to events, not slash commands
 - **Adding MCP servers** — use `mcp-integration`
 
+## Finding-ID Fix Mode
+
+When invoked with a bounded finding-ID list (e.g. from `plugin-lifecycle-downstream`'s Phase
+4/6/8), follow `plugin-rulebook/references/finding-id-fix-contract.md` instead of this
+skill's normal open-ended workflow: touch only the named findings' files, report per-ID
+`applied`/`deferred`/`failed` status, and never mark a fix verified — that stays the
+originating checker's job.
+
 ## Commands are Instructions FOR Claude
 
 **Write commands as directives to Claude, not descriptions for the user.**

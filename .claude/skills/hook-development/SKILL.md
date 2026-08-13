@@ -47,6 +47,14 @@ Hooks are event-driven automation scripts that execute in response to Claude Cod
 - Never edit `~/.claude/plugins/cache/` — those are read-only installed copies
 - Reviewing an existing hook's quality/safety before deployment → use the `hook-reviewer` agent instead
 
+## Finding-ID Fix Mode
+
+When invoked with a bounded finding-ID list (e.g. from `plugin-lifecycle-downstream`'s Phase
+4/6/8), follow `plugin-rulebook/references/finding-id-fix-contract.md` instead of this
+skill's normal open-ended workflow: touch only the named findings' files, report per-ID
+`applied`/`deferred`/`failed` status, and never mark a fix verified — that stays the
+originating checker's job.
+
 ---
 
 ## CRITICAL: Hook File Location

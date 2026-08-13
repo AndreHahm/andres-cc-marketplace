@@ -36,6 +36,14 @@ Guide for creating effective `.claude/rules` files with contrastive examples tha
 - Broad project context → put in CLAUDE.md
 - Multi-step procedures → use a skill
 
+## Finding-ID Fix Mode
+
+When invoked with a bounded finding-ID list (e.g. from `plugin-lifecycle-downstream`'s Phase
+4/6/8), follow `plugin-rulebook/references/finding-id-fix-contract.md` instead of this
+skill's normal open-ended workflow: touch only the named findings' files, report per-ID
+`applied`/`deferred`/`failed` status, and never mark a fix verified — that stays the
+originating checker's job.
+
 ## Core Principle
 
 Effective rules use **contrastive examples** (Incorrect vs Correct) to eliminate ambiguity. Rules are

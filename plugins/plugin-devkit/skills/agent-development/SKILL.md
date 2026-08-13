@@ -37,6 +37,14 @@ Agents are autonomous subprocesses with their own isolated context window that h
 - Generating a complete new agent end-to-end from a description → use `agent-creator` instead
 - Structured quality review of an existing agent (tool scoping, prompt quality, checklist compliance) → use `subagent-reviewer` instead
 
+## Finding-ID Fix Mode
+
+When invoked with a bounded finding-ID list (e.g. from `plugin-lifecycle-downstream`'s Phase
+4/6/8), follow `plugin-rulebook/references/finding-id-fix-contract.md` instead of this
+skill's normal open-ended workflow: touch only the named findings' files, report per-ID
+`applied`/`deferred`/`failed` status, and never mark a fix verified — that stays the
+originating checker's job.
+
 ## Quick Start
 
 Before creating a new agent, confirm no built-in agent type (`Explore`, `Plan`, `general-purpose`) already meets the need.
