@@ -61,6 +61,7 @@ Before any workflow step is treated as complete — and again immediately before
 - Just want the retro or comparison report itself, not the follow-through — use `analyzing-sessions` or `plugin-comparison` directly and stop there
 - A routine, single-change "should this update propagate" decision right after finishing other work — use `skill-maintenance` instead; that skill is a lightweight per-change decision/routing aid, not a multi-phase pipeline
 - QA on a plugin with no specific finding-source driving the work — use `plugin-lifecycle-downstream` directly (this skill's `improve-a-plugin`/`enhance-a-plugin` workflows hand off to `plugin-lifecycle-downstream`'s own Fix phase rather than duplicating it)
+- A general (non-self-referential) audit/QA/grade request for any plugin — including `plugin-devkit` itself when the ask is not explicitly framed as a self-check ("self-review", "self-validate", "self-grade", etc.) — use `plugin-lifecycle-downstream` (or `plugin-grader` for a one-shot score) instead; `self-service-plugin-devkit` is exclusively for plugin-devkit's own on-demand self-check services
 - Building a new plugin or component from scratch — use `plugin-lifecycle-upstream`
 - Not sure which of the three lifecycle pipelines fits — use `using-plugin-devkit` to confirm first
 

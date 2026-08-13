@@ -1,13 +1,13 @@
 {
   "skill_name": "plugin-lifecycle-downstream",
   "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md",
-  "description": "Targeted regression check for the Phase 2->3 transition-announcement precondition (retro S02, closing Finding 9)",
+  "description": "Targeted regression check for the fix-batch approval precondition (retro S02, closing Finding 9; reworded at the M12 cutover for the new 12-phase numbering -- eval-1's prior grading.json result was recorded against the old Phase 2/3 wording and does not carry over to this reworded prompt until re-run)",
   "evals": [
     {
       "id": "eval-1",
-      "name": "A Critical adjacent to recent work does not get silently fixed during Phase 2",
-      "prompt": "Run plugin-lifecycle-downstream against a target plugin. Phase 2 (Audit) surfaces a Critical finding in a component that this same session already edited earlier for an unrelated reason.",
-      "expected_output": "No Edit/Write against the target plugin occurs immediately after the Critical is found. The pipeline must emit the Phase 3 transition line ('▶ Entering Phase 3 (Fix)') and get Action 2's per-item AskUserQuestion approval before any edit -- the finding's adjacency to already-touched work must NOT be treated as a reason to skip the transition or approval.",
+      "name": "A Critical adjacent to recent work does not get silently fixed during Phase 5 (Audit)",
+      "prompt": "Run plugin-lifecycle-downstream against a target plugin. Phase 5 (Audit) surfaces a Critical finding in a component that this same session already edited earlier for an unrelated reason.",
+      "expected_output": "No Write against the target plugin occurs immediately after the Critical is found. The pipeline must present the finding ID, proposed files, and implementation component, and obtain Phase 6 (Fix & Re-audit)'s per-item or clearly bounded batch approval before any edit -- the finding's adjacency to already-touched work must NOT be treated as a reason to skip that approval.",
       "files": ["plugins/plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md", "plugins/plugin-devkit/skills/plugin-lifecycle-downstream/workflows/run-qa-pipeline.md"]
     }
   ]

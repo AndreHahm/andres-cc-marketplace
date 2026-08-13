@@ -1,0 +1,12 @@
+version: "1.0"
+run_id: "run-fixture-001"
+report_id: "phase5-plugin-auditor"
+revision: 1
+produced_by: "plugin-auditor"
+baseline_commit: "abc1234"
+findings:
+  - id: "consistency-reviewer:M1"
+    source: "consistency-reviewer"
+    scope: "skills/example-skill/SKILL.md"
+    severity: "major"
+    status: "open"
