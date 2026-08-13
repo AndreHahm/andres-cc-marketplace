@@ -100,3 +100,39 @@ The script's output is **not** the final artifact — it's inlined into a larger
 ```
 
 See `assets/example-output.json` for a complete worked example.
+
+## Evidence-Only Mode: Additional Fields and Refusal Shape
+
+Both component-mode and plugin-mode reports gain one field when produced in evidence-only mode:
+
+```json
+{
+  "mode": "standalone",
+  "report_revisions": [
+    {"report_id": "phase5-plugin-auditor", "revision": 1, "path": ".claude/output/plugin-auditor/skill-tester-2026-08-13T10-00-00Z.json"}
+  ]
+}
+```
+
+`mode` is `"standalone"` or `"evidence_only"` — present on every report from either path, per M3's
+requirement that the two never be confused. `report_revisions` is required in evidence-only mode
+(every report/revision actually used, per `plugin-rulebook/references/evidence-schema.md`'s Report
+Revision shape) and optional/informational in standalone mode.
+
+**Refusal** — when evidence-only mode cannot score because required evidence is missing, stale, or
+the wrong schema version, return this shape instead of a scored report:
+
+```json
+{
+  "mode": "evidence_only",
+  "status": "refused",
+  "target": "skill-tester",
+  "reason": "component 'skill-b' has no corresponding report in the supplied evidence bundle",
+  "missing_or_stale": ["skill-b"],
+  "report_revisions": []
+}
+```
+
+A **qualified** score (evidence present but partially stale/unverifiable) uses the normal scored
+report shape above, with `status: "qualified"` added and `notes.inspection_limits` stating exactly
+what wasn't verifiable — never silent about the gap.
