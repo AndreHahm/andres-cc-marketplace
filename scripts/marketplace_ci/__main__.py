@@ -12,8 +12,19 @@ import sys
 from pathlib import Path
 
 from scripts.marketplace_ci.conversion import find_legacy_command_exports, plan_exports
+from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.pr_policy import RealGitHubApi, evaluate_pr_policy
 from scripts.marketplace_ci.registry import Registry, RegistryError
+from scripts.marketplace_ci.review import (
+    ReviewOutputError,
+    aggregate_findings,
+    check_bypass,
+    derive_review_scope,
+    dispatch_reviewers,
+    parse_attestation_marker,
+    prepare_reviewer_instruction,
+    validate_review_output,
+)
 from scripts.marketplace_ci.sync import (
     DEFAULT_REPO_RULES_PATH,
     SyncError,
@@ -22,7 +33,11 @@ from scripts.marketplace_ci.sync import (
     plan_hooks_merge,
     plan_plugin_sync,
 )
-from scripts.marketplace_ci.validators import check_staged_parity, run_post_edit
+from scripts.marketplace_ci.validators import (
+    check_staged_parity,
+    run_delta_structural_checks,
+    run_post_edit,
+)
 
 PR_TEMPLATE_RELATIVE_PATH = Path(".github/pull_request_template.md")
 
@@ -327,6 +342,186 @@ def _handle_handle_post_edit(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_run_delta_structural_checks(args: argparse.Namespace) -> int:
+    repo = Path.cwd()
+    changed = tuple(ChangedPath(status="M", old_path=p, new_path=p) for p in args.changed)
+    findings = run_delta_structural_checks(repo, changed)
+    if not findings:
+        print("run-delta-structural-checks: OK")
+        return 0
+    for finding in findings:
+        print(f"[structural] {finding.operation}: {finding.path} - {finding.reason}")
+    return 1
+
+
+def _handle_prepare_reviewer_instruction(args: argparse.Namespace) -> int:
+    repo = Path.cwd()
+    try:
+        prepare_reviewer_instruction(
+            args.agent, base_sha=args.base_sha, out=Path(args.out), repo=repo
+        )
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else 2
+    print(f"prepare-reviewer-instruction: wrote {args.out}")
+    return 0
+
+
+def _handle_prepare_review(args: argparse.Namespace) -> int:
+    changed = tuple(ChangedPath(status="M", old_path=p, new_path=p) for p in args.changed)
+    # No cross-component dependency graph exists yet in this plan; an empty
+    # index is an honest default, not a silent omission — see review.py's
+    # derive_review_scope docstring and design v4's own scoping notes.
+    scope = derive_review_scope(changed, {})
+    payload = {
+        "mode": scope.mode,
+        "structural_check": scope.structural_check,
+        "validate": list(scope.validate),
+        "audit": list(scope.audit),
+        "paths": list(scope.paths),
+    }
+    output = json.dumps(payload, indent=2)
+    if args.json_output:
+        Path(args.json_output).write_text(output + "\n", encoding="utf-8")
+    print(output)
+    return 0
+
+
+def _handle_check_review_output(args: argparse.Namespace) -> int:
+    path = Path(args.file)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"check-review-output: cannot read {path}: {exc}", file=sys.stderr)
+        return 2
+    try:
+        result = validate_review_output(data)
+    except ReviewOutputError as exc:
+        print(f"check-review-output: {exc}", file=sys.stderr)
+        return 1
+    print(
+        f"check-review-output: OK ({len(result.findings)} finding(s), blocking={result.blocking})"
+    )
+    return 0
+
+
+def _handle_check_bypass(args: argparse.Namespace) -> int:
+    event_path = Path(args.event)
+    try:
+        data = json.loads(event_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"check-bypass: cannot read event file {event_path}: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        label_event = {"actor": data["actor"], "sha": data["head_sha"]}
+    except KeyError as exc:
+        print(f"check-bypass: event file missing expected field: {exc}", file=sys.stderr)
+        return 2
+
+    raw_comments = data.get("comments", [])
+    permission = data.get("permission")
+    parsed_comments = [
+        marker for body in raw_comments if (marker := parse_attestation_marker(body)) is not None
+    ]
+    result = check_bypass(label_event, parsed_comments, permission=permission)
+    status = "ALLOWED" if result.allowed else "DENIED"
+    suffix = f" - {result.reason}" if result.reason else ""
+    print(f"check-bypass: {status}{suffix}")
+    return 0 if result.allowed else 1
+
+
+def _finding_to_dict(finding) -> dict:
+    return {
+        "reviewer": finding.reviewer,
+        "severity": finding.severity,
+        "rule": finding.rule,
+        "path": finding.path,
+        "line": finding.line,
+        "evidence": finding.evidence,
+        "remediation": finding.remediation,
+        "reporters": list(finding.reporters),
+    }
+
+
+def _handle_run_codex_review(args: argparse.Namespace) -> int:
+    """The single entry point the Codex GitHub Actions workflow calls: scope
+    the diff since `base_sha`, run the deterministic structural check
+    in-process, dispatch every Codex reviewer directly (no outer
+    Codex-executed skill), validate every returned envelope, and aggregate.
+    Exit 2 on any infrastructure failure (unresolvable base SHA, dispatch
+    failure, malformed output) — never silently treated as a passing review.
+    Exit 1 only for a genuine blocking (Critical/Major) finding.
+    """
+    repo = Path.cwd()
+    base_sha = args.base_sha
+
+    resolved = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{base_sha}^{{commit}}"], cwd=repo, capture_output=True
+    )
+    if resolved.returncode != 0:
+        print(f"run-codex-review: cannot resolve base SHA {base_sha!r}", file=sys.stderr)
+        return 2
+
+    diff = subprocess.run(
+        ["git", "diff", "--name-only", f"{base_sha}...HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+    if diff.returncode != 0:
+        print(f"run-codex-review: git diff against {base_sha!r} failed", file=sys.stderr)
+        return 2
+    changed_files = [line for line in diff.stdout.splitlines() if line]
+    changed = tuple(ChangedPath(status="M", old_path=p, new_path=p) for p in changed_files)
+
+    scope = derive_review_scope(changed, {})
+    structural_findings = run_delta_structural_checks(repo, changed)
+    reports = dispatch_reviewers(scope, base_sha=base_sha, repo=repo)
+
+    failed_reviewers = [r.reviewer for r in reports if r.status == "failed"]
+    if failed_reviewers:
+        print(
+            f"run-codex-review: reviewer dispatch failed for: {failed_reviewers}", file=sys.stderr
+        )
+        return 2
+
+    validated = []
+    for report in reports:
+        if report.output is None:
+            print(f"run-codex-review: {report.reviewer} completed with no output", file=sys.stderr)
+            return 2
+        try:
+            validated.append(validate_review_output(report.output))
+        except ReviewOutputError as exc:
+            print(
+                f"run-codex-review: {report.reviewer} returned invalid output: {exc}",
+                file=sys.stderr,
+            )
+            return 2
+
+    findings = aggregate_findings(validated)
+    blocking = any(f.severity in ("Critical", "Major") for f in findings)
+    structural_blocking = len(structural_findings) > 0
+
+    payload = {
+        "mode": scope.mode,
+        "reviewed_paths": list(scope.paths),
+        "reviewers": [r.reviewer for r in reports],
+        "structural_findings": [
+            {"path": f.path, "operation": f.operation, "reason": f.reason}
+            for f in structural_findings
+        ],
+        "findings": [_finding_to_dict(f) for f in findings],
+        "blocking": blocking or structural_blocking,
+    }
+    output_text = json.dumps(payload, indent=2)
+    if args.output:
+        Path(args.output).write_text(output_text + "\n", encoding="utf-8")
+    print(output_text)
+
+    return 1 if (blocking or structural_blocking) else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m scripts.marketplace_ci")
     subparsers = parser.add_subparsers(dest="command")
@@ -375,6 +570,48 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser(
         "handle-post-edit", help="PostToolUse hook: cascade a canonical edit to mirror/export"
     ).set_defaults(handler=_handle_handle_post_edit)
+
+    run_delta = subparsers.add_parser(
+        "run-delta-structural-checks", help="scope check-all's structural checks to changed paths"
+    )
+    run_delta.add_argument("--changed", required=True, nargs="+", metavar="PATH")
+    run_delta.set_defaults(handler=_handle_run_delta_structural_checks)
+
+    prepare_instruction = subparsers.add_parser(
+        "prepare-reviewer-instruction",
+        help="extract a reviewer's developer_instructions from a validated base SHA",
+    )
+    prepare_instruction.add_argument("--agent", required=True, metavar="NAME")
+    prepare_instruction.add_argument("--base-sha", required=True, metavar="SHA")
+    prepare_instruction.add_argument("--out", required=True, metavar="PATH")
+    prepare_instruction.set_defaults(handler=_handle_prepare_reviewer_instruction)
+
+    prepare_review = subparsers.add_parser(
+        "prepare-review", help="compute a ReviewScope for the given changed paths"
+    )
+    prepare_review.add_argument("--changed", required=True, nargs="+", metavar="PATH")
+    prepare_review.add_argument("--json-output", metavar="PATH")
+    prepare_review.set_defaults(handler=_handle_prepare_review)
+
+    check_review_output = subparsers.add_parser(
+        "check-review-output", help="validate a reviewer's structured output envelope"
+    )
+    check_review_output.add_argument("--file", required=True, metavar="PATH")
+    check_review_output.set_defaults(handler=_handle_check_review_output)
+
+    check_bypass_parser = subparsers.add_parser(
+        "check-bypass", help="validate a SHA-bound bypass attestation"
+    )
+    check_bypass_parser.add_argument("--event", required=True, metavar="PATH")
+    check_bypass_parser.set_defaults(handler=_handle_check_bypass)
+
+    run_codex_review = subparsers.add_parser(
+        "run-codex-review",
+        help="scope, dispatch, validate, and aggregate a full Codex delta review",
+    )
+    run_codex_review.add_argument("--base-sha", required=True, metavar="SHA")
+    run_codex_review.add_argument("--output", metavar="PATH")
+    run_codex_review.set_defaults(handler=_handle_run_codex_review)
 
     return parser
 
