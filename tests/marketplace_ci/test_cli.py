@@ -161,3 +161,75 @@ def test_check_all_committed_rejects_unresolvable_ref(monkeypatch, git_repo):
     _write_registry(git_repo.root)
     monkeypatch.chdir(git_repo.root)
     assert main(["check-all", "--committed", "not-a-real-ref"]) == 2
+
+
+def _commit_and_sha(git_repo, path, content, message):
+    import subprocess
+
+    git_repo.stage(path, content)
+    subprocess.run(["git", "commit", "-q", "-m", message], cwd=git_repo.root, check=True)
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+
+def test_check_pr_owner_short_circuit_passes(monkeypatch, git_repo, tmp_path):
+    base_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
+    head_sha = _commit_and_sha(git_repo, "README.md", "hello world", "update")
+
+    template = git_repo.root / ".github" / "pull_request_template.md"
+    template.parent.mkdir(parents=True, exist_ok=True)
+    template.write_text("## Summary\n\n## Checklist\n", encoding="utf-8")
+
+    event = {
+        "pull_request": {
+            "title": "feat: add readme update",
+            "body": "## Summary\n\nUpdates readme.\n",
+            "user": {"login": "andre"},
+            "base": {
+                "repo": {"owner": {"login": "andre"}, "full_name": "andre/repo"},
+                "sha": base_sha,
+            },
+            "head": {"sha": head_sha},
+        }
+    }
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps(event), encoding="utf-8")
+
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-pr", "--event", str(event_path)]) == 0
+
+
+def test_check_pr_bad_title_fails(monkeypatch, git_repo, tmp_path):
+    base_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
+    head_sha = _commit_and_sha(git_repo, "README.md", "hello world", "update")
+
+    event = {
+        "pull_request": {
+            "title": "not a conventional title",
+            "body": "",
+            "user": {"login": "andre"},
+            "base": {
+                "repo": {"owner": {"login": "andre"}, "full_name": "andre/repo"},
+                "sha": base_sha,
+            },
+            "head": {"sha": head_sha},
+        }
+    }
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps(event), encoding="utf-8")
+
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-pr", "--event", str(event_path)]) == 1
+
+
+def test_check_pr_missing_event_file_returns_2(monkeypatch, git_repo, tmp_path):
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-pr", "--event", str(tmp_path / "does-not-exist.json")]) == 2
+
+
+def test_check_pr_missing_field_returns_2(monkeypatch, git_repo, tmp_path):
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps({"pull_request": {"title": "feat: x"}}), encoding="utf-8")
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-pr", "--event", str(event_path)]) == 2

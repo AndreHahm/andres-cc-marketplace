@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from scripts.marketplace_ci.conversion import find_legacy_command_exports, plan_exports
+from scripts.marketplace_ci.pr_policy import RealGitHubApi, evaluate_pr_policy
 from scripts.marketplace_ci.registry import Registry, RegistryError
 from scripts.marketplace_ci.sync import (
     DEFAULT_REPO_RULES_PATH,
@@ -22,6 +23,8 @@ from scripts.marketplace_ci.sync import (
     plan_plugin_sync,
 )
 from scripts.marketplace_ci.validators import check_staged_parity
+
+PR_TEMPLATE_RELATIVE_PATH = Path(".github/pull_request_template.md")
 
 REGISTRY_RELATIVE_PATH = Path(".claude/marketplace-sync.json")
 
@@ -230,6 +233,62 @@ def _handle_repair_all(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_check_pr(args: argparse.Namespace) -> int:
+    repo = Path.cwd()
+    event_path = Path(args.event)
+    try:
+        event = json.loads(event_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"check-pr: cannot read event file {event_path}: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        pr = event["pull_request"]
+        title = pr["title"]
+        body = pr.get("body") or ""
+        user = pr["user"]["login"]
+        base_repo = pr["base"]["repo"]
+        owner = base_repo["owner"]["login"]
+        full_name = base_repo["full_name"]
+        base_sha = pr["base"]["sha"]
+        head_sha = pr["head"]["sha"]
+    except (KeyError, TypeError) as exc:
+        print(f"check-pr: event file missing expected field: {exc}", file=sys.stderr)
+        return 2
+
+    template_path = repo / PR_TEMPLATE_RELATIVE_PATH
+    template = template_path.read_text(encoding="utf-8") if template_path.is_file() else ""
+
+    diff = subprocess.run(
+        ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+    changed_paths = (
+        [line for line in diff.stdout.splitlines() if line] if diff.returncode == 0 else []
+    )
+
+    api = RealGitHubApi(owner=owner, user=user, full_name=full_name, repo=repo)
+    result = evaluate_pr_policy(
+        api, title=title, body=body, template=template, changed_paths=changed_paths
+    )
+
+    for label, check in (("title", result.title), ("template", result.template)):
+        status = "PASS" if check.passed else "FAIL"
+        suffix = f" - {check.reason}" if check.reason else ""
+        print(f"check-pr [{label}]: {status}{suffix}")
+    for label, rights in (
+        ("pr-privilege", result.pr_privilege),
+        ("merge-privilege", result.merge_privilege),
+    ):
+        status = "PASS" if rights.allowed else "FAIL"
+        suffix = f" - {rights.reason}" if rights.reason else ""
+        print(f"check-pr [{label}]: {status}{suffix}")
+
+    return 0 if result.passed else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m scripts.marketplace_ci")
     subparsers = parser.add_subparsers(dest="command")
@@ -270,6 +329,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--apply", action="store_true", help="execute a --bootstrap plan (otherwise plan-only)"
     )
     repair_all.set_defaults(handler=_handle_repair_all)
+
+    check_pr = subparsers.add_parser("check-pr", help="validate a PR event against policy")
+    check_pr.add_argument("--event", required=True, metavar="PATH", help="PR event JSON path")
+    check_pr.set_defaults(handler=_handle_check_pr)
 
     return parser
 
