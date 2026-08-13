@@ -158,7 +158,9 @@ fi
 
 if [ ! -x "$HOOK_SCRIPT" ]; then
   echo "⚠️  Warning: Hook script is not executable. Attempting to run with bash..."
-  HOOK_SCRIPT="bash $HOOK_SCRIPT"
+  RUN_CMD=(bash "$HOOK_SCRIPT")
+else
+  RUN_CMD=("$HOOK_SCRIPT")
 fi
 
 if [ ! -f "$TEST_INPUT" ]; then
@@ -206,7 +208,11 @@ fi
 start_time=$(date +%s)
 
 set +e
-output=$(timeout "$TIMEOUT" bash -c "cat '$TEST_INPUT' | $HOOK_SCRIPT" 2>&1)
+# argv-based invocation (RUN_CMD array), not a `bash -c "...$HOOK_SCRIPT..."` string
+# — HOOK_SCRIPT is a path from the plugin/component under test and must never be
+# re-parsed by a shell, since a crafted filename (shell metacharacters) would
+# otherwise be a command-injection vector here.
+output=$(cat "$TEST_INPUT" | timeout "$TIMEOUT" "${RUN_CMD[@]}" 2>&1)
 exit_code=$?
 set -e
 
