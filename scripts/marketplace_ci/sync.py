@@ -25,6 +25,7 @@ class SyncAction:
     source: Path | None
     destination: Path
     reason: str
+    content: bytes | None = None  # overrides a raw source-bytes copy, e.g. converted agent TOML
 
 
 @dataclass(frozen=True)
@@ -255,8 +256,12 @@ def apply_sync_plan(plan: SyncPlan) -> SyncResult:
     applied: list[SyncAction] = []
     for action in plan.actions:
         if action.operation in ("create", "update"):
-            assert action.source is not None
-            _atomic_write(action.destination, action.source.read_bytes())
+            if action.content is not None:
+                data = action.content
+            else:
+                assert action.source is not None
+                data = action.source.read_bytes()
+            _atomic_write(action.destination, data)
             applied.append(action)
         elif action.operation == "delete":
             action.destination.unlink(missing_ok=True)
