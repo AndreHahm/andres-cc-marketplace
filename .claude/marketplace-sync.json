@@ -2,7 +2,7 @@
   "version": 1,
   "plugin_mirrors": ["plugin-devkit", "git-kit", "analysis-kit", "codex-kit"],
   "codex_exports": {
-    "skills": [],
+    "skills": ["plugin-marketplace-review"],
     "agents": [
       "plugin-rulebook-checker",
       "dependency-reviewer",
