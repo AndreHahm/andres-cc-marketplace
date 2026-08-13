@@ -50,6 +50,12 @@ verified_by: <independent checker or null>
 verification_run: <run id or null>
 ```
 
+**Redaction:** for a credential/secret finding, `evidence_before`/`evidence_after`/`fix`
+record file:line and a description of the matched pattern or change — never the literal
+matched secret value or its replacement value. Scope manifests, report revisions, evidence
+bundles, and handoff reports built from these findings may need redaction before sharing
+outside the run this schema instance belongs to.
+
 **`id` format:** `<source>:<local-id>`, where `<local-id>` is the producing component's own
 existing severity-sequence tag from its Structured Output Mode (e.g. `M1`, `C2`, `m3`) —
 reuse the tag a reviewer already emits today rather than minting a second, competing ID
