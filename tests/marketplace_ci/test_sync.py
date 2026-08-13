@@ -66,7 +66,10 @@ def test_repo_owned_rule_maps_1to1_into_claude_rules(repo, registry_for):
 def test_apply_sync_plan_writes_created_files(repo, registry_for):
     plan = plan_plugin_sync(repo, registry_for("sample-kit"), previous=None, bootstrap=True)
     result = apply_sync_plan(plan)
-    assert len(result.applied) == len(plan.actions)
+    # "warn" actions (bootstrap orphan detection) are intentionally never applied;
+    # only create/update/delete actions should come back in `applied`.
+    executable = [a for a in plan.actions if a.operation in ("create", "update", "delete")]
+    assert len(result.applied) == len(executable)
     dest = repo / ".claude" / "skills" / "demo" / "SKILL.md"
     assert dest.exists()
     assert (

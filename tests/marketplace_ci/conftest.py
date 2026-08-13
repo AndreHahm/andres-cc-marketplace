@@ -34,10 +34,13 @@ class GitRepoHelper:
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
-    """An isolated repo root, seeded with any committed plugin fixtures on disk."""
+    """An isolated repo root, seeded with any committed plugin/.claude fixtures on disk."""
     fixture_plugins = FIXTURES_DIR / "plugins"
     if fixture_plugins.is_dir():
         shutil.copytree(fixture_plugins, tmp_path / "plugins")
+    fixture_claude = FIXTURES_DIR / "claude"
+    if fixture_claude.is_dir():
+        shutil.copytree(fixture_claude, tmp_path / ".claude")
     return tmp_path
 
 
