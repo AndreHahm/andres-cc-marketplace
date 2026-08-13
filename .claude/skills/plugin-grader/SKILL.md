@@ -11,7 +11,10 @@ description: >-
   user asks to 'grade this plugin', 'rank this skill', 'score this Claude
   Code plugin', 'rate this skill and suggest improvements', 'rank this
   plugin from 1 to 10', or 'grade this rule' — skill/agent/command/hook/rule
-  are all gradeable target types.
+  are all gradeable target types. Standalone/direct use dispatches
+  `plugin-auditor` for fresh evidence; an internal evidence-only mode for
+  `plugin-lifecycle-downstream`'s Grading phase scores pre-gathered evidence
+  instead, with no dispatch of its own.
 argument-hint: "[target]"
 allowed-tools: Read Grep Glob Agent Skill Write Bash(python scripts/compute_score.py:*) Bash(date:*)
 ---
@@ -24,7 +27,7 @@ Orchestrates this plugin's existing reviewer agents into one weighted, gated, 0-
 
 1. **Resolve target and mode** — `$0`, or ask if omitted/ambiguous
 2. **Determine target type** — skill/agent/command/hook (component mode) or whole plugin
-3. **Dispatch matching reviewers in parallel** — see `references/rubric.md`'s dispatch table
+3. **Gather evidence** — standalone mode: dispatch `plugin-auditor` fresh; evidence-only mode: consume pre-supplied evidence, no dispatch
 4. **Score dimensions and compute** — map findings to the rubric, run `scripts/compute_score.py`
 5. **Build SWOT + prioritized next steps** — `references/swot-and-next-steps.md`
 6. **Write the JSON report** — `.claude/output/plugin-grader/<target>-<timestamp>.json`
@@ -40,7 +43,9 @@ Orchestrates this plugin's existing reviewer agents into one weighted, gated, 0-
 
 - Holistic Keep/Improve/Update/Retire/Merge verdicts across a whole skill library, without numeric weighting — use `skill-stocktake` instead (it explicitly uses holistic judgment, not a numeric rubric, even though some dimension names overlap)
 - A single-axis check only (just rule compliance, just security, just activation overlap) — invoke that specific reviewer/skill directly (`plugin-rulebook`, `activation-reviewer`, etc.); this skill is for when the *combined weighted* picture is wanted
-- A narrative-only quality review of one skill, agent, command, hook, or rule — findings but no numeric score, SWOT, or hard gates — invoke the type-matched reviewer directly instead: `skill-reviewer`, `subagent-reviewer`, `command-reviewer`, `hook-reviewer`, `rule-reviewer`, or `plugin-validator` (whole-plugin structure/manifest check with no numeric score). This skill dispatches these same agents internally (see `references/rubric.md`'s Type-Matched Reviewer Table) and wraps their findings into the weighted score — invoke one directly when only its plain Critical/Major/Minor findings list is wanted, not the surrounding score/SWOT/next-steps. **Precedence:** if the request contains an explicit scoring/ranking cue ("rate", "score", "grade", "rank", a 1-10 scale) alongside review-style language, this skill wins; a bare "review"/"check quality"/"validate" request with no scoring cue goes to the type-matched reviewer instead (or to `plugin-lifecycle-downstream` if the request also asks to "audit"/"run QA"/combines validate+score in one ask for a whole plugin — that orchestrator dispatches this skill and `plugin-validator` together).
+- A narrative-only quality review of one skill, agent, command, hook, or rule — findings but no numeric score, SWOT, or hard gates — invoke the type-matched reviewer directly instead: `skill-reviewer`, `subagent-reviewer`, `command-reviewer`, `hook-reviewer`, `rule-reviewer`, or `plugin-validator` (whole-plugin structure/manifest check with no numeric score). This skill dispatches `plugin-auditor` for its own evidence (see `references/rubric.md`'s Type-Matched Reviewer Table for which reviewer applies per type — `plugin-auditor` owns the actual dispatch decision now) and wraps the returned findings into the weighted score — invoke a reviewer directly when only its plain Critical/Major/Minor findings list is wanted, not the surrounding score/SWOT/next-steps.
+- **The full reviewer fan-out's findings across every axis, with no score at all** — use `plugin-auditor` directly instead of this skill. That's exactly the evidence this skill's own Step 3 dispatches internally (standalone mode) or consumes pre-gathered (evidence-only mode) — invoke `plugin-auditor` when only the normalized findings are wanted, this skill when the weighted score/SWOT/next-steps built on top of them are wanted too.
+- **Precedence:** if the request contains an explicit scoring/ranking cue ("rate", "score", "grade", "rank", a 1-10 scale) alongside review-style language, this skill wins; a bare "review"/"check quality"/"validate" request with no scoring cue goes to the type-matched reviewer instead (or to `plugin-lifecycle-downstream` if the request also asks to "audit"/"run QA"/combines validate+score in one ask for a whole plugin — that orchestrator dispatches this skill and `plugin-validator` together).
 - A full WHAT/WHY/HOW implementation plan for the findings — use `enhancement-suggestor` (offered automatically as this skill's own Suggested Next Step)
 - A retrospective on how a component *behaved this session* — use `analyzing-sessions`; this skill grades static current-state quality, not session behavior
 - A side-by-side comparison of two components — use `plugin-comparison`
@@ -63,36 +68,61 @@ Parse `$0` (or the conversation). If it names a single component (a skill/agent/
 
 skill (has `SKILL.md`) / agent (a file in `agents/`) / command (a file in `commands/`) / hook (`hooks.json` or a hook script) / rule (a file in `.claude/rules/`). Use `references/rubric.md`'s Type-Matched Reviewer Table to pick which `*-reviewer` applies — never dispatch all five.
 
-### 3. Dispatch Reviewers
+### 3. Gather Evidence
 
-Before launching the dispatch, print a status line — e.g. "Dispatching N reviewers in parallel — this
-typically takes several minutes..." — since agent dispatches run silently with no built-in progress
-streaming; without this, a long dispatch is indistinguishable from a stuck one.
+One dispatch path for both modes below — never two. Which mode applies is decided by the caller's
+input shape, not a flag the user has to know about: standalone use only ever supplies a target; the
+evidence-only shape (scope manifest + evidence bundle) only ever comes from
+`plugin-lifecycle-downstream`'s Phase 11.
 
-**Component mode** — in a single message, launch in parallel:
-- `skilldir-reviewer` (skills with non-`SKILL.md` files only)
-- The type-matched `*-reviewer` from `references/rubric.md`
-- `completeness-reviewer`
-- `activation-reviewer`
-- `security-reviewer` — feeds `safety_risk_handling` alongside `plugin-rulebook` R6/R9 (see `references/rubric.md`'s dimension 10 for the axis split that avoids double-counting the same finding)
-- `scripts-reviewer` — only if `scripts/` exists for the target
-- `hook-reviewer` — only if the target has hooks (a hook component, or a skill/agent declaring `hooks:` frontmatter)
-- `Skill(plugin-rulebook)` — invoked via `Skill`, not `Agent`, for Rule Compliance
+**Standalone mode** (default — `/plugin-grader <target>` used directly, unaffected by this skill's
+own M3 refactor): dispatch the `plugin-auditor` skill (via `Skill`) against the resolved target and
+mode (component/plugin from Step 1-2), passing Fast mode through if requested. Print a status line
+first — e.g. "Dispatching plugin-auditor for evidence gathering — this typically takes several
+minutes..." — since it runs silently with no built-in progress streaming. `plugin-auditor` owns the
+actual reviewer fan-out and component-mode/plugin-mode dispatch rules (see
+`plugin-auditor/references/dispatch-table.md` — the type-matched `*-reviewer`, `completeness-reviewer`,
+`activation-reviewer`, `security-reviewer`, `dependency-reviewer`, `scripts-reviewer`,
+`hook-reviewer`, `plugin-rulebook-checker`, plus `consistency-reviewer`/`plugin-validator` in plugin
+mode) and returns a normalized evidence bundle per
+`plugin-rulebook/references/evidence-schema.md`. If the caller (typically
+`plugin-lifecycle-downstream`, reusing its own Phase 3 Validate results) supplies pre-gathered
+`plugin-rulebook-checker`/`plugin-validator` findings for some or all of the target(s), pass those
+through as pre-supplied findings on the `plugin-auditor` call — its own reuse discipline decides
+what to skip re-dispatching; this step does not re-implement that logic.
 
-Also run the Testing static heuristic directly (no dispatch): `Glob` for `evals/`, `evals.json`, `benchmark.json`; `Grep` SKILL.md for a Testing & Validation section.
+**Fast mode** (`--fast` or "quick grade" in the request, standalone mode only — evidence-only mode
+has no dispatch to speed up): pass the Fast-mode flag through to `plugin-auditor`, which skips
+`scripts-reviewer`, `consistency-reviewer`, and `security-reviewer` per its own Fast mode.
+`robustness` defaults to `is_na: true` (score 10), `maintainability` derives from
+`skilldir-reviewer`'s duplication axis alone, and `safety_risk_handling` derives from
+`plugin-rulebook-checker` R6/R9 findings alone. Note the reduced fidelity in
+`notes.inspection_limits` — never silently present a fast-mode score as equivalent to a full one.
 
-**Plugin mode** — dispatch the above per component (batched across all components), **plus**, run once across the whole set (not once per component):
-- `activation-reviewer` in whole-plugin mode → feeds `activation_critical`
-- `consistency-reviewer` across all components → feeds `consistency_critical`
-- `plugin-validator` in its default Full-review mode → structural/manifest findings feed each named component's `structure_architecture` dimension alongside `skilldir-reviewer`/the type-matched reviewer (the same "dispatch once, distribute per-component" shape as `activation-reviewer`/`consistency-reviewer` above, not a per-component re-dispatch — `plugin-validator` has no per-component invocation mode of its own outside its Batch mode, which is for splitting a large *sweep*, not for scoping to one target)
+**Evidence-only mode** (new — for `plugin-lifecycle-downstream`'s Phase 11): accepts the scope
+manifest, Phase 5's `plugin-auditor` evidence bundle, validation reports, test report, and final
+evidence bundle instead of dispatching anything. In this mode:
+- perform no `plugin-auditor`, reviewer-agent, or test dispatch of any kind;
+- verify the supplied evidence's freshness (baseline/current commit match), coverage (every
+  in-scope component has at least one report), provenance (every finding traces to a real report
+  revision), and schema `version` before using it;
+- if required evidence is missing, stale, or the wrong schema version, refuse scoring (state
+  exactly what's missing/stale, per `references/output-schema.md`'s refusal shape) or return a
+  qualified score with `notes.inspection_limits` stating what wasn't verifiable — never score
+  silently past a gap;
+- mark any optional check that wasn't run as `not_run`, never as a pass;
+- record every report/revision actually used (`report_revisions` in the output, per
+  `references/output-schema.md`) so the score's provenance is traceable.
 
-**Fast mode** (`--fast` or "quick grade" in the request): skip `scripts-reviewer`, `consistency-reviewer`, and `security-reviewer` dispatches. `robustness` defaults to `is_na: true` (score 10), `maintainability` derives from `skilldir-reviewer`'s duplication axis alone, and `safety_risk_handling` derives from `plugin-rulebook` R6/R9 findings alone. Note the reduced fidelity in `notes.inspection_limits` — never silently present a fast-mode score as equivalent to a full one.
-
-**Reuse pre-supplied findings — don't re-dispatch a check that already ran.** If the caller (typically `plugin-lifecycle-downstream`, reusing its own Phase 1 Validate results) supplies `plugin-rulebook`, `plugin-validator`, and/or `security-reviewer` findings for some or all of the target(s) in scope, use those directly for `rule_compliance`/`structure_architecture`/`safety_risk_handling` scoring instead of dispatching `Skill(plugin-rulebook)`/`plugin-validator`/`security-reviewer` again for the same component. This applies per-component: pre-supplied findings that only cover some components (e.g. from a Scoped Phase 1 run) don't excuse skipping the rest — dispatch fresh for whichever components weren't already covered. A full-mode whole-plugin `security-reviewer` or `plugin-validator` report isn't pre-split by component the way a `plugin-rulebook` batch report is, but every finding in it already cites the specific file(s)/component(s) it applies to — extract per-component findings from that one report rather than treating "not pre-split" as a reason to re-dispatch.
+Both modes: also run the Testing static heuristic directly (no dispatch — this stays
+`plugin-grader`'s own direct check, per `plugin-auditor`'s dispatch table's "Not This Skill's Job"):
+`Glob` for `evals/`, `evals.json`, `benchmark.json`; `Grep` SKILL.md for a Testing & Validation
+section. In evidence-only mode, prefer the scope manifest's own smoke-test/eval inventory if it
+already states this instead of re-deriving it.
 
 ### 4. Score Dimensions and Compute
 
-Map each dispatched reviewer's Critical/Major/Minor (or `plugin-rulebook`'s FAIL/ADVISORY) counts into the `dimensions` object per `references/rubric.md`. Assign `simplicity`, `testing`, `efficiency`, and `actionability` directly against their custom bands (also in `rubric.md`). Set `dimensions.content_quality.contradiction_found: true` if any dispatched reviewer flagged self-contradicting instructions.
+Map each finding's canonical severity (Critical/Major/Minor — already normalized from each source's native scale by `plugin-auditor`'s evidence bundle, in either mode) into the `dimensions` object per `references/rubric.md`. Assign `simplicity`, `testing`, `efficiency`, and `actionability` directly against their custom bands (also in `rubric.md`). Set `dimensions.content_quality.contradiction_found: true` if any finding flagged self-contradicting instructions.
 
 Write this as JSON per `references/output-schema.md`'s input shape, then run:
 
@@ -139,29 +169,36 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 3. **Gate stacking** — construct an input triggering both Gate A and Gate B; confirm `final_score` uses the *lower* of the two caps (5.0), not the first one found. Also confirm stacking Gate B and Gate C uses 4.0 (the lower of the two), since Gate C is now the lowest cap of the four
 4. **N/A dimension** — grade a component with no `scripts/`; confirm `robustness` scores 10 with `is_na: true`, not excluded from the weighted sum
 5. **Plugin rollup with one broken component** — construct component scores where one is < 3; confirm Gate P3 fires and `weakest_component` is reported even though the mean looks acceptable
-6. **Fast mode** — confirm `scripts-reviewer`/`consistency-reviewer`/`security-reviewer` are skipped and `notes.inspection_limits` states this
+6. **Fast mode** — confirm the Fast-mode flag reaches `plugin-auditor`, `scripts-reviewer`/`consistency-reviewer`/`security-reviewer` are skipped, and `notes.inspection_limits` states this
 7. **Self-check** — `scripts/smoke_test.py` passes (this skill's own persisted smoke test), re-run after any SKILL.md edit
+8. **Evidence-only mode, missing evidence → refusal** (new, M3) — invoke evidence-only mode with a scope manifest naming a component that has no corresponding report in the supplied evidence bundle; confirm scoring is refused (not silently skipped or scored as if clean) per `references/output-schema.md`'s refusal shape, and confirm no `plugin-auditor`/reviewer/test dispatch was attempted
+8a. **Evidence-only mode, stale evidence → qualified score** — supply evidence whose `current_commit` doesn't match the scope manifest's; confirm the score is returned qualified, with `notes.inspection_limits` stating the staleness, not refused outright and not silently ignored
+8b. **Evidence-only mode, complete and fresh → identical scoring** — supply a complete, fresh evidence bundle for a target already graded via standalone mode in scenario 1; confirm the two runs produce the same `final_score`/`gates_applied` (the dispatch mechanism differs, the scoring doesn't)
 
 **Quality gates:**
 - [ ] `scripts/compute_score.py` is always invoked for the weighted sum and gate math — never hand-computed
 - [ ] Every entry in `gates_applied` has a non-empty `reason`
 - [ ] Gate D always emits the literal `"Missing verification."` comment when `testing` scores 0.0 — never a paraphrase
-- [ ] Type-matched reviewer dispatch never sends all five `*-reviewer` agents for a single target
+- [ ] Standalone mode never dispatches a reviewer agent directly — always goes through `plugin-auditor`, which itself never sends all five type-matched `*-reviewer` agents for a single target
 - [ ] The written report path is always under `.claude/output/plugin-grader/`
 - [ ] The Step 8 `enhancement-suggestor` offer uses `AskUserQuestion` and is never auto-invoked
 - [ ] A staging-mirror duplicate (`.claude/` vs `plugins/plugin-devkit/`) is noted, not treated as an error
 - [ ] Fast mode is never presented as equivalent-fidelity to a full grade
+- [ ] Evidence-only mode never dispatches `plugin-auditor`, a reviewer agent, or a test — it only ever reads supplied evidence
+- [ ] Evidence-only mode always refuses or qualifies when required evidence is missing/stale/wrong-version — never scores silently past a gap
+- [ ] Standalone mode and evidence-only mode never get confused for one another — the input shape alone (a bare target vs. a scope manifest + evidence bundle) determines which mode runs, no separate flag required
 
 ## Reference Guide
 
 | Resource | Purpose |
 |---|---|
-| `references/rubric.md` | The 12-dimension scoring table, generic formula, N/A handling, type-matched reviewer dispatch table |
+| `references/rubric.md` | The 12-dimension scoring table, generic formula, N/A handling, type-matched reviewer table (informational — `plugin-auditor` owns the actual dispatch decision, see `plugin-auditor/references/dispatch-table.md`) |
 | `references/gates-and-rollup.md` | Exact hard-gate math, stacking rule, and whole-plugin rollup formula |
 | `references/output-schema.md` | JSON shapes for the script's input/output and the final written report |
 | `references/swot-and-next-steps.md` | Score-driven SWOT derivation and prioritized-next-steps ranking |
 | `scripts/compute_score.py` | Deterministic weighted-sum and gate-application script — the only source of truth for this arithmetic |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run before packaging or after any SKILL.md edit |
 | `assets/example-output.json` | A complete worked example of the final report JSON |
-| `plugin-rulebook` skill | Rule Compliance dimension's signal source |
+| `plugin-auditor` skill | Step 3 — dispatched for fresh evidence in standalone mode, or supplies pre-gathered evidence consumed in evidence-only mode |
+| `plugin-rulebook-checker` agent | Rule Compliance dimension's signal source, via `plugin-auditor`'s own dispatch |
 | `enhancement-suggestor` agent | Turns the written report's `prioritized_next_steps` into a full WHAT/WHY/HOW plan (Step 8) |

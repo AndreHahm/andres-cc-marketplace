@@ -22,7 +22,7 @@ The four remaining dimensions (Simplicity, Testing, Efficiency, Actionability) d
 |---|---|---|---|---|---|---|---|
 | 1 | `structure_architecture` | 15% | `skilldir-reviewer` (structural axes), type-matched `*-reviewer`, `plugin-validator` (plugin mode) | No structural findings | Minor only (e.g. generic filename) | 1 Major (e.g. 2-level-deep reference) | Critical (component doesn't resolve / invalid manifest) |
 | 2 | `content_quality` | 15% | `skilldir-reviewer` Step 4 (Stale Content) + Step 6 (Broken/Inconsistent Examples) axes only — **not** Step 5, see Dimension 5 | No content findings | Minor only | 1 Major (stale example, wrong example) | Critical (teaches a non-functional pattern) |
-| 3 | `rule_compliance` | 12% | `Skill(plugin-rulebook)` compliance report | All rules PASS | ADVISORY only | — (rulebook has no Major tier) | 1+ REQUIRED FAIL |
+| 3 | `rule_compliance` | 12% | `plugin-rulebook-checker` compliance report (via `plugin-auditor`) | All rules PASS | ADVISORY only | — (rulebook has no Major tier) | 1+ REQUIRED FAIL |
 | 4 | `completeness` | 12% | `completeness-reviewer` | No open items | Minor only (optional-section stub) | 1 Major (missing required section) | Critical (documented core functionality entirely absent) |
 | 5 | `maintainability` | 10% | `consistency-reviewer` (plugin mode), `skilldir-reviewer` Step 5 (Duplicated Content) axis only — component mode | No drift/duplication | Minor duplication noted | 1 Major drift/duplication | 3+ Major (pervasive drift) — treat as Critical-equivalent (score 0) |
 | 6 | `robustness` | 10% | `scripts-reviewer` (only if `scripts/` present — otherwise `is_na: true`, score 10) | No findings | Minor only | 1 Major logic bug | Critical (script fails on documented input) |
@@ -54,6 +54,12 @@ If the target contains self-contradicting guidance (e.g. one section states a ru
 If a dimension's signal source genuinely doesn't apply (e.g. `robustness` when no `scripts/` exists), score it **10** with `is_na: true`. Never exclude a dimension or renormalize weights — the 12 fixed weights stay stable in every output.
 
 ## Type-Matched Reviewer Table
+
+**Since M3: informational here, not the dispatch source.** `plugin-auditor` (see its own
+`references/dispatch-table.md`) is what actually decides and runs this dispatch now — this table
+stays here because Step 4's dimension mapping still needs to know which reviewer backs
+`structure_architecture`/`content_quality`/`actionability` for a given target type. If the mapping
+ever changes, update `plugin-auditor`'s copy first and mirror it here, not the other way around.
 
 | Target type | Reviewer for Structure/Content/Actionability |
 |---|---|
