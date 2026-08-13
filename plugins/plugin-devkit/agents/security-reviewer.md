@@ -98,6 +98,6 @@ top_priority_fixes: [highest-impact fix, second fix, third fix]
 
 ## When to invoke
 
-- `plugin-lifecycle-downstream`'s Phase 1 (Validate) dispatches this agent alongside `plugin-rulebook`, `plugin-validator`, and `dependency-reviewer` for whole-plugin QA passes, upstream of every commit the three lifecycle skills make
+- `plugin-auditor` dispatches this agent as part of `plugin-lifecycle-downstream`'s Phase 5 (Audit), alongside `plugin-rulebook-checker`, `plugin-validator`, and `dependency-reviewer`, for whole-plugin QA passes, upstream of every commit the three lifecycle skills make
 - A user directly asks for a security audit deeper than `plugin-validator`'s basic credential/HTTPS check
 - Proactively, before any commit touching a plugin component

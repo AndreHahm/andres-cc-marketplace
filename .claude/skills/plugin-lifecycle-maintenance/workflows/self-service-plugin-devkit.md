@@ -71,10 +71,10 @@ alongside real components.
 (`dependency-reviewer`, `security-reviewer`, `consistency-reviewer`,
 `completeness-reviewer`, `hook-reviewer`, `skilldir-reviewer`, and the type-matched
 reviewer) substantially overlaps Service 3's own dispatch list (via `plugin-lifecycle-
-downstream`'s Phase 1 + `plugin-grader`'s Phase 2). Running both back-to-back in the same
+downstream`'s Phase 3/Phase 5). Running both back-to-back in the same
 session means accepting the redundant cost for now — there is no cross-service reuse
 mechanism yet. A future pass could model one on how `plugin-lifecycle-downstream`'s own
-Phase 2 already reuses Phase 1's findings instead of re-dispatching; until then, prefer
+Phase 5 (Audit) already reuses Phase 3 (Validate)'s findings instead of re-dispatching; until then, prefer
 running one service or the other rather than both when only one is actually needed.
 
 **Exit criteria:** One combined, severity-sorted report across every dispatched agent —
@@ -85,21 +85,27 @@ state which components were in scope and which mode (scoped/full) ran.
 **Entry:** none beyond invocation.
 
 **Actions:** Invoke `plugin-lifecycle-downstream` (via `Skill`) targeting `plugin-devkit`.
-Downstream always runs Phase 1 (Validate) and Phase 2 (Audit+Report) together — no gate
-between them by its own design — so this naturally also produces a grading pass. Present
-both; decline downstream's Phase 3 (Fix) offer by default here — `self-improvement`
-(Service 6) is this workflow's dedicated place for applying fixes, not this one.
+Downstream runs Phase 1 (Scoping) through Phase 5 (Audit) automatically in sequence — no
+gate between its read-only phases by its own design (see its "Confirmation Discipline").
+Decline Phase 2 (Prepare)'s test-creation offer and Phase 7 (Deep Test)'s ask by default
+here, and decline Phase 8 (Consolidated Fix)'s offer by default too — `self-improvement`
+(Service 6) is this workflow's dedicated place for applying fixes, not this one. Unlike the
+old pipeline, Phase 5 (Audit) produces unscored findings only: decline Phase 11 (Grading)'s
+own separate ask if only a validation pass is wanted, or accept it if a score is also
+wanted — grading is now an explicit second dispatch (`plugin-grader`, evidence-only mode),
+not something Audit produces for free.
 
-**Disclose, don't silently absorb:** declining Phase 3 does not mean nothing else runs —
-`plugin-lifecycle-downstream`'s own Document step still fires after Phase 2 when Phase 3
-is declined (its normal-flow behavior, unchanged by today's external-entry fix), which
-means a `plugin-documentation` authoring+review pass (with its own keep/revise/discard
-gate) happens as part of this "just validate" service. State this plainly when Phase 2's
-report is presented, so a "self-validation" run isn't read as read-only when it isn't.
+**Disclose, don't silently absorb:** declining Phase 8 does not mean nothing else runs —
+`plugin-lifecycle-downstream`'s own Phase 9 (Documentation) always runs as part of the
+normal sequential flow regardless of whether Phase 8 applied anything, which means a
+`plugin-documentation` authoring+review pass (with its own keep/revise/discard gate)
+happens as part of this "just validate" service, followed automatically by Phase 10 (Final
+Verification). State this plainly when Phase 5's findings are presented, so a
+"self-validation" run isn't read as read-only when it isn't.
 
-**Exit criteria:** Downstream's Phase 1+2 report presented, its Document step's outcome
-disclosed (doc change made / none needed), Phase 3 declined unless the caller explicitly
-asks to chain into it.
+**Exit criteria:** Downstream's Validate+Audit findings presented, its Phase 9
+(Documentation) outcome disclosed (doc change made / none needed), Phase 8 (Fix) and
+Phase 11 (Grading) declined unless the caller explicitly asks to chain into either.
 
 ## Service 4: Self-Evaluation
 
@@ -206,7 +212,7 @@ plugin).
    `skill-development`/`agent-development`/etc.), same as every other lifecycle
    workflow's Fix step — never a direct `Edit` from this workflow itself.
 6. **Test:** for each component step 5 touched, run the same bounded smoke check
-   `plugin-lifecycle-downstream`'s own Phase 4 (Test) uses — reusing its per-type tools
+   `plugin-lifecycle-upstream`'s own Phase 6 (Test) uses — reusing its per-type tools
    (`skill-tester`, `agent-development/scripts/test-agent-trigger.sh`,
    `hook-development/scripts/test-hook.sh`, a manual command trial for a command) rather
    than a third copy of the same logic. For more than a small handful of touched
@@ -217,8 +223,8 @@ plugin).
 7. **Self-Review:** dispatch the type-matched `*-reviewer` agent(s) (via `Agent`) — per
    `plugin-grader/references/rubric.md`'s Type-Matched Reviewer Table — against only the
    component(s) step 5 touched, never the whole plugin (Service 3's own full-plugin
-   sweep, via `plugin-lifecycle-downstream`'s Phase 1-2, already covers that ground on
-   its own separate invocation). Collect findings as-is; do not score, weight, or roll
+   sweep, via `plugin-lifecycle-downstream`'s Phase 3 (Validate) and Phase 5 (Audit),
+   already covers that ground on its own separate invocation). Collect findings as-is; do not score, weight, or roll
    them into anything resembling `plugin-grader`'s output — step 8's re-validation below
    is a `Skill(plugin-rulebook)` compliance re-check, not a `plugin-grader` re-score, and
    this step doesn't produce one either.

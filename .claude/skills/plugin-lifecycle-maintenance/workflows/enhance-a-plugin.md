@@ -28,28 +28,22 @@ For anything worth a full WHAT/WHY/HOW plan before deciding further, invoke `enh
 
 ## Step 3: Hand Off to Fix
 
-Reformat the approved deltas into a list matching `plugin-grader`'s real `prioritized_next_steps` schema — same reshaping as `improve-a-plugin.md` Step 3 (`rank`, `action`, `dimension` if one applies, `points_gain_estimate` as a rough estimate, `lifts_gate` always `null`).
+Reformat the approved deltas into the shared Finding schema (`plugin-rulebook/references/evidence-schema.md`) — same reshaping as `improve-a-plugin.md` Step 3, with `source: plugin-comparison` and `id: plugin-comparison:<local-id>`.
 
-Invoke `plugin-lifecycle-downstream` (via `Skill`) targeting the plugin being enhanced, using its documented external Phase 3 entry (see `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md` Phase 3's Entry condition) with this list — skip Phases 1-2, same reasoning as `improve-a-plugin.md` Step 3. Do not reimplement apply → re-validate → commit here — nor its Open-PR/Branch-scope pre-flight checks, which downstream's own Phase 3 already runs. Downstream's Phase 3 also continues automatically into its own Phase 4 (Test) and Phase 5 (Self-Review) whenever it applies at least one change, same as `improve-a-plugin.md` Step 3 — this single hand-off already covers Steps 4-5 below without a second invocation.
+Invoke `plugin-lifecycle-downstream` (via `Skill`) targeting the plugin being enhanced, using its documented external Phase 8 (Consolidated Fix) entry (see `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md` Phase 8's Entry condition) with this findings bundle plus a minimal scope manifest, same reasoning as `improve-a-plugin.md` Step 3 — skip Phases 1-7, and declare in the input contract that this workflow owns Phase 9 (Documentation), same as `improve-a-plugin.md` Step 3. Do not reimplement apply → re-verify → commit here — nor its Open-PR/Branch-scope pre-flight checks, which downstream's own Phase 8 already runs via its Mutation-and-Confirmation preflight.
 
-**Exit criteria:** Downstream's Phase 3 reports all approved deltas applied and re-validated (fully or partially), with its own commit(s) already made.
+**Exit criteria:** Downstream's Phase 8 reports all approved deltas applied and independently re-verified (fully or partially), with its own commit(s) already made.
 
-## Step 4: Test
+## Step 4: Test and Self-Review
 
-Same reuse as `improve-a-plugin.md` Step 4 — downstream's own Phase 4 (Test) already ran as part of the Step 3 hand-off, once Phase 3 applied at least one change. This step exists to give that coverage its own place in this workflow's numbering; do not re-invoke or duplicate it.
+Same reuse as `improve-a-plugin.md` Step 4 — downstream's Phase 8 hand-off in Step 3 already re-runs each originating check plus regression checks as part of its own verification, folding what the old pipeline ran as two separate automatic phases into one. This step exists to give that coverage its own place in this workflow's numbering; do not re-invoke or duplicate it.
 
-**Exit criteria:** Downstream's Phase 4 result, already surfaced as part of Step 3's hand-off — or explicitly stated as skipped, if Step 3 applied nothing.
+**Exit criteria:** Downstream's Phase 8 verification result, already surfaced as part of Step 3's hand-off — or explicitly stated as skipped, if Step 3 applied nothing.
 
-## Step 5: Self-Review
+## Step 5: Document
 
-Same reuse as `improve-a-plugin.md` Step 5 — downstream's own Phase 5 (Self-Review) already ran as part of the Step 3 hand-off, scoped to only the component(s) Step 3's approved deltas actually touched. This workflow never re-dispatches the type-matched `*-reviewer` agent(s) itself.
+See `SKILL.md`'s "The Document Step" section — identical procedure for all 4 workflows. Run it now, after Step 3's fix commit(s) and Step 4's results are surfaced. This is the ownership Step 3 declared to downstream — downstream's own Phase 9 was skipped precisely so this step is the one place Documentation actually runs.
 
-**Exit criteria:** Downstream's Phase 5 findings, already surfaced as part of Step 3's hand-off — or explicitly stated as skipped, if Step 3 applied nothing.
+## Step 6: Handover (Optional)
 
-## Step 6: Document
-
-See `SKILL.md`'s "The Document Step" section — identical procedure for all 4 workflows. Run it now, after Step 3's fix commit(s) and Steps 4-5's results are surfaced.
-
-## Step 7: Handover (Optional)
-
-Same as `improve-a-plugin.md` Step 7 — ask before a final downstream QA pass, only if Step 6 changed anything.
+Same as `improve-a-plugin.md` Step 6 — ask before a fresh downstream QA pass, only if Step 5 changed anything.

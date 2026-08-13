@@ -99,6 +99,6 @@ top_priority_fixes: [highest-impact fix, second fix, third fix]
 
 ## When to invoke
 
-- `plugin-lifecycle-downstream`'s Phase 1 (Validate) dispatches this agent alongside `plugin-rulebook` and `plugin-validator` for whole-plugin QA passes
+- `plugin-auditor` dispatches this agent as part of `plugin-lifecycle-downstream`'s Phase 5 (Audit), alongside `plugin-rulebook-checker` and `plugin-validator`, for whole-plugin QA passes
 - A user directly asks to check for circular or bidirectional dependencies, or to audit how a set of components depend on each other
 - Proactively, after multiple components that invoke each other are created or modified together in the same session
