@@ -8,7 +8,7 @@ description: >-
   into multiple commits, see standalone-commits instead.
 argument-hint: Optional flags (--no-verify, --amend, --push) followed by an optional commit message
 model: haiku
-allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Read, Skill(git-kit:create-pr)
+allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Read, Skill(git-kit:create-pr)
 ---
 
 # Claude Command: Commit
@@ -27,7 +27,7 @@ unstaged changes into a properly formatted commit.
 - **Deciding whether to split a diff into multiple commits, ordering multi-file changes into
   dependency-ordered waves, or picking which of several pending changes to stage first** — that's
   `standalone-commits`'s job (run the `standalone-commits` skill). `commit` only shapes and executes
-  the message for whatever is already staged; step 10 below is a lightweight "multiple concerns?"
+  the message for whatever is already staged; step 11 below is a lightweight "multiple concerns?"
   signal, not the actual splitting procedure.
 - **Creating a fresh branch before any changes exist** — that's `starting-work`
   (run the `starting-work` skill), which also handles the worktree-vs-branch choice and main-sync that
@@ -85,23 +85,35 @@ CRITICAL: Perform the following steps exactly as described:
    **Limitation:** this check matches staged *filenames* only — it does not inspect staged diff content
    for embedded credential-shaped strings (API keys, tokens) in a file whose name doesn't match one of
    these patterns. A key pasted into an otherwise-unflagged file's content is not caught by this step.
-8. Performs a `git diff --cached` to understand what changes are being committed
-9. **Test-behavior-change check**: scan the staged diff for any `skills/*/SKILL.md`, `skills/*/references/*.md`, or `agents/*.md` change that alters guidance or instructions — per `.claude/rules/require-tests-for-behavior-changes.md`'s definition (a change to what a component actually does when followed on some input; excludes deterministic script/code logic changes and prose fixes that only restore already-intended behavior). If any staged file matches, ask via `AskUserQuestion`: "This looks like it changes skill/agent behavior. Has it been tested?" with options covering the mechanisms in `require-tests-for-behavior-changes.md` (a `skill-tester` eval run, the Testing & Validation checklist, the trigger-phrase smoke check), plus "No — commit anyway" and "No — stop, let me test first". This ask is mandatory whenever the diff matches — never skip it silently — but the answer, including "commit anyway", is the user's call. On "stop, let me test first", halt here without committing.
-10. **Check whether this is a single logical change**: scan the diff for signs of multiple unrelated
+8. **Marketplace CI targeted repair** (this repository only — a no-op if `scripts/marketplace_ci/` and
+   `.claude/marketplace-sync.json` don't exist): if any staged file is a canonical `plugins/<name>/...`
+   source for a registered plugin mirror, or a registered `.claude/skills/<name>/...`/
+   `.claude/agents/<name>.md` export source, run
+   `uv run python -m scripts.marketplace_ci sync-plugin-mirrors` and
+   `uv run python -m scripts.marketplace_ci convert-codex-exports` — never hand-edit a generated
+   `.claude`/`.agents`/`.codex` destination directly. Then run `git status --porcelain` again and stage
+   only the generated files whose canonical source is among the paths already staged in this commit;
+   leave any other file those commands happened to repair (drift unrelated to this commit) on disk,
+   unstaged. Finally run `uv run python -m scripts.marketplace_ci check-all --staged` — **this runs even
+   under `--no-verify`**, since `--no-verify` only skips `pnpm lint`-style checks (step 4), not marketplace
+   parity. If it fails, report the specific mismatch and stop; do not commit an inconsistent mirror/export.
+9. Performs a `git diff --cached` to understand what changes are being committed
+10. **Test-behavior-change check**: scan the staged diff for any `skills/*/SKILL.md`, `skills/*/references/*.md`, or `agents/*.md` change that alters guidance or instructions — per `.claude/rules/require-tests-for-behavior-changes.md`'s definition (a change to what a component actually does when followed on some input; excludes deterministic script/code logic changes and prose fixes that only restore already-intended behavior). If any staged file matches, ask via `AskUserQuestion`: "This looks like it changes skill/agent behavior. Has it been tested?" with options covering the mechanisms in `require-tests-for-behavior-changes.md` (a `skill-tester` eval run, the Testing & Validation checklist, the trigger-phrase smoke check), plus "No — commit anyway" and "No — stop, let me test first". This ask is mandatory whenever the diff matches — never skip it silently — but the answer, including "commit anyway", is the user's call. On "stop, let me test first", halt here without committing.
+11. **Check whether this is a single logical change**: scan the diff for signs of multiple unrelated
     concerns (different top-level directories/domains touched, a mix of feature/fix/refactor/docs
     changes, or unrelated file types changed together). This is a lightweight signal, not a splitting
-    procedure — see step 11.
-11. If step 10 finds signs of multiple concerns, tell the user and point them to
+    procedure — see step 12.
+12. If step 11 finds signs of multiple concerns, tell the user and point them to
     the `standalone-commits` skill for the actual splitting/ordering/wave-planning logic
     (dependency-ordered waves, acceptance checks, staging workflow) instead of re-deriving a split
     here. Continue `commit`'s own flow only for the single commit currently staged (or whatever subset
     the user chooses to keep in this commit).
-12. Creates a commit message for the currently staged changes using conventional commit format (no emoji — see Best Practices). Include a body when the reason isn't obvious from the diff alone (recommended, not required — see Best Practices). Include a footer trailer only when it applies: a `BREAKING CHANGE:` trailer when the subject uses `!`, a `Refs:`/`Closes:` trailer when the conversation named a specific issue this commit relates to or resolves, and a `Related-PR:` trailer when the conversation named a specific related PR. Don't ask the user for footer content on every commit — only include a trailer when there's a concrete breaking change, issue, or PR already in view (see Commit Message Footer below).
-13. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly. **Immediately before running `git commit`** (right after confirmation, or right before committing directly when confirmation is off), run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` — this writes the marker git-kit's commit-guard hook requires; it must be written right before the commit, not earlier in this run, since the hook only accepts a marker up to 60 seconds old.
-14. **Amend**: if `--amend` was given, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` immediately before running it, then use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
-15. **Push**: push after a successful commit when `--push` was given (explicit override, always pushes regardless of setting), or when `commit_auto_push` is `true`. Otherwise, when `commit_auto_push` is `false` and no `--push` flag was given, ask via `AskUserQuestion` whether to push. If push fails because there's no upstream, suggest `git push -u origin <branch>`.
-16. **Auto-PR**: skip this step entirely if `commit` was invoked as a nested dependency from `create-pr`'s own pre-flight check (i.e. this run's instructions say to skip Auto-PR) — `create-pr` is about to create the PR itself right after this run returns, so running this step too would create a duplicate PR or nest `create-pr` inside itself. Otherwise, after a successful push (from step 15, either path), check `gh pr view --json number` for the current branch. If a PR is already open, skip this step entirely. Otherwise: when `push_auto_pr` is `true`, invoke `Skill(git-kit:create-pr)` directly; when `false`, ask via `AskUserQuestion` whether to create one now, and invoke `Skill(git-kit:create-pr)` only on yes.
-17. **Show the result**: commit hash, files changed, insertions/deletions, and push status (if a push happened)
+13. Creates a commit message for the currently staged changes using conventional commit format (no emoji — see Best Practices). Include a body when the reason isn't obvious from the diff alone (recommended, not required — see Best Practices). Include a footer trailer only when it applies: a `BREAKING CHANGE:` trailer when the subject uses `!`, a `Refs:`/`Closes:` trailer when the conversation named a specific issue this commit relates to or resolves, and a `Related-PR:` trailer when the conversation named a specific related PR. Don't ask the user for footer content on every commit — only include a trailer when there's a concrete breaking change, issue, or PR already in view (see Commit Message Footer below).
+14. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly. **Immediately before running `git commit`** (right after confirmation, or right before committing directly when confirmation is off), run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` — this writes the marker git-kit's commit-guard hook requires; it must be written right before the commit, not earlier in this run, since the hook only accepts a marker up to 60 seconds old.
+15. **Amend**: if `--amend` was given, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` immediately before running it, then use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
+16. **Push**: push after a successful commit when `--push` was given (explicit override, always pushes regardless of setting), or when `commit_auto_push` is `true`. Otherwise, when `commit_auto_push` is `false` and no `--push` flag was given, ask via `AskUserQuestion` whether to push. If push fails because there's no upstream, suggest `git push -u origin <branch>`.
+17. **Auto-PR**: skip this step entirely if `commit` was invoked as a nested dependency from `create-pr`'s own pre-flight check (i.e. this run's instructions say to skip Auto-PR) — `create-pr` is about to create the PR itself right after this run returns, so running this step too would create a duplicate PR or nest `create-pr` inside itself. Otherwise, after a successful push (from step 16, either path), check `gh pr view --json number` for the current branch. If a PR is already open, skip this step entirely. Otherwise: when `push_auto_pr` is `true`, invoke `Skill(git-kit:create-pr)` directly; when `false`, ask via `AskUserQuestion` whether to create one now, and invoke `Skill(git-kit:create-pr)` only on yes.
+18. **Show the result**: commit hash, files changed, insertions/deletions, and push status (if a push happened)
 
 ## Best Practices for Commits
 
@@ -212,6 +224,10 @@ When committing on `master` or `main`, the command will ask if you want to creat
 - If specific files are already staged, the command will only commit those files
 - If no files are staged, you'll be asked what to stage — nothing is auto-staged unless `commit_auto_stage: true` is set (via `.claude/git-kit.local.json` or the git-tracked `git-kit.settings.json` defaults)
 - Staged files matching sensitive patterns (`.env`, `*secret*`, `*.key`, `*.pem`, `*password*`, `*token*`, SSH/cloud keys, `.npmrc`/`.pgpass`/`.netrc`) are flagged and unstaged automatically
+- In this repository, staging a canonical `plugins/<name>/...` or registered `.claude/skills|agents/...`
+  source runs the marketplace-CI sync/export CLI and stages only the resulting generated counterparts —
+  never a hand-edit of `.claude`/`.agents`/`.codex`. This parity check always runs, even under
+  `--no-verify` (which only skips lint-style checks)
 - The commit message will be constructed based on the changes detected
 - Before committing, the command signals when the diff shows signs of multiple unrelated concerns and
   points you to `standalone-commits` for the actual split — it doesn't perform the split itself
@@ -224,19 +240,36 @@ When committing on `master` or `main`, the command will ask if you want to creat
 
 **Verify this skill does NOT activate on:**
 - "split this diff into separate commits" / "break this up into multiple commits" / "how should I order
-  these changes into waves" → these route to `standalone-commits`, not `commit`; step 10's "multiple
+  these changes into waves" → these route to `standalone-commits`, not `commit`; step 11's "multiple
   concerns?" signal exists to catch this mid-flow (a diff that looks split-worthy once already staged),
   not to make `commit` a second entry point for a request to split in the first place
 
-**Verified live, 2026-08-11:** `commit` was invoked for real (`Skill(commit)`, not a raw `git commit`) roughly 5 times across that session's fix-batch commits, including the final commit of that session's second fix batch (`2160f56`) — step 9 fired correctly on every behavior-changing commit in that run. That live run confirmed step 9 fires and gates correctly in real use; it did not walk each item below individually, so the checkboxes stay unchecked pending a full manual pass — re-run this checklist (and check off what it confirms) after the next behavior-changing invocation, rather than treating this date as a permanent guarantee:
+**Verified live, 2026-08-11:** `commit` was invoked for real (`Skill(commit)`, not a raw `git commit`) roughly 5 times across that session's fix-batch commits, including the final commit of that session's second fix batch (`2160f56`) — the test-behavior-change check (now step 10, renumbered from step 9 by step 8's later targeted-repair insertion) fired correctly on every behavior-changing commit in that run. That live run confirmed the check fires and gates correctly in real use; it did not walk each item below individually, so the checkboxes stay unchecked pending a full manual pass — re-run this checklist (and check off what it confirms) after the next behavior-changing invocation, rather than treating this date as a permanent guarantee:
 
 - [ ] The staged-diff scan actually fires — a change to `skills/*/SKILL.md`, `skills/*/references/*.md`, or `agents/*.md` content triggers the `AskUserQuestion`; an unrelated change (docs, scripts, config) does not
-- [ ] The `AskUserQuestion` presents the options as written in step 9's prose (the testing-mechanism choices, plus "commit anyway" and "stop, test first")
-- [ ] Step 9 sits correctly in sequence — fires after step 8's `git diff --cached`, before step 10's multiple-change analysis, without disrupting the flow
-- [ ] Step 9's ask and step 13's separate confirm-before-commit ask don't read as a confusing back-to-back double prompt when both fire in the same run
+- [ ] The `AskUserQuestion` presents the options as written in step 10's prose (the testing-mechanism choices, plus "commit anyway" and "stop, test first")
+- [ ] Step 10 sits correctly in sequence — fires after step 9's `git diff --cached`, before step 11's multiple-change analysis, without disrupting the flow
+- [ ] Step 10's ask and step 14's separate confirm-before-commit ask don't read as a confusing back-to-back double prompt when both fire in the same run
 - [ ] "Stop, test first" actually halts before any commit runs
-- [ ] Step 10's "multiple concerns?" signal fires without `commit` attempting to perform the split itself — step 11 always redirects to the `standalone-commits` skill rather than re-deriving a split
+- [ ] Step 11's "multiple concerns?" signal fires without `commit` attempting to perform the split itself — step 12 always redirects to the `standalone-commits` skill rather than re-deriving a split
 - [ ] Generated commit messages never contain a local-machine-specific path, terminal-session symptom description, or session context — only content a reader of the shared repo history would understand
 - [ ] A request to commit while on `main`/`master` with nothing staged yet points at `starting-work`; step 3's own branch-creation fallback only fires for someone already mid-edit
 
-A `skill-tester` blind-comparison eval is the heavier alternative `require-tests-for-behavior-changes.md` names first, but `commit` is a `model: haiku`, heavily interactive skill built around several `AskUserQuestion` steps — an awkward fit for blind A/B comparison. This checklist is the pragmatic mechanism the rule explicitly permits instead ("a documented Testing & Validation section... concrete scenarios, pass/fail criteria").
+**Step 8 (marketplace CI targeted repair) — verified via `tests/marketplace_ci/test_hooks.py`'s
+`check_staged_parity` coverage (deterministic, not blind A/B — see rationale below), 2026-08-13:**
+- [x] Staging a canonical `plugins/<name>/...` change without staging its generated `.claude` mirror
+      counterpart is correctly flagged as a parity failure, even when the mirror file's *working-tree*
+      content already happens to match (`test_unstaged_repair_does_not_satisfy_staged_parity`)
+- [x] Staging both the canonical source and a byte-identical generated counterpart passes
+      (`test_staged_mirror_matching_content_satisfies_parity`)
+- [x] A staged generated counterpart with stale/wrong content fails
+      (`test_staged_mirror_with_wrong_content_fails_parity`)
+- [x] An unrelated staged change (no registered canonical path touched) does not trigger the check
+      (`test_unrelated_staged_change_does_not_trigger_parity_check`)
+- [x] The same coverage holds for converted agent exports (`.claude/agents/<name>.md` →
+      `.codex/agents/<name>.toml`), not just plain-copy skill mirrors
+- [ ] Live invocation: a real `commit` run against a deliberately drifted canonical file, confirming step 8
+      actually repairs and stages the right subset in this repository (not yet exercised end-to-end;
+      Task 12's rollout PR is the first real opportunity)
+
+A `skill-tester` blind-comparison eval is the heavier alternative `require-tests-for-behavior-changes.md` names first, but `commit` is a `model: haiku`, heavily interactive skill built around several `AskUserQuestion` steps — an awkward fit for blind A/B comparison. This checklist, plus `check_staged_parity`'s own deterministic test suite for step 8's actual repair logic, is the pragmatic mechanism the rule explicitly permits instead ("a documented Testing & Validation section... concrete scenarios, pass/fail criteria").

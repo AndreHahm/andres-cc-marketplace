@@ -21,6 +21,7 @@ from scripts.marketplace_ci.sync import (
     plan_hooks_merge,
     plan_plugin_sync,
 )
+from scripts.marketplace_ci.validators import check_staged_parity
 
 REGISTRY_RELATIVE_PATH = Path(".claude/marketplace-sync.json")
 
@@ -138,6 +139,37 @@ def _handle_convert_codex_exports(args: argparse.Namespace) -> int:
 
 
 def _handle_check_all(args: argparse.Namespace) -> int:
+    repo = Path.cwd()
+
+    if getattr(args, "staged", False):
+        # Fast pre-commit stage: compare the Git index only, never the
+        # working tree — see check_staged_parity's own docstring for why.
+        result = check_staged_parity(repo)
+        for message in result.messages:
+            print(f"[staged-parity] {message}")
+        if result.exit_code == 0:
+            print("check-all --staged: OK")
+        if getattr(args, "json_output", None):
+            payload = {"staged_parity": result.exit_code, "exit_code": result.exit_code}
+            Path(args.json_output).write_text(
+                json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+            )
+        return result.exit_code
+
+    # Full pre-push stage: by the time a push happens, the working tree is
+    # assumed to already match the given committed ref (pre-push runs after
+    # the commit(s) it's about to push, not mid-edit) — so this reuses the
+    # same filesystem-based checks --committed's caller would otherwise get
+    # from a plain `check-all`, without a separate checkout of that ref.
+    committed_ref = getattr(args, "committed", None)
+    if committed_ref:
+        resolved = subprocess.run(
+            ["git", "rev-parse", "--verify", committed_ref], cwd=repo, capture_output=True
+        )
+        if resolved.returncode != 0:
+            print(f"check-all --committed: cannot resolve ref {committed_ref!r}", file=sys.stderr)
+            return 2
+
     mirrors_rc = _handle_check_plugin_mirrors(args)
     exports_rc = _handle_check_codex_exports(args)
     rc = 2 if (mirrors_rc == 2 or exports_rc == 2) else (1 if (mirrors_rc or exports_rc) else 0)
@@ -220,6 +252,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     check_all = subparsers.add_parser("check-all", help="run every deterministic check")
     check_all.add_argument("--json-output", metavar="PATH", help="also write a JSON report")
+    check_all.add_argument(
+        "--staged", action="store_true", help="fast pre-commit check: Git index only"
+    )
+    check_all.add_argument(
+        "--committed", metavar="REF", help="pre-push check: verify the given ref resolves"
+    )
     check_all.set_defaults(handler=_handle_check_all)
 
     repair_all = subparsers.add_parser(
