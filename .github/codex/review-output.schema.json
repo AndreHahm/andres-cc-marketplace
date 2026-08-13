@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/andrehahm/andres-cc-marketplace/.github/codex/review-output.schema.json",
+  "title": "Codex reviewer structured output envelope",
+  "description": "Documents the shape scripts.marketplace_ci.review.validate_review_output actually enforces (the Python function is authoritative; this file is documentation, not a separately-run validator).",
+  "type": "object",
+  "required": ["mode", "reviewed_paths", "reviewers", "coverage_confirmed", "findings"],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["light", "delta", "full"]
+    },
+    "reviewed_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "reviewers": {
+      "type": "object",
+      "required": ["selected", "completed", "skipped", "failed"],
+      "properties": {
+        "selected": { "type": "array", "items": { "type": "string" } },
+        "completed": { "type": "array", "items": { "type": "string" } },
+        "skipped": { "type": "array", "items": { "type": "string" } },
+        "failed": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "coverage_confirmed": {
+      "type": "boolean",
+      "description": "True only when every name in reviewers.selected also appears in completed, skipped, or failed."
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["reviewer", "severity", "rule", "path", "evidence", "remediation"],
+        "properties": {
+          "reviewer": { "type": "string" },
+          "severity": { "type": "string", "enum": ["Critical", "Major", "Minor"] },
+          "rule": {
+            "type": "string",
+            "description": "The reviewer's own finding identifier (e.g. a plugin-rulebook rule ID) or a short category slug. structural_check findings are attributed to the deterministic validator itself, never a synthetic reviewer identity."
+          },
+          "path": { "type": "string" },
+          "line": { "type": ["integer", "null"] },
+          "evidence": { "type": "string" },
+          "remediation": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
