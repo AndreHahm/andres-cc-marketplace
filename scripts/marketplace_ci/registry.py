@@ -55,24 +55,32 @@ class Registry:
     @staticmethod
     def load(path: Path) -> Registry:
         try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
+            text = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise RegistryError(f"{path}: cannot read registry file: {exc}") from exc
+        return Registry.loads(text, source=str(path))
+
+    @staticmethod
+    def loads(text: str, *, source: str = "<registry>") -> Registry:
+        try:
+            raw = json.loads(text)
         except json.JSONDecodeError as exc:
-            raise RegistryError(f"{path}: invalid JSON: {exc}") from exc
+            raise RegistryError(f"{source}: invalid JSON: {exc}") from exc
 
         if not isinstance(raw, dict):
-            raise RegistryError(f"{path}: top-level document must be an object")
+            raise RegistryError(f"{source}: top-level document must be an object")
 
         unknown_top_level = set(raw) - _TOP_LEVEL_KEYS
         if unknown_top_level:
-            raise RegistryError(f"{path}: unknown top-level key(s): {sorted(unknown_top_level)}")
+            raise RegistryError(f"{source}: unknown top-level key(s): {sorted(unknown_top_level)}")
 
         version = raw.get("version")
         if version != SUPPORTED_VERSION:
-            raise RegistryError(f"{path}: unsupported version: {version!r}")
+            raise RegistryError(f"{source}: unsupported version: {version!r}")
 
         raw_mirrors = raw.get("plugin_mirrors", [])
         if not isinstance(raw_mirrors, list):
-            raise RegistryError(f"{path}: plugin_mirrors must be a list")
+            raise RegistryError(f"{source}: plugin_mirrors must be a list")
         plugin_mirrors = tuple(
             _validate_name(name, kind="plugin_mirrors entry") for name in raw_mirrors
         )
@@ -80,16 +88,16 @@ class Registry:
 
         codex_exports = raw.get("codex_exports", {})
         if not isinstance(codex_exports, dict):
-            raise RegistryError(f"{path}: codex_exports must be an object")
+            raise RegistryError(f"{source}: codex_exports must be an object")
         unknown_export_keys = set(codex_exports) - _CODEX_EXPORT_KEYS
         if unknown_export_keys:
             raise RegistryError(
-                f"{path}: unknown codex_exports key(s): {sorted(unknown_export_keys)}"
+                f"{source}: unknown codex_exports key(s): {sorted(unknown_export_keys)}"
             )
 
         raw_skills = codex_exports.get("skills", [])
         if not isinstance(raw_skills, list):
-            raise RegistryError(f"{path}: codex_exports.skills must be a list")
+            raise RegistryError(f"{source}: codex_exports.skills must be a list")
         skills = tuple(
             _validate_name(name, kind="codex_exports.skills entry") for name in raw_skills
         )
@@ -97,7 +105,7 @@ class Registry:
 
         raw_agents = codex_exports.get("agents", [])
         if not isinstance(raw_agents, list):
-            raise RegistryError(f"{path}: codex_exports.agents must be a list")
+            raise RegistryError(f"{source}: codex_exports.agents must be a list")
         agents = tuple(
             _validate_name(name, kind="codex_exports.agents entry") for name in raw_agents
         )

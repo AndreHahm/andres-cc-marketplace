@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "repository_validators": [
+    {
+      "id": "plugin-mirror-parity",
+      "kind": "reusable",
+      "module": "scripts.marketplace_ci.sync",
+      "description": "Compares registered plugin surfaces (skills/agents/commands/hooks/rules) against .claude mirror content."
+    },
+    {
+      "id": "codex-export-parity",
+      "kind": "reusable",
+      "module": "scripts.marketplace_ci.conversion",
+      "description": "Compares registered Codex skill/agent exports against .agents/.codex content, and blocks legacy source-command-* survivors."
+    }
+  ],
+  "plugin_validators": [
+    {
+      "id": "plugin-devkit.hooks-schema-check",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/hooks/hooks-schema-check.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.r25-overhead-disclosure-check",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/hooks/r25-overhead-disclosure-check.py",
+      "interpreter": "python",
+      "platforms": ["linux", "macos", "windows"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.r26-expensive-action-check",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/hooks/r26-expensive-action-check.py",
+      "interpreter": "python",
+      "platforms": ["linux", "macos", "windows"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.rulebook-check",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/hooks/rulebook-check.py",
+      "interpreter": "python",
+      "platforms": ["linux", "macos", "windows"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.security-precommit-check",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/hooks/security-precommit-check.py",
+      "interpreter": "python",
+      "platforms": ["linux", "macos", "windows"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.validate-agent",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/agent-development/scripts/validate-agent.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.validate-command",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/command-development/scripts/validate-command.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.validate-frontmatter",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/command-development/scripts/validate-frontmatter.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.hook-development-example-validate-bash",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/hook-development/examples/validate-bash.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "out-of-scope",
+      "note": "Teaching example bundled with hook-development's reference docs, not a standalone check."
+    },
+    {
+      "id": "plugin-devkit.hook-development-example-validate-write",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/hook-development/examples/validate-write.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "out-of-scope",
+      "note": "Teaching example bundled with hook-development's reference docs, not a standalone check."
+    },
+    {
+      "id": "plugin-devkit.validate-hook-schema",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/hook-development/scripts/validate-hook-schema.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.post-edit-sync-check",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/marketplace-development/hooks/post_edit_sync_check.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.post-edit-validate",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/marketplace-development/hooks/post_edit_validate.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.check-doc-skill-lists",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/marketplace-development/scripts/check_doc_skill_lists.py",
+      "interpreter": "python",
+      "platforms": ["linux", "macos", "windows"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.check-marketplace",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/marketplace-development/scripts/check_marketplace.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.check-links",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/plugin-development/scripts/check_links.py",
+      "interpreter": "python",
+      "platforms": ["linux", "macos", "windows"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.validate-plugin",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/plugin-development/scripts/validate_plugin.py",
+      "interpreter": "python",
+      "platforms": ["linux", "macos", "windows"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.mirror-parity-check",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/plugin-rulebook/scripts/mirror-parity-check.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "black-box",
+      "note": "Plugin-devkit's own mirror/export parity check for its .claude<->plugins/plugin-devkit mirror; distinct from this repo's own plugin-mirror-parity, which governs every registered plugin's mirror instead."
+    },
+    {
+      "id": "plugin-devkit.validate-settings",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/plugin-settings/scripts/validate-settings.sh",
+      "interpreter": "bash",
+      "platforms": ["linux", "macos"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.quick-validate",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/skill-development/scripts/quick_validate.py",
+      "interpreter": "python",
+      "platforms": ["linux", "macos", "windows"],
+      "kind": "black-box"
+    },
+    {
+      "id": "plugin-devkit.validate-sources",
+      "plugin": "plugin-devkit",
+      "path": "plugins/plugin-devkit/skills/upstream-sources-registry/scripts/validate_sources.py",
+      "interpreter": "python",
+      "platforms": ["linux", "macos", "windows"],
+      "kind": "black-box"
+    }
+  ]
+}
