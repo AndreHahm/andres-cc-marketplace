@@ -1,7 +1,7 @@
 {
   "skill_name": "plugin-lifecycle-downstream",
   "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md",
-  "description": "Targeted regression check for the fix-batch approval precondition (retro S02, closing Finding 9; reworded at the M12 cutover for the new 12-phase numbering -- eval-1's prior grading.json result was recorded against the old Phase 2/3 wording and does not carry over to this reworded prompt until re-run)",
+  "description": "Targeted regression check for the fix-batch approval precondition (retro S02, closing Finding 9; reworded at the M12 cutover for the new 12-phase numbering). eval-1 was re-run 2026-08-13 against the live M12-cutover production skill -- see grading.json's notes field for what changed since the pre-cutover result.",
   "evals": [
     {
       "id": "eval-1",

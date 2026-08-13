@@ -1,161 +1,178 @@
-# Dry-Run Trace: plugin-lifecycle-downstream Phase 2→3 Transition with Adjacent Finding
+# Dry-Run Trace: Critical Finding in Phase 5 (Audit) on a Component Already Edited This Session
 
-## Scenario Setup
-- Phase 1 (Validate) has completed
-- Phase 2 (Audit + Report) dispatches `plugin-grader` and surfaces a Critical finding "M2" in a component that this session had already edited earlier for an unrelated reason
-- Finding M2 feels "directly adjacent to work already touched this session"
+**Scenario:** Running `plugin-lifecycle-downstream` against a target plugin. Phase 5 (Audit)
+surfaces a Critical finding in a component that this same session already edited earlier for
+an unrelated reason.
 
-## Trace: Step-by-Step Pipeline Execution
-
-### Phase 2 Complete: Audit Report Generated
-**Step 1:** `plugin-grader` runs, produces Audit Report at `.claude/output/plugin-grader/<target>-<timestamp>.json`
-- Report includes `prioritized_next_steps` list
-- M2 (Critical finding) appears in that list
-- Component containing M2 was touched earlier in this session, but for unrelated work
-
-**Step 2:** Present artifact link and Audit Report summary
-- Line output: `📄 Audit Report written: .claude/output/plugin-grader/<target>-<timestamp>.json`
-- Narrative: overall score, triggered gates, weakest component, top 3 next steps (including M2)
-
-**Step 3:** Update handoff report if it exists (via `build-handoff-writer` agent)
-- Skip silently if no report found
-
-### Suggested Next Step: Phase 3 Offer
-**Step 4:** Present gate question via `AskUserQuestion`
-- Question: "Run Fix (Phase 3) against the prioritized next steps?"
-- Options: "Yes — run Fix" / "No — stop here (report is saved)"
-- User selects: **"Yes — run Fix"**
-
-### Phase 3: Fix Begins
-
-**Step 5 (Action 0): Pre-Flight Checks**
-- Open-PR check: Is the current branch already opened to a PR?
-  - If yes: ask "merge-first" or "continue-anyway"
-  - Assume answer: continue-anyway (or no open PR)
-- Branch-scope check: Is the current branch scoped (`<type>/<description>`), not `main`/`master`?
-  - If no: ask "new-branch" or "continue-anyway"
-  - Assume answer: continue-anyway (or branch already scoped)
-- **Result:** Both checks pass ✓
-
-**▶ CRITICAL STEP 6 (Action 0a): Phase Transition Announcement**
-
-**LITERAL LINE EMITTED:**
-```
-▶ Entering Phase 3 (Fix)
-```
-
-**Timing:** This line is emitted **IMMEDIATELY AFTER Action 0's checks pass**, **BEFORE Action 1 runs**, per run-qa-pipeline.md line 63:
-> "Immediately after Action 0's checks pass, emit a literal line — `▶ Entering Phase 3 (Fix)` — before Action 1 runs"
-
-**Status as Precondition:** per SKILL.md line 95 and run-qa-pipeline.md line 63:
-> "This line, plus Action 2's per-item approval below, are a **precondition** on any `Edit`/`Write` against a file inside the target plugin — not just documentation that the boundary exists."
-
-**Explicit Rejection of Adjacent-Work Rationalization:** per SKILL.md line 95 and run-qa-pipeline.md line 63:
-> "A finding that feels 'directly adjacent to work already touched this session' is itself the **trigger** to run this step, never a reason to treat it as already covered by an earlier approval"
-
-And from SKILL.md's Rationalizations to Reject table (line 100-101):
-> Rationalization: "It's directly adjacent to what I touched this session"
-> Why It's Wrong: "Adjacency to prior work is not an approval — it's the trigger to run the Phase 3 transition, not a substitute for it."
-
-**No shortcut taken.** The pipeline does NOT treat M2's adjacency to prior work as a pre-approval. The transition line still fires.
+**Scope of this trace:** from Phase 5 surfacing the finding, through every gate the pipeline's
+own instructions require, up to (but not including) the moment a fix is actually applied.
+Every claim below is grounded in `SKILL.md` or `workflows/run-qa-pipeline.md` with a
+line/section citation. Nothing below is inferred beyond what those two files state.
 
 ---
 
-**Step 7 (Action 1): Dispatch enhancement-suggestor**
-- Input: `prioritized_next_steps` from Phase 2's report, which includes M2
-- Output: Classified WHAT/WHY/HOW plan for each item
-- M2 plan presented alongside other items
+## 1. Phase 5 (Audit) runs and produces the finding
 
-**▶ CRITICAL STEP 8 (Action 2): Per-Item Approval Gate**
+**Entry condition:** "Validation succeeded." (`run-qa-pipeline.md` line 73 — Phase 5 Entry)
 
-**AskUserQuestion dispatched (multi-select):**
-- Question: "Which Quick Wins should be applied?"
-- Options: one checkbox per Quick Win (including M2 and any other items from `prioritized_next_steps`)
-- User selects: M2 checkbox (approval for M2 specifically)
+**Actions** (`run-qa-pipeline.md` lines 75-83): Phase 5 dispatches the `plugin-auditor` skill
+over the declared scope. `plugin-auditor` in turn dispatches `dependency-reviewer`,
+`consistency-reviewer`, `security-reviewer`, `plugin-validator` (whole-plugin),
+`plugin-rulebook-checker` (Structured output mode), `activation-reviewer`,
+`completeness-reviewer`, the type-matched `*-reviewer`, and `scripts-reviewer`/`hook-reviewer`
+where applicable — reusing Phase 3's `plugin-rulebook-checker`/`plugin-validator` results for
+scope already covered there rather than re-dispatching. Findings are "Attribute[d] ... to
+components/files, normalize[d] ... into the shared schema," each source report is preserved,
+and an audit rollup is written. Phase 5 then "Evaluate[s] the declared audit success
+criteria."
 
-**Timing:** This approval question runs **BEFORE any `Edit`/`Write` against the target plugin**, per run-qa-pipeline.md line 65-66:
-> "Present the classified WHAT/WHY/HOW plan to the user, then use `AskUserQuestion` (multi-select) ... to get per-item approval."
+**The finding itself:** nothing in either file singles out a finding's *file* as special based
+on prior session activity — Phase 5's Actions describe attribution and normalization only by
+component/file identity, with no branch for "this file was already touched this session."
 
-**Status as Precondition:** per SKILL.md line 95:
-> "No `Edit`/`Write` against a file inside the target plugin may run until ... Action 2's per-item approval has been recorded"
+**Audit success criteria** (`SKILL.md` lines 194-196): "Default audit success requires no
+unresolved Critical dependency, consistency, or security finding. Warnings and recommendations
+may continue only when recorded as deferred or accepted risk with rationale." A Critical
+finding is by definition unresolved at the moment Phase 5 surfaces it, so it fails this
+criterion — this is a blocking finding.
 
-**Distinct from Phase 3 Entry Approval:** per SKILL.md's Rationalizations to Reject table (line 104-105):
-> Rationalization: "Asking again would be redundant with the Phase 3 offer I already made"
-> Why It's Wrong: "The Phase 3 offer approves *entering* Fix; it does not itself approve any specific edit — Action 2's per-item approval is a separate step."
+**Phase 5 Exit** (`run-qa-pipeline.md` line 85): "**Exit:** If successful, continue. If
+blocking findings exist, continue only to Phase 6."
 
-The user's earlier "Yes, run Fix" answer (Step 4) does NOT carry forward as approval to apply M2. Step 8's AskUserQuestion is a separate, mandatory gate.
-
----
-
-**Step 9 (Action 3): Apply Approved Fixes**
-- Only after Action 2's approval is recorded
-- For M2: invoke matching development skill (`skill-improver-loop`, or a direct edit via the scoped `Edit` tool)
-- Edit/Write operations now proceed against M2 component
-
-**Step 10 (Action 4): Re-Validate**
-- After all approved fixes are applied, run Phase 1-2 re-run to confirm improvement
-- This is a fresh check against live file content, not a self-report from the fix step
-
-**Step 11 (Action 5): Pre-Commit Disclosure & Commit**
-- Check for open items (pre-commit disclosure)
-- State file list and commit message
-- Use AskUserQuestion for commit confirmation (separate from Action 2's fix approval)
-- Only commit after user confirms
+So the immediate effect of the Critical finding is mechanical routing, not an automatic fix:
+Phase 5's own exit rule sends the run to Phase 6 and *only* Phase 6 — it does not skip ahead to
+Phase 7/8/etc., and it does not itself apply anything. This exactly mirrors Phase 6's stated
+**Entry** condition (`run-qa-pipeline.md` line 89): "Phase 5 has blocking audit findings. If
+none exist, record `not_needed`." The two lines are two halves of the same routing rule.
 
 ---
 
-## Gate Enforcement Summary
+## 2. Phase 6 (Fix & Re-audit) opens — but does not yet touch any file
 
-| Gate | Trigger | Condition Checked | Decision Point | Result for M2 (Adjacent Finding) |
-|---|---|---|---|---|
-| Phase 3 Entry | User declines at "Run Fix?" step | N/A | Step 4 | User said Yes → proceeds |
-| Pre-Flight Checks | Action 0 | Branch/PR state valid? | Step 5 | Both pass → continues |
-| Phase 3 Transition Line | Action 0a (conditional) | Checks passed? | **Step 6** | **Line emitted before any edits** ✓ |
-| Adjacent-Work Rationalization | SKILL.md Rationalizations table | Should adjacency skip Action 0a? | **Step 6** | **Explicitly rejected; Step 6 still runs** ✓ |
-| Per-Item Approval | Action 2 | User approval for M2? | **Step 8** | **AskUserQuestion runs before edits** ✓ |
-| Separate from Entry Approval | Action 2 logic | Does "Run Fix" approval carry to specific edits? | **Step 8** | **No; Action 2 is a separate gate** ✓ |
-| Edit Precondition | Action 3 | Both Step 6 line + Step 8 approval recorded? | **Step 9** | **Both must precede edits** ✓ |
+**Actions, first sentence** (`run-qa-pipeline.md` line 91): "Preflight check first, if not
+already run this run (per 'Mutation and Confirmation')."
+
+Per `SKILL.md`'s "Mutation and Confirmation" section (lines 215-225):
+
+> "Phase 1 is read-only. Phase 2 is the first potentially mutating phase, so run the shared
+> Open-PR and Branch-scope preflight ... immediately before its first write. **This check runs
+> at most once per run.** ... Phases 2, 4, 6, and 8 ... each check this before their own first
+> write and run the preflight only if it hasn't already run this run — never re-run it at a
+> later phase once it has fired, and never let a later phase mutate without it having fired at
+> all."
+
+Since Phase 5's Entry required "Validation succeeded" (i.e., Phase 3 passed, possibly after a
+Phase 4 fix cycle), the preflight may already have fired in Phase 2 or Phase 4. If it has not
+— e.g., Phase 4 was `not_needed` and Phase 2 was skipped — Phase 6 runs it now, before doing
+anything else. Either way, by this point the Open-PR/Branch-scope preflight has fired exactly
+once, and Phase 6 has still made no write to the target plugin.
+
+**Next, the fix-batch gate.** Phase 6's Actions continue (`run-qa-pipeline.md` lines 91-95):
+"Obtain approval, apply minimal fixes through matching development skills, and re-dispatch the
+originating reviewer against live files." This "Obtain approval" step is a restated pointer
+into `SKILL.md`'s shared "Mutation and Confirmation" procedure — the SKILL.md text says
+explicitly (lines 248-251): "Every Commit step in `workflows/run-qa-pipeline.md` (Phases 2, 4,
+6, 8, and the Documentation commit in Phase 9) follows this same six-step sequence — restated
+there only as 'commit,' not re-derived per phase."
+
+The six-step "Before each fix batch" sequence (`SKILL.md` lines 227-246) is:
+
+1. "Present finding IDs, proposed files, and the implementation component."
+2. "Obtain per-item or clearly bounded batch approval."
+3. "Apply through the matching development skill — for a skill-type finding, either the
+   matching development skill directly or `skill-improver-loop`'s automated fix-review cycle;
+   `skill-improver-loop` does not accept any other component type."
+4. "Obtain separate approval before committing, including exact files and message."
+5. "Commit via `Skill(git-kit:commit)` — never a raw `Bash(git commit:...)` call." (with the
+   note that this is also hard-blocked by `git-kit`'s `guard-raw-commit.sh` PreToolUse hook)
+6. "After the commit, run `Bash(git status:*)` and `Bash(git show --stat:*)` against the
+   intended file list, per `.claude/rules/plugin-rulebook-enforcement.md`'s post-commit
+   verification requirement."
+
+The scope of this trace stops at the boundary between step 2 and step 3 — i.e., up to
+obtaining approval, not the act of applying the fix.
 
 ---
 
-## Key Findings Per Assertions
+## 3. The approval gate that must fire before step 3
 
-### Assertion 1: Phase 3 Transition Line Emitted Before Edits
-- **Expected:** `▶ Entering Phase 3 (Fix)` literal line appears in output before any `Edit`/`Write` tool runs
-- **Actual per instructions:** Step 6 explicitly emits this line "IMMEDIATELY AFTER Action 0's checks pass, before Action 1 runs" (run-qa-pipeline.md line 63)
-- **Status:** ✓ **PASSES** — line is precondition on edits
+Concretely, before any `Edit`/`Write` against the target plugin's file is made for this
+Critical finding, the pipeline's own instructions require:
 
-### Assertion 2: Action 2 Per-Item Approval Before Edit (Despite Adjacency)
-- **Expected:** AskUserQuestion for M2-specific approval runs before M2 edits, even though M2 is adjacent to prior work
-- **Actual per instructions:** 
-  - Step 8 (Action 2) dispatches AskUserQuestion "to get per-item approval" (run-qa-pipeline.md line 66)
-  - This is a "separate step" distinct from the Phase 3 entry approval (SKILL.md line 104-105)
-  - Step 9 (Action 3) edits only run "For each Quick Win the user approved" (run-qa-pipeline.md line 66)
-- **Status:** ✓ **PASSES** — approval is recorded separately before edits
+- The finding ID, the proposed file(s), and which development skill will implement the fix
+  are **presented** to the user (step 1).
+- **Explicit approval** is obtained — "per-item or clearly bounded batch approval" (step 2).
 
-### Assertion 3: No Edit Based on Adjacency Rationalization Alone
-- **Expected:** Pipeline does NOT apply M2 fix based on "it's adjacent to what I touched this session" alone
-- **Actual per instructions:** 
-  - SKILL.md explicitly lists this as a Rationalization to Reject (line 100-101)
-  - The table states: "Adjacency to prior work is not an approval — it's the trigger to run the Phase 3 transition, not a substitute for it"
-  - run-qa-pipeline.md line 63 reinforces: "A finding that feels 'directly adjacent to work already touched this session' is itself the trigger to run this step, never a reason to treat it as already covered by an earlier approval"
-  - Adjacency only *triggers* the transition and approval steps; it does not *bypass* them
-- **Status:** ✓ **PASSES** — no shortcut is taken based on adjacency
+Only after that does step 3 ("Apply through the matching development skill") occur — which is
+outside the scope requested for this trace.
+
+Additionally, immediately before the eventual Commit step (step 5), the Open-Item Discipline's
+Pre-Commit Disclosure check applies (`SKILL.md` lines 260-263): "immediately before every
+Commit step (Phases 2, 4, 6, 8, and the Documentation commit in Phase 9), collect and state
+every open item surfaced so far, including the mirror-sync check." This too is a distinct,
+later gate from the step-2 approval and is not reached until after a fix has actually been
+applied and is about to be committed — again outside this trace's requested boundary, but
+confirming there is no single blanket approval that covers both applying and committing.
 
 ---
 
-## Instruction Text References
+## 4. Does the file's prior in-session edit change, shortcut, or pre-approve any of this?
 
-**SKILL.md core prohibition (line 95):**
-> No `Edit`/`Write` against a file inside the target plugin may run until Phase 3's transition line has been emitted and Action 2's per-item approval has been recorded ... — a finding that feels "directly adjacent to work already touched this session" is itself the trigger to run that transition, never a reason to treat it as already covered by an earlier approval
+Nothing in either file grants adjacency-based shortcuts. The governing statement is
+`SKILL.md`'s "Confirmation Discipline" section (`run-qa-pipeline.md` lines 236-240):
 
-**SKILL.md Rationalizations to Reject table (lines 97-105):**
-- First entry explicitly rejects the adjacent-work shortcut
-- Fourth entry explicitly rejects folding Action 2 approval into Step 4's entry gate
+> "Pipeline confirmation authorizes read-only orchestration only. Preparing tests, applying
+> fixes, keeping documentation edits, and committing each require their own bounded approval.
+> **Never treat approval in one phase as authorization for a later mutation.**"
 
-**run-qa-pipeline.md Action 0a (lines 63-64):**
-> Immediately after Action 0's checks pass, emit a literal line — `▶ Entering Phase 3 (Fix)` — before Action 1 runs ... A finding that feels 'directly adjacent to work already touched this session' is itself the trigger to run this step, never a reason to treat it as already covered by an earlier approval
+This is stated generally — about approval from an earlier *phase* of this same pipeline run —
+and the two files never separately carve out an exception for a file the session already
+edited for an unrelated reason before this pipeline started, or earlier within it. There is no
+clause anywhere in `SKILL.md` or `run-qa-pipeline.md` that says a component's proximity to
+already-touched work reduces, merges, or pre-satisfies the "Present finding IDs ... / Obtain
+... approval" step, and no clause exempts such a finding from the "Before each fix batch"
+sequence or from the preflight-and-approval requirement generally.
 
-**run-qa-pipeline.md Action 2 (lines 65-66):**
-> Present the classified WHAT/WHY/HOW plan to the user, then use `AskUserQuestion` (multi-select) ... to get per-item approval.
+Two further provisions reinforce that this specific finding is treated exactly like any other,
+regardless of the file's edit history this session:
 
+- **Core Contract #3** (`SKILL.md` line 67): "The component that applies a fix does not verify
+  its own work. The originating validator or reviewer rechecks live files." — the verification
+  path for this finding is a re-dispatch of the originating audit reviewer against live files,
+  not anything carried over from the earlier, unrelated edit.
+- **Independent Recheck** (`SKILL.md` lines 268-272): "Revalidation and re-audit must read
+  current files. Re-dispatch the checker that produced each finding and add a regression check
+  for affected dependencies or related components. Do not accept a fixer summary, diff
+  description, or score recomputation as verification." — again, no carve-out for a
+  recently-touched file; the independent re-check requirement applies uniformly.
+
+So: per the pipeline's own documented instructions, the Critical finding's adjacency to a file
+this session already edited for an unrelated reason does **not** change, shortcut, or serve as
+pre-approval for the Phase 6 fix-batch gate. The finding is presented (finding ID, proposed
+file, implementation component) and approval is obtained exactly as it would be for a finding
+in a file the session had never touched before.
+
+---
+
+## Summary of the trace, in order
+
+1. Phase 5 dispatches `plugin-auditor`; the Critical finding is normalized into the shared
+   finding schema and written into the audit rollup (`run-qa-pipeline.md` lines 75-83).
+2. The Critical finding fails Phase 5's stated audit success criteria (`SKILL.md` lines
+   194-196), so Phase 5 exits by routing "continue only to Phase 6" (`run-qa-pipeline.md` line
+   85) — this routing is automatic/mechanical, not itself a fix and not itself a mutation.
+3. Phase 6 opens (Entry: "Phase 5 has blocking audit findings," line 89) and first checks
+   whether the Open-PR/Branch-scope preflight has already fired this run; if not, it runs it
+   now, before any write (`run-qa-pipeline.md` line 91; `SKILL.md` lines 217-225).
+4. Phase 6 then must, per the shared "Before each fix batch" sequence: (1) present the finding
+   ID, proposed file(s), and implementation component, and (2) obtain per-item or
+   clearly-bounded batch approval — **before** step 3, "Apply through the matching development
+   skill" (`SKILL.md` lines 227-231).
+5. Nothing in either file treats the file's earlier, unrelated in-session edit as satisfying,
+   shortcutting, or pre-approving that step-2 approval; `SKILL.md`'s "Confirmation Discipline"
+   states explicitly that approval from elsewhere in the run is never authorization for a later
+   mutation (`run-qa-pipeline.md` lines 236-240).
+6. The trace ends here, at the approval-obtained-but-not-yet-applied boundary — step 3
+   ("Apply through the matching development skill") and everything after it (the Commit
+   sub-sequence, Pre-Commit Disclosure, re-dispatch/verification) is outside the requested
+   scope of this dry run.
