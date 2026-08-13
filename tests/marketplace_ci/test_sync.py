@@ -1,0 +1,122 @@
+from pathlib import Path
+
+import pytest
+
+from scripts.marketplace_ci.sync import (
+    SyncError,
+    apply_hooks_merge_plan,
+    apply_sync_plan,
+    plan_hooks_merge,
+    plan_plugin_sync,
+)
+
+FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURE_REPO_HOOKS = FIXTURES / "repo-hooks" / "hooks.json"
+FIXTURE_REPO_RULES = FIXTURES / "repo-rules"
+
+
+def test_registered_plugin_syncs_only_executable_surface(repo, registry_for):
+    plan = plan_plugin_sync(repo, registry_for("sample-kit"), previous=None, bootstrap=True)
+    destinations = {action.destination.relative_to(repo).as_posix() for action in plan.actions}
+    assert ".claude/skills/demo/SKILL.md" in destinations
+    assert ".claude/README.md" not in destinations
+
+
+def test_removed_plugin_prunes_destinations_from_previous_registry(repo, registry_for):
+    from scripts.marketplace_ci.registry import Registry
+
+    plan = plan_plugin_sync(
+        repo, Registry.empty(), previous=registry_for("sample-kit"), bootstrap=False
+    )
+    assert any(action.operation == "delete" for action in plan.actions)
+
+
+def test_two_plugins_hooks_json_concatenate_without_collision(repo, registry_for):
+    plan = plan_hooks_merge(
+        repo, registry_for("sample-kit", "sample-kit-two"), repo_hooks_path=FIXTURE_REPO_HOOKS
+    )
+    merged = plan.merged_document["hooks"]["PreToolUse"]
+    matchers = [entry["matcher"] for entry in merged]
+    assert matchers == ["Bash", "^(Bash|PowerShell)$"]
+    assert not any(a.operation == "collision" for a in plan.actions)
+
+
+def test_hooks_scripts_still_collide_normally(repo, registry_for):
+    plan = plan_plugin_sync(
+        repo, registry_for("sample-kit-two", "sample-kit-two-clone"), previous=None, bootstrap=True
+    )
+    assert any(
+        a.operation == "collision" and a.destination.name == "guard.sh" for a in plan.actions
+    )
+
+
+def test_repo_owned_rule_maps_1to1_into_claude_rules(repo, registry_for):
+    plan = plan_plugin_sync(
+        repo,
+        registry_for("sample-kit"),
+        previous=None,
+        bootstrap=True,
+        repo_rules_path=FIXTURE_REPO_RULES,
+    )
+    destinations = {action.destination.relative_to(repo).as_posix() for action in plan.actions}
+    assert ".claude/rules/example-rule.md" in destinations
+    assert not any(a.operation == "collision" for a in plan.actions)
+
+
+def test_apply_sync_plan_writes_created_files(repo, registry_for):
+    plan = plan_plugin_sync(repo, registry_for("sample-kit"), previous=None, bootstrap=True)
+    result = apply_sync_plan(plan)
+    assert len(result.applied) == len(plan.actions)
+    dest = repo / ".claude" / "skills" / "demo" / "SKILL.md"
+    assert dest.exists()
+    assert (
+        dest.read_bytes()
+        == (repo / "plugins" / "sample-kit" / "skills" / "demo" / "SKILL.md").read_bytes()
+    )
+
+
+def test_apply_sync_plan_rejects_collisions(repo, registry_for):
+    plan = plan_plugin_sync(
+        repo, registry_for("sample-kit-two", "sample-kit-two-clone"), previous=None, bootstrap=True
+    )
+    with pytest.raises(SyncError, match="collision"):
+        apply_sync_plan(plan)
+
+
+def test_apply_sync_plan_deletes_pruned_destination(repo, registry_for):
+    from scripts.marketplace_ci.registry import Registry
+
+    create_plan = plan_plugin_sync(repo, registry_for("sample-kit"), previous=None, bootstrap=True)
+    apply_sync_plan(create_plan)
+    dest = repo / ".claude" / "skills" / "demo" / "SKILL.md"
+    assert dest.exists()
+
+    delete_plan = plan_plugin_sync(
+        repo, Registry.empty(), previous=registry_for("sample-kit"), bootstrap=False
+    )
+    apply_sync_plan(delete_plan)
+    assert not dest.exists()
+
+
+def test_apply_hooks_merge_plan_writes_merged_document(repo, registry_for):
+    plan = plan_hooks_merge(
+        repo, registry_for("sample-kit", "sample-kit-two"), repo_hooks_path=FIXTURE_REPO_HOOKS
+    )
+    result = apply_hooks_merge_plan(plan)
+    assert len(result.applied) == 1
+    dest = repo / ".claude" / "hooks" / "hooks.json"
+    assert dest.exists()
+    import json
+
+    on_disk = json.loads(dest.read_text(encoding="utf-8"))
+    assert [e["matcher"] for e in on_disk["hooks"]["PreToolUse"]] == ["Bash", "^(Bash|PowerShell)$"]
+
+
+def test_bootstrap_flags_orphan_destination_with_no_source(repo, registry_for):
+    orphan = repo / ".claude" / "skills" / "ghost" / "SKILL.md"
+    orphan.parent.mkdir(parents=True)
+    orphan.write_text("no canonical source", encoding="utf-8")
+
+    plan = plan_plugin_sync(repo, registry_for("sample-kit"), previous=None, bootstrap=True)
+    warnings = [a for a in plan.actions if a.operation == "warn"]
+    assert any(a.destination == orphan.resolve() for a in warnings)

@@ -44,7 +44,9 @@ def test_staged_paths_reports_rename(git_repo):
     git_repo.stage("old-name.txt", content)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=git_repo.root, check=True)
     (git_repo.root / "old-name.txt").rename(git_repo.root / "new-name.txt")
-    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(
+        ["git", "add", "-A", "--", "old-name.txt", "new-name.txt"], cwd=git_repo.root, check=True
+    )
     state = GitState(repo=git_repo.root)
     changes = state.staged_paths()
     assert len(changes) == 1
