@@ -171,6 +171,9 @@ Location: [path]
 **Structured Output Mode:** when invoked in Structured output mode (see Invocation Modes), skip the narrative report above entirely and return YAML only — no prose outside the block. Load `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` first (`Glob("**/plugin-rulebook/SKILL.md")` to locate it; if not found, fall back to the hardcoded enum below):
 
 ```yaml
+version: "1.0"                   # evidence-schema.md version this document's shape conforms to
+source: plugin-validator
+scope: full                      # full | "batch 2/3: skills [skill-a, skill-b, skill-c]" per Batch mode's own coverage statement
 status: PASS                     # PASS | FAIL
 counts: {critical: 0, warning: 2}
 component_summary: {commands: {found: 3, valid: 3}, agents: {found: 14, valid: 14}, skills: {found: 25, valid: 24}, hooks: present, mcp_servers: 0}
@@ -179,7 +182,9 @@ findings:
 recommendations: [highest-priority recommendation, second recommendation]
 ```
 
-`findings[].category` uses `manifest | directory-structure | commands | agents | skills | hooks | mcp | file-organization | security` (the 10 numbered Validation Process checks). `findings[].severity` uses `critical | warning` (this agent's own two-tier scheme — no separate minor tier). `findings[].action` uses the canonical enum (`move_to_references | delete | replace_line | add_field | fix_frontmatter`); omit the field only if no enum value fits. Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`status`.
+`findings[].category` uses `manifest | directory-structure | commands | agents | skills | hooks | mcp | file-organization | security` (the 10 numbered Validation Process checks). `findings[].severity` uses `critical | warning` (this agent's own two-tier scheme — no separate minor tier; a consumer mapping into `plugin-rulebook/references/evidence-schema.md`'s canonical `severity` maps `critical→critical`, `warning→major`). `findings[].action` uses the canonical enum (`move_to_references | delete | replace_line | add_field | fix_frontmatter`); omit the field only if no enum value fits. Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`status`.
+
+**Shared-schema join (for a caller assembling `evidence-schema.md`'s Finding shape from this output):** each `findings[].id` here is local to this document, not yet source-qualified, and the Finding shape's `source`/`scope` fields aren't repeated per finding here — copy them down from this document's own top-level `source`/`scope`. Concretely: `id: <source>:<findings[].id>` (e.g. `plugin-validator:1`), `source: <this document's source>`, `scope: <findings[].location>`, `status: open` — this document has no cross-phase lifecycle concept of its own, so every finding it reports is freshly open as of this dispatch.
 
 **Edge Cases:**
 - Minimal plugin (just plugin.json): Valid if manifest correct
