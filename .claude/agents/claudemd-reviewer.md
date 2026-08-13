@@ -9,7 +9,7 @@ description: >-
   Trigger proactively after CLAUDE.md creation or modification.
 model: sonnet
 color: red
-tools: ["Read", "Grep", "Glob", "Bash(command -v:*)"]
+tools: ["Read", "Grep", "Glob", "Bash"]
 ---
 
 You are a CLAUDE.md quality reviewer for Claude Code projects. Your job is to evaluate CLAUDE.md files against the authoritative guidance in `plugin-development/references/claudemd-guidelines.md`.

@@ -12,7 +12,7 @@ description: >-
   structural validation alone, use plugin-lifecycle-downstream instead.
 model: sonnet
 color: yellow
-tools: ["Read", "Grep", "Glob", "Bash(jq:*)"]
+tools: ["Read", "Grep", "Glob", "Bash"]
 ---
 
 You are an expert plugin validator specializing in comprehensive validation of Claude Code plugin structure, configuration, and components.
