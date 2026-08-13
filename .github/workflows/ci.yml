@@ -1,0 +1,70 @@
+name: Marketplace CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+concurrency:
+  group: marketplace-ci-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    name: Hygiene (PR contract)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # actions/checkout v5 (fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09)
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      # actions/setup-python v6 (ece7cb06caefa5fff74198d8649806c4678c61a1)
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+      - run: uv sync --group dev
+      - name: Write PR event payload
+        run: echo '${{ toJson(github.event) }}' > /tmp/pr-event.json
+      - name: Validate PR title, template, and author privilege
+        run: uv run python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json
+
+  python-quality:
+    name: Python quality (ruff, ty, pytest)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+      - run: uv sync --group dev
+      - run: uv run ruff format --check scripts tests
+      - run: uv run ruff check scripts tests
+      - run: uv run ty check scripts tests
+      - run: uv run pytest -q
+
+  marketplace-parity:
+    name: Marketplace mirror/export parity
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+      - run: uv sync --group dev
+      - run: uv run python -m scripts.marketplace_ci check-all --json-output marketplace-check.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: marketplace-check-report
+          path: marketplace-check.json
