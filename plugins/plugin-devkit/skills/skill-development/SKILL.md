@@ -40,6 +40,14 @@ Identify the entry path and jump in:
 - **Quick standalone repair (issue already diagnosed)** → run `scripts/repair_skill.py` directly; skip the full skill workflow
 - **Standalone empirical benchmarking of an already-built skill** (with_skill vs. baseline pass rates, timing/token metrics, iteration-over-iteration comparison) → use `skill-tester`. This skill's own Phase 3 is scoped to validating a skill *during its own creation/audit workflow*, not a dedicated benchmark pipeline — don't run both on the same skill in the same pass.
 
+## Finding-ID Fix Mode
+
+When invoked with a bounded finding-ID list (e.g. from `plugin-lifecycle-downstream`'s Phase
+4/6/8), follow `plugin-rulebook/references/finding-id-fix-contract.md` instead of this
+skill's normal open-ended workflow: touch only the named findings' files, report per-ID
+`applied`/`deferred`/`failed` status, and never mark a fix verified — that stays the
+originating checker's job.
+
 ## Mindset
 
 Skills are instructions **for Claude**, not documentation for people. Always ask: "Will this help Claude execute the task?" — not "Is this readable?" Every line must earn its place by pushing Claude out of default patterns, providing project-specific context, or naming a non-obvious constraint.

@@ -48,7 +48,7 @@ Use Glob `**/SKILL.md` to find all skills in the project.
 4. **Fix** — Address critical and major issues. For structural changes (moving, reorganizing content), follow `${CLAUDE_SKILL_DIR}/references/structural-changes.md`
 5. **Validate** — Run post-fix validation phases before the next review cycle. See `${CLAUDE_SKILL_DIR}/references/post-fix-validation.md`. For plugin-rule compliance (naming, language, tool-scoping, formatting), invoke `plugin-rulebook` via the `Skill` tool and treat any violations as Major issues.
 6. **Evaluate** — Check each minor issue individually before fixing. See `${CLAUDE_SKILL_DIR}/references/issue-categorization.md` for evaluation criteria
-7. **Repeat** — Continue until `counts.critical == 0` and `counts.major == 0`. Abort after 3 cycles: if either count is still nonzero, report the remaining findings and stop — do not loop indefinitely.
+7. **Repeat** — Continue until `counts.critical == 0` and `counts.major == 0`. Abort after 3 cycles (the default; when invoked under the Finding-ID Fix Mode below, use the scope manifest's `max_fix_attempts` instead): if either count is still nonzero, report the remaining findings and stop — do not loop indefinitely.
 
 ## When to Use
 
@@ -61,10 +61,21 @@ Use Glob `**/SKILL.md` to find all skills in the project.
 
 - **One-time review**: Use `/skill-reviewer` directly instead
 - **Quick single fixes**: Edit the file directly
-- **Non-skill files**: Only works on SKILL.md files
+- **Non-skill files**: Only works on SKILL.md files — never a valid fix path for an agent, command, hook, or rule finding, even under Finding-ID Fix Mode below. Those always go through their own matching dev skill directly.
 - **Experimental skills**: Manual iteration gives more control
 - **Creating a new skill from scratch**: Use `skill-development` instead
 - **Empirical benchmarking/eval-driven testing with baseline comparison**: Use `skill-tester` instead
+
+## Finding-ID Fix Mode
+
+When invoked with a bounded finding-ID list (e.g. from `plugin-lifecycle-downstream`'s Phase
+4/6/8), follow `plugin-rulebook/references/finding-id-fix-contract.md`: touch only the named
+findings' files, report per-ID `applied`/`deferred`/`failed` status instead of (or alongside)
+the `<skill-improvement-complete>` marker, and use the scope manifest's `max_fix_attempts` in
+place of step 7's default 3-cycle limit. This loop is **one of two** valid fix paths for a
+skill-type finding — `skill-development` used directly is the other, when more control over
+each edit is wanted. It is never the *only* path for a skill-type finding, and per the
+Non-skill-files rule above, it is never valid for any other component type.
 
 ## Invoking skill-reviewer
 
