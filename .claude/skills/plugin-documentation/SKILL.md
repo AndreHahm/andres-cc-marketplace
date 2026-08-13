@@ -32,6 +32,38 @@ Author and update a Claude Code plugin's human-facing documentation from the plu
 3. Invoke `human-doc-reviewer` (Step 4) — mandatory, not optional.
 4. Fix any Critical/Major finding directly before reporting done (Step 5).
 
+## Pipeline Mode
+
+`plugin-lifecycle-downstream`'s own Document step already passes a changed-claim list from an
+earlier phase's applied fixes (see that skill's own "Document" section) — this is the same
+shape, formalized. When invoked with a scope manifest (per
+`plugin-rulebook/references/evidence-schema.md`), a changed-claim inventory, open
+documentation findings from an earlier phase, and the final behavior evidence bundle, use
+those as Step 1-2's target/claim source instead of an ad-hoc request, then add one field to
+Step 5's report: a structured classification telling the caller whether this pass changed
+anything Phase 10 needs to re-verify.
+
+```yaml
+version: "1.0"
+source: plugin-documentation
+docs_changed: [<path>, ...]
+behavior_changed: false
+activation_changed: false
+permissions_changed: false
+instructions_changed: false
+dependency_relationships_changed: false
+```
+
+**These five fields are always `false` by design, not by per-run judgment** — this skill
+never edits SKILL.md/agent/command/hook content (see "When NOT to Use" above), so it
+structurally cannot change behavior, activation, permissions, instructions, or dependency
+relationships. The fields exist so Phase 10 has an explicit, machine-readable confirmation of
+that boundary instead of an implicit assumption — not because this skill is ever expected to
+set one `true`. If a documentation pass surfaces a genuine need for one of these axes to
+change (e.g. a README claim that's stale because a component's actual behavior changed),
+that's a different component's job (`skill-development`, etc.) — report it as an open item
+for the caller, don't act on it here.
+
 ## When NOT to Use
 
 - **Reviewing an already-written doc for accuracy/completeness, with no authoring wanted** → use the `human-doc-reviewer` agent directly. This skill always calls it after authoring, but you can call it standalone too.
