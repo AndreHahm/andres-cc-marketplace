@@ -1,0 +1,18 @@
+{
+  "description": "Repo-owned fragment (not plugin-owned): interactive post-edit mirror/export sync. Merged into .claude/hooks/hooks.json by scripts.marketplace_ci.sync's plan_hooks_merge, alongside every registered plugin's own hooks/hooks.json.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m scripts.marketplace_ci handle-post-edit",
+            "onError": "warn",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

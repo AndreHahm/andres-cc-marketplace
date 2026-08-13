@@ -1,5 +1,55 @@
 {
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m scripts.marketplace_ci handle-post-edit",
+            "onError": "warn",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/rulebook-check.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/hooks-schema-check.sh",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "^(Agent|Skill|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r26-expensive-action-check.sh",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "^(Agent|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r25-overhead-disclosure-check.sh",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [
@@ -101,45 +151,6 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/security-precommit-check.sh",
             "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/rulebook-check.sh",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/hooks-schema-check.sh",
-            "timeout": 15
-          }
-        ]
-      },
-      {
-        "matcher": "^(Agent|Skill|Bash)$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r26-expensive-action-check.sh",
-            "timeout": 10,
-            "onError": "warn"
-          }
-        ]
-      },
-      {
-        "matcher": "^(Agent|Bash)$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r25-overhead-disclosure-check.sh",
-            "timeout": 10,
-            "onError": "warn"
           }
         ]
       }

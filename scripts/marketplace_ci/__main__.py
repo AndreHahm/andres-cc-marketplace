@@ -22,7 +22,7 @@ from scripts.marketplace_ci.sync import (
     plan_hooks_merge,
     plan_plugin_sync,
 )
-from scripts.marketplace_ci.validators import check_staged_parity
+from scripts.marketplace_ci.validators import check_staged_parity, run_post_edit
 
 PR_TEMPLATE_RELATIVE_PATH = Path(".github/pull_request_template.md")
 
@@ -99,8 +99,9 @@ def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
         print(f"sync-plugin-mirrors: {exc}", file=sys.stderr)
         return 1
     hooks_plan = plan_hooks_merge(repo, registry)
-    apply_hooks_merge_plan(hooks_plan)
-    print(f"sync-plugin-mirrors: applied {len(result.applied)} action(s)")
+    hooks_result = apply_hooks_merge_plan(hooks_plan)
+    applied_count = len(result.applied) + len(hooks_result.applied)
+    print(f"sync-plugin-mirrors: applied {applied_count} action(s)")
     return 0
 
 
@@ -289,6 +290,43 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
     return 0 if result.passed else 1
 
 
+def _handle_handle_post_edit(args: argparse.Namespace) -> int:
+    """Reads Claude Code's PostToolUse hook JSON from stdin, returns Claude
+    hook JSON on stdout. Never raises and never exits non-zero — a sync
+    failure is reported via `systemMessage`, matching this hook's own
+    `onError: warn` posture (report and fall back to pre-commit, never block
+    the turn)."""
+    repo = Path.cwd()
+    try:
+        payload = json.load(sys.stdin)
+    except json.JSONDecodeError:
+        print("{}")
+        return 0
+
+    file_path = (payload.get("tool_input") or {}).get("file_path")
+    if not file_path:
+        print("{}")
+        return 0
+
+    try:
+        rel_path = Path(file_path).resolve().relative_to(repo.resolve()).as_posix()
+    except ValueError:
+        print("{}")  # edit outside this repo; not our concern
+        return 0
+
+    try:
+        result = run_post_edit(repo, rel_path)
+    except (RegistryError, SyncError) as exc:
+        print(json.dumps({"systemMessage": f"marketplace-ci post-edit sync failed: {exc}"}))
+        return 0
+
+    if result.changed:
+        print(json.dumps({"systemMessage": f"marketplace-ci: synced {', '.join(result.changed)}"}))
+    else:
+        print("{}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m scripts.marketplace_ci")
     subparsers = parser.add_subparsers(dest="command")
@@ -333,6 +371,10 @@ def build_parser() -> argparse.ArgumentParser:
     check_pr = subparsers.add_parser("check-pr", help="validate a PR event against policy")
     check_pr.add_argument("--event", required=True, metavar="PATH", help="PR event JSON path")
     check_pr.set_defaults(handler=_handle_check_pr)
+
+    subparsers.add_parser(
+        "handle-post-edit", help="PostToolUse hook: cascade a canonical edit to mirror/export"
+    ).set_defaults(handler=_handle_handle_post_edit)
 
     return parser
 
