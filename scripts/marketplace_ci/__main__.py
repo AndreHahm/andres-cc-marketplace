@@ -42,11 +42,16 @@ def _load_previous_registry(repo: Path) -> Registry | None:
     )
 
 
-def _report(label: str, actions) -> bool:
-    """Print each action; return True if any non-warn action exists."""
+def _report(label: str, actions, repo: Path) -> bool:
+    """Print each action using a repo-relative posix path; return True if any
+    non-warn action exists."""
     has_problem = False
     for action in actions:
-        print(f"[{label}] {action.operation}: {action.destination} - {action.reason}")
+        try:
+            shown = action.destination.relative_to(repo).as_posix()
+        except ValueError:
+            shown = action.destination.as_posix()
+        print(f"[{label}] {action.operation}: {shown} - {action.reason}")
         if action.operation != "warn":
             has_problem = True
     return has_problem
@@ -70,7 +75,7 @@ def _handle_check_plugin_mirrors(args: argparse.Namespace) -> int:
     if not plan.actions:
         print("check-plugin-mirrors: OK")
         return 0
-    _report("mirrors", plan.actions)
+    _report("mirrors", plan.actions, repo)
     return 1
 
 
@@ -111,7 +116,7 @@ def _handle_check_codex_exports(args: argparse.Namespace) -> int:
     if not plan.actions:
         print("check-codex-exports: OK")
         return 0
-    _report("exports", plan.actions)
+    _report("exports", plan.actions, repo)
     return 1
 
 
@@ -170,23 +175,26 @@ def _handle_repair_all(args: argparse.Namespace) -> int:
         print("repair-all: nothing to do")
         return 0
 
-    _report("mirrors", mirror_plan.actions)
-    _report("exports", export_plan.actions)
-    _report("hooks", hooks_plan.actions)
+    _report("mirrors", mirror_plan.actions, repo)
+    _report("exports", export_plan.actions, repo)
+    _report("hooks", hooks_plan.actions, repo)
 
     if args.bootstrap and not args.apply:
         print("repair-all: bootstrap plan printed above; re-run with --apply to execute")
         return 0
 
     try:
-        apply_sync_plan(mirror_plan)
-        apply_sync_plan(export_plan)
-        apply_hooks_merge_plan(hooks_plan)
+        mirror_result = apply_sync_plan(mirror_plan)
+        export_result = apply_sync_plan(export_plan)
+        hooks_result = apply_hooks_merge_plan(hooks_plan)
     except SyncError as exc:
         print(f"repair-all: {exc}", file=sys.stderr)
         return 1
 
-    print(f"repair-all: applied {len(all_actions)} action(s)")
+    applied_count = (
+        len(mirror_result.applied) + len(export_result.applied) + len(hooks_result.applied)
+    )
+    print(f"repair-all: applied {applied_count} action(s)")
     return 0
 
 

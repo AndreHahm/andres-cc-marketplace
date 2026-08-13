@@ -56,6 +56,22 @@ Body.
         convert_agent(markdown)
 
 
+def test_convert_agent_accepts_and_drops_permission_mode():
+    markdown = """---
+name: demo
+description: Reviews demo components
+permissionMode: dontAsk
+disallowedTools: ["Write"]
+---
+
+Body.
+"""
+    rendered = convert_agent(markdown)
+    assert "permissionMode" not in rendered
+    assert "disallowedTools" not in rendered
+    assert 'name = "demo"' in rendered
+
+
 def test_convert_agent_rejects_missing_required_field():
     markdown = """---
 name: demo

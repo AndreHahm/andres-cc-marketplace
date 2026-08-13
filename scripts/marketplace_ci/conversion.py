@@ -10,7 +10,15 @@ import yaml
 from scripts.marketplace_ci.registry import Registry, RemovalSet
 from scripts.marketplace_ci.sync import SyncAction, SyncPlan
 
-_ALLOWED_FRONTMATTER_KEYS = {"name", "description", "tools", "model", "color"}
+_ALLOWED_FRONTMATTER_KEYS = {
+    "name",
+    "description",
+    "tools",
+    "model",
+    "color",
+    "permissionMode",
+    "disallowedTools",
+}
 _REQUIRED_FRONTMATTER_KEYS = {"name", "description"}
 
 

@@ -91,6 +91,35 @@ def test_repair_all_bootstrap_with_apply_writes(monkeypatch, repo):
     assert (repo / ".claude" / "skills" / "demo" / "SKILL.md").exists()
 
 
+def test_repair_all_applied_count_excludes_warn_actions(monkeypatch, repo, capsys):
+    from scripts.marketplace_ci.conversion import plan_exports
+    from scripts.marketplace_ci.registry import Registry
+    from scripts.marketplace_ci.sync import plan_hooks_merge, plan_plugin_sync
+
+    orphan = repo / ".claude" / "skills" / "ghost" / "SKILL.md"
+    orphan.parent.mkdir(parents=True)
+    orphan.write_text("no canonical source", encoding="utf-8")
+
+    _write_registry(repo, plugin_mirrors=["sample-kit"])
+    registry = Registry.load(repo / ".claude" / "marketplace-sync.json")
+    mirror_plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=True)
+    export_plan = plan_exports(repo, registry, previous=None, bootstrap=True)
+    hooks_plan = plan_hooks_merge(repo, registry)
+    all_actions = (*mirror_plan.actions, *export_plan.actions, *hooks_plan.actions)
+    expected_applied = sum(1 for a in all_actions if a.operation != "warn")
+    assert any(a.operation == "warn" for a in all_actions)  # the orphan is really in the plan
+
+    monkeypatch.chdir(repo)
+    rc = main(["repair-all", "--bootstrap", "--apply"])
+    assert rc == 0
+
+    out = capsys.readouterr().out
+    summary_line = next(line for line in out.splitlines() if line.startswith("repair-all: applied"))
+    applied_count = int(summary_line.split()[2])
+    assert applied_count == expected_applied  # never inflated by the never-applied warn
+    assert orphan.exists()  # untouched; warn actions are never executed
+
+
 def test_registry_missing_returns_2(monkeypatch, repo):
     monkeypatch.chdir(repo)
     assert main(["check-plugin-mirrors"]) == 2
