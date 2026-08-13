@@ -373,6 +373,16 @@ After writing or modifying hooks:
 - [ ] Stop hooks include `stop_hook_active` guard
 - [ ] `scripts/validate-hook-schema.sh` reports no errors
 
+**Deep Test coverage for a hook:** step 4's "Manual test" above exercises one sample input by
+hand — Deep Test coverage means running `scripts/test-hook.sh --create-sample <event-type>`
+for every event type the hook's own `matcher` in `hooks.json` actually configures it to
+receive, then running `scripts/test-hook.sh` against each generated sample (a happy-path
+input and, where meaningful, a blocked-path input) rather than just one. `scripts/test-hook.sh
+--json`/`--yaml` emits a machine-readable `status: pass|fail` result per run (plus
+`exit_code`/`classification`/`output`) so a caller aggregating results across every event
+type — e.g. `plugin-lifecycle-downstream`'s optional Deep Test step — doesn't have to parse
+the human-readable text output.
+
 ---
 
 ## Additional Resources

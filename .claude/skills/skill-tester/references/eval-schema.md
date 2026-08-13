@@ -27,11 +27,18 @@ Complete JSON schemas for all evaluation data files created during the skill-tes
         "string (optional) — file paths that should be created or modified"
       ]
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": "integer (optional) — scenario count from the target's own Testing & Validation section, per Step 2.1b's cross-check; omit if the target has no such section",
+    "declared_scenarios_covered": "integer (optional) — how many of those this eval set exercises",
+    "uncovered": ["string (optional) — declared scenario text not covered by any eval"]
+  }
 }
 ```
 
 **Example:** see `assets/evals-example.json`.
+
+`testing_validation_coverage` is written once by Step 2.1b's cross-check during eval creation, then read back (not recomputed) by Quick Phase 3 and Phase 6 Step 6.1 to populate their own structured output's `coverage` field.
 
 ---
 
@@ -143,6 +150,53 @@ Complete JSON schemas for all evaluation data files created during the skill-tes
 **Schema:** see `assets/benchmark-schema.json`.
 
 **Example:** see `assets/benchmark-example.json`. `skill_name` is derived by `aggregate_benchmark.py` from the standardized workspace path (`./evals/<skill-name>/workspace/iteration-N`), or set explicitly via `--skill-name`.
+
+---
+
+## Structured Result Documents (Quick Phase 3 / Phase 6 Step 6.1)
+
+Both modes print a machine-readable result document alongside their human-readable summary
+(additive, never a replacement) — a caller parses this instead of re-deriving pass/fail from
+prose. Both share `coverage`, sourced from `evals.json`'s own `testing_validation_coverage`
+field (Step 2.1b's cross-check) and omitted entirely when the target had no Testing &
+Validation section to cross-check against, rather than emitted as misleading zeros.
+
+**Quick Workflow** (`mode: "quick"`):
+
+```json
+{
+  "version": "1.0",
+  "source": "skill-tester",
+  "mode": "quick",
+  "skill_name": "<skill-name>",
+  "summary": {"assertions_passed": 11, "assertions_total": 15, "pass_rate": 0.73},
+  "results": [
+    {"eval_id": 1, "name": "<Scenario>", "status": "pass", "assertions_passed": 5, "assertions_total": 5}
+  ],
+  "coverage": {"declared_scenarios_total": 4, "declared_scenarios_covered": 3, "uncovered": ["<scenario text>"]}
+}
+```
+
+**Full Pipeline** (`mode: "full_pipeline"`) — `results[].with_skill`/`baseline` mirror
+`benchmark.json`'s own per-eval fields above rather than introducing a second set of field
+names for the same numbers:
+
+```json
+{
+  "version": "1.0",
+  "source": "skill-tester",
+  "mode": "full_pipeline",
+  "skill_name": "<skill-name>",
+  "iteration": 1,
+  "summary": {"with_skill_pass_rate": 0.965, "baseline_pass_rate": 0.67, "improvement_points": 29.5},
+  "results": [
+    {"eval_id": 1, "name": "<Scenario>",
+     "with_skill": {"passed": 3, "total": 3, "tokens": 2500, "duration_s": 8},
+     "baseline": {"passed": 2, "total": 3, "tokens": 1800, "duration_s": 5}}
+  ],
+  "coverage": {"declared_scenarios_total": 4, "declared_scenarios_covered": 4}
+}
+```
 
 ---
 

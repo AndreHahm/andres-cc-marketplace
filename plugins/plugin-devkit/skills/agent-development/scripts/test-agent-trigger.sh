@@ -4,6 +4,7 @@
 set -euo pipefail
 
 TIMEOUT_SECONDS=30
+OUTPUT_FORMAT="text"
 POSITIONAL=()
 
 while [ $# -gt 0 ]; do
@@ -11,6 +12,14 @@ while [ $# -gt 0 ]; do
     --timeout)
       TIMEOUT_SECONDS="$2"
       shift 2
+      ;;
+    --json)
+      OUTPUT_FORMAT="json"
+      shift
+      ;;
+    --yaml)
+      OUTPUT_FORMAT="yaml"
+      shift
       ;;
     *)
       POSITIONAL+=("$1")
@@ -20,12 +29,16 @@ while [ $# -gt 0 ]; do
 done
 
 if [ "${#POSITIONAL[@]}" -lt 1 ]; then
-  echo "Usage: $0 <agent.md> [test-phrases-file] [--timeout N]"
+  echo "Usage: $0 <agent.md> [test-phrases-file] [--timeout N] [--json|--yaml]"
   echo ""
   echo "Phrase file format:"
   echo "  + phrase text   -> should trigger"
   echo "  - phrase text   -> should NOT trigger"
   echo "  plain text      -> defaults to should trigger"
+  echo ""
+  echo "--json/--yaml emit one machine-readable result document instead of the"
+  echo "default plain-text PASS/FAIL lines -- see agent-development's own"
+  echo "reference docs for the result schema."
   exit 1
 fi
 
@@ -137,7 +150,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-python3 - "$AGENT_FILE" "$PHRASES_FILE" "$TIMEOUT_SECONDS" <<'PY'
+python3 - "$AGENT_FILE" "$PHRASES_FILE" "$TIMEOUT_SECONDS" "$OUTPUT_FORMAT" <<'PY'
 from __future__ import annotations
 
 import json
@@ -355,6 +368,7 @@ Trigger the agent only if the request is clearly within scope.
 agent_path = Path(sys.argv[1]).resolve()
 phrases_path = Path(sys.argv[2]).resolve()
 timeout_seconds = int(sys.argv[3])
+output_format = sys.argv[4] if len(sys.argv) > 4 else "text"
 
 parsed = parse_agent_md(agent_path)
 frontmatter = parsed["frontmatter"]
@@ -363,6 +377,7 @@ description = str(frontmatter.get("description", ""))
 
 total = 0
 passed = 0
+results: list[dict[str, object]] = []
 
 for raw_line in phrases_path.read_text(encoding="utf-8").splitlines():
     parsed_line = parse_phrase_line(raw_line)
@@ -382,12 +397,52 @@ for raw_line in phrases_path.read_text(encoding="utf-8").splitlines():
     ok = actual == expected
     if ok:
         passed += 1
-    status = "PASS" if ok else "FAIL"
-    expectation = "should trigger" if expected else "should not trigger"
-    actual_text = "triggered" if actual else "not triggered"
-    print(f"[{status}] {mode} | {expectation} | {actual_text} | {phrase}")
 
-print("")
-print(f"Summary: {passed}/{total} passed")
+    if output_format == "text":
+        status = "PASS" if ok else "FAIL"
+        expectation = "should trigger" if expected else "should not trigger"
+        actual_text = "triggered" if actual else "not triggered"
+        print(f"[{status}] {mode} | {expectation} | {actual_text} | {phrase}")
+    else:
+        results.append(
+            {
+                "phrase": phrase,
+                "expected": expected,
+                "actual": actual,
+                "status": "pass" if ok else "fail",
+                "mode": mode,
+            }
+        )
+
+if output_format == "text":
+    print("")
+    print(f"Summary: {passed}/{total} passed")
+elif output_format == "json":
+    document = {
+        "version": "1.0",
+        "source": "test-agent-trigger.sh",
+        "agent": agent_name,
+        "scope": str(agent_path),
+        "summary": {"total": total, "passed": passed, "failed": total - passed},
+        "results": results,
+    }
+    print(json.dumps(document, indent=2))
+else:  # yaml -- hand-formatted, no pyyaml dependency for this simple shape
+    lines = [
+        'version: "1.0"',
+        "source: test-agent-trigger.sh",
+        f"agent: {agent_name}",
+        f"scope: {agent_path}",
+        f"summary: {{total: {total}, passed: {passed}, failed: {total - passed}}}",
+        "results:",
+    ]
+    for r in results:
+        phrase_escaped = str(r["phrase"]).replace('"', '\\"')
+        lines.append(
+            f'  - {{phrase: "{phrase_escaped}", expected: {str(r["expected"]).lower()}, '
+            f'actual: {str(r["actual"]).lower()}, status: {r["status"]}, mode: {r["mode"]}}}'
+        )
+    print("\n".join(lines))
+
 sys.exit(0 if passed == total else 1)
 PY
