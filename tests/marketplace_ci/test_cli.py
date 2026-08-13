@@ -139,3 +139,25 @@ def test_help_text_lists_commands(capsys):
         "repair-all",
     ):
         assert command in out
+
+
+def test_check_all_staged_fails_on_unstaged_mirror_repair(monkeypatch, git_repo):
+    _write_registry(git_repo.root, plugin_mirrors=["sample-kit"])
+    git_repo.stage("plugins/sample-kit/skills/demo/SKILL.md", "new")
+    git_repo.write(".claude/skills/demo/SKILL.md", "new")  # never staged
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-all", "--staged"]) == 1
+
+
+def test_check_all_staged_passes_when_index_is_consistent(monkeypatch, git_repo):
+    _write_registry(git_repo.root, plugin_mirrors=["sample-kit"])
+    git_repo.stage("plugins/sample-kit/skills/demo/SKILL.md", "new")
+    git_repo.stage(".claude/skills/demo/SKILL.md", "new")
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-all", "--staged"]) == 0
+
+
+def test_check_all_committed_rejects_unresolvable_ref(monkeypatch, git_repo):
+    _write_registry(git_repo.root)
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-all", "--committed", "not-a-real-ref"]) == 2

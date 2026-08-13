@@ -1,0 +1,17 @@
+repos:
+  - repo: local
+    hooks:
+      - id: marketplace-ci-check-staged
+        name: marketplace-ci check-all --staged
+        entry: uv run python -m scripts.marketplace_ci check-all --staged
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: marketplace-ci-check-all
+        name: marketplace-ci check-all --committed HEAD
+        entry: uv run python -m scripts.marketplace_ci check-all --committed HEAD
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

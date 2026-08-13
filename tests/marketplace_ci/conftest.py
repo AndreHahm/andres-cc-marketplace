@@ -28,7 +28,11 @@ class GitRepoHelper:
 
     def stage(self, rel_path: str, content: str) -> Path:
         path = self.write(rel_path, content)
-        subprocess.run(["git", "add", rel_path], cwd=self.root, check=True, capture_output=True)
+        # -f: some machines have a global gitignore excluding .claude/.codex/.agents
+        # everywhere; this repo's own tests need deliberate control regardless.
+        subprocess.run(
+            ["git", "add", "-f", rel_path], cwd=self.root, check=True, capture_output=True
+        )
         return path
 
 

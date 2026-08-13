@@ -7,12 +7,12 @@ from __future__ import annotations
 import json
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
-from scripts.marketplace_ci.conversion import plan_exports
-from scripts.marketplace_ci.git_state import ChangedPath
+from scripts.marketplace_ci.conversion import convert_agent, plan_exports
+from scripts.marketplace_ci.git_state import ChangedPath, GitState
 from scripts.marketplace_ci.registry import Registry
-from scripts.marketplace_ci.sync import plan_plugin_sync
+from scripts.marketplace_ci.sync import _iter_component_files, plan_plugin_sync
 
 _INTERPRETER_COMMAND = {"python": "python", "bash": "bash"}
 
@@ -157,3 +157,94 @@ def run_delta_structural_checks(
             )
 
     return tuple(findings)
+
+
+@dataclass(frozen=True)
+class HookCheckResult:
+    exit_code: int
+    messages: tuple[str, ...] = ()
+
+
+def check_staged_parity(repo: Path) -> HookCheckResult:
+    """Compare staged canonical sources against staged mirror/export
+    destinations, entirely via the Git index — never the working tree.
+
+    A destination whose *working-tree* content happens to already match its
+    canonical source, but was never `git add`-ed, does not satisfy parity:
+    the commit that's about to happen would still record a mismatch. This is
+    why the mapping is walked directly here rather than reusing
+    `plan_plugin_sync`/`plan_exports`'s own output — those only report a
+    problem when the *filesystem* disagrees, which is exactly the case an
+    unstaged-but-already-correct destination does not trigger.
+    """
+    registry_path = repo / ".claude" / "marketplace-sync.json"
+    if not registry_path.is_file():
+        return HookCheckResult(exit_code=0)
+
+    registry = Registry.load(registry_path)
+    git_state = GitState(repo=repo)
+    staged = git_state.staged_paths()
+    staged_new_paths = {cp.new_path for cp in staged if cp.new_path is not None}
+    changed_keys = {
+        _component_key(p) for cp in staged for p in (cp.new_path or cp.old_path,) if p is not None
+    }
+    if not changed_keys:
+        return HookCheckResult(exit_code=0)
+
+    claude_root = repo / ".claude"
+    plugins_root = repo / "plugins"
+    messages: list[str] = []
+
+    def check_pair(rel_source: str, rel_dest: str, *, is_agent: bool = False) -> None:
+        if _component_key(rel_source) not in changed_keys:
+            return
+        staged_source_blob = git_state.read_index(PurePosixPath(rel_source))
+        if staged_source_blob is None:
+            return  # source itself isn't staged (e.g. a delete); nothing to compare
+        if rel_dest not in staged_new_paths:
+            messages.append(
+                f"{rel_dest}: canonical source is staged but the generated "
+                "counterpart was not staged"
+            )
+            return
+        staged_dest_blob = git_state.read_index(PurePosixPath(rel_dest))
+        expected = (
+            convert_agent(staged_source_blob.decode("utf-8")).encode("utf-8")
+            if is_agent
+            else staged_source_blob
+        )
+        if staged_dest_blob != expected:
+            messages.append(
+                f"{rel_dest}: staged content does not match the staged canonical source"
+            )
+
+    for plugin_name in registry.plugin_mirrors:
+        plugin_root = plugins_root / plugin_name
+        if not plugin_root.is_dir():
+            continue
+        for source_file in _iter_component_files(plugin_root):
+            rel_source = source_file.relative_to(repo).as_posix()
+            rel_dest = (
+                (claude_root / source_file.relative_to(plugin_root)).relative_to(repo).as_posix()
+            )
+            check_pair(rel_source, rel_dest)
+
+    for skill_name in registry.skills:
+        source_dir = claude_root / "skills" / skill_name
+        if not source_dir.is_dir():
+            continue
+        for file in sorted(source_dir.rglob("*")):
+            if not file.is_file():
+                continue
+            rel_source = file.relative_to(repo).as_posix()
+            dest = repo / ".agents" / "skills" / skill_name / file.relative_to(source_dir)
+            check_pair(rel_source, dest.relative_to(repo).as_posix())
+
+    for agent_name in registry.agents:
+        source_file = claude_root / "agents" / f"{agent_name}.md"
+        if not source_file.is_file():
+            continue
+        rel_source = source_file.relative_to(repo).as_posix()
+        check_pair(rel_source, f".codex/agents/{agent_name}.toml", is_agent=True)
+
+    return HookCheckResult(exit_code=1 if messages else 0, messages=tuple(messages))
