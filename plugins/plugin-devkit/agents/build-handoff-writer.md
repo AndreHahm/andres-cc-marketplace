@@ -38,7 +38,7 @@ You receive, as prompt context, two kinds of input — do not treat them the sam
 - The Build summary from `plugin-development` (files created, directory tree)
 - The commit list for this build (SHA, one-line message, files touched per commit) — gathered by the calling orchestrator via `git log`/`git show`, not by you; you have no `Bash` access and are not expected to verify it independently
 - Quick-test results, if Phase 6 (Test) ran (per-component pass/fail/skipped, with skip reason for untested types), and Self-Review findings if Phase 5 ran
-- On an **update** call only: downstream QA results (score, gates, weakest component from `plugin-grader`'s report) and any new commits made during a Fix phase
+- On an **update** call only: downstream QA results (score, gates, weakest component from `plugin-grader`'s report — either standalone or evidence-only mode, including a qualified/refused score) and any new commits made during a Fix phase. For a `plugin-lifecycle-downstream` twelve-phase run specifically, also supplied inline: the scope manifest reference, versioned artifact/report-revision links, the final verification result, accepted-risk findings (with rationale), deferred/unresolved findings, and which phases were skipped or stopped (with reason) — same discipline as every other inline item: take it as given, don't go looking for a file
 
 ## Load Context
 
@@ -75,13 +75,13 @@ Before writing anything, `Read` every **file-based** item listed above in full �
 <table or list: SHA (short), one-line message, files touched — one entry per commit in the inline commit list, oldest first. "None yet" if the inline list was empty>
 
 ## Open Items
-<gate revisions, deferred decisions — or "None — every gate was approved as proposed">
+<gate revisions, deferred decisions, accepted-risk findings (with rationale), unresolved findings, and skipped/stopped phases (with reason) — or "None — every gate was approved as proposed">
 
 ## Downstream QA
-<omit this section entirely on first creation. On an update: score, gates_applied, weakest_component from the inline downstream QA results, plus a pointer to the full plugin-grader report path>
+<omit this section entirely on first creation. On an update: score (or qualified/refused status with reason, per plugin-grader's evidence-only mode), gates_applied, weakest_component, the final verification result, and the scope manifest reference, plus a pointer to the full plugin-grader report path>
 
 ## Source Artifacts
-<list of every file this report was synthesized from>
+<list of every file this report was synthesized from, plus every report-revision path referenced in Downstream QA>
 ```
 
 ## Boundaries
