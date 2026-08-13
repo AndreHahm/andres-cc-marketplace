@@ -195,6 +195,8 @@ If Question 4 is answered yes, this pipeline's quantitative pass rates don't cov
 
 Before writing `evals.json`, `Read` the target skill's own SKILL.md for a "Testing & Validation" section. If one exists and lists numbered scenarios, check whether the eval scenarios collected in Step 2.1 collectively exercise each item — or explicitly note the gap for any that aren't covered. A skill's own Testing & Validation checklist is a direct, authoritative claim about what "tested" should mean for it; writing an eval set that doesn't cross-check against it risks shipping eval coverage narrower than the skill's own documented claims, which reads as tested when it isn't.
 
+Record this cross-check's result in `evals.json`'s own `testing_validation_coverage` field (see `references/eval-schema.md`) — declared scenario count, how many this eval set covers, and which (if any) are uncovered. Quick Phase 3 and Phase 6 read this field back rather than re-deriving it.
+
 ### Step 2.2: Generate evals.json
 
 Write `./evals/<skill-name>/evals.json` with fields: `skill_name`, `skill_path`, `description`, and `evals` array (each entry: `id`, `name`, `prompt`, `expected_output`, `files`).
@@ -262,6 +264,11 @@ Eval 3: <Scenario>  ✗ FAIL (2/5 assertions)
 Summary: 11/15 assertions passed (73%)
 Status: Ready to refine or deploy
 ```
+
+Alongside the human-readable summary above (additive, not a replacement — always emit both),
+print a structured result document a caller can parse without re-deriving pass/fail from
+prose — see `references/eval-schema.md`'s "Structured Result Documents" section for the exact
+`mode: "quick"` shape and the `coverage` field's source/omit-if-absent rule.
 
 ### Quick Phase 4: Next Steps
 
@@ -370,6 +377,11 @@ With Skill Avg:    96.5% pass rate | 2300 avg tokens
 Baseline Avg:      67.0% pass rate | 1850 avg tokens
 IMPROVEMENT:       +29.5 percentage points
 ```
+
+Alongside the comparison table above (additive, not a replacement — always emit both), print a
+structured result document — see `references/eval-schema.md`'s "Structured Result Documents"
+section for the exact `mode: "full_pipeline"` shape. Same `coverage` source and
+omit-if-absent rule as Quick Phase 3 above — read from `evals.json`, never recomputed here.
 
 ### Step 6.2: Offer Next Steps
 
