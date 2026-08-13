@@ -3,12 +3,12 @@ name: build-handoff-writer
 description: >-
   Use this agent when a plugin-lifecycle-upstream pipeline run completes its Test
   phase and Commit step and a handoff report is needed, when plugin-lifecycle-downstream
-  needs to fold Validate/Audit/Fix/Test/Self-Review results and new commits into that
+  needs to fold its Phase 12 (Handoff Finalization) run record and new commits into that
   same report, or when the user explicitly asks for a walkthrough or handoff summary of
   what was just built. Typical triggers include plugin-lifecycle-upstream's own automatic
-  post-Commit dispatch, plugin-lifecycle-downstream's post-Phase-2 and post-Phase-5
-  update dispatch, and a direct request like "summarize what we just built" or "write a
-  handoff report for this".
+  post-Commit dispatch, plugin-lifecycle-downstream's own Phase 12 update dispatch, and a
+  direct request like "summarize what we just built" or "write a handoff report for
+  this".
 model: sonnet
 color: green
 tools: ["Read"]

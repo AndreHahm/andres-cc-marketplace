@@ -1,0 +1,16 @@
+version: "1.0"
+run_id: "run-fixture-001"
+target_plugin_root: "plugins/example-plugin"
+baseline_commit: "abc1234"
+invocation_mode: full_pipeline
+scope_mode: named
+included: ["skills/example-skill/SKILL.md"]
+excluded: []
+smoke_test_inventory: ["skills/example-skill/scripts/smoke_test.py"]
+eval_inventory: []
+optional_phases_selected:
+  deep_test: scoped
+  grading: not_run
+severity_thresholds: "block on critical"
+max_fix_attempts: 3
+revision: 1
