@@ -1,0 +1,171 @@
+name: Marketplace Codex Review
+
+on:
+  workflow_run:
+    workflows: ["Marketplace CI"]
+    types: [completed]
+
+concurrency:
+  group: marketplace-codex-review-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-pr:
+    name: Resolve PR metadata from trusted event
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    outputs:
+      pr_number: ${{ steps.resolve.outputs.pr_number }}
+      base_sha: ${{ steps.resolve.outputs.base_sha }}
+      head_sha: ${{ steps.resolve.outputs.head_sha }}
+      is_fork: ${{ steps.resolve.outputs.is_fork }}
+    steps:
+      - name: Resolve PR number, base/head SHA, and fork status
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          PR_NUMBER=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.pull_requests[0].number // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$(echo "$PR_JSON" | jq -r '.base.sha')" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$(echo "$PR_JSON" | jq -r '.head.sha')" >> "$GITHUB_OUTPUT"
+          echo "is_fork=$(echo "$PR_JSON" | jq -r '(.head.repo.full_name != .base.repo.full_name) | tostring')" >> "$GITHUB_OUTPUT"
+
+  fork-unsupported:
+    name: Fork PR (unsupported — explicit terminal result)
+    needs: resolve-pr
+    if: needs.resolve-pr.outputs.pr_number != '' && needs.resolve-pr.outputs.is_fork == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Fail explicitly rather than leave the check pending
+        run: |
+          echo "::error::Marketplace Codex review does not support fork-origin PRs (no trusted secret access for the Codex API key). This is an explicit, terminal failure, not a silently pending required check."
+          exit 1
+
+  review:
+    name: Codex delta review
+    needs: resolve-pr
+    if: needs.resolve-pr.outputs.pr_number != '' && needs.resolve-pr.outputs.is_fork == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the PR's merge commit
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: refs/pull/${{ needs.resolve-pr.outputs.pr_number }}/merge
+          fetch-depth: 0
+
+      - name: Verify the trusted base SHA actually resolves in this checkout
+        run: git rev-parse --verify ${{ needs.resolve-pr.outputs.base_sha }}^{commit}
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+      - run: uv sync --group dev
+
+      - name: Set up Node (for the codex CLI and codex-review-bridge)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+
+      - name: Install Codex CLI (pinned version, never floating latest)
+        run: npm install -g @openai/codex@0.147.0
+
+      - name: Authenticate and smoke-check the Codex CLI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: codex --version
+
+      - name: Dispatch reviewers directly, validate output, aggregate findings
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          uv run python -m scripts.marketplace_ci run-codex-review \
+            --base-sha ${{ needs.resolve-pr.outputs.base_sha }} \
+            --output codex-review-result.json
+
+      - name: Upload review result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: codex-review-result
+          path: codex-review-result.json
+          if-no-files-found: ignore
+
+  publish:
+    name: Publish policy result
+    needs: [resolve-pr, review]
+    if: always() && needs.resolve-pr.outputs.pr_number != '' && needs.resolve-pr.outputs.is_fork == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository scripts
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+      - run: uv sync --group dev
+
+      - name: Check attested bypass (comment-plus-label protocol)
+        id: bypass
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ needs.resolve-pr.outputs.pr_number }}
+          HEAD_SHA: ${{ needs.resolve-pr.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          LABELS=$(gh api "repos/$REPO/issues/$PR_NUMBER/labels" --jq '[.[].name]')
+          if ! echo "$LABELS" | jq -e 'index("codex-review-bypassed")' > /dev/null; then
+            echo "bypassed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          ACTOR=$(gh api "repos/$REPO/issues/$PR_NUMBER" --jq '.user.login')
+          PERMISSION=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo "none")
+          gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '[.[].body]' > comment-bodies.json
+          jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
+            --slurpfile comments comment-bodies.json \
+            '{actor: $actor, head_sha: $sha, permission: $permission, comments: $comments[0]}' \
+            > bypass-event.json
+          if uv run python -m scripts.marketplace_ci check-bypass --event bypass-event.json; then
+            echo "bypassed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "bypassed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine final policy result
+        run: |
+          if [ "${{ steps.bypass.outputs.bypassed }}" = "true" ]; then
+            echo "Codex review bypassed via attested SHA-bound exception. Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
+            exit 0
+          fi
+          if [ "${{ needs.review.result }}" != "success" ]; then
+            echo "Codex review job failed, timed out, or found a blocking (Critical/Major) finding."
+            exit 1
+          fi
+          echo "Codex review passed."

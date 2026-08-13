@@ -268,3 +268,235 @@ def test_handle_post_edit_malformed_stdin_returns_empty_json(monkeypatch, repo, 
     monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
     assert main(["handle-post-edit"]) == 0
     assert json.loads(capsys.readouterr().out) == {}
+
+
+def test_run_delta_structural_checks_ok_without_registry(monkeypatch, repo):
+    monkeypatch.chdir(repo)
+    assert (
+        main(
+            ["run-delta-structural-checks", "--changed", "plugins/sample-kit/skills/demo/SKILL.md"]
+        )
+        == 0
+    )
+
+
+def test_prepare_reviewer_instruction_writes_file(monkeypatch, git_repo):
+    git_repo.stage(
+        ".codex/agents/security-reviewer.toml",
+        'name = "security-reviewer"\ndeveloper_instructions = """\nbe careful\n"""\n',
+    )
+    import subprocess
+
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    monkeypatch.chdir(git_repo.root)
+    out = git_repo.root / "out.txt"
+    rc = main(
+        [
+            "prepare-reviewer-instruction",
+            "--agent",
+            "security-reviewer",
+            "--base-sha",
+            base_sha,
+            "--out",
+            str(out),
+        ]
+    )
+    assert rc == 0
+    assert "be careful" in out.read_text(encoding="utf-8")
+
+
+def test_prepare_reviewer_instruction_unresolvable_sha_returns_2(monkeypatch, git_repo, tmp_path):
+    monkeypatch.chdir(git_repo.root)
+    rc = main(
+        [
+            "prepare-reviewer-instruction",
+            "--agent",
+            "security-reviewer",
+            "--base-sha",
+            "0" * 40,
+            "--out",
+            str(tmp_path / "x"),
+        ]
+    )
+    assert rc == 2
+
+
+def test_prepare_review_prints_scope_json(monkeypatch, repo, capsys):
+    monkeypatch.chdir(repo)
+    rc = main(["prepare-review", "--changed", "plugins/demo-kit/skills/x/SKILL.md"])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["mode"] == "delta"
+    assert payload["audit"] == ["skill-reviewer"]
+
+
+def test_check_review_output_accepts_valid_envelope(monkeypatch, repo, tmp_path):
+    valid = {
+        "mode": "delta",
+        "reviewed_paths": ["x"],
+        "reviewers": {
+            "selected": ["security-reviewer"],
+            "completed": ["security-reviewer"],
+            "skipped": [],
+            "failed": [],
+        },
+        "coverage_confirmed": True,
+        "findings": [],
+    }
+    path = tmp_path / "output.json"
+    path.write_text(json.dumps(valid), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    assert main(["check-review-output", "--file", str(path)]) == 0
+
+
+def test_check_review_output_rejects_malformed_envelope(monkeypatch, repo, tmp_path):
+    path = tmp_path / "output.json"
+    path.write_text(json.dumps({"mode": "delta"}), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    assert main(["check-review-output", "--file", str(path)]) == 1
+
+
+def test_check_bypass_allows_valid_attestation(monkeypatch, repo, tmp_path):
+    event = {
+        "actor": "andre",
+        "head_sha": "abc123",
+        "permission": "write",
+        "comments": [
+            "<!-- marketplace-ci-bypass-attestation "
+            '{"schema_version": 1, "actor": "andre", "head_sha": "abc123", '
+            '"reason": "incident", "created_at": "2026-08-13T00:00:00Z"} -->'
+        ],
+    }
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps(event), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    assert main(["check-bypass", "--event", str(event_path)]) == 0
+
+
+def test_check_bypass_denies_missing_attestation(monkeypatch, repo, tmp_path):
+    event = {"actor": "andre", "head_sha": "abc123", "comments": []}
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps(event), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    assert main(["check-bypass", "--event", str(event_path)]) == 1
+
+
+def test_check_bypass_missing_field_returns_2(monkeypatch, repo, tmp_path):
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps({"actor": "andre"}), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    assert main(["check-bypass", "--event", str(event_path)]) == 2
+
+
+def test_run_codex_review_unresolvable_base_sha_returns_2(monkeypatch, git_repo):
+    monkeypatch.chdir(git_repo.root)
+    assert main(["run-codex-review", "--base-sha", "0" * 40]) == 2
+
+
+def test_run_codex_review_end_to_end_clean_pass(monkeypatch, git_repo):
+    import subprocess as subprocess_module
+
+    for name in (
+        "plugin-rulebook-checker",
+        "dependency-reviewer",
+        "security-reviewer",
+        "skill-reviewer",
+    ):
+        git_repo.write(
+            f".codex/agents/{name}.toml",
+            f'name = "{name}"\ndeveloper_instructions = """\ncheck\n"""\n',
+        )
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "original")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "modified")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "change"], cwd=git_repo.root, check=True)
+
+    real_run = subprocess_module.run
+    valid_envelope = json.dumps(
+        {
+            "mode": "delta",
+            "reviewed_paths": ["plugins/demo-kit/skills/x/SKILL.md"],
+            "reviewers": {"selected": [], "completed": [], "skipped": [], "failed": []},
+            "coverage_confirmed": True,
+            "findings": [],
+        }
+    ).encode()
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            return subprocess_module.CompletedProcess(
+                argv, returncode=0, stdout=valid_envelope, stderr=b""
+            )
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess_module, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["run-codex-review", "--base-sha", base_sha])
+    assert rc == 0
+
+
+def test_run_codex_review_blocking_finding_returns_1(monkeypatch, git_repo):
+    import subprocess as subprocess_module
+
+    git_repo.write(
+        ".codex/agents/plugin-rulebook-checker.toml",
+        'name = "plugin-rulebook-checker"\ndeveloper_instructions = """\ncheck\n"""\n',
+    )
+    git_repo.write(
+        ".codex/agents/dependency-reviewer.toml", 'developer_instructions = """\ncheck\n"""\n'
+    )
+    git_repo.write(
+        ".codex/agents/security-reviewer.toml", 'developer_instructions = """\ncheck\n"""\n'
+    )
+    git_repo.write("README.md", "original")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("plugins/demo-kit/hooks/hooks.json", "{}")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "change"], cwd=git_repo.root, check=True)
+
+    real_run = subprocess_module.run
+    blocking_envelope = json.dumps(
+        {
+            "mode": "delta",
+            "reviewed_paths": ["plugins/demo-kit/hooks/hooks.json"],
+            "reviewers": {"selected": [], "completed": [], "skipped": [], "failed": []},
+            "coverage_confirmed": True,
+            "findings": [
+                {
+                    "reviewer": "security-reviewer",
+                    "severity": "Critical",
+                    "rule": "R6",
+                    "path": "plugins/demo-kit/hooks/hooks.json",
+                    "evidence": "e",
+                    "remediation": "m",
+                }
+            ],
+        }
+    ).encode()
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            return subprocess_module.CompletedProcess(
+                argv, returncode=0, stdout=blocking_envelope, stderr=b""
+            )
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess_module, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["run-codex-review", "--base-sha", base_sha])
+    assert rc == 1

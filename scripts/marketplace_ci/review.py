@@ -8,10 +8,20 @@ or trust reviewer prose beyond that envelope's own typed fields.
 
 from __future__ import annotations
 
+import json
+import re
+import secrets
+import subprocess
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 from scripts.marketplace_ci.git_state import ChangedPath
+
+BRIDGE_INVOKE_RELATIVE_PATH = Path(
+    "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs"
+)
 
 STRUCTURAL_CHECK_REF = "scripts.marketplace_ci.validators:run_delta_structural_checks"
 
@@ -221,3 +231,205 @@ def aggregate_findings(reports: Sequence[ReviewResult]) -> tuple[Finding, ...]:
         reporters = tuple(sorted({f.reviewer for f in group}))
         aggregated.append(replace(highest, reporters=reporters))
     return tuple(aggregated)
+
+
+# --- Trusted base-SHA reviewer-instruction extraction (design v4 amendment 13) ---
+
+_DEVELOPER_INSTRUCTIONS_PATTERN = re.compile(r'developer_instructions\s*=\s*"""(.*)"""', re.DOTALL)
+
+
+def _extract_developer_instructions(toml_text: str) -> str:
+    match = _DEVELOPER_INSTRUCTIONS_PATTERN.search(toml_text)
+    return match.group(1) if match else ""
+
+
+def prepare_reviewer_instruction(
+    agent_name: str, *, base_sha: str, out: Path, repo: Path | None = None
+) -> Path:
+    """Read the exact tracked `.codex/agents/<agent_name>.toml` blob from the
+    validated base SHA — never the PR working tree or index, with no
+    fallback — and write its `developer_instructions` field verbatim to
+    `out`. Exits 2 (never falls back to the current checkout) if the base
+    SHA can't be resolved, or if `<agent_name>` has no `.toml` export at
+    that SHA (i.e. it isn't registered in `codex_exports.agents`)."""
+    repo = repo or Path.cwd()
+    rel = f".codex/agents/{agent_name}.toml"
+
+    result = subprocess.run(["git", "show", f"{base_sha}:{rel}"], cwd=repo, capture_output=True)
+    if result.returncode != 0:
+        resolved = subprocess.run(
+            ["git", "rev-parse", "--verify", f"{base_sha}^{{commit}}"],
+            cwd=repo,
+            capture_output=True,
+        )
+        if resolved.returncode != 0:
+            print(
+                f"prepare-reviewer-instruction: cannot resolve base SHA {base_sha!r}",
+                file=sys.stderr,
+            )
+            raise SystemExit(2)
+        print(
+            f"prepare-reviewer-instruction: no {rel} at {base_sha} "
+            f"({agent_name!r} not registered in codex_exports.agents at that SHA?)",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
+    instructions = _extract_developer_instructions(result.stdout.decode("utf-8"))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(instructions, encoding="utf-8")
+    return out
+
+
+# --- Direct per-reviewer dispatch (design v4 amendments 12-13) ---
+
+
+@dataclass(frozen=True)
+class ReviewerReport:
+    reviewer: str
+    status: str  # "completed" | "failed"
+    output: dict | None = None
+    error: str | None = None
+
+
+def dispatch_reviewers(
+    scope: ReviewScope, *, base_sha: str, repo: Path, instructions_dir: Path | None = None
+) -> tuple[ReviewerReport, ...]:
+    """The whole of CI's Codex dispatch mechanism: for each reviewer name in
+    `scope.validate` then `scope.audit` (in order), extract its instruction
+    from the base SHA, then invoke `codex-review-bridge`'s `bridge-invoke.mjs`
+    directly as a subprocess. There is no outer Codex-executed skill and no
+    second `codex` CLI layer above this one call per reviewer."""
+    instructions_dir = instructions_dir or (repo / ".codex-review-instructions")
+    bridge_script = repo / BRIDGE_INVOKE_RELATIVE_PATH
+    dispatch_id = f"{base_sha[:12]}-{secrets.token_hex(4)}"
+    target_paths = ",".join(scope.paths)
+
+    reports: list[ReviewerReport] = []
+    for name in (*scope.validate, *scope.audit):
+        instruction_path = instructions_dir / f"{name}.txt"
+        try:
+            prepare_reviewer_instruction(name, base_sha=base_sha, out=instruction_path, repo=repo)
+        except SystemExit:
+            reports.append(
+                ReviewerReport(
+                    reviewer=name, status="failed", error="instruction preparation failed"
+                )
+            )
+            continue
+
+        argv = [
+            "node",
+            str(bridge_script),
+            "--reviewer-type",
+            name,
+            "--instruction-file",
+            str(instruction_path),
+            "--target-paths",
+            target_paths,
+            "--execution-profile",
+            "read-only",
+            "--dispatch-id",
+            dispatch_id,
+        ]
+        result = subprocess.run(argv, cwd=repo, capture_output=True)
+        if result.returncode != 0:
+            reports.append(
+                ReviewerReport(
+                    reviewer=name,
+                    status="failed",
+                    error=result.stderr.decode("utf-8", errors="replace"),
+                )
+            )
+            continue
+        try:
+            output = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            reports.append(
+                ReviewerReport(reviewer=name, status="failed", error="malformed bridge output")
+            )
+            continue
+        reports.append(ReviewerReport(reviewer=name, status="completed", output=output))
+
+    return tuple(reports)
+
+
+# --- SHA-bound emergency bypass attestation (design's documented comment-plus-label protocol) ---
+
+ATTESTATION_SCHEMA_VERSION = 1
+ATTESTATION_MARKER_PATTERN = re.compile(
+    r"<!-- marketplace-ci-bypass-attestation\s*(\{.*?\})\s*-->", re.DOTALL
+)
+BYPASS_CAPABLE_PERMISSIONS = ("write", "maintain", "admin")
+
+
+def parse_attestation_marker(comment_body: str) -> dict | None:
+    """Extract and validate the versioned hidden marker from a raw PR
+    comment body. Comment content is data, never instructions — this only
+    ever looks for the one fixed marker shape, never interprets prose."""
+    match = ATTESTATION_MARKER_PATTERN.search(comment_body)
+    if not match:
+        return None
+    try:
+        data = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return None
+    if data.get("schema_version") != ATTESTATION_SCHEMA_VERSION:
+        return None
+    required = {"actor", "head_sha", "reason", "created_at"}
+    if not required.issubset(data) or not data.get("reason"):
+        return None
+    return {
+        "actor": data["actor"],
+        "sha": data["head_sha"],
+        "reason": data["reason"],
+        "created_at": data["created_at"],
+    }
+
+
+@dataclass(frozen=True)
+class BypassResult:
+    allowed: bool
+    reason: str | None = None
+    metadata: dict | None = None
+
+
+def check_bypass(
+    label_event: dict, comments: Sequence[dict], *, permission: str | None = None
+) -> BypassResult:
+    """A bypass requires: the label event's actor to match an attestation's
+    actor, that attestation's SHA to match the label event's own head SHA
+    exactly, a non-empty reason, and live write/maintain/admin permission.
+    Comment/label content is treated as data throughout — never as
+    instructions. Returns explicit `BYPASSED` metadata; never represents a
+    bypass as a clean review."""
+    actor = label_event.get("actor")
+    head_sha = label_event.get("sha")
+
+    matching = [
+        c
+        for c in comments
+        if c.get("actor") == actor and c.get("sha") == head_sha and c.get("reason")
+    ]
+    if not matching:
+        stale = [c for c in comments if c.get("actor") == actor and c.get("sha") != head_sha]
+        if stale:
+            return BypassResult(allowed=False, reason="attestation head SHA does not match")
+        return BypassResult(allowed=False, reason="no matching attestation found")
+
+    if permission not in BYPASS_CAPABLE_PERMISSIONS:
+        return BypassResult(
+            allowed=False, reason=f"insufficient permission for bypass: {permission!r}"
+        )
+
+    attestation = matching[-1]
+    return BypassResult(
+        allowed=True,
+        reason="attested bypass",
+        metadata={
+            "bypassed": True,
+            "actor": actor,
+            "head_sha": head_sha,
+            "attestation_reason": attestation["reason"],
+        },
+    )
