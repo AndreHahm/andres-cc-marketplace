@@ -102,6 +102,27 @@ def test_plan_exports_copies_skill_and_converts_agent(repo):
     assert b'description = "Reviews demo components"' in agent_action.content
 
 
+def test_plan_exports_bootstrap_flags_unregistered_agent_export_as_orphan(repo):
+    orphan = repo / ".codex" / "agents" / "ghost-reviewer.toml"
+    orphan.parent.mkdir(parents=True, exist_ok=True)
+    orphan.write_text('name = "ghost-reviewer"\n', encoding="utf-8")
+
+    registry = Registry.empty()
+    plan = plan_exports(repo, registry, previous=None, bootstrap=True)
+    warnings = [a for a in plan.actions if a.operation == "warn"]
+    assert any(a.destination == orphan.resolve() for a in warnings)
+
+
+def test_plan_exports_without_bootstrap_ignores_unregistered_export(repo):
+    orphan = repo / ".codex" / "agents" / "ghost-reviewer.toml"
+    orphan.parent.mkdir(parents=True, exist_ok=True)
+    orphan.write_text('name = "ghost-reviewer"\n', encoding="utf-8")
+
+    registry = Registry.empty()
+    plan = plan_exports(repo, registry, previous=None, bootstrap=False)
+    assert plan.actions == ()
+
+
 def test_plan_exports_prunes_removed_agent(repo):
     previous = Registry(version=1, plugin_mirrors=(), skills=(), agents=("export-demo", "gone"))
     plan = plan_exports(repo, Registry.empty(), previous=previous)

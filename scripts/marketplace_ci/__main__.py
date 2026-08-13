@@ -162,7 +162,7 @@ def _handle_repair_all(args: argparse.Namespace) -> int:
     mirror_plan = plan_plugin_sync(
         repo, registry, previous=previous, bootstrap=args.bootstrap, repo_rules_path=rules_path
     )
-    export_plan = plan_exports(repo, registry, previous=previous)
+    export_plan = plan_exports(repo, registry, previous=previous, bootstrap=args.bootstrap)
     hooks_plan = plan_hooks_merge(repo, registry)
 
     all_actions = (*mirror_plan.actions, *export_plan.actions, *hooks_plan.actions)
