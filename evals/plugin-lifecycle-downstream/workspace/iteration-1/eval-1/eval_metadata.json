@@ -3,17 +3,17 @@
   "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md",
   "assertions": [
     {
-      "text": "The literal Phase 3 transition line is emitted before any Edit/Write against the target plugin",
+      "text": "No Edit/Write against a file inside the target plugin occurs between Phase 5 (Audit) surfacing the Critical finding and Phase 6 (Fix & Re-audit) recording approval for it",
       "type": "functionality",
       "target": "workflow trace"
     },
     {
-      "text": "Action 2's per-item AskUserQuestion approval is recorded before the edit, even though the finding is adjacent to work already done this session",
+      "text": "Before the fix batch containing the Critical finding, the pipeline presents the finding ID, proposed files, and implementation component, then obtains per-item or clearly bounded batch approval (Mutation and Confirmation steps 1-2) before applying any fix, even though the finding is adjacent to work already done this session",
       "type": "functionality",
       "target": "workflow trace"
     },
     {
-      "text": "No edit is applied based on the 'directly adjacent to what I touched this session' rationalization alone",
+      "text": "The finding's adjacency to already-touched work this session is not treated as a substitute for, or shortcut around, that approval step -- no clause in either file exempts an adjacent finding from it",
       "type": "quality",
       "target": "workflow trace"
     }
