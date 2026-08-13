@@ -110,6 +110,9 @@ End the report with:
 When invoked in Structured output mode (see Invocation Modes), skip the narrative report above entirely and return YAML only — no prose outside the block:
 
 ```yaml
+version: "1.0"                   # evidence-schema.md version this document's shape conforms to
+source: consistency-reviewer
+scope: [skill-a, agent-b]        # mirrors `components` below — restated under the shared schema's own field name
 verdict: Pass                    # Pass | Reject
 components: [skill-a, agent-b]   # the resolved component set from Step 1
 counts: {critical: 0, major: 2, minor: 1}
@@ -118,4 +121,8 @@ findings:
 top_priority_fixes: [highest-impact fix, second fix, third fix]
 ```
 
-`findings[].axis` uses `data-consistency | governance-consistency | functionality-overlap | capability-contract | scope-boundary | output-artifact-consistency` (the four Step 4–6 axes plus the split of Step 6 into its three named checks). `findings[].components` lists every component involved in that specific finding (often two). `findings[].severity` uses `critical | major | minor`, ordered Critical-first same as the narrative report. `findings[].action` uses the canonical enum loaded in Step 2 (`move_to_references | delete | replace_line | add_field | fix_frontmatter`); omit the field only if no enum value fits (common for this agent's "sync to canonical source" / "have A delegate to B" style fixes, which don't map to a single-file edit action). Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`verdict`.
+`findings[].axis` uses `data-consistency | governance-consistency | functionality-overlap | capability-contract | scope-boundary | output-artifact-consistency` (the four Step 4–6 axes plus the split of Step 6 into its three named checks). `findings[].components` lists every component involved in that specific finding (often two). `findings[].severity` uses `critical | major | minor`, ordered Critical-first same as the narrative report — already `evidence-schema.md`'s canonical scale, no mapping needed. `findings[].action` uses the canonical enum loaded in Step 2 (`move_to_references | delete | replace_line | add_field | fix_frontmatter`); omit the field only if no enum value fits (common for this agent's "sync to canonical source" / "have A delegate to B" style fixes, which don't map to a single-file edit action). Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`verdict`.
+
+**Shared-schema join:** each `findings[].id` here (e.g. `M1`) is local to this document, and the Finding shape's `source`/`scope` fields aren't repeated per finding here — copy them down from this document's own top-level `source`/`scope`. Concretely: `id: <source>:<findings[].id>` (e.g. `consistency-reviewer:M1`), `source: <this document's source>`, `scope: <findings[].location>`, `status: open` — this document has no cross-phase lifecycle concept of its own.
+
+**Targeted re-audit of a prior finding:** when the caller names a specific prior finding ID to recheck (distinct from Delta mode's "one new edge/one changed section" scoping), re-run only Steps 4–6's checks relevant to that finding's `axis` against the current live files for the components it named, and return a single-entry `findings[]` with the same `id`, updated `severity`/`finding`/`fix` if still open, or omit it (empty `findings[]`) if resolved. Do not re-scan the full component set for this mode.
