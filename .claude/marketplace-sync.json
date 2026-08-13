@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "plugin_mirrors": ["plugin-devkit", "git-kit", "analysis-kit", "codex-kit"],
+  "codex_exports": {
+    "skills": [],
+    "agents": [
+      "plugin-rulebook-checker",
+      "dependency-reviewer",
+      "security-reviewer",
+      "skill-reviewer",
+      "subagent-reviewer",
+      "smoke-tester"
+    ]
+  }
+}
