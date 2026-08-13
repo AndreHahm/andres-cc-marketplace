@@ -28,30 +28,24 @@ For any chosen suggestion the user wants expanded into a full WHAT/WHY/HOW plan 
 
 ## Step 3: Hand Off to Fix
 
-Reformat the approved suggestions into a list matching `plugin-grader`'s real `prioritized_next_steps` schema — each entry: `rank`, `action`, `dimension` (if one clearly applies, else omit), `points_gain_estimate` (a rough estimate is fine — this list didn't come from a real audit, so treat this field as advisory), `lifts_gate` (always `null` — nothing here came from a `plugin-grader` gate).
+Reformat the approved suggestions into the shared Finding schema (`plugin-rulebook/references/evidence-schema.md`) instead of `plugin-grader`'s `prioritized_next_steps` shape — each entry: `id` (`analyzing-sessions:<local-id>`, reusing the suggestion's own P1/P2/P3 tag), `source: analyzing-sessions`, `scope` (the component/file the suggestion targets), `severity` (map P1→major, P2/P3→minor — this list didn't come from a real audit, so treat severity as advisory, not a rubric verdict), `status: open`, `evidence_before` (the suggestion's own WHAT/WHY), `fix` (the suggestion's own HOW).
 
-Invoke `plugin-lifecycle-downstream` (via `Skill`) targeting the same plugin, using its documented **external Phase 3 entry** (see `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md` Phase 3's Entry condition) with this list — skip Phases 1-2 (they would just re-derive a `plugin-grader` score this workflow doesn't need; the findings already came from the retro, not from a fresh audit). This is the reuse point: do not reimplement apply → re-validate → commit here, that is exactly what downstream's Fix phase already does, including its own commit confirmation — and, as of downstream's own "Pre-Flight Checks (Before Fix Only)", its Open-PR and Branch-scope checks too. Do not run a separate copy of either check here. Downstream's Phase 3 also continues automatically into its own Phase 4 (Test) and Phase 5 (Self-Review) whenever it applies at least one change — its own Entry conditions for those two phases don't distinguish a normal Phase 3 entry from this workflow's external one — so this single hand-off already covers Steps 4-5 below without a second invocation.
+Invoke `plugin-lifecycle-downstream` (via `Skill`) targeting the same plugin, using its documented **external Phase 8 (Consolidated Fix) entry** (see `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md` Phase 8's Entry condition) with this findings bundle plus a minimal scope manifest (`baseline_commit` from `git log -1`, `scope_mode: named`, `included` listing exactly the components the approved suggestions target) — skip Phases 1-7 (they would just re-derive evidence this workflow doesn't need; the findings already came from the retro, not from a fresh audit). Declare in the input contract that this workflow owns Phase 9 (Documentation) — Step 5 below runs it separately — so downstream's hand-off skips its own Documentation phase and continues only through Phase 10 (Final Verification) and Phase 11 (Grading, still its own internally-gated ask) into Phase 12 (Handoff). This is the reuse point: do not reimplement apply → re-verify → commit here, that is exactly what downstream's Phase 8 already does, including its own commit confirmation and, per its own Mutation-and-Confirmation preflight, the Open-PR and Branch-scope checks too. Do not run a separate copy of either check here.
 
-**Exit criteria:** Downstream's Phase 3 reports all approved fixes applied and re-validated (fully or partially — partial application is fine, per its own exit criteria), with its own commit(s) already made.
+**Exit criteria:** Downstream's Phase 8 reports all approved fixes applied and independently re-verified (fully or partially — partial application is fine, per its own exit criteria), with its own commit(s) already made.
 
-## Step 4: Test
+## Step 4: Test and Self-Review
 
-Downstream's Phase 3 hand-off in Step 3 above already ran its own Phase 4 (Test) automatically once Phase 3 applied at least one change — per `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md`'s Phase 4 Entry condition. This step exists to give that coverage its own place in this workflow's numbering, not to re-invoke or duplicate it: do not run a second copy of Phase 4's per-type smoke checks from here, and do not reimplement its `smoke-tester`-pending-fallback handling.
+Downstream's Phase 8 hand-off in Step 3 above already re-runs each originating check against live files, plus relevant regression checks, as part of its own verification — the new pipeline folds what the old pipeline ran as two separate automatic phases (Test, Self-Review) into Phase 8's own re-verification instead of numbering them separately. This step exists to give that coverage its own place in this workflow's numbering, not to re-invoke or duplicate it: do not run a second copy of any per-type smoke check or type-matched reviewer dispatch from here.
 
-**Exit criteria:** Downstream's Phase 4 result (per-touched-component pass/fail/skipped), already surfaced as part of Step 3's hand-off — or explicitly stated as skipped, if Step 3 applied nothing.
+**Exit criteria:** Downstream's Phase 8 verification result (per-fix applied/deferred/failed, plus regression-check outcome), already surfaced as part of Step 3's hand-off — or explicitly stated as skipped, if Step 3 applied nothing.
 
-## Step 5: Self-Review
+## Step 5: Document
 
-Same reuse as Step 4 — downstream's own Phase 5 (Self-Review) ran automatically as part of the Step 3 hand-off, scoped to only the component(s) Step 3's approved suggestions actually touched. See `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md`'s Phase 5 for the procedure; this workflow never re-dispatches the type-matched `*-reviewer` agent(s) itself.
+See `SKILL.md`'s "The Document Step" section — identical procedure for all 4 workflows. Run it now, after Step 3's fix commit(s) and Step 4's results are surfaced. This is the ownership Step 3 declared to downstream — downstream's own Phase 9 was skipped precisely so this step is the one place Documentation actually runs.
 
-**Exit criteria:** Downstream's Phase 5 findings, already surfaced as part of Step 3's hand-off — or explicitly stated as skipped, if Step 3 applied nothing.
+## Step 6: Handover (Optional)
 
-## Step 6: Document
+If Step 5 applied any doc change, ask via `AskUserQuestion`: "Run a fresh downstream QA pass to confirm the doc changes didn't break anything?" — options "Yes — run downstream QA" / "No — stop here". If yes, invoke `plugin-lifecycle-downstream` (via `Skill`) for a full Validate+Audit pass over the plugin's current state — broader than Step 3's own Phase 10 (Final Verification), which only re-checked evidence Phase 8 itself invalidated, not evidence Step 5's later doc edits might affect. Never invoke without asking first.
 
-See `SKILL.md`'s "The Document Step" section — identical procedure for all 4 workflows. Run it now, after Step 3's fix commit(s) and Steps 4-5's results are surfaced.
-
-## Step 7: Handover (Optional)
-
-If Step 6 applied any doc change, ask via `AskUserQuestion`: "Run a final downstream QA pass to confirm the doc changes didn't break anything?" — options "Yes — run downstream QA" / "No — stop here". If yes, invoke `plugin-lifecycle-downstream` (via `Skill`) for a fresh Validate+Audit pass (Phases 1-2 this time, a full check). Never invoke without asking first.
-
-If Step 6 made no changes, skip this step — there is nothing new to QA.
+If Step 5 made no changes, skip this step — there is nothing new to QA.

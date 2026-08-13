@@ -39,7 +39,7 @@ Two checks, shared with `plugin-lifecycle-upstream` and `plugin-lifecycle-downst
 
 - **Open-PR check** — runs once, centrally, in Quick Start step 1 above, before any of the 4 workflows starts — not duplicated inside each workflow file.
 - **Branch-scope check** — runs once per workflow, right before that workflow's own first actual write, since each workflow's write point differs:
-  - `improve-a-plugin` / `enhance-a-plugin`: no separate check needed here — both hand off entirely to `plugin-lifecycle-downstream`'s Phase 3 (Fix) at their own Step 3, and Phase 3 now runs this exact check itself (see `plugin-lifecycle-downstream/SKILL.md`'s own "Pre-Flight Checks (Before Fix Only)"). Adding a second check here would just ask the same question twice.
+  - `improve-a-plugin` / `enhance-a-plugin`: no separate check needed here — both hand off entirely to `plugin-lifecycle-downstream`'s Phase 8 (Consolidated Fix) at their own Step 3, and Phase 8 now runs this exact check itself (see `plugin-lifecycle-downstream/SKILL.md`'s own "Mutation and Confirmation", which fires before Phase 8's first write even under External Entry). Adding a second check here would just ask the same question twice.
   - `self-upstream-plugin-devkit`: runs before Bulk mode's Step 6 (`/implement-dev-rules`) and before Single-Rule mode's Step 3 (`/update-dev-rule`) — see that workflow file.
   - `self-service-plugin-devkit`: runs before Service 6's Step 5 (apply approved candidates) and before Service 7's own commit — see that workflow file.
 
@@ -98,10 +98,10 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 6. **Document step, nothing to update** — confirm "no doc update needed" is presented as a normal outcome, not silently skipped without being stated
 7. **Document step delegates to plugin-documentation** — confirm the Document step invokes `plugin-documentation` (not `human-doc-reviewer` directly) and does not ask its own separate delta/full question first — `plugin-documentation` owns that decision internally
 8. **Open-PR check, centralized** — confirm it runs exactly once in Quick Start step 1, before workflow routing, regardless of which of the 4 workflows the request resolves to — and confirm `improve-a-plugin`/`enhance-a-plugin` don't run a second copy of it inside their own Step 1
-9. **Branch-scope check, improve-a-plugin/enhance-a-plugin** — confirm neither workflow runs its own branch-scope check, and that `plugin-lifecycle-downstream`'s Phase 3 pre-flight check is what actually covers this case when Step 3 hands off
+9. **Branch-scope check, improve-a-plugin/enhance-a-plugin** — confirm neither workflow runs its own branch-scope check, and that `plugin-lifecycle-downstream`'s Phase 8 pre-flight check is what actually covers this case when Step 3 hands off
 10. **Branch-scope check, self-upstream-plugin-devkit** — confirm it fires before Bulk Step 6 and before Single-Rule Step 3, not earlier (Steps 1-5/1-2 only read/report/plan, no writes) and not later (both steps are the actual write point)
 11. **Branch-scope check, self-service-plugin-devkit** — confirm it fires before Service 6 Step 5 and before Service 7's own commit, and does not fire for Services 1-5 (none of which write to the plugin)
-12. **improve-a-plugin/enhance-a-plugin, Test and Self-Review reuse** — confirm Steps 4-5 in both workflows don't re-invoke or duplicate `plugin-lifecycle-downstream`'s own Phase 4 (Test)/Phase 5 (Self-Review), which already ran automatically as part of Step 3's hand-off once Phase 3 applied a change — and confirm Steps 4-5 are stated as skipped (not silently omitted) when Step 3 applied nothing
+12. **improve-a-plugin/enhance-a-plugin, Test and Self-Review reuse** — confirm Step 4 in both workflows doesn't re-invoke or duplicate `plugin-lifecycle-downstream`'s own Phase 8 (Consolidated Fix) re-verification, which already ran automatically as part of Step 3's hand-off once Phase 8 applied a change — and confirm Step 4 is stated as skipped (not silently omitted) when Step 3 applied nothing
 13. **self-improvement, Test and Self-Review (Service 6, steps 6-7)** — confirm both are scoped to only the component(s) step 5 actually applied a change to, never the whole plugin; confirm step 7's findings are presented unscored; and confirm step 6's `smoke-tester` batch dispatch is used only for a large touched-skill set and only for the skill components in it, with any touched agent/hook/command/rule going through its own per-type tool directly
 
 **Quality gates:**
@@ -113,8 +113,8 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 - [ ] The optional Handover offer uses `AskUserQuestion`, never auto-invoked without asking
 - [ ] Every written artifact (Retro/Comparison/Rules/Gap/Plan/Implementation Report) gets the standard `📄 ... written:` link line before its content summary — Single-Rule mode's chat-only outputs excepted
 - [ ] The Open-PR check runs exactly once per invocation, centrally in Quick Start, before any workflow's own Actions — never duplicated inside a workflow file
-- [ ] The Branch-scope check always runs immediately before each workflow's own actual write step, never earlier and never skipped — `improve-a-plugin`/`enhance-a-plugin` rely on `plugin-lifecycle-downstream`'s Phase 3 gate instead of running their own
-- [ ] `improve-a-plugin`/`enhance-a-plugin` never re-invoke or duplicate `plugin-lifecycle-downstream`'s Phase 4 (Test)/Phase 5 (Self-Review) — Steps 4-5 in both workflows only give that already-automatic coverage its own place in the step numbering
+- [ ] The Branch-scope check always runs immediately before each workflow's own actual write step, never earlier and never skipped — `improve-a-plugin`/`enhance-a-plugin` rely on `plugin-lifecycle-downstream`'s Phase 8 gate instead of running their own
+- [ ] `improve-a-plugin`/`enhance-a-plugin` never re-invoke or duplicate `plugin-lifecycle-downstream`'s Phase 8 (Consolidated Fix) re-verification — Step 4 in both workflows only gives that already-automatic coverage its own place in the step numbering
 - [ ] `self-improvement`'s Test (step 6) and Self-Review (step 7) are always scoped to only the component(s) step 5 touched, and step 7's findings are never scored into anything resembling `plugin-grader`'s output
 - [ ] Every workflow's Pre-Commit Disclosure check (`plugin-rulebook/references/open-item-discipline.md`) runs immediately before that workflow's own commit, and its result (including "no open items") is always stated alongside the file list/message
 
@@ -133,8 +133,8 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 | `analyzing-sessions` skill | Finding source for `improve-a-plugin`; also the SWOT/critique engine `self-reflexion` hands session digests to |
 | `plugin-comparison` skill | Finding source for `enhance-a-plugin` |
 | `enhancement-suggestor` agent | Expands a chosen suggestion/delta into a full WHAT/WHY/HOW plan |
-| `plugin-lifecycle-downstream` skill | Reused Fix phase (apply/re-validate/commit), plus its own Phase 4 (Test)/Phase 5 (Self-Review) that continue automatically after Fix, for `improve-a-plugin`/`enhance-a-plugin`; also `self-validation`'s Phase 1+2 dispatch |
-| `plugin-grader/references/rubric.md` | Type-Matched Reviewer Table — `self-improvement`'s Self-Review step (Service 6, step 7), and the Self-Review step `improve-a-plugin`/`enhance-a-plugin` reuse via `plugin-lifecycle-downstream`'s own Phase 5 |
+| `plugin-lifecycle-downstream` skill | Reused Phase 8 (Consolidated Fix — apply/re-verify/commit, folding in what the old pipeline ran as separate Test/Self-Review phases) for `improve-a-plugin`/`enhance-a-plugin`; also `self-validation`'s Phase 1 (Scoping) through Phase 5 (Audit) dispatch |
+| `plugin-grader/references/rubric.md` | Type-Matched Reviewer Table — `self-improvement`'s Self-Review step (Service 6, step 7, direct dispatch); `improve-a-plugin`/`enhance-a-plugin` get equivalent coverage indirectly, folded into `plugin-lifecycle-downstream`'s own Phase 8 re-verification rather than a separate reviewer dispatch from this skill |
 | `plugin-grader` skill | `self-grading`'s standalone dispatch target |
 | `plugin-documentation` skill | `self-documentation`'s dispatch target |
 | `skill-tester` skill | `self-evaluation`'s dispatch target |
