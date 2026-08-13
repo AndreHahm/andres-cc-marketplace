@@ -73,7 +73,9 @@ def find_legacy_command_exports(repo: Path) -> tuple[Path, ...]:
     return tuple(p.relative_to(repo) for p in found)
 
 
-def plan_exports(repo: Path, registry: Registry, previous: Registry | None) -> SyncPlan:
+def plan_exports(
+    repo: Path, registry: Registry, previous: Registry | None, bootstrap: bool = False
+) -> SyncPlan:
     claude_agents_root = repo / ".claude" / "agents"
     claude_skills_root = repo / ".claude" / "skills"
     export_skills_root = repo / ".agents" / "skills"
@@ -164,5 +166,38 @@ def plan_exports(repo: Path, registry: Registry, previous: Registry | None) -> S
                 reason="no longer registered in codex_exports",
             )
         )
+
+    if bootstrap:
+        known = set(destinations) | set(delete_destinations)
+        if export_skills_root.is_dir():
+            for existing_file in sorted(export_skills_root.rglob("*")):
+                if not existing_file.is_file():
+                    continue
+                resolved = existing_file.resolve()
+                if resolved in known:
+                    continue
+                actions.append(
+                    SyncAction(
+                        operation="warn",
+                        source=None,
+                        destination=resolved,
+                        reason="no canonical source found for this destination; "
+                        "requires manual classification",
+                    )
+                )
+        if export_agents_root.is_dir():
+            for existing_file in sorted(export_agents_root.glob("*.toml")):
+                resolved = existing_file.resolve()
+                if resolved in known:
+                    continue
+                actions.append(
+                    SyncAction(
+                        operation="warn",
+                        source=None,
+                        destination=resolved,
+                        reason="no canonical source found for this destination; "
+                        "requires manual classification",
+                    )
+                )
 
     return SyncPlan(actions=tuple(actions))
