@@ -12,7 +12,7 @@ from pathlib import Path, PurePosixPath
 from scripts.marketplace_ci.conversion import convert_agent, plan_exports
 from scripts.marketplace_ci.git_state import ChangedPath, GitState
 from scripts.marketplace_ci.registry import Registry
-from scripts.marketplace_ci.sync import _iter_component_files, plan_plugin_sync
+from scripts.marketplace_ci.sync import _iter_component_files, apply_sync_plan, plan_plugin_sync
 
 _INTERPRETER_COMMAND = {"python": "python", "bash": "bash"}
 
@@ -248,3 +248,47 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
         check_pair(rel_source, f".codex/agents/{agent_name}.toml", is_agent=True)
 
     return HookCheckResult(exit_code=1 if messages else 0, messages=tuple(messages))
+
+
+@dataclass(frozen=True)
+class PostEditResult:
+    changed: tuple[str, ...]
+
+
+_POST_EDIT_IGNORED_PREFIXES = (".agents/", ".codex/")
+_POST_EDIT_WATCHED_PREFIXES = ("plugins/", ".claude/skills/", ".claude/agents/")
+
+
+def run_post_edit(repo: Path, changed_path: str) -> PostEditResult:
+    """Cascade a single canonical edit into both its `.claude` mirror and (if
+    applicable) its `.agents`/`.codex` export, in one process — no dependency
+    on a second hook observing the mirror write and re-triggering itself.
+
+    Generated destinations (`.agents/`, `.codex/`) are never watched, so the
+    adapter's own writes — made via plain Python file I/O in `apply_sync_plan`,
+    never through Claude Code's own Write/Edit tool — cannot re-trigger this
+    hook even in principle; there is no separate "recursion token" to track
+    across invocations, since each hook invocation is a fresh, stateless
+    subprocess with nothing to persist between calls.
+    """
+    if changed_path.startswith(_POST_EDIT_IGNORED_PREFIXES):
+        return PostEditResult(changed=())
+    if not changed_path.startswith(_POST_EDIT_WATCHED_PREFIXES):
+        return PostEditResult(changed=())
+
+    registry_path = repo / ".claude" / "marketplace-sync.json"
+    if not registry_path.is_file():
+        return PostEditResult(changed=())
+    registry = Registry.load(registry_path)
+
+    mirror_plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=False)
+    mirror_result = apply_sync_plan(mirror_plan)
+
+    export_plan = plan_exports(repo, registry, previous=None)
+    export_result = apply_sync_plan(export_plan)
+
+    changed = tuple(
+        action.destination.relative_to(repo).as_posix()
+        for action in (*mirror_result.applied, *export_result.applied)
+    )
+    return PostEditResult(changed=changed)

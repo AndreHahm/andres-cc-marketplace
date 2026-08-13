@@ -233,3 +233,38 @@ def test_check_pr_missing_field_returns_2(monkeypatch, git_repo, tmp_path):
     event_path.write_text(json.dumps({"pull_request": {"title": "feat: x"}}), encoding="utf-8")
     monkeypatch.chdir(git_repo.root)
     assert main(["check-pr", "--event", str(event_path)]) == 2
+
+
+def test_handle_post_edit_cascades_and_reports_via_stdout(monkeypatch, repo, capsys):
+    import io
+
+    _write_registry(repo, plugin_mirrors=["sample-kit"], skills=["demo"])
+    monkeypatch.chdir(repo)
+    event = {
+        "tool_input": {
+            "file_path": str(repo / "plugins" / "sample-kit" / "skills" / "demo" / "SKILL.md")
+        }
+    }
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(event)))
+    assert main(["handle-post-edit"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert "systemMessage" in out
+    assert ".claude/skills/demo/SKILL.md" in out["systemMessage"]
+
+
+def test_handle_post_edit_no_file_path_returns_empty_json(monkeypatch, repo, capsys):
+    import io
+
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps({"tool_input": {}})))
+    assert main(["handle-post-edit"]) == 0
+    assert json.loads(capsys.readouterr().out) == {}
+
+
+def test_handle_post_edit_malformed_stdin_returns_empty_json(monkeypatch, repo, capsys):
+    import io
+
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
+    assert main(["handle-post-edit"]) == 0
+    assert json.loads(capsys.readouterr().out) == {}
