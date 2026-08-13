@@ -23,6 +23,13 @@
       "prompt": "Using the plugin-documentation skill, write a QUICK_START.md for the plugin at evals/plugin-documentation/fixture-plugin-eval3.",
       "expected_output": "QUICK_START.md written with install step + one usage example, and the final report explicitly states no dedicated reviewer is available for this doc type yet.",
       "files": ["evals/plugin-documentation/fixture-plugin-eval3/QUICK_START.md"]
+    },
+    {
+      "id": "eval-4",
+      "name": "Pipeline Mode returns the structured classification",
+      "prompt": "Using the plugin-documentation skill in Pipeline Mode, given a scope manifest for evals/plugin-documentation/fixture-plugin-eval2 and a changed-claim inventory stating the skill count changed from one to two, update README.md and return the structured classification.",
+      "expected_output": "README.md updated (same content change as eval-2), plus a structured classification block with docs_changed listing README.md's path and behavior_changed/activation_changed/permissions_changed/instructions_changed/dependency_relationships_changed all false.",
+      "files": ["evals/plugin-documentation/fixture-plugin-eval2/README.md"]
     }
   ]
 }

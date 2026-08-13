@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-4",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-documentation",
+  "assertions": [
+    {"text": "README.md is updated the same way eval-2 expects (both skills listed, Known Issues preserved)", "type": "functionality", "target": "README.md"},
+    {"text": "The report includes a structured classification block with version/source/docs_changed and the five change-axis fields", "type": "structure", "target": "report"},
+    {"text": "docs_changed lists README.md's actual path, not a placeholder", "type": "presence", "target": "report"},
+    {"text": "behavior_changed, activation_changed, permissions_changed, instructions_changed, and dependency_relationships_changed are all false", "type": "functionality", "target": "report"}
+  ]
+}
