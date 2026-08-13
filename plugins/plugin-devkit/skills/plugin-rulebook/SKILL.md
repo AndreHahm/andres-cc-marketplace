@@ -485,3 +485,4 @@ Whether a rule traces back to an official Claude Code doc, and whether that doc 
 | `${CLAUDE_SKILL_DIR}/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, and `plugin-lifecycle-maintenance` |
 | `${CLAUDE_SKILL_DIR}/references/open-item-discipline.md` | Phase-Completion check, Pre-Commit Disclosure, and downstream's proactive offer — shared by all three lifecycle skills |
 | `${CLAUDE_SKILL_DIR}/references/frontmatter-corrections.md` | R5's `AskUserQuestion`/non-functional-field corrections, R6's agent-file Bash-scoping exception and full scope/verdict table |
+| `${CLAUDE_SKILL_DIR}/references/evidence-schema.md` | Shared scope-manifest/finding/report-revision/evidence-bundle shapes used across `plugin-lifecycle-downstream`'s twelve-phase pipeline; validated by `scripts/validate_evidence.py` |
