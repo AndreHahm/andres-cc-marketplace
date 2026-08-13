@@ -1,15 +1,67 @@
 {
-  "description": "Skill Improver stop hook for iterative skill improvement loop; PostToolUse hooks backing plugin-rulebook compliance checks, hooks.json schema validation, a best-effort R26 expensive-action audit on component edits/dispatches, and a best-effort R25 overhead-disclosure reminder on Agent/Bash retries; PostToolUseFailure hook feeding that same R25 reminder's failure-tracking state; PreToolUse hook running a log-only, deterministic security pre-commit check before git commit executes",
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/session-lifecycle-hook.mjs\" SessionStart",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/session-lifecycle-hook.mjs\" SessionEnd",
+            "timeout": 12,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/stop-review-gate-hook.mjs\"",
+            "timeout": 600,
+            "onError": "warn",
+            "statusMessage": "Running Codex stop-time review gate (can take up to 9 minutes)..."
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-dirty-worktree-exit.sh",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "^(Bash|PowerShell)$",
         "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/security-precommit-check.sh",
-            "timeout": 10
-          },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-raw-commit.sh",
@@ -41,22 +93,14 @@
             "onError": "warn"
           }
         ]
-      }
-    ],
-    "Stop": [
+      },
       {
-        "matcher": "",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/guard-dirty-worktree-exit.sh",
-            "timeout": 10,
-            "onError": "warn"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/security-precommit-check.sh",
+            "timeout": 10
           }
         ]
       }
