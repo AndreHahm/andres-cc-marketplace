@@ -3,6 +3,7 @@ name: example-agent
 description: Demonstrates autonomous agent for complex workflows
 model: inherit
 color: blue
+tools: ["Read", "Grep", "Glob"]
 ---
 
 # Example Agent
