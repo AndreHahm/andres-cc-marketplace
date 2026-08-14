@@ -1,6 +1,6 @@
 # Analysis Kit
 
-Session analysis toolkit for Claude Code: component retrospectives, tool/framework auditing, actor behavior analysis, governance and conflict detection, session/specification comparison, recurring-pattern mining, cross-report findings review, and classified improvement recommendations — all grounded in a session or date range, with reports persisted for later reference, and a guided front door (`starting-an-analysis`) that picks the right analysis type without needing to already know the other skills' names.
+Session analysis toolkit for Claude Code: component retrospectives, tool/framework auditing, actor behavior analysis, governance and conflict detection, session/specification comparison, recurring-pattern mining, cross-report findings review, and classified improvement recommendations — all grounded in a session or date range, with reports persisted for later reference, a guided front door (`starting-an-analysis`) that picks the right analysis type without needing to already know the other skills' names, and a multi-run orchestrator (`running-a-full-retrospective`) that runs several of those analyses at once, consolidates their findings, and hands off to a guided fix pass.
 
 ## Plugin Target
 
@@ -15,7 +15,7 @@ Session analysis toolkit for Claude Code: component retrospectives, tool/framewo
 
 ## Overview
 
-`analysis-kit` provides 10 skills over a shared deterministic `scripts/` core (component/rule inventory, framework fingerprinting, structural diffing, sequence mining, usage aggregation, session parsing, secret redaction — see the Skills table below for what each skill does). Reports from every skill are persisted under `.claude/output/<skill-name>/`, one file per run, so later runs can reference a specific prior report. Before any report is written, every skill runs it through `scripts/redact_secrets.py` — a shared pass that strips common secret-shaped patterns (Authorization/Bearer headers, `.env`-shaped lines, known cloud key prefixes) without ever blocking the write.
+`analysis-kit` provides 11 skills over a shared deterministic `scripts/` core (component/rule inventory, framework fingerprinting, structural diffing, sequence mining, usage aggregation, session parsing, secret redaction — see the Skills table below for what each skill does). Reports from every skill are persisted under `.claude/output/<skill-name>/`, one file per run, so later runs can reference a specific prior report. Before any report is written, every skill runs it through `scripts/redact_secrets.py` — a shared pass that strips common secret-shaped patterns (Authorization/Bearer headers, `.env`-shaped lines, known cloud key prefixes) without ever blocking the write.
 
 This plugin is standalone — it has no dependency on any other plugin.
 
@@ -77,6 +77,7 @@ cc --plugin-dir /path/to/analysis-kit
 | Skill | Use when |
 |---|---|
 | `starting-an-analysis` | Not already knowing which of the 7 report-producing analysis skills below fits — a guided front door that picks the type, scopes it, confirms before running, and offers the next step afterward |
+| `running-a-full-retrospective` | Wanting several of the 7 analysis skills below run over the same scope and consolidated into one deduplicated, prioritized action list, then handed off to `plugin-lifecycle-maintenance` for a guided fix pass — not one analysis type at a time |
 | `analyzing-plugin-components` | Running a post-session retrospective, auditing skill/agent/rule performance, or building a prioritized improvement backlog from a session or date range |
 | `analyzing-tool-and-framework-use` | Auditing which external tools or developer frameworks a session actually used, or checking whether a framework's execution companion stayed within its subordinate role |
 | `analyzing-actor-behavior` | Assessing agent behavior, human-vs-agent contribution, or cross-agent handoff/flow patterns |
