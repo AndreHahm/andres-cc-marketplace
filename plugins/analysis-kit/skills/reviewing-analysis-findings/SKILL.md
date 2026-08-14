@@ -42,6 +42,7 @@ This skill reviews *other reports*, not production code or a live session — it
 - **Comparing the same skill's report across two different sessions/times** — use `comparing-sessions` instead; this skill cross-checks *different skills'* reports from the *same* scope, not the same skill's report over time
 - **A single unacknowledged contradiction as one narrow check among several** — `analyzing-governance-and-conflicts`' session-vs-session conflict category already covers a lighter version of this; use this skill when a full multi-report cross-check across an entire retrospective is actually wanted
 - **Resolving which report is right** — this skill surfaces contradictions and undercuts; deciding which finding to trust returns to the user or the producing skill, same as every other analysis-kit skill's read-only discipline
+- **The reports don't exist yet and running several analyses to produce them is also wanted** — use `running-a-full-retrospective` instead; it dispatches the analyses, consolidates their findings, and offers this skill's own cross-check as one step within that flow. Use this skill directly only once the reports already exist and only the cross-check is wanted
 
 ## Phase 1: Identify the Report Paths
 

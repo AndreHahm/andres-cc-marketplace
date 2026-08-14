@@ -11,6 +11,7 @@ A short kebab-case description of the scope a report covers, used as the filenam
 - **`comparing-session-to-specification`**: derive from the spec document's own filename, e.g. `<spec-basename>-compliance`.
 - **`reviewing-analysis-findings`**: derive from the reports being cross-checked, e.g. `<skill-a>-and-<skill-b>-<date>`.
 - **`generating-analysis-recommendations`**: derive from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report.
+- **`running-a-full-retrospective`**: reuses whichever `<scope-slug>` its own dispatched date-range analyses used for that run (the shared scope confirmed once in Phase 1) — no independent derivation of its own.
 
 **Two different things share this one name — read this before wiring a new discovery glob.** `<scope-slug>` is used two ways in this plugin: as a *filename prefix* (always — every skill's own Persist step, per the derivations above), and as a *cross-skill discovery filter* (a `<value>-*.md` glob checking "do 2+ reports share this scope," used only at the specific sites listed below — not universally). Whether a site can filter by scope, and by what value, depends entirely on whether that skill's own persisted-filename slug is a value a sibling report could plausibly share:
 
@@ -22,6 +23,7 @@ A short kebab-case description of the scope a report covers, used as the filenam
 | `comparing-session-to-specification`'s own Next-step block | none — any other report besides the one just written | No shared-scope input exists (only a spec path); its own slug (`<spec-basename>-compliance`) is a per-report identifier with no shared counterpart |
 | `starting-an-analysis` Phase 5, when `comparing-session-to-specification` was dispatched | none — same "any other report" check | Same reason as above |
 | `comparing-sessions` Phase 1 "latest" resolution, `mining-recurring-patterns` Phase 3 memory-recall, `generating-analysis-recommendations` Phase 1, `reviewing-analysis-findings` Arguments block and Phase 1 | none — bare, unfiltered glob | These sites list/discover candidate reports generally, not a "does this specific scope already have 2+ reports" check |
+| `running-a-full-retrospective` Phase 1 reuse check | `<scope-slug>-*.md`, filtered per candidate analysis type's own report directory | Checks whether a report already exists for the confirmed scope before dispatching, mirroring each date-range skill's own Next-step filter |
 
 `comparing-sessions` and `mining-recurring-patterns` each appear twice above — once with a filter, once without — since each uses both forms in different places within its own file.
 

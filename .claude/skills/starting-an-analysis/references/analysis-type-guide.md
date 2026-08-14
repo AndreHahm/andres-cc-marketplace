@@ -2,6 +2,8 @@
 
 One paragraph per report-producing skill, reused from each skill's own `SKILL.md` `description`, organized to match Phase 1's two-tier picker.
 
+**Second consumer:** `running-a-full-retrospective`'s own Phase 1 also reads this file, but only the 5 entries under "A single session's component/skill performance", "How agents, tools, or frameworks behaved", and "Rules, conflicts, or recurring issues" — every entry except the 2 under "Compare two things" (`comparing-sessions`, `comparing-session-to-specification`), which take a comparison target rather than a bare scope. Its picker is shaped differently from this file's own two-tier structure, but the same 5 paragraphs serve both.
+
 ## A single session's component/skill performance
 
 **`analyzing-plugin-components`** — Analyzes Claude Code sessions from a user-defined start date through today. Executes SWOT analyses, self-critiques, and self-reflections for each skill, sub-agent, command, workflow-skill, and rule active in the session range, reading generated output artifacts in scope and re-verifying their stated open items against current repo state rather than trusting them at face value. Generates classified improvement suggestions grouped by component and priority. Pick this for a general post-session retrospective, auditing skill or agent performance, building an improvement backlog, or identifying systemic issues across skills, agents, and rules.
