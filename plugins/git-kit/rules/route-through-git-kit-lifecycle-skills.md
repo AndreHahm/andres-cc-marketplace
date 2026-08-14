@@ -38,6 +38,16 @@ marker string via a second raw command and satisfy the check without ever runnin
 hooks as guardrails against habit and mistake, not as proof that a guarded command actually came from the
 skill that's supposed to own it.
 
+**`Skill()` output isn't proof of currency for an unmerged worktree edit.** A `Skill(git-kit:<name>)`
+dispatch always resolves to the primary checkout's own `.claude/`-mirrored copy of that skill — never a
+session's own worktree, even when the current session just edited that exact skill's `SKILL.md` inside an
+unmerged worktree. Dispatching the skill by name after such an edit silently runs the *old*, pre-edit
+instructions, with no error at any layer — the returned output looks completely normal, so the staleness
+is invisible unless the reader happens to notice the missing logic. This has independently reproduced
+twice in this repo's own history: treat a `Skill()` dispatch as authoritative only when the skill being
+called hasn't itself been edited in an unmerged worktree this session; otherwise, read the worktree's own
+current file directly instead of dispatching, or merge the worktree's change first.
+
 ## Why
 
 Each of these six skills exists because the equivalent raw command is missing something the skill adds
