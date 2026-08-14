@@ -46,3 +46,8 @@ Every site below must match this file. If you change either definition here, upd
 - `skills/comparing-session-to-specification/SKILL.md` — Persist step (scope-slug), Next-step block (glob)
 - `skills/generating-analysis-recommendations/SKILL.md` — Phase 1 (glob), Persist step (scope-slug) — two sites
 - `skills/reviewing-analysis-findings/SKILL.md` — Arguments block (glob), Phase 1 (glob), Persist step (scope-slug) — three sites
+- `skills/running-a-full-retrospective/SKILL.md` — Phase 1 reuse check (glob, filtered per chosen analysis
+  type's own scope-slug), Phase 3 Persist step (scope-slug, reusing whichever date-range scope this run's
+  own dispatches used) — two sites. Its own persisted report is deliberately *not* added to the 9-directory
+  report-discovery glob enumeration above — see this skill's own Gotchas section for why a meta-report
+  consolidating other reports shouldn't count as a 10th independent one
