@@ -142,11 +142,22 @@ For each component, produce a SWOT grounded in observed session behavior — not
 | Threats      | … |
 ```
 
+**Every Phase 2 inventory entry must map to its own SWOT here, or to an explicit, stated exclusion
+justification** — e.g. "already SWOT'd in `<report>`, not re-derived to avoid duplicating that
+research." Grouping several related components into one aggregate SWOT entry is fine when the
+grouping itself is stated; a component silently absent from both Phase 3's output and any stated
+exclusion is a defect, not an acceptable summary — see the Testing & Validation gate for how this is
+checked before persistence.
+
 See `references/swot-framework.md` for quadrant prompts and common patterns per component category.
 
 ## Phase 4: Self-Critique and Self-Reflection
 
-For each component, immediately after its SWOT:
+For each component, immediately after its SWOT, **both sections below are mandatory — not
+optional or partial.** Write "None — <one-line reason>" when a section genuinely has nothing to
+add (e.g. a fix applied cleanly with no execution mistakes); only omit both headings entirely for
+a component covered by Phase 3's own stated exclusion (an aggregate/summary entry that already
+declares it isn't re-deriving another report's assessment has nothing of its own to critique).
 
 **Self-Critique** — what went wrong:
 - Errors, omissions, wrong assumptions made during execution
@@ -216,6 +227,8 @@ Use one file per run (`<scope-slug>-<timestamp>.md`) as the persistence conventi
 After Phase 6, verify these gates before presenting output as final:
 
 - [ ] Inventory names at least one component per category present in the session
+- [ ] Every Phase 2 inventory entry has either its own Phase 3 SWOT or a stated exclusion/grouping justification — count the two lists against each other before persisting, not just at a glance
+- [ ] Every SWOT block has both a Self-Critique and a Self-Reflection section (or an explicit "None — <reason>"/stated-exclusion in their place) — no SWOT block silently missing one or both
 - [ ] Every SWOT quadrant has at least one observation (no empty rows)
 - [ ] Every P1 suggestion names a specific file, section, or step in its Detail field
 - [ ] Top 5 Actions are drawn from P1 first; P2 entries appear only when no P1 remain
