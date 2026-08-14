@@ -16,6 +16,7 @@ from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.pr_policy import RealGitHubApi, evaluate_pr_policy
 from scripts.marketplace_ci.registry import Registry, RegistryError
 from scripts.marketplace_ci.review import (
+    FULL_ESCALATION_PATHS,
     ReviewOutputError,
     aggregate_findings,
     check_bypass,
@@ -475,6 +476,30 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     changed = tuple(ChangedPath(status="M", old_path=p, new_path=p) for p in changed_files)
 
     scope = derive_review_scope(changed, {})
+
+    if scope.mode == "full":
+        # "full" mode is a classification only -- derive_review_scope names
+        # the escalation triggers, but no reviewer set has ever been defined
+        # for it (Task 9/11 scope). Dispatching scope.validate/audit here
+        # would dispatch nothing (both are empty for "full"), silently
+        # reporting a clean pass with zero actual review coverage on
+        # whatever triggered the escalation. Fail closed instead: this is
+        # exactly the "manual-full" case design.md says a human decides,
+        # not something this CLI can safely wave through on its own.
+        triggering_paths = [p for p in scope.paths if p in FULL_ESCALATION_PATHS]
+        reason = (
+            f"shared-governance path(s): {', '.join(triggering_paths)}"
+            if triggering_paths
+            else f"dependency closure ({len(scope.paths)} affected paths, over the limit)"
+        )
+        print(
+            "run-codex-review: mode=full escalation has no defined reviewer "
+            "dispatch yet -- this requires human review, not an automated "
+            f"pass. Trigger: {reason}",
+            file=sys.stderr,
+        )
+        return 2
+
     structural_findings = run_delta_structural_checks(repo, changed)
     reports = dispatch_reviewers(scope, base_sha=base_sha, repo=repo)
 
