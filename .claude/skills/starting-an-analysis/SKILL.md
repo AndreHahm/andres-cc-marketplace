@@ -43,7 +43,7 @@ analysis-kit has 10 skills total — this one is the entry point for the 7 that 
 ## When NOT to Use
 
 - **Already know the exact skill and scope** — invoking it directly (e.g. `analyzing-actor-behavior 2026-07-01`) skips this skill's own two extra confirmation gates
-- **Running several analysis types back-to-back without stopping between each** — this skill gates every hop by design (confirm-before-dispatch); chaining several types in one uninterrupted pass means calling each skill directly instead
+- **Running several analysis types back-to-back without stopping between each, then consolidating them into one prioritized report** — use `running-a-full-retrospective` instead; this skill gates every hop by design (confirm-before-dispatch) and has no consolidation step of its own, so chaining several types through here means either calling each skill directly or using the dedicated multi-run skill
 - **Expanding a finding or cross-checking reports you already have** — go straight to `generating-analysis-recommendations`/`reviewing-analysis-findings`; this skill's own Phase 5 offers them but doesn't add anything beyond what calling them directly gives you
 - **A component/skill/agent/rule retrospective is already the known target** — invoke `analyzing-plugin-components` directly instead of routing through here; this skill's own bare-request framing (see "When to Use" above) exists specifically to catch the typeless case, not to replace a direct call once the type is known
 

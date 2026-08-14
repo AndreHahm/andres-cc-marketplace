@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes the request as a multi-analysis consolidation task (not a single analysis)", "passed": true, "evidence": "Correctly identified no explicit analysis list/scope given, proceeded to Phase 1's multi-pick"},
+    {"text": "Describes asking which analysis types to run with multiSelect framing", "passed": true, "evidence": "Explicit 'AskUserQuestion, multiSelect: true' with all 5 eligible types listed accurately, comparing-sessions/comparing-session-to-specification correctly excluded"},
+    {"text": "Describes confirming scope once, not per analysis type", "passed": true, "evidence": "'reused verbatim for every chosen analysis in Phase 2, never re-asked per type'"},
+    {"text": "Does not skip straight to dispatching an analysis without the picker step", "passed": true, "evidence": "Explicitly deferred Phase 2 dispatch until 'Phase 1 ... is fully settled', including the reuse-check glob step"},
+    {"text": "No crash, malformed output, or contradiction of its own documented phases", "passed": true, "evidence": "Coherent walkthrough of Phases 1-5, correctly gated Phase 4/5 on AskUserQuestion, no contradictions"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

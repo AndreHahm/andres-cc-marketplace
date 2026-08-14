@@ -1,0 +1,14 @@
+{
+  "skill_name": "running-a-full-retrospective",
+  "skill_path": "plugins/analysis-kit/skills/running-a-full-retrospective/SKILL.md",
+  "description": "Bounded Phase 6 smoke check (plugin-lifecycle-upstream) -- confirms the skill loads and activates correctly on a representative trigger phrase without crashing the harness. Not exhaustive per-trigger-phrase testing.",
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "Activates and follows Phase 1 correctly on a representative full-retrospective request",
+      "prompt": "run a full retrospective and consolidate the findings, then fix what it finds",
+      "expected_output": "Should recognize this as a multi-analysis consolidation request, ask (via a described AskUserQuestion-style choice) which analysis types to run with multiSelect framing, and ask for scope once -- not per analysis type. Should NOT immediately dispatch anything or skip the picker.",
+      "files": []
+    }
+  ]
+}
