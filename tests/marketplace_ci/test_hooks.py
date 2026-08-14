@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 from scripts.marketplace_ci.validators import check_staged_parity
 
@@ -77,6 +78,30 @@ Review the target carefully.
     git_repo.stage(".codex/agents/export-demo.toml", convert_agent(agent_markdown))
     result = check_staged_parity(git_repo.root)
     assert result.exit_code == 0
+
+
+def test_untouched_sibling_reference_file_does_not_block_skillmd_only_change(git_repo):
+    """Regression test: a skill's SKILL.md and its references/*.md file share
+    the same first-4-path-segment directory prefix (plugins/<plugin>/skills/<name>),
+    so staging only SKILL.md must never require an untouched sibling reference
+    file to also be staged just because it lives under the same directory."""
+    _write_registry(git_repo.root, plugin_mirrors=["sample-kit"])
+    git_repo.stage("plugins/sample-kit/skills/demo/SKILL.md", "v1")
+    git_repo.stage(".claude/skills/demo/SKILL.md", "v1")
+    git_repo.stage("plugins/sample-kit/skills/demo/references/foo.md", "ref v1")
+    git_repo.stage(".claude/skills/demo/references/foo.md", "ref v1")
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "baseline"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+    )
+
+    # Only SKILL.md changes in this commit; the reference file pair is untouched.
+    git_repo.stage("plugins/sample-kit/skills/demo/SKILL.md", "v2")
+    git_repo.stage(".claude/skills/demo/SKILL.md", "v2")
+    result = check_staged_parity(git_repo.root)
+    assert result.exit_code == 0, result.messages
 
 
 def test_staged_converted_agent_export_stale_content_fails_parity(git_repo):

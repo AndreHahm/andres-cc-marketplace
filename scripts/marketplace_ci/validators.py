@@ -185,10 +185,7 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
     git_state = GitState(repo=repo)
     staged = git_state.staged_paths()
     staged_new_paths = {cp.new_path for cp in staged if cp.new_path is not None}
-    changed_keys = {
-        _component_key(p) for cp in staged for p in (cp.new_path or cp.old_path,) if p is not None
-    }
-    if not changed_keys:
+    if not staged_new_paths:
         return HookCheckResult(exit_code=0)
 
     claude_root = repo / ".claude"
@@ -196,7 +193,11 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
     messages: list[str] = []
 
     def check_pair(rel_source: str, rel_dest: str, *, is_agent: bool = False) -> None:
-        if _component_key(rel_source) not in changed_keys:
+        # Exact match against the staged path set -- not a directory-prefix
+        # key -- so that staging one file in a skill (e.g. SKILL.md) never
+        # requires an untouched sibling (e.g. references/*.md) to also be
+        # staged just because both happen to share a coarse directory key.
+        if rel_source not in staged_new_paths:
             return
         staged_source_blob = git_state.read_index(PurePosixPath(rel_source))
         if staged_source_blob is None:
