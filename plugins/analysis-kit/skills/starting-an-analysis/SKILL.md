@@ -14,7 +14,10 @@ description: >-
   or a session/spec comparison — such as a bare "run a retrospective" or
   "analyze this session," when explicitly asking "which analysis-kit skill
   do I need," or wanting the whole analyze-then-follow-up flow walked
-  through step by step instead of invoking each skill by hand.
+  through step by step instead of invoking each skill by hand. Not for
+  running several analysis types at once and consolidating them into one
+  report, even when phrased as a bare "run a full retrospective" — use
+  running-a-full-retrospective for that.
 allowed-tools: Read Glob AskUserQuestion Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(comparing-sessions) Skill(comparing-session-to-specification) Skill(generating-analysis-recommendations) Skill(reviewing-analysis-findings)
 argument-hint: [optional: what you want to analyze, in your own words]
 ---
@@ -23,7 +26,7 @@ argument-hint: [optional: what you want to analyze, in your own words]
 
 Guided front door for analysis-kit: pick an analysis type, provide its scope, run it, then get offered the natural next step.
 
-analysis-kit has 11 skills total — this one is the entry point for the 7 that produce a report (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `comparing-sessions`, `comparing-session-to-specification`) and the gateway to the 2 that consume one (`generating-analysis-recommendations`, `reviewing-analysis-findings`). The 11th, `running-a-full-retrospective`, runs several of the 7 producers at once and consolidates their findings — see "When NOT to Use" below. A user who already knows analysis-kit's skill names can skip this and call them directly — this skill exists for everyone else.
+analysis-kit has 11 skills total — this one is the entry point for the 7 that produce a report (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `comparing-sessions`, `comparing-session-to-specification`) and the gateway to the 2 that consume one (`generating-analysis-recommendations`, `reviewing-analysis-findings`). The 11th, `running-a-full-retrospective`, runs several of the 5 date-range producers at once and consolidates their findings — see "When NOT to Use" below. A user who already knows analysis-kit's skill names can skip this and call them directly — this skill exists for everyone else.
 
 ## Quick Start
 
@@ -43,7 +46,7 @@ analysis-kit has 11 skills total — this one is the entry point for the 7 that 
 ## When NOT to Use
 
 - **Already know the exact skill and scope** — invoking it directly (e.g. `analyzing-actor-behavior 2026-07-01`) skips this skill's own two extra confirmation gates
-- **Running several analysis types back-to-back without stopping between each, then consolidating them into one prioritized report** — use `running-a-full-retrospective` instead; this skill gates every hop by design (confirm-before-dispatch) and has no consolidation step of its own, so chaining several types through here means either calling each skill directly or using the dedicated multi-run skill
+- **Running several of the 5 date-range analysis types back-to-back without stopping between each, then consolidating them into one prioritized report** — use `running-a-full-retrospective` instead; this skill gates every hop by design (confirm-before-dispatch) and has no consolidation step of its own, so chaining several types through here means either calling each skill directly or using the dedicated multi-run skill. This redirect doesn't cover `comparing-sessions`/`comparing-session-to-specification` — `running-a-full-retrospective` can't run either (they take a comparison target, not a bare scope), so chaining those two still means calling each directly through here
 - **Expanding a finding or cross-checking reports you already have** — go straight to `generating-analysis-recommendations`/`reviewing-analysis-findings`; this skill's own Phase 5 offers them but doesn't add anything beyond what calling them directly gives you
 - **A component/skill/agent/rule retrospective is already the known target** — invoke `analyzing-plugin-components` directly instead of routing through here; this skill's own bare-request framing (see "When to Use" above) exists specifically to catch the typeless case, not to replace a direct call once the type is known
 
