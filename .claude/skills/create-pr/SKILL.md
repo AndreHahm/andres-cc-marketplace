@@ -5,8 +5,8 @@ description: >-
   formatting. Use when creating a new PR, running `/create-pr`, or asked to "open a PR", "create a pull
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
-argument-hint: (optional) an issue number to close or reference — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr)
+argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>" — otherwise an interactive guide
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -14,6 +14,12 @@ allowed-tools: Bash(gh pr create:*), Bash(git status:*), Bash(git push:*), Bash(
 This guide explains how to create pull requests using GitHub CLI in our project.
 
 **Important**: All PR titles and descriptions should be written in English.
+
+## Flags
+
+| Flag | Effect |
+|------|--------|
+| `--bypass-codex-review "<reason>"` | After the PR is created, attest a SHA-bound bypass of the marketplace's Codex delta review — see step 5 under Creating a New Pull Request below. A non-empty `<reason>` is required; the flag is rejected if the reason is empty or missing. **This never skips a deterministic check, PR-author-privilege check, draft state, or the explicit merge confirmation in `merge-pr` — it affects only the Codex-review policy job.** |
 
 ## Prerequisites
 
@@ -90,7 +96,15 @@ Before creating a PR, check for uncommitted changes:
    gh pr create --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main
    ```
 
-5. **Issue-linking hand-off**: skip this step entirely if `create-pr` was invoked as a nested dependency
+5. **Optional Codex-review bypass attestation** (only when invoked with `--bypass-codex-review "<reason>"`): a non-empty reason is required — if the flag is present with an empty or missing reason, reject it and stop before creating any attestation (the PR itself, already created in step 4, is unaffected). Otherwise, after the PR exists:
+   a. Resolve the current head SHA: `gh pr view <number> --json headRefOid --jq '.headRefOid'`.
+   b. Resolve the current authenticated actor: `gh api user --jq '.login'`.
+   c. Verify live merge-capable permission (`write`, `maintain`, or `admin`) for that actor on this repo: `gh api repos/{owner}/{repo}/collaborators/{actor}/permission --jq '.permission'`. If insufficient, **stop here and report the bypass was not attested** — the PR remains created, but state plainly that the Codex-review gate is still active because this actor lacks merge-capable permission.
+   d. Build the versioned attestation marker — `schema_version: 1`, this `actor`, this `head_sha`, the given `reason`, and a current UTC `created_at` timestamp — as a single JSON object, using `jq -n --arg` (or equivalent) to build it, **never by interpolating the reason text directly into a shell string** (the same shell-injection discipline this repository's own `marketplace-ci.yml` workflow applies to PR event data). Write the resulting comment body — the marker wrapped in an HTML comment, `<!-- marketplace-ci-bypass-attestation {...} -->` — to a scratchpad file, then post it: `gh pr comment <number> --body-file <scratchpad-path>`.
+   e. Apply the `codex-review-bypassed` label: `gh pr edit <number> --add-label codex-review-bypassed`. If the label doesn't exist in this repository yet, report that as a bypass-attestation failure — do not silently create it; label creation is a one-time repo-setup precondition documented in `docs/ci.md`, not something this skill does on every invocation.
+   f. Report the outcome plainly: on success, state that the bypass is attested for this exact head SHA only — a new push invalidates it and requires re-attesting (`check_bypass` in `scripts/marketplace_ci/review.py` requires an exact head-SHA match). On any failure in b–e, state clearly that the PR was created but the bypass was **not** successfully attested, and why — never report a failed attestation attempt as if it succeeded.
+
+6. **Issue-linking hand-off**: skip this step entirely if `create-pr` was invoked as a nested dependency
    from `collaborating-on-a-pr`'s own Path A (i.e. **this run's own instructions explicitly say to skip
    it** — Path A step 1 always passes that instruction alongside its closing-reference request; do not
    infer the skip from context or caller identity, only from the instruction actually being present) —
@@ -201,6 +215,19 @@ loop.
 - "summarize this PR's changes" / "update this PR's description" → `explain-pr-changes`
 - "merge this PR" / "is this ready to merge" → `merge-pr`
 
+**Verify `--bypass-codex-review` behavior:**
+- `--bypass-codex-review "<non-empty reason>"` given, actor has live `write`/`maintain`/`admin`
+  permission → attestation comment posted (built via `jq -n --arg`, never raw shell interpolation of the
+  reason text), `codex-review-bypassed` label applied, success reported
+- `--bypass-codex-review` given with an empty or missing reason → rejected before posting any comment or
+  applying any label; the already-created PR is unaffected
+- Actor lacks live merge-capable permission → attestation not posted, failure reported plainly, PR still
+  exists
+- `codex-review-bypassed` label doesn't exist in the repo yet → reported as a bypass-attestation failure,
+  never auto-created
+- Flag omitted entirely → no attestation step runs, PR creation behaves exactly as before this flag
+  existed
+
 **Quality gates:**
 - [ ] Uncommitted changes are always routed through `Skill(git-kit:commit)` before PR creation — never
       skipped
@@ -216,6 +243,14 @@ loop.
       same issue reference
 - [ ] PR titles and descriptions are always in English, matching the template's exact section headers —
       never a custom section not in the resolved template
+- [ ] `--bypass-codex-review` with an empty or missing reason is always rejected before any comment or
+      label action — never silently attested with a blank reason
+- [ ] The attestation comment body is always built via `jq -n --arg` (or equivalent safe construction),
+      never by interpolating the reason text directly into a shell string
+- [ ] A failed attestation attempt (insufficient permission, missing label) is always reported as a
+      failure — never presented as if the bypass succeeded
+- [ ] The `codex-review-bypassed` label is only applied if it already exists in the repo — this skill
+      never creates it
 
 ## Related Documentation
 
