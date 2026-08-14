@@ -76,6 +76,8 @@ Ask for the argument the chosen skill actually needs — never assume one shape 
 
 If `$ARGUMENTS` already supplies this (e.g. a date was included in the original request), confirm it rather than asking again.
 
+**Skip re-confirming an unchanged scope within the same conversation.** If this skill was already invoked earlier in this same conversation and its scope was confirmed then, and the scope for this invocation is byte-identical to that confirmed value, don't re-ask or re-state a confirmation for the scope itself — reuse it silently and move straight to Phase 3's skill/type confirmation. This is narrower than skipping the guided pick generally (see the Gotchas section's "this skill's whole value is the guided pick, not a shortcut around it" — that principle stays intact for the type-selection question, which carries new information each time a different analysis type is chosen): only the *scope* portion is skipped, and only when it's a verified repeat of what this same conversation already confirmed.
+
 ## Phase 3: Confirm Before Dispatch
 
 `AskUserQuestion`: "Run `<chosen-skill>` with scope `<scope>`?" — options "Run it" / "Change analysis type" / "Change scope" / "Cancel". Never dispatch without this confirmation, even when both Phase 1 and Phase 2 were answered unambiguously — a wrong scope caught here is free; caught after a report is written, it's a wasted run.

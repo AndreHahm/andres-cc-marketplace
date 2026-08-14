@@ -8,7 +8,7 @@ description: >-
   when turning a finding or suggestion into a concrete action plan, asking
   "what should I do about this," or prioritizing a list of findings before
   acting on them.
-allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
+allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
 argument-hint: [path to a persisted analysis-kit report, or paste findings directly]
 ---
 
@@ -62,11 +62,7 @@ Never populate `WHAT`/`HOW` with content not traceable to the source finding or 
 
 Group by priority bucket, Quick Wins first. Within each bucket, order by estimated benefit. Close with a suggested order of operations, noting any dependency between entries (one entry's fix must land before another's, e.g. a shared file both touch).
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full plan to a scratch file, run it through `python "${CLAUDE_PLUGIN_ROOT}/scripts/redact_secrets.py" --input-file <scratch-path>` (never blocks the write — only strips/masks matched secret patterns), and `Write` the *redacted* output to `.claude/output/generating-analysis-recommendations/<scope-slug>-<timestamp>.md`, where `<scope-slug>` derives from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report.
-
-```
-📄 Recommendations Plan written: `.claude/output/generating-analysis-recommendations/<scope-slug>-<timestamp>.md`
-```
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full plan to a scratch file, then run `Bash("${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/generating-analysis-recommendations/<scope-slug>-<timestamp>.md" --label "Recommendations Plan")`, where `<scope-slug>` derives from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Recommendations Plan written: ...` confirmation line — present its printed output as-is.
 
 ## Gotchas
 
@@ -82,7 +78,7 @@ After Phase 4, verify before presenting output as final:
 - [ ] Every plan entry's WHAT/WHY/HOW traces to the source finding or to content actually read this session
 - [ ] Priority buckets are assigned per the rubric's bands, not by gut feel
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
-- [ ] The drafted report was run through `redact_secrets.py` before the final `Write` — never written directly from the scratch draft
+- [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
 
 ## Reference Guide
 
