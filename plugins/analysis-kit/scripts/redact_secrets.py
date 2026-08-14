@@ -71,7 +71,7 @@ def main() -> int:
     # analysis-kit "written:" confirmation line). Windows' default console
     # encoding (cp1252) can't represent those -- force UTF-8 on stdio so this
     # script doesn't crash on the exact kind of text it's meant to process.
-    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")
     sys.stdin.reconfigure(encoding="utf-8")
 
     parser = argparse.ArgumentParser(description=__doc__)
