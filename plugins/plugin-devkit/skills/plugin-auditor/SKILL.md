@@ -121,11 +121,11 @@ not merely left empty.
 
 ## When to Invoke
 
-Not yet dispatched by any production caller: `plugin-lifecycle-downstream`'s Phase 5 will
-dispatch this skill once the twelve-phase redesign replaces the production skill
-(`IMPLEMENTATION_PLAN.md`'s M12 Cutover), and `plugin-grader`'s Step 3 will delegate to it
-once its own refactor (M3) lands. Until then, invoke directly by name for a standalone audit
-pass — this skill's own dispatch logic doesn't depend on either caller existing yet.
+Dispatched by two live production callers: `plugin-lifecycle-downstream`'s Phase 5 (Audit) dispatches
+this skill as part of its twelve-phase pipeline, and `plugin-grader`'s Step 3 ("Dispatch Reviewers")
+delegates to it for both standalone (fresh dispatch) and evidence-only (pre-gathered) scoring modes.
+Also still invocable directly by name for a standalone audit pass outside either pipeline — this skill's
+own dispatch logic doesn't depend on either caller.
 
 ## Reference Guide
 
