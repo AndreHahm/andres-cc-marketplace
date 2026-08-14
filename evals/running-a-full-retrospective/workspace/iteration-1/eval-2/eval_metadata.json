@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/analysis-kit/skills/running-a-full-retrospective/SKILL.md",
+  "assertions": [
+    {"text": "Recognizes Report A and Report B describe the same underlying issue and collapses them into one entry citing both", "type": "functionality", "target": "response"},
+    {"text": "Tags the merged finding explicitly to git-kit's merge-pr on the finding itself, not only via a source-report citation", "type": "functionality", "target": "response"},
+    {"text": "Classifies severity via severity-vocabulary.md's mapping table (P2 -> Major)", "type": "functionality", "target": "response"},
+    {"text": "Notes that Report C's finding (mining-recurring-patterns, no native severity term) needs the tier definitions applied directly per the stated fallback, rather than skipped", "type": "functionality", "target": "response"},
+    {"text": "Does not silently drop or wrongly merge Report C's finding as a duplicate of A/B", "type": "quality", "target": "response"}
+  ]
+}

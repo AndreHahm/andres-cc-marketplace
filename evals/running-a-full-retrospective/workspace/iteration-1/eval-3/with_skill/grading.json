@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Describes grouping findings by target plugin (2 for git-kit, 1 for plugin-devkit)", "passed": true, "evidence": "'Two groups: git-kit: 2 open P1 findings... plugin-devkit: 1 open P2 finding'"},
+    {"text": "Describes an AskUserQuestion naming both target plugins and their finding counts explicitly, not a bare yes/no", "passed": true, "evidence": "'Hand off 2 findings for git-kit, 1 for plugin-devkit to plugin-lifecycle-downstream for a guided fix pass — start now?'"},
+    {"text": "Describes building a separate Scope Manifest + Report Revision bundle per target plugin, never one combined dispatch spanning both", "passed": true, "evidence": "Explicit separate 'For git-kit:' and 'For plugin-devkit:' sections, each with its own manifest/report YAML files, plus 'a Scope Manifest names exactly one target_plugin_root... this cannot be combined'"},
+    {"text": "Describes invoking Skill(plugin-devkit:plugin-lifecycle-downstream) at its External Entry, not plugin-lifecycle-maintenance", "passed": true, "evidence": "'Invoke Skill(plugin-devkit:plugin-lifecycle-downstream) at its External Entry' -- stated twice, once per plugin dispatch; plugin-lifecycle-maintenance never mentioned"},
+    {"text": "No crash, malformed output, or contradiction of its own documented Phase 5 steps", "passed": true, "evidence": "Coherent 5-step walkthrough matching the live SKILL.md's actual Phase 5 structure exactly, including the target-resolution check and the Write/Edit confinement statement"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

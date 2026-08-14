@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes Report A and Report B describe the same underlying issue and collapses them into one entry citing both", "passed": true, "evidence": "'These collapse into one entry... Result: one consolidated finding, citing all three reports'"},
+    {"text": "Tags the merged finding explicitly to git-kit's merge-pr on the finding itself, not only via a source-report citation", "passed": true, "evidence": "Entry header: '### M1. merge-pr merges without verifying PR readiness/mergeability — `git-kit`'s `merge-pr`'"},
+    {"text": "Classifies severity via severity-vocabulary.md's mapping table (P2 -> Major)", "passed": true, "evidence": "Explicit walkthrough: 'Report A's native term is... P2 (degrades quality) -> maps to Major', correctly lands the consolidated entry at Major"},
+    {"text": "Notes that Report C's finding (mining-recurring-patterns, no native severity term) needs the tier definitions applied directly per the stated fallback, rather than skipped", "passed": true, "evidence": "'mining-recurring-patterns is one of the two skills the vocabulary file says to fall back to the tier definitions directly for, rather than treating the missing mapping-table row as a gap'"},
+    {"text": "Does not silently drop or wrongly merge Report C's finding as a duplicate of A/B", "passed": true, "evidence": "C is folded in as corroborating evidence with explicit reasoning about subject match, and the response explicitly flags this as a judgment call and names the alternative (keeping it separate as its own P3/Minor finding) rather than mechanically dropping or blindly merging it"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}
