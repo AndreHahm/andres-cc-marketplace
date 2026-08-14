@@ -503,11 +503,15 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
     structural_findings = run_delta_structural_checks(repo, changed)
     reports = dispatch_reviewers(scope, base_sha=base_sha, repo=repo)
 
-    failed_reviewers = [r.reviewer for r in reports if r.status == "failed"]
-    if failed_reviewers:
+    failed_reports = [r for r in reports if r.status == "failed"]
+    if failed_reports:
         print(
-            f"run-codex-review: reviewer dispatch failed for: {failed_reviewers}", file=sys.stderr
+            f"run-codex-review: reviewer dispatch failed for: "
+            f"{[r.reviewer for r in failed_reports]}",
+            file=sys.stderr,
         )
+        for r in failed_reports:
+            print(f"run-codex-review:   {r.reviewer}: {r.error}", file=sys.stderr)
         return 2
 
     validated = []
