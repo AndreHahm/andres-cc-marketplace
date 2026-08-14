@@ -58,6 +58,8 @@ Emit only schema-valid JSON per the canonical envelope (`codex-review-bridge/ref
 
 `derive_review_scope` (`scripts/marketplace_ci/review.py`), not this document, decides escalation: a change to a shared-governance path (the registry file, `marketplace.json`, or `plugin-rulebook`'s own `SKILL.md`), or a dependency closure past a configured size threshold. This document does not decide escalation on its own — the orchestrator determines the mode from the `ReviewScope` before any reviewer is ever dispatched.
 
+**No reviewer set is defined for `full` mode yet — the orchestrator fails closed, it does not dispatch a whole-plugin review automatically.** `ReviewScope.mode == "full"` has `validate`/`audit` both empty (there was never a "dispatch everyone" list to draw from), so blindly dispatching `dispatch_reviewers` for a full-mode scope would call zero reviewers and silently report a clean pass with no actual coverage — found live on this initiative's own rollout PR (Task 12), which triggered `full` mode by touching the registry file and would otherwise have merged with zero review coverage on a 110-file diff. `run-codex-review` (the CLI entry point the workflow calls) checks for this specifically and exits non-zero with an explicit "requires human review" message instead. Escalating to `full` mode today means: block, and get a human to review by hand — not an automated whole-plugin dispatch. Defining an actual full-mode reviewer set is unscoped future work, not something either this document or the current code claims to already do.
+
 ---
 
 ## Testing & Validation

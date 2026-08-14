@@ -500,3 +500,34 @@ def test_run_codex_review_blocking_finding_returns_1(monkeypatch, git_repo):
     monkeypatch.chdir(git_repo.root)
     rc = main(["run-codex-review", "--base-sha", base_sha])
     assert rc == 1
+
+
+def test_run_codex_review_full_mode_fails_closed_instead_of_silently_passing(monkeypatch, git_repo):
+    import subprocess as subprocess_module
+
+    git_repo.stage(".claude/marketplace-sync.json", "{}")
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    # This is exactly the governance-path escalation trigger.
+    git_repo.stage(".claude/marketplace-sync.json", '{"changed": true}')
+    subprocess_module.run(
+        ["git", "commit", "-q", "-m", "change registry"], cwd=git_repo.root, check=True
+    )
+
+    calls = []
+    real_run = subprocess_module.run
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            calls.append(argv)
+            return subprocess_module.CompletedProcess(argv, returncode=0, stdout=b"{}", stderr=b"")
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess_module, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["run-codex-review", "--base-sha", base_sha])
+    assert rc == 2  # fails closed -- never a silent pass with zero coverage
+    assert calls == []  # no reviewer was dispatched at all for undefined full-mode
