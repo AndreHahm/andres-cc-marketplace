@@ -152,10 +152,13 @@ report had stated the closure explicitly until now:
 
 ## Rules
 
-`git-kit` ships two behavioral rules (`rules/`, auto-loaded each session):
+`git-kit` ships five behavioral rules (`rules/`, auto-loaded each session):
 
 - **`one-session-one-topic-one-worktree`** — a worktree created for a session is scoped to one topic; don't accumulate unrelated work in it, and don't leave one topic's worktree open while starting another under the same session.
 - **`route-through-git-kit-lifecycle-skills`** — documents the full lifecycle chain (`starting-work` → `commit` → `create-pr`/`collaborating-on-a-pr` → `merge-pr` → `finishing-work`) for discoverability. The `PreToolUse` hard-block hooks above already enforce most of this mechanically; this rule is the human-readable statement of the same chain, not a second enforcement mechanism.
+- **`starting-work-before-first-change`** — always invoke `starting-work` before the first shippable edit of a new piece of work, especially right after returning to `main`/`master` post-merge; a rule with no independent trigger of its own is easy to route around in the moment.
+- **`orphaned-worktree-git-read-fallthrough`** — after a worktree is removed mid-session while the session's cwd is still pinned to it, git reads fall through to the primary checkout and look normal even though the session can't actually write there; cross-check with a plain filesystem listing, not git output, before trusting it.
+- **`require-gitignored-scratch-locations`** — never let temporary, cache, or scratch content land in a shippable location; route it to a gitignored directory instead, and watch for a CLI tool's or script's own default that silently resolves to the repo root or a plugin directory.
 
 ## Conventions
 
