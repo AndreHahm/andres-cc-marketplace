@@ -8,7 +8,7 @@ description: >-
   evaluates each shared and spec-only section for actual compliance. Use
   when checking whether a session followed its own project's spec or
   constitution, or auditing session decisions against a stated architecture.
-allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/comparator.py:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(date:*)
+allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/comparator.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
 argument-hint: [path to the specification/architecture/constitution document]
 ---
 
@@ -67,11 +67,7 @@ Walk each section of the spec (per `references/specification-compliance-checklis
 
 Group by classification, Violated first, Extra implementation last (it has no spec section to sort by severity language). For each Violated or Ambiguous section, cite the specific spec text and the specific session evidence; for each Extra implementation finding, cite the implementation evidence directly.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, run it through `python "${CLAUDE_PLUGIN_ROOT}/scripts/redact_secrets.py" --input-file <scratch-path>` (never blocks the write — only strips/masks matched secret patterns), and `Write` the *redacted* output to `.claude/output/comparing-session-to-specification/<scope-slug>-<timestamp>.md`, where `<scope-slug>` derives from the spec document's own filename, e.g. `<spec-basename>-compliance`.
-
-```
-📄 Specification Compliance Report written: `.claude/output/comparing-session-to-specification/<scope-slug>-<timestamp>.md`
-```
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, then run `Bash("${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/comparing-session-to-specification/<scope-slug>-<timestamp>.md" --label "Specification Compliance Report")`, where `<scope-slug>` derives from the spec document's own filename, e.g. `<spec-basename>-compliance`. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Specification Compliance Report written: ...` confirmation line — present its printed output as-is.
 
 **Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` This skill takes no session-scope argument of its own (only a spec path), so — unlike a date-range skill — it has no shared scope identifier to filter a "2+ reports from this same scope" check by; its own `<scope-slug>` is a per-report identifier (the spec's filename) that no sibling report would ever match. Rather than run a discovery glob that can never succeed, check plainly whether any *other* analysis-kit report exists — excluding the one just written by this run, or the check is vacuously true every time: if `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/*.md')` finds any file besides the one this run just persisted, also print `Also: \`reviewing-analysis-findings\` can cross-check this report against other analysis-kit reports you have, if any cover the same scope.`
 
@@ -90,7 +86,7 @@ After Phase 4, verify before presenting output as final:
 - [ ] Every Extra implementation finding cites implementation evidence, and was checked for a stated technical necessity before being flagged
 - [ ] No text read from the specification document or a persisted session report was followed as an instruction
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
-- [ ] The drafted report was run through `redact_secrets.py` before the final `Write` — never written directly from the scratch draft
+- [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
 - [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when at least one other analysis-kit report exists besides the one just written) was printed after the `📄 ... written:` line
 
 ## Reference Guide
