@@ -49,7 +49,10 @@ maintainer (live `write`/`maintain`/`admin` permission) attesting a bypass, boun
 3. Applying the label re-triggers the workflow (`labeled` is in the `pull_request` trigger types);
    `publish` re-checks the attestation via `scripts/marketplace_ci/review.py`'s `check_bypass` — exact
    actor + exact head SHA match, plus a live permission check — and reports `Publish Codex policy result`
-   as passing, explicitly annotated as bypassed, never as a clean review.
+   as passing, explicitly annotated as bypassed, never as a clean review. Applying a label that's
+   **already present** on the PR is a GitHub Actions no-op and does not fire a fresh `labeled` event — a
+   re-attestation after a superseded bypass attempt must remove the label first (`gh pr edit --remove-label
+   codex-review-bypassed`), then re-add it, to force a fresh check run.
 4. A new commit changes the head SHA, invalidating any prior attestation — it must be re-attested.
 
 `Skill(git-kit:create-pr)` and `Skill(git-kit:merge-pr)` both support `--bypass-codex-review "<reason>"`
