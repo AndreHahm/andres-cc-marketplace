@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/analysis-kit/skills/running-a-full-retrospective/SKILL.md",
+  "assertions": [
+    {"text": "Describes grouping findings by target plugin (2 for git-kit, 1 for plugin-devkit)", "type": "functionality", "target": "response"},
+    {"text": "Describes an AskUserQuestion naming both target plugins and their finding counts explicitly, not a bare yes/no", "type": "functionality", "target": "response"},
+    {"text": "Describes building a separate Scope Manifest + Report Revision bundle per target plugin, never one combined dispatch spanning both", "type": "functionality", "target": "response"},
+    {"text": "Describes invoking Skill(plugin-devkit:plugin-lifecycle-downstream) at its External Entry, not plugin-lifecycle-maintenance", "type": "functionality", "target": "response"},
+    {"text": "No crash, malformed output, or contradiction of its own documented Phase 5 steps", "type": "structure", "target": "response"}
+  ]
+}
