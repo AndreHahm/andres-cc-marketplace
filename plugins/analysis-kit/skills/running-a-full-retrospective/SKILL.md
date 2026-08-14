@@ -12,7 +12,7 @@ description: >-
   analysis and give me one prioritized list" — not a single analysis type
   (use starting-an-analysis for that) and not cross-checking reports that
   already exist (use reviewing-analysis-findings directly for that).
-allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-lifecycle-maintenance)
+allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-maintenance)
 argument-hint: [optional: which analyses to run, and/or a scope]
 ---
 
@@ -153,7 +153,7 @@ not a failure.
 Ask via `AskUserQuestion`: "Run `plugin-lifecycle-maintenance` now to start fixing these findings?" —
 options "Yes" / "No — stop here, I'll fix separately". If yes: group the consolidated report's P1/P2/P3
 findings by their tagged target plugin (per Phase 3's explicit plugin/component tags), then invoke
-`Skill(plugin-lifecycle-maintenance)` once per target plugin that has open findings, passing that
+`Skill(plugin-devkit:plugin-lifecycle-maintenance)` once per target plugin that has open findings, passing that
 plugin's own subset — never one dispatch spanning multiple target plugins, since
 `plugin-lifecycle-maintenance`'s own fix-application step operates on one plugin at a time. Never
 auto-invoke without this ask, and never reimplement the fix-application/commit logic here — this skill's

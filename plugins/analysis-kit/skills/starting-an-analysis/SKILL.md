@@ -23,7 +23,7 @@ argument-hint: [optional: what you want to analyze, in your own words]
 
 Guided front door for analysis-kit: pick an analysis type, provide its scope, run it, then get offered the natural next step.
 
-analysis-kit has 10 skills total — this one is the entry point for the 7 that produce a report (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `comparing-sessions`, `comparing-session-to-specification`) and the gateway to the 2 that consume one (`generating-analysis-recommendations`, `reviewing-analysis-findings`). A user who already knows analysis-kit's skill names can skip this and call them directly — this skill exists for everyone else.
+analysis-kit has 11 skills total — this one is the entry point for the 7 that produce a report (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `comparing-sessions`, `comparing-session-to-specification`) and the gateway to the 2 that consume one (`generating-analysis-recommendations`, `reviewing-analysis-findings`). The 11th, `running-a-full-retrospective`, runs several of the 7 producers at once and consolidates their findings — see "When NOT to Use" below. A user who already knows analysis-kit's skill names can skip this and call them directly — this skill exists for everyone else.
 
 ## Quick Start
 

@@ -17,7 +17,7 @@ Session analysis toolkit for Claude Code: component retrospectives, tool/framewo
 
 `analysis-kit` provides 11 skills over a shared deterministic `scripts/` core (component/rule inventory, framework fingerprinting, structural diffing, sequence mining, usage aggregation, session parsing, secret redaction — see the Skills table below for what each skill does). Reports from every skill are persisted under `.claude/output/<skill-name>/`, one file per run, so later runs can reference a specific prior report. Before any report is written, every skill runs it through `scripts/redact_secrets.py` — a shared pass that strips common secret-shaped patterns (Authorization/Bearer headers, `.env`-shaped lines, known cloud key prefixes) without ever blocking the write.
 
-This plugin is standalone — it has no dependency on any other plugin.
+This plugin has no required dependency on any other plugin. `running-a-full-retrospective`'s optional Phase 5 hand-off is the one exception — if accepted, it dispatches `plugin-devkit`'s `plugin-lifecycle-maintenance` to apply fixes; declining that hand-off keeps the run entirely within `analysis-kit`.
 
 **Real session data, where it's available.** Five skills with a date-range scope (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`) first try `scripts/session_parser.py` to parse Claude Code's own local session JSONL (format confirmed against a real file, not guessed), then `scripts/codex_session_parser.py` for a named Codex CLI session file (format unconfirmed, so it's parsed defensively — detect, attempt, report unparseable rather than guess), and only fall back to asking the user to paste transcript excerpts when neither produces usable data. Deliberately not built: a full canonical event schema or byte-offset/event-ID provenance — both scripts report light provenance only (source file, session id, timestamp range). `mining-recurring-patterns`' token/time reporting reflects this: it ranks top-10 tokens/duration by skill invocation when session data is available, and always still ranks top-10 by subagent dispatch (the one source of real usage data every skill can observe regardless of session-file availability) — it never claims whole-session totals, since no skill can measure those directly.
 
@@ -77,7 +77,7 @@ cc --plugin-dir /path/to/analysis-kit
 | Skill | Use when |
 |---|---|
 | `starting-an-analysis` | Not already knowing which of the 7 report-producing analysis skills below fits — a guided front door that picks the type, scopes it, confirms before running, and offers the next step afterward |
-| `running-a-full-retrospective` | Wanting several of the 7 analysis skills below run over the same scope and consolidated into one deduplicated, prioritized action list, then handed off to `plugin-lifecycle-maintenance` for a guided fix pass — not one analysis type at a time |
+| `running-a-full-retrospective` | Wanting several of the 5 date-range analysis skills below (not the 2 comparison skills, which take a comparison target rather than a bare scope) run over the same scope and consolidated into one deduplicated, prioritized action list, then handed off to `plugin-lifecycle-maintenance` for a guided fix pass — not one analysis type at a time |
 | `analyzing-plugin-components` | Running a post-session retrospective, auditing skill/agent/rule performance, or building a prioritized improvement backlog from a session or date range |
 | `analyzing-tool-and-framework-use` | Auditing which external tools or developer frameworks a session actually used, or checking whether a framework's execution companion stayed within its subordinate role |
 | `analyzing-actor-behavior` | Assessing agent behavior, human-vs-agent contribution, or cross-agent handoff/flow patterns |
@@ -98,4 +98,4 @@ Apache-2.0 — see [`LICENSE`](./LICENSE).
 
 ## Attribution
 
-`analysis-kit` began as a standalone port of the `analyzing-sessions` skill originally built inside this marketplace's `plugin-devkit` plugin, renamed to `analyzing-plugin-components` and decoupled from that plugin's other components so it has no cross-plugin dependency.
+`analysis-kit` began as a standalone port of the `analyzing-sessions` skill originally built inside this marketplace's `plugin-devkit` plugin, renamed to `analyzing-plugin-components` and decoupled from that plugin's other components so it carries no cross-plugin dependency of its own — see "Overview" above for the one later, optional exception (`running-a-full-retrospective`'s Phase 5 hand-off).
