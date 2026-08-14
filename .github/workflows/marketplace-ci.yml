@@ -1,55 +1,80 @@
-name: Marketplace Codex Review
+name: Marketplace CI
 
 on:
-  workflow_run:
-    workflows: ["Marketplace CI"]
-    types: [completed]
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
 
 concurrency:
-  group: marketplace-codex-review-${{ github.event.workflow_run.head_branch }}
+  group: marketplace-ci-${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  resolve-pr:
-    name: Resolve PR metadata from trusted event
-    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+  hygiene:
+    name: Hygiene (PR contract)
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
-      actions: read
-    outputs:
-      pr_number: ${{ steps.resolve.outputs.pr_number }}
-      base_sha: ${{ steps.resolve.outputs.base_sha }}
-      head_sha: ${{ steps.resolve.outputs.head_sha }}
-      is_fork: ${{ steps.resolve.outputs.is_fork }}
     steps:
-      - name: Resolve PR number, base/head SHA, and fork status
-        id: resolve
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+      - run: uv sync --group dev
+      - name: Write PR event payload
         env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
-        run: |
-          set -euo pipefail
-          PR_NUMBER=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.pull_requests[0].number // empty')
-          if [ -z "$PR_NUMBER" ]; then
-            echo "pr_number=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
-          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "base_sha=$(echo "$PR_JSON" | jq -r '.base.sha')" >> "$GITHUB_OUTPUT"
-          echo "head_sha=$(echo "$PR_JSON" | jq -r '.head.sha')" >> "$GITHUB_OUTPUT"
-          echo "is_fork=$(echo "$PR_JSON" | jq -r '(.head.repo.full_name != .base.repo.full_name) | tostring')" >> "$GITHUB_OUTPUT"
+          # Never interpolate ${{ }} event data directly into a shell string --
+          # untrusted PR title/body content can break shell syntax, or worse,
+          # inject commands. Passing it through env: keeps it as inert data.
+          PR_EVENT_JSON: ${{ toJson(github.event) }}
+        run: echo "$PR_EVENT_JSON" > /tmp/pr-event.json
+      - name: Validate PR title, template, and author privilege
+        run: uv run python -m scripts.marketplace_ci check-pr --event /tmp/pr-event.json
+
+  python-quality:
+    name: Python quality (ruff, ty, pytest)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+      - run: uv sync --group dev
+      - run: uv run ruff format --check scripts tests
+      - run: uv run ruff check scripts tests
+      - run: uv run ty check scripts tests
+      - run: uv run pytest -q
+
+  marketplace-parity:
+    name: Marketplace mirror/export parity
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+      - run: uv sync --group dev
+      - run: uv run python -m scripts.marketplace_ci check-all --json-output marketplace-check.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: marketplace-check-report
+          path: marketplace-check.json
 
   fork-unsupported:
     name: Fork PR (unsupported — explicit terminal result)
-    needs: resolve-pr
-    if: needs.resolve-pr.outputs.pr_number != '' && needs.resolve-pr.outputs.is_fork == 'true'
+    if: github.event.pull_request.head.repo.fork
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -59,10 +84,10 @@ jobs:
           echo "::error::Marketplace Codex review does not support fork-origin PRs (no trusted secret access for the Codex API key). This is an explicit, terminal failure, not a silently pending required check."
           exit 1
 
-  review:
+  codex-review:
     name: Codex delta review
-    needs: resolve-pr
-    if: needs.resolve-pr.outputs.pr_number != '' && needs.resolve-pr.outputs.is_fork == 'false'
+    needs: [hygiene, python-quality, marketplace-parity]
+    if: github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -71,11 +96,11 @@ jobs:
       - name: Check out the PR's merge commit
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          ref: refs/pull/${{ needs.resolve-pr.outputs.pr_number }}/merge
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
 
       - name: Verify the trusted base SHA actually resolves in this checkout
-        run: git rev-parse --verify ${{ needs.resolve-pr.outputs.base_sha }}^{commit}
+        run: git rev-parse --verify ${{ github.event.pull_request.base.sha }}^{commit}
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -102,7 +127,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           uv run python -m scripts.marketplace_ci run-codex-review \
-            --base-sha ${{ needs.resolve-pr.outputs.base_sha }} \
+            --base-sha ${{ github.event.pull_request.base.sha }} \
             --output codex-review-result.json
 
       - name: Upload review result
@@ -114,18 +139,15 @@ jobs:
           if-no-files-found: ignore
 
   publish:
-    name: Publish policy result
-    needs: [resolve-pr, review]
-    if: always() && needs.resolve-pr.outputs.pr_number != '' && needs.resolve-pr.outputs.is_fork == 'false'
+    name: Publish Codex policy result
+    needs: [codex-review]
+    if: always() && needs.codex-review.result != 'skipped'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Check out repository scripts
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
       - run: pip install uv
@@ -136,8 +158,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ needs.resolve-pr.outputs.pr_number }}
-          HEAD_SHA: ${{ needs.resolve-pr.outputs.head_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           LABELS=$(gh api "repos/$REPO/issues/$PR_NUMBER/labels" --jq '[.[].name]')
@@ -164,7 +186,7 @@ jobs:
             echo "Codex review bypassed via attested SHA-bound exception. Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
             exit 0
           fi
-          if [ "${{ needs.review.result }}" != "success" ]; then
+          if [ "${{ needs.codex-review.result }}" != "success" ]; then
             echo "Codex review job failed, timed out, or found a blocking (Critical/Major) finding."
             exit 1
           fi
