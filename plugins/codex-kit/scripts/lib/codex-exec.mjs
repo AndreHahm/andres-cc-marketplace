@@ -161,16 +161,21 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
     child.on("close", (code) => {
       clearTimeout(timer);
       if (code !== 0) {
+        // Tail, not head: the banner (version/workdir/sandbox mode) is always
+        // printed first, so a 500-char head slice showed only that boilerplate
+        // and cut off before the actual failure line every time this was hit
+        // in practice -- the real error text is near the end of stderr.
+        const detail = stderr.trim().slice(-4000);
         if (/not authenticated|OPENAI_API_KEY/i.test(stderr)) {
-          return finish(typedFailure(FAILURE_CATEGORIES.AUTH_UNAVAILABLE, stderr.trim().slice(0, 500)));
+          return finish(typedFailure(FAILURE_CATEGORIES.AUTH_UNAVAILABLE, detail));
         }
         if (/unknown option|unrecognized/i.test(stderr)) {
-          return finish(typedFailure(FAILURE_CATEGORIES.UNSUPPORTED_CLI_VERSION, stderr.trim().slice(0, 500)));
+          return finish(typedFailure(FAILURE_CATEGORIES.UNSUPPORTED_CLI_VERSION, detail));
         }
         if (/CreateProcessAsUserW|sandbox|permission denied|access is denied/i.test(stderr)) {
-          return finish(typedFailure(FAILURE_CATEGORIES.ISOLATION_PROFILE_UNAVAILABLE, stderr.trim().slice(0, 500)));
+          return finish(typedFailure(FAILURE_CATEGORIES.ISOLATION_PROFILE_UNAVAILABLE, detail));
         }
-        return finish(typedFailure(FAILURE_CATEGORIES.NON_ZERO_EXIT, stderr.trim().slice(0, 500) || `exit ${code}`));
+        return finish(typedFailure(FAILURE_CATEGORIES.NON_ZERO_EXIT, detail || `exit ${code}`));
       }
 
       if (!fs.existsSync(scratch.lastMessageFile)) {
