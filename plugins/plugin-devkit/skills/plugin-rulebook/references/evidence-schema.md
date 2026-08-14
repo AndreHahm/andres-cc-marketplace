@@ -172,9 +172,8 @@ python scripts/validate_evidence.py <shape> <path-to-document.yaml>
 
 where `<shape>` is one of `manifest`, `finding`, `report`, `bundle`. Exit code `0` means
 valid; `1` means invalid, with every violation printed. This script is the "does this report
-conform" procedure `IMPLEMENTATION_PLAN.md`'s M0 acceptance criterion requires — a producer
-or consumer with a schema question runs it against a real document rather than re-deriving
-the shape from this prose by hand.
+conform" procedure this shared schema needs — a producer or consumer with a schema question
+runs it against a real document rather than re-deriving the shape from this prose by hand.
 
 ## Producers and Consumers
 
