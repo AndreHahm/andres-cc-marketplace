@@ -166,7 +166,13 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
         // and cut off before the actual failure line every time this was hit
         // in practice -- the real error text is near the end of stderr.
         const detail = stderr.trim().slice(-4000);
-        if (/not authenticated|OPENAI_API_KEY/i.test(stderr)) {
+        // Checked first, ahead of the sandbox pattern below: a benign
+        // "could not find bubblewrap... sandbox prerequisites" fallback
+        // warning can appear in stderr ahead of a real 401 auth failure,
+        // and its own use of the word "sandbox" previously matched the
+        // isolation-profile pattern before this one ever got a chance --
+        // misreporting an expired/invalid API key as a sandbox failure.
+        if (/not authenticated|OPENAI_API_KEY|401 Unauthorized|Missing bearer/i.test(stderr)) {
           return finish(typedFailure(FAILURE_CATEGORIES.AUTH_UNAVAILABLE, detail));
         }
         if (/unknown option|unrecognized/i.test(stderr)) {
