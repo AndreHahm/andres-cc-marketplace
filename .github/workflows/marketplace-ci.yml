@@ -2,7 +2,10 @@ name: Marketplace CI
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    # "labeled" is required so applying the bypass label actually re-triggers
+    # a run -- without it, a maintainer's attested bypass would sit inert
+    # against an already-failed check with no automatic re-evaluation.
+    types: [opened, synchronize, reopened, edited, labeled]
 
 concurrency:
   group: marketplace-ci-${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -167,7 +170,16 @@ jobs:
             echo "bypassed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          ACTOR=$(gh api "repos/$REPO/issues/$PR_NUMBER" --jq '.user.login')
+          # The actor is whoever actually applied the bypass label -- never
+          # the PR's original author, who may be a different, less-privileged
+          # person than whoever is attesting the bypass. Resolve via the
+          # issue events timeline (most recent matching "labeled" event).
+          ACTOR=$(gh api "repos/$REPO/issues/$PR_NUMBER/events" --paginate \
+            --jq '[.[] | select(.event == "labeled" and .label.name == "codex-review-bypassed")] | last | .actor.login')
+          if [ -z "$ACTOR" ] || [ "$ACTOR" = "null" ]; then
+            echo "bypassed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           PERMISSION=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo "none")
           gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '[.[].body]' > comment-bodies.json
           jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
