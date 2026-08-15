@@ -214,22 +214,58 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
     let real;
     try {
       real = fs.realpathSync(absolutePath);
-    } catch {
-      results.push(absolutePath);
+    } catch (error) {
+      // Same principle as the lstat catch above: only a genuinely missing
+      // target is safe to fall back on the link's own name for. Any other
+      // resolution failure (EACCES/EPERM/ELOOP/a reparse point Windows can't
+      // classify) must abort rather than silently trust the link's own name
+      // alone -- that is exactly the fail-open shape the real-target check
+      // below exists to close.
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+      results.push({ path: absolutePath, checkNames: [path.basename(absolutePath)] });
       return;
     }
     const canonicalRoot = canonicalizeWithAncestorFallback(repoRoot);
-    if (isInsideRoot(real, canonicalRoot) && fs.statSync(real).isDirectory() && !visitedRealpaths.has(real)) {
-      visitedRealpaths.add(real);
-      walkFiles(real, results, repoRoot, visitedRealpaths);
+    let realIsDirectory;
+    try {
+      realIsDirectory = fs.statSync(real).isDirectory();
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+      realIsDirectory = false;
+    }
+    if (realIsDirectory) {
+      if (!isInsideRoot(real, canonicalRoot)) {
+        // A directory symlink/junction whose real target escapes the
+        // repository root is refused outright, not silently skipped --
+        // Codex would otherwise read straight through it (cwd: repoRoot,
+        // danger-full-access) with nothing here having scanned what's
+        // inside. This is the directory-target counterpart of the
+        // file-symlink-basename check below: neither case may fall through
+        // unscanned just because the target isn't a plain file.
+        const boundaryError = new Error("symlinked/junction directory target escapes repository root");
+        boundaryError.repositoryBoundaryViolation = true;
+        boundaryError.escapingPath = absolutePath;
+        throw boundaryError;
+      }
+      if (!visitedRealpaths.has(real)) {
+        visitedRealpaths.add(real);
+        walkFiles(real, results, repoRoot, visitedRealpaths);
+      }
       return;
     }
-    // A file symlink (resolving inside or outside the repo) is checked under
-    // BOTH names -- its own (a suspiciously-named symlink is still a hit)
-    // and its real target's (Codex reads through the symlink to the real
-    // content, so notes.txt -> ../../.ssh/id_rsa must be caught by id_rsa's
-    // name, not notes.txt's).
-    results.push(absolutePath, real);
+    // A file symlink (its real target resolves inside the repo) is checked
+    // under BOTH names -- its own (a suspiciously-named symlink is still a
+    // hit) and its real target's (Codex reads through the symlink to the
+    // real content, so notes.txt -> ../../.ssh/id_rsa must be caught by
+    // id_rsa's name, not notes.txt's). Reported (if matched) via the
+    // symlink's own repo-relative path only -- never the resolved target's
+    // path, which could be an absolute out-of-repo path revealing local
+    // filesystem structure (e.g. a username).
+    results.push({ path: absolutePath, checkNames: [path.basename(absolutePath), path.basename(real)] });
     return;
   }
   if (stat.isDirectory()) {
@@ -242,7 +278,7 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
     return;
   }
   if (stat.isFile()) {
-    results.push(absolutePath);
+    results.push({ path: absolutePath, checkNames: [path.basename(absolutePath)] });
   }
 }
 
@@ -250,12 +286,23 @@ function checkSecretFiles(targetPaths, repoRoot) {
   for (const entry of targetPaths) {
     const absoluteEntry = path.resolve(repoRoot, entry);
     const files = [];
-    walkFiles(absoluteEntry, files, repoRoot, new Set());
+    try {
+      walkFiles(absoluteEntry, files, repoRoot, new Set());
+    } catch (error) {
+      if (error.repositoryBoundaryViolation) {
+        return typedFailure(
+          "repository_boundary_violation",
+          `symlinked/junction directory escapes repository root: ${path.relative(repoRoot, error.escapingPath)}`
+        );
+      }
+      throw error;
+    }
     for (const file of files) {
-      const base = path.basename(file);
-      const matched = matchesSecretPattern(base);
-      if (matched) {
-        return typedFailure("secret_file_in_scope", `${path.relative(repoRoot, file)} matches sensitive-filename pattern ${matched}`);
+      for (const name of file.checkNames) {
+        const matched = matchesSecretPattern(name);
+        if (matched) {
+          return typedFailure("secret_file_in_scope", `${path.relative(repoRoot, file.path)} matches sensitive-filename pattern ${matched}`);
+        }
       }
     }
   }
@@ -426,5 +473,10 @@ async function main() {
 }
 
 main().catch((error) => {
-  fail("non_zero_exit", error instanceof Error ? error.message : String(error));
+  // Bounded the same way a runCodexExec failure's detail is (see the
+  // truncation above) -- this also catches a pre-flight scan's own
+  // non-ENOENT rethrow (an unreadable path aborting the secret-file walk),
+  // whose message could otherwise carry an absolute host filesystem path.
+  const detail = error instanceof Error ? error.message : String(error);
+  fail("non_zero_exit", typeof detail === "string" ? detail.slice(0, 500) : detail);
 });

@@ -22,6 +22,7 @@ const GUARDED_DISPATCH = path.join(SCRIPT_DIR, "..", "..", "skills", "codex-wind
 
 let pass = 0;
 let fail = 0;
+let skip = 0;
 
 function check(label, condition, detail = "") {
   if (condition) {
@@ -31,6 +32,11 @@ function check(label, condition, detail = "") {
     fail += 1;
     console.log(`FAIL  ${label}${detail ? " -- " + detail : ""}`);
   }
+}
+
+function skipScenario(label, reason) {
+  skip += 1;
+  console.log(`SKIP  ${label} -- ${reason}`);
 }
 
 function git(args, cwd) {
@@ -205,7 +211,7 @@ console.log("\n=== Secret file reached only through a symlink (target's real nam
   try {
     fs.symlinkSync(realSecretFile, innocuousLink, "file");
   } catch (e) {
-    console.log(`SKIP  symlink secret-target check -- cannot create a file symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
+    skipScenario("symlink secret-target check", `cannot create a file symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
     fs.rmSync(secretOutside, { recursive: true, force: true });
   }
   if (fs.existsSync(innocuousLink)) {
@@ -220,5 +226,28 @@ console.log("\n=== Secret file reached only through a symlink (target's real nam
   }
 }
 
-console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);
+console.log("\n=== Directory symlink/junction whose real target escapes the repository root ===");
+{
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-windows-guardrails-outside-"));
+  const linkPath = path.join(repoRoot, "escaping-link");
+  const linkType = process.platform === "win32" ? "junction" : "dir";
+  try {
+    fs.symlinkSync(outsideDir, linkPath, linkType);
+  } catch (e) {
+    skipScenario("directory symlink/junction boundary-escape check", `cannot create a directory ${linkType} in this environment (${e.code || e.message})`);
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  }
+  if (fs.existsSync(linkPath)) {
+    const result = runDispatch(repoRoot, repoRoot, instructionFile);
+    check(
+      "rejected with repository_boundary_violation -- a directory symlink/junction escaping the repo root is refused, not silently left unscanned",
+      result.ok === false && result.category === "repository_boundary_violation" && /escapes repository root/.test(result.detail),
+      JSON.stringify(result)
+    );
+    fs.rmSync(linkPath, { recursive: true, force: true });
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  }
+}
+
+console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);
 process.exit(fail > 0 ? 1 : 0);

@@ -5,11 +5,9 @@ import { fileURLToPath } from "node:url";
 
 import { runCodexExec } from "../../../scripts/lib/codex-exec.mjs";
 
-// Exported (additive, no behavior change) so a sibling codex-kit component
-// that needs the same envelope contract without going through this file's
-// own CLI/danger-full-access refusal can import it directly, matching the
-// existing reuse pattern already established for semanticallyValidate/
-// isWithin/locateInSemanticScope below.
+// Deep-freezes an exported constant so an importer can read but never mutate
+// it in-process -- a mutation would otherwise affect every other importer
+// sharing the same module instance.
 function deepFreeze(value) {
   if (value && typeof value === "object" && !Object.isFrozen(value)) {
     Object.values(value).forEach(deepFreeze);
@@ -18,6 +16,13 @@ function deepFreeze(value) {
   return value;
 }
 
+// Exported (additive, no behavior change), deep-frozen (see deepFreeze above
+// -- a variant must be derived via a spread copy, never by mutating this
+// object) so a sibling codex-kit component that needs the same envelope
+// contract without going through this file's own CLI/danger-full-access
+// refusal can import it directly, matching the existing reuse pattern
+// already established for semanticallyValidate/isWithin/locateInSemanticScope
+// below.
 export const ENVELOPE_SCHEMA = deepFreeze({
   type: "object",
   additionalProperties: false,
