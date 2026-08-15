@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-auditor/SKILL.md",
+  "assertions": [
+    {"text": "No Bash invocation of codex-review-bridge/scripts/bridge-invoke.mjs occurs anywhere in the run", "type": "functionality", "target": "tool-use trace"},
+    {"text": "Every reviewer dispatch uses the Agent tool (Claude-native), matching plugin-auditor's pre-session behavior", "type": "functionality", "target": "tool-use trace"},
+    {"text": "The written report's findings (if any) contain no backend: codex or provenance field on any Finding", "type": "structure", "target": ".claude/output/plugin-auditor/*.json"},
+    {"text": "Nothing in the run references .claude/plugin-auditor.local.json or attempts to enable reviewer_backend", "type": "presence", "target": "tool-use trace"}
+  ]
+}

@@ -34,8 +34,11 @@ SKILL.md prose is the behavioral source of truth, this file exists to make it ch
 
 ## Finding
 
-Matches `SKILL.md`'s existing "Finding and Report Contract" YAML block field-for-field —
-this schema adds no field that section doesn't already have, and drops none:
+Matches `SKILL.md`'s existing "Finding and Report Contract" YAML block, plus three fields that
+block doesn't have — `backend`/`provenance`/`confidence`, an intentional additive extension for
+`plugin-auditor`'s optional Codex backend (see `plugin-auditor/references/codex-backend.md`), not
+yet mirrored into `SKILL.md`'s own prose contract. Every other field matches field-for-field, drops
+none:
 
 ```yaml
 id: <stable source-qualified id>
@@ -48,7 +51,18 @@ fix: <change or null>
 evidence_after: <verification evidence or null>
 verified_by: <independent checker or null>
 verification_run: <run id or null>
+backend: claude | codex | <omitted, equivalent to claude>
+provenance: {provider, model, cli_version, execution_profile, authentication_mode} | null
+confidence: high | medium | low | <omitted, no confidence signal available>
 ```
+
+**`backend`/`provenance`/`confidence`** — optional, additive fields for a Codex-backed finding.
+`backend` omitted or `"claude"` are equivalent — no migration needed for existing findings, and
+omission (not `null`) is how "not applicable" is represented for `backend`/`confidence`, unlike
+`provenance`'s explicit `null`-when-absent convention above. `provenance` is populated only when
+`backend: codex`. `confidence` informs reporting only; it never alters scoring. A fallback from
+Codex to Claude for a dispatch is recorded once on that dispatch's `coverage` note in the Report
+Revision, not stamped on individual findings.
 
 **Redaction:** for a credential/secret finding, `evidence_before`/`evidence_after`/`fix`
 record file:line and a description of the matched pattern or change — never the literal
