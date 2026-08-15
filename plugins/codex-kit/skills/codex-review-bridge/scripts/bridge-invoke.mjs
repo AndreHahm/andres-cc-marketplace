@@ -139,6 +139,23 @@ async function main() {
     process.exit(1);
   }
 
+  // Optional per-call model override, read from the environment rather than
+  // a CLI flag since dispatch_reviewers (review.py) has no per-reviewer
+  // reason to vary it -- one CI run uses one model for every reviewer it
+  // dispatches. Unset (the default) falls through to runCodexExec's own
+  // "omit --model entirely" behavior, which defers to whatever
+  // ~/.codex/config.toml resolves. Same charset/length validation as
+  // dispatchId/reviewerType above, even though this value comes from a
+  // repo-owner-controlled CI variable rather than caller-supplied PR
+  // content -- codex exec's own --model flag takes a plain slug, so a
+  // malformed value should fail fast with a clear message here rather than
+  // surface as an opaque Codex CLI error.
+  const modelOverride = process.env.CODEX_KIT_REVIEW_MODEL;
+  if (modelOverride && !/^[A-Za-z0-9._-]{1,64}$/.test(modelOverride)) {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "CODEX_KIT_REVIEW_MODEL must match ^[A-Za-z0-9._-]{1,64}$" }));
+    process.exit(1);
+  }
+
   const targetPaths = targetPathsRaw.split(",").map((p) => p.trim());
 
   // Trust-boundary containment check: the reviewer instructions must not be
@@ -182,7 +199,8 @@ async function main() {
     schema: ENVELOPE_SCHEMA,
     sandbox: "read-only",
     cwd,
-    dispatchId
+    dispatchId,
+    model: modelOverride || undefined
   });
 
   if (!result.ok) {

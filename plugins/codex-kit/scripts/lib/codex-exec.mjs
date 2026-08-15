@@ -97,9 +97,14 @@ function makeScratchFiles(dispatchId) {
  * @param {string} [opts.cwd]
  * @param {"read-only"|"workspace-write"|"danger-full-access"} opts.sandbox - always explicit, never omitted
  * @param {string} [opts.dispatchId]
+ * @param {string} [opts.model] - per-call `--model` override; omitted entirely (never a bare `""`)
+ *   falls through to whatever `~/.codex/config.toml` resolves. codex-kit never hardcodes a model
+ *   name here -- see cli-reference.md's "codex-kit never hardcodes a model name" note. A caller
+ *   exposing this to its own environment (e.g. codex-review-bridge reading CODEX_KIT_REVIEW_MODEL)
+ *   is responsible for validating the value before passing it through.
  * @returns {Promise<{ok: true, data: object} | {ok: false, category: string, detail: string}>}
  */
-export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox, dispatchId = `d${Date.now().toString(36)}` }) {
+export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox, dispatchId = `d${Date.now().toString(36)}`, model }) {
   if (!sandbox) {
     throw new Error("runCodexExec requires an explicit sandbox mode — never omit it (scope-expansion gap #4).");
   }
@@ -137,6 +142,9 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
       "--output-last-message",
       scratch.lastMessageFile
     ];
+    if (model) {
+      args.push("--model", model);
+    }
 
     const child = spawn("codex", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
 

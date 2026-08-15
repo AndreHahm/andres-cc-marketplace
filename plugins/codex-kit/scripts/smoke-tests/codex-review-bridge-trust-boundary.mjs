@@ -6,6 +6,8 @@
 // under review (the self-referential case: a PR that could otherwise rewrite
 // the instructions that judge it), and does not false-positive on a
 // legitimately trusted instruction file living outside the target scope.
+// Also confirms the CODEX_KIT_REVIEW_MODEL env-var validation fails fast on
+// a malformed value before any Codex call is attempted.
 //
 // Run from plugins/codex-kit/: node scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs
 
@@ -27,7 +29,7 @@ function check(label, condition, detail = "") {
   }
 }
 
-function runBridge(tmpDir, instructionFile, targetPaths, dispatchId = "smoke-test") {
+function runBridge(tmpDir, instructionFile, targetPaths, dispatchId = "smoke-test", extraEnv = {}) {
   try {
     execFileSync(
       "node",
@@ -40,7 +42,7 @@ function runBridge(tmpDir, instructionFile, targetPaths, dispatchId = "smoke-tes
         "--dispatch-id", dispatchId,
         "--cwd", tmpDir
       ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ...extraEnv } }
     );
     return { ok: true };
   } catch (e) {
@@ -102,6 +104,30 @@ console.log("\n=== Prefix-similar but not-actually-nested target path (the isWit
     "target-extra/reviewer.md is NOT treated as nested inside target/ (no false positive on prefix match)",
     !result.stderr.includes("instruction-file resolves inside"),
     result.stderr
+  );
+}
+
+console.log("\n=== CODEX_KIT_REVIEW_MODEL validation ===");
+{
+  const trustedFile = path.join(tmpDir, "model-test-reviewer.md");
+  fs.writeFileSync(trustedFile, "trusted instructions for the model-override check");
+
+  const invalid = runBridge(tmpDir, trustedFile, "target", "smoke-test-model", {
+    CODEX_KIT_REVIEW_MODEL: "not a valid model slug!"
+  });
+  check(
+    "an invalid CODEX_KIT_REVIEW_MODEL is rejected before any Codex call",
+    !invalid.ok && invalid.stderr.includes("CODEX_KIT_REVIEW_MODEL must match"),
+    invalid.stderr
+  );
+
+  const valid = runBridge(tmpDir, trustedFile, "target", "smoke-test-model", {
+    CODEX_KIT_REVIEW_MODEL: "gpt-5-mini"
+  });
+  check(
+    "a valid CODEX_KIT_REVIEW_MODEL passes the format check (may still fail later for unrelated reasons, e.g. no real Codex CLI in this environment)",
+    !valid.stderr.includes("CODEX_KIT_REVIEW_MODEL must match"),
+    valid.stderr
   );
 }
 
