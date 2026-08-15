@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Correctly identifies component mode and skill-reviewer as the type-matched reviewer", "passed": true, "evidence": "Correct, plus correctly added skilldir-reviewer as the companion (not asserted in expected_output but a correct additional detail)."},
+    {"text": "Correctly identifies plugin mode and lists activation-reviewer, consistency-reviewer, dependency-reviewer, plugin-validator as the extra whole-plugin-only reviewers", "passed": true, "evidence": "Gave a more precise answer than the assertion's phrasing: correctly distinguished consistency-reviewer/plugin-validator as genuinely new vs. activation-reviewer/dependency-reviewer as already-running-per-component-plus-one-extra-whole-plugin-pass -- graded PASS since the underlying reasoning is more accurate than the assertion text, not less."},
+    {"text": "Correctly identifies that pre-supplied plugin-rulebook-checker findings are reused, not re-dispatched", "passed": true, "evidence": "Cited the exact 'Reuse Pre-Supplied Findings' section plus two corroborating SKILL.md mentions."},
+    {"text": "Did not dispatch any Agent() calls (reasoning-only)", "passed": true, "evidence": "2 tool_uses, both Read."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

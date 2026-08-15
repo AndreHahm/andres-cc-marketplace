@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Creates the untracked local override file correctly, honoring the documented shape (windows_guardrails.enabled: true)", "passed": true, "evidence": "Created .claude/codex-windows-guardrails.local.json, confirmed untracked via git check-ignore -v."},
+    {"text": "Observes category secret_file_in_scope citing the .env file's repo-relative path", "passed": true, "evidence": "{\"ok\":false,\"category\":\"secret_file_in_scope\",\"detail\":\"guardrails-eval-scratch\\\\.env matches sensitive-filename pattern /^\\\\.env(\\\\..*)?$/\"}"},
+    {"text": "Explicitly states no Codex process was invoked / no exec attempted", "passed": true, "evidence": "Correctly traced main()'s ordered checks and confirmed the secret-file check fired before the single runCodexExec call."},
+    {"text": "Cleans up the local.json override and the scratch directory it created before finishing", "passed": true, "evidence": "Removed both, verified via ls and git status --short."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

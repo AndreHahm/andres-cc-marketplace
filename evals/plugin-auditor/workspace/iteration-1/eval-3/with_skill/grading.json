@@ -1,0 +1,32 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "(a) security-reviewer + enabled=true + default=codex resolves to Claude-native, citing Resolver step 1 (hardcoded pin)",
+      "passed": true,
+      "evidence": "codex-backend.md:65-70, Resolver step 1: 'security-reviewer is always Claude-native. Not a config default -- a hard rule in this resolver, so no config value can flip it.' This step runs first and short-circuits before enabled/default are ever consulted for this reviewer."
+    },
+    {
+      "text": "(b) skill-reviewer + enabled=false resolves to Claude-native, citing Resolver step 3",
+      "passed": true,
+      "evidence": "codex-backend.md:80, Resolver step 3: 'If reviewer_backend.enabled is not true -> Claude-native.' skill-reviewer isn't pinned by step 1 and plugin-devkit self-scope (step 2) isn't stated in this scenario, so step 3 is the first step that resolves the outcome."
+    },
+    {
+      "text": "(c) skill-reviewer + enabled=true + default=codex + target=plugin-devkit resolves to Claude-native, citing Resolver step 2 (plugin-devkit self-scope skip)",
+      "passed": true,
+      "evidence": "codex-backend.md:71-79, Resolver step 2: 'If the current audit's own scope includes plugin-devkit itself ... skip the Codex path entirely for this whole dispatch -- every reviewer runs Claude-native.' This step precedes step 3's enabled check, so it resolves the outcome regardless of enabled=true/default=codex."
+    },
+    {
+      "text": "(d) scripts-reviewer + enabled=true + per_reviewer override=claude resolves to Claude-native, citing Resolver step 4 (per_reviewer overrides default)",
+      "passed": true,
+      "evidence": "codex-backend.md:81-82, Resolver step 4: 'Otherwise, look up per_reviewer[<reviewer>], falling back to default. If the result is claude -> Claude-native.' per_reviewer.scripts-reviewer=claude takes precedence over default=codex."
+    },
+    {
+      "text": "Did not dispatch any Agent() calls or run any Bash commands (reasoning-only)",
+      "passed": true,
+      "evidence": "This grading was produced by direct citation against the current references/codex-backend.md file content (line numbers above), with no Agent() dispatch or Bash execution -- matching the eval prompt's own reasoning-only constraint."
+    }
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

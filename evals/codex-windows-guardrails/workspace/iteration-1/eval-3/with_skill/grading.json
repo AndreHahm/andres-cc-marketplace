@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Correctly identifies the input as invalid before or upon running (instruction-file inside target-paths)", "passed": true, "evidence": "Correctly predicted and confirmed the containment violation."},
+    {"text": "Observes category instruction_containment_violation", "passed": true, "evidence": "{\"ok\":false,\"category\":\"instruction_containment_violation\",\"detail\":\"instruction-file resolves inside one of target-paths\"}"},
+    {"text": "Explicitly states no Codex process was invoked / no exec attempted", "passed": true, "evidence": "Confirmed containment check runs before runCodexExec at line 449, execution stopped before that line."},
+    {"text": "Cleans up the local.json override it created before finishing", "passed": true, "evidence": "Confirmed removed."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

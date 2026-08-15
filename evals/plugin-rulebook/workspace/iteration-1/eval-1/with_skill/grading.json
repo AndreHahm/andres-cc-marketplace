@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Correctly identifies R4 (kebab-case) as the violated rule", "passed": true, "evidence": "R4 flagged: 'Scratch_Test_Skill' fails ^[a-z][a-z0-9-]+[a-z0-9]$ on uppercase + underscore."},
+    {"text": "Correctly classifies R4 as REQUIRED severity", "passed": true, "evidence": "Classified REQUIRED (blocking)."},
+    {"text": "Proposes the correct fix (rename to scratch-test-skill)", "passed": true, "evidence": "Fix: rename to 'scratch-test-skill', also rename directory for R19 consistency."},
+    {"text": "Does not report unrelated false-positive violations against the minimal valid skill", "passed": true, "evidence": "All 22 other enabled rules PASS'd (mostly N/A for a minimal skill); R27 actively evaluated with no mismatch."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

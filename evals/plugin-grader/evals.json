@@ -1,0 +1,33 @@
+{
+  "skill_name": "plugin-grader",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-grader/SKILL.md",
+  "description": "Computes a weighted, gated 0-10 score with SWOT and prioritized next steps for a plugin component or whole plugin.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Gate math via real compute_score.py execution",
+      "prompt": "Run plugins/plugin-devkit/skills/plugin-grader/scripts/compute_score.py (worktree: C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-auditor-codex-integration) with this exact input written to a scratch JSON file: {\"dimensions\": {\"structure_architecture\": {\"counts\": {\"critical\": 0, \"major\": 0, \"minor\": 0}}, \"content_quality\": {\"counts\": {\"critical\": 0, \"major\": 0, \"minor\": 0}}, \"rule_compliance\": {\"counts\": {\"critical\": 1, \"major\": 0, \"minor\": 0}}, \"completeness\": {\"counts\": {\"critical\": 0, \"major\": 0, \"minor\": 0}}, \"maintainability\": {\"counts\": {\"critical\": 0, \"major\": 0, \"minor\": 0}}, \"robustness\": {\"score\": 10, \"is_na\": true}, \"simplicity\": {\"score\": 10}, \"testing\": {\"score\": 0}, \"uniqueness\": {\"counts\": {\"critical\": 0, \"major\": 0, \"minor\": 0}}, \"safety_risk_handling\": {\"counts\": {\"critical\": 0, \"major\": 0, \"minor\": 0}}, \"efficiency\": {\"score\": 10}, \"actionability\": {\"score\": 10}}}. Report the exact final_score and which gates_applied fired, per plugin-grader's references/gates-and-rollup.md.",
+      "expected_output": "rule_compliance scores 0 (critical>=1 -> 4 - min(4, 2*1) = 2, actually let me not overspecify the exact intermediate number -- the agent should derive it) triggering Gate A (rule_compliance < 5, cap 6.0); testing scores 0 triggering Gate D (cap 8.0, with the literal 'Missing verification.' comment); final_score is the weighted_total capped at the MINIMUM of the two triggered caps (6.0), not just the first one found. Both gates appear in gates_applied with non-empty reasons.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "backend_mix logic reasoning (no live dispatch)",
+      "prompt": "Do NOT dispatch any Agent() calls for this task -- reasoning-only. Per plugin-grader's references/output-schema.md 'notes.backend_mix' section, determine what claude_only/mixed/codex_reviewers values would be correct for this scenario: a plugin-auditor dispatch ran with the Codex backend enabled; codex_reviewers ended up being ['skill-reviewer', 'scripts-reviewer'] (both reviewer types that actually ran through Codex this run), but skill-reviewer's Codex dispatch returned zero findings for this clean target. State the correct claude_only and mixed values and explain why deriving them from findings[].backend instead of the dispatch record would give the WRONG answer here.",
+      "expected_output": "claude_only: false, mixed: true -- because codex_reviewers is non-empty (2 reviewer types genuinely ran through Codex) even though skill-reviewer's Codex-backed dispatch happened to return zero findings. Explains that deriving claude_only from findings[].backend would incorrectly report claude_only: true for skill-reviewer's contribution (since no finding exists to carry backend: codex), which would misrepresent that repo content was genuinely sent to Codex for that reviewer.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 8,
+    "declared_scenarios_covered": 0,
+    "uncovered": [
+      "Standalone mode live dispatch",
+      "Evidence-only mode live scoring",
+      "N/A dimension handling",
+      "Plugin rollup with a broken component",
+      "Fast mode live dispatch",
+      "Evidence-only refusal on missing evidence"
+    ]
+  }
+}

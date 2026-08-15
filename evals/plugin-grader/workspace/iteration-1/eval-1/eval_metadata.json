@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-grader/SKILL.md",
+  "assertions": [
+    {"text": "Actually executes compute_score.py rather than hand-computing the result", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Correctly identifies Gate A (rule_compliance < 5) fires with cap 6.0", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Correctly identifies Gate D (testing == 0) fires with cap 8.0 and the literal 'Missing verification.' text", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Correctly identifies final_score is capped at the MINIMUM of the two triggered caps, not the first one found", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

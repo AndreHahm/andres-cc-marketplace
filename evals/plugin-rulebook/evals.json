@@ -1,0 +1,30 @@
+{
+  "skill_name": "plugin-rulebook",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "description": "Defines and enforces plugin-level rules (R1-R27) governing all components in a Claude Code plugin.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Catches a real R4 kebab-case violation",
+      "prompt": "Create a scratch test skill directory at C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-auditor-codex-integration\\evals\\plugin-rulebook\\workspace\\iteration-1\\eval-1\\with_skill\\outputs\\scratch-test-skill\\ containing a SKILL.md with frontmatter name: 'Scratch_Test_Skill' (note: this violates R4's kebab-case requirement -- underscores and capital letters). Give it a minimal valid description and body. Then apply the plugin-rulebook skill's Compliance Check Procedure against this test skill and report which rule(s) it flags, at what severity (REQUIRED/ADVISORY), and what the correct fix would be. Do NOT delete the scratch-test-skill directory when done -- leave it for inspection.",
+      "expected_output": "Correctly identifies R4 (Naming: Kebab-Case Only, REQUIRED) as violated by 'Scratch_Test_Skill', explains the fix (rename to 'scratch-test-skill'), and does not report false positives on other rules for this minimal valid skill.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "No false positives on a clean, compliant component",
+      "prompt": "Apply the plugin-rulebook skill's Compliance Check Procedure against plugins/plugin-devkit/skills/plugin-rulebook/scripts/validate_evidence.py (worktree: C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-auditor-codex-integration) -- this is a real, already-shipped, presumed-compliant file. Report your findings.",
+      "expected_output": "Reports the file as compliant (or with only pre-existing, already-known advisory items if any) -- does not invent a false REQUIRED violation against a real, shipped file.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 0,
+    "uncovered": [
+      "'run r1 through r27' / 'check compliance' triggers",
+      "'validate this skill against the rulebook' triggers",
+      "'audit rule compliance' triggers"
+    ]
+  }
+}

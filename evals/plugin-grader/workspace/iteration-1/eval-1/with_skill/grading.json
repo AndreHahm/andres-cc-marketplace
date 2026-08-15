@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Actually executes compute_score.py rather than hand-computing the result", "passed": true, "evidence": "Real python execution, exact command and JSON output captured."},
+    {"text": "Correctly identifies Gate A (rule_compliance < 5) fires with cap 6.0", "passed": true, "evidence": "gates_applied includes A_rule_compliance, cap 6.0."},
+    {"text": "Correctly identifies Gate D (testing == 0) fires with cap 8.0 and the literal 'Missing verification.' text", "passed": true, "evidence": "gates_applied includes D_testing with the literal phrase."},
+    {"text": "Correctly identifies final_score is capped at the MINIMUM of the two triggered caps, not the first one found", "passed": true, "evidence": "final_score 6.0 = min(8.5, min(6.0, 8.0)), explicitly explained."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

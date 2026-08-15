@@ -1,0 +1,5 @@
+{"eval_id":3,"skill_path":"plugins/codex-kit/skills/codex-review-bridge/SKILL.md","assertions":[
+{"text":"Observes category isolation_profile_unavailable","type":"functionality","target":"tool-use trace"},
+{"text":"Explicitly states no Codex process was invoked","type":"presence","target":"response text"},
+{"text":"Does not attempt to work around the refusal or retry with a different profile","type":"functionality","target":"tool-use trace"}
+]}

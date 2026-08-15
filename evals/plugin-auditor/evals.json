@@ -9,6 +9,32 @@
       "prompt": "Audit the plugin-auditor skill itself (component mode) at plugins/plugin-devkit/skills/plugin-auditor/. Do not change any configuration first -- use whatever the shipped default is.",
       "expected_output": "Every reviewer dispatch goes through the existing Agent()-based Claude-native path. No codex-review-bridge / bridge-invoke.mjs invocation is attempted. The resolver in references/codex-backend.md is consulted (per its own documented 'runs for every dispatch, immediately returns Claude-native when disabled' behavior) but produces no observable difference from pre-session behavior.",
       "files": ["plugins/plugin-devkit/skills/plugin-auditor/SKILL.md", "plugins/plugin-devkit/skills/plugin-auditor/references/codex-backend.md", "plugins/plugin-devkit/skills/plugin-auditor/assets/settings.json"]
+    },
+    {
+      "id": 2,
+      "name": "Mode and type-matched reviewer resolution (no live dispatch)",
+      "prompt": "Do NOT dispatch any Agent() calls for this task -- reasoning-only. Given plugin-auditor's Quick Start and references/dispatch-table.md's Type-Matched Reviewer Table, determine: (a) is auditing 'plugins/codex-kit/skills/codex-review-bridge' component mode or plugin mode, and which type-matched reviewer applies; (b) is auditing 'the whole codex-kit plugin' component mode or plugin mode, and which extra whole-plugin-only reviewers run that don't run in component mode; (c) if the caller already supplies plugin-rulebook-checker findings for a component, does plugin-auditor re-dispatch plugin-rulebook-checker for that component -- cite the exact section that answers this.",
+      "expected_output": "(a) Component mode (a single named skill directory); type-matched reviewer is skill-reviewer (per the Type-Matched Reviewer Table's Skill row). (b) Plugin mode; the extra whole-plugin-only reviewers are activation-reviewer (whole-plugin mode), consistency-reviewer, dependency-reviewer (whole-plugin mode), and plugin-validator -- none of which run per-component in component mode. (c) No -- it reuses the pre-supplied findings instead, per the 'Reuse Pre-Supplied Findings' section of dispatch-table.md.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "Backend resolver decision reasoning (no live dispatch)",
+      "prompt": "Do NOT dispatch any Agent() calls or run any Bash commands for this task -- this is a reasoning-only exercise about what plugin-auditor's Codex backend resolver would decide, not a live run. Given plugin-auditor's references/codex-backend.md Resolver section, walk through what backend (Claude-native or Codex) the resolver would select for each of these 4 scenarios, citing the exact resolver step that determines each outcome: (a) reviewer = security-reviewer, reviewer_backend.enabled = true, default = codex; (b) reviewer = skill-reviewer, reviewer_backend.enabled = false; (c) reviewer = skill-reviewer, reviewer_backend.enabled = true, default = codex, but the audit target is plugin-devkit itself; (d) reviewer = scripts-reviewer, reviewer_backend.enabled = true, per_reviewer.scripts-reviewer = claude, default = codex.",
+      "expected_output": "(a) Claude-native, because security-reviewer is hardcoded to never route through Codex regardless of config (Resolver step 1). (b) Claude-native, because reviewer_backend.enabled is false (Resolver step 3). (c) Claude-native, because the audit target is plugin-devkit itself, which skips the Codex path entirely (Resolver step 2). (d) Claude-native, because per_reviewer explicitly overrides the default for this reviewer (Resolver step 4).",
+      "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 10,
+    "declared_scenarios_covered": 0,
+    "uncovered": [
+      "Component mode clean/mixed-findings dispatch",
+      "Pre-supplied findings reuse (live dispatch)",
+      "Plugin mode whole-set dispatch",
+      "Codex backend enabled/disabled live dispatch",
+      "First-Send Confirmation live gate",
+      "Tracked local override live trust-boundary check"
+    ]
+  }
 }
