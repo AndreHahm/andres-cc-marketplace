@@ -11,7 +11,7 @@ description: >-
   plugin-lifecycle-downstream's Audit phase or plugin-grader need raw evidence
   instead of a computed score.
 argument-hint: "[target]"
-allowed-tools: Read Grep Glob Agent Write Bash(date:*) Bash(node */codex-review-bridge/scripts/bridge-invoke.mjs:*) Bash(git ls-files:*)
+allowed-tools: Read Grep Glob Agent Write Bash(date:*) Bash(node */codex-review-bridge/scripts/bridge-invoke.mjs:*) Bash(node */codex-windows-guardrails/scripts/guarded-dispatch.mjs:*) Bash(git ls-files:*)
 ---
 
 # Plugin Auditor

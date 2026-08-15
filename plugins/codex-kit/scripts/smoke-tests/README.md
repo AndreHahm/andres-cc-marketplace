@@ -17,6 +17,7 @@ node scripts/smoke-tests/stop-review-gate-hook.mjs
 node scripts/smoke-tests/codex-config-toml-sections.mjs
 node scripts/smoke-tests/session-lifecycle-hook.mjs
 node scripts/smoke-tests/fs-atomic-write.mjs
+node scripts/smoke-tests/codex-windows-guardrails-preflight.mjs
 ```
 
 Or all at once:
@@ -41,6 +42,7 @@ for f in scripts/smoke-tests/*.mjs; do node "$f" || echo "FAILED: $f"; done
 | `codex-config-toml-sections.mjs` | `scripts/lib/codex-config.mjs` | The section-aware TOML read/write fix: a root-absent key never leaks a same-named key from inside a `[table]`, and writing a new root key never corrupts an existing table. Also `resolveModelAlias`'s case-insensitive lookup (`spark`/`SPARK`/`Spark` all resolve, a non-alias value passes through unchanged in its original casing). Tests the pure functions directly against in-memory strings only — never touches a real `~/.codex/config.toml`. |
 | `session-lifecycle-hook.mjs` | `scripts/session-lifecycle-hook.mjs` | `handleSessionStart`'s `CLAUDE_ENV_FILE` env-var wiring (and its no-op when that env var isn't set), `cleanupSessionJobs`'s job-filtering logic (a queued/running job for the ending session is dropped, a completed job for that same session survives, a job belonging to a different session is never touched), and `handleSessionEnd`'s no-broker-session fallthrough path (completes without throwing when there's no broker session to tear down). Runs entirely under a scratch `CLAUDE_PLUGIN_DATA` directory (never a real state path); test jobs are given no `pid`, so the termination attempt `cleanupSessionJobs` makes is a real no-op, never a signal sent to an actual process. |
 | `fs-atomic-write.mjs` | `scripts/lib/fs.mjs` | `writeJsonFile`'s atomic temp-file-then-rename: a successful write round-trips correctly with no leftover `.tmp-<pid>` file, a failed write (a circular-reference value that can't `JSON.stringify`) never touches the existing file's contents, and a `{ mode: 0o600 }` write actually lands with that mode on disk (POSIX only — skipped on Windows, which doesn't implement the same permission bits). Runs entirely under a scratch temp directory. |
+| `codex-windows-guardrails-preflight.mjs` | `skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs` | Every pre-flight gate short-circuits before any Codex exec is attempted, in a real scratch git repo: disabled by default; a tracked local override is ignored (fail-closed, not fail-open); a target outside the repository root is rejected; an untracked `.env` under a *directory* target is rejected (real filesystem traversal, not `git ls-files`, which would miss it — `.env` is normally gitignored); and an instruction file resolving inside a target path is rejected. |
 
 ## When to re-run
 
