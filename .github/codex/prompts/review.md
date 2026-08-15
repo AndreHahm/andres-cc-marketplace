@@ -42,9 +42,14 @@ axis conventions.
 The bridge validates Codex's structured output against its own canonical envelope
 (`codex-review-bridge/references/envelope-schema.md`) before returning it. This repository's
 own `scripts/marketplace_ci/review.py`'s `validate_review_output` then re-validates that same
-envelope against `.github/codex/review-output.schema.json` — the two schemas describe the same
-shape from two different owners (the bridge's general-purpose envelope vs. this initiative's
-specific `mode`/`reviewers`/`findings` contract) and are expected to agree.
+envelope — a single reviewer's own `contract_version`/`dispatch`/`provenance`/`findings`/
+`verdict`/`inspection_limits` shape, one per `dispatch_reviewers()` call — against
+`.github/codex/review-output.schema.json`, which documents the subset of that shape Python
+actually checks (dispatch's `id`/`reviewer`/`backend`/`target_paths`, and each finding's
+`id`/`severity`/`axis`/`location`/`evidence`/`finding`/`fix`/`confidence`). The whole-run
+`mode`/`reviewed_paths`/`reviewers` payload CI ultimately reports is assembled separately, by
+`run-codex-review` itself from `ReviewScope` and the list of per-reviewer dispatch results —
+never read back out of any single reviewer's own envelope.
 
 ## Trust boundary reminder
 
