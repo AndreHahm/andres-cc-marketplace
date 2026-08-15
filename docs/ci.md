@@ -18,7 +18,7 @@ not hand-typed):
 | `Python quality (ruff, ty, pytest)` | `python-quality` | `ruff format --check`, `ruff check`, `ty check`, `pytest -q` against `scripts/`+`tests/` |
 | `Marketplace mirror/export parity` | `marketplace-parity` | `check-all` — every plugin's generated `.claude`/`.agents`/`.codex` mirror/export is in sync with its canonical source |
 | `Fork PR (unsupported — explicit terminal result)` | `fork-unsupported` | Only runs (`if:`) when the PR head is a fork; fails explicitly rather than leaving Codex review silently pending. **Reports `skipped` on a same-repo PR** — a `skipped` conclusion satisfies a required check in GitHub's branch protection, so this doesn't block ordinary same-repo PRs. |
-| `Codex delta review` | `codex-review` | Dispatches the reviewer set from `derive_review_scope` via `codex-review-bridge`; fails closed on `full`-mode escalation (no reviewer set defined yet — see the skill doc above) |
+| `Codex delta review` | `codex-review` | Dispatches the reviewer set from `derive_review_scope` via `codex-review-bridge` — including `full`-mode escalation's own defined, bounded reviewer set (see "Full-mode escalation" below) |
 | `Publish Codex policy result` | `publish` | The single check branch protection should actually require for Codex policy: passes if `codex-review` succeeded, OR if a valid SHA-bound bypass attestation + `codex-review-bypassed` label is present for the current head SHA |
 
 Configure branch protection to require: `Hygiene (PR contract)`, `Python quality (ruff, ty, pytest)`,
@@ -64,7 +64,12 @@ Boundaries section.
 
 A PR touching a shared-governance path (the marketplace registry file, `marketplace.json`, or
 `plugin-rulebook`'s own `SKILL.md`) or an oversized dependency closure escalates `derive_review_scope`
-to `mode == "full"`. No automated reviewer set is defined for `full` mode yet, so `run-codex-review`
-fails closed (exit 2) with an explicit message rather than silently passing with zero review coverage.
-A `full`-mode PR requires human review and, if otherwise ready, the same SHA-bound bypass protocol above
-to merge.
+to `mode == "full"`. Both triggers now dispatch a defined, bounded reviewer set — a dependency-closure
+overflow reuses delta's own baseline reviewers scoped to the full closure; a shared-governance-path
+change dispatches a small, fixed set targeted at that file (`plugin-rulebook-checker` +
+`consistency-reviewer` for a rulebook change, `plugin-validator` for a registry/manifest change) — never
+a marketplace-wide re-review of every plugin. `run-codex-review` still fails closed (exit 2) as a
+defensive backstop only if a future escalation trigger is ever added without a matching reviewer set
+defined for it; that path is not reachable through either of today's two triggers. See
+`plugin-marketplace-review/SKILL.md`'s "Full review escalation" section for the exact per-trigger
+reviewer sets.

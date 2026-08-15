@@ -49,6 +49,24 @@ FULL_ESCALATION_PATHS = (
     ".claude/marketplace-sync.json",
 )
 
+# Full mode, governance-path trigger: a small, fixed reviewer set targeted at
+# the changed governance file itself and its direct consumers -- never a
+# marketplace-wide fan-out (unbounded cost). Keyed by the exact
+# FULL_ESCALATION_PATHS entry that triggered escalation; if a change touches
+# more than one, the union of their reviewer sets is dispatched.
+FULL_MODE_GOVERNANCE_REVIEWERS: dict[str, tuple[str, ...]] = {
+    # The rulebook's own correctness, plus a check for stale duplicate-fact
+    # drift the edit may have introduced elsewhere (R20-style).
+    "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md": (
+        "plugin-rulebook-checker",
+        "consistency-reviewer",
+    ),
+    # Manifest/registration structural correctness -- not a rule-compliance
+    # sweep, since these files aren't rulebook-scoped components themselves.
+    ".claude-plugin/marketplace.json": ("plugin-validator",),
+    ".claude/marketplace-sync.json": ("plugin-validator",),
+}
+
 
 @dataclass(frozen=True)
 class ReviewScope:
@@ -79,21 +97,61 @@ def derive_review_scope(
 ) -> ReviewScope:
     paths = _changed_path_set(changes)
 
-    if any(p in FULL_ESCALATION_PATHS for p in paths):
-        return ReviewScope(
-            mode="full", structural_check=STRUCTURAL_CHECK_REF, validate=(), audit=(), paths=paths
-        )
+    triggering_governance_paths = [p for p in paths if p in FULL_ESCALATION_PATHS]
 
     closure: set[str] = set(paths)
     for path in paths:
         closure.update(dependency_index.get(path, ()))
-    if len(closure) > dependency_closure_limit:
+    closure_overflow = len(closure) > dependency_closure_limit
+
+    if triggering_governance_paths or closure_overflow:
+        # A large dependency closure is "delta, but big" -- not a different
+        # kind of risk -- so both triggers reuse delta's own scoping, over
+        # the escalated path set (the full closure, when that's what
+        # triggered escalation; otherwise the raw diff).
+        #
+        # Escalation is additive, never a replacement: DELTA_VALIDATE's own
+        # baseline is always included, so a governance-path or
+        # closure-overflow trigger can never dispatch *fewer* reviewers than
+        # the equivalent non-escalated delta scope would have for the same
+        # raw diff -- an earlier version of this function returned only the
+        # governance-specific set, letting an author touch a governance path
+        # alongside an unrelated risky change to strip delta's own baseline
+        # reviewers (security-reviewer, dependency-reviewer) off the diff.
+        # See the "escalation is never a subset of delta" test below.
+        scoped_paths = closure if closure_overflow else set(paths)
+        audit_types = {
+            LAUNCH_AUDIT_BY_COMPONENT_TYPE[component]
+            for p in scoped_paths
+            if (component := _component_type(p)) in LAUNCH_AUDIT_BY_COMPONENT_TYPE
+        }
+        governance_reviewers = {
+            name
+            for p in triggering_governance_paths
+            for name in FULL_MODE_GOVERNANCE_REVIEWERS.get(p, ())
+        }
+        if any(p not in FULL_MODE_GOVERNANCE_REVIEWERS for p in triggering_governance_paths):
+            # Invariant violation: a path is in FULL_ESCALATION_PATHS but has
+            # no entry in FULL_MODE_GOVERNANCE_REVIEWERS. Fail closed rather
+            # than silently dispatching only DELTA_VALIDATE for a governance
+            # path whose own targeted reviewer was never actually added --
+            # this is exactly the gap run-codex-review's own defensive guard
+            # exists to catch, so route it there deliberately instead of
+            # raising a bare KeyError before that guard ever runs.
+            return ReviewScope(
+                mode="full",
+                structural_check=STRUCTURAL_CHECK_REF,
+                validate=(),
+                audit=(),
+                paths=paths,
+            )
+        validate = tuple(sorted(set(DELTA_VALIDATE) | governance_reviewers))
         return ReviewScope(
             mode="full",
             structural_check=STRUCTURAL_CHECK_REF,
-            validate=(),
-            audit=(),
-            paths=tuple(sorted(closure)),
+            validate=validate,
+            audit=tuple(sorted(audit_types)),
+            paths=tuple(sorted(scoped_paths)),
         )
 
     if not any(p.startswith("plugins/") for p in paths):

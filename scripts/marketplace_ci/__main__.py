@@ -477,15 +477,20 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
 
     scope = derive_review_scope(changed, {})
 
-    if scope.mode == "full":
-        # "full" mode is a classification only -- derive_review_scope names
-        # the escalation triggers, but no reviewer set has ever been defined
-        # for it (Task 9/11 scope). Dispatching scope.validate/audit here
-        # would dispatch nothing (both are empty for "full"), silently
-        # reporting a clean pass with zero actual review coverage on
-        # whatever triggered the escalation. Fail closed instead: this is
-        # exactly the "manual-full" case design.md says a human decides,
-        # not something this CLI can safely wave through on its own.
+    if scope.mode == "full" and not scope.validate and not scope.audit:
+        # derive_review_scope populates a real reviewer set for both known
+        # full-mode triggers (a shared-governance path edit, or a dependency
+        # closure over the size limit) -- always including DELTA_VALIDATE's
+        # own baseline, never just the governance-specific set alone, so
+        # escalation can never dispatch fewer reviewers than the equivalent
+        # non-escalated delta scope would have. This branch is reachable
+        # only when a governance path is in FULL_ESCALATION_PATHS but has no
+        # matching entry in FULL_MODE_GOVERNANCE_REVIEWERS -- derive_review_scope
+        # itself detects that gap and deliberately returns an empty scope
+        # here rather than raising or silently dropping the missing
+        # reviewer. Dispatching an empty scope.validate/audit would silently
+        # report a clean pass with zero actual review coverage, so fail
+        # closed instead.
         triggering_paths = [p for p in scope.paths if p in FULL_ESCALATION_PATHS]
         reason = (
             f"shared-governance path(s): {', '.join(triggering_paths)}"
@@ -494,8 +499,8 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         )
         print(
             "run-codex-review: mode=full escalation has no defined reviewer "
-            "dispatch yet -- this requires human review, not an automated "
-            f"pass. Trigger: {reason}",
+            "dispatch for this trigger -- this requires human review, not an "
+            f"automated pass. Trigger: {reason}",
             file=sys.stderr,
         )
         return 2
