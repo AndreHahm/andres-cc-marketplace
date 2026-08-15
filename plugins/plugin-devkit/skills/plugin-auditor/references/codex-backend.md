@@ -222,7 +222,7 @@ and neither this adapter nor a downstream reader should act on it as one.
 verified fact** — the same untrusted-output caution applies, for a different reason than the
 findings text: it's not a prompt-injection risk, but a downstream consumer reading `provenance` as
 an attested guarantee (e.g. "this ran isolated") would be trusting a value the model produced about
-itself. Only the two fields this resolver determines independently — `authentication_mode` (Step 3,
+itself. Only the two fields this resolver determines independently — `authentication_mode` (Step 4,
 above) and `isolation_strength` (below) — are script-known rather than model-reported.
 
 | Envelope field | → | Finding field |

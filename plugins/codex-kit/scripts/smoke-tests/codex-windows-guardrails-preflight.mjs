@@ -202,28 +202,57 @@ console.log("\n=== --repo-root that is not the actual git repository toplevel ==
   fs.rmSync(subdir, { recursive: true, force: true });
 }
 
-console.log("\n=== Secret file reached only through a symlink (target's real name, not the link's own name) ===");
+console.log("\n=== File symlink whose real target escapes the repository root (any target name, even benign) ===");
 {
-  const secretOutside = fs.mkdtempSync(path.join(os.tmpdir(), "codex-windows-guardrails-secret-"));
-  const realSecretFile = path.join(secretOutside, "id_rsa");
+  // Any out-of-root symlink target is refused outright, regardless of the
+  // target's own name -- a fix (this scenario used to expect
+  // secret_file_in_scope, since a naive first pass only basename-checked an
+  // escaping file target instead of refusing it the way an escaping
+  // directory target was already refused).
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-windows-guardrails-secret-"));
+  const benignTargetFile = path.join(outsideDir, "config");
+  fs.writeFileSync(benignTargetFile, "not a real key, and not a secret-pattern filename either");
+  const innocuousLink = path.join(repoRoot, "notes.txt");
+  try {
+    fs.symlinkSync(benignTargetFile, innocuousLink, "file");
+  } catch (e) {
+    skipScenario("out-of-root file symlink boundary check", `cannot create a file symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  }
+  if (fs.existsSync(innocuousLink)) {
+    const result = runDispatch(repoRoot, repoRoot, instructionFile);
+    check(
+      "rejected with repository_boundary_violation -- an out-of-root file symlink is refused even when neither its own name nor its target's name matches a secret pattern",
+      result.ok === false && result.category === "repository_boundary_violation",
+      JSON.stringify(result)
+    );
+    fs.rmSync(innocuousLink);
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  }
+}
+
+console.log("\n=== Secret file reached only through an IN-REPO symlink (target's real name, not the link's own name) ===");
+{
+  const secretDir = path.join(repoRoot, "secret-dir");
+  fs.mkdirSync(secretDir, { recursive: true });
+  const realSecretFile = path.join(secretDir, "id_rsa");
   fs.writeFileSync(realSecretFile, "not a real key");
   const innocuousLink = path.join(repoRoot, "notes.txt");
   try {
     fs.symlinkSync(realSecretFile, innocuousLink, "file");
   } catch (e) {
-    skipScenario("symlink secret-target check", `cannot create a file symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
-    fs.rmSync(secretOutside, { recursive: true, force: true });
+    skipScenario("in-repo symlink secret-target check", `cannot create a file symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
   }
   if (fs.existsSync(innocuousLink)) {
     const result = runDispatch(repoRoot, repoRoot, instructionFile);
     check(
-      "rejected with secret_file_in_scope -- caught via the symlink's REAL target basename (id_rsa), not the innocuous link name (notes.txt)",
+      "rejected with secret_file_in_scope -- caught via the symlink's REAL target basename (id_rsa), not the innocuous link name (notes.txt), when the target is inside the repo",
       result.ok === false && result.category === "secret_file_in_scope",
       JSON.stringify(result)
     );
     fs.rmSync(innocuousLink);
-    fs.rmSync(secretOutside, { recursive: true, force: true });
   }
+  fs.rmSync(secretDir, { recursive: true, force: true });
 }
 
 console.log("\n=== Directory symlink/junction whose real target escapes the repository root ===");
@@ -247,6 +276,36 @@ console.log("\n=== Directory symlink/junction whose real target escapes the repo
     fs.rmSync(linkPath, { recursive: true, force: true });
     fs.rmSync(outsideDir, { recursive: true, force: true });
   }
+}
+
+console.log("\n=== NESTED directory symlink/junction escaping the repository root (multi-frame recursion) ===");
+{
+  // A top-level-only escape scenario passes identically whether or not the
+  // boundary throw actually propagates through several intermediate
+  // walkFiles/readdirSync recursion frames -- this fixture puts the
+  // escaping junction several directories deep so the unwind is genuinely
+  // exercised, not just the base case.
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-windows-guardrails-nested-outside-"));
+  const nestedParent = path.join(repoRoot, "a", "b", "c");
+  fs.mkdirSync(nestedParent, { recursive: true });
+  const linkPath = path.join(nestedParent, "escape");
+  const linkType = process.platform === "win32" ? "junction" : "dir";
+  try {
+    fs.symlinkSync(outsideDir, linkPath, linkType);
+  } catch (e) {
+    skipScenario("nested directory symlink/junction boundary-escape check", `cannot create a directory ${linkType} in this environment (${e.code || e.message})`);
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  }
+  if (fs.existsSync(linkPath)) {
+    const result = runDispatch(repoRoot, repoRoot, instructionFile);
+    check(
+      "rejected with repository_boundary_violation -- the boundary throw propagates through nested walkFiles recursion (a/b/c/escape), not just a top-level target",
+      result.ok === false && result.category === "repository_boundary_violation" && /escapes repository root/.test(result.detail),
+      JSON.stringify(result)
+    );
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  }
+  fs.rmSync(path.join(repoRoot, "a"), { recursive: true, force: true });
 }
 
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);

@@ -228,6 +228,22 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
       return;
     }
     const canonicalRoot = canonicalizeWithAncestorFallback(repoRoot);
+    if (!isInsideRoot(real, canonicalRoot)) {
+      // ANY symlink (file or directory) whose real target escapes the
+      // repository root is refused outright, not silently basename-checked
+      // -- Codex would otherwise read straight through it (cwd: repoRoot,
+      // danger-full-access). Checked here, before branching on file vs.
+      // directory, so neither case can fall through unscanned: an earlier
+      // version of this check only refused an escaping DIRECTORY target,
+      // leaving an escaping FILE target (e.g. notes.md -> ~/.aws/config)
+      // checked under basename alone -- caught only by the pattern list,
+      // not refused as out-of-scope the way a declared target path would
+      // be.
+      const boundaryError = new Error("symlinked/junction target escapes repository root");
+      boundaryError.repositoryBoundaryViolation = true;
+      boundaryError.escapingPath = absolutePath;
+      throw boundaryError;
+    }
     let realIsDirectory;
     try {
       realIsDirectory = fs.statSync(real).isDirectory();
@@ -238,26 +254,13 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
       realIsDirectory = false;
     }
     if (realIsDirectory) {
-      if (!isInsideRoot(real, canonicalRoot)) {
-        // A directory symlink/junction whose real target escapes the
-        // repository root is refused outright, not silently skipped --
-        // Codex would otherwise read straight through it (cwd: repoRoot,
-        // danger-full-access) with nothing here having scanned what's
-        // inside. This is the directory-target counterpart of the
-        // file-symlink-basename check below: neither case may fall through
-        // unscanned just because the target isn't a plain file.
-        const boundaryError = new Error("symlinked/junction directory target escapes repository root");
-        boundaryError.repositoryBoundaryViolation = true;
-        boundaryError.escapingPath = absolutePath;
-        throw boundaryError;
-      }
       if (!visitedRealpaths.has(real)) {
         visitedRealpaths.add(real);
         walkFiles(real, results, repoRoot, visitedRealpaths);
       }
       return;
     }
-    // A file symlink (its real target resolves inside the repo) is checked
+    // A file symlink whose real target resolves inside the repo is checked
     // under BOTH names -- its own (a suspiciously-named symlink is still a
     // hit) and its real target's (Codex reads through the symlink to the
     // real content, so notes.txt -> ../../.ssh/id_rsa must be caught by
@@ -283,6 +286,12 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
 }
 
 function checkSecretFiles(targetPaths, repoRoot) {
+  // Relativize against the CANONICAL root, not the raw repoRoot argument --
+  // a path reached via symlink/junction recursion is already in canonical
+  // form, so relativizing it against a non-canonical repoRoot could render
+  // a `..`-laden path exposing real on-disk structure instead of a clean
+  // repo-relative one.
+  const canonicalRoot = canonicalizeWithAncestorFallback(repoRoot);
   for (const entry of targetPaths) {
     const absoluteEntry = path.resolve(repoRoot, entry);
     const files = [];
@@ -292,7 +301,7 @@ function checkSecretFiles(targetPaths, repoRoot) {
       if (error.repositoryBoundaryViolation) {
         return typedFailure(
           "repository_boundary_violation",
-          `symlinked/junction directory escapes repository root: ${path.relative(repoRoot, error.escapingPath)}`
+          `symlinked/junction target escapes repository root: ${path.relative(canonicalRoot, error.escapingPath)}`
         );
       }
       throw error;
@@ -301,7 +310,7 @@ function checkSecretFiles(targetPaths, repoRoot) {
       for (const name of file.checkNames) {
         const matched = matchesSecretPattern(name);
         if (matched) {
-          return typedFailure("secret_file_in_scope", `${path.relative(repoRoot, file.path)} matches sensitive-filename pattern ${matched}`);
+          return typedFailure("secret_file_in_scope", `${path.relative(canonicalRoot, file.path)} matches sensitive-filename pattern ${matched}`);
         }
       }
     }
