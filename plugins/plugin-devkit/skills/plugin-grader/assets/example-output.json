@@ -1,4 +1,5 @@
 {
+  "mode": "standalone",
   "target": "example-skill",
   "target_type": "skill",
   "graded_at": "2026-07-11T14:32:00Z",
@@ -15,7 +16,7 @@
     },
     "rule_compliance": {
       "score": 10.0, "weight": 0.12, "is_na": false,
-      "source": "plugin-rulebook",
+      "source": "plugin-rulebook-checker",
       "findings_summary": "All 23 enabled rules PASS."
     },
     "completeness": {
@@ -104,6 +105,7 @@
   "reasoning_summary": "Strong compliance, completeness, and maintainability; the score is held to 8.8 primarily by one Major content-quality contradiction and the absence of automated test coverage. No hard gates triggered.",
   "notes": {
     "inspection_limits": "scripts-reviewer was not dispatched (no scripts/ present).",
-    "na_dimensions": ["robustness"]
+    "na_dimensions": ["robustness"],
+    "backend_mix": {"claude_only": true, "mixed": false, "codex_reviewers": []}
   }
 }

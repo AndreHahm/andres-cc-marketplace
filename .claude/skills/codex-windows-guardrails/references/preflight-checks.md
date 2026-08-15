@@ -89,6 +89,7 @@ required to produce, every time.
 Repository-boundary, secret-file, and instruction-containment all validate something known *before*
 dispatch (which paths are in scope). A dangerous command is a decision Codex's own agent loop makes
 *during* its run — there is nothing to pre-validate, because the command doesn't exist yet at
-pre-flight time. See `references/dispatch.md` for how this is instead handled as an instructed
-request appended to the prompt, and why that's a materially weaker guarantee than the three checks
-above.
+pre-flight time. It is instead handled as an instructed request appended to the prompt
+(`assets/dangerous-command-instructions.txt`, documented in `references/dispatch.md`, already listed
+in `SKILL.md`'s Reference Guide) — a materially weaker guarantee than the three pre-flight checks
+above, since the model could simply ignore it.

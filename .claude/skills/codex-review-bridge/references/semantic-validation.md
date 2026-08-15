@@ -4,6 +4,10 @@ Schema conformance is necessary but not sufficient — a structurally valid resp
 
 ## Currently implemented (in `scripts/bridge-invoke.mjs`'s `semanticallyValidate`)
 
+`semanticallyValidate` (and `isWithin`, which it depends on) is exported and also called directly by
+`codex-windows-guardrails`' `scripts/guarded-dispatch.mjs` for its own `danger-full-access` dispatch
+path — this list is authoritative for both, not only for callers going through this bridge's own CLI.
+
 1. `dispatch.id` and `dispatch.reviewer` match the request (`backend`/`target_paths` are not yet cross-checked).
 2. Every cited path is normalized, remains inside the allowed target scope, and exists on disk — this applies to `location` and, when present, to every entry in the optional `components[]` array (a multi-file finding's secondary citations get the same containment/existence check as its primary `location`).
 3. Finding IDs are unique.

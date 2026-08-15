@@ -5,14 +5,20 @@ import { fileURLToPath } from "node:url";
 
 import { runCodexExec } from "../../../scripts/lib/codex-exec.mjs";
 
-const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-
 // Exported (additive, no behavior change) so a sibling codex-kit component
 // that needs the same envelope contract without going through this file's
 // own CLI/danger-full-access refusal can import it directly, matching the
 // existing reuse pattern already established for semanticallyValidate/
 // isWithin/locateInSemanticScope below.
-export const ENVELOPE_SCHEMA = {
+function deepFreeze(value) {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.values(value).forEach(deepFreeze);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+export const ENVELOPE_SCHEMA = deepFreeze({
   type: "object",
   additionalProperties: false,
   required: ["contract_version", "dispatch", "provenance", "findings", "verdict", "inspection_limits"],
@@ -80,7 +86,7 @@ export const ENVELOPE_SCHEMA = {
     verdict: { type: "string" },
     inspection_limits: { type: "array", items: { type: "string" } }
   }
-};
+});
 
 // Exported (additive) so a sibling component that needs the same charset/
 // length guard on a value that is also interpolated into a prompt (e.g.
@@ -88,7 +94,7 @@ export const ENVELOPE_SCHEMA = {
 // than hand-copying the regex -- a second copy is exactly the drift risk
 // ENVELOPE_SCHEMA's own export above exists to avoid.
 export function isValidToken(value) {
-  return /^[A-Za-z0-9._-]{1,64}$/.test(value);
+  return typeof value === "string" && /^[A-Za-z0-9._-]{1,64}$/.test(value);
 }
 
 function parseArgs(argv) {
@@ -189,7 +195,7 @@ async function main() {
   // malformed value should fail fast with a clear message here rather than
   // surface as an opaque Codex CLI error.
   const modelOverride = process.env.CODEX_KIT_REVIEW_MODEL;
-  if (modelOverride && !/^[A-Za-z0-9._-]{1,64}$/.test(modelOverride)) {
+  if (modelOverride && !isValidToken(modelOverride)) {
     console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "CODEX_KIT_REVIEW_MODEL must match ^[A-Za-z0-9._-]{1,64}$" }));
     process.exit(1);
   }
@@ -214,7 +220,11 @@ async function main() {
     process.exit(1);
   }
 
-  const instructionBody = fs.readFileSync(instructionFile, "utf8");
+  // Read from the SAME resolved path just checked above -- reading the raw
+  // --instruction-file argument instead (which resolves relative to the
+  // real process.cwd() whenever it differs from --cwd) would check one
+  // file's containment and read a different file's content into the prompt.
+  const instructionBody = fs.readFileSync(resolvedInstructionFile, "utf8");
 
   const prompt = [
     "<content_trust_boundary>",

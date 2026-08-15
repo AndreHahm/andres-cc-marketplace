@@ -64,5 +64,21 @@ console.log("\n=== Pre-existing bare-string-type behavior is unchanged ===");
   check("a valid string property still passes", valid === null, valid);
 }
 
+console.log("\n=== additionalProperties: false rejects an unrequested extra property ===");
+{
+  const stringSchema = { type: "object", additionalProperties: false, required: ["name"], properties: { name: { type: "string" } } };
+  const extra = findSchemaViolation({ name: "ok", injected: "padding" }, stringSchema);
+  const clean = findSchemaViolation({ name: "ok" }, stringSchema);
+  check("an object with a key not in properties is rejected", extra !== null, extra);
+  check("an object with only declared keys still passes", clean === null, clean);
+}
+
+console.log("\n=== additionalProperties unset (not false) still permits extra keys ===");
+{
+  const permissiveSchema = { type: "object", required: ["name"], properties: { name: { type: "string" } } };
+  const violation = findSchemaViolation({ name: "ok", extra: "fine" }, permissiveSchema);
+  check("no additionalProperties constraint means extra keys are not checked", violation === null, violation);
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);
 process.exit(fail > 0 ? 1 : 0);

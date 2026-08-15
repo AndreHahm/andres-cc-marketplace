@@ -20,29 +20,41 @@ Resolution order: `.claude/plugin-auditor.local.json` (gitignored, untracked) ov
 ```
 
 - Missing file, missing field, or unknown value → resolves to Claude.
-- **Trust boundary:** run the scoped `Bash(git ls-files:*)` tool as
-  `git ls-files --error-unmatch .claude/plugin-auditor.local.json`. If it exits `0` (the file is
-  tracked), ignore its `reviewer_backend` values entirely and use the shipped default instead — a
-  tracked copy could have been committed by anyone with repo write access. **Fail closed on any
-  other outcome too** — a non-zero exit that isn't a clean "untracked" result (git unavailable, not
-  a git repository, permission error) is treated the same as "tracked": ignore the local file, use
-  the shipped default. Only a *clean, confirmed-untracked* result may honor the local override.
-  Same pattern as `commit`'s `commit_confirm_before_commit` check.
+- **Trust boundary — exact discriminator:** run the scoped `Bash(git ls-files:*)` tool as
+  `LC_ALL=C git ls-files --error-unmatch -- .claude/plugin-auditor.local.json` from the repository
+  root. Honor the local override **only** when the command exits with status `1` **and** its stderr
+  contains the substring `did not match any file` — that specific combination is the only signal
+  that means "genuinely untracked." Exit `0` (tracked), exit `128` (not a git repository), a missing
+  `git` binary, a `1` exit with different stderr, or any other outcome all fail closed the same way:
+  ignore the local file, use the shipped default. `LC_ALL=C` pins the message to English so a
+  localized git install can't break this discriminator; `--` before the path stops a leading `-` in
+  the path from being parsed as a git option instead of a pathspec. This is the identical check
+  `codex-windows-guardrails/scripts/guarded-dispatch.mjs`'s `resolveConfig` function implements in
+  code — treat that function as the canonical reference for this exact discriminator, not merely an
+  analogous pattern, if anything here reads ambiguously.
 - **The shipped default itself is not separately distrusted** — plugin-devkit's own maintainers
   author `assets/settings.json`, the same trust level as every other shipped file this skill reads.
   What actually bounds the risk of a tracked `enabled: true` (accidental or malicious) is the
   First-Send Confirmation gate below: no repo content reaches Codex without a live user confirming
   in that session, regardless of how `enabled` became true.
 
-## First-Send Confirmation
+## First-Send Confirmation (Codex Path step 0 — mandatory, never skipped)
 
 Before the *first* Codex dispatch attempted in a session — regardless of whether `enabled` came
 from the shipped default or a local override — ask via `AskUserQuestion`: name the reviewer(s) and
-target path(s) about to be sent, options "Send to Codex for this run" / "Stay Claude-native for
-this run". Fires once per session. Mirrors the first-send gate convention other interactive
-`codex-kit` callers already use; `codex-review-bridge` itself explicitly assigns this obligation to
-the calling component (its own SKILL.md's "Named exception to the session-level first-send gate"
-note), and `plugin-auditor` is exactly the interactive caller that note describes.
+target path(s) about to be sent, **and state plainly that the Codex process runs with the repository
+root as its working directory and can read anything under it — `--target-paths` scopes what the
+reviewer is asked to focus on and what its findings are checked against, it does not bound what the
+process can physically read.** Options: "Send to Codex for this run" / "Stay Claude-native for this
+run". Fires once per session. This is what actually bounds the risk of a tracked `enabled: true`
+(accidental or malicious): no repo content reaches Codex without a live user confirming, with an
+accurate description of the exposure, in that session. Mirrors the first-send gate convention other
+interactive `codex-kit` callers already use; `codex-review-bridge` itself explicitly assigns this
+obligation to the calling component (its own SKILL.md's "Named exception to the session-level
+first-send gate" note), and `plugin-auditor` is exactly the interactive caller that note describes.
+
+No Codex dispatch — Codex Path or the Windows-Guarded profile below — may reach any later step
+without this gate having fired at least once in the session.
 
 ## Resolver
 
@@ -92,30 +104,35 @@ resolves `windows_guardrails.enabled: true` (checked internally by the script be
 resolver), this resolver may attempt `danger-full-access` on Windows instead of only ever falling
 back to Claude on that platform.
 
-**This replaces Codex Path steps 1-4 below entirely for this one profile — it is not an addition on
-top of them.** `codex-review-bridge` itself unconditionally refuses `--execution-profile
-danger-full-access` (a correct, unchanged safety invariant for every other caller); routing through
-it for this profile would always fail. Instead, invoke the scoped
-`Bash(node */codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)` tool directly:
+**This replaces Codex Path steps 2-6 below entirely for this one profile — it is not an addition on
+top of them.** Steps 0 (First-Send Confirmation) and 1 (reviewer-name validation against
+`references/dispatch-table.md`'s enumerated set) still apply regardless of profile. `codex-review-
+bridge` itself unconditionally refuses `--execution-profile danger-full-access` (a correct,
+unchanged safety invariant for every other caller); routing through it for this profile would always
+fail. Instead, invoke the scoped
+`Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)`
+tool directly:
 
 ```bash
 node "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs" \
   --reviewer-type "<reviewer name>" \
-  --instruction-file "<scratchpad path, per Codex Path step 2>" \
+  --instruction-file "<scratchpad path, per Codex Path step 3>" \
   --target-paths "<scope>" \
   --dispatch-id "<run-id>-<reviewer>" \
   --repo-root "<marketplace root>"
 ```
 
-One call does everything Codex Path's steps 1-4 do separately for the `read-only` profile: sources
-the instruction body (Codex Path step 1 still applies — source from `agents/<reviewer>.md`, write it
-to the scratchpad per step 2), resolves and checks the guardrail policy, runs the three pre-flight
-checks, appends the dangerous-command instructions itself (no separate append step on this resolver's
-side), dispatches with `sandbox: "danger-full-access"`, and validates the result — returning the
-identical envelope shape `codex-review-bridge` would, so the Adapter below needs no second code path.
+One call does everything Codex Path's steps 2-6 do separately for the `read-only` profile: sources
+the instruction body (Codex Path steps 0-1 still apply — validate the reviewer name, source from
+`agents/<reviewer>.md`, write it to the scratchpad per step 3), resolves and checks the guardrail
+policy, runs its own repository-boundary/secret-file/instruction-containment pre-flight checks
+(superseding step 5's read-only-path secret-file check with its own equivalent), appends the
+dangerous-command instructions itself (no separate append step on this resolver's side), dispatches
+with `sandbox: "danger-full-access"`, and validates the result — returning the identical envelope
+shape `codex-review-bridge` would, so the Adapter below needs no second code path.
 
 Any typed failure (including `guardrails_disabled`, meaning the skill itself decided not to proceed)
-folds into this resolver's existing fallback-to-Claude handling (Codex Path step 6) — no new
+folds into this resolver's existing fallback-to-Claude handling (Codex Path step 8) — no new
 fallback path needed. On success, record `isolation_strength: best_effort_guardrails` in this
 finding's `provenance` (see the Adapter table below) — never `os_isolated`, and never presented as
 sandbox-equivalent anywhere this provenance is surfaced.
@@ -125,23 +142,42 @@ existing reactive-fallback behavior in the previous section is unchanged.
 
 ## Codex Path
 
-1. **Source instructions from one pinned, trusted location:** the installed marketplace copy at
+0. **First-Send Confirmation must have fired this session** (see above) before any step below runs.
+1. **Resolve `<reviewer name>` only from `references/dispatch-table.md`'s enumerated reviewer set.**
+   Never construct the instruction-source path from an unvalidated string — a reviewer name outside
+   that set aborts the Codex path for this reviewer and falls back to Claude-native (step 6), the
+   same as any other typed failure. `codex-review-bridge` itself only charset/length-validates the
+   value it's given (see its SKILL.md's Inputs section) and explicitly delegates allowlist
+   enforcement to its caller — this resolver is that caller, and this step is where that obligation
+   is discharged.
+2. **Source instructions from one pinned, trusted location:** the installed marketplace copy at
    `plugins/plugin-devkit/agents/<reviewer>.md` (frontmatter stripped) — never the `.claude/` mirror,
    never a worktree copy, and never read from the plugin under review. (Resolver step 2 above
    already excludes the one case this couldn't otherwise detect — auditing `plugin-devkit` itself.)
-2. Write the stripped instruction body to the session scratchpad directory (never repo root — see
+3. Write the stripped instruction body to the session scratchpad directory (never repo root — see
    `.claude/rules/require-gitignored-scratch-locations.md`), confirming the resolved path falls
    outside `--target-paths` so the bridge's own containment check doesn't reject it.
-3. Determine `authentication_mode` for provenance, existence-checks only, never reading credential
+4. Determine `authentication_mode` for provenance, existence-checks only, never reading credential
    contents: `Glob` for `~/.codex/auth.json`. Present → `"chatgpt_auth"`. Absent → `"unknown"` (this
    skill has no tool scope that can check environment-variable presence, so an API-key-configured
    session records `"unknown"` rather than guessing — do not add an env-var check without also
    adding the `Bash` grant it would need).
-4. Invoke the scoped `Bash(node */codex-review-bridge/scripts/bridge-invoke.mjs:*)` tool:
+5. **Secret-file pre-flight on the target scope.** `codex-review-bridge` has no equivalent of
+   `codex-windows-guardrails`' secret-file check — the `read-only` sandbox bounds what Codex can
+   *write*, not what it can *read*, and (per the corrected First-Send Confirmation above) the process
+   runs with the repo root as cwd. Before invoking the bridge, `Glob` each `--target-paths` entry for
+   any file whose name matches `codex-windows-guardrails/references/preflight-checks.md`'s
+   sensitive-filename pattern list (`.env`/`.env.*`, `*secret*`, `*credential*`, `*.key`, `*.pem`,
+   `*password*`, `*token*`, the SSH/cloud private-key names, `.npmrc`/`.pgpass`/`.netrc`). If any
+   match is found anywhere under a target path, do not invoke the bridge for this reviewer — fall
+   back to Claude-native the same as any other typed failure, recording `secret_file_in_scope` as the
+   fallback reason on this dispatch's `coverage` entry.
+6. Invoke the scoped
+   `Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)` tool:
    ```bash
    node "plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs" \
      --reviewer-type "<reviewer name>" \
-     --instruction-file "<scratchpad path from step 2>" \
+     --instruction-file "<scratchpad path from step 3>" \
      --target-paths "<scope>" \
      --execution-profile read-only \
      --dispatch-id "<run-id>-<reviewer>"
@@ -152,14 +188,14 @@ existing reactive-fallback behavior in the previous section is unchanged.
    `date -u +%Y-%m-%dT%H-%M-%SZ` — already colon-free (hyphens, not colons, in the time portion) and
    already conforms to the bridge's `^[A-Za-z0-9._-]{1,64}$` charset, the same format `SKILL.md`
    Step 6 already uses for report timestamps.
-5. **If `plugins/codex-kit/` isn't installed at all**, `node` fails at the OS level before
+7. **If `plugins/codex-kit/` isn't installed at all**, `node` fails at the OS level before
    `bridge-invoke.mjs` ever produces its own typed-failure JSON — treat this the same as the
    bridge's own `cli_unavailable` category for fallback purposes, not as a missing/unhandled case.
-6. On any typed failure (or the codex-kit-not-installed case above) → fall back to the Claude-native
+8. On any typed failure (or the codex-kit-not-installed case above) → fall back to the Claude-native
    `Agent()` dispatch for this reviewer. Record the category once as a note on this dispatch's
    `coverage` entry in the Report Revision — not stamped on individual findings, since a fallback
    isn't a property of any one finding.
-7. On success → run the Adapter below, then proceed to Step 5's existing normalization same as any
+9. On success → run the Adapter below, then proceed to Step 5's existing normalization same as any
    other source.
 
 ## Adapter: envelope → Finding

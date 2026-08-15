@@ -3,10 +3,12 @@ name: plugin-rulebook
 description: >-
   Defines and enforces plugin-level rules governing all components (skills, agents, commands,
   hooks, rules) in a Claude Code plugin. Use when creating, validating, or refining any plugin
-  component, checking naming conventions and R1-R27 formatting compliance, auditing a full plugin, or loading active
-  rule configuration, or before finalizing or packaging any plugin component. Governs naming, language, formatting,
-  tool-scoping, and structure across the entire plugin.
-allowed-tools: Read Glob Bash(*/r20-sweep.sh:*) Bash(*/agent-cost-tracker.py:*)
+  component, checking naming conventions and R1-R27 formatting compliance, auditing a full plugin's
+  rule/naming/formatting compliance specifically (for the full multi-axis reviewer fan-out instead,
+  see plugin-auditor), or loading active rule configuration, or before finalizing or packaging any
+  plugin component. Governs naming, language, formatting, tool-scoping, and structure across the
+  entire plugin.
+allowed-tools: Read Grep Glob Bash(*/r20-sweep.sh:*) Bash(*/agent-cost-tracker.py:*)
 ---
 
 # Plugin Rulebook
@@ -36,6 +38,16 @@ Read active settings from `${CLAUDE_SKILL_DIR}/assets/settings.json` (plugin-por
 - Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R27 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly. This is not a hypothetical caveat: a 3-command pipeline once passed this exact check cleanly while shipping 2 real functional bugs (a multi-line-command normalization bug and a session-selection logic bug), both caught only by later running it against real data — see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason.
 - Dedicated wide-surface language-compliance review (scripts, config JSON, CLAUDE.md/README, beyond R1's own file scope) → use `language-reviewer` instead.
 - A combined Validate+Audit+Report+Fix pipeline across a whole plugin, not just rule compliance in isolation → use `plugin-lifecycle-downstream` instead
+- A general "audit this plugin" request wanting the full multi-axis reviewer fan-out (dependency,
+  consistency, security, structure, content, completeness, activation, scripts, hooks) rather than
+  just R1-R27 rule/naming/formatting compliance → use `plugin-auditor` instead; this skill is the
+  single rule-compliance axis `plugin-auditor` itself dispatches (via the `plugin-rulebook-checker`
+  agent) as one of nine reviewers.
+- An isolated, Agent-dispatchable batch sweep or background-task compliance check — a full-plugin
+  sweep run as a background task, a fast targeted delta re-check against named rule IDs, or a
+  Structured Output Mode YAML pass for programmatic consumption → use the `plugin-rulebook-checker`
+  agent instead. This skill remains the right choice for interactive, in-conversation rulebook
+  application where narrative teaching/rationale alongside the check is wanted.
 
 **Note:** This skill's manual invocation model complements, but does not replace, automated live validation hooks. For production plugins, use both — manual rulebook checks during development and live enforcement hooks at commit or PR time.
 
@@ -282,25 +294,11 @@ Enforce quality thresholds on SKILL.md frontmatter `description`, `when_to_use`,
 
 **Scope:** SKILL.md frontmatter only (commands use the separate ≤60/80-char check in R8; agents have no `description` size rule).
 
-**Limits** (configurable in `assets/settings.json → rules.R21_skill_description_size.config.limits`):
-
-| Field | Min | Max |
-|---|---|---|
-| `description` | 80 | 1024 |
-| `when_to_use` | — | 512 |
-| combined (`description` + `when_to_use`) | 80 | 1536 |
-
-**Thresholds** (configurable in `assets/settings.json → rules.R21_skill_description_size.config`):
-
-| Metric | Critical | Warning | OK | Warning | Critical |
-|---|---|---|---|---|---|
-| `description` length | < 20 | 20–79 | 80–1018 | 1019–1024 | > 1024 |
-| `when_to_use` length | — | — | ≤ 506 | 507–512 | > 512 |
-| combined length | — | — | ≤ 1524 | 1525–1536 | > 1536 |
-
-Overall severity for the component is the most severe tier triggered across the three metrics.
-
-See `${CLAUDE_SKILL_DIR}/references/size-rules.md` for the full severity behavior definitions.
+Limits (80–1024 chars for `description`, ≤512 for `when_to_use`, 80–1536 combined) and the full
+five-tier threshold tables for all three metrics are configured in
+`assets/settings.json → rules.R21_skill_description_size.config` — see
+`${CLAUDE_SKILL_DIR}/references/size-rules.md` for those tables and the full severity behavior
+definitions; not restated here to avoid a second copy of the same thresholds drifting out of sync.
 
 ---
 
@@ -476,8 +474,8 @@ Whether a rule traces back to an official Claude Code doc, and whether that doc 
 | `${CLAUDE_SKILL_DIR}/references/formatting-rules.md` | Detailed formatting requirements and anti-patterns |
 | `${CLAUDE_SKILL_DIR}/references/language-rules.md` | Language requirements, lang codes, multilingual variant procedure |
 | `${CLAUDE_SKILL_DIR}/references/external-reference-policy.md` | R23 detection procedure, whitelist/blacklist matching, marketplace.json auto-allow, worked examples |
-| `${CLAUDE_SKILL_DIR}/references/plugin-file-surface.md` | Shared plugin-scope/CWD-scope file-enumeration definition used by `language-reviewer`, `external-references-reviewer`, `consistency-reviewer`, `completeness-reviewer`, and `scripts-reviewer` |
-| `${CLAUDE_SKILL_DIR}/references/gitignore-exclusion.md` | Shared procedure, used by every reviewer agent, for excluding gitignored paths before reviewing Glob results — and the companion authoring-side rule that no component may reference a gitignored path as a live dependency |
+| `${CLAUDE_SKILL_DIR}/references/plugin-file-surface.md` | Shared plugin-scope/CWD-scope file-enumeration definition used by `language-reviewer`, `external-references-reviewer`, `consistency-reviewer`, `completeness-reviewer`, and `scripts-reviewer` — load together with the row below |
+| `${CLAUDE_SKILL_DIR}/references/gitignore-exclusion.md` | Shared procedure, used by every reviewer agent, for excluding gitignored paths before reviewing Glob results (including the enumeration the row above defines) — and the companion authoring-side rule that no component may reference a gitignored path as a live dependency |
 | `${CLAUDE_SKILL_DIR}/references/overhead-and-cost-rules.md` | R25/R26 violations, fix guidance, and worked examples |
 | `${CLAUDE_SKILL_DIR}/references/compact-rule-checklist.md` | Pattern/violation/severity table for all 23 enabled rules, no narrative — read by the `plugin-rulebook-checker` agent instead of this file, to avoid re-reading full teaching prose on every isolated/backgrounded dispatch |
 | `${CLAUDE_SKILL_DIR}/references/allowed-languages.md` | R24 full whitelist/banned/exempt lists, worked violation examples, and fix guidance |

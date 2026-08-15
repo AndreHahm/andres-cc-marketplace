@@ -43,7 +43,7 @@ This split was ambiguous in an earlier version of this rubric — both dimension
 
 ## safety_risk_handling: plugin-rulebook vs. security-reviewer
 
-Both sources feed the same dimension but cover different ground — `plugin-rulebook`'s R6/R9 checks are structural pattern-matching (an unscoped `Bash(*)`, a bare `Bash`, a hardcoded-looking secret string); `security-reviewer` goes deeper into the same risk category (a technically-scoped-but-still-over-broad grant like `Bash(python */scripts/<name>.py:*)` matching a same-named script in an unrelated analyzed repo, a missing data-only boundary around untrusted content, a credential-shaped value that would leak into a persisted report). When both sources flag what is genuinely the *same* underlying gap from two angles, count it once — file it as a `security-reviewer` finding if it names the specific mechanism (a Major from `security-reviewer` naming an exact over-broad grant outranks a structural R6 PASS that didn't catch it), not as two separate findings inflating the count. This dimension was previously the second time this exact gap-class surfaced in this plugin's own history without a hard gate to catch it (see `gates-and-rollup.md`) — `security-reviewer` was added as a named source specifically because grading passes before this fix had to invent an undocumented ad-hoc mapping to count its findings at all.
+Both sources feed the same dimension but cover different ground — `plugin-rulebook`'s R6/R9 checks are structural pattern-matching (an unscoped `Bash(*)`, a bare `Bash`, a hardcoded-looking secret string); `security-reviewer` goes deeper into the same risk category (a technically-scoped-but-still-over-broad grant like `Bash(python */scripts/<name>.py:*)` matching a same-named script in an unrelated analyzed repo, a missing data-only boundary around untrusted content, a credential-shaped value that would leak into a persisted report). When both sources flag what is genuinely the *same* underlying gap from two angles, count it once — file it as a `security-reviewer` finding if it names the specific mechanism (a Major from `security-reviewer` naming an exact over-broad grant outranks a structural R6 PASS that didn't catch it), not as two separate findings inflating the count. This dimension was previously the second time this exact gap-class surfaced in this plugin's own history without a hard gate to catch it — `security-reviewer` was added as a named source specifically because grading passes before this fix had to invent an undocumented ad-hoc mapping to count its findings at all.
 
 ## Dimension-Level Cap: Contradictory Instructions
 
@@ -55,11 +55,12 @@ If a dimension's signal source genuinely doesn't apply (e.g. `robustness` when n
 
 ## Type-Matched Reviewer Table
 
-**Since M3: informational here, not the dispatch source.** `plugin-auditor` (see its own
-`references/dispatch-table.md`) is what actually decides and runs this dispatch now — this table
-stays here because Step 4's dimension mapping still needs to know which reviewer backs
-`structure_architecture`/`content_quality`/`actionability` for a given target type. If the mapping
-ever changes, update `plugin-auditor`'s copy first and mirror it here, not the other way around.
+**Since M3: informational here, not the dispatch source.** `plugin-auditor` is what actually decides
+and runs this dispatch now (its own `references/dispatch-table.md` is the live source, not this
+copy) — this table stays here because Step 4's dimension mapping still needs to know which reviewer
+backs `structure_architecture`/`content_quality`/`actionability` for a given target type, without
+requiring a second file load just to read this one. If the mapping ever changes, update
+`plugin-auditor`'s copy first and mirror it here, not the other way around.
 
 | Target type | Reviewer for Structure/Content/Actionability |
 |---|---|

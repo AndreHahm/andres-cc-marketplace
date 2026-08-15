@@ -28,7 +28,7 @@ Work through in order — each step names the exact anchor to find and edit in `
 
 A rule-count total ("R1–R23", "R1-R24", "23 total") gets restated in prose across the plugin, not just inside `plugin-rulebook` itself. Grep for the *previous* rule's number specifically (e.g. `R1-R23|R1–R23|23 total` when adding R24) — a generic `grep RNN` won't find these since they cite the old ceiling, not the new one.
 
-Run `scripts/r20-sweep.sh <previous-rule-number>` (e.g. `scripts/r20-sweep.sh 24` when adding R25) to automate this grep across the whole tree, excluding `.claude/output/` and `.claude/worktrees/`. Treat its output as the first pass, not the final word — the known-locations list below remains the fallback of record for a restatement the script's fixed pattern doesn't anticipate (e.g. a paraphrased count that doesn't match the `R1-RNN` / `RNN total` shapes).
+Run `scripts/r20-sweep.sh <previous-rule-number>` (e.g. `scripts/r20-sweep.sh 27` when adding R28) to automate this grep across the whole tree, excluding `.claude/output/` and `.claude/worktrees/`. Treat its output as the first pass, not the final word — the known-locations list below remains the fallback of record for a restatement the script's fixed pattern doesn't anticipate (e.g. a paraphrased count that doesn't match the `R1-RNN` / `RNN total` shapes).
 
 Locations that have needed updating on past additions (starting point, not exhaustive — always run a fresh repo-wide grep, new mentions appear as components are added):
 

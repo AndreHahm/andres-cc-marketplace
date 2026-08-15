@@ -3,7 +3,11 @@
 ## Order of Operations (Component Mode)
 
 1. Score all 12 dimensions per `rubric.md`.
-2. Apply the Content Quality contradiction cap (see `rubric.md`) *before* the weighted sum.
+2. Apply the Content Quality contradiction cap *before* the weighted sum: if the target contains
+   self-contradicting guidance (one section states a rule, another violates it), set
+   `dimensions.content_quality.contradiction_found: true` in the script input — this caps Content
+   Quality at 4 regardless of what the generic formula would otherwise produce (`rubric.md`'s
+   "Dimension-Level Cap" section has the full rationale).
 3. `weighted_total = sum(dimension_score_i * weight_i)` — naturally in [0, 10] since weights sum to 1.0 and every dimension is 0-10. Do not treat this as needing a separate "conversion to 1-10" step.
 4. Evaluate hard gates against the already-capped dimension scores (boundaries are strict `<` — exactly the threshold value does NOT trigger):
 
@@ -29,9 +33,11 @@ Gate caps are deliberately ordered `C(4) < B(5) < A(6) < D(8)` — taking the mi
 Grading a whole plugin does **not** mean re-deriving a different weighted formula across components — it means:
 
 1. Grade every individual component (skill/agent/command/hook) using the component-mode process above, in parallel where possible.
-2. Run the two whole-plugin-only reviewers **once** across the entire set (not once per component — that's quadratic waste):
-   - `activation-reviewer` in whole-plugin mode → feeds `activation_critical`
-   - `consistency-reviewer` across all components → feeds `consistency_critical`
+2. Read `activation_critical`/`consistency_critical` from `plugin-auditor`'s own returned evidence
+   bundle (its plugin-mode dispatch already runs `activation-reviewer` and `consistency-reviewer`
+   once across the whole set — see `plugin-auditor/references/dispatch-table.md`'s Plugin Mode
+   section) — this step never dispatches either reviewer itself, per `SKILL.md`'s own quality gate
+   that standalone mode never dispatches a reviewer agent directly.
 3. Run `scripts/compute_score.py --rollup <input.json>` with:
    ```json
    {

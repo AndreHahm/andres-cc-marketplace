@@ -53,6 +53,8 @@ def validate_finding(doc, problems, where=""):
         check_id_format(doc["id"], problems, where)
     if "status" in doc and doc["status"] not in STATUS_VALUES:
         err(problems, f"{where}status '{doc['status']}' not in {sorted(STATUS_VALUES)}")
+    if "severity" in doc and doc["severity"] not in CANONICAL_SEVERITY_VALUES:
+        err(problems, f"{where}severity '{doc['severity']}' not in {sorted(CANONICAL_SEVERITY_VALUES)}")
     if "rule_type" in doc and doc["rule_type"] not in RULE_TYPE_VALUES:
         err(problems, f"{where}rule_type '{doc['rule_type']}' not in {sorted(RULE_TYPE_VALUES)}")
 
@@ -149,6 +151,13 @@ def run_self_test():
         "severity": "major",
         "status": "not_a_real_status",
     }
+    invalid_finding_bad_severity = {
+        "id": "consistency-reviewer:M1",
+        "source": "consistency-reviewer",
+        "scope": "skills/plugin-auditor/SKILL.md",
+        "severity": "urgent",
+        "status": "open",
+    }
 
     valid_report = {
         "version": "1.0",
@@ -178,6 +187,7 @@ def run_self_test():
         ("manifest", invalid_manifest, False),
         ("finding", valid_finding, True),
         ("finding", invalid_finding, False),
+        ("finding", invalid_finding_bad_severity, False),
         ("report", valid_report, True),
         ("report", invalid_report, False),
         ("bundle", valid_bundle, True),

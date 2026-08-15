@@ -40,10 +40,25 @@ def generic_formula(critical, major, minor):
 def score_dimension(dim_input):
     """A dimension either carries a precomputed 'score' (custom-band
     dimensions: simplicity, testing, efficiency, actionability) or raw
-    'counts' (reviewer-backed dimensions, scored via generic_formula)."""
+    'counts' (reviewer-backed dimensions, scored via generic_formula).
+    Exactly one is required -- neither present (e.g. an upstream aggregation
+    bug that fails to populate a dimension's findings) must not silently
+    fall through to a perfect score, which is indistinguishable from the
+    genuinely-N/A default compute_component supplies for a MISSING key."""
+    if "score" in dim_input and "counts" in dim_input:
+        raise ValueError("dimension input has both 'score' and 'counts' -- exactly one is required")
     if "score" in dim_input:
-        return float(dim_input["score"])
-    counts = dim_input.get("counts", {})
+        score = float(dim_input["score"])
+        if not 0 <= score <= 10:
+            raise ValueError(f"dimension 'score' {score} is out of the valid [0, 10] range")
+        return score
+    if "counts" not in dim_input:
+        raise ValueError("dimension input has neither 'score' nor 'counts' -- exactly one is required")
+    counts = dim_input["counts"]
+    for key in ("critical", "major", "minor"):
+        value = counts.get(key, 0)
+        if not isinstance(value, int) or value < 0:
+            raise ValueError(f"counts.{key} must be a non-negative integer, got {value!r}")
     return generic_formula(
         counts.get("critical", 0),
         counts.get("major", 0),
@@ -111,6 +126,8 @@ def compute_component(data):
 
 def compute_rollup(data):
     component_scores = data["component_scores"]
+    if not component_scores:
+        raise ValueError("component_scores is empty -- nothing to roll up")
     names = list(component_scores.keys())
     values = list(component_scores.values())
     raw = sum(values) / len(values)

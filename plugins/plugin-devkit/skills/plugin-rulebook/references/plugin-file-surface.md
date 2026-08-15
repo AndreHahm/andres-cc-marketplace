@@ -1,6 +1,6 @@
 # Plugin File Surface: Plugin Scope vs. CWD Scope
 
-Shared file-enumeration definition used by any reviewer agent that needs to scan "everything in and around a plugin" rather than a single component. Currently used by `language-reviewer`, `external-references-reviewer`, `consistency-reviewer`, `completeness-reviewer`, and `scripts-reviewer` — keep all five in sync with this file rather than letting each redefine its own scope inline.
+Shared file-enumeration definition used by any reviewer agent that needs to scan "everything in and around a plugin" rather than a single component. Currently used by `language-reviewer`, `external-references-reviewer`, `consistency-reviewer`, `completeness-reviewer`, and `scripts-reviewer` — keep all five in sync with this file rather than letting each redefine its own scope inline. Load together with its companion, `references/gitignore-exclusion.md` (listed alongside this file in `SKILL.md`'s Reference Guide) — every enumeration this file defines is filtered through that exclusion procedure before use.
 
 ## The Two Scopes
 
@@ -12,7 +12,9 @@ State both resolved absolute paths in the report header (mirrors R19's own path-
 
 ## Gitignore Exclusion
 
-Before including any file found via the enumeration below in either scope, exclude gitignored paths per `${CLAUDE_SKILL_DIR}/references/gitignore-exclusion.md`. This applies to both scopes — a gitignored draft or backup directory (`.temp/`, `.draft/`, `.backup/`) is not part of what the plugin or project actually ships, in either scope.
+Both scopes below are filtered through `references/gitignore-exclusion.md`'s procedure before any
+found file is included in a review — a gitignored draft or backup directory (`.temp/`, `.draft/`,
+`.backup/`) is not part of what the plugin or project actually ships, in either scope.
 
 ## File Enumeration
 

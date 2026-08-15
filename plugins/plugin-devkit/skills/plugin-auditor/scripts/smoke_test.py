@@ -25,7 +25,7 @@ def check_frontmatter():
 def check_referenced_files():
     text = SKILL_MD.read_text(encoding="utf-8")
     missing = []
-    for match in re.finditer(r"`(references/[\w.-]+\.md|scripts/[\w./-]+)`", text):
+    for match in re.finditer(r"`(references/[\w.-]+\.md|scripts/[\w./-]+|assets/[\w.-]+)`", text):
         path = SKILL_DIR / match.group(1)
         if not path.exists():
             missing.append(match.group(1))
