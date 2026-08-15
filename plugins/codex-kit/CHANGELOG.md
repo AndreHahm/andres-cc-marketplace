@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here.
 
 ## [Unreleased]
 
+- Added `codex-windows-guardrails`, a new skill providing best-effort guardrails (pre-flight
+  repository-boundary/secret-file/instruction-containment checks plus an instructed, not enforced,
+  dangerous-command allowlist) so a caller (`plugin-auditor`'s optional Codex backend) can attempt
+  `danger-full-access` locally on Windows, where no working sandbox exists. Disabled by default.
+  Bypasses `codex-review-bridge`'s own CLI entirely (which unconditionally, correctly refuses that
+  execution profile for every other caller) by importing its exported reusable pieces
+  (`ENVELOPE_SCHEMA`, `semanticallyValidate`, `isWithin`, `isValidToken`) directly instead — two
+  small additive exports on `bridge-invoke.mjs`, no behavior change for any existing caller.
 - Scoped `codex-review-bridge`'s and `codex-session-lookup`'s `allowed-tools` grants to match their stated read-only/no-write claims (`codex-session-lookup`'s 2 backing scripts also renamed to kebab-case); removed `codex-audit-loop`'s raw `Bash(codex:*)` grant and added rollback/failure-handling guidance to its Mode C fix-and-merge loop.
 - `/codex-kit:review` and `/codex-kit:adversarial-review` now validate `$ARGUMENTS` against a whitelist (no more raw-blob interpolation) and save a report to `${CLAUDE_PLUGIN_DATA}/reviews/` on every run, success or failure.
 - `/codex-kit:transfer`'s `--source` path validation switched from a denylist to an allowlist.
