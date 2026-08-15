@@ -28,6 +28,19 @@ depends on it (`needs: [codex-review]`) and is the check that knows about the by
 both would make a legitimately-bypassed PR's `Codex delta review` failure block the merge again,
 defeating the bypass entirely.
 
+## Configuring the review model
+
+`codex-review-bridge` never passes `--model` to `codex exec` by default — every dispatch falls through
+to whatever `~/.codex/config.toml` resolves after the workflow's own `codex login --with-api-key` step,
+which is an account/API-key-level default this repo doesn't control. If that default resolves to an
+expensive model, set the **repository variable** `CODEX_KIT_REVIEW_MODEL` (Settings → Secrets and
+variables → Actions → Variables — not Secrets, since a model slug isn't sensitive) to a specific model
+slug. The workflow passes it through as an environment variable to the `codex-review` job; `codex-review-bridge`'s
+`bridge-invoke.mjs` reads it and passes `--model <value>` to every reviewer it dispatches in that run.
+Leave it unset to keep using the account default. Invalid values (anything outside
+`^[A-Za-z0-9._-]{1,64}$`) fail the job with a clear message rather than surfacing as an opaque Codex CLI
+error.
+
 ## Fork PR limitation
 
 `codex-review` needs `OPENAI_API_KEY`, which GitHub Actions does not expose to workflows triggered by a

@@ -130,6 +130,12 @@ jobs:
       - name: Dispatch reviewers directly, validate output, aggregate findings
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Optional: pin the model every dispatched reviewer uses, overriding
+          # whatever ~/.codex/config.toml resolves after `codex login` above
+          # (account/API-key default, not something this repo controls).
+          # Unset by default -- vars.* (not secrets.*) since a model slug
+          # isn't sensitive. See docs/ci.md.
+          CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}
         run: |
           uv run python -m scripts.marketplace_ci run-codex-review \
             --base-sha ${{ github.event.pull_request.base.sha }} \

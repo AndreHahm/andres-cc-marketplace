@@ -6,6 +6,8 @@ This is internal engineering reference for codex-kit's own scripts (`scripts/lib
 
 codex-kit never hardcodes a model name — every component reads `model`/`model_reasoning_effort` from the user's own `~/.codex/config.toml` by default, with per-call `--model`/`--effort` overrides where a component exposes them. Do not add a hardcoded model list here; Codex CLI owns that list and it changes over time.
 
+`runCodexExec` (`scripts/lib/codex-exec.mjs`) accepts an optional `model` parameter, passed as `--model <value>` to `codex exec` when present and omitted entirely otherwise (never a bare `--model ""`). `codex-review-bridge`'s `bridge-invoke.mjs` is the one current caller that exposes this: it reads `CODEX_KIT_REVIEW_MODEL` from the environment (unset by default, wired from a GitHub Actions repository variable in `marketplace-ci.yml` — see `docs/ci.md`'s "Configuring the review model") and passes it through, letting CI pin every dispatched reviewer to a specific model rather than whatever the CI account's `codex login` default resolves to. Same charset/length validation as the bridge's other CLI-facing inputs (`^[A-Za-z0-9._-]{1,64}$`).
+
 ## Sandbox / automation flags
 
 - `--sandbox read-only` / `--sandbox workspace-write` / `--sandbox danger-full-access` — always pass explicitly (never omit and rely on a default). codex-kit's own rule: any fallback to `danger-full-access` must be reported to the user explicitly, never silently.
