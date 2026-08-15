@@ -14,6 +14,10 @@ allowed-tools: ["Read"]
 
 This skill has no user-facing trigger. It exists so every other codex-kit component reads one canonical source instead of each maintaining its own copy of the same knowledge.
 
+## Quick Start
+
+No Quick Start in the usual sense — `disable-model-invocation: true`, this skill is never itself invoked. The "quick start" for a caller is: `Read` the specific reference row below that matches the question at hand, rather than reading this whole table.
+
 | Reference | Covers |
 |---|---|
 | `references/prompt-blocks.md` | The full 14-tag XML vocabulary — `task`, `structured_output_contract`, `compact_output_contract`, `default_follow_through_policy`, `completeness_contract`, `verification_loop`, `missing_context_gating`, `grounding_rules`, `citation_rules`, `action_safety`, `tool_persistence_rules`, `research_mode`, `dig_deeper_nudge`, `progress_updates` — used across `codex-rescue`, `codex-verify`, `codex-research`, and the Stop-gate prompt — `content_trust_boundary` is defined separately in `references/shared-skill-conventions.md` §1 |
@@ -21,7 +25,7 @@ This skill has no user-facing trigger. It exists so every other codex-kit compon
 | `references/evaluation-framework.md` | The double-check taxonomy (Agree/Disagree/Nuance/False Positive (hallucination)/Uncited — verification deferred), self-bias awareness, agreement-level summary format |
 | `references/cli-reference.md` | Internal engineering reference for codex-kit's own bundled scripts: model/effort resolution mechanics (never a hardcoded model list), sandbox-mode flags, the stdin-non-TTY hang gotcha, timeout/crash recovery |
 | `references/error-taxonomy.md` | The `runCodexExec`-side error/failure category table (`codex-review-bridge` and anything else calling `runCodexExec` directly) and the basis for its typed-failure object — a separate category set from `codex-companion.mjs`'s own error surface, documented in `invocation-protocol.md` §6 instead |
-| `references/shared-skill-conventions.md` | Conventions specific to `codex-rescue`/`codex-verify`/`codex-research`'s shared 5-phase shape: the `content_trust_boundary` block's required invariants, the double-check taxonomy applied to that trio, and the session-level first-send confirmation gate |
+| `references/shared-skill-conventions.md` | Conventions specific to `codex-rescue`/`codex-verify`/`codex-research`'s shared 5-phase shape: the `content_trust_boundary` block's required invariants, the double-check taxonomy applied to that trio, the session-level first-send confirmation gate, and delimiter neutralization for untrusted content appended into shell-assembled prompts |
 
 Any codex-kit component needing prompt-composition guidance, invocation mechanics, evaluation vocabulary, or CLI/model details should `Read` the relevant reference file directly rather than re-deriving or duplicating this content.
 

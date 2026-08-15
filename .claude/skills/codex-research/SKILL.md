@@ -7,7 +7,7 @@ description: >-
   changes/diffs (use the /codex-kit:review command for that) or for
   verifying an existing written plan/document (use codex-verify for that).
 argument-hint: "topic [path/to/document.md] [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
-allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(sed:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f */tmp/*:*)", "Read", "Write", "AskUserQuestion"]
+allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(sed:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "AskUserQuestion"]
 ---
 
 # Codex Research + Cross-Model Synthesis
@@ -20,6 +20,12 @@ analysis.
 
 For code review use `/codex-kit:review`. For plan verification, use the
 `codex-verify` skill.
+
+## Quick Start
+
+1. **Analyze + assemble** (Phase 1) — parse the topic/document without reading document content into your own context; send it blind.
+2. **Invoke, wait** (Phases 2-3) — background the Codex call, poll for completion.
+3. **Double-check + report** (Phases 4-5) — synthesize Codex's findings with your own independent analysis, classify agreement, save the report.
 
 ## Execution Contract
 
@@ -122,6 +128,10 @@ printf '\n<context_document>\n' >> "$PROMPT_FILE"
 # appending it -- an unguarded raw `cat` here would let the document escape
 # the <context_document> trust boundary (see shared-skill-conventions.md §4).
 # Use the literal doc path, NOT a shell variable from a prior Bash call.
+# `sed` is only ever invoked in exactly this form -- never `-i`, never an
+# `e` flag/command (both of which `Bash(sed:*)`'s prefix-scoped grant cannot
+# itself exclude, the same disclosed-scoping pattern codex-audit-loop uses
+# for `Bash(git push origin:*)`).
 sed -E 's@</[[:space:]]*([a-zA-Z_][a-zA-Z0-9_-]*)[[:space:]]*>@(/\1)@g' "<literal doc path>" >> "$PROMPT_FILE"
 printf '\n</context_document>\n' >> "$PROMPT_FILE"
 ```
@@ -350,11 +360,10 @@ the §6 error category, stderr (truncated to 500 characters, matching
 so cap it), and topic/document path. Treat this and the success-path
 report as sensitive before sharing.
 
-Clean up temp files using literal paths from Phase 1:
-
-```bash
-rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_JSON_FILE path>.stderr"
-```
+Leave the temp files (`PROMPT_FILE`, `JOB_JSON_FILE`, `JOB_JSON_FILE.stderr`) in `${CLAUDE_PLUGIN_DATA}/tmp/`
+— a plugin-private data directory, never part of the reviewed repository. No active cleanup step requires
+a destructive `rm` grant scoped broadly enough to also match a `tmp/` directory the reviewed repo itself
+might contain.
 
 ---
 
@@ -394,6 +403,7 @@ For the full shared gotchas list, read
 **Verify it does NOT activate on:**
 - Reviewing code changes/diffs → `/codex-kit:review`
 - Verifying an existing written plan/document → `codex-verify`
+- Locating/finding a session ID rather than resuming one → `codex-session-lookup`
 
 **Concrete scenarios to check:**
 1. Topic-only input (no document) → the document-append step is skipped entirely; no empty `<context_document>` tag written.
@@ -405,7 +415,7 @@ For the full shared gotchas list, read
 
 **Current test coverage:**
 - `evals/codex-research/evals.json` — 1 defined scenario (topic-only mode, independent synthesis not just relaying Codex). Structurally graded 2026-08-12 (PASS — the documented Topic-only mode and the repeated independent-synthesis-not-an-echo framing both match the eval's `expected_output`); not a live empirical run.
-- `scripts/smoke-tests/codex-research-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc stays under the R18 code-block threshold; does not exercise a real Codex call.
+- `scripts/smoke-tests/codex-research-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc (see `scripts/smoke-tests/README.md` for the full check list); does not exercise a real Codex call.
 
 **Quality gates:**
 - [ ] The context document (if any) is never `Read` before Phase 4

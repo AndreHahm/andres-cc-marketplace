@@ -20,6 +20,10 @@ disable-model-invocation: true
 
 Built on `codex-review-bridge` — a thin orchestration layer, not a duplicate rulebook.
 
+## Quick Start
+
+No Quick Start in the usual sense — `disable-model-invocation: true`, and this document is never itself executed (see "Status" above). The real orchestrator is `scripts/marketplace_ci/review.py`'s `dispatch_reviewers`, which implements this document's policy directly in code: (1) `derive_review_scope` picks `light`/`delta`/`full` mode, (2) Delta Validate's 3-reviewer floor runs for every delta PR, (3) Delta Audit's type-specific reviewer runs on top for skill/agent changes.
+
 **Governance note:** the orchestrator runs unattended in CI. It is governed by this repository's own PR merge policy (deterministic checks, PR-author privilege, branch protection), not by codex-kit's session-level first-send confirmation gate — there is no interactive session here to confirm in. This is a deliberate, documented exception, not an oversight: CI automation has no human to confirm with, so the gate that exists specifically to get a human's one-time sign-off before the first Codex call in an interactive session doesn't apply here.
 
 ## Input
@@ -64,7 +68,7 @@ Emit only schema-valid JSON per the canonical envelope (`codex-review-bridge/ref
 
 ## Testing & Validation
 
-**This document is never itself executed, so "runnable end-to-end" doesn't apply to it — what's testable is whether `scripts/marketplace_ci/review.py`'s code actually implements the policy stated above.** `tests/marketplace_ci/test_review.py` (17 tests, passing) verifies `derive_review_scope`'s routing (the 3-baseline/2-launch-type-audit floor, the escalation triggers named in "Full review escalation" above, light-mode for non-plugin changes) and `validate_review_output`/`aggregate_findings`'s envelope enforcement. `evals/plugin-marketplace-review/evals.json` separately grades this document's own prose against its 1 defined scenario (Delta Validate → Delta Audit sequence) — structurally graded 2026-08-12, PASS on the documented-procedure axis; that grading predates this revision and should be re-run against the current wording.
+**This document is never itself executed, so "runnable end-to-end" doesn't apply to it — what's testable is whether `scripts/marketplace_ci/review.py`'s code actually implements the policy stated above.** `tests/marketplace_ci/test_review.py` (17 tests, passing) verifies `derive_review_scope`'s routing (the 3-baseline/2-launch-type-audit floor, the escalation triggers named in "Full review escalation" above, light-mode for non-plugin changes) and `validate_review_output`/`aggregate_findings`'s envelope enforcement. `evals/plugin-marketplace-review/evals.json` separately grades this document's own prose against its 1 defined scenario (Delta Validate → Delta Audit sequence) — structurally re-graded 2026-08-15 against the current wording (PASS on the documented-procedure axis: Delta Validate's 3-reviewer floor, Delta Audit's 2-type-specific-reviewer floor, and the fail-closed full-mode escalation all still match this document's own prose verbatim).
 
 **What `test_review.py` already verifies:**
 1. A PR touching only docs (no plugin components) → `mode == "light"`, empty `validate`/`audit`, never a false Critical.
@@ -72,7 +76,7 @@ Emit only schema-valid JSON per the canonical envelope (`codex-review-bridge/ref
 3. A shared-governance path (registry file, `marketplace.json`, `plugin-rulebook`'s own `SKILL.md`) or an oversized dependency closure escalates to `full`.
 4. `validate_review_output` rejects incomplete reviewer coverage, unknown severities, and malformed findings; `aggregate_findings` dedupes only identical `(rule, path, line)` findings, keeping the highest severity and every distinct reporter.
 
-**Still to verify, not yet exercised:** Delta Validate's rulebook/security findings actually being reused by Delta Audit rather than redispatched (Task 11's dispatch loop, not yet built at the time this section was last revised), and a live end-to-end rollout PR (Task 12) exercising the real dispatch path this document describes.
+**Still to verify, not yet exercised:** Task 11's dispatch loop is already built — `dispatch_reviewers` (`review.py:295`) iterates `scope.validate` then `scope.audit` in one pass, and `derive_review_scope` constructs `scope.audit` to never repeat a reviewer name `scope.validate` already dispatched, so "reuse rather than redispatch" holds structurally by construction, not by an explicit dedup step. What remains genuinely unexercised: this dispatch loop has no dedicated test in `tests/marketplace_ci/test_review.py` (its 17 tests cover `derive_review_scope`/`validate_review_output`/`aggregate_findings` only, not `dispatch_reviewers` itself), and Task 12's own rollout PR escalated to `full` mode (see "Full review escalation" above) rather than exercising the ordinary delta dispatch path — so a live end-to-end run of the *delta* (non-full) path this document describes still hasn't happened.
 
 **Quality gates:**
 - [ ] Never runs `plugin-validator`/`plugin-grader` in whole-plugin mode

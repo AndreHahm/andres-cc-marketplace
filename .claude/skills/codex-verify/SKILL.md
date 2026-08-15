@@ -7,9 +7,13 @@ description: >-
   Not for open-ended investigation or deep-dive research on a
   topic/document — use codex-research for that. For validating Claude's
   own not-yet-written analysis or design (no document to point at), use
-  codex-peer-review instead.
+  codex-peer-review instead. Not for a full plan-validate-implement-review
+  workflow that continues into code changes — use codex-plan-loop for
+  that; codex-verify performs one PASS/FAIL check of an already-existing
+  document and stops there, it never authors a plan itself or proceeds to
+  implementation.
 argument-hint: "path/to/document.md [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
-allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(sed:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Bash(rm -f */tmp/*:*)", "Read", "Write", "AskUserQuestion"]
+allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(sed:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "AskUserQuestion"]
 ---
 
 # Codex Document Verification + Double-Check
@@ -20,6 +24,12 @@ document to Codex **without ever loading it into your own context**, so
 your follow-up evaluation is genuinely independent.
 
 For code review use `/codex-kit:review`. For research, use the `codex-research` skill.
+
+## Quick Start
+
+1. **Analyze + assemble** (Phase 1) — parse the document path without loading its content into your own context; send it blind.
+2. **Invoke, wait** (Phase 2-3) — background the Codex call, poll for completion.
+3. **Double-check + report** (Phase 4-5) — read the document now (not before), classify Codex's PASS/FAIL verdict, save the report.
 
 ## Execution Contract
 
@@ -78,8 +88,7 @@ echo "DOC_LINES=$(wc -l < "<literal doc path>")"   # size info, not content
 Block tags below are from official gpt-5-4-prompting (`prompt-blocks.md`), bodies adapted to this skill's output schema — re-sync the tag set if the official guide updates. No document content goes in the heredoc; it's appended separately after, via file redirect (stdout stays empty, keeping context clean) — use the literal doc path, never a shell variable from a prior Bash call.
 
 ```bash
-set -o pipefail
-CODEX_COMPANION="${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs"
+set -o pipefail; CODEX_COMPANION="${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs"
 mkdir -p "${CLAUDE_PLUGIN_DATA}/tmp"
 TS=$(date +%s%N)
 PROMPT_FILE="${CLAUDE_PLUGIN_DATA}/tmp/verify-prompt-${TS}.txt"
@@ -103,12 +112,14 @@ Review the entire document before finalizing. Check for interactions between sec
 </completeness_contract>
 <document>
 EOF
-# Neutralize any closing-tag-shaped substring in the document before
-# appending it -- an unguarded raw `cat` here would let the document escape
-# the <document> trust boundary (see shared-skill-conventions.md §4).
+# Neutralize any closing-tag-shaped substring before appending -- an
+# unguarded raw `cat` would let the document escape the <document> trust
+# boundary (§4). Exact form only -- see the note below the fence on why.
 sed -E 's@</[[:space:]]*([a-zA-Z_][a-zA-Z0-9_-]*)[[:space:]]*>@(/\1)@g' "<literal doc path>" >> "$PROMPT_FILE"
 printf '\n</document>\n' >> "$PROMPT_FILE"
 ```
+
+**`sed` scoping (disclosed):** `sed` is only ever invoked in exactly the form above — never `-i`, never an `e` flag/command (both of which `Bash(sed:*)`'s prefix-scoped grant cannot itself exclude, the same disclosed-scoping pattern `codex-audit-loop` uses for `Bash(git push origin:*)`).
 
 **R18 exception (recorded):** the block tags above must be copied exactly
 (this skill's own output schema, not `prompt-blocks.md`'s originals) and
@@ -322,11 +333,10 @@ the §6 error category, stderr (truncated to 500 characters, matching
 so cap it), and the document path. Treat this and the success-path report
 as sensitive before sharing.
 
-Clean up temp files using the literal paths captured in Phase 1:
-
-```bash
-rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_JSON_FILE path>.stderr"
-```
+Leave the temp files (`PROMPT_FILE`, `JOB_JSON_FILE`, `JOB_JSON_FILE.stderr`) in `${CLAUDE_PLUGIN_DATA}/tmp/`
+— a plugin-private data directory, never part of the reviewed repository. No active cleanup step requires
+a destructive `rm` grant scoped broadly enough to also match a `tmp/` directory the reviewed repo itself
+might contain.
 
 ---
 
@@ -368,6 +378,8 @@ For the full shared gotchas list, read
 **Verify it does NOT activate on:**
 - Validating Claude's own not-yet-written analysis (no document) → `codex-peer-review`
 - Open-ended investigation or research on a topic/document → `codex-research`
+- A full plan-validate-implement-review workflow that continues into code changes → `codex-plan-loop`
+- Locating/finding a session ID rather than resuming one → `codex-session-lookup`
 
 **Concrete scenarios to check:**
 1. The document path doesn't exist or is empty → fails at Phase 1's `test -f`/`test -s` check, before ever touching Codex.
@@ -378,7 +390,7 @@ For the full shared gotchas list, read
 
 **Current test coverage:**
 - `evals/codex-verify/evals.json` — 1 defined scenario (blind-payload pattern, PASS/FAIL verdict with P1/P2 split). Structurally graded 2026-08-12 (PASS — the blind-payload pattern, and the PASS/FAIL verdict with P1 blocking / P2 non-blocking split, both match the eval's `expected_output`); not a live empirical run.
-- `scripts/smoke-tests/codex-verify-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc and the `--persist` argument-hint; does not exercise a real Codex call.
+- `scripts/smoke-tests/codex-verify-prompt-assembly.mjs` — mechanically verifies the payload-assembly heredoc (see `scripts/smoke-tests/README.md` for the full check list); does not exercise a real Codex call.
 
 **Quality gates:**
 - [ ] The document is never `Read` before Phase 4

@@ -2,7 +2,7 @@
 description: Transfer the current Claude Code session into a resumable Codex thread
 argument-hint: '[--source <claude-jsonl>]'
 disable-model-invocation: true
-allowed-tools: Bash(node */scripts/codex-companion.mjs:*), AskUserQuestion
+allowed-tools: Bash(node */codex-kit/scripts/codex-companion.mjs:*), AskUserQuestion
 ---
 
 Raw slash-command arguments: `$ARGUMENTS`

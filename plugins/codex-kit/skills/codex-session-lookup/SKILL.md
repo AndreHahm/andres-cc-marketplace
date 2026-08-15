@@ -15,6 +15,12 @@ allowed-tools: ["Bash(python3 */codex-session-lookup/scripts/find-session-id.py:
 
 Read-only. Operates on Codex CLI's own local state under `~/.codex/`, not on Claude Code sessions. Direct port of Wave 8's `codex-session` skill — no behavioral changes.
 
+## Quick Start
+
+1. **Locate** — run `find-session-id.py` with a query or `--last` to find the session ID.
+2. **Inspect (optional)** — run `inspect-session-file.py` against that ID to read metadata (truncated at 140 chars unless `--full`).
+3. **Hand off** — give the ID to the user; this skill never resumes anything itself, see the relevant skill's own resume path for that.
+
 ## Find a session by query or recency
 
 ```bash
