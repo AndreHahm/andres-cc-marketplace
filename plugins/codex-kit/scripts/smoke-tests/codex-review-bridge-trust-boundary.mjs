@@ -9,12 +9,16 @@
 // Also confirms the CODEX_KIT_REVIEW_MODEL env-var validation fails fast on
 // a malformed value before any Codex call is attempted.
 //
-// Run from plugins/codex-kit/: node scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs
+// Runnable from any cwd: node plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const BRIDGE_INVOKE = path.join(SCRIPT_DIR, "..", "..", "skills", "codex-review-bridge", "scripts", "bridge-invoke.mjs");
 
 let pass = 0;
 let fail = 0;
@@ -34,7 +38,7 @@ function runBridge(tmpDir, instructionFile, targetPaths, dispatchId = "smoke-tes
     execFileSync(
       "node",
       [
-        "skills/codex-review-bridge/scripts/bridge-invoke.mjs",
+        BRIDGE_INVOKE,
         "--reviewer-type", "test-reviewer",
         "--instruction-file", instructionFile,
         "--target-paths", targetPaths,

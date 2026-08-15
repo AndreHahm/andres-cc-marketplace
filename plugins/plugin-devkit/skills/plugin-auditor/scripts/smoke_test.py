@@ -46,9 +46,12 @@ def check_bash_grants():
     frontmatter, body = text[:header_end], text[header_end:]
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     granted = set(re.findall(r"Bash\([^)]*\)", fm_line_match.group(1))) if fm_line_match else set()
-    referenced = set(re.findall(r"scoped `(Bash\([^)]*\))", body))
+    # Whitespace-normalized so a markdown line-wrap between "scoped" and the
+    # backtick (e.g. "...invoke the scoped\n`Bash(...)`...") doesn't hide a real mention.
+    referenced = set(re.findall(r"scoped `(Bash\([^)]*\))", re.sub(r"\s+", " ", body)))
     for ref_file in sorted((SKILL_DIR / "references").glob("*.md")):
-        referenced |= set(re.findall(r"scoped `(Bash\([^)]*\))", ref_file.read_text(encoding="utf-8")))
+        ref_text = re.sub(r"\s+", " ", ref_file.read_text(encoding="utf-8"))
+        referenced |= set(re.findall(r"scoped `(Bash\([^)]*\))", ref_text))
     missing = referenced - granted
     if missing:
         return False, "body/references invoke Bash scope(s) missing from allowed-tools: " + ", ".join(sorted(missing))
