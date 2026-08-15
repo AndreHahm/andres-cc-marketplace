@@ -10,7 +10,7 @@ description: >-
   resolver) when the resolved execution profile is Windows-guarded
   danger-full-access -- not invoked directly by end users, and never a
   substitute for a real OS sandbox.
-allowed-tools: Bash(node */codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)
+allowed-tools: Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)
 disable-model-invocation: true
 ---
 
@@ -122,6 +122,24 @@ provenance field imply otherwise.
   bridge's own CLI, which used to perform it, was bypassed).
 - An uppercase-variant secret filename (`.ENV`) on Windows — verified live: still rejected
   (case-insensitive match, platform-gated the same way path-boundary comparison already is).
+- A `target-paths` entry containing a prompt tag-closing character (`<`, `>`) or a newline —
+  verified live: rejected with `invalid_arguments` before any config/exec is attempted.
+- A `--repo-root` that is not the actual git repository toplevel — verified live: rejected with
+  `invalid_arguments`, even when guardrails resolve as enabled relative to that passed root.
+- A secret file reached only through a file symlink (the symlink's own name is innocuous, its real
+  target's name matches a secret pattern) — verified live: rejected with `secret_file_in_scope`,
+  caught via the resolved target's basename, not the symlink's own name.
+
+**Current test coverage:**
+- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (11 scenarios, run from
+  `plugins/codex-kit/`) — every bullet above, executed against real scratch git repositories, not a
+  template check. No `evals/codex-windows-guardrails/` suite exists yet (this skill has no
+  structural eval grading, unlike its 10 codex-kit siblings — see `plugins/codex-kit/README.md`'s
+  Known Limitations and `CONTRIBUTING.md`).
+- **Not yet exercised end-to-end:** the enabled `danger-full-access` dispatch path itself — every
+  scenario above tests the disabled-by-default short-circuit or a pre-flight refusal, never a real
+  `codex exec` call under `danger-full-access`. The feature ships disabled by default; enabling it
+  and running that path live was out of scope for this skill's build and remains an open item.
 
 **Quality gates:**
 - [ ] Never claims or documents sandbox-equivalence, anywhere its output is surfaced
@@ -137,3 +155,15 @@ provenance field imply otherwise.
       second copy
 - [ ] The instruction-containment check and the actual instruction-body read always resolve the
       same path value — never a check on one resolution and a read on another
+- [ ] A filesystem-stat error other than "path does not exist" during the secret-file scan always
+      aborts the dispatch — never treated as "no secrets found under this path"
+- [ ] A file symlink is checked under both its own name and its resolved real target's name — never
+      only the symlink's own name
+- [ ] The instruction-containment check canonicalizes and case-folds both sides (win32) before
+      comparing — never a bare lexical string compare
+- [ ] `--repo-root` is always verified against the actual git repository toplevel before it anchors
+      the boundary check or becomes Codex's own `cwd`
+- [ ] `provenance.execution_profile` in a successful result is always overwritten to
+      `"danger-full-access"` script-side — never trusted as the model's own self-report
+- [ ] A `target-paths` entry containing a prompt tag-closing character or newline is always rejected
+      before it reaches the prompt

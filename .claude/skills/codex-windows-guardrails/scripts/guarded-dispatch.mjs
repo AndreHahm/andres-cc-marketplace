@@ -4,14 +4,14 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 import { runCodexExec } from "../../../scripts/lib/codex-exec.mjs";
-import { ENVELOPE_SCHEMA, semanticallyValidate, isWithin, isValidToken } from "../../codex-review-bridge/scripts/bridge-invoke.mjs";
+import { ENVELOPE_SCHEMA, semanticallyValidate, isValidToken } from "../../codex-review-bridge/scripts/bridge-invoke.mjs";
 
 // Consolidated guardrail dispatch for local Windows danger-full-access Codex
 // review, when no working sandbox exists on the platform. Deliberately does
 // NOT go through codex-review-bridge's own CLI (bridge-invoke.mjs's main())
 // -- that entry point unconditionally refuses danger-full-access, correctly,
 // for every other caller. This script instead imports the bridge's already-
-// exported reusable pieces (ENVELOPE_SCHEMA, semanticallyValidate, isWithin,
+// exported reusable pieces (ENVELOPE_SCHEMA, semanticallyValidate,
 // isValidToken) and codex-exec.mjs's runCodexExec directly, neither of which
 // the bridge's own refusal logic touches.
 
@@ -53,6 +53,11 @@ function matchesSecretPattern(basename) {
 
 function typedFailure(category, detail) {
   return { ok: false, category, detail };
+}
+
+function fail(category, detail) {
+  console.log(JSON.stringify(typedFailure(category, detail)));
+  process.exitCode = 1;
 }
 
 function resolveConfig(repoRoot) {
@@ -139,6 +144,12 @@ function isInsideRoot(candidate, root) {
   return candidate === root || candidate.startsWith(root + path.sep);
 }
 
+// Mutual containment is equality, platform-gated the same way isInsideRoot
+// already is -- reused instead of a second hand-rolled case-folding compare.
+function canonicalPathsEqual(a, b) {
+  return isInsideRoot(a, b) && isInsideRoot(b, a);
+}
+
 function checkRepositoryBoundary(targetPaths, repoRoot) {
   const canonicalRoot = canonicalizeWithAncestorFallback(repoRoot);
   for (const entry of targetPaths) {
@@ -146,6 +157,29 @@ function checkRepositoryBoundary(targetPaths, repoRoot) {
     if (!isInsideRoot(canonicalEntry, canonicalRoot)) {
       return typedFailure("repository_boundary_violation", `target path outside repository root: ${entry}`);
     }
+  }
+  return null;
+}
+
+// --repo-root is caller-declared and anchors both the boundary check below
+// and Codex's own cwd -- verified against the actual git toplevel rather
+// than trusted as a plain string, so a wider-than-intended root can't widen
+// what "inside the repository" means for a danger-full-access dispatch.
+function verifyRepoRootIsGitToplevel(repoRoot) {
+  let actualToplevel;
+  try {
+    actualToplevel = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      cwd: repoRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+      encoding: "utf8"
+    }).trim();
+  } catch {
+    return typedFailure("invalid_arguments", "repo-root is not inside a git repository");
+  }
+  const canonicalActual = canonicalizeWithAncestorFallback(actualToplevel);
+  const canonicalRepoRoot = canonicalizeWithAncestorFallback(repoRoot);
+  if (!canonicalPathsEqual(canonicalActual, canonicalRepoRoot)) {
+    return typedFailure("invalid_arguments", "repo-root does not match the actual git repository toplevel");
   }
   return null;
 }
@@ -159,8 +193,15 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
   let stat;
   try {
     stat = fs.lstatSync(absolutePath);
-  } catch {
-    return;
+  } catch (error) {
+    // Only a genuinely missing path is safe to skip. Any other stat failure
+    // (EACCES/EPERM on a locked or ACL-restricted path, ELOOP, ...) must
+    // abort the whole dispatch rather than silently scan nothing under it --
+    // an unreadable subtree is not evidence it contains no secrets.
+    if (error.code === "ENOENT") {
+      return;
+    }
+    throw error;
   }
   if (stat.isSymbolicLink()) {
     // Follow into a symlinked/junction directory ONLY if its real target
@@ -169,9 +210,7 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
     // junction that checkRepositoryBoundary already treats as "inside" via
     // its own realpathSync canonicalization; the secret-file check must
     // agree, or a junction becomes an unscanned blind spot. A visited-set
-    // (keyed by real path) bounds a symlink cycle. A symlink resolving
-    // outside the repo, or one that can't be resolved at all, is not
-    // followed -- its own basename is still checked below like any entry.
+    // (keyed by real path) bounds a symlink cycle.
     let real;
     try {
       real = fs.realpathSync(absolutePath);
@@ -185,7 +224,12 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
       walkFiles(real, results, repoRoot, visitedRealpaths);
       return;
     }
-    results.push(absolutePath);
+    // A file symlink (resolving inside or outside the repo) is checked under
+    // BOTH names -- its own (a suspiciously-named symlink is still a hit)
+    // and its real target's (Codex reads through the symlink to the real
+    // content, so notes.txt -> ../../.ssh/id_rsa must be caught by id_rsa's
+    // name, not notes.txt's).
+    results.push(absolutePath, real);
     return;
   }
   if (stat.isDirectory()) {
@@ -234,8 +278,8 @@ async function main() {
   const required = ["reviewer-type", "instruction-file", "target-paths", "dispatch-id", "repo-root"];
   for (const key of required) {
     if (!args[key]) {
-      console.log(JSON.stringify(typedFailure("invalid_arguments", `missing --${key}`)));
-      process.exit(1);
+      fail("invalid_arguments", `missing --${key}`);
+      return;
     }
   }
 
@@ -248,35 +292,54 @@ async function main() {
   // this guarded (danger-full-access) path can't end up validating its
   // inputs less strictly than the read-only path it bypasses.
   if (!isValidToken(dispatchId)) {
-    console.log(JSON.stringify(typedFailure("invalid_arguments", "dispatch-id must match ^[A-Za-z0-9._-]{1,64}$ -- it is used to build a tmpdir path and is interpolated into the prompt")));
-    process.exit(1);
+    fail("invalid_arguments", "dispatch-id must match ^[A-Za-z0-9._-]{1,64}$ -- it is used to build a tmpdir path and is interpolated into the prompt");
+    return;
   }
   if (!isValidToken(reviewerType)) {
-    console.log(JSON.stringify(typedFailure("invalid_arguments", "reviewer-type must match ^[A-Za-z0-9._-]{1,64}$ -- it is interpolated into the prompt")));
-    process.exit(1);
+    fail("invalid_arguments", "reviewer-type must match ^[A-Za-z0-9._-]{1,64}$ -- it is interpolated into the prompt");
+    return;
   }
 
   const targetPaths = args["target-paths"].split(",").map((p) => p.trim()).filter(Boolean);
+
+  // Every target-paths entry is interpolated verbatim into the
+  // <target_paths> prompt tag below. isValidToken's charset doesn't apply
+  // here (a real path legitimately contains "/"), but a tag-closing or
+  // newline character would let a crafted entry restructure the prompt --
+  // reject those specifically, the same class of defense codex-kit already
+  // applies elsewhere to untrusted content reaching a prompt.
+  for (const targetPath of targetPaths) {
+    if (/[<>\r\n]/.test(targetPath)) {
+      fail("invalid_arguments", `target-paths entry contains a disallowed character: ${targetPath}`);
+      return;
+    }
+  }
 
   // The enable check happens here, in code -- not left as prose the caller
   // is trusted to check separately. A caller can never reach an exec attempt
   // without this script itself having verified enablement.
   const config = resolveConfig(repoRoot);
   if (config.enabled !== true) {
-    console.log(JSON.stringify(typedFailure("guardrails_disabled", "windows_guardrails.enabled is not true")));
-    process.exit(1);
+    fail("guardrails_disabled", "windows_guardrails.enabled is not true");
+    return;
+  }
+
+  const repoRootFailure = verifyRepoRootIsGitToplevel(repoRoot);
+  if (repoRootFailure) {
+    fail(repoRootFailure.category, repoRootFailure.detail);
+    return;
   }
 
   const boundaryFailure = checkRepositoryBoundary(targetPaths, repoRoot);
   if (boundaryFailure) {
-    console.log(JSON.stringify(boundaryFailure));
-    process.exit(1);
+    fail(boundaryFailure.category, boundaryFailure.detail);
+    return;
   }
 
   const secretFailure = checkSecretFiles(targetPaths, repoRoot);
   if (secretFailure) {
-    console.log(JSON.stringify(secretFailure));
-    process.exit(1);
+    fail(secretFailure.category, secretFailure.detail);
+    return;
   }
 
   // Same containment rule codex-review-bridge itself enforces: the
@@ -284,19 +347,24 @@ async function main() {
   // NOT a repository-boundary check -- the instruction file is expected to
   // live in the session scratchpad, outside the repo, per
   // require-gitignored-scratch-locations.md, so checking it against the
-  // repo root would always fail.
-  const resolvedInstructionFile = path.resolve(repoRoot, instructionFile);
-  const instructionUnderTarget = targetPaths.some((p) => isWithin(resolvedInstructionFile, path.resolve(repoRoot, p)));
+  // repo root would always fail. Both sides are canonicalized and compared
+  // with the same win32-aware isInsideRoot the boundary check above uses --
+  // a bare lexical compare would miss a pure case difference or an
+  // unresolved junction on the one platform this script runs on.
+  const canonicalInstructionFile = canonicalizeWithAncestorFallback(path.resolve(repoRoot, instructionFile));
+  const instructionUnderTarget = targetPaths.some((p) =>
+    isInsideRoot(canonicalInstructionFile, canonicalizeWithAncestorFallback(path.resolve(repoRoot, p)))
+  );
   if (instructionUnderTarget) {
-    console.log(JSON.stringify(typedFailure("instruction_containment_violation", "instruction-file resolves inside one of target-paths")));
-    process.exit(1);
+    fail("instruction_containment_violation", "instruction-file resolves inside one of target-paths");
+    return;
   }
 
-  // Read from the SAME resolved path just checked above -- reading the raw
-  // --instruction-file argument instead (which resolves relative to
+  // Read from the SAME canonicalized path just checked above -- reading the
+  // raw --instruction-file argument instead (which resolves relative to
   // process.cwd(), not --repo-root, whenever the two differ) would check one
   // file's containment and read a different file's content into the prompt.
-  const instructionBody = fs.readFileSync(resolvedInstructionFile, "utf8");
+  const instructionBody = fs.readFileSync(canonicalInstructionFile, "utf8");
   const guardrailInstructions = fs.readFileSync(
     path.join(SKILL_DIR, "assets", "dangerous-command-instructions.txt"),
     "utf8"
@@ -331,20 +399,32 @@ async function main() {
   });
 
   if (!result.ok) {
-    console.log(JSON.stringify(result));
-    process.exit(1);
+    // Bound what gets persisted from a danger-full-access run's own failure
+    // detail -- codex-exec.mjs's raw stderr tail can run to 4000 chars, and
+    // this path ran with unrestricted filesystem access, so its failure
+    // output could carry more than the read-only path's equivalent would.
+    const detail = typeof result.detail === "string" ? result.detail.slice(0, 500) : result.detail;
+    fail(result.category, detail);
+    return;
+  }
+
+  // provenance.execution_profile is the model's own self-report -- overwrite
+  // with the actual, script-known profile so a persisted report can never
+  // show a sandboxed profile for a run that had none. This is not a sandbox;
+  // never let a report imply otherwise.
+  if (result.data && result.data.provenance) {
+    result.data.provenance.execution_profile = "danger-full-access";
   }
 
   const semanticResult = semanticallyValidate(result.data, { targetPaths, dispatchId, reviewerType, repoRoot });
   if (!semanticResult.ok) {
-    console.log(JSON.stringify(semanticResult));
-    process.exit(1);
+    fail(semanticResult.category, semanticResult.detail);
+    return;
   }
 
   console.log(JSON.stringify(result.data, null, 2));
 }
 
 main().catch((error) => {
-  console.log(JSON.stringify(typedFailure("non_zero_exit", error instanceof Error ? error.message : String(error))));
-  process.exit(1);
+  fail("non_zero_exit", error instanceof Error ? error.message : String(error));
 });

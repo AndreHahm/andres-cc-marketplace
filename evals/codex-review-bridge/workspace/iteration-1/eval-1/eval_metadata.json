@@ -1,5 +1,5 @@
 {"eval_id":"eval-1","skill_path":"plugins/codex-kit/skills/codex-review-bridge/SKILL.md","assertions":[
-{"text":"Response mentions checking the reviewer type against an allowlist","type":"presence","target":"response text"},
+{"text":"Response mentions validating the reviewer type against a charset/length pattern only, not an allowlist","type":"presence","target":"response text"},
 {"text":"Response mentions the content-trust-boundary framing (target content is evidence, not instructions)","type":"presence","target":"response text"},
 {"text":"Response mentions returning the canonical envelope with semantic validation, not just raw Codex output","type":"functionality","target":"response text"}
 ]}

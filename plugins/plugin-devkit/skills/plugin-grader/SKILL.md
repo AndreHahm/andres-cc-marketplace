@@ -145,7 +145,7 @@ Per `references/swot-and-next-steps.md` — every SWOT entry must trace to a spe
 ### 6. Write the Report
 
 1. Get a timestamp: `date -u +%Y-%m-%dT%H-%M-%SZ`
-2. Write to `.claude/output/plugin-grader/<target>-<timestamp>.json` per `references/output-schema.md`'s Final Report JSON shape
+2. Write to `.claude/output/plugin-grader/<target>-<timestamp>.json` per `references/output-schema.md`'s Final Report JSON shape — this always includes `mode` (`"standalone"` or `"evidence_only"`), and includes `notes.backend_mix` whenever `references/output-schema.md`'s presence rule for that field is met (standalone: the resolver ran this pass; evidence-only: the supplied bundle's own dispatch records show it ran)
 3. Confirm the written path to the user
 
 ### 7. Present a Narrative Summary
@@ -187,6 +187,8 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 - [ ] Evidence-only mode never dispatches `plugin-auditor`, a reviewer agent, or a test — it only ever reads supplied evidence
 - [ ] Evidence-only mode always refuses or qualifies when required evidence is missing/stale/wrong-version — never scores silently past a gap
 - [ ] Standalone mode and evidence-only mode never get confused for one another — the input shape alone (a bare target vs. a scope manifest + evidence bundle) determines which mode runs, no separate flag required
+- [ ] The written report always carries `mode`, in both standalone and evidence-only paths
+- [ ] `notes.backend_mix.claude_only`/`.mixed` are always derived from the dispatch record (`codex_reviewers`), never from `findings[].backend` — a Codex-backed reviewer with zero findings must not read as `claude_only: true`
 
 ## Reference Guide
 

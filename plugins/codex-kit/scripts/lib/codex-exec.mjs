@@ -60,6 +60,18 @@ export function findSchemaViolation(value, schema, pathLabel = "$") {
         return `${pathLabel}: missing required property "${key}"`;
       }
     }
+    // additionalProperties: false is a real constraint several schemas in
+    // this plugin declare specifically to bound what a model can pad its
+    // response with -- it was previously declared but never checked here,
+    // so an extra, unrequested key survived local validation silently.
+    if (schema.additionalProperties === false) {
+      const allowed = new Set(Object.keys(schema.properties ?? {}));
+      for (const key of Object.keys(value)) {
+        if (!allowed.has(key)) {
+          return `${pathLabel}: unexpected property "${key}" not permitted by additionalProperties: false`;
+        }
+      }
+    }
     for (const [key, propSchema] of Object.entries(schema.properties ?? {})) {
       if (Object.prototype.hasOwnProperty.call(value, key)) {
         const violation = findSchemaViolation(value[key], propSchema, `${pathLabel}.${key}`);

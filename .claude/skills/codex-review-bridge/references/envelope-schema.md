@@ -1,6 +1,6 @@
 # Canonical findings envelope
 
-This is codex-kit's canonical findings envelope — every reviewer dispatched through `codex-review-bridge` returns exactly this shape, with no partial/reviewer-specific variants.
+This is codex-kit's canonical findings envelope — every reviewer dispatched through `codex-review-bridge` returns exactly this shape, with no partial/reviewer-specific variants. The schema itself (`ENVELOPE_SCHEMA` in `scripts/bridge-invoke.mjs`) is also directly imported by `codex-windows-guardrails`' `scripts/guarded-dispatch.mjs` for its own `danger-full-access` dispatch path — a change to this shape affects that consumer too, not only callers going through this bridge's own CLI.
 
 ```json
 {
