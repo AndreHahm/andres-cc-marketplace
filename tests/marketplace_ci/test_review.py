@@ -146,12 +146,9 @@ def test_unbounded_dependency_closure_escalates_to_full(change):
 
 def test_unbounded_dependency_closure_includes_type_specific_audit(change):
     changes = [change("plugins/demo-kit/skills/x/SKILL.md")]
-    huge_index = {
-        "plugins/demo-kit/skills/x/SKILL.md": (
-            *(f"dep-{i}" for i in range(99)),
-            "plugins/demo-kit/agents/y.md",
-        )
-    }
+    deps: list[str] = [f"dep-{i}" for i in range(99)]
+    deps.append("plugins/demo-kit/agents/y.md")
+    huge_index: dict[str, tuple[str, ...]] = {"plugins/demo-kit/skills/x/SKILL.md": tuple(deps)}
     scope = derive_review_scope(changes, huge_index, dependency_closure_limit=50)
     assert scope.mode == "full"
     assert scope.audit == ("skill-reviewer", "subagent-reviewer")
