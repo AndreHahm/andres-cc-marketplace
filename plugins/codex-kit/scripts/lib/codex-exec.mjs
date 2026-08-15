@@ -39,6 +39,18 @@ function typedFailure(category, detail) {
 // `properties`/`items`, which is what this plugin's own schemas actually
 // use. Returns the first violation found, or null if the value conforms.
 export function findSchemaViolation(value, schema, pathLabel = "$") {
+  // Union type (e.g. ["array", "null"] for a nullable-rather-than-absent
+  // optional field, required by OpenAI's strict structured-output mode --
+  // see ENVELOPE_SCHEMA's `components` field for why "optional" has to be
+  // expressed this way instead of omission from `required`). Valid if the
+  // value matches `null` (when listed) or any one of the other listed types.
+  if (Array.isArray(schema.type)) {
+    if (value === null) {
+      return schema.type.includes("null") ? null : `${pathLabel}: expected one of [${schema.type.join(", ")}], got null`;
+    }
+    const matchesSomeType = schema.type.some((t) => t !== "null" && !findSchemaViolation(value, { ...schema, type: t }, pathLabel));
+    return matchesSomeType ? null : `${pathLabel}: does not match any type in [${schema.type.join(", ")}]`;
+  }
   if (schema.type === "object") {
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
       return `${pathLabel}: expected object, got ${Array.isArray(value) ? "array" : typeof value}`;
