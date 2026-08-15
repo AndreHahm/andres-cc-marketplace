@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/codex-kit/skills/codex-review-bridge/SKILL.md",
+  "assertions": [
+    {"text": "Observes a rejection citing the instruction-file/target-paths containment violation", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Explicitly states no Codex process was invoked", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

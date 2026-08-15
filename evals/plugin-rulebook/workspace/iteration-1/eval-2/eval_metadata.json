@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {"text": "Reports the file as compliant, or only lists already-known advisory items", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Does not invent a false REQUIRED violation against a real shipped file", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

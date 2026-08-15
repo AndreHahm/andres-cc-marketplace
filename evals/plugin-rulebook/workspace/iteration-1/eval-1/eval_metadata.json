@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {"text": "Correctly identifies R4 (kebab-case) as the violated rule", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Correctly classifies R4 as REQUIRED severity", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Proposes the correct fix (rename to scratch-test-skill)", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Does not report unrelated false-positive violations against the minimal valid skill", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

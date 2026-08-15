@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-auditor/SKILL.md",
+  "assertions": [
+    {"text": "Correctly identifies component mode and skill-reviewer as the type-matched reviewer", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Correctly identifies plugin mode and lists activation-reviewer, consistency-reviewer, dependency-reviewer, plugin-validator as the extra whole-plugin-only reviewers", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Correctly identifies that pre-supplied plugin-rulebook-checker findings are reused, not re-dispatched", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Did not dispatch any Agent() calls (reasoning-only)", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-grader/SKILL.md",
+  "assertions": [
+    {"text": "Correctly states claude_only: false and mixed: true", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Correctly explains that deriving from findings[].backend instead of the dispatch record would misreport claude_only: true", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Did not dispatch any Agent() calls (reasoning-only)", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

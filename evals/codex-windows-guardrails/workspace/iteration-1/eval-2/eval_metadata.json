@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/codex-kit/skills/codex-windows-guardrails/SKILL.md",
+  "assertions": [
+    {"text": "Creates the untracked local override file correctly, honoring the documented shape (windows_guardrails.enabled: true)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Observes category secret_file_in_scope citing the .env file's repo-relative path", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Explicitly states no Codex process was invoked / no exec attempted", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Cleans up the local.json override and the scratch directory it created before finishing", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

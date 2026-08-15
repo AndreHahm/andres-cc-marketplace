@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Reports the file as compliant, or only lists already-known advisory items", "passed": true, "evidence": "PASS -- no REQUIRED or SUGGESTED violations found."},
+    {"text": "Does not invent a false REQUIRED violation against a real shipped file", "passed": true, "evidence": "Correctly scoped which rules apply to a scripts/*.py file (frontmatter/SKILL.md-size/reference rules mostly N/A), and passed the applicable ones (R9, R17, R19, R23, R24)."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

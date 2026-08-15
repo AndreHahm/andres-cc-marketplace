@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-auditor/SKILL.md",
+  "assertions": [
+    {"text": "(a) security-reviewer + enabled=true + default=codex resolves to Claude-native, citing Resolver step 1 (hardcoded pin)", "type": "quality", "target": "outputs/ directory"},
+    {"text": "(b) skill-reviewer + enabled=false resolves to Claude-native, citing Resolver step 3", "type": "quality", "target": "outputs/ directory"},
+    {"text": "(c) skill-reviewer + enabled=true + default=codex + target=plugin-devkit resolves to Claude-native, citing Resolver step 2 (plugin-devkit self-scope skip)", "type": "quality", "target": "outputs/ directory"},
+    {"text": "(d) scripts-reviewer + enabled=true + per_reviewer override=claude resolves to Claude-native, citing Resolver step 4 (per_reviewer overrides default)", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Did not dispatch any Agent() calls or run any Bash commands (reasoning-only)", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

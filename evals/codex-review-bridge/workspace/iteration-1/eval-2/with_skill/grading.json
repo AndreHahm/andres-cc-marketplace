@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Observes a rejection citing the instruction-file/target-paths containment violation", "passed": true, "evidence": "detail: 'instruction-file resolves inside one of target-paths -- the reviewer instructions cannot be one of the files under review'. Category was the generic non_zero_exit rather than a dedicated name -- noted as a minor cross-component categorization-granularity observation vs. codex-windows-guardrails' dedicated instruction_containment_violation category, not a failure of this assertion (the detail text does cite the violation)."},
+    {"text": "Explicitly states no Codex process was invoked", "passed": true, "evidence": "Correctly traced the containment check running before runCodexExec."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

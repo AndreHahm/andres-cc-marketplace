@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Invokes scripts/guarded-dispatch.mjs directly via node, not codex exec raw and not codex-review-bridge's own CLI", "passed": true, "evidence": "Ran: node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs --reviewer-type security-reviewer --instruction-file ... --target-paths ... --dispatch-id eval-test-1 --repo-root ..."},
+    {"text": "Observes category guardrails_disabled on stdout with a non-zero exit", "passed": false, "evidence": "Observed cli_unavailable instead, because an untracked .claude/codex-windows-guardrails.local.json (enabled:true) already existed in the worktree due to a race with the parallel eval-2 agent manipulating the same shared path -- a test-design flaw (shared real-worktree path across parallel agents), not a skill defect. The agent correctly identified and reported this premise mismatch rather than silently reporting a false pass."},
+    {"text": "Explicitly states no Codex process was invoked / no exec attempted", "passed": true, "evidence": "Correctly explained spawn ENOENT means no PID/process was ever created, citing codex-exec.mjs's ENOENT-to-cli_unavailable mapping."},
+    {"text": "Uses the --repo-root, --target-paths, --instruction-file, --dispatch-id, --reviewer-type flags as documented", "passed": true, "evidence": "All 5 flags present and correctly named in the command run."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 3, "pass_rate": 0.75},
+  "notes": "Test-design flaw (parallel agents sharing one real config path), not a skill defect -- see run-level notes in the Phase 7 summary. The skill's actual behavior (typed cli_unavailable failure, no Codex process invoked) was correct for the config state that was actually present."
+}

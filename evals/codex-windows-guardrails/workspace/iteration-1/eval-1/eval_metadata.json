@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/codex-kit/skills/codex-windows-guardrails/SKILL.md",
+  "assertions": [
+    {"text": "Invokes scripts/guarded-dispatch.mjs directly via node, not codex exec raw and not codex-review-bridge's own CLI", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Observes category guardrails_disabled on stdout with a non-zero exit", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Explicitly states no Codex process was invoked / no exec attempted", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Uses the --repo-root, --target-paths, --instruction-file, --dispatch-id, --reviewer-type flags as documented", "type": "structure", "target": "outputs/ directory"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Correctly states claude_only: false and mixed: true", "passed": true, "evidence": "Both correctly derived from the codex_reviewers-empty/non-empty rule."},
+    {"text": "Correctly explains that deriving from findings[].backend instead of the dispatch record would misreport claude_only: true", "passed": true, "evidence": "Explicit, detailed explanation of the undercounting failure mode, citing the schema doc's own named example."},
+    {"text": "Did not dispatch any Agent() calls (reasoning-only)", "passed": true, "evidence": "1 tool_use, a Read."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
