@@ -80,10 +80,48 @@ classification correctly reports this as `isolation_profile_unavailable` — so 
 *does* trigger automatically today, but only because the underlying tool fails loudly, not because
 anything here verified isolation first. This is real protection, but a fragile guarantee: if a
 future Codex CLI version silently degrades instead of failing loudly on an unsupported platform,
-this resolver would not catch it — that would require `WINDOWS_GUARDRAILS.md`'s own proactive
-qualification work (a separate, not-yet-accepted document), not anything in this resolver. Until
-then, every dispatch on an unqualified platform costs one real (harmless — it fails before doing
+this resolver would not catch it. Until an operator explicitly opts into the Windows-guarded path
+below, every dispatch on an unqualified platform costs one real (harmless — it fails before doing
 anything) subprocess attempt, not a skipped one.
+
+## Windows-Guarded Execution Profile (optional, independent gate)
+
+`codex-kit`'s `codex-windows-guardrails` skill is a separate, independently-gated opt-in — disabled
+by default, same trust-boundary pattern as this resolver's own config. When *and only when* it
+resolves `windows_guardrails.enabled: true` (checked internally by the script below, not by this
+resolver), this resolver may attempt `danger-full-access` on Windows instead of only ever falling
+back to Claude on that platform.
+
+**This replaces Codex Path steps 1-4 below entirely for this one profile — it is not an addition on
+top of them.** `codex-review-bridge` itself unconditionally refuses `--execution-profile
+danger-full-access` (a correct, unchanged safety invariant for every other caller); routing through
+it for this profile would always fail. Instead, invoke the scoped
+`Bash(node */codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)` tool directly:
+
+```bash
+node "plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs" \
+  --reviewer-type "<reviewer name>" \
+  --instruction-file "<scratchpad path, per Codex Path step 2>" \
+  --target-paths "<scope>" \
+  --dispatch-id "<run-id>-<reviewer>" \
+  --repo-root "<marketplace root>"
+```
+
+One call does everything Codex Path's steps 1-4 do separately for the `read-only` profile: sources
+the instruction body (Codex Path step 1 still applies — source from `agents/<reviewer>.md`, write it
+to the scratchpad per step 2), resolves and checks the guardrail policy, runs the three pre-flight
+checks, appends the dangerous-command instructions itself (no separate append step on this resolver's
+side), dispatches with `sandbox: "danger-full-access"`, and validates the result — returning the
+identical envelope shape `codex-review-bridge` would, so the Adapter below needs no second code path.
+
+Any typed failure (including `guardrails_disabled`, meaning the skill itself decided not to proceed)
+folds into this resolver's existing fallback-to-Claude handling (Codex Path step 6) — no new
+fallback path needed. On success, record `isolation_strength: best_effort_guardrails` in this
+finding's `provenance` (see the Adapter table below) — never `os_isolated`, and never presented as
+sandbox-equivalent anywhere this provenance is surfaced.
+
+If `codex-windows-guardrails` is not enabled (the default), none of the above applies and the
+existing reactive-fallback behavior in the previous section is unchanged.
 
 ## Codex Path
 
@@ -142,7 +180,7 @@ and neither this adapter nor a downstream reader should act on it as one.
 | `findings[].fix` | → | `fix` |
 | `findings[].confidence` | → | `confidence` (new field) |
 | `dispatch.backend` | → | `backend` (new field) |
-| `provenance{provider,model,cli_version,execution_profile}` + the `authentication_mode` determined above | → | `provenance` (new field) |
+| `provenance{provider,model,cli_version,execution_profile}` + the `authentication_mode` determined above + `isolation_strength` (`os_isolated` for the `read-only` path, `best_effort_guardrails` for the Windows-guarded path) | → | `provenance` (new field) |
 | `verdict` | → | *(dropped, not modeled)* |
 | `inspection_limits` | → | folded into this dispatch's existing `coverage` note, same place a fallback gets recorded |
 

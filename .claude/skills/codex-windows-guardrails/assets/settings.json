@@ -1,0 +1,6 @@
+{
+  "windows_guardrails": {
+    "enabled": false,
+    "central_policy_version": "1"
+  }
+}

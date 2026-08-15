@@ -7,7 +7,12 @@ import { runCodexExec } from "../../../scripts/lib/codex-exec.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
-const ENVELOPE_SCHEMA = {
+// Exported (additive, no behavior change) so a sibling codex-kit component
+// that needs the same envelope contract without going through this file's
+// own CLI/danger-full-access refusal can import it directly, matching the
+// existing reuse pattern already established for semanticallyValidate/
+// isWithin/locateInSemanticScope below.
+export const ENVELOPE_SCHEMA = {
   type: "object",
   additionalProperties: false,
   required: ["contract_version", "dispatch", "provenance", "findings", "verdict", "inspection_limits"],
@@ -77,6 +82,15 @@ const ENVELOPE_SCHEMA = {
   }
 };
 
+// Exported (additive) so a sibling component that needs the same charset/
+// length guard on a value that is also interpolated into a prompt (e.g.
+// codex-windows-guardrails' dispatch-id/reviewer-type) can reuse it rather
+// than hand-copying the regex -- a second copy is exactly the drift risk
+// ENVELOPE_SCHEMA's own export above exists to avoid.
+export function isValidToken(value) {
+  return /^[A-Za-z0-9._-]{1,64}$/.test(value);
+}
+
 function parseArgs(argv) {
   const options = {};
   for (let i = 0; i < argv.length; i += 1) {
@@ -143,7 +157,7 @@ async function main() {
     process.exit(1);
   }
 
-  if (!/^[A-Za-z0-9._-]{1,64}$/.test(dispatchId)) {
+  if (!isValidToken(dispatchId)) {
     console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "dispatch-id must match ^[A-Za-z0-9._-]{1,64}$ -- it is used to build a tmpdir path and is interpolated into the prompt" }));
     process.exit(1);
   }
@@ -153,7 +167,7 @@ async function main() {
   // not enforce an allowlist of valid reviewer names (see SKILL.md's
   // Inputs section). A caller that needs one must validate reviewerType
   // itself before calling this bridge.
-  if (!/^[A-Za-z0-9._-]{1,64}$/.test(reviewerType)) {
+  if (!isValidToken(reviewerType)) {
     console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "reviewer-type must match ^[A-Za-z0-9._-]{1,64}$ -- it is interpolated into the prompt" }));
     process.exit(1);
   }
