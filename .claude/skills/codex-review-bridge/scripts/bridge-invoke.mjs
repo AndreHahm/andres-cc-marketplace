@@ -40,23 +40,31 @@ const ENVELOPE_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["id", "severity", "axis", "location", "evidence", "finding", "fix", "confidence"],
+        required: ["id", "severity", "axis", "location", "evidence", "finding", "fix", "confidence", "components"],
         properties: {
           id: { type: "string" },
           severity: { enum: ["critical", "major", "minor"] },
           axis: { type: "string" },
           location: { type: "string" },
-          // Optional: a finding that is inherently about a relationship
-          // between multiple files (a dependency cycle, a bidirectional
-          // coupling, a cross-file consistency/mirror mismatch) lists every
-          // other component it involves here, in addition to `location`'s
-          // single primary citation -- never as a replacement for it.
-          // Matches dependency-reviewer's own native Structured Output Mode
+          // A finding that is inherently about a relationship between
+          // multiple files (a dependency cycle, a bidirectional coupling, a
+          // cross-file consistency/mirror mismatch) lists every other
+          // component it involves here, in addition to `location`'s single
+          // primary citation -- never as a replacement for it. Matches
+          // dependency-reviewer's own native Structured Output Mode
           // instructions (`findings[].components`), which previously had no
           // schema field to land in here, forcing the model to cram a
           // semicolon-joined path list into `location` instead -- a string
           // that then failed the containment/existence check below.
-          components: { type: "array", items: { type: "string" } },
+          //
+          // Nullable rather than simply absent from `required`: OpenAI's
+          // strict structured-output mode (used by `codex exec
+          // --output-schema` under `additionalProperties: false`) rejects a
+          // schema where any `properties` key is missing from `required` --
+          // "optional" has to be expressed as `null`, not omission. `null`
+          // and a genuinely omitted key are both treated as "no components"
+          // by `semanticallyValidate`'s `finding.components ?? []` below.
+          components: { type: ["array", "null"], items: { type: "string" } },
           evidence: { type: "string" },
           finding: { type: "string" },
           fix: { type: "string" },

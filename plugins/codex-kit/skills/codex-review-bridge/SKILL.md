@@ -52,7 +52,7 @@ This wraps the shared `runCodexExec` primitive, using `--sandbox read-only` alwa
 
 ## Output: canonical envelope
 
-See `references/envelope-schema.md` for the full field list (`contract_version`, `dispatch{id,reviewer,backend,target_paths}`, `provenance{provider,model,cli_version,execution_profile}`, `findings[]{id,severity,axis,location,components?,evidence,finding,fix,confidence}`, `verdict`, `inspection_limits`). `components` is optional — it lets a finding about a relationship between multiple files (a dependency cycle, a bidirectional coupling, a cross-file consistency mismatch) cite every file involved, in addition to `location`'s single primary citation.
+See `references/envelope-schema.md` for the full field list (`contract_version`, `dispatch{id,reviewer,backend,target_paths}`, `provenance{provider,model,cli_version,execution_profile}`, `findings[]{id,severity,axis,location,components,evidence,finding,fix,confidence}`, `verdict`, `inspection_limits`). `components` is nullable (`array | null`, not an omittable key — see `envelope-schema.md`'s "Why `components` is `["array", "null"]`" note) — it lets a finding about a relationship between multiple files (a dependency cycle, a bidirectional coupling, a cross-file consistency mismatch) cite every file involved, in addition to `location`'s single primary citation.
 
 ## Semantic validation (deterministic, before returning)
 
@@ -86,7 +86,8 @@ If the requested execution profile fails, this skill reports that explicitly in 
 **Current test coverage:**
 - `evals/codex-review-bridge/evals.json` — 1 defined scenario (reviewer-type charset validation, evidence-not-instructions framing, canonical envelope). Structurally graded 2026-08-12 (PASS — the charset/length-only validation, the evidence-not-instructions framing, and the canonical envelope with semantic validation all match; the eval's own `expected_output` previously claimed an allowlist check this skill has never enforced (see "Inputs" above) and has been corrected to match); not a live empirical run.
 - `scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs` — directly exercises `bridge-invoke.mjs`'s containment check (self-referential rejection, exact-match rejection, prefix-similar-but-not-nested non-false-positive, a legitimately trusted outside-scope file) and `CODEX_KIT_REVIEW_MODEL` env-var validation. This is real script-level coverage, not a template check.
-- `scripts/smoke-tests/codex-review-bridge-semantic-validation.mjs` — directly exercises `semanticallyValidate`'s optional `components[]` field (valid entry passes, out-of-scope/nonexistent entry rejected, omission stays backward compatible, and the pre-fix multi-path-in-`location` workaround is still correctly rejected).
+- `scripts/smoke-tests/codex-review-bridge-semantic-validation.mjs` — directly exercises `semanticallyValidate`'s nullable `components[]` field (valid entry passes, out-of-scope/nonexistent entry rejected, `null`/omission both stay backward compatible, and the pre-fix multi-path-in-`location` workaround is still correctly rejected).
+- `scripts/smoke-tests/codex-exec-schema-validation.mjs` — directly exercises `findSchemaViolation`'s union-type (`type: [...]`) support in `scripts/lib/codex-exec.mjs`, the local check that made `components`'s nullable typing actually enforced rather than silently skipped.
 
 **Quality gates:**
 - [ ] `--execution-profile danger-full-access` is always rejected, never silently substituted
