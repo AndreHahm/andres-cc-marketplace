@@ -177,9 +177,42 @@ def derive_review_scope(
 VALID_SEVERITIES = ("Critical", "Major", "Minor")
 _SEVERITY_RANK = {"Minor": 0, "Major": 1, "Critical": 2}
 
-_REQUIRED_TOP_KEYS = {"mode", "reviewed_paths", "reviewers", "coverage_confirmed", "findings"}
-_REQUIRED_REVIEWERS_KEYS = {"selected", "completed", "skipped", "failed"}
-_REQUIRED_FINDING_KEYS = {"reviewer", "severity", "rule", "path", "evidence", "remediation"}
+# The envelope's own severity enum is lowercase (codex-review-bridge/references/
+# envelope-schema.md); Finding.severity stays capitalized internally so
+# aggregate_findings/blocking checks below don't need to change.
+_ENVELOPE_SEVERITY_TO_CANONICAL = {"critical": "Critical", "major": "Major", "minor": "Minor"}
+
+# Matches the single reviewer envelope bridge-invoke.mjs's dispatch_reviewers()
+# call actually returns per dispatch (codex-review-bridge/references/
+# envelope-schema.md) -- NOT a whole-run coverage summary. There is no
+# mode/reviewed_paths/reviewers/coverage_confirmed concept at this layer: a
+# single reviewer's own response can't report which OTHER reviewers ran.
+# run-codex-review builds that whole-run payload itself, directly from
+# ReviewScope and the ReviewerReport list dispatch_reviewers() returns.
+_REQUIRED_TOP_KEYS = {
+    "contract_version",
+    "dispatch",
+    "provenance",
+    "findings",
+    "verdict",
+    "inspection_limits",
+}
+_REQUIRED_DISPATCH_KEYS = {"id", "reviewer", "backend", "target_paths"}
+_REQUIRED_FINDING_KEYS = {
+    "id",
+    "severity",
+    "axis",
+    "location",
+    "evidence",
+    "finding",
+    "fix",
+    "confidence",
+}
+
+# Strips a trailing ":line" or ":line:col" suffix off a finding's `location`
+# -- mirrors bridge-invoke.mjs's own locateInSemanticScope regex exactly, so
+# the two layers agree on where the path ends and the line number begins.
+_LOCATION_LINE_SUFFIX = re.compile(r":(\d+)(?::\d+)?$")
 
 
 class ReviewOutputError(ValueError):
@@ -200,13 +233,8 @@ class Finding:
 
 @dataclass(frozen=True)
 class ReviewResult:
-    mode: str
-    reviewed_paths: tuple[str, ...]
-    selected: tuple[str, ...]
-    completed: tuple[str, ...]
-    skipped: tuple[str, ...]
-    failed: tuple[str, ...]
-    coverage_confirmed: bool
+    reviewer: str
+    verdict: str
     findings: tuple[Finding, ...]
 
     @property
@@ -214,59 +242,55 @@ class ReviewResult:
         return any(f.severity in ("Critical", "Major") for f in self.findings)
 
 
+def _split_location(location: str) -> tuple[str, int | None]:
+    match = _LOCATION_LINE_SUFFIX.search(location)
+    if not match:
+        return location, None
+    return location[: match.start()], int(match.group(1))
+
+
 def validate_review_output(data: dict) -> ReviewResult:
+    """Validate a single reviewer's canonical findings envelope -- the exact
+    shape codex-review-bridge's bridge-invoke.mjs returns from one
+    dispatch_reviewers() call, per codex-review-bridge/references/
+    envelope-schema.md. Called once per ReviewerReport in
+    _handle_run_codex_review; that caller assembles the whole-run
+    mode/reviewed_paths/reviewers payload itself and does not read those
+    fields from this function's return value."""
     missing_top = _REQUIRED_TOP_KEYS - set(data)
     if missing_top:
         raise ReviewOutputError(f"missing required field(s): {sorted(missing_top)}")
 
-    reviewers = data["reviewers"]
-    if not isinstance(reviewers, dict):
-        raise ReviewOutputError("'reviewers' must be an object")
-    missing_reviewers = _REQUIRED_REVIEWERS_KEYS - set(reviewers)
-    if missing_reviewers:
-        raise ReviewOutputError(f"reviewers missing required field(s): {sorted(missing_reviewers)}")
-
-    selected = tuple(reviewers["selected"])
-    completed = tuple(reviewers["completed"])
-    skipped = tuple(reviewers["skipped"])
-    failed = tuple(reviewers["failed"])
-
-    accounted = set(completed) | set(skipped) | set(failed)
-    missing_coverage = set(selected) - accounted
-    if missing_coverage:
-        raise ReviewOutputError(f"incomplete reviewer coverage: {sorted(missing_coverage)}")
-    if not data["coverage_confirmed"]:
-        raise ReviewOutputError("coverage_confirmed is false")
+    dispatch = data["dispatch"]
+    if not isinstance(dispatch, dict):
+        raise ReviewOutputError("'dispatch' must be an object")
+    missing_dispatch = _REQUIRED_DISPATCH_KEYS - set(dispatch)
+    if missing_dispatch:
+        raise ReviewOutputError(f"dispatch missing required field(s): {sorted(missing_dispatch)}")
+    reviewer = dispatch["reviewer"]
 
     findings: list[Finding] = []
     for raw in data["findings"]:
         missing_finding = _REQUIRED_FINDING_KEYS - set(raw)
         if missing_finding:
             raise ReviewOutputError(f"finding missing required field(s): {sorted(missing_finding)}")
-        if raw["severity"] not in VALID_SEVERITIES:
+        severity = _ENVELOPE_SEVERITY_TO_CANONICAL.get(raw["severity"])
+        if severity is None:
             raise ReviewOutputError(f"unknown severity: {raw['severity']!r}")
+        path, line = _split_location(raw["location"])
         findings.append(
             Finding(
-                reviewer=raw["reviewer"],
-                severity=raw["severity"],
-                rule=raw["rule"],
-                path=raw["path"],
+                reviewer=reviewer,
+                severity=severity,
+                rule=raw["axis"],
+                path=path,
                 evidence=raw["evidence"],
-                remediation=raw["remediation"],
-                line=raw.get("line"),
+                remediation=raw["fix"],
+                line=line,
             )
         )
 
-    return ReviewResult(
-        mode=data["mode"],
-        reviewed_paths=tuple(data["reviewed_paths"]),
-        selected=selected,
-        completed=completed,
-        skipped=skipped,
-        failed=failed,
-        coverage_confirmed=bool(data["coverage_confirmed"]),
-        findings=tuple(findings),
-    )
+    return ReviewResult(reviewer=reviewer, verdict=data["verdict"], findings=tuple(findings))
 
 
 def aggregate_findings(reports: Sequence[ReviewResult]) -> tuple[Finding, ...]:

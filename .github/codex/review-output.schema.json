@@ -2,53 +2,54 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/andrehahm/andres-cc-marketplace/.github/codex/review-output.schema.json",
   "title": "Codex reviewer structured output envelope",
-  "description": "Documents the shape scripts.marketplace_ci.review.validate_review_output actually enforces (the Python function is authoritative; this file is documentation, not a separately-run validator).",
+  "description": "Documents the shape scripts.marketplace_ci.review.validate_review_output actually enforces (the Python function is authoritative; this file is documentation, not a separately-run validator). This is a single reviewer's own envelope -- the exact shape codex-review-bridge's bridge-invoke.mjs returns per dispatch_reviewers() call (see codex-review-bridge/references/envelope-schema.md), not a whole-run coverage summary. run-codex-review assembles the whole-run mode/reviewed_paths/reviewers payload itself, from ReviewScope and the ReviewerReport list -- not from this envelope.",
   "type": "object",
-  "required": ["mode", "reviewed_paths", "reviewers", "coverage_confirmed", "findings"],
+  "required": ["contract_version", "dispatch", "provenance", "findings", "verdict", "inspection_limits"],
   "properties": {
-    "mode": {
-      "type": "string",
-      "enum": ["light", "delta", "full"]
-    },
-    "reviewed_paths": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "reviewers": {
+    "contract_version": { "type": "string" },
+    "dispatch": {
       "type": "object",
-      "required": ["selected", "completed", "skipped", "failed"],
+      "required": ["id", "reviewer", "backend", "target_paths"],
       "properties": {
-        "selected": { "type": "array", "items": { "type": "string" } },
-        "completed": { "type": "array", "items": { "type": "string" } },
-        "skipped": { "type": "array", "items": { "type": "string" } },
-        "failed": { "type": "array", "items": { "type": "string" } }
-      },
-      "additionalProperties": false
+        "id": { "type": "string" },
+        "reviewer": { "type": "string" },
+        "backend": { "type": "string" },
+        "target_paths": { "type": "array", "items": { "type": "string" } }
+      }
     },
-    "coverage_confirmed": {
-      "type": "boolean",
-      "description": "True only when every name in reviewers.selected also appears in completed, skipped, or failed."
+    "provenance": {
+      "type": "object",
+      "description": "Not deeply validated by validate_review_output beyond presence -- see codex-review-bridge/references/envelope-schema.md for its full field list."
     },
     "findings": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["reviewer", "severity", "rule", "path", "evidence", "remediation"],
+        "required": ["id", "severity", "axis", "location", "evidence", "finding", "fix", "confidence"],
         "properties": {
-          "reviewer": { "type": "string" },
-          "severity": { "type": "string", "enum": ["Critical", "Major", "Minor"] },
-          "rule": {
+          "id": { "type": "string" },
+          "severity": { "type": "string", "enum": ["critical", "major", "minor"] },
+          "axis": {
             "type": "string",
-            "description": "The reviewer's own finding identifier (e.g. a plugin-rulebook rule ID) or a short category slug. structural_check findings are attributed to the deterministic validator itself, never a synthetic reviewer identity."
+            "description": "The reviewer's own finding identifier (e.g. a plugin-rulebook rule ID) or a short category slug."
           },
-          "path": { "type": "string" },
-          "line": { "type": ["integer", "null"] },
+          "location": {
+            "type": "string",
+            "description": "A path, optionally suffixed with \":line\" or \":line:col\" -- validate_review_output splits the line number off before building its own Finding.path/Finding.line."
+          },
+          "components": {
+            "type": ["array", "null"],
+            "items": { "type": "string" },
+            "description": "Optional secondary citations for a multi-file finding. Not consumed by validate_review_output -- validated JS-side by bridge-invoke.mjs's semanticallyValidate before this envelope is ever returned."
+          },
           "evidence": { "type": "string" },
-          "remediation": { "type": "string" }
-        },
-        "additionalProperties": false
+          "finding": { "type": "string" },
+          "fix": { "type": "string" },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] }
+        }
       }
-    }
-  },
-  "additionalProperties": false
+    },
+    "verdict": { "type": "string" },
+    "inspection_limits": { "type": "array", "items": { "type": "string" } }
+  }
 }

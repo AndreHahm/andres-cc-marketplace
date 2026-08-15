@@ -163,18 +163,28 @@ def test_multiple_component_types_combine_audit_reviewers(change, dependency_ind
     assert scope.audit == ("skill-reviewer", "subagent-reviewer")
 
 
-VALID_OUTPUT = {
-    "mode": "delta",
-    "reviewed_paths": ["plugins/demo-kit/skills/x/SKILL.md"],
-    "reviewers": {
-        "selected": ["plugin-rulebook-checker", "security-reviewer"],
-        "completed": ["plugin-rulebook-checker", "security-reviewer"],
-        "skipped": [],
-        "failed": [],
-    },
-    "coverage_confirmed": True,
-    "findings": [],
-}
+def _envelope(reviewer="security-reviewer", findings=None):
+    return {
+        "contract_version": "1",
+        "dispatch": {
+            "id": "test-dispatch",
+            "reviewer": reviewer,
+            "backend": "codex",
+            "target_paths": ["plugins/demo-kit/skills/x/SKILL.md"],
+        },
+        "provenance": {
+            "provider": "openai",
+            "model": "test-model",
+            "cli_version": "0.0.0",
+            "execution_profile": "read-only",
+        },
+        "findings": findings or [],
+        "verdict": "pass",
+        "inspection_limits": [],
+    }
+
+
+VALID_OUTPUT = _envelope()
 
 
 def test_validate_review_output_accepts_clean_minor_pass():
@@ -184,109 +194,100 @@ def test_validate_review_output_accepts_clean_minor_pass():
 
 
 def test_validate_review_output_critical_finding_blocks():
-    data = {
-        **VALID_OUTPUT,
-        "findings": [
+    data = _envelope(
+        findings=[
             {
-                "reviewer": "security-reviewer",
-                "severity": "Critical",
-                "rule": "R6",
-                "path": "plugins/demo-kit/skills/x/SKILL.md",
+                "id": "C1",
+                "severity": "critical",
+                "axis": "R6",
+                "location": "plugins/demo-kit/skills/x/SKILL.md",
                 "evidence": "Bash(*) grant",
-                "remediation": "scope to Bash(git:*)",
+                "finding": "overly broad tool grant",
+                "fix": "scope to Bash(git:*)",
+                "confidence": "high",
             }
-        ],
-    }
+        ]
+    )
     result = validate_review_output(data)
     assert result.blocking is True
 
 
 def test_validate_review_output_minor_finding_does_not_block():
-    data = {
-        **VALID_OUTPUT,
-        "findings": [
+    data = _envelope(
+        findings=[
             {
-                "reviewer": "security-reviewer",
-                "severity": "Minor",
-                "rule": "R9",
-                "path": "x",
+                "id": "m1",
+                "severity": "minor",
+                "axis": "R9",
+                "location": "x",
                 "evidence": "e",
-                "remediation": "r",
+                "finding": "f",
+                "fix": "r",
+                "confidence": "low",
             }
-        ],
-    }
+        ]
+    )
     result = validate_review_output(data)
     assert result.blocking is False
 
 
 def test_validate_review_output_rejects_missing_top_level_field():
-    data = {k: v for k, v in VALID_OUTPUT.items() if k != "coverage_confirmed"}
+    data = {k: v for k, v in VALID_OUTPUT.items() if k != "verdict"}
     with pytest.raises(ReviewOutputError, match="missing required field"):
         validate_review_output(data)
 
 
+def test_validate_review_output_rejects_malformed_dispatch():
+    data = {**VALID_OUTPUT, "dispatch": {"id": "x"}}
+    with pytest.raises(ReviewOutputError, match="dispatch missing required field"):
+        validate_review_output(data)
+
+
 def test_validate_review_output_rejects_malformed_finding():
-    data = {**VALID_OUTPUT, "findings": [{"reviewer": "x", "severity": "Minor"}]}
+    data = _envelope(findings=[{"id": "x", "severity": "minor"}])
     with pytest.raises(ReviewOutputError, match="finding missing required field"):
         validate_review_output(data)
 
 
 def test_validate_review_output_rejects_unknown_severity():
-    data = {
-        **VALID_OUTPUT,
-        "findings": [
+    data = _envelope(
+        findings=[
             {
-                "reviewer": "x",
-                "severity": "Blocker",
-                "rule": "r",
-                "path": "p",
+                "id": "x",
+                "severity": "blocker",
+                "axis": "r",
+                "location": "p",
                 "evidence": "e",
-                "remediation": "m",
+                "finding": "f",
+                "fix": "m",
+                "confidence": "high",
             }
-        ],
-    }
+        ]
+    )
     with pytest.raises(ReviewOutputError, match="unknown severity"):
         validate_review_output(data)
 
 
-def test_validate_review_output_rejects_incomplete_coverage():
-    data = {
-        **VALID_OUTPUT,
-        "reviewers": {
-            "selected": ["plugin-rulebook-checker", "security-reviewer"],
-            "completed": ["plugin-rulebook-checker"],
-            "skipped": [],
-            "failed": [],
-        },
-    }
-    with pytest.raises(ReviewOutputError, match="incomplete reviewer coverage"):
-        validate_review_output(data)
-
-
-def test_validate_review_output_rejects_coverage_confirmed_false():
-    data = {**VALID_OUTPUT, "coverage_confirmed": False}
-    with pytest.raises(ReviewOutputError, match="coverage_confirmed"):
-        validate_review_output(data)
-
-
-def _finding(reviewer, severity, rule="R9", path="x", line=1):
+def _finding(severity, rule="R9", path="x", line=1):
+    location = f"{path}:{line}" if line is not None else path
     return {
-        "reviewer": reviewer,
+        "id": f"{rule}-{path}-{line}",
         "severity": severity,
-        "rule": rule,
-        "path": path,
-        "line": line,
+        "axis": rule,
+        "location": location,
         "evidence": "e",
-        "remediation": "m",
+        "finding": "f",
+        "fix": "m",
+        "confidence": "medium",
     }
 
 
 def test_aggregate_findings_dedupes_identical_rule_location_using_highest_severity():
     report_a = validate_review_output(
-        {**VALID_OUTPUT, "findings": [_finding("plugin-rulebook-checker", "Minor")]}
+        _envelope(reviewer="plugin-rulebook-checker", findings=[_finding("minor")])
     )
     report_b = validate_review_output(
-        {**VALID_OUTPUT, "findings": [_finding("security-reviewer", "Critical")]}
+        _envelope(reviewer="security-reviewer", findings=[_finding("critical")])
     )
     aggregated = aggregate_findings([report_a, report_b])
     assert len(aggregated) == 1
@@ -296,13 +297,27 @@ def test_aggregate_findings_dedupes_identical_rule_location_using_highest_severi
 
 def test_aggregate_findings_keeps_distinct_locations_separate():
     report = validate_review_output(
-        {
-            **VALID_OUTPUT,
-            "findings": [
-                _finding("plugin-rulebook-checker", "Minor", path="a"),
-                _finding("plugin-rulebook-checker", "Minor", path="b"),
+        _envelope(
+            reviewer="plugin-rulebook-checker",
+            findings=[
+                _finding("minor", path="a"),
+                _finding("minor", path="b"),
             ],
-        }
+        )
     )
     aggregated = aggregate_findings([report])
     assert len(aggregated) == 2
+
+
+def test_validate_review_output_splits_line_number_off_location():
+    data = _envelope(findings=[_finding("minor", path="plugins/x/SKILL.md", line=42)])
+    result = validate_review_output(data)
+    assert result.findings[0].path == "plugins/x/SKILL.md"
+    assert result.findings[0].line == 42
+
+
+def test_validate_review_output_accepts_location_without_line():
+    data = _envelope(findings=[_finding("minor", path="plugins/x/SKILL.md", line=None)])
+    result = validate_review_output(data)
+    assert result.findings[0].path == "plugins/x/SKILL.md"
+    assert result.findings[0].line is None

@@ -336,16 +336,22 @@ def test_prepare_review_prints_scope_json(monkeypatch, repo, capsys):
 
 def test_check_review_output_accepts_valid_envelope(monkeypatch, repo, tmp_path):
     valid = {
-        "mode": "delta",
-        "reviewed_paths": ["x"],
-        "reviewers": {
-            "selected": ["security-reviewer"],
-            "completed": ["security-reviewer"],
-            "skipped": [],
-            "failed": [],
+        "contract_version": "1",
+        "dispatch": {
+            "id": "test-dispatch",
+            "reviewer": "security-reviewer",
+            "backend": "codex",
+            "target_paths": ["x"],
         },
-        "coverage_confirmed": True,
+        "provenance": {
+            "provider": "openai",
+            "model": "test-model",
+            "cli_version": "0.0.0",
+            "execution_profile": "read-only",
+        },
         "findings": [],
+        "verdict": "pass",
+        "inspection_limits": [],
     }
     path = tmp_path / "output.json"
     path.write_text(json.dumps(valid), encoding="utf-8")
@@ -355,7 +361,7 @@ def test_check_review_output_accepts_valid_envelope(monkeypatch, repo, tmp_path)
 
 def test_check_review_output_rejects_malformed_envelope(monkeypatch, repo, tmp_path):
     path = tmp_path / "output.json"
-    path.write_text(json.dumps({"mode": "delta"}), encoding="utf-8")
+    path.write_text(json.dumps({"contract_version": "1"}), encoding="utf-8")
     monkeypatch.chdir(repo)
     assert main(["check-review-output", "--file", str(path)]) == 1
 
@@ -424,11 +430,22 @@ def test_run_codex_review_end_to_end_clean_pass(monkeypatch, git_repo):
     real_run = subprocess_module.run
     valid_envelope = json.dumps(
         {
-            "mode": "delta",
-            "reviewed_paths": ["plugins/demo-kit/skills/x/SKILL.md"],
-            "reviewers": {"selected": [], "completed": [], "skipped": [], "failed": []},
-            "coverage_confirmed": True,
+            "contract_version": "1",
+            "dispatch": {
+                "id": "test-dispatch",
+                "reviewer": "plugin-rulebook-checker",
+                "backend": "codex",
+                "target_paths": ["plugins/demo-kit/skills/x/SKILL.md"],
+            },
+            "provenance": {
+                "provider": "openai",
+                "model": "test-model",
+                "cli_version": "0.0.0",
+                "execution_profile": "read-only",
+            },
             "findings": [],
+            "verdict": "pass",
+            "inspection_limits": [],
         }
     ).encode()
 
@@ -472,20 +489,33 @@ def test_run_codex_review_blocking_finding_returns_1(monkeypatch, git_repo):
     real_run = subprocess_module.run
     blocking_envelope = json.dumps(
         {
-            "mode": "delta",
-            "reviewed_paths": ["plugins/demo-kit/hooks/hooks.json"],
-            "reviewers": {"selected": [], "completed": [], "skipped": [], "failed": []},
-            "coverage_confirmed": True,
+            "contract_version": "1",
+            "dispatch": {
+                "id": "test-dispatch",
+                "reviewer": "security-reviewer",
+                "backend": "codex",
+                "target_paths": ["plugins/demo-kit/hooks/hooks.json"],
+            },
+            "provenance": {
+                "provider": "openai",
+                "model": "test-model",
+                "cli_version": "0.0.0",
+                "execution_profile": "read-only",
+            },
             "findings": [
                 {
-                    "reviewer": "security-reviewer",
-                    "severity": "Critical",
-                    "rule": "R6",
-                    "path": "plugins/demo-kit/hooks/hooks.json",
+                    "id": "C1",
+                    "severity": "critical",
+                    "axis": "R6",
+                    "location": "plugins/demo-kit/hooks/hooks.json",
                     "evidence": "e",
-                    "remediation": "m",
+                    "finding": "f",
+                    "fix": "m",
+                    "confidence": "high",
                 }
             ],
+            "verdict": "reject",
+            "inspection_limits": [],
         }
     ).encode()
 
@@ -538,16 +568,22 @@ def test_run_codex_review_full_mode_governance_trigger_actually_dispatches(monke
     real_run = subprocess_module.run
     clean_envelope = json.dumps(
         {
-            "mode": "full",
-            "reviewed_paths": [".claude/marketplace-sync.json"],
-            "reviewers": {
-                "selected": ["plugin-validator"],
-                "completed": ["plugin-validator"],
-                "skipped": [],
-                "failed": [],
+            "contract_version": "1",
+            "dispatch": {
+                "id": "test-dispatch",
+                "reviewer": "plugin-validator",
+                "backend": "codex",
+                "target_paths": [".claude/marketplace-sync.json"],
             },
-            "coverage_confirmed": True,
+            "provenance": {
+                "provider": "openai",
+                "model": "test-model",
+                "cli_version": "0.0.0",
+                "execution_profile": "read-only",
+            },
             "findings": [],
+            "verdict": "pass",
+            "inspection_limits": [],
         }
     ).encode()
 
