@@ -9,12 +9,16 @@
 // missed, since a .env is normally gitignored, never tracked), and an
 // instruction file resolving inside a target path.
 //
-// Run from plugins/codex-kit/: node scripts/smoke-tests/codex-windows-guardrails-preflight.mjs
+// Runnable from any cwd: node plugins/codex-kit/scripts/smoke-tests/codex-windows-guardrails-preflight.mjs
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const GUARDED_DISPATCH = path.join(SCRIPT_DIR, "..", "..", "skills", "codex-windows-guardrails", "scripts", "guarded-dispatch.mjs");
 
 let pass = 0;
 let fail = 0;
@@ -38,7 +42,7 @@ function runDispatch(repoRoot, targetPaths, instructionFile, dispatchId = "smoke
     const stdout = execFileSync(
       "node",
       [
-        "skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs",
+        GUARDED_DISPATCH,
         "--reviewer-type", "test-reviewer",
         "--instruction-file", instructionFile,
         "--target-paths", targetPaths,

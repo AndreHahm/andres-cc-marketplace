@@ -95,6 +95,7 @@ provenance field imply otherwise.
 | `references/preflight-checks.md` | What each of the three pre-flight checks actually verifies, and why dangerous-command couldn't survive as a fourth pre-flight check |
 | `references/dispatch.md` | The exec/validation step: what's reused from `codex-review-bridge` vs. built fresh, and why this bypasses the bridge's own CLI entirely |
 | `references/hooks-sync-investigation.md` | Confirmed facts about Codex's own hook system, and the open question this skill does not resolve |
+| `references/codex-instruction-template.md` | Why the dangerous-command text is a non-enforced request, plus its provenance/ordering history; points to `references/dispatch.md` for the actual prompt-assembly shape |
 | `assets/dangerous-command-instructions.txt` | The literal instruction text appended to every dispatch — source of truth; `references/preflight-checks.md` explains it, doesn't duplicate it |
 | `scripts/guarded-dispatch.mjs` | The one script — everything above happens in this single call |
 | `assets/settings.json` | Shipped, disabled-by-default policy default |

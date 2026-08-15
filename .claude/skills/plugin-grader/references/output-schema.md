@@ -46,44 +46,31 @@ The script's output is **not** the final artifact — it's inlined into a larger
 
 **Component mode** (`<target>-<timestamp>.json`):
 
-**R18 exception (recorded):** the block below intentionally exceeds the rulebook's 30-line threshold — it's a single coherent schema example whose value is showing the full report shape at once; splitting it would fragment the schema across multiple fences without removing any content.
+Top-level fields (each `dimensions` entry is shown separately below, since its own nested shape is the part worth seeing in full):
 
 ```json
 {
   "target": "skill-tester",
   "target_type": "skill",
   "graded_at": "2026-07-11T14:32:00Z",
-  "dimensions": {
-    "structure_architecture": {
-      "score": 9.5, "weight": 0.15, "is_na": false,
-      "source": "skilldir-reviewer, skill-reviewer",
-      "findings_summary": "1 Minor: generic reference filename."
-    }
-  },
+  "dimensions": { "<dimension_name>": "... see the per-dimension shape below ..." },
   "weighted_total": 7.8,
-  "gates_applied": [],
+  "gates_applied": [{"gate": "...", "reason": "...", "cap": 6.0}],
   "final_score": 7.8,
-  "swot": {
-    "strengths": ["..."],
-    "weaknesses": ["..."],
-    "opportunities": ["..."],
-    "threats": ["..."]
-  },
-  "prioritized_next_steps": [
-    {
-      "rank": 1,
-      "action": "Fix the self-contradictory arguments example in validation-checklist.md",
-      "dimension": "content_quality",
-      "points_gain_estimate": 0.9,
-      "lifts_gate": null
-    }
-  ],
+  "swot": {"strengths": ["..."], "weaknesses": ["..."], "opportunities": ["..."], "threats": ["..."]},
+  "prioritized_next_steps": [{"rank": 1, "action": "...", "dimension": "...", "points_gain_estimate": 0.9, "lifts_gate": null}],
   "reasoning_summary": "2-4 sentence brief explanation of the final score.",
-  "notes": {
-    "inspection_limits": "...",
-    "na_dimensions": ["robustness"],
-    "backend_mix": {"claude_only": true, "mixed": false, "codex_reviewers": []}
-  }
+  "notes": {"inspection_limits": "...", "na_dimensions": ["robustness"], "backend_mix": {"claude_only": true, "mixed": false, "codex_reviewers": []}}
+}
+```
+
+Each `dimensions` entry's own nested shape:
+
+```json
+"structure_architecture": {
+  "score": 9.5, "weight": 0.15, "is_na": false,
+  "source": "skilldir-reviewer, skill-reviewer",
+  "findings_summary": "1 Minor: generic reference filename."
 }
 ```
 

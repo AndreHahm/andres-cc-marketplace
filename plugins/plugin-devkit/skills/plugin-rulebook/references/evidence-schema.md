@@ -9,9 +9,13 @@ canonical definition, swept everywhere it's restated).
 
 This file formalizes `plugin-lifecycle-downstream`'s own "Scope Manifest" and "Finding and
 Report Contract" sections — those sections describe the same shapes in prose; this file is
-the field-by-field schema they were already written against. If the two ever disagree, this
-file is wrong and needs fixing to match the SKILL.md contract, not the other way around: the
-SKILL.md prose is the behavioral source of truth, this file exists to make it checkable.
+the field-by-field schema they were already written against. If the two disagree with no
+disclosed reason, this file is wrong and needs fixing to match the SKILL.md contract, not the
+other way around: the SKILL.md prose is the behavioral source of truth, this file exists to
+make it checkable. A disclosed additive extension — a field this file documents as not yet
+mirrored into SKILL.md's prose, stated explicitly where it's introduced (see `## Finding`
+below) — is not a disagreement to resolve, just a lag to close whenever that prose is next
+touched.
 
 ## Conventions Shared By All Four Shapes
 
