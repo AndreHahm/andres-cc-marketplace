@@ -131,11 +131,13 @@ provenance field imply otherwise.
   caught via the resolved target's basename, not the symlink's own name.
 
 **Current test coverage:**
-- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (11 scenarios, run from
+- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (14 scenarios, run from
   `plugins/codex-kit/`) — every bullet above, executed against real scratch git repositories, not a
-  template check. No `evals/codex-windows-guardrails/` suite exists yet (this skill has no
-  structural eval grading, unlike its 10 codex-kit siblings — see `plugins/codex-kit/README.md`'s
-  Known Limitations and `CONTRIBUTING.md`).
+  template check.
+- `evals/codex-windows-guardrails/` (3 evals, live-run with real `grading.json`/`outputs/` on disk —
+  see `plugins/codex-kit/README.md`'s Known Limitations and `CONTRIBUTING.md` for how this compares
+  to its codex-kit siblings: `codex-review-bridge` has partial live coverage (2 of 3 evals), the
+  other 9 have structural grading only, not a live run).
 - **Not yet exercised end-to-end:** the enabled `danger-full-access` dispatch path itself — every
   scenario above tests the disabled-by-default short-circuit or a pre-flight refusal, never a real
   `codex exec` call under `danger-full-access`. The feature ships disabled by default; enabling it
