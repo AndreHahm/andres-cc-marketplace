@@ -502,19 +502,109 @@ def test_run_codex_review_blocking_finding_returns_1(monkeypatch, git_repo):
     assert rc == 1
 
 
-def test_run_codex_review_full_mode_fails_closed_instead_of_silently_passing(monkeypatch, git_repo):
+def test_run_codex_review_full_mode_governance_trigger_actually_dispatches(monkeypatch, git_repo):
+    """Full mode is no longer an unconditional fail-closed dead end: a
+    governance-path trigger now dispatches DELTA_VALIDATE's own baseline
+    (plugin-rulebook-checker, dependency-reviewer, security-reviewer) union'd
+    with plugin-validator, the reviewer targeted at .claude/marketplace-sync.json
+    specifically -- escalation is additive, never a replacement, so this
+    trigger always dispatches at least as many reviewers as an ordinary
+    delta scope would have."""
     import subprocess as subprocess_module
 
-    git_repo.stage(".claude/marketplace-sync.json", "{}")
+    for name in (
+        "plugin-validator",
+        "plugin-rulebook-checker",
+        "dependency-reviewer",
+        "security-reviewer",
+    ):
+        git_repo.write(f".codex/agents/{name}.toml", 'developer_instructions = """\ncheck\n"""\n')
+    git_repo.stage(".claude/marketplace-sync.json", '{"version": 1}')
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
     subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
     base_sha = subprocess_module.run(
         ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
     ).stdout.strip()
 
     # This is exactly the governance-path escalation trigger.
-    git_repo.stage(".claude/marketplace-sync.json", '{"changed": true}')
+    git_repo.stage(
+        ".claude/marketplace-sync.json", '{"version": 1, "plugin_mirrors": ["sample-kit"]}'
+    )
     subprocess_module.run(
         ["git", "commit", "-q", "-m", "change registry"], cwd=git_repo.root, check=True
+    )
+
+    calls = []
+    real_run = subprocess_module.run
+    clean_envelope = json.dumps(
+        {
+            "mode": "full",
+            "reviewed_paths": [".claude/marketplace-sync.json"],
+            "reviewers": {
+                "selected": ["plugin-validator"],
+                "completed": ["plugin-validator"],
+                "skipped": [],
+                "failed": [],
+            },
+            "coverage_confirmed": True,
+            "findings": [],
+        }
+    ).encode()
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            calls.append(argv)
+            return subprocess_module.CompletedProcess(
+                argv, returncode=0, stdout=clean_envelope, stderr=b""
+            )
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess_module, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["run-codex-review", "--base-sha", base_sha])
+    assert rc == 0
+    dispatched = {
+        argv[argv.index("--reviewer-type") + 1] for argv in calls if "--reviewer-type" in argv
+    }
+    assert dispatched == {
+        "plugin-validator",
+        "plugin-rulebook-checker",
+        "dependency-reviewer",
+        "security-reviewer",
+    }
+
+
+def test_run_codex_review_full_mode_still_fails_closed_if_a_trigger_defines_no_reviewers(
+    monkeypatch, git_repo
+):
+    """Defensive-guard regression test: if a future full-mode trigger is
+    ever added without a corresponding reviewer set (the exact gap this
+    guard exists to catch), run-codex-review must still refuse rather than
+    silently pass with zero coverage. Simulated directly via a monkeypatched
+    derive_review_scope, since both real triggers are now fully defined."""
+    import subprocess as subprocess_module
+
+    from scripts.marketplace_ci.review import ReviewScope
+
+    git_repo.write("README.md", "x")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    git_repo.write("README.md", "y")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "change"], cwd=git_repo.root, check=True)
+
+    undefined_full_scope = ReviewScope(
+        mode="full",
+        structural_check="scripts.marketplace_ci.validators:run_delta_structural_checks",
+        validate=(),
+        audit=(),
+        paths=("README.md",),
+    )
+    monkeypatch.setattr(
+        "scripts.marketplace_ci.__main__.derive_review_scope", lambda *a, **kw: undefined_full_scope
     )
 
     calls = []
@@ -530,4 +620,4 @@ def test_run_codex_review_full_mode_fails_closed_instead_of_silently_passing(mon
     monkeypatch.chdir(git_repo.root)
     rc = main(["run-codex-review", "--base-sha", base_sha])
     assert rc == 2  # fails closed -- never a silent pass with zero coverage
-    assert calls == []  # no reviewer was dispatched at all for undefined full-mode
+    assert calls == []  # no reviewer was dispatched at all for an undefined trigger

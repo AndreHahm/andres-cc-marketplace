@@ -1,12 +1,23 @@
 import pytest
 
 from scripts.marketplace_ci.review import (
+    FULL_ESCALATION_PATHS,
+    FULL_MODE_GOVERNANCE_REVIEWERS,
     ReviewOutputError,
     ReviewResult,
     aggregate_findings,
     derive_review_scope,
     validate_review_output,
 )
+
+
+def test_full_escalation_paths_and_governance_reviewers_stay_in_sync():
+    # Guards against the exact drift class M1 found: a path present in one
+    # list but not the other, either silently never escalating (reverse
+    # direction) or hitting the fail-closed guard unexpectedly (this
+    # direction) instead of dispatching a real reviewer set.
+    assert set(FULL_ESCALATION_PATHS) == set(FULL_MODE_GOVERNANCE_REVIEWERS)
+    assert all(reviewers for reviewers in FULL_MODE_GOVERNANCE_REVIEWERS.values())
 
 
 def test_skill_change_selects_delta_validate_and_skill_audit(change, dependency_index):
@@ -34,6 +45,85 @@ def test_rulebook_change_escalates_to_full(change, dependency_index):
         [change("plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md")], dependency_index()
     )
     assert scope.mode == "full"
+    # Additive: DELTA_VALIDATE's own baseline is always present, union'd with
+    # the governance-specific reviewers -- never a replacement (see the
+    # "never a subset of delta" test below for why this matters).
+    assert scope.validate == (
+        "consistency-reviewer",
+        "dependency-reviewer",
+        "plugin-rulebook-checker",
+        "security-reviewer",
+    )
+    # The changed path is itself under plugins/skills/, so it still earns
+    # its own type-specific audit reviewer, same as an ordinary delta change.
+    assert scope.audit == ("skill-reviewer",)
+
+
+def test_marketplace_json_change_escalates_to_full_with_validator(change, dependency_index):
+    scope = derive_review_scope([change(".claude-plugin/marketplace.json")], dependency_index())
+    assert scope.mode == "full"
+    assert scope.validate == (
+        "dependency-reviewer",
+        "plugin-rulebook-checker",
+        "plugin-validator",
+        "security-reviewer",
+    )
+    assert scope.audit == ()
+
+
+def test_multiple_governance_paths_union_their_reviewer_sets(change, dependency_index):
+    changes = [
+        change("plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md"),
+        change(".claude-plugin/marketplace.json"),
+    ]
+    scope = derive_review_scope(changes, dependency_index())
+    assert scope.mode == "full"
+    assert scope.validate == (
+        "consistency-reviewer",
+        "dependency-reviewer",
+        "plugin-rulebook-checker",
+        "plugin-validator",
+        "security-reviewer",
+    )
+    assert scope.audit == ("skill-reviewer",)
+
+
+def test_governance_escalation_is_never_a_subset_of_the_equivalent_delta_scope(
+    change, dependency_index
+):
+    """Regression test for the Critical this design started with: an author
+    must never be able to *reduce* reviewer coverage by touching a
+    governance path alongside an unrelated risky change."""
+    risky_change = change("plugins/demo-kit/skills/x/SKILL.md")
+    delta_scope = derive_review_scope([risky_change], dependency_index())
+    assert delta_scope.mode == "delta"
+
+    full_scope = derive_review_scope(
+        [risky_change, change(".claude-plugin/marketplace.json")], dependency_index()
+    )
+    assert full_scope.mode == "full"
+
+    delta_reviewers = set(delta_scope.validate) | set(delta_scope.audit)
+    full_reviewers = set(full_scope.validate) | set(full_scope.audit)
+    assert full_reviewers >= delta_reviewers
+
+
+def test_governance_path_missing_from_reviewer_map_fails_closed(
+    change, dependency_index, monkeypatch
+):
+    """M1 regression: a path present in FULL_ESCALATION_PATHS but absent
+    from FULL_MODE_GOVERNANCE_REVIEWERS must not raise KeyError or silently
+    drop the escalation -- derive_review_scope itself must detect the gap
+    and return an empty scope for run-codex-review's own guard to catch."""
+    import scripts.marketplace_ci.review as review_module
+
+    monkeypatch.setattr(
+        review_module, "FULL_ESCALATION_PATHS", (*FULL_ESCALATION_PATHS, "UNDEFINED.md")
+    )
+    scope = derive_review_scope([change("UNDEFINED.md")], dependency_index())
+    assert scope.mode == "full"
+    assert scope.validate == ()
+    assert scope.audit == ()
 
 
 def test_non_plugin_change_is_light_mode(change, dependency_index):
@@ -48,6 +138,23 @@ def test_unbounded_dependency_closure_escalates_to_full(change):
     huge_index = {"plugins/demo-kit/skills/x/SKILL.md": tuple(f"dep-{i}" for i in range(100))}
     scope = derive_review_scope(changes, huge_index, dependency_closure_limit=50)
     assert scope.mode == "full"
+    # Reuses delta's own baseline reviewer set (this is "delta, but big"),
+    # scoped to the full closure rather than only the raw diff.
+    assert scope.validate == ("dependency-reviewer", "plugin-rulebook-checker", "security-reviewer")
+    assert set(scope.paths) >= {"plugins/demo-kit/skills/x/SKILL.md", "dep-0", "dep-99"}
+
+
+def test_unbounded_dependency_closure_includes_type_specific_audit(change):
+    changes = [change("plugins/demo-kit/skills/x/SKILL.md")]
+    huge_index = {
+        "plugins/demo-kit/skills/x/SKILL.md": (
+            *(f"dep-{i}" for i in range(99)),
+            "plugins/demo-kit/agents/y.md",
+        )
+    }
+    scope = derive_review_scope(changes, huge_index, dependency_closure_limit=50)
+    assert scope.mode == "full"
+    assert scope.audit == ("skill-reviewer", "subagent-reviewer")
 
 
 def test_multiple_component_types_combine_audit_reviewers(change, dependency_index):
