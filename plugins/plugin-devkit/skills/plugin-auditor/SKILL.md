@@ -11,7 +11,7 @@ description: >-
   plugin-lifecycle-downstream's Audit phase or plugin-grader need raw evidence
   instead of a computed score.
 argument-hint: "[target]"
-allowed-tools: Read Grep Glob Agent Write Bash(date:*)
+allowed-tools: Read Grep Glob Agent Write Bash(date:*) Bash(node */codex-review-bridge/scripts/bridge-invoke.mjs:*) Bash(git ls-files:*)
 ---
 
 # Plugin Auditor
@@ -39,7 +39,10 @@ which agents run in each mode — that table is ported directly from
 4. **Dispatch matching reviewers in parallel** — per `references/dispatch-table.md`. Print a
    status line first (e.g. "Dispatching N reviewers in parallel — this typically takes
    several minutes...") since agent dispatches run silently with no built-in progress
-   streaming.
+   streaming. Before dispatching, resolve each reviewer's backend (Claude-native, the
+   unchanged default, or Codex) — see `references/codex-backend.md`. This resolver runs for
+   every dispatch, but immediately returns Claude-native (matching today's behavior exactly)
+   unless a user has explicitly enabled Codex routing.
 5. **Normalize findings** — for each dispatched source, apply that source's own
    "Shared-schema join" note (every reviewer this skill dispatches documents one) to produce
    `evidence-schema.md` Finding entries: `id: <source>:<local-id>`, `source`, `scope` copied
@@ -82,7 +85,10 @@ See `plugin-rulebook/references/evidence-schema.md`'s Report Revision shape — 
 written report is exactly that shape, with `produced_by: plugin-auditor` and `findings[]`
 populated from every dispatched source's normalized output. No `score`, `gates_applied`,
 `swot`, or `prioritized_next_steps` field — those don't exist in this skill's output at all,
-not merely left empty.
+not merely left empty. When any finding used the Codex backend, its `evidence_before`/`fix`
+may quote content Codex observed in the target — treat the written report the same as any
+other artifact containing quoted repo content for redaction purposes before sharing it
+outside this run.
 
 ## Testing & Validation
 
@@ -106,6 +112,12 @@ not merely left empty.
    never gathered before.
 6. **Self-check** — `scripts/smoke_test.py` passes (this skill's own persisted smoke test),
    re-run after any SKILL.md edit.
+7. **Codex backend disabled (default)** — confirm every dispatch goes through `Agent()` exactly as
+   today; `references/codex-backend.md`'s resolver runs but immediately returns Claude-native when
+   `reviewer_backend.enabled` is false or unset — no Codex invocation is attempted.
+8. **Codex backend enabled, one reviewer fails** — confirm that reviewer falls back to the
+   Claude-native `Agent()` dispatch, the fallback is recorded once on that dispatch's coverage note
+   (not stamped per-finding), and every other reviewer's dispatch is unaffected.
 
 **Quality gates:**
 - [ ] Never dispatches all five type-matched `*-reviewer` agents for a single target — only
@@ -118,6 +130,10 @@ not merely left empty.
       auto-invoked
 - [ ] A staging-mirror duplicate (`.claude/` vs `plugins/plugin-devkit/`) is noted, not
       treated as an error
+- [ ] `security-reviewer` is never routed through Codex, regardless of configuration — hardcoded
+      in the resolver, not just a config default
+- [ ] A disabled/missing/malformed backend config always resolves to Claude-native — never fails
+      the dispatch
 
 ## When to Invoke
 
@@ -132,6 +148,8 @@ own dispatch logic doesn't depend on either caller.
 | Resource | Purpose |
 |---|---|
 | `references/dispatch-table.md` | Type-matched reviewer table, component-mode and plugin-mode dispatch lists, pre-supplied-findings reuse discipline — ported from `plugin-grader/references/rubric.md` |
+| `references/codex-backend.md` | Backend resolver, Codex adapter, and configuration for optionally routing a reviewer dispatch through Codex instead of Claude — disabled by default |
+| `assets/settings.json` | Git-tracked default config for the Codex backend (`reviewer_backend.enabled: false`) — see `references/codex-backend.md`'s Configuration section |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run before packaging or after any SKILL.md edit |
 | `plugin-rulebook/references/evidence-schema.md` | The shared Finding/Report Revision shape this skill's output conforms to |
 | `plugin-grader` skill | Consumes this skill's output for scoring — standalone (fresh dispatch) and evidence-only (pre-gathered) modes |

@@ -1,0 +1,14 @@
+{
+  "skill_name": "plugin-auditor",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-auditor/SKILL.md",
+  "description": "Bounded Phase 6 smoke check (plugin-lifecycle-upstream) after adding an optional, disabled-by-default Codex backend resolver to Step 4.",
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "Default-disabled dispatch stays fully Claude-native",
+      "prompt": "Audit the plugin-auditor skill itself (component mode) at plugins/plugin-devkit/skills/plugin-auditor/. Do not change any configuration first -- use whatever the shipped default is.",
+      "expected_output": "Every reviewer dispatch goes through the existing Agent()-based Claude-native path. No codex-review-bridge / bridge-invoke.mjs invocation is attempted. The resolver in references/codex-backend.md is consulted (per its own documented 'runs for every dispatch, immediately returns Claude-native when disabled' behavior) but produces no observable difference from pre-session behavior.",
+      "files": ["plugins/plugin-devkit/skills/plugin-auditor/SKILL.md", "plugins/plugin-devkit/skills/plugin-auditor/references/codex-backend.md", "plugins/plugin-devkit/skills/plugin-auditor/assets/settings.json"]
+    }
+  ]
+}

@@ -79,9 +79,21 @@ The script's output is **not** the final artifact — it's inlined into a larger
     }
   ],
   "reasoning_summary": "2-4 sentence brief explanation of the final score.",
-  "notes": {"inspection_limits": "...", "na_dimensions": ["robustness"]}
+  "notes": {
+    "inspection_limits": "...",
+    "na_dimensions": ["robustness"],
+    "backend_mix": {"claude_only": true, "mixed": false, "codex_reviewers": []}
+  }
 }
 ```
+
+`notes.backend_mix` is additive — present whenever the underlying evidence came from a
+`plugin-auditor` dispatch (i.e. whenever the resolver in `plugin-auditor/references/codex-backend.md`
+ran at all), regardless of whether any finding actually used the Codex backend. `claude_only: true`
+when every finding's `backend` is `claude` or omitted (see `evidence-schema.md`'s Finding shape) —
+the common case today, since the backend defaults to disabled; `mixed: true` when both backends
+appear; `codex_reviewers` lists which reviewer types actually ran through Codex for this report, so
+two runs of the same target aren't presented as trivially comparable when their backend mix differs.
 
 `dimensions` in the *final report* carries the full per-dimension object (`score`/`weight`/`is_na`/`source`/`findings_summary`) — richer than the script's input/output, which only needs `counts`/`score` to compute. Do not conflate the two shapes when writing the report: run the script first with the terse input, then build the rich report around its output.
 

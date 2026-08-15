@@ -39,16 +39,20 @@ def check_bash_grants():
     # consistent phrasing for "run this via the scoped Bash(...) tool". A bare `Bash(...)`
     # mention elsewhere (e.g. an illustrative example of a bad grant in a test scenario)
     # is not an instruction to invoke it and must not be flagged as an unmet grant.
+    # references/*.md is scanned too — a grant can be invoked entirely from a reference
+    # file (e.g. codex-backend.md), not just SKILL.md's own body.
     text = SKILL_MD.read_text(encoding="utf-8")
     header_end = text.find("\n---\n", 4) + 5
     frontmatter, body = text[:header_end], text[header_end:]
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     granted = set(re.findall(r"Bash\([^)]*\)", fm_line_match.group(1))) if fm_line_match else set()
     referenced = set(re.findall(r"scoped `(Bash\([^)]*\))", body))
+    for ref_file in sorted((SKILL_DIR / "references").glob("*.md")):
+        referenced |= set(re.findall(r"scoped `(Bash\([^)]*\))", ref_file.read_text(encoding="utf-8")))
     missing = referenced - granted
     if missing:
-        return False, "body invokes Bash scope(s) missing from allowed-tools: " + ", ".join(sorted(missing))
-    return True, "every scoped Bash invocation in the body is granted"
+        return False, "body/references invoke Bash scope(s) missing from allowed-tools: " + ", ".join(sorted(missing))
+    return True, "every scoped Bash invocation in the body/references is granted"
 
 
 CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants]

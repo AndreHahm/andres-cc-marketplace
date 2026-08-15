@@ -1,0 +1,7 @@
+{
+  "reviewer_backend": {
+    "enabled": false,
+    "default": "claude",
+    "per_reviewer": {}
+  }
+}
