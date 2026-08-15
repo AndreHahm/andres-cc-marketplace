@@ -5,7 +5,7 @@ Schema conformance is necessary but not sufficient — a structurally valid resp
 ## Currently implemented (in `scripts/bridge-invoke.mjs`'s `semanticallyValidate`)
 
 1. `dispatch.id` and `dispatch.reviewer` match the request (`backend`/`target_paths` are not yet cross-checked).
-2. Every cited path is normalized, remains inside the allowed target scope, and exists on disk.
+2. Every cited path is normalized, remains inside the allowed target scope, and exists on disk — this applies to `location` and, when present, to every entry in the optional `components[]` array (a multi-file finding's secondary citations get the same containment/existence check as its primary `location`).
 3. Finding IDs are unique.
 
 Any failed check returns a `semantic_validation_failure` typed failure rather than passing the finding through.

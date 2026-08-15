@@ -46,6 +46,17 @@ const ENVELOPE_SCHEMA = {
           severity: { enum: ["critical", "major", "minor"] },
           axis: { type: "string" },
           location: { type: "string" },
+          // Optional: a finding that is inherently about a relationship
+          // between multiple files (a dependency cycle, a bidirectional
+          // coupling, a cross-file consistency/mirror mismatch) lists every
+          // other component it involves here, in addition to `location`'s
+          // single primary citation -- never as a replacement for it.
+          // Matches dependency-reviewer's own native Structured Output Mode
+          // instructions (`findings[].components`), which previously had no
+          // schema field to land in here, forcing the model to cram a
+          // semicolon-joined path list into `location` instead -- a string
+          // that then failed the containment/existence check below.
+          components: { type: "array", items: { type: "string" } },
           evidence: { type: "string" },
           finding: { type: "string" },
           fix: { type: "string" },
@@ -70,14 +81,14 @@ function parseArgs(argv) {
   return options;
 }
 
-function isWithin(absolute, scopeRoot) {
+export function isWithin(absolute, scopeRoot) {
   // A plain startsWith() would let "/repo/plugins/foobar" pass as "within"
   // "/repo/plugins/foo" — require an exact match or a path-separator
   // boundary right after the scope root.
   return absolute === scopeRoot || absolute.startsWith(scopeRoot + path.sep);
 }
 
-function locateInSemanticScope(targetPaths, location, repoRoot) {
+export function locateInSemanticScope(targetPaths, location, repoRoot) {
   // Strip a trailing ":line" or ":line:col" suffix instead of splitting on
   // the first colon — a plain split() truncates Windows drive-letter paths
   // like "C:\repo\src\foo.js:42" down to just "C".
@@ -93,7 +104,7 @@ function locateInSemanticScope(targetPaths, location, repoRoot) {
   return fs.existsSync(absolute);
 }
 
-function semanticallyValidate(envelope, { targetPaths, dispatchId, reviewerType, repoRoot }) {
+export function semanticallyValidate(envelope, { targetPaths, dispatchId, reviewerType, repoRoot }) {
   if (envelope.dispatch.id !== dispatchId || envelope.dispatch.reviewer !== reviewerType) {
     return { ok: false, category: "semantic_validation_failure", detail: "dispatch id/reviewer mismatch" };
   }
@@ -105,6 +116,11 @@ function semanticallyValidate(envelope, { targetPaths, dispatchId, reviewerType,
     seenIds.add(finding.id);
     if (!locateInSemanticScope(targetPaths, finding.location, repoRoot)) {
       return { ok: false, category: "semantic_validation_failure", detail: `finding ${finding.id} cites an out-of-scope or nonexistent path: ${finding.location}` };
+    }
+    for (const component of finding.components ?? []) {
+      if (!locateInSemanticScope(targetPaths, component, repoRoot)) {
+        return { ok: false, category: "semantic_validation_failure", detail: `finding ${finding.id} cites an out-of-scope or nonexistent component: ${component}` };
+      }
     }
   }
   return { ok: true };
@@ -217,7 +233,27 @@ async function main() {
   console.log(JSON.stringify(result.data, null, 2));
 }
 
-main().catch((error) => {
-  console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: error instanceof Error ? error.message : String(error) }));
-  process.exit(1);
-});
+// Entry-point guard (matches stop-review-gate-hook.mjs's own pattern): lets
+// smoke tests `import` the pure validation functions above (isWithin,
+// locateInSemanticScope, semanticallyValidate) directly, without triggering
+// a real CLI run -- main() only fires when this file is executed directly,
+// never on import.
+function computeIsEntryPoint() {
+  if (!process.argv[1]) {
+    return false;
+  }
+  try {
+    const invoked = fs.realpathSync(path.resolve(process.argv[1]));
+    const current = fs.realpathSync(fileURLToPath(import.meta.url));
+    return process.platform === "win32" ? invoked.toLowerCase() === current.toLowerCase() : invoked === current;
+  } catch {
+    return false;
+  }
+}
+
+if (computeIsEntryPoint()) {
+  main().catch((error) => {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: error instanceof Error ? error.message : String(error) }));
+    process.exit(1);
+  });
+}

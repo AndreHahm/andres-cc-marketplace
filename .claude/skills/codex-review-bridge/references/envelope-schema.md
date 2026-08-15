@@ -9,6 +9,7 @@ This is codex-kit's canonical findings envelope — every reviewer dispatched th
   "provenance": { "provider": "openai", "model": "reported-model-id", "cli_version": "reported-cli-version", "execution_profile": "container-read-only" },
   "findings": [
     { "id": "M1", "severity": "major", "axis": "reviewer-defined-axis", "location": "plugins/example/skills/example/SKILL.md:42",
+      "components": ["plugins/example/skills/other-example/SKILL.md"],
       "evidence": "Concise observed evidence", "finding": "What is wrong and why it matters", "fix": "Specific recommended remediation", "confidence": "high" }
   ],
   "verdict": "pass",
@@ -27,6 +28,7 @@ This is codex-kit's canonical findings envelope — every reviewer dispatched th
 - `severity` — restricted to `critical` / `major` / `minor`.
 - `axis` — from the reviewer's own allowlist (caller-supplied, not invented by the bridge).
 - `location` — must resolve to an in-scope path and, if a line is given, an existing line.
+- `components` (optional) — for a finding that is inherently about a relationship between multiple files (a dependency cycle, a bidirectional coupling, a cross-file consistency/mirror mismatch), lists every other component involved, in addition to `location`'s single primary citation — never as a replacement for it. Each entry is validated the same way as `location` (must resolve to an in-scope, existing path).
 - `evidence` — what was observed, not just a conclusion.
 - `fix` — preserves the remediation value existing reviewers already provide.
 - `confidence` — `high` / `medium` / `low`; informs reporting, does not alter scoring.
