@@ -12,7 +12,7 @@ description: >-
   that; codex-rescue delegates one task to one Codex call, not a
   coordinated multi-worktree fix loop.
 argument-hint: "task description [--write] [--model MODEL] [--effort LEVEL] [--resume-last|--resume|--fresh] [--no-preview] [--persist] [--governed]"
-allowed-tools: ["Bash(node */scripts/codex-companion.mjs:*)", "Bash(git status:*)", "Bash(git rev-parse:*)", "Bash(git diff:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(rm -f */tmp/*:*)", "Read", "Write", "AskUserQuestion"]
+allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(git status:*)", "Bash(git rev-parse:*)", "Bash(git diff:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Read", "Write", "AskUserQuestion"]
 ---
 
 # Codex Task Delegation + Double-Check
@@ -33,6 +33,12 @@ result at Phase 1.5.
 **Critical:** do NOT explore the repo before Codex runs. The point of
 delegating is that Codex builds the context. Exploring first biases
 your double-check and wastes turns.
+
+## Quick Start
+
+1. **Analyze** (Phase 0-1) — parse the task, wrap it in scaffolding, without exploring the repo first.
+2. **Invoke, wait** (Phase 2-3) — background the Codex call, poll for completion.
+3. **Double-check + report** (Phase 4-5) — `git diff` the changed files, read only what Codex cited, save the report. Never auto-accept — present and wait for the user.
 
 ## Execution Contract
 
@@ -60,7 +66,7 @@ safety net.
 
 **Session-level first-send confirmation** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): if this is the first call in the current session that would send any code or context to Codex (across `codex-rescue`, `codex-verify`, `codex-research`, or any other codex-kit component), confirm once via `AskUserQuestion` before proceeding. Subsequent calls in the same session don't re-ask.
 
-**Sandbox transparency:** `--write` maps to workspace-write sandbox. If that sandbox mode fails on this platform (matches what `/codex-kit:setup` already tested), state that explicitly before falling back to `danger-full-access` — never silently.
+**Sandbox transparency:** `--write` maps to workspace-write sandbox. If that sandbox mode fails on this platform (matches what `/codex-kit:setup` already tested), state that explicitly and confirm via `AskUserQuestion` before falling back to `danger-full-access` — never silently, and never on disclosure alone. This is the highest-privilege transition in the plugin (full read-write, on a run where Codex is already authorized to modify the tree); options: proceed under `danger-full-access` / abort.
 
 ---
 
@@ -393,7 +399,12 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
 - The diff (if any)
 - Claude's per-finding / per-file evaluation
 - Verdict: appropriate / has issues / needs rework
-- **Do NOT auto-accept changes.** Present, wait for user.
+- **Do NOT auto-accept changes.** Present, wait for user. **If the user declines the changes**, revert
+  using the literal `PRE_SHA`/`PRE_LIST` captured in Phase 2: `git checkout "$PRE_SHA" -- <files Codex
+  touched>` for the specific files, or `git reset --hard "$PRE_SHA"` if the user wants the whole working
+  tree restored to its pre-delegation state (confirm which scope before running either — `PRE_LIST`
+  records what was already dirty before this run started, so a hard reset shouldn't discard changes that
+  predate this delegation).
 
 **Failure:** save to
 `${CLAUDE_PLUGIN_DATA}/reviews/rescue-<YYYYMMDD-HHMMSS>-failed.md` with
@@ -402,12 +413,10 @@ the §6 error category and captured stderr, truncated to 500 characters
 of repository content, so cap it rather than persisting it unbounded.
 Treat this and the success-path report as sensitive before sharing.
 
-Clean up temp files using literal paths:
-
-```bash
-rm -f "<literal PROMPT_FILE path>" "<literal JOB_JSON_FILE path>" "<literal JOB_JSON_FILE.stderr path>" \
-      "<literal pre.list path>" "<literal pre.sha path>"
-```
+Leave the temp files (`PROMPT_FILE`, `JOB_JSON_FILE`, `JOB_JSON_FILE.stderr`, `pre.list`, `pre.sha`) in
+`${CLAUDE_PLUGIN_DATA}/tmp/` — a plugin-private data directory, never part of the reviewed repository. No
+active cleanup step requires a destructive `rm` grant scoped broadly enough to also match a `tmp/`
+directory the reviewed repo itself might contain.
 
 ---
 
@@ -434,6 +443,7 @@ For the full shared gotchas list, read
 **Verify it does NOT activate on:**
 - A multi-phase plan-validate-implement-review request → `codex-plan-loop`
 - "verify this plan" / "review this doc" (no implementation task) → `codex-verify`
+- Locating/finding a session ID rather than resuming one → `codex-session-lookup`
 
 **Concrete scenarios to check:**
 1. A vague task ("fix it") → `AskUserQuestion` for clarification, never repo exploration to guess intent.
@@ -443,7 +453,7 @@ For the full shared gotchas list, read
 
 **Current test coverage:**
 - `evals/codex-rescue/evals.json` — 1 defined scenario (basic delegation, Phase 0 governance checklist, no repo exploration before Phase 2, no auto-accept). Structurally graded 2026-08-12 (PASS — Phase 0's governance/session gate, the explicit "do NOT explore the repo" instruction, and the "Do NOT auto-accept changes" rule all match the eval's `expected_output`); not a live empirical run.
-- `scripts/smoke-tests/codex-rescue-prompt-assembly.mjs` — mechanically verifies the Phase 2 prompt-assembly template and the resume-flag omission logic; does not exercise a real Codex call.
+- `scripts/smoke-tests/codex-rescue-prompt-assembly.mjs` — mechanically verifies the Phase 2 prompt-assembly template, the bare-stdout `--print-job-id` capture (see `scripts/smoke-tests/README.md`), and the resume-flag omission logic; does not exercise a real Codex call.
 
 **Quality gates:**
 - [ ] Phase 1 never explores the repo before Codex runs

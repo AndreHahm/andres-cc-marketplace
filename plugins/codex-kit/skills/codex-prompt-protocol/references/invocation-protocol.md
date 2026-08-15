@@ -70,6 +70,7 @@ review a specific commit, use `--base <sha>~1 --scope branch`.
 | `--effort <level>` | value | documented | one of `VALID_REASONING_EFFORTS`: `{none, minimal, low, medium, high, xhigh}` |
 | `--cwd <path>` | value | parser-only | |
 | `--prompt-file <path>` | value | **parser-only** (not in `printUsage`) | read via `readTaskPrompt` |
+| `--print-job-id` | bool | documented | **honored** — with `--background`, writes the bare `jobId` to stdout (no JSON wrapper), letting a caller capture it directly (`JOB_ID=$(node "$CODEX_COMPANION" task --background --print-job-id ...)`) without parsing JSON for a single field. This is the current, recommended job-ID capture path — see §5 |
 | `--wait` | — | **NOT REGISTERED** | silently pushed to positionals → **prompt corruption**, see §3 |
 
 ### `status` (`handleStatus`)
@@ -122,7 +123,7 @@ that **looks** like it works but is fragile — quoting rules diverge from
 the shell and edge cases break silently.
 
 codex-kit's task/review skills always invoke the companion with **multi-arg
-form** (`task --background --json`), so this branch never fires. Never pass
+form** (`task --background --print-job-id`), so this branch never fires. Never pass
 `$ARGUMENTS` as a single quoted blob.
 
 ---
@@ -298,8 +299,9 @@ cap, surface as `wait-timeout` (§6).
   Claude has no need for it, since Pattern A polls via Claude's own
   `run_in_background`/`BashOutput` bash_id instead, not via
   `status --wait <jobId>` (see §4).
-- **Pattern B:** jobId is in the immediate response from
-  `task --background --json` as `{"jobId": "...", "status": "queued", ...}`.
+- **Pattern B:** jobId comes from `task --background --print-job-id`'s bare stdout line (see the row
+  above and §2's `task` table) — not from parsing a `--json` response. The two flags are mutually
+  usable but `--print-job-id` is the recommended path specifically because it needs no JSON parsing.
 - **Always set `set -o pipefail`** before any `cat file | node ...` or
   similar pipeline. Without it, a failing left side (e.g., missing
   `PROMPT_FILE`) sends 0 bytes into the companion, which then throws
@@ -327,7 +329,7 @@ blame the user.
 | `Unsupported reasoning effort "<value>"` | bad-input | effort normalization against `VALID_REASONING_EFFORTS` | codex-rescue: effort must be `{none, minimal, low, medium, high, xhigh}`. Re-prompt via AskUserQuestion. |
 | `Choose either --resume/--resume-last or --fresh.` | bad-input | `handleTask` | codex-rescue: ANALYZE produced conflicting flags. Re-prompt. |
 | `Missing value for --<key>` | bad-input | `lib/args.mjs`'s `parseArgs` | Phase 1 should have caught this → ANALYZE regression. |
-| `Stored job <id> is missing its task request payload.` | recovery-impossible | `handleTaskWorker` | Detached task-worker couldn't load the stored request. Surfaced via `result <jobId>` or the job log file, NOT from the original `task --background --json` stdout. Abort, save failure report. |
+| `Stored job <id> is missing its task request payload.` | recovery-impossible | `handleTaskWorker` | Detached task-worker couldn't load the stored request. Surfaced via `result <jobId>` or the job log file, NOT from the original `task --background --print-job-id` stdout. Abort, save failure report. |
 | JSON parse error on companion stdout | unexpected-format | n/a | Companion output format changed. Show raw stdout/stderr, abort, ask user to report. |
 | Pattern A 30-min cap exceeded | wait-timeout | n/a (Claude-side) | `KillShell` the bash_id; if `$OUT_FILE` parses as JSON treat as partial, else `recovery-impossible`. |
 | (no stderr — silently corrupted prompt) | silent-flag-corruption | `lib/args.mjs`'s `parseArgs` + `readTaskPrompt` | **NOT detectable post-hoc.** Only Phase 1 ANALYZE whitelisting prevents it. If Codex echoes an unknown flag back as task content, treat as Phase 1 regression and AskUserQuestion. |
@@ -412,10 +414,14 @@ piping so the content never enters Bash's stdout.
 
 ### Key invariants
 
-- **`cat $DOC >> $PROMPT_FILE`** — redirects to file, Bash returns empty
-  stdout, content never enters Claude's context.
-- **`cat "$PROMPT_FILE" | node companion task --background --json`** —
-  sends payload over the stdin pipe, not as a positional.
+- **`sed -E 's@</[[:space:]]*([a-zA-Z_][a-zA-Z0-9_-]*)[[:space:]]*>@(/\1)@g' "$DOC" >> "$PROMPT_FILE"`**
+  — redirects to file, Bash returns empty stdout, content never enters Claude's context. Never a raw
+  `cat $DOC >> $PROMPT_FILE` — an unguarded `cat` here lets the document's own text escape the
+  `<document>` trust boundary via a closing-tag-shaped substring (see `shared-skill-conventions.md` §4,
+  and the 2026-08-12 Critical this exact pattern closed).
+- **`cat "$PROMPT_FILE" | node companion task --background --print-job-id`** —
+  sends payload over the stdin pipe, not as a positional; `--print-job-id` is the
+  Pattern B job-ID capture path (see §5), not `--json`.
 - **Never add a positional prompt after `task`** in Pattern B. `readTaskPrompt`
   does `positionalPrompt || readStdinIfPiped()`; any positional short-circuits
   stdin and the entire blind payload is silently dropped.
@@ -470,9 +476,11 @@ test -f "<literal doc path>" || { echo "File not found: <literal doc path>" >&2;
 test -s "<literal doc path>" || { echo "File is empty: <literal doc path>" >&2; exit 1; }
 echo "DOC_LINES=$(wc -l < "<literal doc path>")"   # size info, not content
 
-# Append document via redirect — Bash stdout stays empty.
-# Use the literal doc path, NOT a shell variable from a prior Bash call.
-cat "<literal doc path>" >> "$PROMPT_FILE"
+# Append document via redirect — Bash stdout stays empty. Neutralize any closing-tag-shaped
+# substring first: an unguarded raw `cat` here would let the document escape the <document>
+# trust boundary (see shared-skill-conventions.md §4). Use the literal doc path, NOT a shell
+# variable from a prior Bash call.
+sed -E 's@</[[:space:]]*([a-zA-Z_][a-zA-Z0-9_-]*)[[:space:]]*>@(/\1)@g' "<literal doc path>" >> "$PROMPT_FILE"
 
 # Close XML
 printf '\n</document>\n' >> "$PROMPT_FILE"
@@ -494,8 +502,9 @@ echo "JOB_ID=$JOB_ID"
 
 ### Why this preserves independence
 
-- `cat "$USER_DOC" >> "$PROMPT_FILE"` → stdout goes to the file, not the
-  terminal. Bash tool returns empty.
+- `sed -E '...' "$USER_DOC" >> "$PROMPT_FILE"` (never a raw `cat`, per Step 3 above) → stdout goes to
+  the file, not the terminal. Bash tool returns empty, and any closing-tag-shaped substring in the
+  document is already neutralized before it lands in the file.
 - `cat "$PROMPT_FILE" | node ...` → stdout goes to the pipe. Bash tool
   still returns empty on success.
 - Claude knows the path, the line count, and that the assembly succeeded
@@ -506,20 +515,16 @@ echo "JOB_ID=$JOB_ID"
 For `codex-research` when the user gives a topic (no file), skip the
 document append entirely. Write the topic inside the heredoc header
 template and pipe the resulting `$PROMPT_FILE` straight into `task
---background --json`.
+--background --print-job-id`.
 
 ### Cleanup
 
-Clean up temp files at the end of Phase 5 by re-injecting the literal
-absolute paths (captured from Phase 1 stdout):
-
-```bash
-rm -f "<literal $PROMPT_FILE path>" "<literal $JOB_JSON_FILE path>" "<literal ${JOB_JSON_FILE}.stderr path>"
-```
-
-Do NOT rely on `$PROMPT_FILE` / `$JOB_JSON_FILE` shell variables in the
-cleanup call — those are only defined in the shell that set them, which
-is a different shell from this one.
+Leave the temp files (`$PROMPT_FILE`, `$JOB_JSON_FILE`, `${JOB_JSON_FILE}.stderr`) in
+`${CLAUDE_PLUGIN_DATA}/tmp/` — a plugin-private data directory, never part of the reviewed
+repository. No active cleanup step requires a destructive `rm` grant scoped broadly enough to
+also match a `tmp/` directory the reviewed repo itself might contain (matches the same
+disclosed tradeoff `codex-rescue`/`codex-verify`/`codex-research`'s own Phase 5 cleanup step
+makes).
 
 ---
 

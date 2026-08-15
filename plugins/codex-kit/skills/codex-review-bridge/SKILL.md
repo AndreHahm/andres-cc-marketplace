@@ -18,6 +18,12 @@ Built on the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`). Imp
 
 **Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): this bridge is a generic, reviewer-agnostic dispatch primitive invoked by other components, never directly by a user in normal conversation, so it never asks anything itself. Confirming before content reaches Codex is the calling component's responsibility whenever that caller runs in an interactive session — `plugin-marketplace-review`'s own governance note documents the opposite case (unattended CI, no session to confirm in at all).
 
+## Quick Start
+
+1. **Caller invokes** `scripts/bridge-invoke.mjs` directly (never `codex exec` raw) with `--reviewer-type`, `--instruction-file`, `--target-paths`, `--execution-profile`.
+2. **Bridge dispatches** through `runCodexExec`, enforcing the `--instruction-file`-outside-`--target-paths` containment check.
+3. **Returns** the canonical findings envelope (`references/envelope-schema.md`) or a typed failure (`references/typed-failures.md`) — never an empty list to signal failure.
+
 ## Inputs
 
 - `reviewerType` — validated only against a charset/length pattern (`^[A-Za-z0-9._-]{1,64}$`, since it's interpolated into the prompt) — **this skill does not enforce an allowlist of valid reviewer names.** An earlier draft of this contract promised one ("must match an allowlisted entry, the caller supplies it"), but no caller has ever actually defined or passed one; `bridge-invoke.mjs` only ever applied the charset check. If a caller needs to restrict which reviewer names are acceptable, it must validate `reviewerType` itself before calling this bridge.

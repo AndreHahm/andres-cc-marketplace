@@ -4,7 +4,7 @@ description: >-
   choices, with independent double-check verification
 argument-hint: '[--wait|--background] [--target dirty|branch|commit] [--base <ref>] [--commit <ref>] [--model <slug>] [--effort <level>] [--no-preview] [focus ...]'
 disable-model-invocation: true
-allowed-tools: Read, Bash(node */scripts/codex-companion.mjs:*), Bash(git status:*), Bash(git diff:*), Bash(git rev-parse:*), Bash(mkdir:*), Write, AskUserQuestion, BashOutput, KillShell
+allowed-tools: Read, Bash(node */codex-kit/scripts/codex-companion.mjs:*), Bash(git status:*), Bash(git diff:*), Bash(git rev-parse:*), Bash(mkdir:*), Write, AskUserQuestion, BashOutput, KillShell
 ---
 
 > **Invocation:** Run as `/codex-kit:adversarial-review` in the Claude Code prompt. This command cannot be invoked via `Skill()` — it must be triggered as a slash command.
@@ -48,7 +48,7 @@ Adversarial framing produces more noise than native review by design — **False
 mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
 ```
 
-**Success:** save to `${CLAUDE_PLUGIN_DATA}/reviews/adversarial-<YYYYMMDD-HHMMSS>.md` with the target selection, focus text, Codex's output verbatim, and the double-check classification per finding.
+**Success:** save to `${CLAUDE_PLUGIN_DATA}/reviews/adversarial-<YYYYMMDD-HHMMSS>.md` using `codex-prompt-protocol/references/evaluation-framework.md`'s "Save Results" template (the `## Scope`/`## Codex Output`/`## Claude's Evaluation`/`## Summary` shape), with the focus text included under `## Scope` — do not re-derive or shorten the format here.
 
 **Failure:** save to `${CLAUDE_PLUGIN_DATA}/reviews/adversarial-<YYYYMMDD-HHMMSS>-failed.md` with the failure category and captured stderr, truncated to 500 characters (matching `codex-exec.mjs`'s own convention) — stderr can echo fragments of the reviewed content, so cap it rather than persisting it unbounded.
 

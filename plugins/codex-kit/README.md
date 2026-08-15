@@ -1,6 +1,6 @@
 # codex-kit
 
-Delegate work to OpenAI's Codex CLI from Claude Code, with independent verification instead of blind trust: native and adversarial code review, task rescue with diff double-check, document/plan verification, cross-model research, job/session management, an optional stop-time quality gate, and a generic reviewer-agnostic bridge for CI/audit use cases (its integration into this repository's own PR pipeline is not yet operational — see the Skills table below). Bundles its own Codex engine — replaces OpenAI's official `codex` plugin rather than depending on it.
+Delegate work to OpenAI's Codex CLI from Claude Code, with independent verification instead of blind trust: native and adversarial code review, task rescue with diff double-check, document/plan verification, cross-model research, job/session management, an optional stop-time quality gate, and a generic reviewer-agnostic bridge wired into this repository's own marketplace PR pipeline — repository-owned Python (`scripts/marketplace_ci/review.py`) is the sole CI orchestrator, calling the bridge directly rather than executing any codex-kit skill (see the Skills table below). Bundles its own Codex engine — replaces OpenAI's official `codex` plugin rather than depending on it.
 
 ## Installation
 
@@ -27,7 +27,7 @@ Run `/codex-kit:review` to run a native Codex code review against your working t
 | `/codex-kit:setup` | Check Codex CLI readiness, sandbox viability, and config; optionally toggle the stop-time review gate |
 | `/codex-kit:review` | Run a Codex code review against local git state, with independent double-check verification |
 | `/codex-kit:adversarial-review` | Run a Codex review that challenges the implementation approach and design choices, with independent double-check verification |
-| `/codex-kit:status` | Show active and recent Codex jobs for this repository, including review-gate status |
+| `/codex-kit:status` | Show active and recent Codex jobs for this repository |
 | `/codex-kit:result` | Show the stored final output for a finished Codex job in this repository |
 | `/codex-kit:cancel` | Cancel an active background Codex job in this repository |
 | `/codex-kit:transfer` | Transfer the current Claude Code session into a resumable Codex thread |
@@ -43,7 +43,7 @@ Run `/codex-kit:review` to run a native Codex code review against your working t
 | `codex-peer-review` | Validate Claude's own analysis, design, or recommendation against Codex before presenting it to the user |
 | `codex-audit-loop` | Whole-project multi-lens Codex audit, optionally with independently-verified autonomous fixing (explicitly opt-in) |
 | `codex-review-bridge` | Generic, reviewer-agnostic bridge to Codex — invoked by other components, not directly by end users |
-| `plugin-marketplace-review` | Thin CI orchestration skill for this repository's own marketplace PR pipeline. **Not yet operational** — its required input (`ReviewScope`, produced by `scripts/marketplace_ci/review.py`) doesn't exist in this repository yet, so it currently has no way to run. |
+| `plugin-marketplace-review` | Canonical policy documentation for this repository's own marketplace PR review pipeline. **Documentation-only by design, never CI-executed** — repository-owned Python (`scripts/marketplace_ci/review.py`'s `dispatch_reviewers`) is the sole orchestrator and implements this same policy directly in code, calling `codex-review-bridge` itself rather than executing this skill. |
 | `codex-session-lookup` | Look up or inspect Codex CLI's own session/history files |
 | `codex-prompt-protocol` | Internal reference for codex-kit's own components — not user-invocable |
 
@@ -53,10 +53,10 @@ Run `/codex-kit:review` to run a native Codex code review against your working t
 
 ## Known Limitations
 
-- **`plugin-marketplace-review` is not yet operational** — its required input (`ReviewScope`) isn't produced anywhere in this repository yet. See the Skills table above and the skill's own SKILL.md for the full detail.
 - **No skill has a live, empirical `skill-tester` run yet** — all 10 codex-kit skills have been structurally graded against their eval's `expected_output` instead (recorded in each skill's own "Testing & Validation" section). See [CONTRIBUTING.md](./CONTRIBUTING.md) for why (several of these skills shell out to the real Codex CLI, so a live run has real external side effects).
 - **`codex-review-bridge`'s `executionProfile` isn't threaded into the returned envelope** — `provenance.execution_profile` is Codex's own self-report, not an echo of the caller's validated request; a caller auditing which isolation profile actually ran can't yet trust this field. See `codex-review-bridge/SKILL.md`'s "Inputs" section.
 - **Six of `codex-review-bridge`'s semantic-validation checks are defined but not yet enforced** — `contract_version` support, full `target_paths` cross-checking, cited line-number validity, `axis`/`severity` allowlist-checking, `verdict` pass/fail-rule consistency, and undeclared-inspection-limit detection. See `codex-review-bridge/references/semantic-validation.md`'s "Not yet implemented" list.
+- **The `Stop` review-gate hook can block for up to 9 minutes** — an accepted, disclosed deviation from the platform's own "hooks should complete in under 5 seconds" performance guidance, since the gate's entire job is running a real Codex review before the session may stop. It's opt-in only (`config.stopReviewGate` defaults to `false`), the duration is disclosed to the user via `AskUserQuestion` at `/codex-kit:setup --enable-review-gate` time, and `hooks/hooks.json`'s own 600s timeout stays safely under the platform's hard-kill ceiling. If Claude Code begins throttling or auto-disabling a hook that "regularly" runs this long, this is the tradeoff to revisit.
 
 ## Contributing
 

@@ -76,7 +76,7 @@ console.log("\n=== SKILL.md source: fence size and resume-flag conditionality ==
   const content = fs.readFileSync(skillPath, "utf8");
 
   const assembleMatch = content.match(/### Assemble the blind payload[\s\S]*?```bash\n([\s\S]*?)```/);
-  check("the 'Assemble the blind payload' fence exists and is under the R18 threshold", Boolean(assembleMatch) && assembleMatch[1].split("\n").length <= 31, assembleMatch ? String(assembleMatch[1].split("\n").length) : "fence not found");
+  check("the 'Assemble the blind payload' fence exists and is under the R18 threshold", Boolean(assembleMatch) && assembleMatch[1].split("\n").length <= 30, assembleMatch ? String(assembleMatch[1].split("\n").length) : "fence not found");
 
   const invokeMatch = content.match(/## Phase 2:[\s\S]*?```bash\n([\s\S]*?)```/);
   check("Phase 2's invoke fence exists", Boolean(invokeMatch));

@@ -4,8 +4,10 @@ description: >-
   toggle the stop-time review gate
 argument-hint: '[--enable-review-gate|--disable-review-gate] [--persist-model <slug>] [--persist-effort <level>]'
 disable-model-invocation: true
-allowed-tools: Bash(node */scripts/codex-companion.mjs:*), Bash(npm install -g @openai/codex), AskUserQuestion
+allowed-tools: Bash(node */codex-kit/scripts/codex-companion.mjs:*), Bash(npm install -g @openai/codex), AskUserQuestion
 ---
+
+> **Invocation:** Run as `/codex-kit:setup` in the Claude Code prompt. This command cannot be invoked via `Skill()` — it must be triggered as a slash command.
 
 Raw slash-command arguments: `$ARGUMENTS`
 

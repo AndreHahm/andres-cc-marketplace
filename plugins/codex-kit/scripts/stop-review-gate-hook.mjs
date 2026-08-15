@@ -214,8 +214,19 @@ if (isEntryPoint) {
   try {
     main();
   } catch (error) {
+    // Fail closed, matching runStopReview's own failure path -- an
+    // uncaught exception here (a missing prompts/stop-review-gate.md file,
+    // a state.mjs lock failure, etc.) must not silently become a third,
+    // undocumented way to let the stop through. commands/setup.md promises
+    // the user exactly two conditions that skip review: Codex isn't set up
+    // yet, or this is the stop_hook_active re-continuation -- an unexpected
+    // internal error is neither of those.
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`${message}\n`);
+    emitDecision({
+      decision: "block",
+      reason: `Stop review gate hit an unexpected internal error and is failing closed rather than letting the stop through unreviewed: ${message}`
+    });
     process.exitCode = 1;
   }
 }

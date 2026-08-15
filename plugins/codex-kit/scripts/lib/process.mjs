@@ -1,6 +1,21 @@
 import { spawnSync } from "node:child_process";
 import process from "node:process";
 
+// Windows binaries installed via npm (npm itself, codex, and other global
+// CLI tools) are typically `.cmd`/`.bat` shims, not directly-executable
+// `.exe` files -- spawnSync without a shell can't resolve them (confirmed:
+// `spawnSync("npm", ["--version"], { shell: false })` fails ENOENT on
+// Windows; `shell: true` succeeds). That's why this default exists.
+//
+// SECURITY: this default is only safe because every current call site
+// (`binaryAvailable`'s version checks, `terminateProcessTree`'s `taskkill`)
+// passes exclusively static, literal argv -- shell:true on Windows does not
+// reliably escape shell metacharacters (`&`, `|`, `^`, `%VAR%`) in array
+// arguments. A future call site that passes repo-, model-, or
+// user-supplied text as an argv element on Windows MUST pass
+// `{ shell: false }` explicitly and resolve `.cmd`/`.bat` shims itself --
+// the same reasoning `lib/git.mjs` already documents for its own override
+// (git.exe is directly executable, so it always passes `shell: false`).
 export function runCommand(command, args = [], options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd,

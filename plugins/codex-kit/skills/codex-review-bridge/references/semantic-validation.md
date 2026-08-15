@@ -12,7 +12,7 @@ Any failed check returns a `semantic_validation_failure` typed failure rather th
 
 ## Not yet implemented
 
-These were part of the original design and are tracked as follow-up work, not currently enforced:
+These were part of the original design and are known gaps, not currently tracked by any issue or checklist — not currently enforced:
 
 - `contract_version` support check.
 - Full `dispatch.backend`/`dispatch.target_paths` cross-check (only `id`/`reviewer` are checked today).

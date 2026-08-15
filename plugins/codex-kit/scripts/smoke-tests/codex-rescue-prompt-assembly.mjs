@@ -6,13 +6,13 @@
 // cross-tool-call shell-variable persistence, which Claude Code's Bash tool
 // does not guarantee) and condensed under the R18 30-line threshold. This
 // test confirms: the echo lines the model needs to capture literal paths
-// from are still present, the heredoc write still works, and the JOB_ID
-// extraction one-liner still correctly parses a representative job payload
-// (including its error path on malformed JSON).
+// from are still present, the heredoc write still works, and the bare-stdout
+// JOB_ID capture (`--print-job-id`, no JSON parsing) still correctly reads a
+// representative job-file payload (including its non-empty guard on an
+// empty/malformed file).
 //
 // Run from plugins/codex-kit/: node scripts/smoke-tests/codex-rescue-prompt-assembly.mjs
 
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -43,44 +43,24 @@ console.log("=== Heredoc write produces the expected placeholder structure ===")
   check("PROMPT_FILE is written and non-empty", content.trim().length > 0);
 }
 
-console.log("\n=== JOB_ID extraction one-liner: valid job JSON ===");
+console.log("\n=== JOB_ID capture: bare stdout via --print-job-id, valid payload ===");
 {
-  const jobJsonFile = path.join(tmpDir, "rescue-job.json");
-  fs.writeFileSync(jobJsonFile, JSON.stringify({ jobId: "job-abc123", status: "queued" }));
-  const jobId = execFileSync(
-    "node",
-    [
-      "-e",
-      `const fs=require("fs");try{const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!j.jobId)throw new Error("no jobId");process.stdout.write(j.jobId);}catch(e){process.stderr.write("JOB_ID parse failed: "+e.message+"\\n");process.exit(1);}`,
-      jobJsonFile
-    ],
-    { encoding: "utf8" }
-  );
-  check("extracts the correct jobId from a well-formed payload", jobId === "job-abc123", jobId);
+  // Matches SKILL.md:288 exactly: JOB_ID=$(cat "$JOB_JSON_FILE") -- no JSON
+  // parsing, no `node -e` (an arbitrary-code grant this plugin removed
+  // deliberately, see CHANGELOG.md's --print-job-id entry).
+  const jobJsonFile = path.join(tmpDir, "rescue-job.txt");
+  fs.writeFileSync(jobJsonFile, "job-abc123\n");
+  const jobId = fs.readFileSync(jobJsonFile, "utf8").trim();
+  check("cat-style capture reads the bare job ID", jobId === "job-abc123", jobId);
 }
 
-console.log("\n=== JOB_ID extraction one-liner: missing jobId field fails loudly, not silently ===");
+console.log("\n=== JOB_ID capture: empty payload fails the non-empty guard, not silently ===");
 {
-  const jobJsonFile = path.join(tmpDir, "rescue-job-bad.json");
-  fs.writeFileSync(jobJsonFile, JSON.stringify({ status: "failed", error: "launch failed" }));
-  let threw = false;
-  let stderrText = "";
-  try {
-    execFileSync(
-      "node",
-      [
-        "-e",
-        `const fs=require("fs");try{const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!j.jobId)throw new Error("no jobId");process.stdout.write(j.jobId);}catch(e){process.stderr.write("JOB_ID parse failed: "+e.message+"\\n");process.exit(1);}`,
-        jobJsonFile
-      ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
-    );
-  } catch (e) {
-    threw = true;
-    stderrText = e.stderr?.toString() ?? "";
-  }
-  check("exits non-zero when jobId is absent from the payload", threw);
-  check("stderr names the failure explicitly", stderrText.includes("JOB_ID parse failed"), stderrText);
+  // Matches SKILL.md:289's `[ -n "$JOB_ID" ] || { ...; exit 1; }` guard.
+  const jobJsonFile = path.join(tmpDir, "rescue-job-empty.txt");
+  fs.writeFileSync(jobJsonFile, "");
+  const jobId = fs.readFileSync(jobJsonFile, "utf8").trim();
+  check("empty payload trips the [ -n \"$JOB_ID\" ] guard", jobId.length === 0);
 }
 
 console.log("\n=== SKILL.md's --resume-last guidance is prose-only (bare boolean flags can't carry inline omit-markers) ===");

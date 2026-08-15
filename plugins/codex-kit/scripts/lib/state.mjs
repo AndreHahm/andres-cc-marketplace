@@ -53,7 +53,7 @@ export function resolveJobsDir(cwd) {
 }
 
 export function ensureStateDir(cwd) {
-  fs.mkdirSync(resolveJobsDir(cwd), { recursive: true });
+  fs.mkdirSync(resolveJobsDir(cwd), { recursive: true, mode: 0o700 });
 }
 
 export function loadState(cwd) {
@@ -268,7 +268,10 @@ export function getConfig(cwd) {
 export function writeJobFile(cwd, jobId, payload) {
   ensureStateDir(cwd);
   const jobFile = resolveJobFile(cwd, jobId);
-  writeJsonFile(jobFile, payload);
+  // Job records carry the full assembled prompt (user documents, repo diffs,
+  // session transcripts) -- lock them down the same way broker-lifecycle.mjs
+  // already does for its own session file.
+  writeJsonFile(jobFile, payload, { mode: 0o600 });
   return jobFile;
 }
 

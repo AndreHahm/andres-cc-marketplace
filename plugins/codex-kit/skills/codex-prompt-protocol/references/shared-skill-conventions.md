@@ -11,10 +11,19 @@ consult it, and match it, rather than re-deriving these independently.
 **Plugin-wide, not scoped to this trio:** every prompt sent to Codex by
 *any* codex-kit component that frames repository, session, or document
 content as evidence must include a `<content_trust_boundary>` block (or
-equivalent framing prose, for a component that isn't XML-tag-structured),
-positioned before `<task>` in the assembled payload. `codex-rescue`,
-`codex-verify`, and `codex-research` are this file's original three
-consumers, but the same requirement applies equally to
+equivalent framing prose, for a component that isn't XML-tag-structured).
+The accepted positioning is either before `<task>` in the assembled payload
+(the `codex-rescue`/`codex-verify`/`codex-research` convention), or
+immediately before the specific untrusted-content block it protects when
+that block sits later in the payload — `prompts/adversarial-review.md`'s
+prompt and `prompts/stop-review-gate.md`'s `<claude_response_evidence>`
+framing both use this second form deliberately, since it keeps the boundary
+adjacent to exactly the content it guards rather than separated from it by
+other payload sections. Either position is valid as long as all three
+invariants below are present; don't move an existing instance between the
+two forms without a reason. `codex-rescue`, `codex-verify`, and
+`codex-research` are this file's original three consumers, but the same
+requirement applies equally to
 `commands/review.md`/`commands/adversarial-review.md`, the Stop review-gate
 prompt (`prompts/stop-review-gate.md`), `codex-review-bridge`, and
 `plugin-marketplace-review` (or any future component with the same shape).
