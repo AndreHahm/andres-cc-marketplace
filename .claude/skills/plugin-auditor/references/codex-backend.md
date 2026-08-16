@@ -78,6 +78,15 @@ For each reviewer in `references/dispatch-table.md`'s dispatch list:
    `ENVELOPE_SCHEMA` or normalizing at the Adapter below, since this reviewer's dispatch is cheap
    relative to the schema's blast radius on every other reviewer sharing it (`ENVELOPE_SCHEMA` is
    also imported by `codex-windows-guardrails`).
+
+   **Verification basis:** this is a design/inspection-level guarantee, not an exercised end-to-end
+   test — no live `codex` CLI dispatch of `plugin-rulebook-checker` through the bridge has been run
+   to confirm the coercion failure mode described above. What *is* verified: this pin is listed
+   before step 4's config lookup, so no `reviewer_backend.per_reviewer`/`default` value can reach
+   this reviewer at all — the Resolver never evaluates config for it, structurally, not just by
+   convention. A future live-integration pass (once a real `codex` CLI is available in this
+   environment) could add an actual dispatch attempt as a regression case; until then, treat this
+   pin's correctness as structurally-argued rather than empirically confirmed.
 3. **If the current audit's own scope includes `plugin-devkit` itself** (component or plugin mode,
    auditing any file under `plugins/plugin-devkit/` or its `.claude/` mirror), **skip the Codex path
    entirely for this whole dispatch** — every reviewer runs Claude-native. Reason: reviewer
@@ -167,7 +176,7 @@ existing reactive-fallback behavior in the previous section is unchanged.
    is discharged.
 2. **Source instructions from one pinned, trusted location:** the installed marketplace copy at
    `plugins/plugin-devkit/agents/<reviewer>.md` (frontmatter stripped) — never the `.claude/` mirror,
-   never a worktree copy, and never read from the plugin under review. (Resolver step 2 above
+   never a worktree copy, and never read from the plugin under review. (Resolver step 3 above
    already excludes the one case this couldn't otherwise detect — auditing `plugin-devkit` itself.)
 3. Write the stripped instruction body to the session scratchpad directory (never repo root — see
    `.claude/rules/require-gitignored-scratch-locations.md`), confirming the resolved path falls
