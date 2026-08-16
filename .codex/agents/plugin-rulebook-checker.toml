@@ -22,10 +22,11 @@ Check the invocation context before starting:
 
 ## Step 1: Load Checklist and Settings
 
-1. Locate `plugin-rulebook`: `Glob("**/plugin-rulebook/SKILL.md")`. If not found, halt and report — do not substitute self-defined rules.
+1. Locate `plugin-rulebook`: `Glob("**/plugin-rulebook/SKILL.md")`. If not found, halt and report — do not substitute self-defined rules. This can match more than one copy (`plugins/*/skills/...`, its `.claude/` in-development mirror, and a possibly-stale `.agents/` mirror not actively maintained in this repo) — always prefer the `plugins/*/skills/plugin-rulebook/SKILL.md` copy when multiple matches exist; never load a `.agents/` copy, since it is not guaranteed to reflect this file's current fix history.
 2. Read `<plugin-rulebook-dir>/assets/settings.json` — the enabled-rule list and every configurable threshold (R13/R18/R21/R22 tiers, R4 naming pattern/forbidden words, R5 forbidden fields, R6 forbidden Bash scopes, R23 whitelist/blacklist/excluded_paths, R24 language whitelist, `structured_output.action_enum`) override any default shown in the checklist below if they disagree — `settings.json` is always the more current source (R20).
 3. Read `<plugin-rulebook-dir>/references/compact-rule-checklist.md` — the pattern/violation/severity table for all 23 enabled rules. **Do not read the full `SKILL.md` body** (its narrative rationale, examples, and Testing & Validation/Reference Guide sections are not needed for mechanical compliance checking and are the single largest source of the token overhead this agent exists to avoid).
-4. If a repo-specific override file exists (`{REPO_ROOT}/.claude/plugin-rulebook.config.json`), read it and merge its R23 `whitelist`/`blacklist`/`excluded_paths` on top of the plugin defaults, same as `plugin-rulebook` itself does.
+4. If a repo-specific override file exists (`{REPO_ROOT}/.claude/plugin-rulebook.config.json`), read it and merge its R23 `whitelist`/`blacklist`/`excluded_paths` on top of the plugin defaults, same as `plugin-rulebook` itself does — record exactly which entries it contributed, for Step 4's disclosure line.
+5. `Glob("**/marketplace.json")` across the repo for R23's marketplace auto-allow, then drop any match that resolves inside the plugin root under review (a plugin under audit must never whitelist its own name via its own manifest) — fail closed (treat as excluded) if this cannot be resolved confidently. Record which surviving file(s) contributed which names, and which were found-but-excluded, for Step 4's disclosure line. If `config.auto_allow_marketplace_json_entries` is `false`, skip this step entirely and record `disabled`.
 
 ## Step 2: Resolve Target(s)
 
@@ -59,7 +60,9 @@ Apply the checklist's tiered rules (R13, R18, R21, R22, R23) using their thresho
 
 ```
 📋 Rulebook Compliance (Full review): <plugin-name>
-Settings: assets/settings.json [loaded] (+ repo override, if present)
+Settings: assets/settings.json [loaded]
+Repo overrides applied (.claude/plugin-rulebook.config.json): <entries, or "none found">
+Marketplace auto-allow applied: <file → entries, or "none found", or "disabled"> (plus "excluded (inside plugin under review): <path>" for any found-but-dropped file)
 Components checked: N skills, N agents, N commands, hooks: yes/no
 Judgment-heavy rules in scope: R19, R20, R23, R25, R26 (always full-quality regardless of dispatch model)
 
@@ -75,6 +78,8 @@ Summary: N components checked, N REQUIRED FAILs, N SUGGESTED/ADVISORY findings
 ```
 📋 Rulebook Compliance (Fast path): <file(s)>
 Rules checked: <named rule IDs, or "all 23 enabled">
+Repo overrides applied (.claude/plugin-rulebook.config.json): <entries, or "none found"> (only when R23 is in scope)
+Marketplace auto-allow applied: <file → entries, or "none found", or "disabled"> (plus "excluded (inside plugin under review): <path>" for any found-but-dropped file; only when R23 is in scope)
 Judgment-heavy rules in scope: <list, or "none">
 
 <file>: PASS R6 R26 | FAIL R19 (<one-line reason, citing file:line>)
@@ -94,6 +99,9 @@ When invoked in Structured output mode, skip the narrative report entirely and r
 ```yaml
 mode: full_review              # full_review | fast_path
 status: FAIL                   # PASS | FAIL
+repo_overrides_applied: []     # entries from .claude/plugin-rulebook.config.json; empty if none found
+marketplace_auto_allow_applied: []   # {file, entries} objects; empty if none found or disabled
+marketplace_auto_allow_excluded: []  # {file, reason} objects for any found-but-dropped manifest; empty if none
 judgment_heavy_rules_in_scope: [R19, R23]   # empty list if none
 components:
   - name: example-skill

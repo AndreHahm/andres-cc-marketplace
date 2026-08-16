@@ -26,12 +26,19 @@ def load_registry():
     try:
         return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        print(f"Registry file is corrupt ({exc}) -- back it up and re-seed: {REGISTRY_PATH}", file=sys.stderr)
+        print(
+            f"Registry file is corrupt ({exc}) -- back it up and re-seed: {REGISTRY_PATH}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 
 def save_registry(registry, today):
-    registry["_meta"]["last_updated"] = today
+    # setdefault, not a bare subscript: a hand-edited or future-format registry
+    # file might exist on disk without a "_meta" key -- load_registry() only
+    # supplies the default shape when the file is missing entirely, not when
+    # it exists but is missing this one key.
+    registry.setdefault("_meta", {})["last_updated"] = today
     tmp_path = REGISTRY_PATH.with_suffix(".json.tmp")
     tmp_path.write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
     os.replace(tmp_path, REGISTRY_PATH)
@@ -44,11 +51,13 @@ def cmd_estimate(agent_name):
         print(f"No historical data yet for '{agent_name}'.")
         return
     minutes = entry["avg_duration_ms"] / 1000 / 60
+    min_minutes = entry["min_duration_ms"] / 1000 / 60
+    max_minutes = entry["max_duration_ms"] / 1000 / 60
     print(
         f"~{entry['avg_tokens']:,} tokens / ~{minutes:.1f} min based on "
         f"{entry['observations']} observation(s) "
         f"(range: {entry['min_tokens']:,}-{entry['max_tokens']:,} tokens, "
-        f"{entry['min_duration_ms'] / 1000 / 60:.1f}-{entry['max_duration_ms'] / 1000 / 60:.1f} min)"
+        f"{min_minutes:.1f}-{max_minutes:.1f} min)"
         + (f" -- {entry['note']}" if entry.get("note") else "")
     )
 
@@ -58,7 +67,10 @@ def cmd_record(agent_name, tokens, duration_ms, note, today):
         tokens = int(tokens)
         duration_ms = int(duration_ms)
     except ValueError:
-        print(f"tokens and duration_ms must be integers, got: {tokens!r}, {duration_ms!r}", file=sys.stderr)
+        print(
+            f"tokens and duration_ms must be integers, got: {tokens!r}, {duration_ms!r}",
+            file=sys.stderr,
+        )
         sys.exit(1)
     registry = load_registry()
     agents = registry.setdefault("agents", {})
@@ -86,14 +98,19 @@ def cmd_record(agent_name, tokens, duration_ms, note, today):
         entry["note"] = note
     agents[agent_name] = entry
     save_registry(registry, today)
-    print(f"Recorded: {agent_name} now has {entry['observations']} observation(s), "
-          f"avg {entry['avg_tokens']:,} tokens / {entry['avg_duration_ms'] / 1000 / 60:.1f} min.")
+    print(
+        f"Recorded: {agent_name} now has {entry['observations']} observation(s), "
+        f"avg {entry['avg_tokens']:,} tokens / {entry['avg_duration_ms'] / 1000 / 60:.1f} min."
+    )
 
 
 def main():
     if len(sys.argv) < 3:
         print("Usage: agent-cost-tracker.py estimate <agent-name>", file=sys.stderr)
-        print("       agent-cost-tracker.py record <agent-name> <tokens> <duration_ms> [note]", file=sys.stderr)
+        print(
+            "       agent-cost-tracker.py record <agent-name> <tokens> <duration_ms> [note]",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     mode = sys.argv[1]
@@ -103,12 +120,22 @@ def main():
         cmd_estimate(agent_name)
     elif mode == "record":
         if len(sys.argv) < 5:
-            print("Usage: agent-cost-tracker.py record <agent-name> <tokens> <duration_ms> [note]", file=sys.stderr)
+            print(
+                "Usage: agent-cost-tracker.py record <agent-name> <tokens> <duration_ms> [note]",
+                file=sys.stderr,
+            )
             sys.exit(1)
         tokens = sys.argv[3]
         duration_ms = sys.argv[4]
+        # Everything from argv[5] onward is swallowed into the note, space-joined --
+        # a caller's own unquoted multi-word note is exactly what this is for, but
+        # it also means any *new* flag added after [note] in the future would
+        # silently become part of the note text instead of being parsed as its own
+        # argument. Any such addition must be inserted before this point in argv,
+        # not after.
         note = " ".join(sys.argv[5:]) if len(sys.argv) > 5 else ""
         import datetime
+
         today = datetime.date.today().isoformat()
         cmd_record(agent_name, tokens, duration_ms, note, today)
     else:

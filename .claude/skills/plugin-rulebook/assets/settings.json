@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "_meta": {
-    "last_reviewed": "2026-07-05",
+    "last_reviewed": "2026-08-16",
     "note": "Official-source tracking (formerly review_triggers here) moved to upstream-sources-registry's assets/sources.json. The two internal (non-official-source) triggers this used to list -- skill-development/references/size-limits.md and skill-reviewer's severity-tier logic -- were not migrated there; they remain R20 Duplicate Fact Sweep's job, unrelated to external source tracking. See upstream-sources-registry's references/migration-notes.md for the full mapping."
   },
   "rules": {
