@@ -41,6 +41,18 @@ Leave it unset to keep using the account default. Invalid values (anything outsi
 `^[A-Za-z0-9._-]{1,64}$`) fail the job with a clear message rather than surfacing as an opaque Codex CLI
 error.
 
+## Configuring the review timeout
+
+Every `codex-review-bridge` dispatch shares `runCodexExec`'s own 240000ms (4 min) default timeout unless
+overridden. On a large delta PR, a single reviewer's one-call review can legitimately need longer than
+that to complete against its full scope — confirmed live: a 100-changed-path PR pushed
+`plugin-rulebook-checker`'s dispatch past the default, first as a strained/malformed response, then as a
+hard timeout on retry. The `codex-review` job sets `CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"` (10 min)
+directly in the workflow (not a repository variable, unlike the model override above — this is a
+self-contained workflow default, not something a maintainer needs to configure separately), giving every
+dispatched reviewer more headroom within the job's own 20-minute budget. Invalid values (non-numeric or
+non-positive) fail the job with a clear message, same as the model override.
+
 ## Fork PR limitation
 
 `codex-review` needs `OPENAI_API_KEY`, which GitHub Actions does not expose to workflows triggered by a

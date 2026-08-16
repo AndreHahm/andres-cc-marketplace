@@ -136,6 +136,14 @@ jobs:
           # Unset by default -- vars.* (not secrets.*) since a model slug
           # isn't sensitive. See docs/ci.md.
           CODEX_KIT_REVIEW_MODEL: ${{ vars.CODEX_KIT_REVIEW_MODEL }}
+          # Per-dispatch Codex exec budget, overriding the shared 240000ms
+          # (4 min) default every other codex-review-bridge caller uses.
+          # A large delta PR can legitimately push one reviewer's single-call
+          # review past that default (confirmed live, PR #41: a 100-path
+          # delta caused a timeout). This job's own 20-minute budget above
+          # has headroom for a longer per-reviewer budget across the several
+          # reviewers dispatched sequentially in one run. See docs/ci.md.
+          CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
         run: |
           uv run python -m scripts.marketplace_ci run-codex-review \
             --base-sha ${{ github.event.pull_request.base.sha }} \

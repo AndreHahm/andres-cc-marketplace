@@ -5,10 +5,31 @@ from scripts.marketplace_ci.review import (
     FULL_MODE_GOVERNANCE_REVIEWERS,
     ReviewOutputError,
     ReviewResult,
+    _is_rulebook_scoped_path,
     aggregate_findings,
     derive_review_scope,
     validate_review_output,
 )
+
+
+@pytest.mark.parametrize(
+    "path,expected",
+    [
+        ("plugins/demo-kit/skills/x/SKILL.md", True),
+        ("plugins/demo-kit/skills/x/references/notes.md", True),
+        ("plugins/demo-kit/skills/x/scripts/run.py", True),
+        ("plugins/demo-kit/agents/reviewer.md", True),
+        (".claude/rules/some-rule.md", True),
+        ("evals/demo-kit/evals.json", False),
+        ("evals/demo-kit/workspace/iteration-1/eval-1/eval_metadata.json", False),
+        ("plugins/demo-kit/README.md", False),
+        ("plugins/demo-kit/CONTRIBUTING.md", False),
+        ("plugins/demo-kit/CHANGELOG.md", False),
+        ("KNOWN_ISSUES.md", False),
+    ],
+)
+def test_is_rulebook_scoped_path(path, expected):
+    assert _is_rulebook_scoped_path(path) is expected
 
 
 def test_full_escalation_paths_and_governance_reviewers_stay_in_sync():
