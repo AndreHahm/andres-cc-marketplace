@@ -17,6 +17,11 @@ mirrored into SKILL.md's prose, stated explicitly where it's introduced (see `##
 below) — is not a disagreement to resolve, just a lag to close whenever that prose is next
 touched.
 
+**Contents:** [Conventions Shared By All Four Shapes](#conventions-shared-by-all-four-shapes) ·
+[Finding](#finding) · [Scope Manifest](#scope-manifest) · [Report Revision](#report-revision) ·
+[Evidence Bundle](#evidence-bundle) · [Validation](#validation) ·
+[Producers and Consumers](#producers-and-consumers)
+
 ## Conventions Shared By All Four Shapes
 
 - **`version`** — every document stamps a schema version (`"1.0"` for this revision). A
@@ -68,6 +73,11 @@ omission (not `null`) is how "not applicable" is represented for `backend`/`conf
 `read-only` dispatch, or `best_effort_guardrails` for a `codex-windows-guardrails` dispatch —
 this is the one sub-field that discloses a finding came from a non-sandboxed run, so a document
 built from this schema must preserve it rather than dropping it as an unrecognized key.
+**`os_isolated` records the profile *requested*, not independently verified** — nothing in
+`codex-review-bridge` proactively confirms `read-only` actually took effect on the current
+platform (see `plugin-auditor/references/codex-backend.md`'s "Isolation: reactive, not proactive"
+section for the full mechanism); a consumer of this schema must not read `os_isolated` as an
+attested guarantee.
 `best_effort_guardrails` must never be presented as sandbox-equivalent anywhere this provenance is
 surfaced. `confidence` informs reporting only; it never alters scoring. A fallback from Codex to
 Claude for a dispatch is recorded once on that dispatch's `coverage` note in the Report Revision,

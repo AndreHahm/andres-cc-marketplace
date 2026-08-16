@@ -60,10 +60,15 @@ def validate_finding(doc, problems, where=""):
             err(problems, f"{where}status '{doc['status']}' not in {sorted(STATUS_VALUES)}")
     if "severity" in doc:
         if not isinstance(doc["severity"], str) or doc["severity"] not in CANONICAL_SEVERITY_VALUES:
-            err(problems, f"{where}severity '{doc['severity']}' not in {sorted(CANONICAL_SEVERITY_VALUES)}")
+            err(
+                problems,
+                f"{where}severity '{doc['severity']}' not in {sorted(CANONICAL_SEVERITY_VALUES)}",
+            )
     if "rule_type" in doc:
         if not isinstance(doc["rule_type"], str) or doc["rule_type"] not in RULE_TYPE_VALUES:
-            err(problems, f"{where}rule_type '{doc['rule_type']}' not in {sorted(RULE_TYPE_VALUES)}")
+            err(
+                problems, f"{where}rule_type '{doc['rule_type']}' not in {sorted(RULE_TYPE_VALUES)}"
+            )
 
 
 def validate_findings_list(doc, problems, where=""):
@@ -90,20 +95,39 @@ def validate_manifest(doc, problems):
         problems,
     )
     if "invocation_mode" in doc and doc["invocation_mode"] not in INVOCATION_MODE_VALUES:
-        err(problems, f"invocation_mode '{doc['invocation_mode']}' not in {sorted(INVOCATION_MODE_VALUES)}")
+        err(
+            problems,
+            f"invocation_mode '{doc['invocation_mode']}' not in {sorted(INVOCATION_MODE_VALUES)}",
+        )
     if "scope_mode" in doc and doc["scope_mode"] not in SCOPE_MODE_VALUES:
         err(problems, f"scope_mode '{doc['scope_mode']}' not in {sorted(SCOPE_MODE_VALUES)}")
     phases = doc.get("optional_phases_selected", {})
     if "deep_test" in phases and phases["deep_test"] not in DEEP_TEST_VALUES:
-        err(problems, f"optional_phases_selected.deep_test '{phases['deep_test']}' not in {sorted(DEEP_TEST_VALUES)}")
+        err(
+            problems,
+            f"optional_phases_selected.deep_test '{phases['deep_test']}' "
+            f"not in {sorted(DEEP_TEST_VALUES)}",
+        )
     if "grading" in phases and phases["grading"] not in GRADING_VALUES:
-        err(problems, f"optional_phases_selected.grading '{phases['grading']}' not in {sorted(GRADING_VALUES)}")
+        err(
+            problems,
+            f"optional_phases_selected.grading '{phases['grading']}' "
+            f"not in {sorted(GRADING_VALUES)}",
+        )
 
 
 def validate_report(doc, problems):
     check_required(
         doc,
-        ["version", "run_id", "report_id", "revision", "produced_by", "baseline_commit", "current_commit"],
+        [
+            "version",
+            "run_id",
+            "report_id",
+            "revision",
+            "produced_by",
+            "baseline_commit",
+            "current_commit",
+        ],
         problems,
     )
     validate_findings_list(doc, problems)
@@ -112,7 +136,14 @@ def validate_report(doc, problems):
 def validate_bundle(doc, problems):
     check_required(
         doc,
-        ["version", "run_id", "scope_manifest_ref", "baseline_commit", "current_commit", "report_revisions"],
+        [
+            "version",
+            "run_id",
+            "scope_manifest_ref",
+            "baseline_commit",
+            "current_commit",
+            "report_revisions",
+        ],
         problems,
     )
     validate_findings_list(doc, problems)
@@ -191,7 +222,9 @@ def run_self_test():
         "scope_manifest_ref": {"report_id": "manifest", "revision": 1},
         "baseline_commit": "abc1234",
         "current_commit": "def5678",
-        "report_revisions": [{"report_id": "phase5-plugin-auditor", "revision": 1, "path": "reports/phase5.yaml"}],
+        "report_revisions": [
+            {"report_id": "phase5-plugin-auditor", "revision": 1, "path": "reports/phase5.yaml"}
+        ],
         "findings": [valid_finding],
     }
     invalid_bundle = {"version": "1.0", "run_id": "run-001"}
@@ -217,7 +250,8 @@ def run_self_test():
         if outcome == "FAIL":
             failed = True
         label = "valid" if expect_valid else "invalid"
-        print(f"{outcome}  {shape} ({label} sample): {'no problems' if is_valid else '; '.join(problems)}")
+        detail = "no problems" if is_valid else "; ".join(problems)
+        print(f"{outcome}  {shape} ({label} sample): {detail}")
 
     sys.exit(1 if failed else 0)
 
@@ -228,7 +262,10 @@ def main():
         return
 
     if len(sys.argv) != 3 or sys.argv[1] not in VALIDATORS:
-        print(f"Usage: {sys.argv[0]} <{'|'.join(VALIDATORS)}> <path-to-document.yaml>", file=sys.stderr)
+        print(
+            f"Usage: {sys.argv[0]} <{'|'.join(VALIDATORS)}> <path-to-document.yaml>",
+            file=sys.stderr,
+        )
         print(f"       {sys.argv[0]} --self-test", file=sys.stderr)
         sys.exit(2)
 
@@ -237,7 +274,10 @@ def main():
         print(f"No such file: {path}", file=sys.stderr)
         sys.exit(2)
 
-    doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    # An empty or comments-only YAML file parses to None, not {} -- guard here
+    # rather than in validate() itself, so every validator function can assume
+    # a dict without a None-check of its own.
+    doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     problems = validate(shape, doc)
     if problems:
         for problem in problems:
