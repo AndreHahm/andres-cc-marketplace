@@ -55,9 +55,15 @@ def score_dimension(dim_input):
     if "counts" not in dim_input:
         raise ValueError("dimension input has neither 'score' nor 'counts' -- exactly one is required")
     counts = dim_input["counts"]
+    if not isinstance(counts, dict):
+        raise ValueError(f"counts must be a mapping, got {type(counts).__name__}")
     for key in ("critical", "major", "minor"):
         value = counts.get(key, 0)
-        if not isinstance(value, int) or value < 0:
+        # type(value) is int, not isinstance(value, int) -- bool is a subclass
+        # of int in Python, so isinstance(True, int) is True and a malformed
+        # {"critical": true} would silently score as 1 finding instead of
+        # being rejected as the malformed input it is.
+        if type(value) is not int or value < 0:
             raise ValueError(f"counts.{key} must be a non-negative integer, got {value!r}")
     return generic_formula(
         counts.get("critical", 0),

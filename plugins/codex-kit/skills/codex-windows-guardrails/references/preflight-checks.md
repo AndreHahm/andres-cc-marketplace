@@ -1,14 +1,30 @@
 # Pre-Flight Checks
 
-Three checks, run by `scripts/guarded-dispatch.mjs` before `codex exec` is ever invoked. All operate
-on the caller's `target-paths` and `instruction-file` — they narrow what gets *sent* to Codex,
-nothing about what Codex does once it's running.
+A platform check, then three scope checks, run by `scripts/guarded-dispatch.mjs` before `codex exec`
+is ever invoked. The scope checks operate on the caller's `target-paths` and `instruction-file` —
+they narrow what gets *sent* to Codex, nothing about what Codex does once it's running.
+
+## 0. Platform
+
+Refuses outright unless `process.platform === "win32"`, before anything else runs — no argument
+parsing, no config resolution. This script exists only because Windows has no working sandbox;
+every other platform has a real sandboxed profile through `codex-review-bridge`'s own CLI, so this
+script being invoked there at all is a routing mistake that must never widen into an unrestricted
+`danger-full-access` dispatch just because a real sandbox happened to be available on that host.
+
+Typed failure category: `platform_unsupported`.
 
 ## 1. Repository-Boundary
 
-Every `target-paths` entry (not the instruction file — see check 3) must resolve inside the
-repository root:
+Every `target-paths` entry (not the instruction file — see check 3) must first exist on disk, then
+resolve inside the repository root:
 
+- Reject a target-paths entry that doesn't exist (`fs.existsSync`) before doing anything else with
+  it. A misspelled or already-deleted target must not silently reach dispatch — `walkFiles`'s own
+  ENOENT-is-safe-to-skip handling (needed elsewhere for a legitimately-absent scratch instruction
+  file) would otherwise let a nonexistent target sail through both this check and the secret scan,
+  reaching a real `danger-full-access` run with nothing inspectable: a zero-finding envelope that
+  looks like a clean audit of nothing.
 - Canonicalize via `fs.realpathSync`, resolving symlinks/junctions for every existing path
   component. For a not-yet-existing leaf, walk up to the nearest existing ancestor, canonicalize
   *that* (so an intermediate junction is still caught), then re-join the non-existent remainder —
@@ -20,14 +36,16 @@ repository root:
   wrongly treat two genuinely distinct directories as the same one on a case-sensitive filesystem.
 - Reject if the canonicalized path does not start with the canonicalized repository root.
 
-Typed failure category: `repository_boundary_violation`. Detail: the specific entry that failed
-(the caller's own original argument, not necessarily its canonicalized form — useful for the caller
-to recognize which of its own inputs was rejected).
+Typed failure category: `target_path_not_found` for a missing entry, `repository_boundary_violation`
+for an existing entry outside the root. Detail: the specific entry that failed (the caller's own
+original argument, not necessarily its canonicalized form — useful for the caller to recognize which
+of its own inputs was rejected).
 
 ## 2. Secret-File
 
-Walks the **actual filesystem** under each `target-paths` entry (`fs.readdirSync`, recursive,
-skipping `.git`) and tests every resulting file's basename against the same 19-pattern list
+Walks the **actual filesystem** under the **whole repository root** — not just the caller's
+`target-paths` (`fs.readdirSync`, recursive, skipping `.git`) — and tests every resulting file's
+basename against the same 19-pattern list
 `git-kit`'s `plugins/git-kit/scripts/scan-staged-files.sh` uses:
 
 - **Matched case-sensitively on non-Windows, case-insensitively on Windows** (`process.platform ===
@@ -55,6 +73,16 @@ never tracked, so that enumeration systematically missed the single most common 
 file. Confirmed live during Self-Review rework: a scratch repo with an untracked `.env` under a
 directory target passed the `git ls-files`-based check silently, then correctly failed once the
 check was rewritten to walk the real filesystem instead.
+
+**Deliberately the whole repository root, not just `target-paths`.** An earlier draft scoped this
+walk to only the caller's declared `target-paths`, matching the repository-boundary and
+instruction-containment checks' own scoping. That scope mismatch was itself the gap: `runCodexExec`
+below grants `sandbox: "danger-full-access"` with `cwd: repoRoot` — Codex can read anything under
+the repository root regardless of what the caller narrowed `target-paths` to. A caller declaring a
+small review scope left every other secret file under the root unscanned but still fully readable
+by the dispatched process. The other two checks stay `target-paths`-scoped correctly, since they
+bound what gets *sent into the prompt*, not what the process can *read* — only the secret scan needs
+to match the actual access grant rather than the narrower review scope.
 
 Typed failure category: `secret_file_in_scope`. Detail: the matched file's repo-relative path and
 which pattern it matched — never the file's contents.

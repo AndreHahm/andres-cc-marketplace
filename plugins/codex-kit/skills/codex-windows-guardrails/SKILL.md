@@ -38,15 +38,24 @@ Caller invokes `scripts/guarded-dispatch.mjs` directly (never `codex exec` raw, 
 `--target-paths`, `--dispatch-id`, `--repo-root`. One call does everything, in order, stopping at
 the first failure:
 
+0. **Platform check** — refuses outright on any platform other than `win32`, before parsing anything
+   else. Typed failure `platform_unsupported`. This script exists only because no working sandbox is
+   available on Windows; every other platform has a real sandboxed profile through
+   `codex-review-bridge`'s own CLI instead, so a routing mistake here can never widen into an
+   unrestricted dispatch just because a real sandbox happened to be available.
 1. **Resolve policy** — `assets/settings.json` (shipped, disabled by default) merged with
    `.claude/codex-windows-guardrails.local.json` (untracked override only — a tracked copy is
    ignored, fail-closed). If not enabled → typed failure `guardrails_disabled`. See
    `references/policy-and-trust.md`.
 2. **Repository-boundary check** on every `target-paths` entry (not the instruction file — that's a
-   different check, see step 4). Typed failure `repository_boundary_violation` on any entry outside
-   the repo root.
-3. **Secret-file check** — walks the actual filesystem under each target (not `git ls-files`, which
-   would miss a `.env` precisely because `.env` is normally gitignored) against `git-kit`'s
+   different check, see step 4). Each entry must exist on disk first — typed failure
+   `target_path_not_found` on a missing/misspelled entry, so a caller can't accidentally dispatch
+   against nothing and get back a zero-finding envelope that looks like a clean audit. Typed failure
+   `repository_boundary_violation` on any existing entry outside the repo root.
+3. **Secret-file check** — walks the actual filesystem under the **whole repository root** (not
+   `git ls-files`, which would miss a `.env` precisely because `.env` is normally gitignored, and not
+   just the caller's narrower `target-paths`, since `danger-full-access` grants Codex read access to
+   everything under the root regardless of what scope the caller declared) against `git-kit`'s
    sensitive-filename patterns. Typed failure `secret_file_in_scope` on any match.
 4. **Instruction-containment check** — the instruction file must not resolve inside any
    `target-paths` entry (the same rule `codex-review-bridge` itself enforces — reused directly, not
@@ -131,7 +140,7 @@ provenance field imply otherwise.
   caught via the resolved target's basename, not the symlink's own name.
 
 **Current test coverage:**
-- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (14 scenarios, run from
+- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (16 scenarios, run from
   `plugins/codex-kit/`) — every bullet above, executed against real scratch git repositories, not a
   template check.
 - `evals/codex-windows-guardrails/` (3 evals, live-run with real `grading.json`/`outputs/` on disk —
