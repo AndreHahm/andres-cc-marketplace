@@ -153,7 +153,20 @@ function canonicalPathsEqual(a, b) {
 function checkRepositoryBoundary(targetPaths, repoRoot) {
   const canonicalRoot = canonicalizeWithAncestorFallback(repoRoot);
   for (const entry of targetPaths) {
-    const canonicalEntry = canonicalizeWithAncestorFallback(path.resolve(repoRoot, entry));
+    const resolvedEntry = path.resolve(repoRoot, entry);
+    // A misspelled or already-deleted target must not silently pass through
+    // to dispatch -- canonicalizeWithAncestorFallback below is deliberately
+    // tolerant of a non-existent leaf (the instruction file legitimately
+    // doesn't exist yet in some flows), but a target-paths entry is the
+    // actual content under review and has no such excuse. Without this,
+    // walkFiles's own ENOENT-is-safe-to-skip handling would let a
+    // nonexistent target sail through both this check and the secret scan,
+    // reaching a real danger-full-access dispatch with nothing inspectable
+    // -- a zero-finding envelope that looks like a clean audit of nothing.
+    if (!fs.existsSync(resolvedEntry)) {
+      return typedFailure("target_path_not_found", `target path does not exist: ${entry}`);
+    }
+    const canonicalEntry = canonicalizeWithAncestorFallback(resolvedEntry);
     if (!isInsideRoot(canonicalEntry, canonicalRoot)) {
       return typedFailure("repository_boundary_violation", `target path outside repository root: ${entry}`);
     }
@@ -330,6 +343,17 @@ function parseArgs(argv) {
 }
 
 async function main() {
+  // This script exists only because no working sandbox is available on
+  // Windows -- every other platform has a real sandboxed profile through
+  // codex-review-bridge's own CLI, which should be used instead. Refusing
+  // here means a routing mistake (this script invoked on Linux/macOS) can
+  // never widen into an unrestricted danger-full-access dispatch just
+  // because a real sandbox happened to be available.
+  if (process.platform !== "win32") {
+    fail("platform_unsupported", `codex-windows-guardrails only runs on win32 -- refusing to attempt a danger-full-access dispatch on ${process.platform}, which has a working sandboxed profile via codex-review-bridge instead`);
+    return;
+  }
+
   const args = parseArgs(process.argv.slice(2));
   const required = ["reviewer-type", "instruction-file", "target-paths", "dispatch-id", "repo-root"];
   for (const key of required) {
@@ -392,7 +416,16 @@ async function main() {
     return;
   }
 
-  const secretFailure = checkSecretFiles(targetPaths, repoRoot);
+  // Scans the WHOLE repository root, not just targetPaths -- runCodexExec
+  // below grants danger-full-access with cwd: repoRoot, so Codex can read
+  // anything under the root regardless of what the caller declared as its
+  // narrower review scope. A secret scan bounded to targetPaths would leave
+  // every other secret file under the root unscanned but fully readable.
+  // "." (not repoRoot itself) as the entry -- path.resolve(repoRoot, ".")
+  // is always repoRoot correctly normalized, whether repoRoot itself was
+  // passed as an absolute or relative path; path.resolve(repoRoot, repoRoot)
+  // would double-resolve if repoRoot were ever relative.
+  const secretFailure = checkSecretFiles(["."], repoRoot);
   if (secretFailure) {
     fail(secretFailure.category, secretFailure.detail);
     return;

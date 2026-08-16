@@ -51,12 +51,19 @@ def validate_finding(doc, problems, where=""):
     )
     if "id" in doc:
         check_id_format(doc["id"], problems, where)
-    if "status" in doc and doc["status"] not in STATUS_VALUES:
-        err(problems, f"{where}status '{doc['status']}' not in {sorted(STATUS_VALUES)}")
-    if "severity" in doc and doc["severity"] not in CANONICAL_SEVERITY_VALUES:
-        err(problems, f"{where}severity '{doc['severity']}' not in {sorted(CANONICAL_SEVERITY_VALUES)}")
-    if "rule_type" in doc and doc["rule_type"] not in RULE_TYPE_VALUES:
-        err(problems, f"{where}rule_type '{doc['rule_type']}' not in {sorted(RULE_TYPE_VALUES)}")
+    # isinstance(..., str) checked before the `in` membership test against
+    # each values-set below -- an unhashable value (e.g. a YAML list) would
+    # otherwise raise TypeError from the set-membership test itself instead
+    # of producing a clean validation problem.
+    if "status" in doc:
+        if not isinstance(doc["status"], str) or doc["status"] not in STATUS_VALUES:
+            err(problems, f"{where}status '{doc['status']}' not in {sorted(STATUS_VALUES)}")
+    if "severity" in doc:
+        if not isinstance(doc["severity"], str) or doc["severity"] not in CANONICAL_SEVERITY_VALUES:
+            err(problems, f"{where}severity '{doc['severity']}' not in {sorted(CANONICAL_SEVERITY_VALUES)}")
+    if "rule_type" in doc:
+        if not isinstance(doc["rule_type"], str) or doc["rule_type"] not in RULE_TYPE_VALUES:
+            err(problems, f"{where}rule_type '{doc['rule_type']}' not in {sorted(RULE_TYPE_VALUES)}")
 
 
 def validate_findings_list(doc, problems, where=""):
@@ -158,6 +165,13 @@ def run_self_test():
         "severity": "urgent",
         "status": "open",
     }
+    invalid_finding_severity_not_string = {
+        "id": "consistency-reviewer:M2",
+        "source": "consistency-reviewer",
+        "scope": "skills/plugin-auditor/SKILL.md",
+        "severity": ["major", "minor"],
+        "status": "open",
+    }
 
     valid_report = {
         "version": "1.0",
@@ -188,6 +202,7 @@ def run_self_test():
         ("finding", valid_finding, True),
         ("finding", invalid_finding, False),
         ("finding", invalid_finding_bad_severity, False),
+        ("finding", invalid_finding_severity_not_string, False),
         ("report", valid_report, True),
         ("report", invalid_report, False),
         ("bundle", valid_bundle, True),

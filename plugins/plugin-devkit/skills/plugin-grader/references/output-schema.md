@@ -56,10 +56,12 @@ Output:
   "weakest_component": {"name": "skill-b", "final_score": 4.2},
   "strongest_component": {"name": "skill-c", "final_score": 9.1},
   "plugin_gates_applied": [],
-  "plugin_final_score": 6.8,
+  "plugin_final_score": 7.1,
   "component_count": 5
 }
 ```
+
+With no gates applied, `plugin_final_score` always equals `plugin_score_raw` exactly (`plugin_final = min(raw, min(caps)) if caps else raw` in `compute_score.py` -- an empty `caps` list means `plugin_final_score` is never anything other than `plugin_score_raw` unchanged). See the Component Mode output example above for what a *capped* result looks like: a non-empty `gates_applied` paired with a `final_score` lower than `weighted_total`.
 
 `plugin_score_raw` is a simple unweighted mean of every component's `final_score`. See
 `gates-and-rollup.md`'s Whole-Plugin Rollup section for the P1/P2/P3 gate conditions/caps and where

@@ -3,11 +3,20 @@
 //
 // Confirms every pre-flight gate short-circuits BEFORE any Codex exec is
 // attempted: disabled-by-default, a tracked local override being ignored
-// (fail-closed), a repository-boundary violation, a secret file anywhere
-// under a directory target (not just a caller-supplied filename argument --
-// this is the case an earlier draft's git-ls-files-based check silently
+// (fail-closed), a repository-boundary violation, a nonexistent target path,
+// a secret file anywhere under the repository root regardless of the
+// declared target-paths scope (not just a caller-supplied filename argument
+// -- this is the case an earlier draft's git-ls-files-based check silently
 // missed, since a .env is normally gitignored, never tracked), and an
 // instruction file resolving inside a target path.
+//
+// The platform check (refuses on any process.platform other than win32) has
+// no dedicated scenario below -- it can't be exercised without actually
+// running this suite on a non-Windows host, which contradicts running it at
+// all (this suite is meant to run on Windows). Every scenario below that
+// reaches ANY other typed failure is implicit proof the platform check
+// passed through cleanly on the host it actually ran on; verified directly
+// by code inspection otherwise.
 //
 // Runnable from any cwd: node plugins/codex-kit/scripts/smoke-tests/codex-windows-guardrails-preflight.mjs
 
@@ -89,10 +98,16 @@ console.log("\n=== Untracked local override (enabled: true) is honored, reaches 
     path.join(repoRoot, ".claude", "codex-windows-guardrails.local.json"),
     JSON.stringify({ windows_guardrails: { enabled: true, central_policy_version: "1" } })
   );
-  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  // Use an in-target instruction file so the run stops at the
+  // instruction-containment gate. Proceeding past every gate would spawn a
+  // real `codex` process with --sandbox danger-full-access on any machine
+  // where the codex CLI is installed and authenticated -- this suite must
+  // never do that, and must never depend on the environment's own codex
+  // resolution for a deterministic result.
+  const result = runDispatch(repoRoot, repoRoot, path.join(repoRoot, "target.md"));
   check(
-    "no longer guardrails_disabled -- override was honored (next real gate is instruction-containment, since instructionFile is outside repoRoot here that passes too, so this should proceed toward exec and hit whatever the environment's codex resolution does)",
-    result.category !== "guardrails_disabled",
+    "no longer guardrails_disabled -- the untracked override was honored and the run advanced to the instruction-containment gate",
+    result.ok === false && result.category === "instruction_containment_violation",
     JSON.stringify(result)
   );
 }
@@ -124,6 +139,16 @@ console.log("\n=== Repository-boundary violation (target outside repo root) ==="
   );
 }
 
+console.log("\n=== Nonexistent target path is rejected, not silently dispatched against nothing ===");
+{
+  const result = runDispatch(repoRoot, path.join(repoRoot, "does-not-exist.md"), instructionFile);
+  check(
+    "rejected with target_path_not_found -- a misspelled/deleted target must not reach dispatch and return a zero-finding envelope that looks like a clean audit",
+    result.ok === false && result.category === "target_path_not_found",
+    JSON.stringify(result)
+  );
+}
+
 console.log("\n=== Secret file under a DIRECTORY target, untracked (the real-world .env case) ===");
 {
   fs.writeFileSync(path.join(repoRoot, ".env"), "SECRET=1");
@@ -134,6 +159,27 @@ console.log("\n=== Secret file under a DIRECTORY target, untracked (the real-wor
     JSON.stringify(result)
   );
   fs.rmSync(path.join(repoRoot, ".env"));
+}
+
+console.log("\n=== Secret file OUTSIDE the declared target-paths, still under repo root, is still caught ===");
+{
+  // danger-full-access grants Codex read access to the whole repoRoot
+  // regardless of the caller's narrower target-paths -- the secret scan
+  // must match that actual access grant, not the declared review scope.
+  const inScopeDir = path.join(repoRoot, "in-scope");
+  const outOfScopeDir = path.join(repoRoot, "out-of-scope");
+  fs.mkdirSync(inScopeDir, { recursive: true });
+  fs.mkdirSync(outOfScopeDir, { recursive: true });
+  fs.writeFileSync(path.join(inScopeDir, "readme.md"), "nothing sensitive here");
+  fs.writeFileSync(path.join(outOfScopeDir, ".env"), "SECRET=1");
+  const result = runDispatch(repoRoot, inScopeDir, instructionFile);
+  check(
+    "rejected with secret_file_in_scope even though the secret lives outside the declared target-paths entry -- proves the scan covers the whole repo root, not just target-paths",
+    result.ok === false && result.category === "secret_file_in_scope" && /\.env/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(inScopeDir, { recursive: true, force: true });
+  fs.rmSync(outOfScopeDir, { recursive: true, force: true });
 }
 
 console.log("\n=== Instruction file resolving inside a target path ===");
