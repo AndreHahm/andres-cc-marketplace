@@ -56,6 +56,7 @@ def _is_rulebook_scoped_path(path: str) -> bool:
         return False
     return Path(path).name not in _RULEBOOK_OUT_OF_SCOPE_BASENAMES
 
+
 # Delta Validate's 3 baseline reviewers, dispatched on every delta PR
 # regardless of component type (design v4 amendment 14).
 DELTA_VALIDATE = ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
