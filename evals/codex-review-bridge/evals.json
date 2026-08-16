@@ -26,11 +26,13 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 4,
-    "declared_scenarios_covered": 4,
+    "declared_scenarios_total": 6,
+    "declared_scenarios_covered": 6,
     "uncovered": [],
     "covered_by": {
-      "A prefix-similar-but-not-nested target path is not falsely rejected": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs (\"Prefix-similar but not-actually-nested target path\" case)"
+      "A prefix-similar-but-not-nested target path is not falsely rejected": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs (\"Prefix-similar but not-actually-nested target path\" case)",
+      "A literal closing-tag-shaped delimiter in --instruction-file content is neutralized, never causes a pre-dispatch refusal": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs (\"neutralizeClosingTags (direct unit check)\" and \"Reviewer-instructions delimiter injection\" sections)",
+      "--target-paths/--instruction-file outside the repository root are rejected before any Codex call, including with CODEX_KIT_REVIEW_REPO_ROOT unset": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs (\"CODEX_KIT_REVIEW_REPO_ROOT containment\" section)"
     }
   }
 }

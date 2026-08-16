@@ -93,5 +93,15 @@ console.log("\n=== Plain error text with no secret-shaped content is unaffected 
   check("plain diagnostic text passes through unchanged", redacted === plain, redacted);
 }
 
+console.log("\n=== Bare word 'bearer' in prose is not over-redacted ===");
+{
+  // The bearer pattern previously matched \bbearer\b\s*[:=]?\s*.+$ -- the
+  // bare word plus ANY trailing text on the line, which redacted ordinary
+  // prose merely containing "bearer" wholesale, not just a real token.
+  const prose = "the bearer of this document must sign here";
+  const redacted = redactSecrets(prose);
+  check("prose containing the bare word 'bearer' passes through unchanged", redacted === prose, redacted);
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);
 process.exit(fail > 0 ? 1 : 0);
