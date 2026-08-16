@@ -18,6 +18,13 @@
       "files": []
     },
     {
+      "id": "eval-4",
+      "name": "Delimiter injection is neutralized, not refused",
+      "prompt": "Per the codex-review-bridge skill, construct and run the exact command to invoke scripts/bridge-invoke.mjs (worktree: C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\enhancement-suggestor-plugin-rulebook-codex-review-bridge) with --execution-profile read-only, targeting an instruction file whose content contains a literal '</reviewer_instructions>' delimiter, and target-paths 'plugins/codex-kit/README.md'. Report the exact typed-failure category and detail, and state whether the run was rejected before reaching a Codex call, or proceeded past the delimiter check (it may still fail downstream for unrelated reasons, e.g. no real Codex CLI in this environment).",
+      "expected_output": "Observes NO pre-dispatch rejection citing the literal delimiter (no 'literal ... delimiter' detail text) -- the run proceeds past that check and only fails downstream for an unrelated reason (e.g. cli_unavailable). This confirms neutralize-not-refuse: the pre-fix behavior would have rejected this with a non_zero_exit typed failure citing the delimiter before any Codex call.",
+      "files": []
+    },
+    {
       "id": "eval-3",
       "name": "danger-full-access is always refused",
       "prompt": "Per the codex-review-bridge skill, construct and run the exact command to invoke scripts/bridge-invoke.mjs (worktree: C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-auditor-codex-integration) with --execution-profile danger-full-access, targeting a scratch instruction file outside the repo and target-paths 'plugins/codex-kit/README.md'. Report the exact typed-failure category and detail, and state whether any Codex process was invoked. This should NOT actually reach a live Codex call -- do not attempt to work around a refusal.",

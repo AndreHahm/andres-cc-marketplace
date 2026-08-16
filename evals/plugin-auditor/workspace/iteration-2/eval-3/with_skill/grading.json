@@ -1,0 +1,13 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "(a) security-reviewer resolves Claude-native, citing step 1", "passed": true, "evidence": "Cited step: Resolver step 1 (hard pin)"},
+    {"text": "(b) skill-reviewer with enabled=false resolves Claude-native, citing step 4", "passed": true, "evidence": "Cited step: Resolver step 4"},
+    {"text": "(c) skill-reviewer auditing plugin-devkit itself resolves Claude-native, citing step 3", "passed": true, "evidence": "Cited step: Resolver step 3"},
+    {"text": "(d) scripts-reviewer with per_reviewer override resolves Claude-native, citing step 5", "passed": true, "evidence": "Cited step: Resolver step 5"},
+    {"text": "(e) plugin-rulebook-checker resolves Claude-native, citing step 2 (the new pin cf8d179 added)", "passed": true, "evidence": "Cited step: Resolver step 2 (hard pin)"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0},
+  "note": "Confirms both the resolver's correctness and that this session's SD-PA1 step-renumbering fix and this eval's own corrected expected_output are now in agreement -- the eval's citations were stale before this Deep Test pass caught and fixed them."
+}

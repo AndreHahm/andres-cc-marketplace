@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {"text": "Reports plugins/plugin-devkit/skills/plugin-rulebook/scripts/validate_evidence.py as compliant (or only pre-existing advisory items)", "type": "functionality", "target": "compliance report"},
+    {"text": "Does not invent a false REQUIRED violation against this real, shipped, just-fixed file", "type": "functionality", "target": "compliance report"}
+  ]
+}

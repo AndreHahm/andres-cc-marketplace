@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+  "assertions": [
+    {"text": "Correctly identifies R4 (kebab-case, REQUIRED) as violated by 'Scratch_Test_Skill'", "type": "functionality", "target": "compliance report"},
+    {"text": "Explains the fix (rename to 'scratch-test-skill')", "type": "quality", "target": "compliance report"},
+    {"text": "No false-positive REQUIRED violations reported on other rules for this minimal valid skill", "type": "functionality", "target": "compliance report"}
+  ]
+}

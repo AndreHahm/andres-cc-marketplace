@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Request 1 (scaffold new plugin) routes to plugin-development", "passed": true, "evidence": "plugin-development, quoting 'Use when scaffolding a plugin with a decided name and purpose'"},
+    {"text": "Request 2 (R1-R27 naming/tool-scoping check) routes to plugin-rulebook", "passed": true, "evidence": "plugin-rulebook, quoting 'checking naming conventions and R1-R27 formatting compliance'"},
+    {"text": "Request 3 (manifest/directory wiring validation) routes to plugin-validator", "passed": true, "evidence": "plugin-validator, quoting 'Validates overall plugin structure, manifest, and component wiring'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

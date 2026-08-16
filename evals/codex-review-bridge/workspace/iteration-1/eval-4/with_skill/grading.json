@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-4",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "No pre-dispatch rejection citing the literal delimiter", "passed": true, "evidence": "stdout: {\"ok\":false,\"category\":\"cli_unavailable\",\"detail\":\"codex binary not found on PATH\"} -- no delimiter-related text anywhere in output"},
+    {"text": "Run proceeds past the delimiter check, fails only for an unrelated downstream reason", "passed": true, "evidence": "Failure category is cli_unavailable (no codex binary on PATH in this sandbox), confirming the process reached the dispatch stage before failing"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+  "bonus_confirmation": "The agent's first attempt used a scratch file outside the repo root and was correctly rejected with 'instruction-file resolves outside the repository root' -- an incidental live confirmation of the SEC2/SC1 repo-root containment fix working correctly too, not just the delimiter fix."
+}

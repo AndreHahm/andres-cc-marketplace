@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Reports plugins/plugin-devkit/skills/plugin-rulebook/scripts/validate_evidence.py as compliant (or only pre-existing advisory items)", "passed": true, "evidence": "Overall Verdict: PASS. No REQUIRED, SUGGESTED, or ADVISORY findings against any enabled rule."},
+    {"text": "Does not invent a false REQUIRED violation against this real, shipped, just-fixed file", "passed": true, "evidence": "Every applicable rule (R1, R7, R9, R17, R19, R20, R23, R24) passes; every other enabled rule correctly reported N/A by stated scope."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}
