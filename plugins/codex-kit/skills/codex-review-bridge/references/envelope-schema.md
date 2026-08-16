@@ -29,7 +29,7 @@ This is codex-kit's canonical findings envelope — every reviewer dispatched th
 - `reviewer` / `target_paths` — must match the caller's request.
 - `backend` + `provenance` — makes mixed-backend reports auditable.
 - `severity` — restricted to `critical` / `major` / `minor`.
-- `axis` — from the reviewer's own allowlist (caller-supplied, not invented by the bridge).
+- `axis` — schema-typed only (a plain string; `ENVELOPE_SCHEMA` carries no enum/allowlist for it). **This bridge does not enforce an allowlist of valid axis values** — an earlier draft of this contract promised one ("from the reviewer's own allowlist"), but no caller has ever actually defined or passed one, and `semanticallyValidate` never checks it against anything (see `references/semantic-validation.md`'s "Not yet implemented" list — the same correction already made for `reviewerType` in `SKILL.md`'s Inputs section applies here). If a caller needs to restrict which axis values are acceptable, it must validate `axis` itself after the envelope returns.
 - `location` — must resolve to an in-scope path and, if a line is given, an existing line.
 - `components` (nullable, not merely optional-by-omission — see below) — for a finding that is inherently about a relationship between multiple files (a dependency cycle, a bidirectional coupling, a cross-file consistency/mirror mismatch), lists every other component involved, in addition to `location`'s single primary citation — never as a replacement for it. Each entry is validated the same way as `location` (must resolve to an in-scope, existing path). A reviewer that has nothing to add here sends `null`, not an omitted key.
 - `evidence` — what was observed, not just a conclusion.

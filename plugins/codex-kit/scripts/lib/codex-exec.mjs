@@ -30,6 +30,39 @@ function typedFailure(category, detail) {
   return { ok: false, category, detail };
 }
 
+// Ported pattern set (not the file itself -- codex-kit stays JS per
+// require-declared-plugin-language.md) from analysis-kit's
+// scripts/redact_secrets.py, applied to the raw Codex stderr tail before it
+// is placed in a typed-failure `detail` -- that detail is persisted verbatim
+// into CI reports (scripts/marketplace_ci/review.py), and an auth failure's
+// stderr has been confirmed to genuinely reach this path (commit 91a6478).
+// See redact_secrets.py's own comment for why a generic high-entropy
+// catch-all was deliberately left out (over-redacts legitimate path-shaped
+// text): this pattern set is intentionally conservative, matching only
+// known header/prefix/env-var shapes.
+const SECRET_PATTERNS = [
+  /\bauthorization\s*[:=]\s*.+$/gim,
+  /\bbearer\b\s*[:=]?\s*.+$/gim,
+  /^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*.+$/gim,
+  /\bAKIA[0-9A-Z]{16}\b/g,
+  /\bgh[pousr]_[A-Za-z0-9]{36,}\b/g,
+  /\bxox[baprs]-[A-Za-z0-9-]+\b/g,
+  /\bsk-[A-Za-z0-9-]{20,}\b/g,
+  /\bAIza[0-9A-Za-z_-]{35}\b/g,
+  /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\b/g,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g
+];
+
+// Exported so a smoke test can exercise the pattern set directly, matching
+// the existing findSchemaViolation export pattern below.
+export function redactSecrets(text) {
+  let result = text;
+  for (const pattern of SECRET_PATTERNS) {
+    result = result.replace(pattern, "[REDACTED]");
+  }
+  return result;
+}
+
 // Minimal structural validator against the same `schema` object passed to
 // `--output-schema` -- closes a real gap where a parsed response was
 // trusted after JSON.parse alone, relying entirely on Codex's own
@@ -197,7 +230,7 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
         // printed first, so a 500-char head slice showed only that boilerplate
         // and cut off before the actual failure line every time this was hit
         // in practice -- the real error text is near the end of stderr.
-        const detail = stderr.trim().slice(-4000);
+        const detail = redactSecrets(stderr).trim().slice(-4000);
         // Checked first, ahead of the sandbox pattern below: a benign
         // "could not find bubblewrap... sandbox prerequisites" fallback
         // warning can appear in stderr ahead of a real 401 auth failure,

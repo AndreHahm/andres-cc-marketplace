@@ -11,14 +11,14 @@
       "files": []
     },
     {
-      "id": 2,
+      "id": "eval-2",
       "name": "Self-referential instruction-containment refusal",
       "prompt": "Per the codex-review-bridge skill, construct and run the exact command to invoke scripts/bridge-invoke.mjs (worktree: C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-auditor-codex-integration) with --execution-profile read-only, where the --instruction-file argument is the SAME file as the sole --target-paths entry (e.g. plugins/codex-kit/README.md for both). Report the exact typed-failure category and detail, and state whether any Codex process was invoked.",
       "expected_output": "Observes a rejection citing that the instruction-file resolves inside target-paths (the trust-boundary containment check); explicitly states no Codex process was invoked, since this check runs before the runCodexExec call.",
       "files": []
     },
     {
-      "id": 3,
+      "id": "eval-3",
       "name": "danger-full-access is always refused",
       "prompt": "Per the codex-review-bridge skill, construct and run the exact command to invoke scripts/bridge-invoke.mjs (worktree: C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-auditor-codex-integration) with --execution-profile danger-full-access, targeting a scratch instruction file outside the repo and target-paths 'plugins/codex-kit/README.md'. Report the exact typed-failure category and detail, and state whether any Codex process was invoked. This should NOT actually reach a live Codex call -- do not attempt to work around a refusal.",
       "expected_output": "Observes an isolation_profile_unavailable typed failure, citing that codex-review-bridge refuses danger-full-access unconditionally; explicitly states no Codex process was invoked.",
@@ -27,9 +27,10 @@
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 4,
-    "declared_scenarios_covered": 3,
-    "uncovered": [
-      "A prefix-similar-but-not-nested target path is not falsely rejected"
-    ]
+    "declared_scenarios_covered": 4,
+    "uncovered": [],
+    "covered_by": {
+      "A prefix-similar-but-not-nested target path is not falsely rejected": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs (\"Prefix-similar but not-actually-nested target path\" case)"
+    }
   }
 }
