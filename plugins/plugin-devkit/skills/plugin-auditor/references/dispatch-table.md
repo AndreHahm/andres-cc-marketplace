@@ -20,18 +20,16 @@ Dispatch only the reviewer(s) matching the target's actual type — never all fi
 
 ## Component Mode
 
-For a single component, or the scope manifest's declared component set when Phase 5 covers
-more than one (a `changed`/`named` scope with several components), dispatch in parallel:
+For a single component, dispatch in parallel:
 
 - `skilldir-reviewer` (skills with non-`SKILL.md` files only)
 - The type-matched `*-reviewer` from the table above
 - `completeness-reviewer`
 - `activation-reviewer`
 - `security-reviewer`
-- `dependency-reviewer` — Full review, scoped to exactly the declared component set (its own
-  Step 1 already supports "the caller names specific components, resolve each via `Glob` and
-  use exactly that set"); use its Delta mode instead when the scope manifest names exactly
-  one new `Skill()`/`Agent()` edge just added, per its own Invocation Modes
+- `dependency-reviewer` — Full review, scoped to exactly this one component; use its Delta
+  mode instead when the caller names exactly one new `Skill()`/`Agent()` edge just added, per
+  its own Invocation Modes
 - `scripts-reviewer` — only if `scripts/` exists for the target
 - `hook-reviewer` — only if the target has hooks (a hook component, or a skill/agent
   declaring `hooks:` frontmatter)
@@ -47,6 +45,35 @@ run once across the whole set (not once per component):
 - `dependency-reviewer` in whole-plugin mode (Full review, no named subset) → the graph-wide
   cycle/bidirectional/broken-target findings a per-component scoped call can't see
 - `plugin-validator` in its default Full-review mode → structural/manifest findings
+
+## Scoped Mode
+
+For a declared component set covering more than one component — a scope manifest's
+`included` list, or an explicit multi-component list the caller names directly — which may
+span more than one plugin (e.g. a `changed`/`named` scope touching both `plugin-devkit` and
+`codex-kit` on the same branch):
+
+1. **Per-component dispatch** — for each component in the list, dispatch the Component Mode
+   set above (same reviewers, same rules), batched across all components in parallel.
+2. **Whole-scope reviewers, run once across the entire named list** (not once per component,
+   not once per plugin). Each of these already accepts an arbitrary named-component list per
+   its own agent definition — a cross-plugin list is not a new capability for them, only for
+   this skill's own orchestration of them:
+   - `activation-reviewer` — pass the full cross-plugin component list; cross-component
+     overlap findings
+   - `consistency-reviewer` — pass the full cross-plugin component list; drift/duplication
+     findings
+   - `dependency-reviewer` — Full review, named subset = the full cross-plugin component
+     list (the graph-wide cycle/bidirectional/broken-target check, bounded to exactly this
+     scope rather than an unbounded whole-plugin sweep)
+3. **`plugin-validator`, once per distinct plugin touched.** `plugin-validator` validates one
+   plugin's manifest and directory structure at a time — it has no cross-plugin mode. Group
+   the component list by owning plugin (the `plugins/<name>/` path segment each component
+   resolves under), and dispatch one Full-review `plugin-validator` call per distinct plugin
+   found. Never dispatch it once across the whole cross-plugin scope, and never skip a
+   touched plugin just because only one of its components is in scope — the
+   manifest/structure/security checks are inherently whole-plugin, not per-component, the
+   same rule Plugin Mode already applies to a single plugin.
 
 ## Reuse Pre-Supplied Findings
 
