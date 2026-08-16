@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -86,24 +86,32 @@ Before creating a PR, check for uncommitted changes:
    **`style` and `ci` are valid commit types but not valid PR-title types** here), and the optional scope
    must be lowercase letters/digits/underscore/hyphen/slash only (no uppercase, no dots, no spaces).
 
-4. Immediately before creating the PR, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-create create-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then use the `gh pr create` command to create a new pull request, including `--draft` only if the previous step's answer was "Draft":
+3.75. **Resolve the PR assignee**: `gh pr create` assigns nobody by default, which leaves every PR
+   looking unowned. Resolve who to assign before creating the PR: try `gh api user --jq '.login'` (the
+   account `gh` is actually authenticated as — the same call `merge-pr`'s bypass step already uses to
+   resolve "the current actor" elsewhere). If that call fails or returns empty, fall back to the repo
+   owner: `gh repo view --json owner --jq '.owner.login'`. Pass whichever login resolves as
+   `--assignee <login>` in step 4's `gh pr create` call below — never skip assignment silently just
+   because the primary lookup failed; the fallback exists precisely so a PR is never left unassigned.
+
+4. Immediately before creating the PR, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-create create-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then use the `gh pr create` command to create a new pull request, including `--draft` only if step 3's answer was "Draft", and always including `--assignee <login>` from step 3.75:
 
    ```bash
    # Basic command structure (draft)
-   gh pr create --draft --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main
+   gh pr create --draft --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main --assignee <login>
 
    # Basic command structure (ready-to-merge)
-   gh pr create --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main
+   gh pr create --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main --assignee <login>
    ```
 
    For more complex PR descriptions with proper formatting, use the `--body-file` option pointing at the resolved template path (`.github/pull_request_template.md`, or `${CLAUDE_SKILL_DIR}/assets/pull_request_template.md` if that project file doesn't exist):
 
    ```bash
    # Create PR with proper template structure (draft)
-   gh pr create --draft --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main
+   gh pr create --draft --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main --assignee <login>
 
    # Create PR with proper template structure (ready-to-merge)
-   gh pr create --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main
+   gh pr create --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main --assignee <login>
    ```
 
 5. **Optional Codex-review bypass attestation** (only when invoked with `--bypass-codex-review "<reason>"`): a non-empty reason is required — if the flag is present with an empty or missing reason, reject it and stop before creating any attestation (the PR itself, already created in step 4, is unaffected). Otherwise, after the PR exists:
@@ -200,7 +208,7 @@ To simplify PR creation with consistent descriptions, you can create a template 
 2. Use it when creating PRs:
 
 ```bash
-gh pr create --draft --title "feat(scope): Your title" --body-file <scratchpad-dir>/pr-template.md --base main
+gh pr create --draft --title "feat(scope): Your title" --body-file <scratchpad-dir>/pr-template.md --base main --assignee <login>
 ```
 
 ## Loop-Breaker Convention
@@ -266,6 +274,10 @@ loop.
 - [ ] Step 3.5 always runs before `gh pr create` in this repository, and a `FAIL` result always blocks
       creation with that title — never created anyway on a reported failure
 - [ ] Step 3.5 is a no-op (not an error) in a repository without `scripts/marketplace_ci/pr_policy.py`
+- [ ] Step 3.75 always resolves an assignee before step 4 — `gh api user` failing or returning empty
+      always falls through to the repo-owner fallback, never leaves the PR unassigned silently
+- [ ] Every `gh pr create` variant in step 4 always includes `--assignee <login>` — draft and
+      ready-to-merge, both the `--body` and `--body-file` forms
 
 **Step 3.5 (`check-pr-title.py`) — verified live, 2026-08-16:** confirmed `PASS` on a real compliant title
 (`docs(plugin-devkit): ...`, used for PR #42) and `FAIL` with the correct reason on three synthetic bad
@@ -273,6 +285,15 @@ titles — a `style:`-typed title (rejected: not in this repo's allowed-type lis
 valid `commit` type), a `ci:`-typed title (same reason), and an uppercase-scope title (rejected: fails the
 title regex). All four results matched `pr_policy.py`'s actual behavior, called directly rather than
 reimplemented.
+
+**Step 3.75 (assignee resolution) — partially verified live, 2026-08-16:** both `gh api user --jq
+'.login'` and the `gh repo view --json owner --jq '.owner.login'` fallback resolved correctly in this
+repository (both returned `AndreHahm`, since this repo's authenticated user and owner are the same
+account — a multi-maintainer repo would exercise a real divergence between the two, not tested here).
+`gh pr create --help` confirms `-a, --assignee login` is the correct flag/argument shape. **Not yet
+exercised end-to-end**: no PR was open in this repository at verification time to create a fresh one
+against, so `gh pr create --assignee <login>` actually succeeding (vs. e.g. failing if the resolved login
+lacks repo access) hasn't been observed live — verify on the next real `create-pr` invocation.
 
 ## Related Documentation
 
