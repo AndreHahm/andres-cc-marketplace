@@ -94,12 +94,21 @@ CRITICAL: Perform the following steps exactly as described:
    given — a no-op if no staged path ends in `.py`): mirrors CI's own "Python quality" gate
    (`docs/ci.md`: `ruff format --check`, `ruff check`, `ty check`) as closely as a local pre-commit step
    can:
-   - Run `uv run ruff format <staged .py paths>` then `uv run ruff check --fix <staged .py paths>` —
-     auto-fixing formatting and auto-fixable lint violations in place — then re-stage exactly those paths
-     (`git add <paths>`) so the commit captures the fixed content. Runs before step 8 so that if a fixed
-     file is also a canonical mirror source, step 8's sync picks up the corrected content, not the
-     pre-fix version. Report which files, if any, were modified by the auto-fix.
-   - Run `uv run ty check <staged .py paths>` — type errors aren't auto-fixable, so this only checks.
+   - **Skip any staged `.py` path that's only partially staged** — check `git diff --name-only -- <path>`
+     (the *unstaged* diff) for each staged `.py` path first; if it's non-empty, that file has unstaged
+     hunks alongside its staged ones. `ruff format`/`ruff check --fix` operate on the whole working-tree
+     file, not just the staged content, and a blanket `git add <path>` afterward would silently pull the
+     unstaged hunks into this commit too — overriding the user's own deliberate staging choice (a
+     `AGENTS.md`/`CLAUDE.md` "Surgical Changes" violation, not just a style nit). Report each skipped file
+     by name so it's never a silent gap; auto-fix only the remaining fully-staged `.py` paths.
+   - For each fully-staged `.py` path: run `uv run ruff format <path>` then
+     `uv run ruff check --fix <path>` — auto-fixing formatting and auto-fixable lint violations in place —
+     then re-stage it (`git add <path>`) so the commit captures the fixed content. Runs before step 8 so
+     that if a fixed file is also a canonical mirror source, step 8's sync picks up the corrected content,
+     not the pre-fix version. Report which files, if any, were modified by the auto-fix.
+   - Run `uv run ty check <staged .py paths>` (including any skipped-from-autofix partially-staged ones —
+     `ty` only reads, it never risks clobbering unstaged content) — type errors aren't auto-fixable, so
+     this only checks.
    - If either `ruff check` or `ty check` still reports a violation, surface it and ask (mirroring step
      10's pattern) whether to proceed anyway or stop and fix manually — never silently commit code that
      still fails either check.
@@ -276,6 +285,12 @@ When committing on `master` or `main`, the command will ask if you want to creat
 - [ ] Step 11's "multiple concerns?" signal fires without `commit` attempting to perform the split itself — step 12 always redirects to the `standalone-commits` skill rather than re-deriving a split
 - [ ] Generated commit messages never contain a local-machine-specific path, terminal-session symptom description, or session context — only content a reader of the shared repo history would understand
 - [ ] A request to commit while on `main`/`master` with nothing staged yet points at `starting-work`; step 3's own branch-creation fallback only fires for someone already mid-edit
+- [ ] Step 7.5 always checks `git diff --name-only -- <path>` per staged `.py` path before auto-fixing it
+      — a non-empty result always skips that file's auto-fix rather than risking a blanket `git add`
+      pulling unstaged hunks into the commit (found by Codex's automated PR review, 2026-08-16: the
+      original version had no such check)
+- [ ] A skipped partially-staged file is always reported by name, never silently dropped — and is still
+      included in the `ty check` pass, which only reads
 
 **Step 7.5 (lint/format/type-check staged Python files) — verified live, 2026-08-16:** ran
 `uv run ruff format`/`uv run ruff check --fix`/`uv run ty check` against two newly-written scripts
