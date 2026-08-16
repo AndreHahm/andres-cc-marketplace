@@ -31,6 +31,11 @@ Recommendation: Delete all 4 (work is in main)
 |--------|-------------|
 | experiment/old | abc1234 "WIP something" |
 
+**Stale remote-only branch (merged PR, remote never deleted)**
+| Branch | Merged As | Evidence |
+|--------|-----------|----------|
+| feat/old-worktree-feature | PR #41 | `gh pr view` confirms `state: MERGED`; no local branch remains |
+
 **Keep (active work)**
 | Branch | Status |
 |--------|--------|
