@@ -42,7 +42,12 @@ function typedFailure(category, detail) {
 // known header/prefix/env-var shapes.
 const SECRET_PATTERNS = [
   /\bauthorization\s*[:=]\s*.+$/gim,
-  /\bbearer\b\s*[:=]?\s*.+$/gim,
+  // Requires "bearer" directly followed by a token-length (20+ char)
+  // token-shaped run, not just the bare word -- the prior
+  // /\bbearer\b\s*[:=]?\s*.+$/gim redacted the rest of ANY line merely
+  // containing "bearer" (e.g. prose like "the bearer of this document"),
+  // which is both an over-redaction bug and untested for that case.
+  /\bbearer\s+[A-Za-z0-9\-._~+/]{20,}=*/gi,
   /^\s*[A-Za-z_][A-Za-z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD|API)[A-Za-z0-9_]*\s*=\s*.+$/gim,
   /\bAKIA[0-9A-Z]{16}\b/g,
   /\bgh[pousr]_[A-Za-z0-9]{36,}\b/g,
@@ -220,7 +225,11 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
       if (error.code === "ENOENT") {
         return finish(typedFailure(FAILURE_CATEGORIES.CLI_UNAVAILABLE, "codex binary not found on PATH"));
       }
-      finish(typedFailure(FAILURE_CATEGORIES.NON_ZERO_EXIT, error.message));
+      // Same redactSecrets pass as the close-handler's `detail` below -- this
+      // detail is persisted into CI reports too (scripts/marketplace_ci/
+      // review.py), and error.message can echo back spawn-time context that
+      // included user/environment-supplied values.
+      finish(typedFailure(FAILURE_CATEGORIES.NON_ZERO_EXIT, redactSecrets(error.message)));
     });
 
     child.on("close", (code) => {

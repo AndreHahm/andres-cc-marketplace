@@ -3,7 +3,24 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { runCodexExec } from "../../../scripts/lib/codex-exec.mjs";
+// NOTE: this relative import only resolves correctly from this file's own
+// canonical location (plugins/codex-kit/skills/codex-review-bridge/scripts/).
+// `sync-plugin-mirrors` copies this whole file verbatim into the .claude/
+// staging mirror (whole-plugin sync, no per-file exception mechanism), where
+// the identical import string does NOT resolve -- codex-kit's scripts/lib/
+// tree has no .claude/ counterpart to import (single canonical copy, per
+// plugin-rulebook's R19 in-development-mirror exception). This makes the
+// .claude/ mirror copy of this one file non-functional if ever run directly
+// from that location; it is not, in practice -- every documented invocation
+// path (SKILL.md, plugin-auditor's Resolver) always names the plugins/
+// canonical path, never the .claude/ mirror, for exactly this reason. Fixing
+// this durably would need either a dynamic import resolved from this file's
+// own import.meta.url (a larger change than this fix batch's scope) or a
+// marketplace-sync.json per-file exclusion (touches unchanged tooling
+// config, out of scope for this fix batch) -- tracked as a known, dormant
+// limitation rather than patched per-copy, since any per-copy patch is
+// silently reverted by the next sync-plugin-mirrors run.
+import { runCodexExec, redactSecrets } from "../../../scripts/lib/codex-exec.mjs";
 
 // Deep-freezes an exported constant so an importer can read but never mutate
 // it in-process -- a mutation would otherwise affect every other importer
@@ -103,13 +120,22 @@ export function isValidToken(value) {
 }
 
 // Same rationale as isValidToken above, widened to a path-legal charset
-// (adds "/" and a literal space) for values that are file paths rather than
-// short identifiers, and interpolated into the same prompt. No comma: a
-// --target-paths entry can never legitimately contain one, since the raw
-// value is comma-split before this check ever runs (see the no-comma
-// constraint documented in SKILL.md's Inputs section).
+// (adds "/") for values that are file paths rather than short identifiers,
+// and interpolated into the same prompt. No comma: a --target-paths entry
+// can never legitimately contain one, since the raw value is comma-split
+// before this check ever runs (see the no-comma constraint documented in
+// SKILL.md's Inputs section). No space either: a space has no legitimate
+// use in this repo's own file-naming conventions (kebab-case throughout)
+// and a space-containing PR-author-controlled filename could otherwise
+// inject prose fragments into the <target_paths> prompt block.
+//
+// This charset is an interpolation-safety guard only -- it deliberately
+// still allows "." and "/" (both required for ordinary relative paths like
+// "src/foo.js"), so it does NOT and cannot block path traversal ("../../").
+// Traversal containment is the repoRoot check below (always active, not
+// opt-in), not this function.
 export function isValidPathToken(value) {
-  return typeof value === "string" && value.length > 0 && value.length <= 4096 && /^[A-Za-z0-9._/ -]+$/.test(value);
+  return typeof value === "string" && value.length > 0 && value.length <= 4096 && /^[A-Za-z0-9._/-]+$/.test(value);
 }
 
 function parseArgs(argv) {
@@ -124,11 +150,41 @@ function parseArgs(argv) {
   return options;
 }
 
+// realpath, not the raw resolved string: a symlink inside the declared
+// scope root that points outside it would otherwise defeat containment even
+// though the string comparison "passes". Falls back to the resolved path
+// unchanged when realpath fails (a not-yet-existing path can't itself be a
+// symlink escape, so there's nothing to resolve).
+function safeRealpath(candidate) {
+  try {
+    return fs.realpathSync(candidate);
+  } catch {
+    return candidate;
+  }
+}
+
+// Duplicate of scripts/lib/prompts.mjs's own (unexported) neutralizeClosingTags
+// -- see the comment where this is applied to instructionBody below for why
+// this is a duplicate rather than an import. Exported so a smoke test can
+// exercise it directly, matching the existing isValidToken/isWithin export
+// pattern in this file.
+export function neutralizeClosingTags(value) {
+  return value.replace(/<\s*\/\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*>/g, "(/$1)");
+}
+
 export function isWithin(absolute, scopeRoot) {
   // A plain startsWith() would let "/repo/plugins/foobar" pass as "within"
   // "/repo/plugins/foo" — require an exact match or a path-separator
   // boundary right after the scope root.
-  return absolute === scopeRoot || absolute.startsWith(scopeRoot + path.sep);
+  const realAbsolute = safeRealpath(absolute);
+  const realScopeRoot = safeRealpath(scopeRoot);
+  // Case-insensitive on win32 only (matches computeIsEntryPoint()'s own
+  // platform check below) — a casing mismatch between --instruction-file and
+  // --target-paths could otherwise silently defeat containment on Windows,
+  // this repo's own dev platform.
+  const a = process.platform === "win32" ? realAbsolute.toLowerCase() : realAbsolute;
+  const s = process.platform === "win32" ? realScopeRoot.toLowerCase() : realScopeRoot;
+  return a === s || a.startsWith(s + path.sep);
 }
 
 export function locateInSemanticScope(targetPaths, location, repoRoot) {
@@ -242,38 +298,52 @@ async function main() {
   // wider path-legal charset instead.
   for (const targetPath of targetPaths) {
     if (!isValidPathToken(targetPath)) {
-      console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `target-paths entry is invalid: "${targetPath}" -- must match ^[A-Za-z0-9._/ -]+$ (a literal comma inside a single path is not supported -- see SKILL.md's Inputs section)` }));
+      // redactSecrets on the echoed value: a target-paths entry is caller
+      // input, and its charset (letters/digits/._/-) permits a secret-shaped
+      // string (e.g. an sk-/AKIA-prefixed token) to be passed and echoed
+      // back verbatim into a CI-persisted detail field.
+      console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `target-paths entry is invalid: "${redactSecrets(targetPath)}" -- must match ^[A-Za-z0-9._/-]+$ (a literal comma inside a single path is not supported -- see SKILL.md's Inputs section)` }));
       process.exit(1);
     }
   }
 
-  // Optional caller-declared repository root (env var, same
-  // one-value-per-CI-run convention as CODEX_KIT_REVIEW_MODEL/TIMEOUT_MS
-  // above): when set, bounds both --cwd and every --target-paths entry to
-  // resolve inside it. --sandbox read-only constrains writes, not reads --
-  // isWithin/locateInSemanticScope already enforce containment on
-  // model-returned citations post-dispatch (see semanticallyValidate above)
-  // but nothing enforced it on this caller-supplied input pre-dispatch until
-  // now. Unset (the default) preserves prior behavior for callers that
-  // haven't declared a root yet.
+  // Repository root containment: bounds --cwd, every --target-paths entry,
+  // and --instruction-file to resolve inside it. --sandbox read-only
+  // constrains writes, not reads -- isWithin/locateInSemanticScope already
+  // enforce containment on model-returned citations post-dispatch (see
+  // semanticallyValidate above) but nothing enforced it on this
+  // caller-supplied input pre-dispatch until now.
+  //
+  // Always active, not opt-in: previously this whole block only ran when
+  // CODEX_KIT_REVIEW_REPO_ROOT was explicitly set, and the one live CI
+  // caller (scripts/marketplace_ci/review.py) never sets it -- meaning
+  // isValidPathToken's charset (which still allows "." and "/", see its own
+  // comment) was the *only* traversal-adjacent check actually running in
+  // production, and that charset cannot reject "../../etc/passwd"-shaped
+  // paths without also breaking every ordinary relative path. Defaulting
+  // repoRoot to cwd itself when the env var is unset closes that gap without
+  // requiring any caller to opt in, and matches how the one live caller
+  // already invokes this bridge (cwd is already the review-context root).
   const repoRootRaw = process.env.CODEX_KIT_REVIEW_REPO_ROOT;
+  const repoRoot = repoRootRaw ? path.resolve(repoRootRaw) : path.resolve(cwd);
+  if (repoRootRaw && (!fs.existsSync(repoRoot) || !fs.statSync(repoRoot).isDirectory())) {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `CODEX_KIT_REVIEW_REPO_ROOT does not resolve to an existing directory: ${repoRoot}` }));
+    process.exit(1);
+  }
+  // Only meaningful when repoRootRaw was explicitly given -- when repoRoot
+  // defaults to cwd itself, cwd-within-repoRoot is trivially true.
   if (repoRootRaw) {
-    const repoRoot = path.resolve(repoRootRaw);
-    if (!fs.existsSync(repoRoot) || !fs.statSync(repoRoot).isDirectory()) {
-      console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `CODEX_KIT_REVIEW_REPO_ROOT does not resolve to an existing directory: ${repoRoot}` }));
-      process.exit(1);
-    }
     const resolvedCwd = path.resolve(cwd);
     if (!isWithin(resolvedCwd, repoRoot)) {
       console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `--cwd resolves outside CODEX_KIT_REVIEW_REPO_ROOT: ${resolvedCwd} is not within ${repoRoot}` }));
       process.exit(1);
     }
-    for (const targetPath of targetPaths) {
-      const resolvedTarget = path.resolve(cwd, targetPath);
-      if (!isWithin(resolvedTarget, repoRoot)) {
-        console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `target-paths entry resolves outside CODEX_KIT_REVIEW_REPO_ROOT: "${targetPath}" -> ${resolvedTarget} is not within ${repoRoot}` }));
-        process.exit(1);
-      }
+  }
+  for (const targetPath of targetPaths) {
+    const resolvedTarget = path.resolve(cwd, targetPath);
+    if (!isWithin(resolvedTarget, repoRoot)) {
+      console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `target-paths entry resolves outside the repository root: "${redactSecrets(targetPath)}" -> ${redactSecrets(resolvedTarget)} is not within ${repoRoot}` }));
+      process.exit(1);
     }
   }
 
@@ -286,6 +356,16 @@ async function main() {
   // are still responsible for sourcing instructionBody from a trusted
   // checkout (e.g. merge-base, not the PR branch) per SKILL.md's Inputs.
   const resolvedInstructionFile = path.resolve(cwd, instructionFile);
+
+  // instruction-file is now bound by the same repo-root containment gate as
+  // --cwd and every --target-paths entry above -- its full content is what
+  // reaches the third-party Codex/OpenAI API, so it was a gap for this to be
+  // exempt while target paths were covered.
+  if (!isWithin(resolvedInstructionFile, repoRoot)) {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `instruction-file resolves outside the repository root: ${redactSecrets(resolvedInstructionFile)} is not within ${repoRoot}` }));
+    process.exit(1);
+  }
+
   const instructionUnderTarget = targetPaths.some((p) => {
     const resolvedTarget = path.resolve(cwd, p);
     return isWithin(resolvedInstructionFile, resolvedTarget);
@@ -305,14 +385,16 @@ async function main() {
   // Inputs section documents that as the caller's responsibility, not
   // mechanically enforced here) -- but SKILL.md's "When NOT to Use" already
   // concedes an untrusted-source instruction file is an in-scope threat, so
-  // this bridge still guards its own prompt structure: a literal closing
-  // delimiter inside instructionBody would let its content escape the
-  // <reviewer_instructions> block early and be interpreted as continuing
-  // prompt structure (e.g. a forged <dispatch> tag or trust-boundary claim).
-  if (instructionBody.includes("</reviewer_instructions>")) {
-    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "instruction-file content contains a literal '</reviewer_instructions>' delimiter -- this would let its content escape the instruction block early" }));
-    process.exit(1);
-  }
+  // this bridge still guards its own prompt structure. Neutralize, never
+  // refuse-and-exit (shared-skill-conventions.md §4, and matching
+  // interpolateTemplate's own use of neutralizeClosingTags in
+  // scripts/lib/prompts.mjs) -- break every closing-tag-shaped substring in
+  // instructionBody generically, not scoped to just </reviewer_instructions>,
+  // so a literal delimiter for ANY of this prompt's five structural tags
+  // (<content_trust_boundary>, <target_paths>, <reviewer_instructions>,
+  // <content_trust_boundary_restated>, <dispatch>) can no longer escape its
+  // block and be read as continuing prompt structure.
+  const neutralizedInstructionBody = neutralizeClosingTags(instructionBody);
 
   const prompt = [
     "<content_trust_boundary>",
@@ -322,7 +404,7 @@ async function main() {
     `<target_paths>${targetPaths.join(", ")}</target_paths>`,
     "",
     "<reviewer_instructions>",
-    instructionBody,
+    neutralizedInstructionBody,
     "</reviewer_instructions>",
     "",
     // Restated after the interpolated instruction body too, not just before
@@ -383,7 +465,7 @@ function computeIsEntryPoint() {
 
 if (computeIsEntryPoint()) {
   main().catch((error) => {
-    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: error instanceof Error ? error.message : String(error) }));
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: redactSecrets(error instanceof Error ? error.message : String(error)) }));
     process.exit(1);
   });
 }
