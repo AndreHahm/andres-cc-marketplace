@@ -4,8 +4,9 @@ description: >-
   Dispatches this plugin's review agents (skilldir-reviewer, the type-matched
   *-reviewer, completeness-reviewer, activation-reviewer, security-reviewer,
   dependency-reviewer, scripts-reviewer, hook-reviewer, plugin-rulebook-checker,
-  plus consistency-reviewer and plugin-validator in whole-plugin mode)
-  against a single component or a whole plugin, and normalizes every finding
+  plus consistency-reviewer and plugin-validator in whole-plugin/scoped mode)
+  against a single component, a whole plugin, or a declared multi-component
+  scope that may span more than one plugin, and normalizes every finding
   into plugin-rulebook's shared evidence schema. Produces evidence only — no
   score, no gates, no SWOT. Use when the user asks to 'audit this plugin',
   'gather findings without scoring', 'run just the reviewer fan-out', or when
@@ -36,16 +37,23 @@ every applicable reviewer runs as documented below.
 
 1. **Resolve target and mode** — `$0`, or ask if omitted/ambiguous. A single component
    (resolvable via `Glob`) is **component mode**; a plugin name or "this plugin"/"the whole
-   plugin" is **plugin mode**.
-2. **Determine target type** (component mode only) — `references/dispatch-table.md`'s
-   Type-Matched Reviewer Table picks which `*-reviewer` applies.
+   plugin" is **plugin mode**; a path to a scope manifest (per
+   `plugin-rulebook/references/evidence-schema.md`'s Scope Manifest shape, reading its
+   `included` list) or an explicit list of 2+ component paths the caller names directly is
+   **scoped mode** — for a declared component set that may span more than one plugin (e.g.
+   `plugin-lifecycle-downstream`'s own `changed`/`named` scope touching two plugins on the
+   same branch).
+2. **Determine target type** (component mode, and scoped mode once per listed component) —
+   `references/dispatch-table.md`'s Type-Matched Reviewer Table picks which `*-reviewer`
+   applies.
 3. **Reuse pre-supplied findings** — if the caller already supplies
    `plugin-rulebook-checker`/`plugin-validator` findings for some or all of the scope, use
    those instead of re-dispatching for the same component (see
    `references/dispatch-table.md`'s "Reuse Pre-Supplied Findings").
-4. **Dispatch matching reviewers in parallel** — per `references/dispatch-table.md`. Print a
-   status line first (e.g. "Dispatching N reviewers in parallel — this typically takes
-   several minutes...") since agent dispatches run silently with no built-in progress
+4. **Dispatch matching reviewers in parallel** — per `references/dispatch-table.md`'s
+   Component Mode, Plugin Mode, or Scoped Mode section (matching Step 1's resolved mode).
+   Print a status line first (e.g. "Dispatching N reviewers in parallel — this typically
+   takes several minutes...") since agent dispatches run silently with no built-in progress
    streaming. Before dispatching, resolve each reviewer's backend (Claude-native, the
    unchanged default, or Codex) — see `references/codex-backend.md`. This resolver runs for
    every dispatch, but immediately returns Claude-native (matching today's behavior exactly)
@@ -62,7 +70,9 @@ every applicable reviewer runs as documented below.
    instruction regardless of which backend produced the finding.
 6. **Write the report** — a Report Revision per `evidence-schema.md`, to
    `.claude/output/plugin-auditor/<target>-<timestamp>.json`. Get the timestamp via
-   `date -u +%Y-%m-%dT%H-%M-%SZ`.
+   `date -u +%Y-%m-%dT%H-%M-%SZ`. In scoped mode, `<target>` is the scope manifest's own
+   `run_id` if one was supplied, else `scoped-<n>components-<m>plugins` (e.g.
+   `scoped-5components-2plugins`).
 7. **Present a short narrative summary** in chat — finding counts per source and severity,
    not a full re-listing (the written report already has the detail). Then, if any Critical
    or Major finding exists, ask via `AskUserQuestion` whether to run `enhancement-suggestor`
@@ -137,6 +147,15 @@ outside this run.
 10. **First-Send Confirmation fires exactly once per session** — with the Codex backend enabled,
     confirm the `AskUserQuestion` gate fires before the first Codex dispatch attempted in the
     session and does not fire again before a second reviewer's dispatch in the same session.
+11. **Scoped mode, cross-plugin** — audit an explicit list of 2 small components from two
+    different plugins; confirm `activation-reviewer`, `consistency-reviewer`, and
+    `dependency-reviewer` each dispatch exactly once across the whole list (not once per
+    component, not once per plugin); confirm `plugin-validator` dispatches exactly twice
+    (once per distinct plugin, never once across the combined scope); confirm the written
+    report's `findings[]` correctly attributes every finding to its actual owning component
+    regardless of which plugin it lives in; confirm the report path uses the
+    `scoped-<n>components-<m>plugins` naming (or the supplied scope manifest's `run_id`) —
+    never a single-component/single-plugin `<target>` name.
 
 **Quality gates:**
 - [ ] Never dispatches all five type-matched `*-reviewer` agents for a single target — only
@@ -155,6 +174,11 @@ outside this run.
       the dispatch
 - [ ] No Codex dispatch is attempted before the session's First-Send Confirmation has fired
 - [ ] A tracked `.claude/plugin-auditor.local.json` never overrides the shipped backend default
+- [ ] Scoped mode's whole-scope reviewers (`activation-reviewer`, `consistency-reviewer`,
+      `dependency-reviewer`) never dispatch once per component or once per plugin — always
+      exactly once across the full cross-plugin named list
+- [ ] Scoped mode never dispatches `plugin-validator` once across a multi-plugin scope —
+      always once per distinct plugin actually touched by the component list
 
 ## When to Invoke
 
