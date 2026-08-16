@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-development/SKILL.md",
+  "assertions": [
+    {"text": "Request 1 (scaffold new plugin) routes to plugin-development", "type": "functionality", "target": "routing answer"},
+    {"text": "Request 2 (R1-R27 naming/tool-scoping check) routes to plugin-rulebook", "type": "functionality", "target": "routing answer"},
+    {"text": "Request 3 (manifest/directory wiring validation) routes to plugin-validator", "type": "functionality", "target": "routing answer"}
+  ]
+}

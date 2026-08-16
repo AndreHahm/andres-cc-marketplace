@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Correctly identifies R4 (kebab-case, REQUIRED) as violated by 'Scratch_Test_Skill'", "passed": true, "evidence": "FAIL R4 -- frontmatter name: Scratch_Test_Skill violates the kebab-case pattern... [REQUIRED]"},
+    {"text": "Explains the fix (rename to 'scratch-test-skill')", "passed": true, "evidence": "Fix: change to name: scratch-test-skill (matches the directory name, which is already correctly kebab-case)."},
+    {"text": "No false-positive REQUIRED violations reported on other rules for this minimal valid skill", "passed": true, "evidence": "The additional R8 FAIL is a genuine, correct finding (description is 82 chars, inline scalar instead of required block scalar) -- not a false positive, an incidental real defect in the test fixture's own description text."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
