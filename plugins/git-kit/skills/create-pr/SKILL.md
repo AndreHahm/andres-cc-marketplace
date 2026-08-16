@@ -286,14 +286,13 @@ valid `commit` type), a `ci:`-typed title (same reason), and an uppercase-scope 
 title regex). All four results matched `pr_policy.py`'s actual behavior, called directly rather than
 reimplemented.
 
-**Step 3.75 (assignee resolution) — partially verified live, 2026-08-16:** both `gh api user --jq
-'.login'` and the `gh repo view --json owner --jq '.owner.login'` fallback resolved correctly in this
-repository (both returned `AndreHahm`, since this repo's authenticated user and owner are the same
-account — a multi-maintainer repo would exercise a real divergence between the two, not tested here).
-`gh pr create --help` confirms `-a, --assignee login` is the correct flag/argument shape. **Not yet
-exercised end-to-end**: no PR was open in this repository at verification time to create a fresh one
-against, so `gh pr create --assignee <login>` actually succeeding (vs. e.g. failing if the resolved login
-lacks repo access) hasn't been observed live — verify on the next real `create-pr` invocation.
+**Step 3.75 (assignee resolution) — verified live end-to-end, 2026-08-16:** `gh api user --jq '.login'`
+resolved correctly, and this exact `create-pr` run used it to create a real PR (#43) with
+`--assignee AndreHahm` — `gh pr view 43 --json assignees` confirmed the assignee actually landed. The
+`gh repo view --json owner --jq '.owner.login'` fallback path resolved correctly too, though wasn't
+exercised as the active path (the primary `gh api user` lookup succeeded) — and since this repo's
+authenticated user and owner are the same account, a real divergence between primary and fallback still
+isn't covered; a multi-maintainer repo would be needed to observe that.
 
 ## Related Documentation
 
