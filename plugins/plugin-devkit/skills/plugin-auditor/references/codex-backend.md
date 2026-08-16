@@ -68,7 +68,17 @@ For each reviewer in `references/dispatch-table.md`'s dispatch list:
    Claude-native fallback available in its unattended CI job — `plugin-auditor` always runs
    interactively, where Claude-native is always available, so there's no operational reason to
    route it through Codex here, only downside). Don't "fix" this asymmetry by removing the pin.
-2. **If the current audit's own scope includes `plugin-devkit` itself** (component or plugin mode,
+2. **`plugin-rulebook-checker` is always Claude-native.** Same hard-rule shape as the pin above, for
+   a different reason: its native output contract requires a `fail`/`advisory` severity vocabulary
+   and a per-finding rule-ID citation, neither of which `ENVELOPE_SCHEMA` below can carry
+   (`findings[].severity` is hardcoded to `critical|major|minor`, and `additionalProperties: false`
+   leaves no field for a rule ID). Routing this reviewer through the generic bridge would force
+   Codex's own structured-output constraint to silently coerce every finding's real classification
+   into the wrong vocabulary rather than surface a validation error — decided over extending
+   `ENVELOPE_SCHEMA` or normalizing at the Adapter below, since this reviewer's dispatch is cheap
+   relative to the schema's blast radius on every other reviewer sharing it (`ENVELOPE_SCHEMA` is
+   also imported by `codex-windows-guardrails`).
+3. **If the current audit's own scope includes `plugin-devkit` itself** (component or plugin mode,
    auditing any file under `plugins/plugin-devkit/` or its `.claude/` mirror), **skip the Codex path
    entirely for this whole dispatch** — every reviewer runs Claude-native. Reason: reviewer
    instructions are sourced from `plugin-devkit`'s own `agents/<name>.md` (step below); when
@@ -77,10 +87,10 @@ For each reviewer in `references/dispatch-table.md`'s dispatch list:
    an instruction file *literally inside* `--target-paths`, not a same-content file reached via the
    `.claude/`↔`plugins/plugin-devkit/` staging mirror or a different worktree). Simplest safe rule:
    never mix them.
-3. If `reviewer_backend.enabled` is not `true` → Claude-native.
-4. Otherwise, look up `per_reviewer[<reviewer>]`, falling back to `default`. If the result is
+4. If `reviewer_backend.enabled` is not `true` → Claude-native.
+5. Otherwise, look up `per_reviewer[<reviewer>]`, falling back to `default`. If the result is
    `claude` → Claude-native.
-5. If the result is `codex` → attempt the Codex path (below).
+6. If the result is `codex` → attempt the Codex path (below).
 
 ## Isolation: reactive, not proactive — know the difference
 
@@ -227,10 +237,12 @@ above) and `isolation_strength` (below) — are script-known rather than model-r
 
 | Envelope field | → | Finding field |
 |---|---|---|
+| `contract_version` | → | *(dropped, not modeled)* — no caller-side acceptance check exists yet; `codex-review-bridge/references/semantic-validation.md` tracks this as a not-yet-implemented check |
 | `dispatch.reviewer` | → | `source` |
 | *(caller's own dispatch scope)* | → | `scope` |
 | `findings[].id` | → | local part of `id` |
 | `findings[].severity` | → | `severity` (already canonical, no mapping needed) |
+| `findings[].axis` | → | *(dropped, not modeled)* |
 | `findings[].location` + `components[]` + `evidence` + `finding` | → | `evidence_before` (folded into one string) |
 | `findings[].fix` | → | `fix` |
 | `findings[].confidence` | → | `confidence` (new field) |

@@ -170,6 +170,8 @@ outside this run.
       treated as an error
 - [ ] `security-reviewer` is never routed through Codex, regardless of configuration — hardcoded
       in the resolver, not just a config default
+- [ ] `plugin-rulebook-checker` is never routed through Codex either — same hardcoded pin, since
+      its `fail`/`advisory` + rule-ID output contract has no representation in `ENVELOPE_SCHEMA`
 - [ ] A disabled/missing/malformed backend config always resolves to Claude-native — never fails
       the dispatch
 - [ ] No Codex dispatch is attempted before the session's First-Send Confirmation has fired
