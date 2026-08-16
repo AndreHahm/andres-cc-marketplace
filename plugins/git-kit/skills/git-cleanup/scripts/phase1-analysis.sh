@@ -49,13 +49,14 @@ done
 # local branch") is a live gh check done in the skill's own Phase 3, never
 # assumed from this list alone.
 echo "=== Remote-only branches (no local counterpart) ==="
-# origin/HEAD's %(refname:short) can render as bare "origin" (this git
-# version) or "origin/HEAD" (others) -- exclude both forms before stripping
-# the "origin/" prefix, or the symbolic-ref pointer itself leaks through as
-# a spurious "candidate branch" (it never strips, since it has no "origin/"
-# prefix to remove).
+# Enumerate refs/remotes/origin directly (not `git branch -r`, which lists
+# every configured remote) -- a repo with a second remote (e.g. `upstream`)
+# would otherwise leak that remote's branches in as false candidates here.
+# %(refname:strip=3) strips "refs/remotes/origin/" to the bare branch name in
+# one step, so origin/HEAD's symbolic-ref pointer (which has no such prefix
+# once already scoped to this one remote) still needs its own exclusion, but
+# nothing from another remote can appear at all.
 comm -23 \
-  <(git branch -r --format='%(refname:short)' \
-    | grep -vE '^origin$|^origin/HEAD$' \
-    | sed 's@^origin/@@' | grep -vE "^HEAD$|$protected" | sort -u) \
+  <(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin \
+    | grep -vE "^HEAD$|$protected" | sort -u) \
   <(git branch --format='%(refname:short)' | sort -u)

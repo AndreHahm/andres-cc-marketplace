@@ -45,6 +45,10 @@ worktree had them checked out):**
       `merge-pr`'s own check before the identical command
 - [ ] No marker-handshake write happens before `gh api -X DELETE repos/*/git/refs/heads/*` — confirmed no
       PreToolUse hook guards that command (unlike `git branch -D` against a protected name)
+- [ ] The remote-only-branch enumeration always scopes to `refs/remotes/origin` specifically
+      (`git for-each-ref refs/remotes/origin`) — never `git branch -r`, which lists every configured
+      remote and would leak a second remote's branches (e.g. `upstream/topic`) in as false candidates
+      (found by CodeRabbit's automated PR review, 2026-08-16; re-verified live afterward — see below)
 
 **Live results, 2026-08-16:** `phase1-analysis.sh` correctly surfaced both real stale branches after the
 `origin`-symref filter fix; `gh pr view` correctly returned `state: MERGED` for both (PR #41, PR #20).
@@ -53,3 +57,9 @@ PR #20's branch (`fix/sync-claude-mirror`) — which had no local counterpart, e
 remote-only-orphan path specifically — was deleted end-to-end via this skill's exact Gate-1-confirm →
 `gh api -X DELETE` procedure, with explicit user confirmation. A follow-up `git ls-remote --heads origin
 fix/sync-claude-mirror` confirmed it was gone.
+
+**Re-verified live, 2026-08-16, after fixing the origin-only-enumeration finding above:** re-ran the fixed
+`phase1-analysis.sh` in this repository (a single-remote repo, so the fix couldn't be exercised against an
+actual second remote here) — output unchanged and correct (empty remote-only-branch list, both real stale
+branches already cleaned up by that point), confirming the fix didn't regress the single-remote case this
+repo actually has.

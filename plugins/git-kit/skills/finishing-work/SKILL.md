@@ -120,6 +120,15 @@ branch", "get back to a clean main".
 - [ ] Step 4's script never touches a tracked file — only `.claude/output/**/*.md`
 - [ ] An unresolved commit (no unique message or patch-id match) is always reported to the user, never
       silently dropped or guessed at
+- [ ] The script always refreshes `origin/<base>` (`git fetch origin <base>`) before any ancestry or
+      replacement lookup, and always operates against that refreshed ref — never the bare local branch
+      name, which could be stale and cause a wrong or missed remap (found by Codex/CodeRabbit's automated
+      PR review, 2026-08-16)
+- [ ] Patch-id (content) match is always tried before commit-message match, and message match is always
+      scoped to commits at/after the PR's `mergedAt` (with a buffer) — never searched across the entire
+      base history, where an unrelated older commit could coincidentally share the same subject line
+- [ ] A report token that's an ambiguous prefix of more than one remapped commit is always left unresolved
+      — never silently remapped to the first match found
 - [ ] Step 1.5 always skips when `merge_auto_delete_branch` is `false` — a surviving remote branch is
       never "fixed" when the setting says not to delete it
 - [ ] Step 1.5 never assumes the remote branch is gone — always checks with `git ls-remote --heads origin`
@@ -137,7 +146,17 @@ successfully; a follow-up `git ls-remote` confirmed it was gone.
 
 **Step 4 (`remap-handoff-shas.py`) — verified live, 2026-08-16, against this repository's real PR #41**
 (a rebase-merge where all 14 commits landed on `main` with new hashes): correctly identified all 14 as
-unreachable from `main`, resolved every one via commit-message match, and updated every stale reference —
-including narrative mentions outside the `## Commits` table itself — across the two affected
-`build-handoff-writer` reports. A follow-up re-run against the same PR correctly reported nothing left to
-remap (idempotent).
+unreachable from `main`, resolved every one, and updated every stale reference — including narrative
+mentions outside the `## Commits` table itself — across the two affected `build-handoff-writer` reports.
+A follow-up re-run against the same PR correctly reported nothing left to remap (idempotent) — re-run
+again after the base-ref-refresh/patch-id-first/ambiguous-prefix-guard fixes below, still correctly
+idempotent (0 files changed, all 14 still resolved, this time via patch-id as the now-first-tried signal
+rather than commit-message).
+
+**Re-verified live, 2026-08-16, after fixing 3 findings from this session's automated PR review**
+(Codex + CodeRabbit, on PR #43): the original version trusted the bare local `main` ref without
+refreshing it, tried commit-message match before patch-id, and could silently remap an ambiguous SHA
+prefix to the first matching entry. Fixed by fetching `origin/<base>` before any lookup, trying patch-id
+first with message-match as a merge-time-scoped fallback, and requiring an unambiguous single match
+before ever rewriting a token. Re-run against the same real PR #41 confirmed all 14 commits still resolve
+correctly under the new logic.
