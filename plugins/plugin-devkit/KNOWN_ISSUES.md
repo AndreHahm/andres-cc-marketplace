@@ -4,7 +4,7 @@ Git-tracked record of external-tool issues discovered while working on `plugin-d
 
 ## Codex CLI: sandboxed execution fails on Windows (found 2026-08-06)
 
-**Component/tool:** `codex` CLI (`@openai/codex`, tested at `codex-cli 0.146.0`), not a `plugin-devkit` component itself. Recorded here because it directly blocks the design in `plugins/plugin-devkit/.draft/CODEX_INTEGRATION.md` (gitignored — that file has the full concept and verification detail; this entry is the durable summary).
+**Component/tool:** `codex` CLI (`@openai/codex`, tested at `codex-cli 0.146.0`), not a `plugin-devkit` component itself. Recorded here because it directly blocks the design in `.draft/_open/plugin-devkit/codex-integration/` (gitignored — that directory has the full concept and verification detail; this entry is the durable summary).
 
 **Symptom:** on Windows (tested: Windows 11), `codex exec` fails every command execution attempt when run with either `--sandbox read-only` or `--sandbox workspace-write` (including the default when no `--sandbox` flag is given). The model successfully starts, but every attempt to actually run a shell command (needed for it to read a file, which is the minimum a review/inspection task requires) errors:
 
