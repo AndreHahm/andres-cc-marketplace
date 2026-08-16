@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -76,6 +76,16 @@ Before creating a PR, check for uncommitted changes:
 
 3. **Ask draft vs. ready-to-merge**: use `AskUserQuestion` — "Create this PR as a draft, or ready-to-merge?" with options "Draft (default)" and "Ready-to-merge". Don't assume draft silently; the user may want to skip the draft step entirely (e.g. a small, already-reviewed change). Record the answer as the `--draft` decision for the next step.
 
+3.5. **Validate the title against this repository's actual CI policy** (this repository only — a no-op
+   elsewhere): run `uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py" "<drafted title>"`.
+   This calls `scripts/marketplace_ci/pr_policy.py`'s real `check_pr_title()` directly, rather than
+   restating its rules here — the two can never drift apart. On `FAIL`, don't create the PR with that
+   title: revise it per the reported reason and re-run the check before proceeding to step 4. Two gaps
+   this repo's CI enforces that "conventional commit format" alone doesn't communicate: the allowed-type
+   list is narrower than `commit`'s own list (`feat, fix, docs, refactor, perf, test, chore, experiment` —
+   **`style` and `ci` are valid commit types but not valid PR-title types** here), and the optional scope
+   must be lowercase letters/digits/underscore/hyphen/slash only (no uppercase, no dots, no spaces).
+
 4. Immediately before creating the PR, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-create create-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then use the `gh pr create` command to create a new pull request, including `--draft` only if the previous step's answer was "Draft":
 
    ```bash
@@ -128,6 +138,8 @@ Before creating a PR, check for uncommitted changes:
      - `feat(supabase): Add staging remote configuration`
      - `fix(auth): Fix login redirect issue`
      - `docs(readme): Update installation instructions`
+   - In this repository, step 3.5 above is the authoritative check — "conventional commit format" here
+     is narrower than `commit`'s own type list (no `style`, no `ci`), and scopes must be lowercase-only
 
 3. **Description Template**: Always use the resolved PR template structure (see Resolve PR Template above)
 
@@ -251,6 +263,16 @@ loop.
       failure — never presented as if the bypass succeeded
 - [ ] The `codex-review-bypassed` label is only applied if it already exists in the repo — this skill
       never creates it
+- [ ] Step 3.5 always runs before `gh pr create` in this repository, and a `FAIL` result always blocks
+      creation with that title — never created anyway on a reported failure
+- [ ] Step 3.5 is a no-op (not an error) in a repository without `scripts/marketplace_ci/pr_policy.py`
+
+**Step 3.5 (`check-pr-title.py`) — verified live, 2026-08-16:** confirmed `PASS` on a real compliant title
+(`docs(plugin-devkit): ...`, used for PR #42) and `FAIL` with the correct reason on three synthetic bad
+titles — a `style:`-typed title (rejected: not in this repo's allowed-type list, even though `style` is a
+valid `commit` type), a `ci:`-typed title (same reason), and an uppercase-scope title (rejected: fails the
+title regex). All four results matched `pr_policy.py`'s actual behavior, called directly rather than
+reimplemented.
 
 ## Related Documentation
 
