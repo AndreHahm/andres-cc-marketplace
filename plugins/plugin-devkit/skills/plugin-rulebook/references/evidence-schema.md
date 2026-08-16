@@ -174,8 +174,21 @@ produced_at: <timestamp>
 baseline_commit: <commit sha>
 current_commit: <commit sha>
 coverage: <scope actually covered by this dispatch>
+repo_overrides_applied: [<entries from .claude/plugin-rulebook.config.json>]   # R23-sourced reports only; omit field entirely for a non-R23 report
+marketplace_auto_allow_applied: [{file: <path>, entries: [<names>]}]           # R23-sourced reports only; omit field entirely for a non-R23 report
+marketplace_auto_allow_excluded: [{file: <path>, reason: <text>}]              # R23-sourced reports only; omit field entirely for a non-R23 report
 findings: [<Finding>, ...]
 ```
+
+**R23 disclosure fields:** `repo_overrides_applied`/`marketplace_auto_allow_applied`/`marketplace_auto_allow_excluded`
+carry the same three disclosure lines `external-references-reviewer`'s and `plugin-rulebook-checker`'s own
+Structured Output Mode already emit at the top level (see each agent's own YAML shape) — without a home in
+this shared schema, a normalizer building a Report Revision from either agent's output has nowhere to put
+them and silently drops them. Present only on a Report Revision produced by an R23-scoped dispatch (a
+whole-plugin or R23-inclusive check); omit the fields entirely, don't emit empty arrays, for a report that
+never touched R23. An empty array on a field that IS present still means what it always means for these
+three: "checked, nothing found/applied" — the same `none found`/`disabled` distinction each agent's own
+narrative report already makes, carried through to this structured shape.
 
 A re-audit or re-validation writes a new `Report Revision` with an incremented `revision` and
 `supersedes` pointing at the one before it — the prior revision's file is never edited or
@@ -200,7 +213,7 @@ deferred: [{id: <finding id>, rationale: <text>}]
 generated_at: <timestamp>
 ```
 
-`plugin-grader`'s evidence-only mode (see `REQUIRED_CHANGES.md`'s `plugin-grader` section)
+`plugin-grader`'s evidence-only mode (see `plugin-grader/SKILL.md`'s evidence-only mode section)
 reads this shape directly rather than dispatching anything itself — this is precisely the
 artifact whose freshness, coverage, and `version` it must verify before scoring.
 

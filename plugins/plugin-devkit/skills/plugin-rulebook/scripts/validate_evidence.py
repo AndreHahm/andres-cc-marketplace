@@ -94,26 +94,45 @@ def validate_manifest(doc, problems):
         ],
         problems,
     )
-    if "invocation_mode" in doc and doc["invocation_mode"] not in INVOCATION_MODE_VALUES:
-        err(
-            problems,
-            f"invocation_mode '{doc['invocation_mode']}' not in {sorted(INVOCATION_MODE_VALUES)}",
-        )
-    if "scope_mode" in doc and doc["scope_mode"] not in SCOPE_MODE_VALUES:
-        err(problems, f"scope_mode '{doc['scope_mode']}' not in {sorted(SCOPE_MODE_VALUES)}")
+    # isinstance checked before the `in` membership test against each
+    # values-set below -- same pattern as validate_finding, and for the same
+    # reason: an unhashable value (e.g. a YAML list) would otherwise raise
+    # TypeError from the set-membership test itself instead of producing a
+    # clean validation problem.
+    if "invocation_mode" in doc:
+        if (
+            not isinstance(doc["invocation_mode"], str)
+            or doc["invocation_mode"] not in INVOCATION_MODE_VALUES
+        ):
+            err(
+                problems,
+                f"invocation_mode '{doc['invocation_mode']}' "
+                f"not in {sorted(INVOCATION_MODE_VALUES)}",
+            )
+    if "scope_mode" in doc:
+        if not isinstance(doc["scope_mode"], str) or doc["scope_mode"] not in SCOPE_MODE_VALUES:
+            err(problems, f"scope_mode '{doc['scope_mode']}' not in {sorted(SCOPE_MODE_VALUES)}")
     phases = doc.get("optional_phases_selected", {})
-    if "deep_test" in phases and phases["deep_test"] not in DEEP_TEST_VALUES:
-        err(
-            problems,
-            f"optional_phases_selected.deep_test '{phases['deep_test']}' "
-            f"not in {sorted(DEEP_TEST_VALUES)}",
-        )
-    if "grading" in phases and phases["grading"] not in GRADING_VALUES:
-        err(
-            problems,
-            f"optional_phases_selected.grading '{phases['grading']}' "
-            f"not in {sorted(GRADING_VALUES)}",
-        )
+    if isinstance(phases, dict):
+        if "deep_test" in phases:
+            if (
+                not isinstance(phases["deep_test"], str)
+                or phases["deep_test"] not in DEEP_TEST_VALUES
+            ):
+                err(
+                    problems,
+                    f"optional_phases_selected.deep_test '{phases['deep_test']}' "
+                    f"not in {sorted(DEEP_TEST_VALUES)}",
+                )
+        if "grading" in phases:
+            if not isinstance(phases["grading"], str) or phases["grading"] not in GRADING_VALUES:
+                err(
+                    problems,
+                    f"optional_phases_selected.grading '{phases['grading']}' "
+                    f"not in {sorted(GRADING_VALUES)}",
+                )
+    else:
+        err(problems, "optional_phases_selected must be an object")
 
 
 def validate_report(doc, problems):
@@ -174,6 +193,16 @@ def run_self_test():
         "revision": 1,
     }
     invalid_manifest = {"version": "1.0", "run_id": "run-001"}
+    invalid_manifest_non_string_fields = {
+        "version": "1.0",
+        "run_id": "run-001",
+        "target_plugin_root": "plugins/example-plugin",
+        "baseline_commit": "abc1234",
+        "invocation_mode": ["full_pipeline"],
+        "scope_mode": "full",
+        "revision": 1,
+        "optional_phases_selected": {"deep_test": ["scoped"]},
+    }
 
     valid_finding = {
         "id": "consistency-reviewer:M1",
@@ -232,6 +261,7 @@ def run_self_test():
     cases = [
         ("manifest", valid_manifest, True),
         ("manifest", invalid_manifest, False),
+        ("manifest", invalid_manifest_non_string_fields, False),
         ("finding", valid_finding, True),
         ("finding", invalid_finding, False),
         ("finding", invalid_finding_bad_severity, False),

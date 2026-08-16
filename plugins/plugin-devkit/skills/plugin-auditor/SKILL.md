@@ -11,9 +11,11 @@ description: >-
   score, no gates, no SWOT. Use when the user asks to 'audit this plugin',
   'gather findings without scoring', 'run just the reviewer fan-out', or when
   plugin-lifecycle-downstream's Audit phase or plugin-grader need raw evidence
-  instead of a computed score.
+  instead of a computed score. For just R1-R27 naming/formatting/tool-scoping
+  compliance, without the full multi-axis reviewer fan-out, use plugin-rulebook
+  instead.
 argument-hint: "[target]"
-allowed-tools: Read Glob Agent Write Bash(date:*) Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*) Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*) Bash(git ls-files:*)
+allowed-tools: Read Glob Agent Write AskUserQuestion Bash(date:*) Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*) Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*) Bash(git ls-files:*)
 ---
 
 # Plugin Auditor

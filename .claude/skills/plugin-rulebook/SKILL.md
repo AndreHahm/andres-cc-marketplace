@@ -8,7 +8,9 @@ description: >-
   see plugin-auditor), or loading active rule configuration, or before finalizing or packaging any
   plugin component. Governs naming, language, formatting, and tool-scoping (R1-R27) across the
   entire plugin — not structural validation (manifest correctness, directory layout, component
-  wiring), which is `plugin-validator`'s domain instead.
+  wiring), which is `plugin-validator`'s domain instead, and not scaffolding a plugin's own
+  directory structure or package layout in the first place, which is `plugin-development`'s
+  domain instead.
 allowed-tools: Read Grep Glob Bash(${CLAUDE_SKILL_DIR}/scripts/r20-sweep.sh:*) Bash(${CLAUDE_SKILL_DIR}/scripts/agent-cost-tracker.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/validate_evidence.py:*)
 ---
 
@@ -443,10 +445,9 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 - [ ] PASS / ADVISORY / FAIL emitted for every enabled rule checked
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
 
-**Last dated run record:** none on file — these gates have no recorded empirical run against a real
-component, unlike `codex-review-bridge/SKILL.md`'s "Current test coverage" section, which cites dated
-eval/smoke-test evidence. Open item, not decided against: the next actual `plugin-rulebook` invocation
-against a real component should record its date and outcome here.
+**Last dated run record:** 2026-08-15, `evals/plugin-rulebook/` — eval-1: 4/4 assertions passed;
+eval-2: 2/2 assertions passed (both `with_skill`, via `skill-tester`'s blind-comparison harness).
+See `evals/plugin-rulebook/evals.json` for the scenario definitions.
 
 ## Upstream Source Verification
 

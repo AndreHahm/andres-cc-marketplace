@@ -2,19 +2,19 @@
 name: plugin-development
 description: >-
   Create, convert, validate, and publish Claude Code plugins with Agent Skills,
-  hooks, agents, and servers. Use when scaffolding a plugin whose name and purpose
-  are already decided (or answerable in one short interview), adding one
-  already-designed component to a plugin that already exists, converting projects
-  to plugins, improving plugin structure, publishing a plugin (with plugin.json) to
-  marketplace, or packaging existing skill collections into distributable plugins.
-  Also use for plugin directory structure, component organization, auto-discovery,
-  manifest configuration, or where files live and what directories are called.
-  Component-specific work delegates to hook-development, agent-development, and
-  skill-development skills. For a component's own R1-R27 naming/language/formatting/
-  tool-scoping compliance (not directory layout), use plugin-rulebook instead. For
-  skills-repo marketplace publishing, use marketplace-development instead. For
-  a rough idea with no name or components decided yet, use plugin-lifecycle-upstream
-  or plugin-ideation instead — this skill's interview assumes a concept exists.
+  hooks, agents, and servers. Use when scaffolding a plugin with a decided name
+  and purpose, adding a component to an existing plugin, converting a project
+  into a plugin, improving plugin structure, publishing a plugin (plugin.json)
+  to a marketplace, or packaging skill collections into plugins. Also use for
+  directory structure, component organization, auto-discovery, and manifest
+  configuration. Component-specific work delegates to hook-development,
+  agent-development, and skill-development skills. For a component's own
+  R1-R27 naming/language/formatting/tool-scoping compliance, use plugin-rulebook
+  instead. For validating structural correctness of an existing plugin, use
+  plugin-validator instead. For marketplace publishing of a skills repo, use
+  marketplace-development instead. For an undecided idea with no name or
+  components yet, use plugin-lifecycle-upstream or plugin-ideation instead —
+  this skill assumes a concept exists.
 allowed-tools: Read Write Edit Glob Bash(jq:*) Bash(python:*) Bash(claude:*) Skill
 ---
 
