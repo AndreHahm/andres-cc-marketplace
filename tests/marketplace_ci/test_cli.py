@@ -462,6 +462,85 @@ def test_run_codex_review_end_to_end_clean_pass(monkeypatch, git_repo):
     assert rc == 0
 
 
+def test_run_codex_review_narrows_rulebook_checker_target_paths(monkeypatch, git_repo):
+    import subprocess as subprocess_module
+
+    for name in (
+        "plugin-rulebook-checker",
+        "dependency-reviewer",
+        "security-reviewer",
+        "skill-reviewer",
+    ):
+        git_repo.write(
+            f".codex/agents/{name}.toml",
+            f'name = "{name}"\ndeveloper_instructions = """\ncheck\n"""\n',
+        )
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "original")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    # A real component change, plus two files plugin-rulebook-checker's own
+    # R1-R27 scope never covers -- an evals/ fixture and a plugin-root
+    # README. security-reviewer should still see all three; only
+    # plugin-rulebook-checker's own dispatch should be narrowed.
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "modified")
+    git_repo.write("evals/demo-kit/evals.json", "{}")
+    git_repo.write("plugins/demo-kit/README.md", "docs")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "change"], cwd=git_repo.root, check=True)
+
+    real_run = subprocess_module.run
+    captured_target_paths: dict[str, str] = {}
+
+    def make_envelope(reviewer):
+        return json.dumps(
+            {
+                "contract_version": "1",
+                "dispatch": {
+                    "id": "test-dispatch",
+                    "reviewer": reviewer,
+                    "backend": "codex",
+                    "target_paths": ["plugins/demo-kit/skills/x/SKILL.md"],
+                },
+                "provenance": {
+                    "provider": "openai",
+                    "model": "test-model",
+                    "cli_version": "0.0.0",
+                    "execution_profile": "read-only",
+                },
+                "findings": [],
+                "verdict": "pass",
+                "inspection_limits": [],
+            }
+        ).encode()
+
+    def fake_run(argv, **kw):
+        if argv[0] == "node":
+            reviewer = argv[argv.index("--reviewer-type") + 1]
+            captured_target_paths[reviewer] = argv[argv.index("--target-paths") + 1]
+            return subprocess_module.CompletedProcess(
+                argv, returncode=0, stdout=make_envelope(reviewer), stderr=b""
+            )
+        return real_run(argv, **kw)
+
+    monkeypatch.setattr(subprocess_module, "run", fake_run)
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["run-codex-review", "--base-sha", base_sha])
+    assert rc == 0
+
+    rulebook_paths = captured_target_paths["plugin-rulebook-checker"].split(",")
+    assert "plugins/demo-kit/skills/x/SKILL.md" in rulebook_paths
+    assert "evals/demo-kit/evals.json" not in rulebook_paths
+    assert "plugins/demo-kit/README.md" not in rulebook_paths
+
+    security_paths = captured_target_paths["security-reviewer"].split(",")
+    assert "evals/demo-kit/evals.json" in security_paths
+    assert "plugins/demo-kit/README.md" in security_paths
+
+
 def test_run_codex_review_blocking_finding_returns_1(monkeypatch, git_repo):
     import subprocess as subprocess_module
 

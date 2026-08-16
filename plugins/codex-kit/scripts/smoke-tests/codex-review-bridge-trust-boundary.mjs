@@ -135,5 +135,38 @@ console.log("\n=== CODEX_KIT_REVIEW_MODEL validation ===");
   );
 }
 
+console.log("\n=== CODEX_KIT_REVIEW_TIMEOUT_MS validation ===");
+{
+  const trustedFile = path.join(tmpDir, "timeout-test-reviewer.md");
+  fs.writeFileSync(trustedFile, "trusted instructions for the timeout-override check");
+
+  const invalid = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
+    CODEX_KIT_REVIEW_TIMEOUT_MS: "not-a-number"
+  });
+  check(
+    "a non-numeric CODEX_KIT_REVIEW_TIMEOUT_MS is rejected before any Codex call",
+    !invalid.ok && invalid.stderr.includes("CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer"),
+    invalid.stderr
+  );
+
+  const negative = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
+    CODEX_KIT_REVIEW_TIMEOUT_MS: "-1"
+  });
+  check(
+    "a non-positive CODEX_KIT_REVIEW_TIMEOUT_MS is rejected before any Codex call",
+    !negative.ok && negative.stderr.includes("CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer"),
+    negative.stderr
+  );
+
+  const valid = runBridge(tmpDir, trustedFile, "target", "smoke-test-timeout", {
+    CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
+  });
+  check(
+    "a valid CODEX_KIT_REVIEW_TIMEOUT_MS passes the format check (may still fail later for unrelated reasons, e.g. no real Codex CLI in this environment)",
+    !valid.stderr.includes("CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer"),
+    valid.stderr
+  );
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);
 process.exit(fail > 0 ? 1 : 0);

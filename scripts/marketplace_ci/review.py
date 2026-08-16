@@ -25,6 +25,37 @@ BRIDGE_INVOKE_RELATIVE_PATH = Path(
 
 STRUCTURAL_CHECK_REF = "scripts.marketplace_ci.validators:run_delta_structural_checks"
 
+# Paths plugin-rulebook-checker's own R1-R27 rules never review, per its
+# documented scope (plugin-rulebook/SKILL.md's R1 "Scope" line covers
+# SKILL.md/agent/command/hook/rule files and references/*.md; R23's own
+# scope note explicitly excludes README/CONTRIBUTING/CHANGELOG, mirroring
+# claudemd-reviewer's exception). evals/ fixtures are test-run output, not
+# plugin components, and are outside every R-rule's stated scope entirely.
+# Dispatching plugin-rulebook-checker against these wastes its review
+# budget on files it was never going to have an opinion on -- confirmed
+# live on PR #41: a 100-path delta (33 evals/ fixtures + 5 plugin-root
+# docs) caused two consecutive dispatch failures for exactly this reviewer,
+# a malformed response under strain and then a hard timeout, while the
+# other DELTA_VALIDATE reviewers on the same oversized scope did not fail.
+_RULEBOOK_OUT_OF_SCOPE_PREFIXES = ("evals/",)
+_RULEBOOK_OUT_OF_SCOPE_BASENAMES = frozenset(
+    {
+        "README.md",
+        "CONTRIBUTING.md",
+        "CHANGELOG.md",
+        "KNOWN_ISSUES.md",
+        "LICENSE",
+        "NOTICE",
+        "INSTALLATION.md",
+    }
+)
+
+
+def _is_rulebook_scoped_path(path: str) -> bool:
+    if path.startswith(_RULEBOOK_OUT_OF_SCOPE_PREFIXES):
+        return False
+    return Path(path).name not in _RULEBOOK_OUT_OF_SCOPE_BASENAMES
+
 # Delta Validate's 3 baseline reviewers, dispatched on every delta PR
 # regardless of component type (design v4 amendment 14).
 DELTA_VALIDATE = ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
@@ -385,10 +416,22 @@ def dispatch_reviewers(
     instructions_dir = instructions_dir or (repo / ".codex-review-instructions")
     bridge_script = repo / BRIDGE_INVOKE_RELATIVE_PATH
     dispatch_id = f"{base_sha[:12]}-{secrets.token_hex(4)}"
-    target_paths = ",".join(scope.paths)
 
     reports: list[ReviewerReport] = []
     for name in (*scope.validate, *scope.audit):
+        reviewer_scope = scope.paths
+        if name == "plugin-rulebook-checker":
+            # Narrow to only what R1-R27 actually reviews -- see
+            # _is_rulebook_scoped_path's own comment for why. Fall back to
+            # the full scope if filtering would leave nothing: a caller
+            # dispatches this reviewer whenever mode requires DELTA_VALIDATE's
+            # baseline regardless of whether any in-scope file happens to
+            # remain, and an empty --target-paths is worse than a widened
+            # (but real) one.
+            scoped = tuple(p for p in scope.paths if _is_rulebook_scoped_path(p))
+            reviewer_scope = scoped or scope.paths
+        target_paths = ",".join(reviewer_scope)
+
         instruction_path = instructions_dir / f"{name}.txt"
         try:
             prepare_reviewer_instruction(name, base_sha=base_sha, out=instruction_path, repo=repo)

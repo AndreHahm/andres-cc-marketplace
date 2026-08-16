@@ -205,6 +205,25 @@ async function main() {
     process.exit(1);
   }
 
+  // Same rationale and env-var-not-CLI-flag convention as modelOverride
+  // above: one CI run wants one timeout budget for every reviewer it
+  // dispatches, not a per-reviewer flag dispatch_reviewers would need to
+  // vary. Unset falls through to runCodexExec's own 240000ms default.
+  // Confirmed live (PR #41): a large multi-plugin delta (100 changed paths)
+  // pushed a single reviewer's dispatch past that default, first as a
+  // strained/malformed response, then as a hard timeout on retry -- the
+  // workflow's own 20-minute job budget has headroom a caller may want to
+  // spend as a longer per-dispatch timeout instead.
+  const timeoutOverrideRaw = process.env.CODEX_KIT_REVIEW_TIMEOUT_MS;
+  let timeoutOverrideMs;
+  if (timeoutOverrideRaw) {
+    timeoutOverrideMs = Number(timeoutOverrideRaw);
+    if (!Number.isInteger(timeoutOverrideMs) || timeoutOverrideMs <= 0) {
+      console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "CODEX_KIT_REVIEW_TIMEOUT_MS must be a positive integer" }));
+      process.exit(1);
+    }
+  }
+
   const targetPaths = targetPathsRaw.split(",").map((p) => p.trim());
 
   // Trust-boundary containment check: the reviewer instructions must not be
@@ -253,7 +272,8 @@ async function main() {
     sandbox: "read-only",
     cwd,
     dispatchId,
-    model: modelOverride || undefined
+    model: modelOverride || undefined,
+    ...(timeoutOverrideMs !== undefined ? { timeoutMs: timeoutOverrideMs } : {})
   });
 
   if (!result.ok) {
