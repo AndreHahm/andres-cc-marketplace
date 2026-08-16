@@ -7,7 +7,7 @@ description: >-
   or "get back to a clean main". Never deletes branches or worktrees itself — hands off to `/git-cleanup`
   for that.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr view:*), Bash(gh repo view:*), Bash(git checkout:*), Bash(git pull:*), Bash(git fetch:*), Bash(git status:*), Bash(git worktree list:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/remap-handoff-shas.py":*)
+allowed-tools: Bash(gh pr view:*), Bash(gh repo view:*), Bash(git checkout:*), Bash(git pull:*), Bash(git fetch:*), Bash(git status:*), Bash(git worktree list:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git ls-remote --heads origin:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/remap-handoff-shas.py":*), Read
 ---
 
 # Finishing Work
@@ -40,6 +40,24 @@ branch", "get back to a clean main".
    `gh repo view --json nameWithOwner --jq .nameWithOwner` (the current repository) — on either
    mismatch, stop and ask via `AskUserQuestion` whether to proceed anyway rather than silently
    continuing on an unrelated PR's merge state.
+1.5. **Ensure the remote branch was actually deleted** (only when the intent was to delete it): read
+   `merge_auto_delete_branch` (default `true`) the same way `commit`/`merge-pr` do —
+   `.claude/git-kit.local.json` if it exists and sets the field, else the git-tracked
+   `${CLAUDE_PLUGIN_ROOT}/git-kit.settings.json` default. If `false`, skip this step entirely — a
+   surviving remote branch is intentional in that case. If `true`, check whether `origin/<headRefName>`
+   (from step 1) still exists: `git ls-remote --heads origin <headRefName>`. Empty output means it's
+   already gone — nothing to do. Non-empty output means `gh pr merge --delete-branch` didn't finish its
+   job: that command deletes the local and remote branch together, but its local half needs to check out
+   the default branch first, which fails with `fatal: '<default>' is already used by worktree ...`
+   whenever the default branch is already checked out elsewhere — near-guaranteed if the merged branch had
+   its own worktree, since the primary checkout almost always has the default branch checked out. When
+   that local checkout fails, `gh` silently skips the remote deletion too (confirmed live, 2026-08-16,
+   against this repository's real PR #41: the remote branch was still present days after the merge). Finish
+   the job it should have done: validate `headRefName` against `^[A-Za-z0-9._/-]+$` (git ref names can
+   otherwise contain shell metacharacters — same check `merge-pr`'s own manual-delete path applies before
+   this exact command) — stop and report if it doesn't match, don't proceed. Otherwise delete it directly:
+   `gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<headRefName>` (owner/repo from step 1's
+   `nameWithOwner` check). Report plainly that this fallback ran and why — never a silent extra deletion.
 2. **Return to main**: resolve the actual default branch rather than assuming `main` —
    `git symbolic-ref refs/remotes/origin/HEAD` (falling back to `main` if that fails, e.g. no `origin`
    remote configured), then `git checkout <resolved-branch>`, then `git pull --ff-only`. If the checkout
@@ -102,6 +120,20 @@ branch", "get back to a clean main".
 - [ ] Step 4's script never touches a tracked file — only `.claude/output/**/*.md`
 - [ ] An unresolved commit (no unique message or patch-id match) is always reported to the user, never
       silently dropped or guessed at
+- [ ] Step 1.5 always skips when `merge_auto_delete_branch` is `false` — a surviving remote branch is
+      never "fixed" when the setting says not to delete it
+- [ ] Step 1.5 never assumes the remote branch is gone — always checks with `git ls-remote --heads origin`
+      rather than trusting `gh pr merge --delete-branch`'s exit code or the PR's `MERGED` state alone
+- [ ] Step 1.5 always validates `headRefName` against `^[A-Za-z0-9._/-]+$` before the `gh api -X DELETE`
+      call, and skips with a report (never proceeds) on a name that fails this check
+
+**Step 1.5 — verified live, 2026-08-16, against this repository's real stale remote branch:** PR #41's
+`feat/plugin-auditor-codex-integration` remote branch was confirmed still present on `origin` (via
+`git ls-remote --heads origin`) three days after the PR merged with `merge_auto_delete_branch: true` — the
+exact failure this step exists to repair, root-caused to the worktree-checkout conflict described above.
+Running step 1.5's exact procedure (ref-name validation, then `gh api -X DELETE
+repos/AndreHahm/andres-cc-marketplace/git/refs/heads/feat/plugin-auditor-codex-integration`) deleted it
+successfully; a follow-up `git ls-remote` confirmed it was gone.
 
 **Step 4 (`remap-handoff-shas.py`) — verified live, 2026-08-16, against this repository's real PR #41**
 (a rebase-merge where all 14 commits landed on `main` with new hashes): correctly identified all 14 as
