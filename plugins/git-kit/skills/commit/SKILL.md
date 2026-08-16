@@ -8,7 +8,7 @@ description: >-
   into multiple commits, see standalone-commits instead.
 argument-hint: Optional flags (--no-verify, --amend, --push) followed by an optional commit message
 model: haiku
-allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Read, Skill(git-kit:create-pr)
+allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git diff:*), Bash(git commit:*), Bash(git branch:*), Bash(git checkout:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(uv run ruff format:*), Bash(uv run ruff check:*), Bash(uv run ty check:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Read, Skill(git-kit:create-pr)
 ---
 
 # Claude Command: Commit
@@ -71,7 +71,12 @@ CRITICAL: Perform the following steps exactly as described:
 1. **Read settings**: Read the git-tracked defaults from `${CLAUDE_PLUGIN_ROOT}/git-kit.settings.json` (`enabled`, `commit_confirm_before_commit`, `commit_auto_stage`, `commit_first_line_soft_limit`, `commit_first_line_hard_limit`, `commit_body_max_lines`, `commit_auto_push`, `push_auto_pr`). Then check for `.claude/git-kit.local.json` in the project root — if it exists and its own `enabled` isn't `false`, its fields override the corresponding default for any field it sets.
 2. **Trust check (security)**: If `.claude/git-kit.local.json` exists and set `commit_confirm_before_commit`, `commit_auto_stage`, `commit_auto_push`, or `push_auto_pr`, check whether the file is tracked by git: `git ls-files --error-unmatch .claude/git-kit.local.json`. A git-tracked copy could have been committed by anyone with repo write access — including an attacker aiming to silently weaken safety gates for the next person who runs `/commit`. So if the file IS tracked (command exits 0), discard its values for those four fields and use the `git-kit.settings.json` defaults instead, regardless of what the local file says. Only an untracked (genuinely local, gitignored) `.claude/git-kit.local.json` may override any of these gates. The length-limit and `pr_merge_type`/`merge_auto_delete_branch`-style fields aren't security-relevant and may be honored either way, tracked or not.
 3. **Branch check**: Checks if current branch is `master` or `main`. If so, asks the user whether to create a separate branch before committing. If user confirms a new branch is needed, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-branch-create commit` immediately before creating the branch — this writes the marker git-kit's branch-creation guard requires; it must be written right before `git checkout -b`, not earlier. Then create the branch using the pattern `<type>/<description>` (e.g., `feature/add-new-command`). This is a fallback for someone already mid-edit on `main`/`master` — if no changes exist yet, point at the `starting-work` skill instead, which also syncs `main` and asks about a worktree.
-4. Unless specified with `--no-verify`, automatically runs pre-commit checks like `pnpm lint` or similar depending on the project language.
+4. Unless specified with `--no-verify`, automatically runs pre-commit checks depending on the project
+   language. For a project-wide tool that doesn't need to know what's staged yet (`pnpm lint`/
+   `npm run lint`/`yarn lint`/`bun lint` or similar, depending on what the project's own tooling —
+   lockfile, config — indicates), run it here. **This repository's own Python/`ruff` check is
+   staged-file-aware and runs later, at step 7.5, once staging is actually settled** — see that step
+   rather than duplicating it here.
 5. Checks which files are staged with `git status`
 6. **Staging**: If 0 files are staged — when `commit_auto_stage` is `true`, stage everything with `git add -A`; otherwise show the unstaged files and ask the user what to stage (or whether `git add -A` is appropriate). **Never auto-stage without confirmation unless `commit_auto_stage` is explicitly enabled.**
 7. **Check for sensitive files** among the now-staged files: run
@@ -85,6 +90,22 @@ CRITICAL: Perform the following steps exactly as described:
    **Limitation:** this check matches staged *filenames* only — it does not inspect staged diff content
    for embedded credential-shaped strings (API keys, tokens) in a file whose name doesn't match one of
    these patterns. A key pasted into an otherwise-unflagged file's content is not caught by this step.
+7.5. **Lint/format/type-check staged Python files** (this repository only, unless `--no-verify` was
+   given — a no-op if no staged path ends in `.py`): mirrors CI's own "Python quality" gate
+   (`docs/ci.md`: `ruff format --check`, `ruff check`, `ty check`) as closely as a local pre-commit step
+   can:
+   - Run `uv run ruff format <staged .py paths>` then `uv run ruff check --fix <staged .py paths>` —
+     auto-fixing formatting and auto-fixable lint violations in place — then re-stage exactly those paths
+     (`git add <paths>`) so the commit captures the fixed content. Runs before step 8 so that if a fixed
+     file is also a canonical mirror source, step 8's sync picks up the corrected content, not the
+     pre-fix version. Report which files, if any, were modified by the auto-fix.
+   - Run `uv run ty check <staged .py paths>` — type errors aren't auto-fixable, so this only checks.
+   - If either `ruff check` or `ty check` still reports a violation, surface it and ask (mirroring step
+     10's pattern) whether to proceed anyway or stop and fix manually — never silently commit code that
+     still fails either check.
+   - If `ruff`/`ty`/`uv` aren't available, warn once and continue rather than blocking the commit.
+   This step exists because a ruff-format violation reached `main` and needed a reactive follow-up fix
+   (`1f4baa0`) — it's what should have caught that locally before the first commit.
 8. **Marketplace CI targeted repair** (this repository only — a no-op if `scripts/marketplace_ci/` and
    `.claude/marketplace-sync.json` don't exist): if any staged file is a canonical `plugins/<name>/...`
    source for a registered plugin mirror, or a registered `.claude/skills/<name>/...`/
@@ -224,6 +245,7 @@ When committing on `master` or `main`, the command will ask if you want to creat
 - If specific files are already staged, the command will only commit those files
 - If no files are staged, you'll be asked what to stage — nothing is auto-staged unless `commit_auto_stage: true` is set (via `.claude/git-kit.local.json` or the git-tracked `git-kit.settings.json` defaults)
 - Staged files matching sensitive patterns (`.env`, `*secret*`, `*.key`, `*.pem`, `*password*`, `*token*`, SSH/cloud keys, `.npmrc`/`.pgpass`/`.netrc`) are flagged and unstaged automatically
+- In this repository, a staged `.py` file is auto-formatted and auto-fixed with `ruff format`/`ruff check --fix` (re-staged afterward) and type-checked with `ty check` (blocking, not auto-fixed) — unless `--no-verify` was given
 - In this repository, staging a canonical `plugins/<name>/...` or registered `.claude/skills|agents/...`
   source runs the marketplace-CI sync/export CLI and stages only the resulting generated counterparts —
   never a hand-edit of `.claude`/`.agents`/`.codex`. This parity check always runs, even under
@@ -254,6 +276,15 @@ When committing on `master` or `main`, the command will ask if you want to creat
 - [ ] Step 11's "multiple concerns?" signal fires without `commit` attempting to perform the split itself — step 12 always redirects to the `standalone-commits` skill rather than re-deriving a split
 - [ ] Generated commit messages never contain a local-machine-specific path, terminal-session symptom description, or session context — only content a reader of the shared repo history would understand
 - [ ] A request to commit while on `main`/`master` with nothing staged yet points at `starting-work`; step 3's own branch-creation fallback only fires for someone already mid-edit
+
+**Step 7.5 (lint/format/type-check staged Python files) — verified live, 2026-08-16:** ran
+`uv run ruff format`/`uv run ruff check --fix`/`uv run ty check` against two newly-written scripts
+(`remap-handoff-shas.py`, `check-pr-title.py`) in this repository. `ruff format` reformatted both files on
+the first pass; `ruff check` flagged 2 non-auto-fixable `E501` (line-too-long) violations, fixed manually
+and reconfirmed clean; `ty check` separately caught 2 real issues `ruff` didn't (an unused blanket
+`# type: ignore`, and `sys.stdout.reconfigure`/`sys.stderr.reconfigure` not resolving on the `TextIO`
+union type) — confirming `ty check`'s inclusion catches a real class of error `ruff` alone misses. All
+three checks passed clean after fixes.
 
 **Step 8 (marketplace CI targeted repair) — verified via `tests/marketplace_ci/test_hooks.py`'s
 `check_staged_parity` coverage (deterministic, not blind A/B — see rationale below), 2026-08-13:**
