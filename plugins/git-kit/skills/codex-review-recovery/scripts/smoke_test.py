@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Persisted smoke test for codex-review-recovery: frontmatter validity,
-referenced-file existence, Bash-scope grant usage, and step-header
-sequencing -- structural checks only, since this is a conversational,
-AskUserQuestion-driven skill with no executable logic of its own to
-simulate. Adapted from merge-pr's own smoke_test.py (same shape, same
-checks) since both are gh-CLI-orchestration skills in this plugin."""
+referenced-file existence, Bash-scope grant usage, step-header sequencing,
+and evals.json presence (5 checks total) -- structural checks only, since
+this is a conversational, AskUserQuestion-driven skill with no executable
+logic of its own to simulate. Adapted from merge-pr's own smoke_test.py
+(same gh-CLI-orchestration shape) with one addition: check_evals_json_exists,
+which merge-pr's own copy does not have."""
 
 import pathlib
 import re
@@ -29,12 +30,26 @@ def check_frontmatter():
 
 def check_referenced_files():
     text = SKILL_MD.read_text(encoding="utf-8")
-    pattern = r"`(references/[\w.-]+\.md)`"
     missing = []
-    for match in re.finditer(pattern, text):
+
+    # references/ and scripts/ paths are relative to this skill's own directory.
+    skill_relative = r"`((?:references|scripts)/[\w./-]+\.(?:md|py|sh))`"
+    for match in re.finditer(skill_relative, text):
         path = SKILL_DIR / match.group(1)
         if not path.exists():
             missing.append(match.group(1))
+
+    # docs/ and evals/ paths are relative to the repo root, not this skill's directory.
+    repo_root = _find_repo_root(SKILL_DIR)
+    repo_relative = r"`((?:docs|evals)/[\w./-]+\.(?:md|json))`"
+    for match in re.finditer(repo_relative, text):
+        if repo_root is None:
+            missing.append(match.group(1) + " (repo root not found)")
+            continue
+        path = repo_root / match.group(1)
+        if not path.exists():
+            missing.append(match.group(1))
+
     if missing:
         return False, "referenced file(s) do not exist: " + ", ".join(sorted(set(missing)))
     return True, "all referenced files exist"
@@ -47,11 +62,14 @@ def check_bash_grants():
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     if not fm_line_match:
         return True, "no allowed-tools line found (skip)"
-    granted_cmds = re.findall(r"Bash\(([\w.*/${}-]+?)(?::|\))", fm_line_match.group(1))
+    granted_cmds = re.findall(r"Bash\(([\w.*/${} -]+?)(?::|\))", fm_line_match.group(1))
     granted_cmds = [c.lstrip("*/") for c in granted_cmds]
 
     body = fm_text[header_end:]
-    unused = [cmd for cmd in granted_cmds if not re.search(re.escape(cmd.split(" ")[0]), body)]
+    # Match the full multi-word grant (e.g. "gh pr view"), not just its first token --
+    # a first-token-only match (e.g. bare "gh") would false-positive against any
+    # unrelated word containing it anywhere in the body.
+    unused = [cmd for cmd in granted_cmds if not re.search(re.escape(cmd), body)]
     if unused:
         return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(
             sorted(set(unused))

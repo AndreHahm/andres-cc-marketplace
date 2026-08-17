@@ -31,12 +31,17 @@ This skill activates for tasks involving:
   reviewer action with CODEOWNERS context — see `collaborating-on-a-pr`)
 - Managing GitHub issues or repository settings
 - Querying GitHub API endpoints (REST or GraphQL)
-- Working with GitHub Actions workflows
+- Working with GitHub Actions workflows (not retrying the specific "Await Codex review" check after
+  Codex finished on its own dashboard — see `codex-review-recovery`, which gates that action on an
+  explicit human confirmation this skill's raw `gh run rerun` reference does not perform)
 - Performing bulk operations on repositories
 - Integrating with GitHub Enterprise
 - Automating GitHub operations via CLI or API
 
-The `collaborating-on-a-pr` exclusion above (named sibling, stated criterion, reciprocal) follows this repo's shared convention in `.claude/rules/resolve-activation-overlap-bidirectionally.md`.
+The `collaborating-on-a-pr` exclusion above (named sibling, stated criterion, reciprocal) follows this repo's shared convention in `.claude/rules/resolve-activation-overlap-bidirectionally.md`. The
+`codex-review-recovery` exclusion above follows the same convention: this skill's `gh run rerun`
+reference material is generic and ungated, while `codex-review-recovery` exists specifically to
+require a human-confirmed dashboard check before rerunning the `Await Codex review` check.
 
 ## Core Operations
 
