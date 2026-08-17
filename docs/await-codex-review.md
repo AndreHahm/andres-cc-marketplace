@@ -82,6 +82,25 @@ findings-review happened in between rather than two genuinely back-to-back clean
 doesn't yet rule out a narrower edge case: two clean pushes in a row with *no* intervening
 findings-review event. That specific scenario still hasn't been observed live.
 
+## Recovering a stuck check
+
+A distinct failure mode from both signals above, confirmed live on PR #50 (2026-08-17): Codex finished
+the review on its own dashboard (chatgpt.com/codex) and the connector never posted a review object *or*
+a `+1` reaction to GitHub within the 30-minute window — a GitHub-side write-back gap, not a delay in
+either signal this workflow polls for. The check fails as designed in this case; nothing here is a bug.
+
+This workflow deliberately does not attempt to recover from that gap itself (see "Out of scope" below —
+detecting or retrying is not this job's responsibility). Recovery is a separate, human-gated skill,
+`Skill(git-kit:codex-review-recovery)`: it asks the human to confirm on Codex's own dashboard that the
+review actually finished — the one piece of information nothing running inside this repository can see —
+then posts an `@codex review` comment (the connector's own documented retry trigger) and re-runs the
+failed check, since posting the comment alone does not itself re-trigger this workflow (its `on:` trigger
+list has no `issue_comment` entry). See that skill's own SKILL.md for the exact procedure.
+
+**Do not react with a manual 👍 as a workaround.** The reaction-match check filters strictly on
+`user.login == "chatgpt-codex-connector[bot]"` — a reaction from any other account, including the PR
+author, is not something a human can spoof from the GitHub UI, by design.
+
 ## Adoption modes
 
 Currently visibility-only: the check runs on every non-draft pull request but is not required by
@@ -112,7 +131,8 @@ findings-review in between — succeeds on both, not just the first.
 ## Out of scope
 
 - Detecting whether Codex has actually started processing.
-- Triggering or retrying a Codex review.
+- Triggering or retrying a Codex review — see "Recovering a stuck check" above for the separate,
+  human-gated skill that handles this deliberately, rather than folding it into this workflow.
 - Parsing findings or turning their severity into a merge verdict.
 - Configuring branch protection or repository rulesets.
 - Supporting merge queues before their desired semantics are defined.

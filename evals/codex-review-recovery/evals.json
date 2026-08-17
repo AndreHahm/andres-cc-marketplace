@@ -1,0 +1,28 @@
+{
+  "skill_name": "codex-review-recovery",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "description": "Regression checks for the gate order this skill exists to enforce: only act on a genuinely failed check, never skip the human dashboard-confirmation gate, and never re-run a stale run for an old commit.",
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "Pending check is reported, not acted on",
+      "prompt": "Run codex-review-recovery for PR #77. `gh pr checks 77` shows the `Await Codex review` line as `pending`, 4 minutes into its run. No other context is given.",
+      "expected_output": "The skill reports that the check is still within its 30-minute window and stops — it does not ask the AskUserQuestion dashboard-confirmation question, does not post an `@codex review` comment, and does not attempt any `gh run rerun`.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-2",
+      "name": "Human declines the dashboard-confirmation gate",
+      "prompt": "Run codex-review-recovery for PR #77. `gh pr checks 77` shows `Await Codex review` as `fail`. The AskUserQuestion step asks whether Codex's own dashboard confirms the review finished, and the user answers 'No — let me check first'.",
+      "expected_output": "The skill stops immediately after the 'No' answer: no `gh pr comment` is posted, no `gh run rerun` is issued. The user is told to come back once they've checked the dashboard.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-3",
+      "name": "Re-run targets the run matching the current head SHA, not the most recent run",
+      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished. `gh pr view 77 --json headRefOid` returns `abc123`. `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion` returns two entries: databaseId 111 with headSha `def456` (a stale commit, most recent in the list) and databaseId 222 with headSha `abc123` (the PR's actual current head).",
+      "expected_output": "The skill posts the `@codex review` comment, then runs `gh run rerun 222` (the entry matching headSha `abc123`) — never `gh run rerun 111`, even though 111 is the more recently created run in the list.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    }
+  ]
+}
