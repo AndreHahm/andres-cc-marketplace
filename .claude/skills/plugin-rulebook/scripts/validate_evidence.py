@@ -283,6 +283,19 @@ def run_self_test():
         detail = "no problems" if is_valid else "; ".join(problems)
         print(f"{outcome}  {shape} ({label} sample): {detail}")
 
+    # Root-type guard (see main()): a truthy non-mapping YAML root ([], false,
+    # ...) must be rejected, not silently folded into {} by a bare `or {}`.
+    for source in ("[]", "false"):
+        raw = yaml.safe_load(source)
+        doc = {} if raw is None else raw
+        outcome = "PASS" if not isinstance(doc, dict) else "FAIL"
+        if outcome == "FAIL":
+            failed = True
+        print(
+            f"{outcome}  root-type guard (YAML source {source!r}): "
+            f"parsed as {type(doc).__name__}, not silently normalized to a mapping"
+        )
+
     sys.exit(1 if failed else 0)
 
 
@@ -304,10 +317,18 @@ def main():
         print(f"No such file: {path}", file=sys.stderr)
         sys.exit(2)
 
-    # An empty or comments-only YAML file parses to None, not {} -- guard here
-    # rather than in validate() itself, so every validator function can assume
-    # a dict without a None-check of its own.
-    doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    # An empty or comments-only YAML file parses to None, not {} -- normalize
+    # only that case so every validator function can assume a dict without a
+    # None-check of its own. A truthy non-mapping root ([], false, 0, '', a
+    # scalar, a list) must NOT be silently folded into {} here -- `or {}`
+    # would also catch those falsey-but-real roots, letting a malformed
+    # document reach validate() as an empty mapping instead of failing
+    # loudly on its actual (wrong) type.
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    doc = {} if raw is None else raw
+    if not isinstance(doc, dict):
+        print(f"FAIL  document root is a {type(doc).__name__}, not a mapping")
+        sys.exit(1)
     problems = validate(shape, doc)
     if problems:
         for problem in problems:
