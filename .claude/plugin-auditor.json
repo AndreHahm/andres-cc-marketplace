@@ -1,7 +1,7 @@
 {
   "reviewer_backend": {
-    "enabled": false,
-    "default": "claude",
+    "enabled": true,
+    "default": "codex",
     "per_reviewer": {}
   }
 }
