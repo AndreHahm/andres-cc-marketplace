@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-5",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response posts the @codex review comment (gh pr comment) before attempting to resolve a run to re-run",
+      "passed": true,
+      "evidence": "Step 4 runs `gh pr comment 77 --body \"@codex review\"` before step 5's run-list lookup."
+    },
+    {
+      "text": "The response reports that no run matches the PR's current head SHA (abc123)",
+      "passed": true,
+      "evidence": "\"Neither returned run's headSha (def456, 789xyz) matches abc123... Stopping here\""
+    },
+    {
+      "text": "The response does not run gh run rerun on either listed entry (def456 or 789xyz)",
+      "passed": true,
+      "evidence": "\"no gh run rerun was issued, and step 6's polling loop does not start\""
+    },
+    {
+      "text": "The response does not fall back to guessing or picking the most recent run as a substitute",
+      "passed": true,
+      "evidence": "\"I'm not going to guess which one to re-run\" and asks the user to confirm instead."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

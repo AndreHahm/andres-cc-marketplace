@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-7",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response reports the repeat failure plainly (Await Codex review failed again)",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not automatically loop back through steps 3-6 a second time",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response states that any further retry requires a fresh, separate human dashboard-confirmation",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "No gh pr comment or gh run rerun is issued as part of this response",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

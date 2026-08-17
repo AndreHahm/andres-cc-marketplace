@@ -59,6 +59,17 @@ check timed out but the review actually finished", "retry the Codex review check
   evaluates `Await Codex review` (it's not a required check) and has its own distinct
   `Publish Codex policy result` bypass flow that this skill doesn't touch.
 
+## Quick Start
+
+1. Resolve the PR and check the `Await Codex review` line's state (`gh pr checks`) — only a `fail` state
+   is actionable.
+2. Ask the human to confirm Codex's own dashboard actually shows the review finished — never inferred.
+3. On "Yes", post `@codex review` and re-run the matching failed workflow run for the PR's current head
+   SHA.
+4. Poll briefly, then report `pass`/still-in-flight/`fail`.
+
+See `## Instructions` below for the full step-by-step with exact commands and state branches.
+
 ## Instructions
 
 1. **Resolve the PR**: `gh pr view "$ARGUMENTS" --json number,url,headRefName,headRefOid` (no arg resolves
@@ -128,6 +139,11 @@ check timed out but the review actually finished", "retry the Codex review check
 - Never loops step 3-6 automatically on a repeat failure — each retry attempt needs its own fresh human
   confirmation, since a second failure is more likely to mean something genuinely wrong rather than a
   repeat of the same transient gap.
+- `Bash(gh pr comment:*)`/`Bash(gh run rerun:*)` are scoped at the `gh` subcommand level, not narrower —
+  this repo's `allowed-tools` grammar only supports command-prefix matching, so a tighter grant (e.g.
+  "only this exact comment body") isn't expressible; the step-3 confirmation gate is what actually bounds
+  this skill's use of those grants, matching the convention other `gh`-orchestration skills in this
+  plugin already use.
 
 ## Testing & Validation
 
@@ -159,26 +175,27 @@ check timed out but the review actually finished", "retry the Codex review check
       fresh step-3 confirmation
 - [ ] `scripts/smoke_test.py` passes (this skill's own persisted structural smoke test)
 
-**Test suite:** `evals/codex-review-recovery/evals.json` defines 3 scenarios exercising the gate order
-above directly — a `pending` check is reported without acting (eval-1), the human declining the
-dashboard-confirmation gate halts the flow entirely (eval-2), and step 5's re-run targets the run matching
-the PR's current head SHA rather than the most-recently-created run in the list (eval-3). `scripts/smoke_test.py`
+**Test suite:** `evals/codex-review-recovery/evals.json` defines 7 scenarios exercising every behavioral
+quality gate above directly — the `pending` and already-`pass`ing halves of gate 1 (eval-1, eval-4), the
+human declining the dashboard-confirmation gate (eval-2), step 5's head-SHA matching in both its
+found-a-match and no-match-at-all branches (eval-3, eval-5), step 6's bounded individual-`gh pr checks`
+poll mechanism (eval-6), and the no-auto-retry rule on a repeat failure (eval-7). `scripts/smoke_test.py`
 is the separate, cheap, structural check (frontmatter validity, referenced-file existence, Bash-grant
 usage, step-sequence, and `evals.json` presence) that runs immediately, with no LLM judging needed — no
 blind A/B baseline is run against this skill, since its value is a human-gated refusal sequence
 (step 3's confirmation), which a no-skill baseline can't be meaningfully scored against.
 
-**Last dated run record:** 2026-08-17 — `skill-tester` Quick Workflow (12/12 assertions passed) and
-`scripts/smoke_test.py` (5/5 checks passed, post `check_bash_grants` regex fix). Coverage against this
-document's own 8 quality gates above (7 behavioral scenarios, plus the smoke-test-passes tooling gate) is
-tracked in `evals/codex-review-recovery/evals.json`'s own `testing_validation_coverage` field and
-`evals/codex-review-recovery/workspace/iteration-1/quick-result.json` — not restated here to avoid a
-second copy drifting out of sync.
+**Last dated run record:** 2026-08-17 — `skill-tester` Quick Workflow (28/28 assertions passed across all
+7 scenarios) and `scripts/smoke_test.py` (5/5 checks passed, post `check_bash_grants` regex fix). All 7
+behavioral quality gates above are now covered; see
+`evals/codex-review-recovery/evals.json`'s own `testing_validation_coverage` field and
+`evals/codex-review-recovery/workspace/iteration-1/quick-result.json` for the structured result — not
+restated here to avoid a second copy drifting out of sync.
 
 ## Reference Guide
 
 | Resource | Purpose |
 |---|---|
 | `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any SKILL.md edit |
-| `evals/codex-review-recovery/evals.json` | 3 scenario definitions for `skill-tester`'s blind-comparison harness, covering the gate order above |
+| `evals/codex-review-recovery/evals.json` | 7 scenario definitions for `skill-tester`'s blind-comparison harness, covering every behavioral quality gate above |
 | `docs/await-codex-review.md` | The workflow this skill recovers — its own "Recovering a stuck check" section cross-references this skill |

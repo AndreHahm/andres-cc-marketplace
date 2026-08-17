@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-5",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response posts the @codex review comment (gh pr comment) before attempting to resolve a run to re-run",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response reports that no run matches the PR's current head SHA (abc123)",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not run gh run rerun on either listed entry (def456 or 789xyz)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not fall back to guessing or picking the most recent run as a substitute",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

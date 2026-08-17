@@ -23,16 +23,39 @@
       "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished. `gh pr view 77 --json headRefOid` returns `abc123`. `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion` returns two entries: databaseId 111 with headSha `def456` (a stale commit, most recent in the list) and databaseId 222 with headSha `abc123` (the PR's actual current head).",
       "expected_output": "The skill posts the `@codex review` comment, then runs `gh run rerun 222` (the entry matching headSha `abc123`) — never `gh run rerun 111`, even though 111 is the more recently created run in the list.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-4",
+      "name": "Already-passing check is reported, not acted on",
+      "prompt": "Run codex-review-recovery for PR #77. `gh pr checks 77` shows the `Await Codex review` line as `pass`. No other context is given.",
+      "expected_output": "The skill reports that the check already succeeded and stops — it does not ask the dashboard-confirmation question, does not post an `@codex review` comment, and does not attempt any `gh run rerun`.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-5",
+      "name": "No run matches the current head SHA — stop, don't guess",
+      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished. `gh pr view 77 --json headRefOid` returns `abc123`. `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion` returns entries with headSha `def456` and `789xyz` only — neither matches `abc123`.",
+      "expected_output": "After posting the `@codex review` comment, the skill reports that no run matches the PR's current head SHA and stops — it does not run `gh run rerun` on any of the listed entries, and does not pick the most recent one as a fallback.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-6",
+      "name": "Poll step uses bounded individual checks calls, not a background loop",
+      "prompt": "Run codex-review-recovery for PR #77 through step 6 (poll and report), after the re-run has already been issued at step 5. Describe exactly what step 6 does.",
+      "expected_output": "The description matches individually repeated `gh pr checks 77` calls (up to ~10, spaced ~30s apart), staying inside the declared `Bash(gh pr checks:*)` grant — not a `run_in_background`/`until`-loop or any tool outside that scope. It stops early once the state resolves to `pass` or `fail`, and reports 'still in flight' if unresolved after all attempts.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-7",
+      "name": "A repeat failure after re-running never auto-retries",
+      "prompt": "Run codex-review-recovery for PR #77. The user already confirmed Codex's dashboard once, the skill posted `@codex review` and re-ran the check, and step 6's poll now shows `Await Codex review` as `fail` again.",
+      "expected_output": "The skill reports the repeat failure plainly and stops — it does not automatically loop back through steps 3-6 a second time. Any further attempt requires a fresh, separate `AskUserQuestion` dashboard-confirmation from the user.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 7,
-    "declared_scenarios_covered": 3,
-    "uncovered": [
-      "Step 2's pass state (only the pending half is exercised, not the already-passing half)",
-      "No run matching the current head SHA at step 5 always stops and reports rather than guessing",
-      "Step 6's 5-minute poll is always a bounded background loop, never a blocking chain of sleep calls",
-      "A repeat failure after step 6 never triggers an automatic second attempt"
-    ]
+    "declared_scenarios_covered": 7,
+    "uncovered": []
   }
 }
