@@ -204,9 +204,14 @@ function escapeWindowsArgument(arg) {
   return escaped;
 }
 
-// Returns the resolved absolute path, or null if `command` isn't found
-// anywhere on PATH under any PATHEXT extension. Non-Windows platforms
-// never call this -- `codex` is directly executable everywhere else.
+// `command` must be a bare executable name with no extension and no path
+// separators -- every PATH directory is searched for `<command><ext>` for
+// each PATHEXT extension in turn, so a name that already carries an
+// extension (e.g. "codex.cmd") or a separator never matches, even if that
+// exact file exists. Returns the resolved absolute path, or null if
+// `command` isn't found anywhere on PATH under any PATHEXT extension.
+// Non-Windows platforms never call this -- `codex` is directly executable
+// everywhere else.
 function resolveWindowsExecutable(command) {
   const pathExt = (process.env.PATHEXT || ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean);
   const pathDirs = (process.env.PATH || process.env.Path || "").split(path.delimiter).filter(Boolean);
@@ -261,7 +266,7 @@ function buildSpawnInvocation(command, args, options, platform = process.platfor
   const commandLine = [escapeWindowsCommand(resolvedPath)].concat(args.map((arg) => escapeWindowsArgument(arg))).join(" ");
 
   return {
-    command: process.env.ComSpec || process.env.COMSPEC || path.join(process.env.SystemRoot || "C:\\Windows", "System32", "cmd.exe"),
+    command: path.join(process.env.SystemRoot || "C:\\Windows", "System32", "cmd.exe"),
     args: ["/d", "/s", "/c", `"${commandLine}"`],
     options: { ...options, shell: false, windowsVerbatimArguments: true },
     resolved: true

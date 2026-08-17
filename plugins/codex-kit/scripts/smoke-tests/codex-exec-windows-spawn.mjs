@@ -40,6 +40,14 @@ function check(label, condition, detail = "") {
   }
 }
 
+// process.env coerces every assigned value to a string, so restoring an
+// originally-unset var (e.g. PATHEXT on POSIX) with `process.env.X = undefined`
+// would leave it set to the literal string "undefined" instead of unset.
+function restoreEnv(key, value) {
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+}
+
 console.log("=== resolveWindowsExecutable: PATHEXT-based resolution ===");
 {
   const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-exec-windows-spawn-"));
@@ -54,16 +62,20 @@ console.log("=== resolveWindowsExecutable: PATHEXT-based resolution ===");
     check("finds a .cmd shim on PATH", resolved === path.join(scratchDir, "mytool.cmd"), resolved);
     check("returns null for a command that doesn't exist anywhere on PATH", resolveWindowsExecutable("this-tool-does-not-exist-anywhere") === null);
   } finally {
-    process.env.PATH = savedPath;
-    process.env.PATHEXT = savedPathExt;
+    restoreEnv("PATH", savedPath);
+    restoreEnv("PATHEXT", savedPathExt);
     fs.rmSync(scratchDir, { recursive: true, force: true });
   }
 }
 
 console.log("\n=== escapeWindowsArgument: no bare shell metacharacter survives ===");
 {
-  const META_CHARS = ["(", ")", "%", "!", "^", '"', "<", ">", "&", "|", ";", ",", " ", "*", "?"];
-  const evil = "foo & echo INJECTED > injected.txt & echo bar";
+  // Matches WIN32_META_CHARS in codex-exec.mjs exactly -- a list that omits
+  // any of these would let a bare, unescaped occurrence of that character
+  // pass this check even though the real escaping function still needs to
+  // handle it.
+  const META_CHARS = ["(", ")", "[", "]", "%", "!", "^", '"', "`", "<", ">", "&", "|", ";", ",", " ", "*", "?"];
+  const evil = "foo & echo INJECTED > injected.txt & (echo `bar`) [x]";
   const escaped = escapeWindowsArgument(evil);
   // Walk the string treating `^X` as one consumed, already-escaped pair (the
   // caret itself is the escape marker, not something requiring its own
@@ -134,8 +146,8 @@ console.log("\n=== buildSpawnInvocation: Windows, directly-executable target (.e
     check("args are passed through unescaped (a real .exe gets Node's own normal argv quoting)", JSON.stringify(inv.args) === JSON.stringify(["--flag"]), JSON.stringify(inv.args));
     check("shell is explicitly false", inv.options.shell === false);
   } finally {
-    process.env.PATH = savedPath;
-    process.env.PATHEXT = savedPathExt;
+    restoreEnv("PATH", savedPath);
+    restoreEnv("PATHEXT", savedPathExt);
     fs.rmSync(scratchDir, { recursive: true, force: true });
   }
 }
@@ -157,8 +169,8 @@ console.log("\n=== buildSpawnInvocation: Windows, .cmd shim target ===");
     check("shell is explicitly false (we build the command line ourselves, not via shell: true)", inv.options.shell === false);
     check("the dangerous argument's & is caret-escaped inside the built command line, not bare", inv.args[3].includes("^&") && !/[^^]&/.test(inv.args[3]), inv.args[3]);
   } finally {
-    process.env.PATH = savedPath;
-    process.env.PATHEXT = savedPathExt;
+    restoreEnv("PATH", savedPath);
+    restoreEnv("PATHEXT", savedPathExt);
     fs.rmSync(scratchDir, { recursive: true, force: true });
   }
 }
