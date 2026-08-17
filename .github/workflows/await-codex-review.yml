@@ -36,8 +36,8 @@ jobs:
                 "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews"
             )"
 
-            if jq -e --arg sha "$HEAD_SHA" '
-              any(
+            if jq -s -e --arg sha "$HEAD_SHA" '
+              add | any(
                 .[];
                 .user.login == "chatgpt-codex-connector[bot]"
                 and .commit_id == $sha
