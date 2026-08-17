@@ -2,7 +2,10 @@
 
 This repository's pull requests are gated by a single consolidated GitHub Actions workflow,
 `.github/workflows/marketplace-ci.yml`, triggered on `pull_request` (`opened`, `synchronize`,
-`reopened`, `edited`, `labeled`). It runs deterministic checks plus a Codex-dispatched delta review
+`reopened`, `edited`, `labeled`). The `labeled` trigger exists solely so the SHA-bound bypass protocol
+(see below) can re-trigger a run when the `codex-review-bypassed` label is applied — every job carries a
+matching `if:` condition, so any *other* label (e.g. a review bot's own auto-classification labels)
+no-ops the whole run instead of spending a full CI pass. It runs deterministic checks plus a Codex-dispatched delta review
 against `scripts/marketplace_ci/`'s own logic — see `.draft/2026-08-07-plugin-marketplace-ci-implementation-plan.md`
 for the full design history and `plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md` for the
 Codex review policy itself.
