@@ -42,9 +42,9 @@ $totalBytes = 0
 
 Get-ChildItem -Path $target -Directory | ForEach-Object {
     $dir = $_
-    $newest = Get-ChildItem -Path $dir.FullName -Recurse -File -Force -ErrorAction SilentlyContinue |
+    $newest = @($dir) + (Get-ChildItem -Path $dir.FullName -Recurse -Force -ErrorAction SilentlyContinue) |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    $lastWrite = if ($newest) { $newest.LastWriteTime } else { $dir.LastWriteTime }
+    $lastWrite = $newest.LastWriteTime
 
     if ($lastWrite -lt $cutoff) {
         $sizeBytes = (Get-ChildItem -Path $dir.FullName -Recurse -File -Force -ErrorAction SilentlyContinue |
