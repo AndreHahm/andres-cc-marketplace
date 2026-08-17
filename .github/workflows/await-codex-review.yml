@@ -1,0 +1,55 @@
+name: Codex review status
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: codex-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  await-codex-review:
+    name: Await Codex review
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 33
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Wait for Codex review
+        shell: bash
+        run: |
+          echo "Waiting for Codex to review commit ${HEAD_SHA}..."
+
+          for attempt in $(seq 1 60); do
+            reviews="$(
+              gh api \
+                --paginate \
+                "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews"
+            )"
+
+            if jq -e --arg sha "$HEAD_SHA" '
+              any(
+                .[];
+                .user.login == "chatgpt-codex-connector[bot]"
+                and .commit_id == $sha
+              )
+            ' <<< "$reviews" >/dev/null; then
+              echo "Codex review received for ${HEAD_SHA}."
+              exit 0
+            fi
+
+            echo "Attempt ${attempt}/60: review not received yet."
+            sleep 30
+          done
+
+          echo "::error::Codex did not submit a review within 30 minutes."
+          exit 1
