@@ -107,6 +107,7 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 | `github-issue-creator` | Turning raw notes, error logs, or screenshots into a structured GitHub issue markdown file |
 | `dependency-updater` | Scanning package manifests across ecosystems for outdated dependencies, flagging monorepo version conflicts, and proposing updates with confirmation before applying |
 | `merge-pr` | Checking whether a PR is ready to merge (draft/CI/review status), verifying the caller has merge rights, and merging (always with confirmation, never automatically) |
+| `codex-review-recovery` | Recovering a stuck `Await Codex review` check when Codex finished the review on its own dashboard but GitHub never received the write-back — human-confirmed, never inferred from a timeout alone |
 | `finishing-work` | Syncing back to a clean, current main after a PR merges, before handing off to `git-cleanup` for branch/worktree deletion |
 | `manage-codeowners` | Bootstrapping and maintaining `.github/CODEOWNERS`, a dependency for `merge-pr`'s rights check |
 
