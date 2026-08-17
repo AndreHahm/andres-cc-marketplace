@@ -22,8 +22,10 @@ from scripts.marketplace_ci.review import (
     check_bypass,
     derive_review_scope,
     dispatch_reviewers,
+    is_bypass_eligible,
     parse_attestation_marker,
     prepare_reviewer_instruction,
+    rebase_onto_base_absorbed,
     validate_review_output,
 )
 from scripts.marketplace_ci.sync import (
@@ -43,6 +45,24 @@ from scripts.marketplace_ci.validators import (
 PR_TEMPLATE_RELATIVE_PATH = Path(".github/pull_request_template.md")
 
 REGISTRY_RELATIVE_PATH = Path(".claude/marketplace-sync.json")
+
+
+def _split_nul_delimited_paths(raw: bytes) -> list[str]:
+    """Split `git diff -z --name-only` output on NUL and decode each path.
+    Plain newline-splitting a non-`-z` `git diff --name-only` call is unsafe
+    for scope decisions: with git's default `core.quotePath=true`, a path
+    containing non-ASCII or control bytes is emitted C-quoted (e.g.
+    `"plugins/d\303\253mo/skills/x/SKILL.md"`), which then fails every
+    `path.startswith("plugins/")`-style prefix check downstream -- silently
+    routing a real component change into light/bypass-eligible mode. `-z`
+    disables quoting and NUL-delimits instead, which a security review
+    flagged as the fix after this repo's own reviewer-scope bypass made
+    that mis-parse's consequence "no review runs at all" instead of just
+    "this one reviewer misses a path". `errors="surrogateescape"`: git
+    emits raw filesystem bytes, which on Linux need not be valid UTF-8 --
+    a strict decode would raise and crash the caller on a byte sequence
+    that just needs to survive a prefix check, not round-trip perfectly."""
+    return [p for p in raw.decode("utf-8", errors="surrogateescape").split("\0") if p]
 
 
 def _load_registry(repo: Path) -> Registry:
@@ -277,14 +297,20 @@ def _handle_check_pr(args: argparse.Namespace) -> int:
     template = template_path.read_text(encoding="utf-8") if template_path.is_file() else ""
 
     diff = subprocess.run(
-        ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
+        ["git", "diff", "-z", "--name-only", f"{base_sha}...{head_sha}"],
         cwd=repo,
         capture_output=True,
-        text=True,
     )
-    changed_paths = (
-        [line for line in diff.stdout.splitlines() if line] if diff.returncode == 0 else []
-    )
+    if diff.returncode != 0:
+        # A failed diff must never silently substitute an empty path list:
+        # check_merge_rights (pr_policy.py) treats "no CODEOWNERS match" as
+        # a fall-through to the more permissive collaborator-permission
+        # branch -- an empty changed_paths list gets exactly that fallback
+        # for free, the same fail-open shape a security review flagged for
+        # the C-quoted-path parsing bug this function's own -z fix closes.
+        print(f"check-pr: git diff {base_sha!r}...{head_sha!r} failed", file=sys.stderr)
+        return 2
+    changed_paths = _split_nul_delimited_paths(diff.stdout)
 
     api = RealGitHubApi(owner=owner, user=user, full_name=full_name, repo=repo)
     result = evaluate_pr_policy(
@@ -431,6 +457,71 @@ def _handle_check_bypass(args: argparse.Namespace) -> int:
     return 0 if result.allowed else 1
 
 
+def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
+    """Automatic, scope-derived counterpart to check-bypass's manual
+    SHA-bound attestation: computes whether the diff since --base-sha has
+    nothing for any Codex reviewer to look at (is_bypass_eligible), then
+    requires --before/--after (only present on a `synchronize` event) to
+    positively confirm this push didn't absorb new commits from the base
+    branch before ever reporting eligible=True. Both missing -- any event
+    other than `synchronize` (opened/reopened/edited/labeled), none of
+    which reliably prove no rebase happened since the PR's last synchronize
+    -- fails closed to eligible=False, the same as a detected rebase. A
+    security review found the earlier "only check if both happen to be
+    given" version silently skippable: editing the PR title after a rebase
+    push re-ran this check with no before/after and reported eligible=True
+    again, defeating the rebase carve-out entirely. Exits 0 on a computed
+    decision (bypass_eligible in the JSON payload either way), 2 only on an
+    infrastructure failure the caller must treat as not-eligible."""
+    repo = Path.cwd()
+    base_sha = args.base_sha
+
+    resolved = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{base_sha}^{{commit}}"], cwd=repo, capture_output=True
+    )
+    if resolved.returncode != 0:
+        print(f"check-scope-bypass: cannot resolve base SHA {base_sha!r}", file=sys.stderr)
+        return 2
+
+    diff = subprocess.run(
+        ["git", "diff", "-z", "--name-only", f"{base_sha}...HEAD"],
+        cwd=repo,
+        capture_output=True,
+    )
+    if diff.returncode != 0:
+        print(f"check-scope-bypass: git diff against {base_sha!r} failed", file=sys.stderr)
+        return 2
+    changed_files = _split_nul_delimited_paths(diff.stdout)
+    changed = tuple(ChangedPath(status="M", old_path=p, new_path=p) for p in changed_files)
+
+    scope = derive_review_scope(changed, {})
+    eligible = is_bypass_eligible(scope)
+    reason = f"mode={scope.mode}, validate={len(scope.validate)}, audit={len(scope.audit)}"
+
+    if eligible:
+        if not (args.before and args.after):
+            eligible = False
+            reason = (
+                "no before/after SHA available to confirm this push is rebase-free "
+                "(only present on a synchronize event) -- failing closed"
+            )
+        elif rebase_onto_base_absorbed(
+            base_sha=base_sha, before=args.before, after=args.after, repo=repo
+        ):
+            eligible = False
+            reason = (
+                "rebase onto base branch absorbed new commits this push, or before/after "
+                "could not be resolved -- full review required either way"
+            )
+
+    payload = {"bypass_eligible": eligible, "mode": scope.mode, "reason": reason}
+    output_text = json.dumps(payload, indent=2)
+    if args.json_output:
+        Path(args.json_output).write_text(output_text + "\n", encoding="utf-8")
+    print(output_text)
+    return 0
+
+
 def _finding_to_dict(finding) -> dict:
     return {
         "reviewer": finding.reviewer,
@@ -464,15 +555,14 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         return 2
 
     diff = subprocess.run(
-        ["git", "diff", "--name-only", f"{base_sha}...HEAD"],
+        ["git", "diff", "-z", "--name-only", f"{base_sha}...HEAD"],
         cwd=repo,
         capture_output=True,
-        text=True,
     )
     if diff.returncode != 0:
         print(f"run-codex-review: git diff against {base_sha!r} failed", file=sys.stderr)
         return 2
-    changed_files = [line for line in diff.stdout.splitlines() if line]
+    changed_files = _split_nul_delimited_paths(diff.stdout)
     changed = tuple(ChangedPath(status="M", old_path=p, new_path=p) for p in changed_files)
 
     scope = derive_review_scope(changed, {})
@@ -638,6 +728,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check_bypass_parser.add_argument("--event", required=True, metavar="PATH")
     check_bypass_parser.set_defaults(handler=_handle_check_bypass)
+
+    check_scope_bypass = subparsers.add_parser(
+        "check-scope-bypass",
+        help="compute whether a PR's diff is eligible for the automatic reviewer-scope bypass",
+    )
+    check_scope_bypass.add_argument("--base-sha", required=True, metavar="SHA")
+    check_scope_bypass.add_argument(
+        "--before", default="", metavar="SHA", help="pre-push head SHA (synchronize event only)"
+    )
+    check_scope_bypass.add_argument(
+        "--after", default="", metavar="SHA", help="post-push head SHA (synchronize event only)"
+    )
+    check_scope_bypass.add_argument("--json-output", metavar="PATH")
+    check_scope_bypass.set_defaults(handler=_handle_check_scope_bypass)
 
     run_codex_review = subparsers.add_parser(
         "run-codex-review",

@@ -200,6 +200,72 @@ def test_check_pr_owner_short_circuit_passes(monkeypatch, git_repo, tmp_path):
     assert main(["check-pr", "--event", str(event_path)]) == 0
 
 
+def test_check_pr_handles_non_ascii_changed_path(monkeypatch, git_repo, tmp_path):
+    """Security-review regression (M-N3): check-pr's own diff call fed
+    changed_paths into CODEOWNERS/merge-privilege matching using plain
+    `--name-only` splitlines, which C-quotes a non-ASCII path and could
+    fail-open a CODEOWNERS match into the more permissive collaborator
+    branch. Same -z fix as check-scope-bypass/run-codex-review; this test
+    just confirms the diff step no longer chokes on such a path."""
+    base_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
+    import subprocess
+
+    git_repo.write("plugins/demo-kit/skills/x/café.py", "content")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "non-ascii change"], cwd=git_repo.root, check=True)
+    head_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    template = git_repo.root / ".github" / "pull_request_template.md"
+    template.parent.mkdir(parents=True, exist_ok=True)
+    template.write_text("## Summary\n\n## Checklist\n", encoding="utf-8")
+
+    event = {
+        "pull_request": {
+            "title": "feat: add non-ascii file",
+            "body": "## Summary\n\nAdds a file.\n",
+            "user": {"login": "andre"},
+            "base": {
+                "repo": {"owner": {"login": "andre"}, "full_name": "andre/repo"},
+                "sha": base_sha,
+            },
+            "head": {"sha": head_sha},
+        }
+    }
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps(event), encoding="utf-8")
+
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-pr", "--event", str(event_path)]) == 0
+
+
+def test_check_pr_unresolvable_diff_returns_2(monkeypatch, git_repo, tmp_path):
+    """Security-review regression (m2): a failed diff must never silently
+    substitute an empty changed_paths list -- that fails open on
+    check_merge_rights' CODEOWNERS matching (no match falls through to the
+    more permissive collaborator-permission branch)."""
+    head_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
+
+    event = {
+        "pull_request": {
+            "title": "feat: add readme update",
+            "body": "## Summary\n\nUpdates readme.\n",
+            "user": {"login": "andre"},
+            "base": {
+                "repo": {"owner": {"login": "andre"}, "full_name": "andre/repo"},
+                "sha": "0" * 40,
+            },
+            "head": {"sha": head_sha},
+        }
+    }
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps(event), encoding="utf-8")
+
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-pr", "--event", str(event_path)]) == 2
+
+
 def test_check_pr_bad_title_fails(monkeypatch, git_repo, tmp_path):
     base_sha = _commit_and_sha(git_repo, "README.md", "hello", "init")
     head_sha = _commit_and_sha(git_repo, "README.md", "hello world", "update")
@@ -396,6 +462,250 @@ def test_check_bypass_missing_field_returns_2(monkeypatch, repo, tmp_path):
     event_path.write_text(json.dumps({"actor": "andre"}), encoding="utf-8")
     monkeypatch.chdir(repo)
     assert main(["check-bypass", "--event", str(event_path)]) == 2
+
+
+def test_check_scope_bypass_unresolvable_base_sha_returns_2(monkeypatch, git_repo):
+    monkeypatch.chdir(git_repo.root)
+    assert main(["check-scope-bypass", "--base-sha", "0" * 40]) == 2
+
+
+def test_check_scope_bypass_eligible_for_out_of_scope_only_diff(monkeypatch, git_repo, tmp_path):
+    import subprocess as subprocess_module
+
+    git_repo.write("README.md", "base")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("evals/demo-kit/evals.json", "{}")
+    git_repo.write("plugins/demo-kit/LICENSE", "notes")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "docs only"], cwd=git_repo.root, check=True)
+
+    out = tmp_path / "scope-bypass.json"
+    monkeypatch.chdir(git_repo.root)
+    # --before/--after both == base_sha: a degenerate but valid "definitely
+    # no rebase happened" proof (base_sha is trivially its own ancestor),
+    # required since check-scope-bypass now fails closed without them (C2).
+    rc = main(
+        [
+            "check-scope-bypass",
+            "--base-sha",
+            base_sha,
+            "--before",
+            base_sha,
+            "--after",
+            base_sha,
+            "--json-output",
+            str(out),
+        ]
+    )
+    assert rc == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["bypass_eligible"] is True
+    assert payload["mode"] == "delta"
+
+
+def test_check_scope_bypass_not_eligible_without_before_after(monkeypatch, git_repo, tmp_path):
+    """Security-review regression (C2): an otherwise-bypass-eligible diff
+    must fail closed to ineligible when --before/--after aren't supplied --
+    e.g. an `edited`/`reopened`/`labeled` event, which carries no reliable
+    proof that a rebase didn't happen on a prior push."""
+    import subprocess as subprocess_module
+
+    git_repo.write("README.md", "base")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("plugins/demo-kit/LICENSE", "notes")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "docs only"], cwd=git_repo.root, check=True)
+
+    out = tmp_path / "scope-bypass.json"
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-scope-bypass", "--base-sha", base_sha, "--json-output", str(out)])
+    assert rc == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["bypass_eligible"] is False
+    assert "before/after" in payload["reason"]
+
+
+def test_check_scope_bypass_not_eligible_for_component_diff(monkeypatch, git_repo, tmp_path):
+    import subprocess as subprocess_module
+
+    git_repo.write("README.md", "base")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("plugins/demo-kit/skills/x/SKILL.md", "modified")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(
+        ["git", "commit", "-q", "-m", "skill change"], cwd=git_repo.root, check=True
+    )
+
+    out = tmp_path / "scope-bypass.json"
+    monkeypatch.chdir(git_repo.root)
+    rc = main(["check-scope-bypass", "--base-sha", base_sha, "--json-output", str(out)])
+    assert rc == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["bypass_eligible"] is False
+
+
+def test_check_scope_bypass_rebase_override_forces_ineligible(monkeypatch, git_repo, tmp_path):
+    """Even a diff that would otherwise qualify for the bypass (out-of-scope
+    files only) must not bypass when --before/--after show this push
+    rebased onto a newer base."""
+    import subprocess as subprocess_module
+
+    git_repo.write("README.md", "root")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "root"], cwd=git_repo.root, check=True)
+    default_branch = subprocess_module.run(
+        ["git", "branch", "--show-current"],
+        cwd=git_repo.root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+    # Fork the feature branch before any later base-branch progress exists.
+    subprocess_module.run(["git", "checkout", "-q", "-b", "feature"], cwd=git_repo.root, check=True)
+    git_repo.write("plugins/demo-kit/LICENSE", "notes")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "docs only"], cwd=git_repo.root, check=True)
+    before = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    # Advance the default branch -- this later commit becomes the PR's base
+    # SHA, which `before` (forked earlier) does not yet contain.
+    subprocess_module.run(["git", "checkout", "-q", default_branch], cwd=git_repo.root, check=True)
+    git_repo.write("main-progress.txt", "new main commit")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(
+        ["git", "commit", "-q", "-m", "main progress"], cwd=git_repo.root, check=True
+    )
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    subprocess_module.run(["git", "checkout", "-q", "feature"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "rebase", "-q", default_branch], cwd=git_repo.root, check=True)
+    after = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    out = tmp_path / "scope-bypass.json"
+    monkeypatch.chdir(git_repo.root)
+    rc = main(
+        [
+            "check-scope-bypass",
+            "--base-sha",
+            base_sha,
+            "--before",
+            before,
+            "--after",
+            after,
+            "--json-output",
+            str(out),
+        ]
+    )
+    assert rc == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["bypass_eligible"] is False
+    assert "rebase" in payload["reason"]
+
+
+def test_check_scope_bypass_never_eligible_for_gate_own_code(monkeypatch, git_repo, tmp_path):
+    """Security-review regression (C4): a diff touching the gate's own
+    decision logic must never be bypass-eligible, even mixed with an
+    otherwise bypass-eligible file and even with valid before/after proving
+    no rebase happened."""
+    import subprocess as subprocess_module
+
+    git_repo.write("README.md", "base")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("plugins/demo-kit/LICENSE", "notes")
+    git_repo.write("scripts/marketplace_ci/review.py", "# sneaky change")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(
+        ["git", "commit", "-q", "-m", "self-modifying"], cwd=git_repo.root, check=True
+    )
+
+    out = tmp_path / "scope-bypass.json"
+    monkeypatch.chdir(git_repo.root)
+    rc = main(
+        [
+            "check-scope-bypass",
+            "--base-sha",
+            base_sha,
+            "--before",
+            base_sha,
+            "--after",
+            base_sha,
+            "--json-output",
+            str(out),
+        ]
+    )
+    assert rc == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["bypass_eligible"] is False
+
+
+def test_check_scope_bypass_handles_non_ascii_path_correctly(monkeypatch, git_repo, tmp_path):
+    """Security-review regression (N2): git's default core.quotePath=true
+    C-quotes a non-ASCII path in plain `git diff --name-only` output (e.g.
+    `"plugins/demo-kit/skills/x/caf\\303\\251.py"`), which then fails every
+    `startswith("plugins/")`-style check and silently misroutes a real
+    component change into light/bypass-eligible mode. `-z` NUL-delimited
+    output must avoid this."""
+    import subprocess as subprocess_module
+
+    git_repo.write("README.md", "base")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    git_repo.write("plugins/demo-kit/skills/x/café.py", "modified")
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(
+        ["git", "commit", "-q", "-m", "non-ascii component change"], cwd=git_repo.root, check=True
+    )
+
+    out = tmp_path / "scope-bypass.json"
+    monkeypatch.chdir(git_repo.root)
+    rc = main(
+        [
+            "check-scope-bypass",
+            "--base-sha",
+            base_sha,
+            "--before",
+            base_sha,
+            "--after",
+            base_sha,
+            "--json-output",
+            str(out),
+        ]
+    )
+    assert rc == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["mode"] == "delta"
+    assert payload["bypass_eligible"] is False
 
 
 def test_run_codex_review_unresolvable_base_sha_returns_2(monkeypatch, git_repo):

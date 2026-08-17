@@ -87,10 +87,111 @@ jobs:
           echo "::error::Marketplace Codex review does not support fork-origin PRs (no trusted secret access for the Codex API key). This is an explicit, terminal failure, not a silently pending required check."
           exit 1
 
+  compute-scope:
+    name: Compute Codex review scope
+    if: github.event.pull_request.head.repo.fork == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      bypass_eligible: ${{ steps.scope.outputs.bypass_eligible }}
+    steps:
+      # Check out the PR's own head commit directly, never the async
+      # `refs/pull/<n>/merge` ref codex-review below uses -- GitHub computes
+      # that merge ref out-of-band and it's known to lag a just-pushed head,
+      # which would let this job's scope decision (and, on a false
+      # bypass_eligible=true, whether codex-review runs at all) disagree
+      # with what actually got pushed. A security review flagged this as a
+      # real TOCTOU gap once two independent jobs each resolve their own
+      # checkout instead of one.
+      - name: Check out the PR's own head commit
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Verify the trusted base SHA actually resolves in this checkout
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git rev-parse --verify "$BASE_SHA"^{commit}
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - run: pip install uv
+
+      # The PR's diff must never be scored using decision code or a
+      # dependency spec the PR itself could have edited -- same
+      # trusted-base-SHA principle prepare_reviewer_instruction already
+      # applies to reviewer instructions (review.py), applied here to the
+      # scope/bypass decision code and what it depends on. `git diff
+      # base...HEAD` below compares commit objects, not the working tree,
+      # so restoring these paths has no effect on which paths get scored --
+      # only on which code (and which dependencies) score them. Runs before
+      # `uv sync` so the dependency install itself also comes from the
+      # trusted spec, not the PR's own pyproject.toml/uv.lock. `scripts`
+      # (the whole tree, not just scripts/marketplace_ci) also covers
+      # scripts/__init__.py, which `python -m scripts.marketplace_ci`
+      # imports before any restored module runs. Fails the job (and, via
+      # publish's SCOPE_RESULT gate, the whole Codex policy check) if the
+      # restore itself can't complete -- never silently falls back to
+      # scoring with the PR's own copy. On this initiative's own
+      # bootstrapping PR the restore still succeeds (scripts/, pyproject.toml,
+      # and uv.lock already exist at base_sha), so this only ever
+      # short-circuits check-scope-bypass's own unrecognized-subcommand
+      # exit further down, not this step. See review.py's own
+      # BYPASS_INELIGIBLE_PREFIXES comment for what this trust boundary
+      # does and doesn't guarantee.
+      - name: Restore the base SHA's copy of the scope-decision code and its dependency spec (trust boundary)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if git checkout "$BASE_SHA" -- scripts pyproject.toml uv.lock; then
+            echo "restored scripts/, pyproject.toml, uv.lock from $BASE_SHA"
+          else
+            echo "::error::could not restore scope-decision code from $BASE_SHA -- refusing to score using the PR's own copy of it"
+            exit 1
+          fi
+
+      - run: uv sync --group dev
+
+      - name: Determine whether this PR's diff is eligible for the automatic reviewer-scope bypass
+        id: scope
+        env:
+          # Never interpolate ${{ }} event data directly into a shell string
+          # -- keeps these as inert data, matching hygiene's own PR_EVENT_JSON
+          # convention above. before/after are only populated on a
+          # `synchronize` event; empty on every other pull_request action.
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.event.after }}
+        run: |
+          # Deliberately defaults to bypass_eligible=false (i.e. codex-review
+          # runs normally) if the scope computation itself fails for any
+          # reason -- fail closed on an infrastructure error, never silently
+          # skip Codex review because this step broke.
+          set +e
+          uv run python -m scripts.marketplace_ci check-scope-bypass \
+            --base-sha "$BASE_SHA" \
+            --before "$BEFORE_SHA" \
+            --after "$AFTER_SHA" \
+            --json-output scope-bypass.json
+          rc=$?
+          set -e
+          value="false"
+          if [ $rc -eq 0 ] && [ -f scope-bypass.json ]; then
+            candidate=$(jq -r '.bypass_eligible' scope-bypass.json 2>/dev/null || echo "")
+            if [ "$candidate" = "true" ]; then
+              value="true"
+            fi
+          fi
+          echo "bypass_eligible=$value" >> "$GITHUB_OUTPUT"
+
   codex-review:
     name: Codex delta review
-    needs: [hygiene, python-quality, marketplace-parity]
-    if: github.event.pull_request.head.repo.fork == false
+    needs: [hygiene, python-quality, marketplace-parity, compute-scope]
+    if: github.event.pull_request.head.repo.fork == false && needs.compute-scope.outputs.bypass_eligible != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -103,7 +204,9 @@ jobs:
           fetch-depth: 0
 
       - name: Verify the trusted base SHA actually resolves in this checkout
-        run: git rev-parse --verify ${{ github.event.pull_request.base.sha }}^{commit}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git rev-parse --verify "$BASE_SHA"^{commit}
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -144,9 +247,10 @@ jobs:
           # has headroom for a longer per-reviewer budget across the several
           # reviewers dispatched sequentially in one run. See docs/ci.md.
           CODEX_KIT_REVIEW_TIMEOUT_MS: "600000"
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           uv run python -m scripts.marketplace_ci run-codex-review \
-            --base-sha ${{ github.event.pull_request.base.sha }} \
+            --base-sha "$BASE_SHA" \
             --output codex-review-result.json
 
       - name: Upload review result
@@ -159,8 +263,19 @@ jobs:
 
   publish:
     name: Publish Codex policy result
-    needs: [codex-review]
-    if: always() && needs.codex-review.result != 'skipped'
+    needs: [compute-scope, codex-review]
+    # Always runs for a same-repo PR (fork-unsupported owns the fork case
+    # and already fails explicitly, independently of this job) -- a
+    # security review found the earlier `needs.codex-review.result !=
+    # 'skipped'` gate fails OPEN when compute-scope itself fails or is
+    # cancelled: a failed `needs` job makes the dependent job's result
+    # 'skipped' by default, so codex-review.result becomes 'skipped' too,
+    # and this job never ran to say otherwise -- exactly what "skipped
+    # satisfies a required check" is supposed to mean only for the
+    # legitimate bypass-eligible case. The "Determine final policy result"
+    # step below now explicitly checks compute-scope's own result before
+    # trusting codex-review's skip as legitimate.
+    if: always() && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -209,13 +324,39 @@ jobs:
           fi
 
       - name: Determine final policy result
+        env:
+          BYPASSED: ${{ steps.bypass.outputs.bypassed }}
+          SCOPE_RESULT: ${{ needs.compute-scope.result }}
+          BYPASS_ELIGIBLE: ${{ needs.compute-scope.outputs.bypass_eligible }}
+          CODEX_RESULT: ${{ needs.codex-review.result }}
         run: |
-          if [ "${{ steps.bypass.outputs.bypassed }}" = "true" ]; then
+          if [ "$BYPASSED" = "true" ]; then
             echo "Codex review bypassed via attested SHA-bound exception. Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
             exit 0
           fi
-          if [ "${{ needs.codex-review.result }}" != "success" ]; then
+          # compute-scope must have actually succeeded before its
+          # bypass_eligible output (and, transitively, codex-review's own
+          # 'skipped' result) can be trusted -- a failed/cancelled/timed-out
+          # compute-scope must never read as a legitimate bypass.
+          if [ "$SCOPE_RESULT" != "success" ]; then
+            echo "compute-scope did not succeed (result: $SCOPE_RESULT) -- cannot verify the automatic reviewer-scope bypass, failing closed."
+            exit 1
+          fi
+          # A 'skipped' codex-review is only legitimate when compute-scope
+          # itself said so. Enumerating codex-review's OTHER needs (hygiene,
+          # python-quality, marketplace-parity) one at a time was the gap a
+          # security review found: any of those failing also makes
+          # codex-review 'skipped' as an unrelated side effect, which the
+          # old check here would have silently accepted as a clean pass.
+          # Keying off compute-scope's own explicit output instead of
+          # codex-review's bare result closes every such path at once,
+          # regardless of which upstream job actually caused the skip.
+          if [ "$CODEX_RESULT" = "skipped" ] && [ "$BYPASS_ELIGIBLE" != "true" ]; then
+            echo "codex-review was skipped for a reason other than an approved reviewer-scope bypass (bypass_eligible=$BYPASS_ELIGIBLE) -- failing closed."
+            exit 1
+          fi
+          if [ "$CODEX_RESULT" != "success" ] && [ "$CODEX_RESULT" != "skipped" ]; then
             echo "Codex review job failed, timed out, or found a blocking (Critical/Major) finding."
             exit 1
           fi
-          echo "Codex review passed."
+          echo "Codex review passed (codex-review=$CODEX_RESULT, bypass_eligible=$BYPASS_ELIGIBLE)."

@@ -51,10 +51,49 @@ _RULEBOOK_OUT_OF_SCOPE_BASENAMES = frozenset(
 )
 
 
+def _is_plugin_or_repo_root_doc(path: str) -> bool:
+    """True only for a bare repo-root file (`KNOWN_ISSUES.md`) or a file
+    directly at a plugin's own root (`plugins/<name>/README.md`) -- never a
+    same-named file nested inside a component directory. A security review
+    of the reviewer-scope bypass (this predicate's second caller, added
+    below) found that without this check, `plugins/<name>/commands/README.md`
+    -- a real, invocable command file, since Claude Code loads every .md in
+    a plugin's commands/ directory -- matched the same basename exclusion
+    and could smuggle a component change past every reviewer."""
+    parts = path.split("/")
+    return len(parts) == 1 or (len(parts) == 3 and parts[0] == "plugins")
+
+
 def _is_rulebook_scoped_path(path: str) -> bool:
     if path.startswith(_RULEBOOK_OUT_OF_SCOPE_PREFIXES):
         return False
-    return Path(path).name not in _RULEBOOK_OUT_OF_SCOPE_BASENAMES
+    name = Path(path).name
+    if name in _RULEBOOK_OUT_OF_SCOPE_BASENAMES and _is_plugin_or_repo_root_doc(path):
+        return False
+    return True
+
+
+# Reviewer-scope-bypass eligibility uses its own, deliberately narrower
+# exclusion than plugin-rulebook-checker's target-path narrowing above.
+# evals/ fixtures and these three basenames are genuinely inert text with
+# no dependency-graph or security signal for any reviewer to look at.
+# README.md/CONTRIBUTING.md/CHANGELOG.md/INSTALLATION.md do NOT get the
+# same pass here (a security review flagged this as a real gap): a
+# README's install step can pipe a script to a shell, and a
+# CHANGELOG/CONTRIBUTING can newly document a dependency -- exactly what
+# dependency-reviewer/security-reviewer exist to catch, even though
+# plugin-rulebook-checker's own R1-R27 rules never had an opinion on them.
+_BYPASS_OUT_OF_SCOPE_PREFIXES = ("evals/",)
+_BYPASS_OUT_OF_SCOPE_BASENAMES = frozenset({"LICENSE", "NOTICE", "KNOWN_ISSUES.md"})
+
+
+def _is_bypass_scoped_path(path: str) -> bool:
+    if path.startswith(_BYPASS_OUT_OF_SCOPE_PREFIXES):
+        return False
+    name = Path(path).name
+    if name in _BYPASS_OUT_OF_SCOPE_BASENAMES and _is_plugin_or_repo_root_doc(path):
+        return False
+    return True
 
 
 # Delta Validate's 3 baseline reviewers, dispatched on every delta PR
@@ -186,7 +225,18 @@ def derive_review_scope(
             paths=tuple(sorted(scoped_paths)),
         )
 
-    if not any(p.startswith("plugins/") for p in paths):
+    # A diff touching only the gate's own code (BYPASS_INELIGIBLE_PREFIXES,
+    # defined below) must still fall through to a real reviewer dispatch,
+    # not just avoid the bypass flag -- a security review found that
+    # forcing bypass_eligible=False alone still let mode stay "light" here
+    # (no plugins/ path), which dispatches zero reviewers regardless of the
+    # flag. Falling through to the delta branch below is enough on its own:
+    # `_is_bypass_scoped_path` never excludes these prefixes, so
+    # has_reviewer_scoped_path comes out True and the baseline three
+    # dispatch for real.
+    if not any(p.startswith("plugins/") for p in paths) and not any(
+        p.startswith(BYPASS_INELIGIBLE_PREFIXES) for p in paths
+    ):
         return ReviewScope(
             mode="light", structural_check=STRUCTURAL_CHECK_REF, validate=(), audit=(), paths=paths
         )
@@ -197,13 +247,88 @@ def derive_review_scope(
         if (component := _component_type(path)) in LAUNCH_AUDIT_BY_COMPONENT_TYPE
     }
 
+    # Reviewer-scope bypass: a plugins/ change whose every path is an evals/
+    # fixture (see _is_bypass_scoped_path -- deliberately narrower than
+    # plugin-rulebook-checker's own target-path exclusion above) has nothing
+    # for the baseline reviewers to look at either. `or bool(audit_types)`
+    # keeps the baseline tied to the audit set: whenever a type-specific
+    # audit reviewer would dispatch, the baseline three dispatch alongside
+    # it too.
+    has_reviewer_scoped_path = any(_is_bypass_scoped_path(p) for p in paths) or bool(audit_types)
+
     return ReviewScope(
         mode="delta",
         structural_check=STRUCTURAL_CHECK_REF,
-        validate=DELTA_VALIDATE,
+        validate=DELTA_VALIDATE if has_reviewer_scoped_path else (),
         audit=tuple(sorted(audit_types)),
         paths=paths,
     )
+
+
+# Paths whose own content decides whether Codex review runs at all, or that
+# feed a separate privilege/policy decision (check-pr's CODEOWNERS
+# matching, the PR template, uv's own dependency resolution) -- a change to
+# any of these must never be able to bypass its own review, or a diff
+# touching only these (plus otherwise-bypass-eligible files) could silently
+# weaken Codex review, merge-privilege checks, or the dependency supply
+# chain for itself and every PR after it. `scripts/` (not just
+# `scripts/marketplace_ci/`) also covers scripts/__init__.py, which
+# `python -m scripts.marketplace_ci` imports before any restored module
+# runs (see below); `.github/` (not just `.github/workflows/`) also covers
+# `.github/pull_request_template.md` and `.github/marketplace-validators.json`.
+#
+# Enforced twice, not just here: derive_review_scope's own light-mode gate
+# above also falls through to a real delta dispatch (DELTA_VALIDATE) for any
+# path under one of these prefixes, rather than relying on this function
+# alone to withhold the bypass flag with zero reviewers actually running --
+# a security review found the first version of this list only did the
+# latter, so the diff was never bypass-eligible but also never reviewed.
+#
+# Trust boundary, honestly stated: `compute-scope` restores
+# `scripts/`+`pyproject.toml`+`uv.lock` from the trusted base SHA before
+# scoring (see marketplace-ci.yml's `compute-scope` job), so an *unaware*
+# edit to this list or `is_bypass_eligible` doesn't defeat itself. That
+# restore is not an adversarial-proof boundary, and this list doesn't
+# either: a same-repo PR author can edit `.github/workflows/marketplace-ci.yml`
+# itself (GitHub runs a `pull_request` workflow using the PR's own copy of
+# the workflow file for a same-repo PR), which is a pre-existing property
+# of every check in this workflow, not something this bypass introduces or
+# could close from inside `review.py`.
+BYPASS_INELIGIBLE_PREFIXES = (
+    ".github/",  # also covers .github/CODEOWNERS, one of 3 candidates below
+    "scripts/",
+    ".codex/agents/",
+    ".claude/rules/",
+    "pyproject.toml",
+    "uv.lock",
+    # The other 2 of pr_policy.py's 3 _CODEOWNERS_CANDIDATES -- a PR adding
+    # or editing either one changes who check_merge_rights lets merge for
+    # every subsequent PR (a CODEOWNERS match is terminal: it both grants
+    # merge rights by listing and denies them to a non-listed author, even
+    # with write permission, never falling through to the permission
+    # check), so this is exactly the kind of policy-weakening file the
+    # rest of this list already exists to keep out of the bypass path.
+    "CODEOWNERS",
+    "docs/CODEOWNERS",
+)
+
+
+def is_bypass_eligible(scope: ReviewScope) -> bool:
+    """True when there is nothing for any Codex reviewer to look at --
+    covers today's mode="light" (no plugins/ path touched) and the new
+    reviewer-scope-empty delta case above. Never true for mode="full":
+    escalation (a shared-governance path, or an oversized dependency
+    closure) is inherently high-risk regardless of what reviewer set it
+    resolves to, including the fail-closed empty-scope gap case
+    derive_review_scope itself returns when an escalation trigger has no
+    defined reviewer set -- that gap must keep failing closed, never read as
+    bypass-eligible. Never true either when any changed path is under
+    BYPASS_INELIGIBLE_PREFIXES -- belt-and-suspenders alongside
+    derive_review_scope's own light-mode gate, which is what actually
+    guarantees a real reviewer set dispatches for these paths."""
+    if any(p.startswith(BYPASS_INELIGIBLE_PREFIXES) for p in scope.paths):
+        return False
+    return scope.mode != "full" and not scope.validate and not scope.audit
 
 
 VALID_SEVERITIES = ("Critical", "Major", "Minor")
@@ -393,6 +518,42 @@ def prepare_reviewer_instruction(
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(instructions, encoding="utf-8")
     return out
+
+
+def rebase_onto_base_absorbed(*, base_sha: str, before: str, after: str, repo: Path) -> bool:
+    """True when this push absorbed new commits from the PR's base branch --
+    `after` newly contains `base_sha` as an ancestor that `before` did not.
+    Used to force full Codex review even when the diff's own scope would
+    otherwise qualify for the reviewer-scope bypass: a rebase can change how
+    already-reviewed code interacts with what the base branch now contains,
+    which a bare changed-file-list diff doesn't capture. An ordinary commit
+    returns False. Also returns True (fails closed) if `before` or `after`
+    can't be resolved in this checkout -- notably, this is the *expected*
+    outcome for a force-pushed-over `before` SHA in CI's own shallow-refs
+    checkout, not a rare edge case, since the pre-push commit is generally
+    unreachable there once superseded. Logs the unresolvable ref's git
+    stderr for diagnosis rather than resolving silently."""
+
+    def is_ancestor(ancestor: str, descendant: str) -> bool | None:
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+            cwd=repo,
+            capture_output=True,
+        )
+        if result.returncode in (0, 1):
+            return result.returncode == 0
+        print(
+            f"rebase_onto_base_absorbed: cannot resolve ancestry of {ancestor!r}/{descendant!r}: "
+            f"{result.stderr.decode('utf-8', errors='replace').strip()}",
+            file=sys.stderr,
+        )
+        return None
+
+    after_has_base = is_ancestor(base_sha, after)
+    before_has_base = is_ancestor(base_sha, before)
+    if after_has_base is None or before_has_base is None:
+        return True
+    return after_has_base and not before_has_base
 
 
 # --- Direct per-reviewer dispatch (design v4 amendments 12-13) ---
