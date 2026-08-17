@@ -4,19 +4,7 @@ on:
   pull_request:
     # "labeled" is required so applying the bypass label actually re-triggers
     # a run -- without it, a maintainer's attested bypass would sit inert
-    # against an already-failed check with no automatic re-evaluation. This
-    # fires for ANY label added to the PR, not just the bypass one (GitHub
-    # Actions has no way to filter "labeled" by label name at the trigger
-    # level), so every job below ANDs in the same label-scoping clause via
-    # its own `if:` -- an unrelated label (e.g. a review bot's own
-    # auto-classification labels) then skips the whole run instead of
-    # spending a full CI pass. The clause is inlined per job rather than
-    # factored into a shared `env:` var: the `env` context is not available
-    # in `jobs.<job_id>.if` (only `github`, `needs`, `vars`, `inputs` are;
-    # verified against GitHub's own context-availability docs), and a custom
-    # job-level `if:` replaces -- rather than ANDs with -- the default
-    # needs-must-succeed gate, so it can't be added to just one job and rely
-    # on skip cascading through `needs:` to reach the rest.
+    # against an already-failed check with no automatic re-evaluation.
     types: [opened, synchronize, reopened, edited, labeled]
 
 concurrency:
@@ -29,7 +17,6 @@ permissions:
 jobs:
   hygiene:
     name: Hygiene (PR contract)
-    if: github.event.action != 'labeled' || github.event.label.name == 'codex-review-bypassed'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -54,7 +41,6 @@ jobs:
 
   python-quality:
     name: Python quality (ruff, ty, pytest)
-    if: github.event.action != 'labeled' || github.event.label.name == 'codex-review-bypassed'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -72,7 +58,6 @@ jobs:
 
   marketplace-parity:
     name: Marketplace mirror/export parity
-    if: github.event.action != 'labeled' || github.event.label.name == 'codex-review-bypassed'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -92,7 +77,7 @@ jobs:
 
   fork-unsupported:
     name: Fork PR (unsupported — explicit terminal result)
-    if: github.event.pull_request.head.repo.fork && (github.event.action != 'labeled' || github.event.label.name == 'codex-review-bypassed')
+    if: github.event.pull_request.head.repo.fork
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -105,7 +90,7 @@ jobs:
   codex-review:
     name: Codex delta review
     needs: [hygiene, python-quality, marketplace-parity]
-    if: github.event.pull_request.head.repo.fork == false && (github.event.action != 'labeled' || github.event.label.name == 'codex-review-bypassed')
+    if: github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
