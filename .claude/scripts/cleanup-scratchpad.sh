@@ -37,7 +37,7 @@ TO_DELETE=()
 TOTAL_KB=0
 
 while IFS= read -r -d '' dir; do
-  newest="$(find "$dir" -type f -printf '%T@\n' 2>/dev/null | sort -rn | head -1)"
+  newest="$(find "$dir" -type f -printf '%T@\n' 2>/dev/null | sort -rn | sed -n '1p')"
   if [[ -z "$newest" ]]; then
     newest="$(stat -c '%Y' "$dir")"
   else

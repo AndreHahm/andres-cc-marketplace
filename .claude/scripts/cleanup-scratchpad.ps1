@@ -42,12 +42,12 @@ $totalBytes = 0
 
 Get-ChildItem -Path $target -Directory | ForEach-Object {
     $dir = $_
-    $newest = Get-ChildItem -Path $dir.FullName -Recurse -File -ErrorAction SilentlyContinue |
+    $newest = Get-ChildItem -Path $dir.FullName -Recurse -File -Force -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
     $lastWrite = if ($newest) { $newest.LastWriteTime } else { $dir.LastWriteTime }
 
     if ($lastWrite -lt $cutoff) {
-        $sizeBytes = (Get-ChildItem -Path $dir.FullName -Recurse -File -ErrorAction SilentlyContinue |
+        $sizeBytes = (Get-ChildItem -Path $dir.FullName -Recurse -File -Force -ErrorAction SilentlyContinue |
             Measure-Object -Property Length -Sum).Sum
         if (-not $sizeBytes) { $sizeBytes = 0 }
         $ageDays = [math]::Floor(((Get-Date) - $lastWrite).TotalDays)
