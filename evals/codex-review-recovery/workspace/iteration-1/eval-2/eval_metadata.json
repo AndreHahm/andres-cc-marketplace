@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "A dashboard-confirmation question is asked (whether Codex's own dashboard shows the review finished) before any action",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "On a 'No' answer, the response stops without posting an @codex review comment",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "On a 'No' answer, no gh run rerun action is taken",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The user is told to come back once they've checked the dashboard themselves",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

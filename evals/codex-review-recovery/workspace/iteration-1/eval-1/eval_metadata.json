@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "Response reports the Await Codex review check is still pending/within its window, not something to recover",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "No AskUserQuestion-style dashboard-confirmation question is asked",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "No @codex review comment (gh pr comment) is described as posted",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "No gh run rerun action is described as taken",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

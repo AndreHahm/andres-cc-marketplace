@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "source": "skill-tester",
+  "mode": "quick",
+  "skill_name": "codex-review-recovery",
+  "summary": {"assertions_passed": 12, "assertions_total": 12, "pass_rate": 1.0},
+  "results": [
+    {"eval_id": "eval-1", "name": "Pending check is reported, not acted on", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
+    {"eval_id": "eval-2", "name": "Human declines the dashboard-confirmation gate", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
+    {"eval_id": "eval-3", "name": "Re-run targets the run matching the current head SHA, not the most recent run", "status": "pass", "assertions_passed": 4, "assertions_total": 4}
+  ],
+  "coverage": {"declared_scenarios_total": 7, "declared_scenarios_covered": 3, "uncovered": [
+    "Step 2's pass state (only the pending half is exercised, not the already-passing half)",
+    "No run matching the current head SHA at step 5 always stops and reports rather than guessing",
+    "Step 6's 5-minute poll is always a bounded background loop, never a blocking chain of sleep calls",
+    "A repeat failure after step 6 never triggers an automatic second attempt"
+  ]}
+}

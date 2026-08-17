@@ -24,5 +24,15 @@
       "expected_output": "The skill posts the `@codex review` comment, then runs `gh run rerun 222` (the entry matching headSha `abc123`) — never `gh run rerun 111`, even though 111 is the more recently created run in the list.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 7,
+    "declared_scenarios_covered": 3,
+    "uncovered": [
+      "Step 2's pass state (only the pending half is exercised, not the already-passing half)",
+      "No run matching the current head SHA at step 5 always stops and reports rather than guessing",
+      "Step 6's 5-minute poll is always a bounded background loop, never a blocking chain of sleep calls",
+      "A repeat failure after step 6 never triggers an automatic second attempt"
+    ]
+  }
 }

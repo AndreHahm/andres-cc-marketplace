@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response posts an @codex review comment (gh pr comment) before re-running anything",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response identifies databaseId 222 (headSha abc123, matching the PR's current head) as the run to re-run",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "databaseId 111 (headSha def456, the stale/most-recent-but-wrong-SHA run) is explicitly not re-run",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response explains that matching happens by head SHA, not by recency, as the reason for picking 222 over 111",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

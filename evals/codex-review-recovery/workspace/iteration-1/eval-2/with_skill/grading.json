@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A dashboard-confirmation question is asked (whether Codex's own dashboard shows the review finished) before any action",
+      "passed": true,
+      "evidence": "\"Question: The 'Await Codex review' check failed for PR #77. Have you confirmed on Codex's own dashboard that this PR's review actually finished? Options: - Yes -- retry / - No -- let me check first\""
+    },
+    {
+      "text": "On a 'No' answer, the response stops without posting an @codex review comment",
+      "passed": true,
+      "evidence": "\"So I do not post the @codex review comment, and I do not re-run any failed check. I stop here.\""
+    },
+    {
+      "text": "On a 'No' answer, no gh run rerun action is taken",
+      "passed": true,
+      "evidence": "\"and I do not re-run any failed check\""
+    },
+    {
+      "text": "The user is told to come back once they've checked the dashboard themselves",
+      "passed": true,
+      "evidence": "\"Go ahead and check Codex's own dashboard to confirm the review for PR #77 actually finished. Once you've confirmed it, let me know and I'll pick this back up\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

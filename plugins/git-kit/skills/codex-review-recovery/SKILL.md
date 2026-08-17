@@ -140,13 +140,19 @@ check timed out but the review actually finished", "retry the Codex review check
 **Test suite:** `evals/codex-review-recovery/evals.json` defines 3 scenarios exercising the gate order
 above directly — a `pending` check is reported without acting (eval-1), the human declining the
 dashboard-confirmation gate halts the flow entirely (eval-2), and step 5's re-run targets the run matching
-the PR's current head SHA rather than the most-recently-created run in the list (eval-3). Not yet run
-through `skill-tester`'s blind-comparison harness — no dated run record exists yet; run it before relying
-on this skill in an unattended context. `scripts/smoke_test.py` is the separate, cheap, structural check
-(frontmatter validity, referenced-file existence, Bash-grant usage, step-sequence, and `evals.json`
-presence) that runs immediately, with no LLM judging needed — see `skill-development`'s own
-`commit`-style rationale for why this conversational, `AskUserQuestion`-driven skill gets a structural
-smoke test rather than being blind-A/B-tested by default.
+the PR's current head SHA rather than the most-recently-created run in the list (eval-3). `scripts/smoke_test.py`
+is the separate, cheap, structural check (frontmatter validity, referenced-file existence, Bash-grant
+usage, step-sequence, and `evals.json` presence) that runs immediately, with no LLM judging needed — see
+`skill-development`'s own `commit`-style rationale for why this conversational, `AskUserQuestion`-driven
+skill gets a structural smoke test rather than being blind-A/B-tested by default.
+
+**Last dated run record:** 2026-08-17, `evals/codex-review-recovery/` — `skill-tester` Quick Workflow,
+with_skill only (no baseline): eval-1, eval-2, eval-3 each 4/4 assertions passed (12/12 overall, 100%).
+Cross-checked against this document's own 7 declared quality-gate scenarios (Step 2.1b): 3 of 7 covered
+by this eval set — the pass-state half of gate 1, the no-matching-run branch of step 5, the bounded-poll
+mechanism of step 6, and the no-auto-retry rule are not yet exercised by a scenario. See
+`evals/codex-review-recovery/workspace/iteration-1/quick-result.json` for the structured result and
+`evals.json`'s own `testing_validation_coverage` field for the coverage detail.
 
 ## Reference Guide
 
