@@ -28,6 +28,17 @@ depends on it (`needs: [codex-review]`) and is the check that knows about the by
 both would make a legitimately-bypassed PR's `Codex delta review` failure block the merge again,
 defeating the bypass entirely.
 
+## External Codex connector review status
+
+A separate workflow, `.github/workflows/await-codex-review.yml`, makes the otherwise invisible
+wait for the *external* `chatgpt-codex-connector[bot]` GitHub App reviewer visible as a pull
+request check (`Codex review status / Await Codex review`). This is unrelated to the `codex-review`
+job documented above — that job dispatches this repository's own `codex-review-bridge` reviewers
+via `OPENAI_API_KEY`; `await-codex-review.yml` only polls for a review submitted by the separate,
+externally-connected `chatgpt-codex-connector[bot]` account. It is currently visibility-only, not
+a required status check. See [`docs/await-codex-review.md`](await-codex-review.md) for the full
+contract, result semantics, and adoption-mode details.
+
 ## Configuring the review model
 
 `codex-review-bridge` never passes `--model` to `codex exec` by default — every dispatch falls through
