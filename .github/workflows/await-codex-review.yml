@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  issues: read
 
 concurrency:
   group: codex-review-${{ github.event.pull_request.number }}
@@ -29,6 +30,29 @@ jobs:
         run: |
           echo "Waiting for Codex to review commit ${HEAD_SHA}..."
 
+          # A clean (no-findings) Codex review has no review object and no
+          # commit-scoped signal at all -- it only shows up as a "+1"
+          # reaction on the PR issue, which carries no commit SHA. Snapshot
+          # existing reaction IDs before polling so a pre-existing reaction
+          # from an earlier commit can't be mistaken for a fresh one.
+          baseline_reaction_ids=""
+          for baseline_attempt in $(seq 1 5); do
+            if baseline_reaction_ids="$(
+              gh api "repos/${REPOSITORY}/issues/${PR_NUMBER}/reactions" --jq '
+                [.[] | select(.user.login == "chatgpt-codex-connector[bot]" and .content == "+1") | .id]
+              '
+            )"; then
+              break
+            fi
+            echo "Baseline reaction fetch attempt ${baseline_attempt}/5 failed, retrying."
+            sleep 5
+          done
+
+          if [ -z "$baseline_reaction_ids" ]; then
+            echo "::error::Could not establish a baseline reaction snapshot after 5 attempts."
+            exit 1
+          fi
+
           for attempt in $(seq 1 60); do
             if ! reviews="$(
               gh api \
@@ -48,6 +72,23 @@ jobs:
               )
             ' <<< "$reviews" >/dev/null; then
               echo "Codex review received for ${HEAD_SHA}."
+              exit 0
+            fi
+
+            if ! current_reaction_ids="$(
+              gh api "repos/${REPOSITORY}/issues/${PR_NUMBER}/reactions" --jq '
+                [.[] | select(.user.login == "chatgpt-codex-connector[bot]" and .content == "+1") | .id]
+              '
+            )"; then
+              echo "Attempt ${attempt}/60: gh api request failed, retrying."
+              sleep 30
+              continue
+            fi
+
+            if jq -e --argjson baseline "$baseline_reaction_ids" '
+              . - $baseline | length > 0
+            ' <<< "$current_reaction_ids" >/dev/null; then
+              echo "Codex reacted with no findings for ${HEAD_SHA}."
               exit 0
             fi
 
