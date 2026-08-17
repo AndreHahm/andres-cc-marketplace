@@ -1,11 +1,13 @@
 import pytest
 
+from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.review import (
     BYPASS_INELIGIBLE_PREFIXES,
     FULL_ESCALATION_PATHS,
     FULL_MODE_GOVERNANCE_REVIEWERS,
     ReviewOutputError,
     ReviewResult,
+    _changed_path_set,
     _is_bypass_scoped_path,
     _is_rulebook_scoped_path,
     aggregate_findings,
@@ -231,6 +233,42 @@ def test_plugin_change_with_one_reviewer_scoped_path_keeps_full_baseline(change,
     assert scope.mode == "delta"
     assert scope.validate == ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
     assert scope.audit == ("skill-reviewer",)
+
+
+def test_changed_path_set_includes_both_sides_of_a_rename():
+    """External-reviewer regression (PR #50): git diff --name-only's default
+    rename detection reports only the destination path, and this function
+    used to keep only `new_path or old_path` -- discarding the source
+    entirely for a rename. Both must survive so a rename FROM a
+    reviewer-scoped path TO an excluded one still counts as touching the
+    reviewer-scoped source."""
+    rename = ChangedPath(
+        status="R",
+        old_path="plugins/demo-kit/skills/x/SKILL.md",
+        new_path="plugins/demo-kit/LICENSE",
+    )
+    paths = _changed_path_set([rename])
+    assert "plugins/demo-kit/skills/x/SKILL.md" in paths
+    assert "plugins/demo-kit/LICENSE" in paths
+
+
+def test_rename_to_excluded_basename_keeps_reviewer_scope(dependency_index):
+    """External-reviewer regression (PR #50): renaming a live skill
+    component to a plugin-root LICENSE/NOTICE/etc must not make the diff
+    look reviewer-empty -- git diff --name-only only reports the
+    destination for a detected rename, which would otherwise make
+    is_bypass_eligible return True even though the PR deletes a loadable
+    component."""
+    rename = ChangedPath(
+        status="R",
+        old_path="plugins/demo-kit/skills/x/SKILL.md",
+        new_path="plugins/demo-kit/LICENSE",
+    )
+    scope = derive_review_scope([rename], dependency_index())
+    assert scope.mode == "delta"
+    assert scope.validate == ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
+    assert scope.audit == ("skill-reviewer",)
+    assert is_bypass_eligible(scope) is False
 
 
 @pytest.mark.parametrize(

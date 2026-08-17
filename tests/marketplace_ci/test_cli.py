@@ -559,6 +559,58 @@ def test_check_scope_bypass_not_eligible_for_component_diff(monkeypatch, git_rep
     assert payload["bypass_eligible"] is False
 
 
+def test_check_scope_bypass_not_eligible_for_rename_to_excluded_basename(
+    monkeypatch, git_repo, tmp_path
+):
+    """External-reviewer regression (PR #50, live on this feature's own
+    first PR): git mv-ing a real skill component onto a plugin-root
+    LICENSE/etc basename must not be bypass-eligible -- git's default
+    rename detection reports only the destination under --name-only, which
+    used to make the whole diff look reviewer-empty even though it deletes
+    a loadable component."""
+    import subprocess as subprocess_module
+
+    git_repo.write(
+        "plugins/demo-kit/skills/x/SKILL.md",
+        "some skill content long enough for git's default rename similarity "
+        "threshold to still detect this as a rename rather than a delete+add pair",
+    )
+    subprocess_module.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess_module.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess_module.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    subprocess_module.run(
+        ["git", "mv", "plugins/demo-kit/skills/x/SKILL.md", "plugins/demo-kit/LICENSE"],
+        cwd=git_repo.root,
+        check=True,
+    )
+    subprocess_module.run(
+        ["git", "commit", "-q", "-m", "rename skill to license"], cwd=git_repo.root, check=True
+    )
+
+    out = tmp_path / "scope-bypass.json"
+    monkeypatch.chdir(git_repo.root)
+    rc = main(
+        [
+            "check-scope-bypass",
+            "--base-sha",
+            base_sha,
+            "--before",
+            base_sha,
+            "--after",
+            base_sha,
+            "--json-output",
+            str(out),
+        ]
+    )
+    assert rc == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["bypass_eligible"] is False
+    assert payload["mode"] == "delta"
+
+
 def test_check_scope_bypass_rebase_override_forces_ineligible(monkeypatch, git_repo, tmp_path):
     """Even a diff that would otherwise qualify for the bypass (out-of-scope
     files only) must not bypass when --before/--after show this push

@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from scripts.marketplace_ci.conversion import find_legacy_command_exports, plan_exports
-from scripts.marketplace_ci.git_state import ChangedPath
+from scripts.marketplace_ci.git_state import ChangedPath, parse_name_status_z
 from scripts.marketplace_ci.pr_policy import RealGitHubApi, evaluate_pr_policy
 from scripts.marketplace_ci.registry import Registry, RegistryError
 from scripts.marketplace_ci.review import (
@@ -484,15 +484,14 @@ def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
         return 2
 
     diff = subprocess.run(
-        ["git", "diff", "-z", "--name-only", f"{base_sha}...HEAD"],
+        ["git", "diff", "-z", "--name-status", "--find-renames", f"{base_sha}...HEAD"],
         cwd=repo,
         capture_output=True,
     )
     if diff.returncode != 0:
         print(f"check-scope-bypass: git diff against {base_sha!r} failed", file=sys.stderr)
         return 2
-    changed_files = _split_nul_delimited_paths(diff.stdout)
-    changed = tuple(ChangedPath(status="M", old_path=p, new_path=p) for p in changed_files)
+    changed = parse_name_status_z(diff.stdout)
 
     scope = derive_review_scope(changed, {})
     eligible = is_bypass_eligible(scope)
@@ -555,15 +554,14 @@ def _handle_run_codex_review(args: argparse.Namespace) -> int:
         return 2
 
     diff = subprocess.run(
-        ["git", "diff", "-z", "--name-only", f"{base_sha}...HEAD"],
+        ["git", "diff", "-z", "--name-status", "--find-renames", f"{base_sha}...HEAD"],
         cwd=repo,
         capture_output=True,
     )
     if diff.returncode != 0:
         print(f"run-codex-review: git diff against {base_sha!r} failed", file=sys.stderr)
         return 2
-    changed_files = _split_nul_delimited_paths(diff.stdout)
-    changed = tuple(ChangedPath(status="M", old_path=p, new_path=p) for p in changed_files)
+    changed = parse_name_status_z(diff.stdout)
 
     scope = derive_review_scope(changed, {})
 

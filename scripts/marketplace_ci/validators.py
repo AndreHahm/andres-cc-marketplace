@@ -134,9 +134,14 @@ def run_delta_structural_checks(
         return ()
     registry = Registry.load(registry_path)
 
-    changed_paths = {cp.new_path or cp.old_path for cp in changed}
-    changed_paths.discard(None)
-    changed_keys = {_component_key(p) for p in changed_paths if p is not None}
+    # Both sides of a rename, not just new_path -- a rename away from a
+    # component (e.g. plugins/x/skills/y/SKILL.md -> plugins/x/LICENSE)
+    # must still check that component's own key for stale mirror/export
+    # actions, not just the destination's. Same fix as review.py's
+    # _changed_path_set, for the same PR #50 external-review finding.
+    changed_paths = {cp.new_path for cp in changed if cp.new_path is not None}
+    changed_paths |= {cp.old_path for cp in changed if cp.old_path is not None}
+    changed_keys = {_component_key(p) for p in changed_paths}
     if not changed_keys:
         return ()
 

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts.marketplace_ci.git_state import ChangedPath
 from scripts.marketplace_ci.validators import (
     Finding,
     PluginValidatorEntry,
@@ -124,3 +125,24 @@ def test_run_delta_structural_checks_returns_empty_without_registry(repo, change
         repo, (change("plugins/sample-kit/skills/demo/SKILL.md"),)
     )
     assert findings == ()
+
+
+def test_run_delta_structural_checks_checks_rename_source_component_too(repo):
+    """PR #50 external-review regression: a rename away from a component
+    (e.g. onto an inert plugin-root basename) must still check that
+    component's own key for stale mirror/export actions -- keying only off
+    new_path would silently drop the source component's parity check."""
+    registry_path = repo / ".claude" / "marketplace-sync.json"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps({"version": 1, "plugin_mirrors": ["sample-kit"], "codex_exports": {}}),
+        encoding="utf-8",
+    )
+
+    rename = ChangedPath(
+        status="R",
+        old_path="plugins/sample-kit/skills/demo/SKILL.md",
+        new_path="plugins/sample-kit/LICENSE",
+    )
+    findings = run_delta_structural_checks(repo, (rename,))
+    assert any(f.path.startswith("plugins/sample-kit/skills/demo") for f in findings)
