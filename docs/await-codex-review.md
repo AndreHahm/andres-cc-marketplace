@@ -66,14 +66,21 @@ A failed check means no matching review or reaction was observed before the time
 prove Codex failed; the review may have been delayed, omitted, or represented through a different
 GitHub object.
 
-**Known limitation (unverified):** the reaction match also can't distinguish "still clean" from
-"already counted" if the connector reuses the same reaction across multiple consecutive clean
+**Known limitation (partially confirmed):** the reaction match also can't distinguish "still
+clean" from "already counted" if the connector reuses the same reaction across multiple clean
 pushes without ever removing and re-adding it — GitHub reactions are idempotent per (user,
-content, target), and it's unconfirmed whether re-reacting on a second clean commit refreshes
-`created_at` or silently no-ops on the existing one, which would leave its timestamp anchored to
-the *first* clean push and fail the second push's own `created_at >= EVENT_TIME` check. This has
-only been observed live for a single clean push so far (2026-08-17); a second consecutive clean
-push on the same PR would confirm or disprove this concern.
+content, target), so this would only be safe if re-reacting refreshes `created_at` rather than
+silently no-oping on an existing reaction.
+
+Observed live on PR #49, 2026-08-17: commit `7494d53`'s clean pass produced reaction ID
+`457464461` at `16:58:19Z`; two intervening commits (`d5096f3`, `6ab1689`) each got a
+findings-review instead of a reaction; commit `b24a47b`'s later clean pass then produced a
+**different** reaction ID (`457502472`) at a **later** timestamp (`17:28:17Z`), with the first
+reaction no longer present on the issue at all. This confirms the connector removes and re-adds
+its `+1` rather than leaving a stale one in place across separate clean passes — but since a
+findings-review happened in between rather than two genuinely back-to-back clean pushes, it
+doesn't yet rule out a narrower edge case: two clean pushes in a row with *no* intervening
+findings-review event. That specific scenario still hasn't been observed live.
 
 ## Adoption modes
 
@@ -98,8 +105,9 @@ Before making this check required, weigh that tradeoff deliberately: a required 
 reaction path's occasional false-positive risk (a clean review of a stale commit misattributed to
 the current head), so "required" mode should either accept that risk explicitly, or the workflow
 would need to drop the reaction path and accept that a genuinely clean PR always times out instead.
-Separately, still confirm the known limitation above: push two consecutive clean commits to the
-same open pull request and verify the check succeeds on both, not just the first.
+Separately, the known limitation above is now partially confirmed rather than fully open: still
+verify the narrower remaining case — two clean commits pushed back-to-back, with no intervening
+findings-review in between — succeeds on both, not just the first.
 
 ## Out of scope
 
