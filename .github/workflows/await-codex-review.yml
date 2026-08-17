@@ -40,14 +40,22 @@ jobs:
           # misattributing a slow, still-in-flight review of an earlier
           # commit to the current one -- see docs/await-codex-review.md's
           # Result Semantics section for the exact race this can't rule out.
-          for attempt in $(seq 1 60); do
+          # Sleep at the top of each iteration (skipped on the first) so the
+          # loop's very last action before giving up is always a check, not
+          # a sleep -- otherwise a review/reaction arriving during the final
+          # sleep is never observed, even though it lands within the
+          # documented 30-minute window.
+          for attempt in $(seq 1 61); do
+            if [ "$attempt" -gt 1 ]; then
+              sleep 30
+            fi
+
             if ! reviews="$(
               gh api \
                 --paginate \
                 "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews"
             )"; then
-              echo "Attempt ${attempt}/60: gh api request failed, retrying."
-              sleep 30
+              echo "Attempt ${attempt}/61: gh api request failed, retrying."
               continue
             fi
 
@@ -67,8 +75,7 @@ jobs:
                 --paginate \
                 "repos/${REPOSITORY}/issues/${PR_NUMBER}/reactions"
             )"; then
-              echo "Attempt ${attempt}/60: gh api request failed, retrying."
-              sleep 30
+              echo "Attempt ${attempt}/61: gh api request failed, retrying."
               continue
             fi
 
@@ -84,8 +91,7 @@ jobs:
               exit 0
             fi
 
-            echo "Attempt ${attempt}/60: review not received yet."
-            sleep 30
+            echo "Attempt ${attempt}/61: review not received yet."
           done
 
           echo "::error::Codex did not submit a review within 30 minutes."
