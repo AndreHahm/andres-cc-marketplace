@@ -34,14 +34,16 @@ distinguish an active review from a queued, missed, or unavailable one.
    action, custom token, or repository secret is used.
 3. Uses one concurrency group per pull request (`codex-review-<PR number>`) and cancels the
    previous run when a new commit arrives.
-4. Before polling, snapshots the connector's existing `+1` reaction IDs on the pull request issue,
-   so a pre-existing reaction from an earlier commit can't be mistaken for a fresh one.
-5. Polls two signals every 30 seconds: GitHub's pull-request reviews endpoint
-   (`gh api .../pulls/<PR>/reviews`), and the pull request's reactions endpoint
+4. Polls two signals every 30 seconds, both fully paginated: GitHub's pull-request reviews
+   endpoint (`gh api .../pulls/<PR>/reviews`), and the pull request's reactions endpoint
    (`gh api .../issues/<PR>/reactions`).
-6. Accepts either a review whose author is `chatgpt-codex-connector[bot]` and whose `commit_id`
+5. Accepts either a review whose author is `chatgpt-codex-connector[bot]` and whose `commit_id`
    equals the current pull request head SHA, or a `+1` reaction from `chatgpt-codex-connector[bot]`
-   whose ID wasn't present in step 4's baseline snapshot.
+   whose `created_at` is at or after the triggering event's own `pull_request.updated_at`
+   timestamp — captured once, at trigger time, before this job even starts. Anchoring to the
+   event's own timestamp (rather than a snapshot taken once this job happens to run) means a
+   reaction the connector posts before this job starts polling still counts, while a stale
+   reaction from an earlier commit still doesn't.
 
 ## Result semantics
 
@@ -53,13 +55,14 @@ A failed check means no matching review or fresh reaction was observed before th
 not prove Codex failed; the review may have been delayed, omitted, or represented through a
 different GitHub object.
 
-**Known limitation (unverified):** the new-reaction snapshot approach can't distinguish "still
-clean" from "already counted" if the connector reuses the same reaction across multiple
-consecutive clean pushes without ever removing and re-adding it — GitHub reactions are idempotent
-per (user, content, target), and it's unconfirmed whether re-reacting on a second clean commit
-produces a new reaction ID or silently no-ops on the existing one. This has only been observed
-live for a single clean push so far (2026-08-17); a second consecutive clean push on the same PR
-would confirm or disprove this concern.
+**Known limitation (unverified):** the timestamp-anchored match can't distinguish "still clean"
+from "already counted" if the connector reuses the same reaction across multiple consecutive
+clean pushes without ever removing and re-adding it — GitHub reactions are idempotent per (user,
+content, target), and it's unconfirmed whether re-reacting on a second clean commit refreshes
+`created_at` or silently no-ops on the existing one, which would leave its timestamp anchored to
+the *first* clean push and fail the second push's own `created_at >= EVENT_TIME` check. This has
+only been observed live for a single clean push so far (2026-08-17); a second consecutive clean
+push on the same PR would confirm or disprove this concern.
 
 ## Adoption modes
 

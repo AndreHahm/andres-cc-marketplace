@@ -24,6 +24,7 @@ jobs:
       REPOSITORY: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      EVENT_TIME: ${{ github.event.pull_request.updated_at }}
     steps:
       - name: Wait for Codex review
         shell: bash
@@ -32,27 +33,12 @@ jobs:
 
           # A clean (no-findings) Codex review has no review object and no
           # commit-scoped signal at all -- it only shows up as a "+1"
-          # reaction on the PR issue, which carries no commit SHA. Snapshot
-          # existing reaction IDs before polling so a pre-existing reaction
-          # from an earlier commit can't be mistaken for a fresh one.
-          baseline_reaction_ids=""
-          for baseline_attempt in $(seq 1 5); do
-            if baseline_reaction_ids="$(
-              gh api "repos/${REPOSITORY}/issues/${PR_NUMBER}/reactions" --jq '
-                [.[] | select(.user.login == "chatgpt-codex-connector[bot]" and .content == "+1") | .id]
-              '
-            )"; then
-              break
-            fi
-            echo "Baseline reaction fetch attempt ${baseline_attempt}/5 failed, retrying."
-            sleep 5
-          done
-
-          if [ -z "$baseline_reaction_ids" ]; then
-            echo "::error::Could not establish a baseline reaction snapshot after 5 attempts."
-            exit 1
-          fi
-
+          # reaction on the PR issue, which carries no commit SHA. Anchor
+          # freshness to the triggering event's own timestamp (captured at
+          # trigger time, before this job even starts) rather than a
+          # snapshot taken once this job happens to run, so a reaction the
+          # connector posts before this job starts still counts, and a
+          # stale reaction from an earlier commit still doesn't.
           for attempt in $(seq 1 60); do
             if ! reviews="$(
               gh api \
@@ -75,19 +61,24 @@ jobs:
               exit 0
             fi
 
-            if ! current_reaction_ids="$(
-              gh api "repos/${REPOSITORY}/issues/${PR_NUMBER}/reactions" --jq '
-                [.[] | select(.user.login == "chatgpt-codex-connector[bot]" and .content == "+1") | .id]
-              '
+            if ! reactions="$(
+              gh api \
+                --paginate \
+                "repos/${REPOSITORY}/issues/${PR_NUMBER}/reactions"
             )"; then
               echo "Attempt ${attempt}/60: gh api request failed, retrying."
               sleep 30
               continue
             fi
 
-            if jq -e --argjson baseline "$baseline_reaction_ids" '
-              . - $baseline | length > 0
-            ' <<< "$current_reaction_ids" >/dev/null; then
+            if jq -s -e --arg event_time "$EVENT_TIME" '
+              add | any(
+                .[];
+                .user.login == "chatgpt-codex-connector[bot]"
+                and .content == "+1"
+                and .created_at >= $event_time
+              )
+            ' <<< "$reactions" >/dev/null; then
               echo "Codex reacted with no findings for ${HEAD_SHA}."
               exit 0
             fi
