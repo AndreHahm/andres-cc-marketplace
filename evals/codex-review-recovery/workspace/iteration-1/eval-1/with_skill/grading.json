@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response reports the Await Codex review check is still pending/within its window, not something to recover",
+      "passed": true,
+      "evidence": "\"PR #77's Await Codex review check is still pending -- it's about 4 minutes into its run, which is well within its normal 30-minute polling window.\""
+    },
+    {
+      "text": "No AskUserQuestion-style dashboard-confirmation question is asked",
+      "passed": true,
+      "evidence": "\"I do not: ask the AskUserQuestion confirmation in step 3 (that only applies once the check is in the fail state)\""
+    },
+    {
+      "text": "No @codex review comment (gh pr comment) is described as posted",
+      "passed": true,
+      "evidence": "\"I do not: ... post an @codex review comment (step 4)\""
+    },
+    {
+      "text": "No gh run rerun action is described as taken",
+      "passed": true,
+      "evidence": "\"I do not: ... look up or re-run any workflow run (step 5)\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

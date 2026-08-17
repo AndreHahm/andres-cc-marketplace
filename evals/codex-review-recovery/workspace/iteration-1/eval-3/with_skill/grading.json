@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response posts an @codex review comment (gh pr comment) before re-running anything",
+      "passed": true,
+      "evidence": "Step 4 runs `gh pr comment 77 --body \"@codex review\"` before Step 5's `gh run rerun 222`"
+    },
+    {
+      "text": "The response identifies databaseId 222 (headSha abc123, matching the PR's current head) as the run to re-run",
+      "passed": true,
+      "evidence": "\"Chosen run: databaseId 222, because its headSha (abc123) matches the PR's current headRefOid from step 1.\" followed by `gh run rerun 222`"
+    },
+    {
+      "text": "databaseId 111 (headSha def456, the stale/most-recent-but-wrong-SHA run) is explicitly not re-run",
+      "passed": true,
+      "evidence": "\"databaseId 111 is explicitly not chosen -- despite being listed first/most recent -- because re-running it would re-poll for a commit (def456) that is no longer the PR's head\""
+    },
+    {
+      "text": "The response explains that matching happens by head SHA, not by recency, as the reason for picking 222 over 111",
+      "passed": true,
+      "evidence": "\"which the skill explicitly warns against (\"don't re-run a stale run for an old commit\")\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
