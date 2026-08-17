@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-4",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response identifies the Await Codex review check as already passing (state: pass)",
+      "passed": true,
+      "evidence": "\"The line whose owning workflow is `await-codex-review.yml` shows `pass`.\""
+    },
+    {
+      "text": "The response reports success/nothing-to-recover and stops, without asking the dashboard-confirmation question",
+      "passed": true,
+      "evidence": "\"there's nothing to recover... No action was taken.\" No AskUserQuestion appears anywhere in the transcript."
+    },
+    {
+      "text": "No gh pr comment (posting @codex review) is issued",
+      "passed": true,
+      "evidence": "\"No `AskUserQuestion` confirmation, no `@codex review` comment, and no workflow re-run are triggered\""
+    },
+    {
+      "text": "No gh run rerun is issued",
+      "passed": true,
+      "evidence": "Same line as above; no gh run rerun call appears anywhere in the transcript."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-6",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The description matches repeated individual gh pr checks calls, not a background-shell or until-loop primitive",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The description stays within the declared Bash(gh pr checks:*) allowed-tools grant (no other tool/scope invoked for polling)",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "The description states polling stops early once the state resolves to pass or fail, rather than always running the full attempt count",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The description states an unresolved state after the bounded attempts is reported as still in flight, not as a failure",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

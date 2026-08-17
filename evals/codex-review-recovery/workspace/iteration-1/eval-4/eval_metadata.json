@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-4",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response identifies the Await Codex review check as already passing (state: pass)",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response reports success/nothing-to-recover and stops, without asking the dashboard-confirmation question",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "No gh pr comment (posting @codex review) is issued",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "No gh run rerun is issued",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}
