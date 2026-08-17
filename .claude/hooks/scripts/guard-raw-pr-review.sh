@@ -1,8 +1,9 @@
 #!/bin/bash
 # PreToolUse guard: hard-blocks a raw `gh pr review` or `gh pr comment`
-# invocation that wasn't immediately preceded by collaborating-on-a-pr's or
-# explain-pr-changes's marker handshake. Same mechanism as guard-raw-pr-ops.sh
-# (see that script's header comment for the full marker-handshake rationale).
+# invocation that wasn't immediately preceded by collaborating-on-a-pr's,
+# explain-pr-changes's, or codex-review-recovery's marker handshake. Same
+# mechanism as guard-raw-pr-ops.sh (see that script's header comment for the
+# full marker-handshake rationale).
 #
 # Deliberately narrow: `gh pr view` (read-only) and `gh pr edit` (used for
 # non-review metadata edits across several skills) are NOT guarded here --
@@ -80,7 +81,7 @@ if [ "$allowed" = true ]; then
   exit 0
 fi
 
-REASON="Raw \`$GH_SUBCOMMAND\` is blocked by git-kit's reviewer-action guard. Use the \`collaborating-on-a-pr\` skill (\`Skill(git-kit:collaborating-on-a-pr)\`) instead -- it adds CODEOWNERS context and a structured action choice this raw invocation would skip. If this fired from inside collaborating-on-a-pr itself, its marker-write step is missing or ran too late -- the marker must be written immediately before this command."
+REASON="Raw \`$GH_SUBCOMMAND\` is blocked by git-kit's reviewer-action guard. Use whichever of \`collaborating-on-a-pr\`, \`explain-pr-changes\`, or \`codex-review-recovery\` matches what you're doing instead -- each writes the marker this guard requires immediately before running the same command. If this fired from inside one of those skills, its marker-write step is missing or ran too late -- the marker must be written immediately before this command."
 
 jq -n --arg reason "$REASON" \
   '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'

@@ -1,6 +1,6 @@
 # Git Plugin
 
-Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch lifecycle setup and post-merge sync, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management.
+Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch lifecycle setup and post-merge sync, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, and recovering a stuck Codex-review check.
 
 ## Plugin Target
 
@@ -11,9 +11,9 @@ Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, 
 
 ## Overview
 
-`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, and CODEOWNERS management. Five `PreToolUse` hooks hard-block raw commands that bypass these skills, a `Stop` hook guards exiting a dirty session-locked worktree, and two rules document the plugin's worktree and lifecycle-routing conventions — see Hooks and Rules below.
+`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, and recovering a stuck Codex-review check. Five `PreToolUse` hooks hard-block raw commands that bypass these skills, a `Stop` hook guards exiting a dirty session-locked worktree, and two rules document the plugin's worktree and lifecycle-routing conventions — see Hooks and Rules below.
 
-Several skills (`create-pr`, `gh-operations`) require GitHub CLI (`gh`) for full functionality.
+Several skills (`create-pr`, `gh-operations`, `codex-review-recovery`) require GitHub CLI (`gh`) for full functionality.
 
 ## Installation
 
@@ -143,7 +143,7 @@ report had stated the closure explicitly until now:
 - **`guard-raw-commit.sh`** blocks a raw `git commit`. `commit` and `standalone-commits` — the two skills that legitimately run `git commit` directly — are allowlisted.
 - **`guard-raw-pr-ops.sh`** blocks a raw `gh pr create` or `gh pr merge`. `create-pr`, `merge-pr`, and `explain-pr-changes` (its no-PR-yet publish path) are allowlisted.
 - **`guard-raw-branch-create.sh`** blocks a raw `git checkout -b`/`-B`, `git switch -c`/`-C`/`--create`, or `git worktree add -b`/`-B`. `starting-work` and `commit` (its on-`main` branch-check fallback) are allowlisted.
-- **`guard-raw-pr-review.sh`** blocks a raw `gh pr review` or `gh pr comment`. `collaborating-on-a-pr` and `explain-pr-changes` (its resolution-table comment) are allowlisted.
+- **`guard-raw-pr-review.sh`** blocks a raw `gh pr review` or `gh pr comment`. `collaborating-on-a-pr`, `explain-pr-changes` (its resolution-table comment), and `codex-review-recovery` (its `@codex review` retry comment) are allowlisted.
 - **`guard-raw-destructive-cleanup.sh`** blocks a raw `git branch -D` targeting a protected branch (`main`/`master`/`develop`/`release/*`), or a raw `git worktree remove --force`/`-f` (a plain, unforced removal already refuses on a dirty or locked worktree via git's own safeguard, so it isn't guarded). `git-cleanup` is allowlisted.
 - **`guard-dirty-worktree-exit.sh`** (`Stop`, not `PreToolUse`) blocks the agent's turn from ending while the session's `starting-work`-locked worktree has uncommitted changes or commits not yet in the resolved default branch — since exiting can remove that worktree via Claude Code's own worktree-session flow. Say "exit anyway" to skip the block for that turn.
 
