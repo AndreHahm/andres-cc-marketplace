@@ -139,6 +139,120 @@ export function findSchemaViolation(value, schema, pathLabel = "$") {
   return null;
 }
 
+// --- Windows npm-shim spawning -------------------------------------------
+//
+// npm-installed CLI tools on Windows (`codex`, and any other global npm
+// binary) are `.cmd` shims, not directly-executable `.exe` files.
+// `spawn("codex", args, { shell: false })` fails ENOENT because Node's
+// CreateProcess-based lookup does not try PATHEXT extensions for a bare
+// command name the way a real shell does (confirmed via a live dispatch,
+// 2026-08-17: `codex` resolves fine in bash via `which`, but the identical
+// bare name fails ENOENT here). Spawning the resolved `.cmd` path directly,
+// still with `shell: false`, instead throws a *synchronous* EINVAL -- Node
+// refuses to launch a `.bat`/`.cmd` file without going through a shell
+// (hardening from CVE-2024-27980: Windows' own CreateProcess silently
+// routes any `.cmd` target through `cmd.exe` regardless of what Node does,
+// so the arguments must be escaped for cmd.exe's own metacharacter
+// grammar, not just for a normal EXE's argv parser -- also confirmed live).
+//
+// `shell: true` on its own does NOT do this safely: Node builds the actual
+// command line for `shell: true` by joining the args with spaces and
+// handing it to cmd.exe with no per-argument escaping at all. Confirmed
+// live (2026-08-17): `spawn(process.execPath, [scriptPath, "foo & echo
+// INJECTED > injected.txt & echo bar"], { shell: true })` actually created
+// `injected.txt` -- the embedded `&` was interpreted by cmd.exe as a
+// command separator -- and `process.execPath` itself ("C:\Program
+// Files\nodejs\node.exe") was silently mis-split on its own space. `args`
+// below includes `scratch.outputSchemaFile`/`scratch.lastMessageFile`
+// (paths that can legitimately contain a space -- an ordinary Windows
+// username with a space is enough, nothing adversarial required) and an
+// optional caller-suppliable `model`, so naive `shell: true` is not safe
+// for this call site.
+//
+// The fix (ported from `cross-spawn`, a widely-used, MIT-licensed
+// implementation of exactly this problem -- fetched and verified 2026-08-17
+// from github.com/moxystudio/node-cross-spawn `lib/util/escape.js` and
+// `lib/parse.js`'s `parseNonShell`, not reimplemented from memory): resolve
+// the shim's real path ourselves, and if it isn't directly executable
+// (extension isn't `.exe`/`.com`), build one fully-escaped command-line
+// string and invoke it via `cmd.exe /d /s /c "<escaped command line>"` with
+// `windowsVerbatimArguments: true` -- which tells Node not to apply its own
+// per-argv-element quoting on top of ours (that would double-escape and
+// break it). `escapeWindowsCommand`/`escapeWindowsArgument` below are a
+// direct port of cross-spawn's algorithm (itself based on
+// https://qntm.org/cmd) -- getting Windows cmd.exe escaping right from
+// scratch is a well-documented source of real vulnerabilities, so this
+// reuses a battle-tested implementation rather than a fresh one.
+const WIN32_META_CHARS = /([()\][%!^"`<>&|;, *?])/g;
+const WIN32_DIRECTLY_EXECUTABLE = /\.(?:com|exe)$/i;
+
+function escapeWindowsCommand(command) {
+  return command.replace(WIN32_META_CHARS, "^$1");
+}
+
+function escapeWindowsArgument(arg) {
+  let escaped = String(arg);
+  // Sequence of backslashes followed by a double quote: double up all the
+  // backslashes and escape the double quote.
+  escaped = escaped.replace(/(?=(\\+?)?)\1"/g, '$1$1\\"');
+  // Sequence of backslashes followed by the end of the string (which will
+  // become a double quote next): double up all the backslashes.
+  escaped = escaped.replace(/(?=(\\+?)?)\1$/, "$1$1");
+  escaped = `"${escaped}"`;
+  escaped = escaped.replace(WIN32_META_CHARS, "^$1");
+  return escaped;
+}
+
+// Returns the resolved absolute path, or null if `command` isn't found
+// anywhere on PATH under any PATHEXT extension. Non-Windows platforms
+// never call this -- `codex` is directly executable everywhere else.
+function resolveWindowsExecutable(command) {
+  const pathExt = (process.env.PATHEXT || ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean);
+  const pathDirs = (process.env.PATH || process.env.Path || "").split(path.delimiter).filter(Boolean);
+  for (const dir of pathDirs) {
+    for (const ext of pathExt) {
+      const candidate = path.join(dir, `${command}${ext.toLowerCase()}`);
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+// Builds the { command, args, options } triple to actually spawn. On any
+// platform other than win32, returns the inputs unchanged. `resolved: false`
+// means `command` wasn't found anywhere on PATH -- the caller should report
+// this the same way an ENOENT from a direct spawn attempt would. `platform`
+// defaults to `process.platform` but is injectable (same pattern as
+// `lib/process.mjs`'s `terminateProcessTree`) so a smoke test can exercise
+// the win32 branch on any CI runner, not just a real Windows machine.
+function buildSpawnInvocation(command, args, options, platform = process.platform) {
+  if (platform !== "win32") {
+    return { command, args, options, resolved: true };
+  }
+
+  const resolvedPath = resolveWindowsExecutable(command);
+  if (!resolvedPath) {
+    return { resolved: false };
+  }
+
+  if (WIN32_DIRECTLY_EXECUTABLE.test(resolvedPath)) {
+    return { command: resolvedPath, args, options: { ...options, shell: false }, resolved: true };
+  }
+
+  const commandLine = [escapeWindowsCommand(resolvedPath)].concat(args.map((arg) => escapeWindowsArgument(arg))).join(" ");
+
+  return {
+    command: process.env.ComSpec || process.env.COMSPEC || "cmd.exe",
+    args: ["/d", "/s", "/c", `"${commandLine}"`],
+    options: { ...options, shell: false, windowsVerbatimArguments: true },
+    resolved: true
+  };
+}
+
+// Exported so a smoke test can exercise the escaping/resolution logic
+// directly, without needing a real npm-shim install on the test machine.
+export { escapeWindowsArgument, escapeWindowsCommand, resolveWindowsExecutable, buildSpawnInvocation };
+
 function makeScratchFiles(dispatchId) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `codex-kit-exec-${dispatchId}-`));
   return {
@@ -208,7 +322,11 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
       args.push("--model", model);
     }
 
-    const child = spawn("codex", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
+    const invocation = buildSpawnInvocation("codex", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
+    if (!invocation.resolved) {
+      return finish(typedFailure(FAILURE_CATEGORIES.CLI_UNAVAILABLE, "codex binary not found on PATH"));
+    }
+    const child = spawn(invocation.command, invocation.args, invocation.options);
 
     const timer = setTimeout(() => {
       child.kill("SIGTERM");
