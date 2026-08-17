@@ -167,7 +167,31 @@ console.log("\n=== buildSpawnInvocation: Windows, command not found anywhere on 
 {
   const inv = buildSpawnInvocation("this-tool-does-not-exist-anywhere", ["--version"], {}, "win32");
   check("resolved is false", inv.resolved === false);
+  check("reason is not_found", inv.reason === "not_found", inv.reason);
   check("no command/args leak through on a failed resolution", inv.command === undefined && inv.args === undefined);
+}
+
+console.log("\n=== buildSpawnInvocation: Windows, an argument with a disallowed character is rejected before escaping ===");
+{
+  // Security review finding (2026-08-17, M1 report's m1/m2/m4): `"` can
+  // defeat the quote-run escaping rule for a %*-forwarding .cmd shim
+  // combined with another metachar, and `\r`/`\n`/NUL aren't neutralized
+  // by the meta-char set at all. Defense in depth for any future caller
+  // of this reusable primitive that doesn't validate as carefully as
+  // bridge-invoke.mjs does today.
+  for (const [label, evilArg] of [
+    ['embedded double quote', 'foo"bar'],
+    ["embedded CR", "foo\rbar"],
+    ["embedded LF", "foo\nbar"],
+    ["embedded NUL", "foo\0bar"]
+  ]) {
+    const inv = buildSpawnInvocation("codex", ["exec", evilArg], {}, "win32");
+    check(`${label} is rejected (resolved: false)`, inv.resolved === false, JSON.stringify(inv));
+    check(`${label}: reason is unsafe_argument`, inv.reason === "unsafe_argument", inv.reason);
+  }
+  // A safe argument set is unaffected by the new guard.
+  const safe = buildSpawnInvocation("this-tool-does-not-exist-anywhere", ["--sandbox", "read-only"], {}, "win32");
+  check("a safe argument set still reaches the normal not_found path (guard doesn't over-match)", safe.reason === "not_found", safe.reason);
 }
 
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);

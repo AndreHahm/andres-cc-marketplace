@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { terminateProcessTree } from "./process.mjs";
 
 // Component #17 — the reusable codex-exec invocation primitive (promoted out
 // of internal-reference-only status per scope-expansion gap #1). Ported from
@@ -230,9 +231,27 @@ function buildSpawnInvocation(command, args, options, platform = process.platfor
     return { command, args, options, resolved: true };
   }
 
+  // Defense in depth (flagged by security review, 2026-08-17): every
+  // current caller already constrains its own args to a safe charset
+  // (bridge-invoke.mjs validates dispatchId/model against
+  // ^[A-Za-z0-9._-]{1,64}$; the scratch file paths below can't contain a
+  // `"` since Windows itself forbids that character in a filename), so
+  // this never actually rejects anything today -- but this module is
+  // documented above as a reusable primitive "available to any other
+  // codex-kit component," and a future caller might not validate as
+  // carefully. `"` is the one character that can defeat the quote-run
+  // escaping rule in escapeWindowsArgument if it reaches here already
+  // containing cmd.exe-meaningful content the caller expected POSIX-shell
+  // semantics for; `\r`/`\n`/NUL aren't neutralized by the meta-char set
+  // at all. Reject rather than silently attempt to escape them.
+  const unsafeArg = args.find((arg) => /["\r\n\0]/.test(String(arg)));
+  if (unsafeArg !== undefined) {
+    return { resolved: false, reason: "unsafe_argument", detail: `argument contains a disallowed character (", CR, LF, or NUL): ${JSON.stringify(String(unsafeArg))}` };
+  }
+
   const resolvedPath = resolveWindowsExecutable(command);
   if (!resolvedPath) {
-    return { resolved: false };
+    return { resolved: false, reason: "not_found" };
   }
 
   if (WIN32_DIRECTLY_EXECUTABLE.test(resolvedPath)) {
@@ -242,7 +261,7 @@ function buildSpawnInvocation(command, args, options, platform = process.platfor
   const commandLine = [escapeWindowsCommand(resolvedPath)].concat(args.map((arg) => escapeWindowsArgument(arg))).join(" ");
 
   return {
-    command: process.env.ComSpec || process.env.COMSPEC || "cmd.exe",
+    command: process.env.ComSpec || process.env.COMSPEC || path.join(process.env.SystemRoot || "C:\\Windows", "System32", "cmd.exe"),
     args: ["/d", "/s", "/c", `"${commandLine}"`],
     options: { ...options, shell: false, windowsVerbatimArguments: true },
     resolved: true
@@ -324,12 +343,34 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
 
     const invocation = buildSpawnInvocation("codex", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
     if (!invocation.resolved) {
+      if (invocation.reason === "unsafe_argument") {
+        return finish(typedFailure(FAILURE_CATEGORIES.NON_ZERO_EXIT, invocation.detail));
+      }
       return finish(typedFailure(FAILURE_CATEGORIES.CLI_UNAVAILABLE, "codex binary not found on PATH"));
     }
     const child = spawn(invocation.command, invocation.args, invocation.options);
 
     const timer = setTimeout(() => {
-      child.kill("SIGTERM");
+      // On the Windows .cmd-shim path (see buildSpawnInvocation above), the
+      // direct child is cmd.exe, not codex -- child.kill() only reaches
+      // cmd.exe, leaving the grandchild `codex` process running under
+      // whatever --sandbox mode it was given, orphaned the moment
+      // finish()'s cleanup() below deletes the scratch dir out from under
+      // it. Same hazard lib/app-server.mjs already documents and solves
+      // for its own shell:true spawn (see its "Use terminateProcessTree
+      // to kill the entire tree" comment) -- flagged by security review,
+      // 2026-08-17. terminateProcessTree's taskkill /T /F blocks
+      // synchronously, so the tree is dead before finish() runs.
+      if (process.platform === "win32") {
+        try {
+          terminateProcessTree(child.pid);
+        } catch {
+          // Best-effort -- report the timeout regardless of whether the
+          // kill itself succeeded.
+        }
+      } else {
+        child.kill("SIGTERM");
+      }
       finish(typedFailure(FAILURE_CATEGORIES.TIMEOUT, `codex exec exceeded ${timeoutMs}ms`));
     }, timeoutMs);
 
