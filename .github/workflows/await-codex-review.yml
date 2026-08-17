@@ -33,12 +33,13 @@ jobs:
 
           # A clean (no-findings) Codex review has no review object and no
           # commit-scoped signal at all -- it only shows up as a "+1"
-          # reaction on the PR issue, which carries no commit SHA. Anchor
-          # freshness to the triggering event's own timestamp (captured at
-          # trigger time, before this job even starts) rather than a
-          # snapshot taken once this job happens to run, so a reaction the
-          # connector posts before this job starts still counts, and a
-          # stale reaction from an earlier commit still doesn't.
+          # reaction on the PR issue, which carries no commit SHA at all (a
+          # structural GitHub API limitation, not something a smarter
+          # timestamp check can fully close). Anchoring to the triggering
+          # event's own timestamp reduces, but cannot eliminate, the risk of
+          # misattributing a slow, still-in-flight review of an earlier
+          # commit to the current one -- see docs/await-codex-review.md's
+          # Result Semantics section for the exact race this can't rule out.
           for attempt in $(seq 1 60); do
             if ! reviews="$(
               gh api \
@@ -79,7 +80,7 @@ jobs:
                 and .created_at >= $event_time
               )
             ' <<< "$reactions" >/dev/null; then
-              echo "Codex reacted with no findings for ${HEAD_SHA}."
+              echo "Codex reacted with no findings at or after this push. This does not prove the reaction was for ${HEAD_SHA} specifically -- reactions carry no commit ID."
               exit 0
             fi
 

@@ -13,12 +13,13 @@ see "Adoption modes" below.
 The workflow starts when a pull request is opened, reopened, marked ready for review, or updated
 with a new commit (`opened`, `reopened`, `synchronize`, `ready_for_review`), skipping draft pull
 requests. Its `Await Codex review` job stays in progress until either GitHub reports a submitted
-review from `chatgpt-codex-connector[bot]` for the pull request's current head commit, or the
-connector posts a fresh `+1` reaction on the pull request (its no-findings signal — confirmed
-live, 2026-08-17: a clean review produces no review object and no commit-scoped signal at all,
-only an issue-level reaction). It fails if neither appears within 30 minutes (job
-`timeout-minutes: 33` gives that failure message headroom over GitHub's own hard job-timeout
-cancellation).
+review from `chatgpt-codex-connector[bot]` for the pull request's current head commit (a
+commit-exact signal), or the connector posts a `+1` reaction on the pull request at or after this
+push (its no-findings signal — confirmed live, 2026-08-17: a clean review produces no review
+object and no commit-scoped signal at all, only an issue-level reaction with **no commit ID**,
+so this second path is a best-effort match, not a commit-exact one — see "Result semantics"
+below). It fails if neither appears within 30 minutes (job `timeout-minutes: 33` gives that
+failure message headroom over GitHub's own hard job-timeout cancellation).
 
 This is an observation wrapper around the third-party reviewer. It does not start Codex and cannot
 distinguish an active review from a queued, missed, or unavailable one.
@@ -47,17 +48,27 @@ distinguish an active review from a queued, missed, or unavailable one.
 
 ## Result semantics
 
-A successful check means only that Codex submitted a review for the current commit — it does not
-mean the review was clean. A review containing findings and a clean review both satisfy this
-check.
+A successful check means one of two things, with different confidence:
 
-A failed check means no matching review or fresh reaction was observed before the timeout. It does
-not prove Codex failed; the review may have been delayed, omitted, or represented through a
-different GitHub object.
+- **Review-object match (commit-exact, high confidence):** Codex submitted a review — clean or
+  with findings — whose `commit_id` equals the current head SHA. This is a certain match.
+- **Reaction match (best-effort, not commit-exact):** Codex posted a `+1` reaction at or after
+  this push's own timestamp. This does **not** prove the reaction was for the current commit
+  specifically — GitHub reactions carry no commit ID at all, which is a structural limitation of
+  the API, not a gap a smarter client-side heuristic can close. **Confirmed live, 2026-08-17**
+  (`chatgpt-codex-connector[bot]`'s own PR review, PR #49): if a clean review of an earlier commit
+  is still in flight when a newer commit is pushed, the earlier commit's late `+1` can land after
+  the newer commit's own event timestamp and be misattributed to it. The check accepts this
+  tradeoff for visibility-only use; it is a real reason **not** to promote this check to a
+  required status check without accepting that occasional false positive.
 
-**Known limitation (unverified):** the timestamp-anchored match can't distinguish "still clean"
-from "already counted" if the connector reuses the same reaction across multiple consecutive
-clean pushes without ever removing and re-adding it — GitHub reactions are idempotent per (user,
+A failed check means no matching review or reaction was observed before the timeout. It does not
+prove Codex failed; the review may have been delayed, omitted, or represented through a different
+GitHub object.
+
+**Known limitation (unverified):** the reaction match also can't distinguish "still clean" from
+"already counted" if the connector reuses the same reaction across multiple consecutive clean
+pushes without ever removing and re-adding it — GitHub reactions are idempotent per (user,
 content, target), and it's unconfirmed whether re-reacting on a second clean commit refreshes
 `created_at` or silently no-ops on the existing one, which would leave its timestamp anchored to
 the *first* clean push and fail the second push's own `created_at >= EVENT_TIME` check. This has
@@ -67,21 +78,28 @@ push on the same PR would confirm or disprove this concern.
 ## Adoption modes
 
 Currently visibility-only: the check runs on every non-draft pull request but is not required by
-branch protection. After observing the connector's behavior on real pull requests, the repository
-can optionally make `Await Codex review` a required status check — in that mode, a missing or late
-external review blocks merging after the workflow times out.
+branch protection. Making `Await Codex review` a required status check is a real option — a
+missing or late external review would block merging after the workflow times out — but it comes
+with a real, structural tradeoff, not just a pending-validation item; see "Validation before
+requiring this check" below before deciding.
 
 ## Validation before requiring this check
 
 Confirmed live, 2026-08-17: a review with findings appears in the pull-request reviews endpoint
 with `user.login` equal to `chatgpt-codex-connector[bot]` and `commit_id` equal to the reviewed
-pull request head SHA; a clean review instead produces no review object at all — only a `+1`
-reaction on the pull request issue, with no commit correlation. The workflow now polls both
-signals (see "Workflow contract" above).
+pull request head SHA — a commit-exact, reliable signal. A clean review instead produces no
+review object at all — only a `+1` reaction on the pull request issue, with no commit correlation
+GitHub's API can provide. The workflow polls both signals (see "Workflow contract" above), but the
+reaction path can only ever be a best-effort match, per "Result semantics" above — this is a
+permanent characteristic of using reactions this way, not something further observation will
+resolve.
 
-Before making this check required, still confirm the known limitation above: push two consecutive
-clean commits to the same open pull request and verify the check succeeds on both, not just the
-first.
+Before making this check required, weigh that tradeoff deliberately: a required check inherits the
+reaction path's occasional false-positive risk (a clean review of a stale commit misattributed to
+the current head), so "required" mode should either accept that risk explicitly, or the workflow
+would need to drop the reaction path and accept that a genuinely clean PR always times out instead.
+Separately, still confirm the known limitation above: push two consecutive clean commits to the
+same open pull request and verify the check succeeds on both, not just the first.
 
 ## Out of scope
 
