@@ -149,7 +149,21 @@ class ReviewScope:
 
 
 def _changed_path_set(changes: Sequence[ChangedPath]) -> tuple[str, ...]:
-    paths = {p for cp in changes if (p := cp.new_path or cp.old_path) is not None}
+    """Both sides of a rename, not just the new path -- a rename FROM a
+    reviewer-scoped path TO a bypass-excluded one (e.g. `skills/x/SKILL.md`
+    -> a plugin-root `LICENSE`) must still count as touching the old,
+    reviewer-scoped path, or the whole diff looks reviewer-empty and
+    silently skips Codex even though it deletes a loadable component.
+    Flagged live by the external Codex connector reviewer on this
+    feature's own first PR (#50) -- `git diff --name-only`'s default
+    rename detection reports only the destination, and the earlier
+    `new_path or old_path` here then discarded the source entirely."""
+    paths: set[str] = set()
+    for cp in changes:
+        if cp.new_path is not None:
+            paths.add(cp.new_path)
+        if cp.old_path is not None:
+            paths.add(cp.old_path)
     return tuple(sorted(paths))
 
 

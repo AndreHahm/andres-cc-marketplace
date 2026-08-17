@@ -16,8 +16,17 @@ class ChangedPath:
     new_path: str | None
 
 
-def _parse_name_status_z(raw: bytes) -> tuple[ChangedPath, ...]:
-    fields = raw.decode("utf-8").split("\0")
+def parse_name_status_z(raw: bytes) -> tuple[ChangedPath, ...]:
+    """Parse `git diff --name-status -z --find-renames` output, preserving
+    both sides of a detected rename as one ChangedPath(status="R", ...).
+    Shared beyond GitState.staged_paths below -- __main__.py's scope/review
+    diff handlers also need rename-aware parsing so a renamed component
+    isn't silently reduced to only its destination path. surrogateescape:
+    git emits raw filesystem bytes, which need not be valid UTF-8 -- a
+    strict decode would raise and crash the caller on a byte sequence that
+    just needs to survive a prefix/basename check, not round-trip
+    perfectly (same reasoning as __main__.py's _split_nul_delimited_paths)."""
+    fields = raw.decode("utf-8", errors="surrogateescape").split("\0")
     if fields and fields[-1] == "":
         fields.pop()
 
@@ -56,7 +65,7 @@ class GitState:
             check=True,
             capture_output=True,
         )
-        return _parse_name_status_z(result.stdout)
+        return parse_name_status_z(result.stdout)
 
     def read_index(self, path: PurePosixPath) -> bytes | None:
         result = subprocess.run(
