@@ -30,11 +30,15 @@ jobs:
           echo "Waiting for Codex to review commit ${HEAD_SHA}..."
 
           for attempt in $(seq 1 60); do
-            reviews="$(
+            if ! reviews="$(
               gh api \
                 --paginate \
                 "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews"
-            )"
+            )"; then
+              echo "Attempt ${attempt}/60: gh api request failed, retrying."
+              sleep 30
+              continue
+            fi
 
             if jq -s -e --arg sha "$HEAD_SHA" '
               add | any(
