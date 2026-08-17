@@ -357,14 +357,16 @@ async function main() {
   // checkout (e.g. merge-base, not the PR branch) per SKILL.md's Inputs.
   const resolvedInstructionFile = path.resolve(cwd, instructionFile);
 
-  // instruction-file is now bound by the same repo-root containment gate as
-  // --cwd and every --target-paths entry above -- its full content is what
-  // reaches the third-party Codex/OpenAI API, so it was a gap for this to be
-  // exempt while target paths were covered.
-  if (!isWithin(resolvedInstructionFile, repoRoot)) {
-    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `instruction-file resolves outside the repository root: ${redactSecrets(resolvedInstructionFile)} is not within ${repoRoot}` }));
-    process.exit(1);
-  }
+  // instruction-file is deliberately NOT bound by the repo-root containment
+  // gate that applies to --cwd and every --target-paths entry above --
+  // plugin-auditor's documented Codex path writes the trusted reviewer
+  // instructions to the session scratchpad precisely because that directory
+  // must live OUTSIDE the repository root (codex-backend.md's Resolver step
+  // 3; require-gitignored-scratch-locations.md), so requiring repo-root
+  // containment here would reject every such dispatch. The security boundary
+  // that actually matters for this argument -- instructions must not be one
+  // of the files under review -- is enforced by the instructionUnderTarget
+  // check below instead.
 
   const instructionUnderTarget = targetPaths.some((p) => {
     const resolvedTarget = path.resolve(cwd, p);
@@ -390,10 +392,15 @@ async function main() {
   // interpolateTemplate's own use of neutralizeClosingTags in
   // scripts/lib/prompts.mjs) -- break every closing-tag-shaped substring in
   // instructionBody generically, not scoped to just </reviewer_instructions>,
-  // so a literal delimiter for ANY of this prompt's five structural tags
-  // (<content_trust_boundary>, <target_paths>, <reviewer_instructions>,
+  // so a literal CLOSING delimiter for ANY of this prompt's five structural
+  // tags (<content_trust_boundary>, <target_paths>, <reviewer_instructions>,
   // <content_trust_boundary_restated>, <dispatch>) can no longer escape its
-  // block and be read as continuing prompt structure.
+  // block and be read as continuing prompt structure. Closing tags only --
+  // a bare opening tag or a self-closing "<tag ... />" form passes through
+  // unmodified; semanticallyValidate (below) is what actually rejects a
+  // forged <dispatch> identity regardless of tag form, so this pass is a
+  // defense-in-depth layer against premature block-closing, not a full
+  // tag-injection filter.
   const neutralizedInstructionBody = neutralizeClosingTags(instructionBody);
 
   const prompt = [

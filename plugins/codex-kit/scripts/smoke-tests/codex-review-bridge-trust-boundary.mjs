@@ -50,7 +50,7 @@ function runBridge(tmpDir, instructionFile, targetPaths, dispatchId = "smoke-tes
       ],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ...extraEnv } }
     );
-    return { ok: true };
+    return { ok: true, stderr: "" };
   } catch (e) {
     return { ok: false, stderr: e.stderr?.toString() ?? "" };
   }
@@ -259,9 +259,13 @@ console.log("\n=== CODEX_KIT_REVIEW_REPO_ROOT containment ===");
     unsetTraversal.stderr
   );
 
-  // --instruction-file is now bound by the same containment gate as --cwd
-  // and --target-paths -- its full content is what reaches the third-party
-  // Codex/OpenAI API, so it was previously the one exempt input.
+  // --instruction-file is deliberately NOT bound by the CODEX_KIT_REVIEW_
+  // REPO_ROOT containment gate that applies to --cwd and --target-paths --
+  // plugin-auditor's documented Codex path writes trusted instructions to
+  // the session scratchpad specifically because that directory lives OUTSIDE
+  // the repository root. An earlier revision of this bridge bound
+  // instruction-file to the same containment gate, which broke that
+  // documented path entirely; this asserts the regression stays fixed.
   const outsideRootDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-review-bridge-outside-root-"));
   const outsideInstructionFile = path.join(outsideRootDir, "outside-reviewer.md");
   fs.writeFileSync(outsideInstructionFile, "instructions living outside the declared repo root");
@@ -269,9 +273,9 @@ console.log("\n=== CODEX_KIT_REVIEW_REPO_ROOT containment ===");
     CODEX_KIT_REVIEW_REPO_ROOT: tmpDir
   });
   check(
-    "an --instruction-file outside CODEX_KIT_REVIEW_REPO_ROOT is rejected before any Codex call",
-    !instructionOutsideRoot.ok && instructionOutsideRoot.stderr.includes("instruction-file resolves outside the repository root"),
-    instructionOutsideRoot.stderr
+    "an --instruction-file outside CODEX_KIT_REVIEW_REPO_ROOT does NOT trigger the containment-check rejection",
+    !(instructionOutsideRoot.stderr ?? "").includes("instruction-file resolves outside the repository root"),
+    instructionOutsideRoot.stderr ?? "(ok: true)"
   );
 }
 
