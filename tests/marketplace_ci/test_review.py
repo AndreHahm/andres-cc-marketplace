@@ -1,13 +1,17 @@
 import pytest
 
 from scripts.marketplace_ci.review import (
+    BYPASS_INELIGIBLE_PREFIXES,
     FULL_ESCALATION_PATHS,
     FULL_MODE_GOVERNANCE_REVIEWERS,
     ReviewOutputError,
     ReviewResult,
+    _is_bypass_scoped_path,
     _is_rulebook_scoped_path,
     aggregate_findings,
     derive_review_scope,
+    is_bypass_eligible,
+    rebase_onto_base_absorbed,
     validate_review_output,
 )
 
@@ -26,10 +30,40 @@ from scripts.marketplace_ci.review import (
         ("plugins/demo-kit/CONTRIBUTING.md", False),
         ("plugins/demo-kit/CHANGELOG.md", False),
         ("KNOWN_ISSUES.md", False),
+        # Security-review regression (C3): a same-named file *inside* a
+        # component directory is a real, loadable component (Claude Code
+        # loads every .md under commands/ as a command) -- the basename
+        # exclusion must only apply at a plugin's own root, never nested.
+        ("plugins/demo-kit/commands/README.md", True),
+        ("plugins/demo-kit/hooks/README.md", True),
     ],
 )
 def test_is_rulebook_scoped_path(path, expected):
     assert _is_rulebook_scoped_path(path) is expected
+
+
+@pytest.mark.parametrize(
+    "path,expected",
+    [
+        ("evals/demo-kit/evals.json", False),
+        ("plugins/demo-kit/LICENSE", False),
+        ("plugins/demo-kit/NOTICE", False),
+        ("plugins/demo-kit/KNOWN_ISSUES.md", False),
+        # Security-review regression (M3): unlike _is_rulebook_scoped_path,
+        # the bypass predicate keeps these in scope -- a README/CONTRIBUTING/
+        # CHANGELOG/INSTALLATION change can carry real security/dependency
+        # signal plugin-rulebook-checker's own R1-R27 rules never covered.
+        ("plugins/demo-kit/README.md", True),
+        ("plugins/demo-kit/CONTRIBUTING.md", True),
+        ("plugins/demo-kit/CHANGELOG.md", True),
+        ("plugins/demo-kit/INSTALLATION.md", True),
+        ("plugins/demo-kit/skills/x/SKILL.md", True),
+        # Same directory-aware guard as _is_rulebook_scoped_path (C3).
+        ("plugins/demo-kit/commands/LICENSE", True),
+    ],
+)
+def test_is_bypass_scoped_path(path, expected):
+    assert _is_bypass_scoped_path(path) is expected
 
 
 def test_full_escalation_paths_and_governance_reviewers_stay_in_sync():
@@ -152,6 +186,193 @@ def test_non_plugin_change_is_light_mode(change, dependency_index):
     assert scope.mode == "light"
     assert scope.validate == ()
     assert scope.audit == ()
+
+
+def test_plugin_change_with_no_reviewer_scoped_path_skips_baseline(change, dependency_index):
+    """A plugins/ change that only touches files _is_bypass_scoped_path
+    already excludes (evals/, LICENSE/NOTICE/KNOWN_ISSUES.md -- genuinely
+    inert text) has nothing for any reviewer to look at -- the baseline
+    three should be skipped too, not just plugin-rulebook-checker's own
+    narrowed target-paths. Note: README/CONTRIBUTING/CHANGELOG stay
+    reviewer-scoped for this bypass decision even though
+    plugin-rulebook-checker's own target-paths still exclude them (M3)."""
+    changes = [
+        change("evals/demo-kit/evals.json"),
+        change("plugins/demo-kit/LICENSE"),
+        change("plugins/demo-kit/NOTICE"),
+        change("plugins/demo-kit/KNOWN_ISSUES.md"),
+    ]
+    scope = derive_review_scope(changes, dependency_index())
+    assert scope.mode == "delta"
+    assert scope.validate == ()
+    assert scope.audit == ()
+
+
+def test_plugin_change_with_readme_only_still_dispatches_baseline(change, dependency_index):
+    """M3 regression: a README/CONTRIBUTING/CHANGELOG-only change must NOT
+    be bypass-eligible, even though plugin-rulebook-checker's own
+    target-paths still exclude these basenames for itself."""
+    changes = [change("plugins/demo-kit/README.md")]
+    scope = derive_review_scope(changes, dependency_index())
+    assert scope.mode == "delta"
+    assert scope.validate == ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
+    assert scope.audit == ()
+
+
+def test_plugin_change_with_one_reviewer_scoped_path_keeps_full_baseline(change, dependency_index):
+    """Mixing an out-of-scope file with a real component change must not
+    reduce coverage -- the baseline three still dispatch over the whole
+    diff, same as before this change."""
+    changes = [
+        change("plugins/demo-kit/LICENSE"),
+        change("plugins/demo-kit/skills/x/SKILL.md"),
+    ]
+    scope = derive_review_scope(changes, dependency_index())
+    assert scope.mode == "delta"
+    assert scope.validate == ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
+    assert scope.audit == ("skill-reviewer",)
+
+
+@pytest.mark.parametrize(
+    "mode,validate,audit,expected",
+    [
+        ("light", (), (), True),
+        ("delta", (), (), True),
+        ("delta", ("plugin-rulebook-checker",), (), False),
+        ("delta", (), ("skill-reviewer",), False),
+        ("full", (), (), False),
+        ("full", ("plugin-rulebook-checker",), (), False),
+    ],
+)
+def test_is_bypass_eligible(mode, validate, audit, expected):
+    import scripts.marketplace_ci.review as review_module
+
+    scope = review_module.ReviewScope(
+        mode=mode,
+        structural_check="x",
+        validate=validate,
+        audit=audit,
+        paths=(),
+    )
+    assert is_bypass_eligible(scope) is expected
+
+
+@pytest.mark.parametrize("prefix", BYPASS_INELIGIBLE_PREFIXES)
+def test_is_bypass_eligible_never_true_for_the_gates_own_code(prefix):
+    """Security-review regression (C4): a diff touching the gate's own
+    decision logic, workflow, or reviewer instructions must never be able
+    to bypass its own review -- even when every other reviewer set is
+    empty (light mode)."""
+    import scripts.marketplace_ci.review as review_module
+
+    scope = review_module.ReviewScope(
+        mode="light",
+        structural_check="x",
+        validate=(),
+        audit=(),
+        paths=(f"{prefix}something.py", "README.md"),
+    )
+    assert is_bypass_eligible(scope) is False
+
+
+@pytest.mark.parametrize("prefix", BYPASS_INELIGIBLE_PREFIXES)
+def test_gate_own_code_change_actually_dispatches_real_reviewers(prefix, change, dependency_index):
+    """Security-review follow-up (C4 residual): forcing bypass_eligible=False
+    alone isn't the real guarantee -- a diff touching only a
+    BYPASS_INELIGIBLE_PREFIXES path with no plugins/ path present would
+    otherwise still resolve to mode="light" with zero dispatched reviewers,
+    which is bypass-ineligible on paper but reviews nothing in practice.
+    derive_review_scope must fall through to a real delta dispatch instead
+    of returning light mode for these paths."""
+    scope = derive_review_scope([change(f"{prefix}something.py")], dependency_index())
+    assert scope.mode == "delta"
+    assert scope.validate
+    assert is_bypass_eligible(scope) is False
+
+
+def test_rebase_onto_base_absorbed_true_when_base_newly_reachable(git_repo):
+    import subprocess
+
+    git_repo.write("README.md", "root")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "root"], cwd=git_repo.root, check=True)
+    default_branch = subprocess.run(
+        ["git", "branch", "--show-current"],
+        cwd=git_repo.root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+    # Fork the feature branch before any later base-branch progress exists.
+    subprocess.run(["git", "checkout", "-q", "-b", "feature"], cwd=git_repo.root, check=True)
+    git_repo.write("feature.txt", "work")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "feature work"], cwd=git_repo.root, check=True)
+    before = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    # Advance the default branch -- this later commit becomes the PR's base
+    # SHA (what GitHub reports as pull_request.base.sha at event time),
+    # which `before` (forked earlier) does not yet contain.
+    subprocess.run(["git", "checkout", "-q", default_branch], cwd=git_repo.root, check=True)
+    git_repo.write("main-progress.txt", "new main commit")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "main progress"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    # Rebase the feature branch onto that new base tip -- base_sha is now an
+    # ancestor of the new head, which it wasn't of `before`.
+    subprocess.run(["git", "checkout", "-q", "feature"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "rebase", "-q", default_branch], cwd=git_repo.root, check=True)
+    after = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    assert rebase_onto_base_absorbed(
+        base_sha=base_sha, before=before, after=after, repo=git_repo.root
+    )
+
+
+def test_rebase_onto_base_absorbed_false_for_an_ordinary_commit(git_repo):
+    import subprocess
+
+    git_repo.write("README.md", "base")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    before = base_sha
+
+    git_repo.write("feature.txt", "work")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "ordinary commit"], cwd=git_repo.root, check=True)
+    after = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    assert not rebase_onto_base_absorbed(
+        base_sha=base_sha, before=before, after=after, repo=git_repo.root
+    )
+
+
+def test_rebase_onto_base_absorbed_fails_closed_on_unresolvable_sha(git_repo):
+    import subprocess
+
+    git_repo.write("README.md", "base")
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "base"], cwd=git_repo.root, check=True)
+    base_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=git_repo.root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+
+    assert rebase_onto_base_absorbed(
+        base_sha=base_sha, before="0" * 40, after=base_sha, repo=git_repo.root
+    )
 
 
 def test_unbounded_dependency_closure_escalates_to_full(change):
