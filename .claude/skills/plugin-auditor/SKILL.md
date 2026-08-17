@@ -143,9 +143,14 @@ outside this run.
    Claude-native `Agent()` dispatch, the fallback is recorded once on that dispatch's coverage note
    (not stamped per-finding), and every other reviewer's dispatch is unaffected.
 9. **Tracked local override is ignored** — with `.claude/plugin-auditor.local.json` committed to git
-   and setting `reviewer_backend.enabled: true`, confirm the resolver still resolves Claude-native —
-   the trust-boundary discriminator in `references/codex-backend.md`'s Configuration section must
-   fail closed on a tracked file, not honor it.
+   and setting `reviewer_backend.enabled`/`default` to a value that *differs* from
+   `.claude/plugin-auditor.json`'s own value (e.g. base `enabled: true` vs. tracked-local
+   `enabled: false`, or vice versa), confirm the resolver falls through to the repo-tracked base
+   config's value, not the tracked local file's — the trust-boundary discriminator in
+   `references/codex-backend.md`'s Configuration section must fail closed on a tracked file, not
+   honor it, regardless of which value the base itself currently carries. Don't hardcode an
+   expected "Claude-native" outcome here — this repo's own base is `enabled: true`, so a correctly
+   fail-closed resolver falls through to *that*, not to Claude-native.
 10. **First-Send Confirmation fires exactly once per session** — with the Codex backend enabled,
     confirm the `AskUserQuestion` gate fires before the first Codex dispatch attempted in the
     session and does not fire again before a second reviewer's dispatch in the same session.
