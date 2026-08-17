@@ -10,7 +10,7 @@ description: >-
   automatically on PR open/reopen/sync) and not for diagnosing why Codex hasn't started reviewing at all —
   this skill only recovers a review that's already done but stuck in GitHub's own signal gap.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR
-allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh run list:*), Bash(gh run rerun:*)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh run list:*), Bash(gh run rerun:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*)
 ---
 
 # codex-review-recovery
@@ -95,9 +95,13 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    actually finished?" with options "Yes — retry" and "No — let me check first". On "No", stop here
    without posting anything or re-running the job; tell the user to come back once they've checked.
 
-4. **Post the retry comment**: `gh pr comment <number> --body "@codex review"`. This is what actually
-   prompts Codex to act again — per the connector's own documented triggers (opening a PR, marking a
-   draft ready, or this exact comment).
+4. **Post the retry comment**: immediately before running the command below, run
+   `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review codex-review-recovery` — this
+   writes the marker git-kit's reviewer-action guard (`guard-raw-pr-review.sh`) requires before it will
+   allow a raw `gh pr comment`/`gh pr review` call through; it must be written right before the command,
+   not earlier, since the hook only accepts a marker up to 60 seconds old. Then:
+   `gh pr comment <number> --body "@codex review"`. This is what actually prompts Codex to act again — per
+   the connector's own documented triggers (opening a PR, marking a draft ready, or this exact comment).
 
 5. **Re-run the failed check**: posting the comment above does **not** itself re-trigger
    `await-codex-review.yml` — that workflow's own `on:` trigger list
