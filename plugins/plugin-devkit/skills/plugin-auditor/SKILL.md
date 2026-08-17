@@ -177,7 +177,8 @@ outside this run.
 - [ ] A disabled/missing/malformed backend config always resolves to Claude-native — never fails
       the dispatch
 - [ ] No Codex dispatch is attempted before the session's First-Send Confirmation has fired
-- [ ] A tracked `.claude/plugin-auditor.local.json` never overrides the shipped backend default
+- [ ] A tracked `.claude/plugin-auditor.local.json` never overrides the repo-tracked backend
+      default (`.claude/plugin-auditor.json`)
 - [ ] Scoped mode's whole-scope reviewers (`activation-reviewer`, `consistency-reviewer`,
       `dependency-reviewer`) never dispatch once per component or once per plugin — always
       exactly once across the full cross-plugin named list
@@ -198,8 +199,8 @@ own dispatch logic doesn't depend on either caller.
 |---|---|
 | `references/dispatch-table.md` | Type-matched reviewer table, component-mode and plugin-mode dispatch lists, pre-supplied-findings reuse discipline — ported from `plugin-grader/references/rubric.md` |
 | `references/codex-backend.md` | Backend resolver, Codex adapter, and configuration for optionally routing a reviewer dispatch through Codex instead of Claude — disabled by default |
-| `assets/settings.json` | Git-tracked default config for the Codex backend (`reviewer_backend.enabled: false`) — see `references/codex-backend.md`'s Configuration section |
-| `.claude/plugin-auditor.local.json` | Optional, gitignored, untracked-only override of `assets/settings.json`'s `reviewer_backend` fields — see `references/codex-backend.md`'s Configuration section for the exact trust-boundary discriminator |
+| `.claude/plugin-auditor.json` | Git-tracked, repo-local default config for the Codex backend — this plugin ships with no `reviewer_backend` config file of its own; see `references/codex-backend.md`'s Configuration section |
+| `.claude/plugin-auditor.local.json` | Optional, gitignored, untracked-only override of `.claude/plugin-auditor.json`'s `reviewer_backend` fields — see `references/codex-backend.md`'s Configuration section for the exact trust-boundary discriminator |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run before packaging or after any SKILL.md edit |
 | `plugin-rulebook/references/evidence-schema.md` | The shared Finding/Report Revision shape this skill's output conforms to |
 | `plugin-grader` skill | Consumes this skill's output for scoring — standalone (fresh dispatch) and evidence-only (pre-gathered) modes |

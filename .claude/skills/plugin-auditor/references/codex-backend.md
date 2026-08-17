@@ -7,7 +7,7 @@ explicitly enabled.
 ## Configuration
 
 Resolution order: `.claude/plugin-auditor.local.json` (gitignored, untracked) overrides
-`assets/settings.json` (git-tracked default) field by field.
+`.claude/plugin-auditor.json` (git-tracked, repo-local default) field by field.
 
 ```json
 {
@@ -19,6 +19,13 @@ Resolution order: `.claude/plugin-auditor.local.json` (gitignored, untracked) ov
 }
 ```
 
+**This plugin ships with no `reviewer_backend` config file of its own** — the values above are
+what the resolver falls back to when neither `.claude/` file exists, matching the "missing file →
+resolves to Claude" rule below. `.claude/plugin-auditor.json` and `.claude/plugin-auditor.local.json`
+are this repo's own layer on top of that fallback, not files that travel with the plugin to another
+installer. A different repo that installs this plugin gets Claude-native dispatch by default unless
+it creates its own copy of these two files at the same relative paths.
+
 - Missing file, missing field, or unknown value → resolves to Claude.
 - **Trust boundary — exact discriminator:** run the scoped `Bash(git ls-files:*)` tool with
   `LC_ALL=C` set in the environment (not prepended to the command string itself, so the invoked
@@ -28,15 +35,15 @@ Resolution order: `.claude/plugin-auditor.local.json` (gitignored, untracked) ov
   contains the substring `did not match any file` — that specific combination is the only signal
   that means "genuinely untracked." Exit `0` (tracked), exit `128` (not a git repository), a missing
   `git` binary, a `1` exit with different stderr, or any other outcome all fail closed the same way:
-  ignore the local file, use the shipped default. `LC_ALL=C` pins the message to English so a
+  ignore the local file, use the repo-tracked default. `LC_ALL=C` pins the message to English so a
   localized git install can't break this discriminator; `--` before the path stops a leading `-` in
   the path from being parsed as a git option instead of a pathspec. This is the identical check
   `codex-windows-guardrails/scripts/guarded-dispatch.mjs`'s `resolveConfig` function implements in
   code — treat that function as the canonical reference for this exact discriminator, not merely an
   analogous pattern, if anything here reads ambiguously.
-- **The shipped default itself is not separately distrusted** — plugin-devkit's own maintainers
-  author `assets/settings.json`, the same trust level as every other shipped file this skill reads.
-  What actually bounds the risk of a tracked `enabled: true` (accidental or malicious) is the
+- **The repo-tracked default itself is not separately distrusted** — this repo's own maintainers
+  author `.claude/plugin-auditor.json`, the same trust level as every other tracked file this skill
+  reads. What actually bounds the risk of a tracked `enabled: true` (accidental or malicious) is the
   First-Send Confirmation gate below: no repo content reaches Codex without a live user confirming
   in that session, regardless of how `enabled` became true.
 
