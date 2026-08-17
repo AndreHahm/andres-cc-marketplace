@@ -7,9 +7,9 @@ set -euo pipefail
 
 DAYS="${1:-7}"
 
-if ! [[ "$DAYS" =~ ^[0-9]+$ ]]; then
+if ! [[ "$DAYS" =~ ^[0-9]{1,5}$ ]]; then
   echo "Usage: $0 [days-threshold]" >&2
-  echo "  days-threshold must be a non-negative integer (default: 7)" >&2
+  echo "  days-threshold must be a non-negative integer, at most 5 digits (max 99999; default: 7)" >&2
   exit 1
 fi
 
@@ -32,7 +32,7 @@ echo "Scanning $TARGET for session directories older than $DAYS day(s)..."
 echo
 
 NOW=$(date +%s)
-THRESHOLD_SECONDS=$((DAYS * 86400))
+THRESHOLD_SECONDS=$((10#$DAYS * 86400))
 TO_DELETE=()
 TOTAL_KB=0
 
