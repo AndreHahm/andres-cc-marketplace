@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states git add -N -- \"${SCOPE:-.}\" now carries || true", "passed": true, "evidence": "Quoted the exact line with || true and cited its location."},
+    {"text": "Response explains this tolerates a SCOPE resolving only to a deleted tracked file", "passed": true, "evidence": "'when SCOPE resolves only to a tracked file that was deleted ... the || true prevents that from breaking the chained Preflight sequence.'"},
+    {"text": "Response states the deletion still shows correctly in git diff afterward", "passed": true, "evidence": "Quoted the exact skill sentence and explained tracked-file deletions don't need intent-to-add."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

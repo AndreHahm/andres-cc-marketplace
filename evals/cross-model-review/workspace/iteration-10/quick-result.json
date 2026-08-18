@@ -1,0 +1,10 @@
+{
+  "mode": "quick",
+  "iteration": 10,
+  "scope": "targeted",
+  "note": "Verifies the single fix from the first FULL (non-demo) real two-phase, two-reviewer cross-model-review run against this branch's own diff: a real Codex Phase 1 dispatch, a real Codex Phase 2 challenger dispatch, and Claude's own native Phase 1 + Phase 2 passes all unanimously converged on one finding -- git add -N -- \"${SCOPE:-.}\" aborts the whole chained Preflight when SCOPE resolves only to a deleted tracked file. Fixed with || true, verified empirically in a scratch repo that the deletion still shows correctly afterward. with_skill only, no baseline -- the finding itself was already validated through the strongest evidence this session has produced (4 independent, cross-examined passes, 2 of them real subprocess dispatches), so this eval is a lighter confirmation pass, not the primary evidence.",
+  "results": [
+    {"eval_id": 1, "name": "deletion-scope git add -N fix", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
