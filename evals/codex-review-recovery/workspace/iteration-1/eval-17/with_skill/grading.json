@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-17",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response runs gh run rerun only after both the head and conclusion re-checks pass",
+      "passed": true,
+      "evidence": "Head re-check (abc123 matches) then conclusion re-check ({\"conclusion\": \"failure\"}) both shown to pass before \"the rerun command is issued\""
+    },
+    {
+      "text": "The response checks the gh run rerun command's own exit status rather than assuming it succeeded",
+      "passed": true,
+      "evidence": "\"Given result: non-zero exit status. error: You do not have permission to rerun this workflow (HTTP 403)\" followed by explicit exit-status decision point"
+    },
+    {
+      "text": "The response stops and reports the rerun failure rather than proceeding to step 8",
+      "passed": true,
+      "evidence": "\"The command failed. Stop here. Do not proceed to step 8's polling.\""
+    },
+    {
+      "text": "The response does not poll databaseId 300's stale baseline attempt as if a rerun had actually been triggered",
+      "passed": true,
+      "evidence": "\"I'm not going to poll for a result, since nothing was actually triggered and doing so would just watch a stale attempt and falsely report 'still in flight.'\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

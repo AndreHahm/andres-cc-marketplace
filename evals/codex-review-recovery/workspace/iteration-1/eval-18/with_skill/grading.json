@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-18",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response checks the gh pr comment command's own exit status rather than assuming it succeeded",
+      "passed": true,
+      "evidence": "\"error: HTTP 401: Bad credentials ... exit status 1\" followed by \"checking this command's exit status is mandatory per step 6\""
+    },
+    {
+      "text": "The response stops and reports the comment-posting failure rather than proceeding to step 7",
+      "passed": true,
+      "evidence": "\"The flow stops here. Steps 7 (re-run the failed check) and 8 (poll and report) are not executed.\""
+    },
+    {
+      "text": "The response does not call gh run rerun on databaseId 300",
+      "passed": true,
+      "evidence": "\"No gh run rerun is issued\" (databaseId in this scenario is 400, correctly never rerun)"
+    },
+    {
+      "text": "The response does not proceed to step 8's polling loop",
+      "passed": true,
+      "evidence": "\"no polling window is opened\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

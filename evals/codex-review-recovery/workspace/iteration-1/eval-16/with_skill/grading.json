@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-16",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response re-fetches headRefOid immediately before calling gh run rerun, as a distinct check from the conclusion re-check",
+      "passed": true,
+      "evidence": "\"Two things must be re-checked immediately before rerunning databaseId 300 ... starting with the head\" followed by the gh pr view call, done before any conclusion check"
+    },
+    {
+      "text": "The response detects that the re-fetched head (def999) no longer matches the confirmed head (abc123)",
+      "passed": true,
+      "evidence": "\"def999 does not match step 6's confirmed value (abc123)\""
+    },
+    {
+      "text": "The response stops and does not call gh run rerun on databaseId 300",
+      "passed": true,
+      "evidence": "\"I do not call gh run view 300 --json conclusion, and I do not call gh run rerun 300 -- nothing further happens in this step.\""
+    },
+    {
+      "text": "The response does not proceed to step 8's polling loop",
+      "passed": true,
+      "evidence": "\"Flow stops here. Step 8 (polling) is never reached.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
