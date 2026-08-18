@@ -97,11 +97,17 @@ BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
 UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- "${SCOPE:-.}")
 export GIT_INDEX_FILE="$(mktemp -u)"
-git add -N -- "${SCOPE:-.}"
+git add -N -- "${SCOPE:-.}" || true
 DIFF=(git diff "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")   # [ ... ] invokes the test command; matches the Bash(test:*) grant
 DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding in a prompt
 ```
+
+**The `|| true` here matters when `$SCOPE` names only a deletion** — `git add -N` needs its pathspec
+to match something on disk, so a `$SCOPE` resolving only to a deleted tracked file fails outright
+(`fatal: pathspec ... did not match any files`) and, untolerated, aborts the whole `&&`-chained
+Preflight before `git diff` runs. Verified: the unscoped default never hits this. `git diff
+"$MERGE_BASE" -- "$SCOPE"` still shows the deletion regardless of whether the intent-add succeeded.
 
 **`$UNTRACKED_FILES` matters beyond this chain: Codex's own dispatch can't see intent-added files.**
 Phase 1/2 tell Codex to re-run the diff command itself, in a separate subprocess that never inherits
@@ -110,22 +116,20 @@ bare `??`, invisible. If `$UNTRACKED_FILES` is non-empty, Phase 1 and Phase 2 bo
 explicitly to Codex's instructions (see each phase's Codex-facing assembly step) so Codex reads
 those files directly instead of silently missing them.
 
-To **run** it, use `"${DIFF[@]}"` (quoted, no word-splitting). To **embed** it as text inside a
-prompt, use `$DIFF_STR`. Every other diff invocation in this document (Preflight steps 2 and 6, and
-the `CODEX_DIFF` variant) uses this same `$MERGE_BASE`, never a re-spelled `$BASE...HEAD` — and all
-of them run *after* the `git add -N` above, so they all see intent-added untracked files too.
+To **run** it, use `"${DIFF[@]}"` (quoted, no word-splitting). To **embed** it as text, use
+`$DIFF_STR`. Every other diff invocation here (Preflight steps 2 and 6, `CODEX_DIFF`) reuses this
+same `$MERGE_BASE`, never `$BASE...HEAD` — and all run *after* `git add -N`, seeing intent-added files too.
 
 ## Preflight
 
-**Bash tool calls do not share shell state with each other — only the working directory persists
-between them.** Run steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool
-call), ending with an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`,
-and whether `$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5 below needs this signal
-available *after* the chain, since its own fallback runs as separate `Read`/`Write` tool calls that
-can't be part of this same Bash invocation). From that point on, every `$VAR` reference in this
-document is shorthand for that literal, already-resolved value — substitute the concrete string
-directly into every later `Bash`/`Read`/`Write` call; a separate tool call re-expanding `$RUN`/`$BASE`/
-etc. as if they were still live shell variables will not see them.
+**Bash tool calls do not share shell state — only the working directory persists between them.** Run
+steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool call), ending with
+an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`, and whether
+`$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5's own fallback runs as separate
+`Read`/`Write` calls afterward). From that point on, every `$VAR` reference here is shorthand for
+that literal, already-resolved value — substitute the concrete string into every later
+`Bash`/`Read`/`Write` call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't
+see it.
 
 1. Run `"${DIFF[@]}"` and check its exit status. A non-zero exit (an invalid `$BASE`, no local `main`
    ref, or any other Git error) is a Preflight failure, not an empty scope — report the Git error and
@@ -148,25 +152,21 @@ etc. as if they were still live shell variables will not see them.
    with `/repo` even though it's a sibling directory, not a descendant — the same class of bug
    `codex-review-bridge`'s own `isWithin()` helper already guards against for exactly this reason.
    Exclude the candidate unless it equals the repo root exactly or starts with `<repo root>/`
-   (trailing separator included in the comparison). Both dispatch scripts canonicalize target paths
-   before their own containment check and reject the *entire dispatch* on one such entry (a
-   `non_zero_exit`/containment-violation typed failure), which would otherwise force an unnecessary
-   single-model fallback for the whole review over one symlink. Keep it in Claude's own native review
-   regardless (Claude has no such containment constraint); only the
-   Codex-facing `--target-paths` list is affected.
+   (trailing separator included). Both dispatch scripts canonicalize target paths before their own
+   containment check and reject the *entire dispatch* on one such entry, forcing an unnecessary
+   single-model fallback over one symlink. Keep it in Claude's own native review regardless — only
+   the Codex-facing `--target-paths` list is affected.
 
    **Build a Codex-scoped diff text from the eligible paths only, kept separate from `$DIFF_STR`.**
    Both dispatch scripts validate a returned finding's `location` against `--target-paths` and reject
-   the envelope if it falls outside that scope — but Phase 1/2 below embed diff text directly into
-   Codex's instruction file as plain prose, which isn't scoped the same way. Embedding the full,
-   unfiltered `$DIFF_STR` would let Codex read (and potentially cite) the very files just excluded
-   from `--target-paths`, risking exactly that rejection. If anything was excluded above, compute
+   the envelope if it falls outside — but Phase 1/2 embed diff text directly into Codex's instruction
+   file as plain prose, unscoped the same way. Embedding the full `$DIFF_STR` would let Codex cite the
+   very files just excluded, risking that rejection. If anything was excluded, compute
    `CODEX_DIFF=(git diff "$MERGE_BASE" -- <eligible files only>)` and
-   `CODEX_DIFF_STR=$(printf '%q ' "${CODEX_DIFF[@]}")`; otherwise `CODEX_DIFF_STR="$DIFF_STR"` (nothing
-   was excluded, so the two are identical). Use `$CODEX_DIFF_STR` — never `$DIFF_STR` — anywhere this
-   document embeds diff text into a Codex-bound instruction file (Phase 1 and Phase 2). Claude's own
-   native pass is unaffected and keeps using the full `"${DIFF[@]}"`/`$DIFF_STR` — this containment is
-   a Codex dispatch constraint, not a review-scope reduction for Claude.
+   `CODEX_DIFF_STR=$(printf '%q ' "${CODEX_DIFF[@]}")`; otherwise `CODEX_DIFF_STR="$DIFF_STR"`. Use
+   `$CODEX_DIFF_STR` — never `$DIFF_STR` — in any Codex-bound instruction file (Phase 1 and Phase 2).
+   Claude's own native pass keeps using the full `"${DIFF[@]}"`/`$DIFF_STR` — a Codex constraint, not
+   a review-scope reduction for Claude.
 
    **If the eligible-files list is empty after exclusions (every changed file was deleted or had an
    invalid character), skip Codex entirely and enter single-model mode now — before attempting any
@@ -495,6 +495,6 @@ same as any other artifact containing quoted repo content.
 
 **Concrete scenarios to check, and quality gates:** see
 `references/testing-scenarios.md` — extracted per plugin-rulebook's R13 line-count threshold; the
-25 numbered scenarios and full quality-gate checklist live there, covering every behavior described
+26 numbered scenarios and full quality-gate checklist live there, covering every behavior described
 above (single-model mode, `$MERGE_BASE` diff containment, dispatcher-trust matching, reviewer
 identity, closing-tag neutralization, partial-failure preservation, and more).
