@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response identifies CODEX_DIFF_STR as computed from eligible files only (excluding the file dropped from --target-paths)", "type": "presence", "target": "Preflight step 2"},
+    {"text": "Response states Claude's own native pass keeps using the full DIFF_STR/\"${DIFF[@]}\", unaffected by the exclusion", "type": "presence", "target": "Preflight step 2"},
+    {"text": "Response explains why: both dispatch scripts validate a finding's location against --target-paths and reject the envelope if it falls outside scope", "type": "quality", "target": "Preflight step 2 rationale"},
+    {"text": "Response states CODEX_DIFF_STR is used in both Phase 1 and Phase 2's Codex-facing embeds, not just one", "type": "presence", "target": "Phase 1 / Phase 2"}
+  ]
+}

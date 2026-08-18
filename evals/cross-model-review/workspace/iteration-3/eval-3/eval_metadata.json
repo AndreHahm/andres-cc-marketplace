@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states closing-tag-shaped substrings in claude_fresh_eyes.json's content are replaced (e.g. </word> -> (/word)) before writing challenger_instructions_for_codex.md", "type": "presence", "target": "Phase 2 Codex's pass"},
+    {"text": "Response states this neutralization happens regardless of which resolver path (bridge vs guardrails) ends up handling the dispatch", "type": "quality", "target": "Phase 2 Codex's pass"},
+    {"text": "Response explains bridge-invoke.mjs already neutralizes closing tags but guarded-dispatch.mjs (Windows fallback) does not, so the defense can't rely on either dispatcher doing it", "type": "quality", "target": "Phase 2 Codex's pass rationale"},
+    {"text": "Response identifies the risk as a crafted </other_reviewer_findings>-shaped substring escaping the labeled block on the Windows danger-full-access fallback", "type": "quality", "target": "Phase 2 rationale"}
+  ]
+}

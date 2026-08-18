@@ -1,0 +1,9 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states Preflight step 1 checks the exit status of the diff command, not just whether stdout is empty", "type": "presence", "target": "Preflight step 1"},
+    {"text": "Response distinguishes a non-zero exit (invalid BASE / Git error) from a successful command with empty stdout", "type": "quality", "target": "Preflight step 1"},
+    {"text": "Response states the correct behavior for a nonexistent BASE ref is to report the Git error and ask for a valid BASE, not to report 'nothing to review'", "type": "functionality", "target": "Preflight step 1"}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states Phase 1's Codex pass is skipped in single-model mode", "type": "presence", "target": "resolver step 3 / Phase 1"},
+    {"text": "Response states Phase 2 is skipped entirely, not run as Claude cross-examining its own output", "type": "presence", "target": "Phase 2 single-model note"},
+    {"text": "Response explains why Phase 2 is skipped: cross-examining itself would reintroduce self-ratification", "type": "quality", "target": "Phase 2 single-model note"},
+    {"text": "Response states Phase 3 synthesizes from Claude's Phase 1 findings alone", "type": "presence", "target": "Phase 3 single-model note"},
+    {"text": "Response states every finding is capped at Medium confidence in single-model mode", "type": "presence", "target": "Phase 3 Medium tier"},
+    {"text": "Response mentions single_model_mode is recorded in inspection_limits", "type": "presence", "target": "Phase 3 single-model note"}
+  ]
+}

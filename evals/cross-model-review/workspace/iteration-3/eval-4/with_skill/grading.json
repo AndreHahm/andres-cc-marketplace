@@ -1,0 +1,11 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response confirms Preflight step 6 DOES detect a diff touching plugins/codex-kit/scripts/lib/codex-exec.mjs", "passed": true, "evidence": "'Preflight step 6 ... does detect plugins/codex-kit/scripts/lib/codex-exec.mjs.'"},
+    {"text": "Response cites the actual regex plugins/codex-kit/(.*/)?scripts/", "passed": true, "evidence": "Quoted the exact pattern with the optional group."},
+    {"text": "Response explains the optional group is needed because this file has no intermediate directory", "passed": true, "evidence": "'it matches with the group consuming zero segments, so plugins/codex-kit/ is immediately followed by scripts/.'"},
+    {"text": "Response states a match triggers disclosure at the First-Send Confirmation and an inspection_limits record", "passed": true, "evidence": "Cited both the First-Send Confirmation clause (c) and Phase 3's inspection_limits, correctly noting it's a disclosure obligation, not a hard block."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

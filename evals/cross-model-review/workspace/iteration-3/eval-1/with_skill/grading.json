@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states Phase 1's Codex pass is skipped in single-model mode", "passed": true, "evidence": "Cited Phase 1's explicit 'skip entirely in single-model mode' line."},
+    {"text": "Response states Phase 2 is skipped entirely, not run as Claude cross-examining its own output", "passed": true, "evidence": "'Phase 2: Skipped in full -- the phase's own opening line states this.'"},
+    {"text": "Response explains why Phase 2 is skipped: cross-examining itself would reintroduce self-ratification", "passed": true, "evidence": "'Claude cross-examining its own Phase 1 output would reintroduce self-ratification, the exact failure mode the skill exists to prevent.'"},
+    {"text": "Response states Phase 3 synthesizes from Claude's Phase 1 findings alone", "passed": true, "evidence": "'Synthesizes from $RUN/claude_fresh_eyes.json alone (no merge/dedupe, since there's no second envelope).'"},
+    {"text": "Response states every finding is capped at Medium confidence in single-model mode", "passed": true, "evidence": "'every finding is capped at Medium confidence since nothing cross-examined it.'"},
+    {"text": "Response mentions single_model_mode is recorded in inspection_limits", "passed": true, "evidence": "'single_model_mode: true plus the reason is recorded in inspection_limits.'"}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 6, "pass_rate": 1.0}
+}

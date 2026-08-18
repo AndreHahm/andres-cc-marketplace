@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response confirms Preflight step 6 DOES detect a diff touching plugins/codex-kit/scripts/lib/codex-exec.mjs", "type": "functionality", "target": "Preflight step 6"},
+    {"text": "Response cites the actual regex plugins/codex-kit/(.*/)?scripts/ (or describes its optional-group structure correctly)", "type": "presence", "target": "Preflight step 6"},
+    {"text": "Response explains the optional group is needed because this specific file has no intermediate directory between codex-kit/ and scripts/, unlike the skills/<name>/scripts/ paths", "type": "quality", "target": "Preflight step 6 rationale"},
+    {"text": "Response states a match triggers disclosure at the First-Send Confirmation and an inspection_limits record", "type": "presence", "target": "Preflight step 6 / First-Send Confirmation"}
+  ]
+}

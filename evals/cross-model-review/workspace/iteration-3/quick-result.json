@@ -1,0 +1,14 @@
+{
+  "mode": "quick",
+  "iteration": 3,
+  "scope": "targeted",
+  "note": "Not a re-run of evals.json's 6 canonical scenarios (see iteration-1/iteration-2) -- a supplemental, narrower Quick Workflow pass covering only the new/changed logic from this session's PR #52 reviewer-fix batch (single-model control flow, Codex-scoped diff containment, closing-tag neutralization, dispatcher-trust regex broadening, diff-failure vs empty-diff handling). with_skill only, no baseline.",
+  "results": [
+    {"eval_id": 1, "name": "single-model control flow", "assertions_total": 6, "assertions_passed": 6, "pass_rate": 1.0},
+    {"eval_id": 2, "name": "Codex-scoped diff containment", "assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+    {"eval_id": 3, "name": "closing-tag neutralization", "assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+    {"eval_id": 4, "name": "dispatcher-trust regex broadening", "assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+    {"eval_id": 5, "name": "diff failure vs empty diff", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+  ],
+  "summary": {"assertions_total": 21, "assertions_passed": 21, "pass_rate": 1.0}
+}
