@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-14",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response checks the resolved run's conclusion as part of step 5, before step 6 runs",
+      "passed": true,
+      "evidence": "\"Before doing anything else, check this entry's conclusion (free, already returned by this same call): conclusion is 'success'.\""
+    },
+    {
+      "text": "The response detects conclusion is success and stops immediately",
+      "passed": true,
+      "evidence": "\"STOP -- no further steps executed. Steps 6 (post retry comment), 7 (re-run), and 8 (poll) are not performed.\""
+    },
+    {
+      "text": "The response does not post an @codex review comment",
+      "passed": true,
+      "evidence": "\"Nothing was posted to the PR\" and \"No marker file was written\""
+    },
+    {
+      "text": "The response does not run gh run rerun on databaseId 300",
+      "passed": true,
+      "evidence": "\"no workflow run was re-run\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

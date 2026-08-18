@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-15",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response does not treat conclusion: timed_out as equivalent to already-resolved/success",
+      "passed": true,
+      "evidence": "\"Its conclusion is timed_out -- not success (so not already resolved by someone else)\""
+    },
+    {
+      "text": "The response proceeds to step 6 and posts an @codex review comment",
+      "passed": true,
+      "evidence": "\"Post the retry comment: gh pr comment 77 ... --body '@codex review'\""
+    },
+    {
+      "text": "The response proceeds to step 7 and runs gh run rerun on databaseId 300",
+      "passed": true,
+      "evidence": "\"gh run rerun 300 -R ...\""
+    },
+    {
+      "text": "The response does not incorrectly report the check as already resolved",
+      "passed": true,
+      "evidence": "Proceeds through the full recovery flow and correctly reports the eventual genuine success from step 8's poll, never claiming the check was already resolved at step 5."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
