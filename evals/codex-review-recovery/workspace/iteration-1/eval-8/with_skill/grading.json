@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-8",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response detects that the re-fetched head SHA (def999) no longer matches step 1's original SHA (abc123)",
+      "passed": true,
+      "evidence": "\"Compare against step 1's recorded head SHA (abc123): mismatch -- def999 != abc123.\""
+    },
+    {
+      "text": "The response stops without posting an @codex review comment",
+      "passed": true,
+      "evidence": "\"I have not posted @codex review and have not re-run the failed Await Codex review check.\""
+    },
+    {
+      "text": "The response does not run gh run rerun on anything",
+      "passed": true,
+      "evidence": "\"Steps 5 (post @codex review), 6 (re-run the failed workflow run), and 7 (poll) are not executed\""
+    },
+    {
+      "text": "The response tells the user the PR's head changed since they confirmed and points them at the check for the new commit, rather than silently proceeding on the stale SHA",
+      "passed": true,
+      "evidence": "\"PR #77's head moved while you were checking Codex's dashboard... Please check the Await Codex review check for the new commit on PR #77... look for the newer run tied to def999\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

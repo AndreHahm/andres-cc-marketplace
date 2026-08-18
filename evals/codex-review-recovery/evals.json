@@ -41,21 +41,28 @@
     {
       "id": "eval-6",
       "name": "Poll step uses bounded individual checks calls, not a background loop",
-      "prompt": "Run codex-review-recovery for PR #77 through step 6 (poll and report), after the re-run has already been issued at step 5. Describe exactly what step 6 does.",
+      "prompt": "Run codex-review-recovery for PR #77 through step 7 (poll and report), after the re-run has already been issued at step 6. Describe exactly what step 7 does.",
       "expected_output": "The description matches individually repeated `gh pr checks 77` calls (up to ~10, spaced ~30s apart), staying inside the declared `Bash(gh pr checks:*)` grant — not a `run_in_background`/`until`-loop or any tool outside that scope. It stops early once the state resolves to `pass` or `fail`, and reports 'still in flight' if unresolved after all attempts.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-7",
       "name": "A repeat failure after re-running never auto-retries",
-      "prompt": "Run codex-review-recovery for PR #77. The user already confirmed Codex's dashboard once, the skill posted `@codex review` and re-ran the check, and step 6's poll now shows `Await Codex review` as `fail` again.",
-      "expected_output": "The skill reports the repeat failure plainly and stops — it does not automatically loop back through steps 3-6 a second time. Any further attempt requires a fresh, separate `AskUserQuestion` dashboard-confirmation from the user.",
+      "prompt": "Run codex-review-recovery for PR #77. The user already confirmed Codex's dashboard once, the skill posted `@codex review` and re-ran the check, and step 7's poll now shows `Await Codex review` as `fail` again.",
+      "expected_output": "The skill reports the repeat failure plainly and stops — it does not automatically loop back through steps 3-7 a second time. Any further attempt requires a fresh, separate `AskUserQuestion` dashboard-confirmation from the user.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-8",
+      "name": "Head moved during confirmation wait — stop, don't act on the stale SHA",
+      "prompt": "Run codex-review-recovery for PR #77. `gh pr view 77 --json headRefOid` at step 1 returns `abc123`. `gh pr checks 77` shows `Await Codex review` as `fail`. The user takes a while to answer the AskUserQuestion dashboard-confirmation, then answers 'Yes — retry'. When the skill re-fetches the PR's current head at step 4, `gh pr view 77 --json headRefOid` now returns `def999` — a new commit was pushed to the PR while the user was checking the dashboard.",
+      "expected_output": "The skill detects that the re-fetched head SHA (`def999`) no longer matches step 1's `abc123` and stops — it does not post an `@codex review` comment and does not run `gh run rerun` on anything. It tells the user the PR's head changed since they confirmed and points them at the check for the new commit instead of proceeding on the stale SHA.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 7,
-    "declared_scenarios_covered": 7,
+    "declared_scenarios_total": 8,
+    "declared_scenarios_covered": 8,
     "uncovered": []
   }
 }

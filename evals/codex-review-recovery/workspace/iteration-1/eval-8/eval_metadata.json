@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-8",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response detects that the re-fetched head SHA (def999) no longer matches step 1's original SHA (abc123)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response stops without posting an @codex review comment",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not run gh run rerun on anything",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response tells the user the PR's head changed since they confirmed and points them at the check for the new commit, rather than silently proceeding on the stale SHA",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
