@@ -1,0 +1,8 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states the First-Send Confirmation fires again on the second invocation, not suppressed by the first invocation's consent", "type": "functionality", "target": "First-Send Confirmation"},
+    {"text": "Response identifies the scope is 'once per invocation of this skill', not 'once per session'", "type": "presence", "target": "First-Send Confirmation"}
+  ]
+}

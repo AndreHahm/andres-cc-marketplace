@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response correctly determines the symlink target is excluded (not accepted) despite lexically starting with the repo root path", "type": "functionality", "target": "Preflight step 2"},
+    {"text": "Response explains the check requires an exact match or a path-separator boundary, not a bare string prefix", "type": "quality", "target": "Preflight step 2 rationale"}
+  ]
+}

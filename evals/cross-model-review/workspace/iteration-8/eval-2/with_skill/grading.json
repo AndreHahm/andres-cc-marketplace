@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response correctly determines the symlink target is excluded despite lexical prefix match", "passed": true, "evidence": "'correctly excludes /path/repo-sibling/file.txt as outside the repo.'"},
+    {"text": "Response explains the check requires an exact match or path-separator boundary", "passed": true, "evidence": "Quoted the exact rule and applied it correctly step by step."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

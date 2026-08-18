@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states git add -N runs against a throwaway GIT_INDEX_FILE, not the real .git/index", "passed": true, "evidence": "'export GIT_INDEX_FILE=\"$(mktemp -u)\"... prevent the exact scenario the question asks about.'"},
+    {"text": "Response explains why", "passed": true, "evidence": "Cited the exact rationale about a later git commit -a."},
+    {"text": "Response states the real repository's git status is unaffected after the run", "passed": true, "evidence": "'the real index is never touched, and the environment variable itself doesn't persist into the user's own separate shell session afterward.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

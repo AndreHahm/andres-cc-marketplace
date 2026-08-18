@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states disclosure happens before dispatch, not only in the final report", "passed": true, "evidence": "'discloses the ... fallback to the user before Codex is dispatched, not only afterward in the final report.'"},
+    {"text": "Response identifies this as clause (d) alongside dispatcher-trust disclosure (c)", "passed": true, "evidence": "Quoted the exact clause (d) text and correctly distinguished it from Phase 3's inspection_limits as an additional, not sole, disclosure point."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

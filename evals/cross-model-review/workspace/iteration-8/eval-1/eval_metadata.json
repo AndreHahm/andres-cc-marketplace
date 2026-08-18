@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states git add -N runs against a throwaway GIT_INDEX_FILE, not the real .git/index", "type": "functionality", "target": "Inputs section"},
+    {"text": "Response explains why: a persistent real-index mutation would let a later, unrelated git commit -a pick up the file's full content", "type": "quality", "target": "Inputs section rationale"},
+    {"text": "Response states the real repository's git status is unaffected after the run", "type": "functionality", "target": "Inputs section"}
+  ]
+}
