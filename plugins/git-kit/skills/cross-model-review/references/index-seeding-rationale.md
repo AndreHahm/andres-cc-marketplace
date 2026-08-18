@@ -41,3 +41,17 @@ so no other process can have pre-populated it with anything, symlink or otherwis
 ever touches it. Resolving `$RUN` early (in the Inputs section, not Preflight step 3 where it's used
 next) and pointing `GIT_INDEX_FILE` at `"$RUN/index"` — a new file inside that already-safe directory
 — gets the same atomicity guarantee for the index path too, without a second `mktemp` call.
+
+## Why a failed copy sets `$INDEX_COPY_FAILED` instead of aborting outright
+
+If `$REAL_INDEX` doesn't exist or can't be read, `cp` fails and the throwaway index stays empty —
+the same starting point a from-scratch reseed would have, minus its two data-loss bugs above.
+`git add -N` still intent-adds every worktree path in that state, so the review isn't blind, but the
+diff it produces can differ from the real one in a way worth knowing about: an unchanged file (same
+content in the worktree as at `$MERGE_BASE`) is silently omitted entirely, rather than shown as
+unmodified — confirmed empirically (two tracked files, one genuinely changed: the empty-index
+fallback correctly reports only the changed one, but says nothing about the unchanged one, where a
+correctly-seeded index would agree). This isn't severe enough to abort the whole Preflight over — an
+index this thoroughly broken is already an unusual repository state, and the fallback still produces
+a usable, if narrower, diff — but it must be disclosed rather than silently absorbed, the same
+`|| true` discipline the `git add -N`/`git show` fallbacks elsewhere in this document already follow.

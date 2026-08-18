@@ -100,7 +100,7 @@ UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- "${SCOPE:-.}")
 REAL_INDEX=$(git rev-parse --git-path index)
 RUN=$(mktemp -d)
 export GIT_INDEX_FILE="$RUN/index"
-cp "$REAL_INDEX" "$GIT_INDEX_FILE" 2>/dev/null || true
+cp "$REAL_INDEX" "$GIT_INDEX_FILE" 2>/dev/null || INDEX_COPY_FAILED=1
 git add -N -- "${SCOPE:-.}" || true
 DIFF=(git diff "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")   # [ ... ] invokes the test command; matches the Bash(test:*) grant
@@ -109,13 +109,13 @@ DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding 
 
 **Seed the throwaway index with a byte-for-byte copy of the real one, captured *before*
 `GIT_INDEX_FILE` is exported** — after the export, `$REAL_INDEX` reads back the already-overridden
-path, copying nothing. Avoids two distinct data-loss bugs a from-scratch reseed (e.g.
-`git read-tree HEAD`) doesn't — see `references/index-seeding-rationale.md` for both.
+path, copying nothing. Avoids two data-loss bugs a from-scratch reseed (e.g. `git read-tree HEAD`)
+doesn't, and — if the copy itself fails — sets `$INDEX_COPY_FAILED=1` rather than reviewing silently.
+See `references/index-seeding-rationale.md` for all three.
 
-**The `|| true` on `git add -N` matters when `$SCOPE` names only a deletion** — its pathspec needs to
-match something on disk, so a `$SCOPE` resolving only to a deleted tracked file fails outright and,
-untolerated, aborts the whole `&&`-chained Preflight before `git diff` runs. `git diff "$MERGE_BASE"
--- "$SCOPE"` still shows the deletion regardless of whether the intent-add succeeded.
+**`|| true` on `git add -N` matters for a deletion-only `$SCOPE`** — its pathspec needs a disk match,
+so it fails outright and, untolerated, aborts the chain. `git diff "$MERGE_BASE" -- "$SCOPE"` still
+shows the deletion.
 
 **`$UNTRACKED_FILES` matters beyond this chain: Codex's own dispatch can't see intent-added files.**
 Phase 1/2 tell Codex to re-run the diff command itself, in a separate subprocess that never inherits
@@ -133,11 +133,11 @@ same `$MERGE_BASE`, never `$BASE...HEAD` — and all run *after* `git add -N`, s
 **Bash tool calls do not share shell state — only the working directory persists between them.** Run
 steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool call), ending with
 an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`,
-`DISPATCHER_TOUCHED`, `TARGET_PATHS`, `UNTRACKED_FILES`, and whether `$RUN/review.md`/`$RUN/refute.md`
-came out non-empty (step 5's fallback runs as separate `Read`/`Write` calls afterward). From that
-point on, every `$VAR` reference here is shorthand for that literal, already-resolved value —
-substitute the concrete string into every later `Bash`/`Read`/`Write` call; a separate tool call
-re-expanding `$RUN`/`$BASE` as a live variable won't see it.
+`DISPATCHER_TOUCHED`, `TARGET_PATHS`, `UNTRACKED_FILES`, `INDEX_COPY_FAILED`, and whether
+`$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5's fallback runs as separate `Read`/
+`Write` calls afterward). From that point on, every `$VAR` reference here is shorthand for that
+literal, already-resolved value — substitute the concrete string into every later `Bash`/`Read`/
+`Write` call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't see it.
 
 1. Run `"${DIFF[@]}"` and check its exit status. A non-zero exit (an invalid `$BASE`, no local `main`
    ref, or any other Git error) is a Preflight failure, not an empty scope — report the Git error and
@@ -457,8 +457,8 @@ Rank by `severity × confidence`. Present a compact table: `severity | confidenc
 fields. Note any `inspection_limits` from either side, including: the Preflight step 2 charset/
 deleted-path exclusion if it happened, any Claude finding dropped from the Codex challenge for that
 same reason, Preflight step 5's unverified-instructions fallback if either `REVIEW_UNVERIFIED` or
-`REFUTE_UNVERIFIED` was set, and Preflight step 6's dispatcher-not-verified disclosure if the diff
-touched the Codex scripts themselves.
+`REFUTE_UNVERIFIED` was set, Preflight step 6's dispatcher-not-verified disclosure if the diff
+touched the Codex scripts, and `$INDEX_COPY_FAILED` (`references/index-seeding-rationale.md`).
 
 End by asking which findings, if any, to fix. **Do not edit code until the user picks.**
 Convergence between the models is not correctness — the job here is to surface a ranked,
