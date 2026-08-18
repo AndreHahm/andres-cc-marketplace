@@ -1,6 +1,6 @@
 # Git Plugin
 
-Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch lifecycle setup and post-merge sync, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, and recovering a stuck Codex-review check.
+Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch lifecycle setup and post-merge sync, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, recovering a stuck Codex-review check, and cross-vendor (Claude + Codex) adversarial pre-PR review.
 
 ## Plugin Target
 
@@ -11,9 +11,11 @@ Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, 
 
 ## Overview
 
-`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, and recovering a stuck Codex-review check. Five `PreToolUse` hooks hard-block raw commands that bypass these skills, a `Stop` hook guards exiting a dirty session-locked worktree, and two rules document the plugin's worktree and lifecycle-routing conventions — see Hooks and Rules below.
+`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, recovering a stuck Codex-review check, and cross-vendor (Claude + Codex) adversarial pre-PR review. Five `PreToolUse` hooks hard-block raw commands that bypass these skills, a `Stop` hook guards exiting a dirty session-locked worktree, and two rules document the plugin's worktree and lifecycle-routing conventions — see Hooks and Rules below.
 
 Several skills (`create-pr`, `gh-operations`, `codex-review-recovery`) require GitHub CLI (`gh`) for full functionality.
+`cross-model-review` optionally uses the `codex-kit` plugin for its second, independent reviewer; it
+degrades to Claude-only if `codex-kit` isn't installed.
 
 ## Installation
 
@@ -94,6 +96,7 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 |---|---|
 | `starting-work` | Syncing local main and creating a properly named branch (or worktree) to start new work |
 | `commit` | Creating well-formatted commits with conventional commit messages |
+| `cross-model-review` | Getting an independent, cross-vendor (Claude + Codex) adversarial review of the current diff before a PR is created or a draft is flipped to ready-to-merge |
 | `create-pr` | Creating pull requests using GitHub CLI with proper templates and formatting |
 | `collaborating-on-a-pr` | Linking a related issue when creating a PR, or acting as a reviewer — commenting, approving, requesting changes, checking CODEOWNERS context |
 | `gh-operations` | Working with pull requests, issues, repositories, workflows, or the GitHub API via `gh` |
