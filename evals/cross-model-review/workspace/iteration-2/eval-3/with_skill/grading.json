@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response identifies Preflight step 5 specifically as where trusted instruction sourcing happens", "passed": true, "evidence": "'It is a Preflight step 5 concern, not step 6' with an explicit note on why the two steps look similar but differ."},
+    {"text": "Response states instructions are materialized via git show \"$BASE:...\" rather than read live from the working tree", "passed": true, "evidence": "Exact git show command reproduced, plus explanation of the blob-vs-working-tree distinction."},
+    {"text": "Response explicitly states the injection risk: a reviewed diff could otherwise rewrite the rules that judge it", "passed": true, "evidence": "'that's precisely the self-ratification risk step 5's opening paragraph exists to prevent'."},
+    {"text": "Response correctly describes the bootstrap fallback: git show failing falls back to the working-tree copy, recorded in Phase 3's inspection_limits, never silently", "passed": true, "evidence": "Correctly describes the POST-FIX Read/Write fallback mechanism, including the ${CLAUDE_PLUGIN_ROOT}/skills/cross-model-review/ path nuance, REVIEW_UNVERIFIED, and the inspection_limits disclosure line verbatim."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response follows Preflight -> resolver -> Phase 1 -> Phase 2 -> Phase 3 in that order", "type": "structure", "target": "outputs/"},
+    {"text": "Response states reviewer instructions are sourced from $BASE via git show before Phase 1/2, not the live working tree", "type": "functionality", "target": "outputs/"},
+    {"text": "Response fires (or describes firing) the First-Send Confirmation AskUserQuestion before the first real Codex dispatch, disclosing the possible danger-full-access outcome", "type": "functionality", "target": "outputs/"},
+    {"text": "Response dispatches Codex via codex-review-bridge/codex-windows-guardrails scripts with the correct per-script flags (--cwd + CODEX_KIT_REVIEW_REPO_ROOT for bridge, --repo-root for guardrails), never a raw codex exec", "type": "functionality", "target": "outputs/"},
+    {"text": "Response classifies the described finding as Low/contested (one side raised it, the other's Phase 2 pass explicitly refuted it) and states both sides must be shown, never silently dropped", "type": "quality", "target": "outputs/"},
+    {"text": "Response ends with an AskUserQuestion asking which findings to act on, and states no code is edited before that", "type": "functionality", "target": "outputs/"}
+  ]
+}

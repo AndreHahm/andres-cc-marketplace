@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response identifies Preflight step 6 specifically as the relevant check", "passed": true, "evidence": "'Where it's caught: Preflight step 6' as its own section heading."},
+    {"text": "Response explains that step 5's $BASE-materialization protects the two prompt files but does not extend to the dispatcher executable, which runs from a repo-relative path with no $BASE verification", "passed": true, "evidence": "Directly quotes the skill's own text on this exact distinction."},
+    {"text": "Response states the match is disclosed explicitly at the First-Send Confirmation, not silently proceeded past", "passed": true, "evidence": "Full walkthrough of clause (c) of the First-Send Confirmation, including the 'pointed irony' of running the modified script to review its own modification."},
+    {"text": "Response states it is recorded in Phase 3's inspection_limits as the dispatcher not having been trust-boundary-verified against $BASE for this run", "passed": true, "evidence": "'Phase 3's synthesis step carries the disclosure forward: the final report's inspection_limits section records that the Codex dispatcher itself wasn't trust-boundary-verified against $BASE for this run.'"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response follows Preflight -> resolver -> Phase 1 -> Phase 2 -> Phase 3 in that order", "passed": true, "evidence": "Sections in order: Preflight (steps 0-6), Codex dispatch resolver, First-Send Confirmation, Phase 1, Phase 2, Phase 3 -- now also correctly includes the new Preflight step 6 (dispatcher-touch check)."},
+    {"text": "Response states reviewer instructions are sourced from $BASE via git show before Phase 1/2, not the live working tree", "passed": true, "evidence": "Step 5 shown with the exact git show command against main, plus the correct Read/Write fallback path (post-fix) if it fails."},
+    {"text": "Response fires (or describes firing) the First-Send Confirmation AskUserQuestion before the first real Codex dispatch, disclosing the possible danger-full-access outcome", "passed": true, "evidence": "Explicit (a)/(b)/(c) disclosure block, including the new clause (c) about Preflight step 6 findings."},
+    {"text": "Response dispatches Codex via codex-review-bridge/codex-windows-guardrails scripts with the correct per-script flags (--cwd + CODEX_KIT_REVIEW_REPO_ROOT for bridge, --repo-root for guardrails), never a raw codex exec", "passed": true, "evidence": "Shows 'export CODEX_KIT_REVIEW_REPO_ROOT=\"$REPO_ROOT\"' then '--cwd \"$REPO_ROOT\"'; never a bare codex exec."},
+    {"text": "Response classifies the described finding as Low/contested (one side raised it, the other's Phase 2 pass explicitly refuted it) and states both sides must be shown, never silently dropped", "passed": true, "evidence": "Explicit Low/contested table row plus 'both sides are shown; the finding is not dropped and not silently resolved either way.'"},
+    {"text": "Response ends with an AskUserQuestion asking which findings to act on, and states no code is edited before that", "passed": true, "evidence": "'Closing step (pause point #2): ... ask via AskUserQuestion which findings, if any, to act on ... I do not edit src/auth.py until the user picks.'"}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 6, "pass_rate": 1.0}
+}

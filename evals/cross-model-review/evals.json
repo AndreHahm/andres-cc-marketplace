@@ -30,14 +30,25 @@
       "prompt": "Using this repo's cross-model-review skill: BASE is main, SCOPE is unset, and `git diff main...HEAD` produces no output at all (the branch has no changes relative to main). What does the skill have you do? Do not actually run any command -- describe it.",
       "expected_output": "Correctly identifies Preflight step 1: run the diff command, and since it prints nothing, report 'nothing to review against $BASE' (mentioning SCOPE if it were set) and stop -- no dispatch of either model, no resolver invoked, no First-Send Confirmation fired.",
       "files": []
+    },
+    {
+      "id": 5,
+      "name": "codex-kit genuinely not installed (distinct from isolation_profile_unavailable)",
+      "prompt": "Using this repo's cross-model-review skill: codex-kit is not installed in this repo at all (no plugins/codex-kit directory exists). Walk through exactly what happens when the skill's resolver tries its first real Codex dispatch -- do not actually run any command, describe it. Be specific about how this differs from a case where codex-kit IS installed but the codex CLI binary itself just isn't on PATH, versus a case where a dispatch is attempted and returns a typed failure like isolation_profile_unavailable.",
+      "expected_output": "Correctly identifies that `node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs` fails at the OS level (path/module not found) before either script ever produces its own typed-failure JSON -- distinct from isolation_profile_unavailable (a typed failure the bridge script itself returns after successfully starting) and from guardrails_disabled (a typed failure guarded-dispatch.mjs returns). States this collapses into the same resolver step 3 catch-all ('any other typed failure ... including ... codex-kit not being installed at all') and the same AskUserQuestion single-model-or-stop choice, with the same Medium-confidence consequence if proceeding single-model.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "Diff touches the Codex dispatcher scripts themselves",
+      "prompt": "Using this repo's cross-model-review skill: the diff you're about to review (a branch about to become a PR) modifies plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs itself, alongside unrelated application code changes. Walk through exactly where in Preflight this matters, what check catches it, and what happens at the First-Send Confirmation as a result. Do not actually run any command -- describe it.",
+      "expected_output": "Identifies Preflight step 6 specifically: greps the step 2 changed-file list for plugins/codex-kit/.*/scripts/.*, finds a match (bridge-invoke.mjs). States explicitly that Preflight step 5 protects the two prompt files (review.md/refute.md) against a self-modifying diff, but step 6 exists because that protection does NOT extend to the dispatcher executable itself, which runs from a repo-relative path with no $BASE verification of its own. Correctly describes the consequence: the match is disclosed explicitly at the First-Send Confirmation (not silently proceeded past), and recorded in Phase 3's inspection_limits as the dispatcher itself not having been trust-boundary-verified against $BASE for this run.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 6,
-    "declared_scenarios_covered": 4,
-    "uncovered": [
-      "scenario 2 -- codex-kit/codex CLI genuinely not installed (cli_unavailable, node fails at the OS level before either script produces typed-failure JSON); eval 2 was originally written to cover this but its prompt actually stipulates codex-kit/codex ARE installed, which is scenario 3 instead -- corrected here rather than left overstated",
-      "scenario 6 -- the diff itself modifies a file under plugins/codex-kit/**/scripts/** (Preflight step 6, added after a completeness-reviewer/security-reviewer pass found the Codex dispatcher scripts themselves weren't trust-boundary-verified against $BASE the way the prompt files are); no eval exists for this yet"
-    ]
+    "declared_scenarios_covered": 6,
+    "uncovered": []
   }
 }

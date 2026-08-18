@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response identifies Preflight step 1 as the relevant step", "passed": false, "evidence": "Refers only to a generic 'first thing such a skill has to do', no step numbering."},
+    {"text": "Response states the diff command runs first, and since it prints nothing, reports 'nothing to review against $BASE' and stops", "passed": true, "evidence": "'No changes found between main and HEAD ... there is nothing to review' -- correct substance, close paraphrase, graded on semantic equivalence."},
+    {"text": "Response states no dispatch of either model occurs, no resolver invoked, no First-Send Confirmation fired", "passed": true, "evidence": "'skip invoking the external (\"cross-model\") reviewer entirely ... without running any review call.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.667}
+}

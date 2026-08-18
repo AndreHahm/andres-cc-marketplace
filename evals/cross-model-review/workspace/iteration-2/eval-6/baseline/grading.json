@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response identifies Preflight step 6 specifically as the relevant check", "passed": false, "evidence": "No step numbering available; refers only generically to 'a distinct check (something like a self-modifying tooling / reviewer-touches-itself check)'."},
+    {"text": "Response explains that step 5's $BASE-materialization protects the two prompt files but does not extend to the dispatcher executable, which runs from a repo-relative path with no $BASE verification", "passed": false, "evidence": "No knowledge of step 5's existence; independently arrives at a related but distinct concern (a 'pin-to-known-good' vs 'flag-and-warn' guess) without the actual step 5-vs-6 scoping distinction."},
+    {"text": "Response states the match is disclosed explicitly at the First-Send Confirmation, not silently proceeded past", "passed": true, "evidence": "'I'd expect First-Send Confirmation to: Surface the flag prominently rather than silently proceeding ... Not silently downgrade or auto-proceed.'"},
+    {"text": "Response states it is recorded in Phase 3's inspection_limits as the dispatcher not having been trust-boundary-verified against $BASE for this run", "passed": false, "evidence": "No mention of inspection_limits or any specific downstream-report mechanism -- unknown to it."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 1, "pass_rate": 0.25}
+}

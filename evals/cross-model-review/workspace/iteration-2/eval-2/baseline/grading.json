@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response identifies resolver step 1 (codex-review-bridge) failing with isolation_profile_unavailable as the trigger for falling back to codex-windows-guardrails", "passed": true, "evidence": "Correctly reasons that the naming and scenario structure make codex-windows-guardrails 'the intended mitigation for precisely this gap'."},
+    {"text": "Response states guardrails_disabled at the shipped default is expected, not a bug, and that the skill never enables it on the user's behalf", "passed": false, "evidence": "Proposes 'Option A: Enable codex-windows-guardrails ... Create the local override file ... Set the enabling field to true' as a skill-offered choice -- the opposite of the real skill, which never creates/enables that override itself under any circumstance."},
+    {"text": "Response describes resolver step 3 firing: tells the user Codex is unavailable this run and asks via AskUserQuestion whether to proceed single-model or stop", "passed": false, "evidence": "Offers a 3-way choice (enable guardrails / proceed unprotected / defer) rather than the real single-model-or-stop dichotomy."},
+    {"text": "Response states the single-model fallback defaults findings to Medium confidence since nothing cross-examines them", "passed": false, "evidence": "No mention of confidence tiers anywhere in the response."},
+    {"text": "Response never claims to silently proceed as a full cross-model review when Codex is actually unavailable", "passed": true, "evidence": "'I would treat this as a stop-and-confirm point rather than something to push through automatically.'"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 2, "pass_rate": 0.4}
+}

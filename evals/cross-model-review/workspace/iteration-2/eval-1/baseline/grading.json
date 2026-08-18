@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response follows Preflight -> resolver -> Phase 1 -> Phase 2 -> Phase 3 in that order", "passed": false, "evidence": "Uses Step 0 Preflight / Phase 1 / Phase 2 / Phase 3 -- no distinct resolver concept anywhere, same gap as iteration-1's baseline."},
+    {"text": "Response states reviewer instructions are sourced from $BASE via git show before Phase 1/2, not the live working tree", "passed": false, "evidence": "No mention of git show, $BASE-anchored instruction sourcing, or a trust boundary at all."},
+    {"text": "Response fires (or describes firing) the First-Send Confirmation AskUserQuestion before the first real Codex dispatch, disclosing the possible danger-full-access outcome", "passed": false, "evidence": "Has a generic 'Pause for confirmation before starting' but never mentions target-paths scoping or a danger-full-access/read-only distinction."},
+    {"text": "Response dispatches Codex via codex-review-bridge/codex-windows-guardrails scripts with the correct per-script flags (--cwd + CODEX_KIT_REVIEW_REPO_ROOT for bridge, --repo-root for guardrails), never a raw codex exec", "passed": false, "evidence": "Proposes 'codex exec --sandbox <sandboxed-profile> --prompt ...' -- exactly the raw invocation the real skill forbids."},
+    {"text": "Response classifies the described finding as Low/contested (one side raised it, the other's Phase 2 pass explicitly refuted it) and states both sides must be shown, never silently dropped", "passed": false, "evidence": "Invents 'downgrade from Major bug to Confirmed non-issue... Low-severity latent-risk note' -- different vocabulary than the skill's actual Low/contested rubric, though both sides are shown."},
+    {"text": "Response ends with an AskUserQuestion asking which findings to act on, and states no code is edited before that", "passed": true, "evidence": "'Final pause for confirmation: before actually opening the PR, I'd present this full report to the user and stop ... I would not open the PR myself as part of this flow without that explicit go-ahead.'"}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 1, "pass_rate": 0.167}
+}
