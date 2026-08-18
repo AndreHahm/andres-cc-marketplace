@@ -1,0 +1,9 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states the canonical diff is built from a single ref ($MERGE_BASE), not the two-dot $BASE...HEAD form", "type": "functionality", "target": "Inputs section"},
+    {"text": "Response correctly states that uncommitted (staged or unstaged) changes ARE included in the review", "type": "functionality", "target": "Inputs section"},
+    {"text": "Response explains why: git diff A...B only shows committed differences, while git diff <single-ref> includes the working tree", "type": "quality", "target": "Inputs section rationale"}
+  ]
+}

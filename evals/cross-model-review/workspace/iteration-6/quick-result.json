@@ -1,0 +1,15 @@
+{
+  "mode": "quick",
+  "iteration": 6,
+  "scope": "targeted",
+  "note": "Supplemental Quick Workflow pass covering the fourth (and largest) reviewer-fix batch on PR #52 (8 new Codex findings from the delta review triggered by the third fix batch's push): reviewer-identity alignment, assets/ trust-check coverage, review.md supplied to challengers, partial-failure preservation, components-array filtering, and the merge-base/uncommitted-changes diff fix. Two findings (Phase 3's hardcoded single-model reason; the git-kit version bump) were fixed but not separately eval'd, being straightforward wording/manifest fixes. with_skill only, no baseline. This batch also required extracting SKILL.md's Testing & Validation scenarios/quality-gates into references/testing-scenarios.md, since the file crossed plugin-rulebook's R13 500-line Critical threshold (526 lines) after these fixes.",
+  "results": [
+    {"eval_id": 1, "name": "reviewer identity alignment", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 2, "name": "assets/ trust check coverage", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 3, "name": "review.md supplied to challenger", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+    {"eval_id": 4, "name": "uncommitted changes in diff", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 5, "name": "partial-failure preservation", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 6, "name": "components-array filtering", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+  ],
+  "summary": {"assertions_total": 17, "assertions_passed": 17, "pass_rate": 1.0}
+}

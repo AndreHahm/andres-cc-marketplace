@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states dispatch.reviewer must exactly match the --reviewer-type value Codex was dispatched with", "passed": true, "evidence": "'dispatch.reviewer must equal challenger-reviewer... never a substituted or invented name.'"},
+    {"text": "Response explains a mismatch causes semanticallyValidate to reject the entire envelope", "passed": true, "evidence": "Quoted the rejection rationale directly from refute.md."},
+    {"text": "Response identifies Phase 2's actual dispatch uses --reviewer-type challenger-reviewer", "passed": true, "evidence": "Cited the exact dispatch line."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

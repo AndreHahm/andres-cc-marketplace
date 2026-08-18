@@ -1,0 +1,9 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states the finding is still dropped from the Codex challenge payload", "type": "functionality", "target": "Phase 2 excluded-path filter"},
+    {"text": "Response explains the filter checks BOTH location and every entry in components, not location alone", "type": "quality", "target": "Phase 2 excluded-path filter rationale"},
+    {"text": "Response explains why: semanticallyValidate separately validates every components entry against --target-paths too", "type": "quality", "target": "Phase 2 rationale"}
+  ]
+}
