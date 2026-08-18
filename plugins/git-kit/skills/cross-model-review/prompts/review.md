@@ -73,14 +73,21 @@ If a finding involves exposed credentials, secrets, or API keys, cite the locati
 ## Output
 
 Return findings matching the required JSON schema exactly (`contract_version`, `dispatch`,
-`provenance`, `findings[]`, `verdict`, `inspection_limits` — see
+`provenance`, `findings[]`, `verdict`, `inspection_limits`). See
 `plugins/codex-kit/skills/codex-review-bridge/references/envelope-schema.md` for the authoritative
-field list). Per finding: `severity` is `critical`/`major`/`minor` (assign honestly — `critical` =
-data loss/security/crash on a normal path; `major` = wrong behavior on a common path, or a real
-correctness/security issue on an edge case; `minor` = everything else worth surfacing); `axis` is a
-short free-text category (`security`, `correctness`, `api-misuse`, `performance`,
-`maintainability`); `confidence` is `high`/`medium`/`low` reflecting your own certainty, independent
-of what cross-examination later does with it. Top-level `verdict` — `approve` or `needs-attention` —
-is this skill's own convention layered on the schema's free-string `verdict` field (the schema
-itself doesn't define this enum, only requires a deterministic pass/fail rule): `approve` when no
-findings clear the bar, `needs-attention` when at least one does.
+field list **when `codex-kit` is installed**; git-kit doesn't bundle its own copy, so when it isn't
+(e.g. this run is Claude-only, single-model mode — see SKILL.md's resolver step 3), use this
+self-contained summary instead: per finding, `id` (unique within the envelope); `severity` is
+`critical`/`major`/`minor` (assign honestly — `critical` = data loss/security/crash on a normal
+path; `major` = wrong behavior on a common path, or a real correctness/security issue on an edge
+case; `minor` = everything else worth surfacing); `axis` is a short free-text category (`security`,
+`correctness`, `api-misuse`, `performance`, `maintainability`); `location` is a single `"file:line"`
+string, the finding's primary citation; `components` is either `null` or an array of *other* file
+paths involved, only for a finding that's inherently about a relationship between multiple files
+(never a substitute for `location`); `evidence` is what was actually observed, not just a
+conclusion; `finding` is the claim itself — what's wrong and why it matters; `fix` is a specific
+recommended remediation; `confidence` is `high`/`medium`/`low` reflecting your own certainty,
+independent of what cross-examination later does with it. Top-level `verdict` — `approve` or
+`needs-attention` — is this skill's own convention layered on the schema's free-string `verdict`
+field (the schema itself doesn't define this enum, only requires a deterministic pass/fail rule):
+`approve` when no findings clear the bar, `needs-attention` when at least one does.
