@@ -30,19 +30,20 @@ claims.
 
 For **every** finding in the appended list, decide one of:
 
-- **Confirms** — your own independent pass found the same underlying issue (or, having now looked,
-  you agree it's real and material). State which of your own findings it maps to, or that you now
-  concur with it directly.
+- **Confirms** — your own independent pass found the same underlying issue, or, having now looked,
+  you agree it's real and material. This includes the case where the underlying issue is real but
+  the finding mis-states severity or scope — still a Confirm, with the corrected severity stated
+  explicitly in your finding text; there is no separate "partially right" category, since the
+  synthesis step downstream only ever asks whether a given finding was confirmed or refuted, not a
+  third thing.
 - **Refutes** — the claim is wrong: the code doesn't do what the finding says, the case can't occur,
   or it's stylistic with no correctness impact. Cite the specific code or fact that disproves it.
   Flagging a correct fix as a vulnerability is a refutation, not a confirmation — see the "Semantic
   correctness" guidance in `prompts/review.md`.
-- **Partial** — the underlying issue is real but the finding mis-states severity or scope. Say what
-  the corrected severity should be.
 
-A finding you neither confirm nor refute is a gap in this pass, not a valid third option — if you
-are genuinely unable to reach a verdict (e.g. the cited location doesn't exist in your own read of
-the diff), say so explicitly rather than omitting it.
+A finding you neither confirm nor refute is a gap in this pass, not a valid outcome — if you are
+genuinely unable to reach a verdict (e.g. the cited location doesn't exist in your own read of the
+diff), say so explicitly rather than omitting it.
 
 ## Novel findings
 
@@ -60,10 +61,10 @@ Never reproduce a secret in your output, even one you're only repeating.
 ## Output
 
 Same envelope shape and field semantics as `prompts/review.md`'s Output section
-(`codex-review-bridge/references/envelope-schema.md` is the authoritative contract) —
-`dispatch.reviewer` should be the challenger variant of whichever side is running this (e.g.
-`claude-challenger` / `codex-challenger`). There is no separate verdict schema: the
-confirms/refutes/partial/novel classification for each finding, and which prior finding id it
-relates to, goes in that finding's own `finding` text — state it as the first sentence (e.g.
-"Refutes F3: ..." / "Confirms F1: ..." / "Novel: ..."), since the envelope has no dedicated field for
-it and downstream synthesis reads this text directly.
+(`plugins/codex-kit/skills/codex-review-bridge/references/envelope-schema.md` is the authoritative
+contract) — `dispatch.reviewer` should be the challenger variant of whichever side is running this
+(e.g. `claude-challenger` / `codex-challenger`). There is no separate verdict schema: the
+confirms/refutes/novel classification for each finding, and which prior finding id it relates to,
+goes in that finding's own `finding` text — state it as the first sentence (e.g. "Refutes F3: ..." /
+"Confirms F1: ..." / "Novel: ..."), since the envelope has no dedicated field for it and downstream
+synthesis reads this text directly.

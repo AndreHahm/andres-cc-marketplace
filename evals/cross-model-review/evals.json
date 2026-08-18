@@ -21,7 +21,7 @@
       "id": 3,
       "name": "Trust-boundary sourcing when the diff itself touches the skill's own prompts",
       "prompt": "Using this repo's cross-model-review skill: the diff you're about to review (a branch about to become a PR) itself modifies plugins/git-kit/skills/cross-model-review/prompts/review.md, adding a line to the fresh-eyes persona. Walk through, step by step, where in the skill's Preflight this matters, exactly what command resolves it, and what happens if that command fails because the file doesn't exist yet on $BASE (e.g. this is the skill's own first, not-yet-merged commit). Do not actually run any command -- describe it.",
-      "expected_output": "Identifies Preflight step 5 specifically: reviewer instructions must be materialized from $BASE via git show \"$BASE:plugins/git-kit/skills/cross-model-review/prompts/review.md\", never read live from the working tree, precisely because the working tree may be the branch under review (states the injection risk explicitly: a reviewed diff could otherwise rewrite the rules that judge it). Correctly describes the fallback: if git show fails (file doesn't exist on $BASE yet), fall back to the working-tree copy under ${CLAUDE_PLUGIN_ROOT}, but record this in Phase 3's inspection_limits rather than silently -- and states every later reference to review.md/refute.md means these materialized $RUN copies, not the live path.",
+      "expected_output": "Identifies Preflight step 5 specifically: reviewer instructions must be materialized from $BASE via git show \"$BASE:plugins/git-kit/skills/cross-model-review/prompts/review.md\", never read live from the working tree, precisely because the working tree may be the branch under review (states the injection risk explicitly: a reviewed diff could otherwise rewrite the rules that judge it). Correctly describes the fallback: if git show fails (file doesn't exist on $BASE yet), Read+Write the working-tree copy from ${CLAUDE_PLUGIN_ROOT}/skills/cross-model-review/prompts/review.md -- noting CLAUDE_PLUGIN_ROOT is the plugin root, not this skill's own directory, so the skills/cross-model-review/ segment is required -- and record this in Phase 3's inspection_limits rather than silently; states every later reference to review.md/refute.md means these materialized $RUN copies, not the live path.",
       "files": []
     },
     {
@@ -33,8 +33,11 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 5,
-    "declared_scenarios_covered": 5,
-    "uncovered": []
+    "declared_scenarios_total": 6,
+    "declared_scenarios_covered": 4,
+    "uncovered": [
+      "scenario 2 -- codex-kit/codex CLI genuinely not installed (cli_unavailable, node fails at the OS level before either script produces typed-failure JSON); eval 2 was originally written to cover this but its prompt actually stipulates codex-kit/codex ARE installed, which is scenario 3 instead -- corrected here rather than left overstated",
+      "scenario 6 -- the diff itself modifies a file under plugins/codex-kit/**/scripts/** (Preflight step 6, added after a completeness-reviewer/security-reviewer pass found the Codex dispatcher scripts themselves weren't trust-boundary-verified against $BASE the way the prompt files are); no eval exists for this yet"
+    ]
   }
 }

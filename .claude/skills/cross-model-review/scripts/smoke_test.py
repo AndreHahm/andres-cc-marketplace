@@ -35,6 +35,27 @@ def check_referenced_prompt_files():
     return True, "all referenced prompt files exist"
 
 
+def check_plugin_root_paths():
+    # ${CLAUDE_PLUGIN_ROOT} resolves to the PLUGIN root (plugins/<name>/), not this skill's own
+    # directory -- a path like "${CLAUDE_PLUGIN_ROOT}/prompts/review.md" (missing the
+    # "skills/<skill-name>/" segment) silently resolves to a location that doesn't exist. Verify
+    # every such path actually resolves against the plugin root, not just this skill's directory.
+    text = SKILL_MD.read_text(encoding="utf-8")
+    plugin_root = SKILL_DIR.parent.parent
+    missing = [
+        rel
+        for rel in set(re.findall(r"\$\{CLAUDE_PLUGIN_ROOT\}(/[\w./-]+)", text))
+        if not (plugin_root / rel.lstrip("/")).exists()
+    ]
+    if missing:
+        return (
+            False,
+            "${CLAUDE_PLUGIN_ROOT} path(s) do not resolve against the plugin root: "
+            + ", ".join(sorted(missing)),
+        )
+    return True, "every ${CLAUDE_PLUGIN_ROOT} path resolves against the plugin root"
+
+
 def check_bash_grants():
     fm_text = SKILL_MD.read_text(encoding="utf-8")
     header_end = fm_text.find("\n---\n", 4) + 5
@@ -54,8 +75,11 @@ def check_bash_grants():
         # For a script-path grant, the leading verb ("node") is too generic to prove
         # the specific grant is used -- check the distinctive basename instead. A plain
         # multi-word command ("git diff", "git show") is checked as the whole phrase.
+        # Word-boundary anchored: an unanchored search would let a short/common-word
+        # needle (e.g. "cat") false-pass on unrelated prose containing it as a substring
+        # (e.g. "location", "classification", "duplicate").
         needle = cmd.rsplit("/", 1)[-1] if "/" in cmd else cmd
-        if not re.search(re.escape(needle), body):
+        if not re.search(r"\b" + re.escape(needle) + r"\b", body):
             unused.append(cmd)
     if unused:
         return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(
@@ -92,6 +116,7 @@ def check_resolver_step_sequence():
 CHECKS = [
     check_frontmatter,
     check_referenced_prompt_files,
+    check_plugin_root_paths,
     check_bash_grants,
     check_preflight_step_sequence,
     check_resolver_step_sequence,
