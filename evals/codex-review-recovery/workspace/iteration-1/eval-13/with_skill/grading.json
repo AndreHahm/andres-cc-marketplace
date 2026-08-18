@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-13",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response re-checks databaseId 300's conclusion immediately before step 7 would rerun it",
+      "passed": true,
+      "evidence": "\"Re-check the target run's conclusion immediately before rerunning, per the skill's explicit re-verification requirement: gh run view 300 -R ... --json conclusion\""
+    },
+    {
+      "text": "The response detects that conclusion is no longer failure (now success)",
+      "passed": true,
+      "evidence": "\"conclusion is no longer failure\" against the given result {\"conclusion\": \"success\"}"
+    },
+    {
+      "text": "The response does not run gh run rerun on databaseId 300",
+      "passed": true,
+      "evidence": "\"do not run gh run rerun 300. Stop here.\""
+    },
+    {
+      "text": "The response reports that the check already resolved on its own rather than proceeding to rerun an already-passing run",
+      "passed": true,
+      "evidence": "\"PR #77's Await Codex review check has already resolved on its own -- no rerun was needed.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
