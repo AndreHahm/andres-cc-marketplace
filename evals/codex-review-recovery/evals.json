@@ -93,11 +93,25 @@
       "prompt": "Run codex-review-recovery for PR #77. Step 5 resolved databaseId 300 with `conclusion: failure` and confirmed head `abc123` hasn't moved. Step 6 posted the `@codex review` comment. Immediately before step 7 reruns databaseId 300, the skill re-checks its current conclusion: `gh run view 300 --json conclusion` now returns `{\"conclusion\": \"success\"}` — another maintainer (or a delayed write-back) already resolved this exact run while step 6's comment-posting call was in flight.",
       "expected_output": "The skill detects that databaseId 300's `conclusion` is no longer `failure` and stops — it does not run `gh run rerun` on it, and reports that the check already resolved on its own rather than proceeding to rerun an already-passing run.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-14",
+      "name": "Run already resolved (success) at step 5 — stop before posting anything",
+      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head SHA confirmed at step 4 is `abc123`). At step 5, `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion,attempt` returns exactly one entry matching the confirmed head SHA: databaseId 300, headSha `abc123`, `conclusion: success`. Someone else already resolved this exact run since step 2's check.",
+      "expected_output": "The skill checks the resolved run's conclusion as part of step 5 (before step 6 runs at all) and, seeing `success`, stops immediately — it does not post an `@codex review` comment and does not run `gh run rerun`. It reports that the check already resolved on its own.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-15",
+      "name": "timed_out is treated the same as failure, not as already-resolved",
+      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head SHA confirmed at step 4 is `abc123`). At step 5, `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion,attempt` returns exactly one entry matching the confirmed head SHA: databaseId 300, headSha `abc123`, `conclusion: timed_out`, `attempt: 1` — the workflow hit GitHub's hard timeout rather than an explicit failing exit code.",
+      "expected_output": "The skill treats `timed_out` the same as `failure` — a legitimate reason to proceed with recovery, not a signal that the check is already resolved. It continues to step 6 (posts `@codex review`) and step 7 (reruns databaseId 300), rather than stopping and incorrectly reporting the check as already resolved.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 17,
-    "declared_scenarios_covered": 14,
+    "declared_scenarios_total": 18,
+    "declared_scenarios_covered": 16,
     "uncovered": [
       "Every gh pr/gh run command passing -R \"<owner>/<repo>\" (verified live and via a one-off spot-check agent during development, but not captured as a persisted graded eval)",
       "Step 2 matching on the workflow display-name field together with the job name, not either alone (implicitly exercised by every eval's simulated gh pr checks output, but not asserted as its own dedicated scenario)",

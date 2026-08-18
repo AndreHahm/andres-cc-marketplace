@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-15",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response does not treat conclusion: timed_out as equivalent to already-resolved/success",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response proceeds to step 6 and posts an @codex review comment",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response proceeds to step 7 and runs gh run rerun on databaseId 300",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not incorrectly report the check as already resolved",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

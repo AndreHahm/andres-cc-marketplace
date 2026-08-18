@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-14",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response checks the resolved run's conclusion as part of step 5, before step 6 runs",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response detects conclusion is success and stops immediately",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not post an @codex review comment",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not run gh run rerun on databaseId 300",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}
