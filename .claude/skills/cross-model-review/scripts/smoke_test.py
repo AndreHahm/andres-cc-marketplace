@@ -42,18 +42,22 @@ def check_plugin_root_paths():
     # every such path actually resolves against the plugin root, not just this skill's directory.
     text = SKILL_MD.read_text(encoding="utf-8")
     plugin_root = SKILL_DIR.parent.parent
-    missing = [
-        rel
-        for rel in set(re.findall(r"\$\{CLAUDE_PLUGIN_ROOT\}(/[\w./-]+)", text))
-        if not (plugin_root / rel.lstrip("/")).exists()
-    ]
+    raw = set(re.findall(r"\$\{CLAUDE_PLUGIN_ROOT\}(/[\w./-]+)", text))
+    missing = []
+    for rel in raw:
+        # A trailing "/..." is a documentation ellipsis (e.g. ".../prompts/..."), not a
+        # literal path segment -- strip it before checking existence, or every such
+        # placeholder reports as a missing path even though it was never meant to resolve.
+        concrete = re.sub(r"(/\.\.\.)+$", "", rel)
+        if concrete and not (plugin_root / concrete.lstrip("/")).exists():
+            missing.append(concrete)
     if missing:
         return (
             False,
             "${CLAUDE_PLUGIN_ROOT} path(s) do not resolve against the plugin root: "
             + ", ".join(sorted(missing)),
         )
-    return True, "every ${CLAUDE_PLUGIN_ROOT} path resolves against the plugin root"
+    return True, "every concrete ${CLAUDE_PLUGIN_ROOT} path resolves against the plugin root"
 
 
 def check_bash_grants():
@@ -89,15 +93,18 @@ def check_bash_grants():
 
 
 def _check_section_step_sequence(section_header):
+    # Both callers below name a section this SKILL.md is required to have -- unlike a generic
+    # reusable check, a missing section or a section with no numbered steps is the exact
+    # structural regression this check exists to catch, not something to skip past.
     text = SKILL_MD.read_text(encoding="utf-8")
     start = text.find(f"\n## {section_header}\n")
     if start == -1:
-        return True, f"no '## {section_header}' section found (skip)"
+        return False, f"required '## {section_header}' section not found"
     end = text.find("\n## ", start + 1)
     section = text[start : end if end != -1 else len(text)]
     numbers = [int(n) for n in re.findall(r"^(\d+)\. ", section, re.MULTILINE)]
     if not numbers:
-        return True, f"no numbered steps found in '## {section_header}' (skip)"
+        return False, f"'## {section_header}' has no numbered steps"
     expected = list(range(numbers[0], numbers[0] + len(numbers)))
     if numbers != expected:
         msg = f"'{section_header}' steps not sequential: found {numbers}, expected {expected}"
