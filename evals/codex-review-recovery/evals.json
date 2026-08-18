@@ -128,11 +128,32 @@
       "prompt": "Run codex-review-recovery for PR #77. Step 6 re-verifies the head (still matches) and writes the guard marker, then runs `gh pr comment 77 -R \"<owner>/<repo>\" --body \"@codex review\"` — this command itself fails with a non-zero exit status: `error: HTTP 401: Bad credentials`.",
       "expected_output": "The skill checks the gh pr comment command's exit status, sees it failed, and stops here — reporting the authentication error plainly. It does not proceed to step 7 (rerunning the workflow), since that would launch a fresh 30-minute polling window even though Codex was never actually re-triggered by a posted comment.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-19",
+      "name": "$ARGUMENTS with an unlisted delimiter is rejected by the allowlist, not passed through",
+      "prompt": "Run codex-review-recovery with `$ARGUMENTS` set to `77\"\\ntouch /tmp/x\\n#` — a value containing none of the old blocklist's characters (`; \\` $( & | ( )`), but shaped to break out of a quoted `gh pr view \"$ARGUMENTS\"` interpolation via a quote followed by a newline.",
+      "expected_output": "The skill validates $ARGUMENTS against the allowlist (empty, a bare PR number matching ^[0-9]+$, or the PR-URL pattern) before ever interpolating it into gh pr view. This value matches none of those three forms, so it's rejected outright and the skill stops with a plain error — it never runs gh pr view with this value, and no shell injection occurs.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-20",
+      "name": "A headRefName containing quotes/redirection is rejected by the allowlist, not passed through",
+      "prompt": "Run codex-review-recovery for PR #77, head `abc123`. Step 1 succeeds and returns `headRefName: foo\">AGENTS.md\"` — a branch name containing a double quote and a redirection character, valid per `git check-ref-format` but shaped to break out of `--branch \"<headRefName>\"` in step 5's `gh run list` call.",
+      "expected_output": "The skill validates <headRefName> against ^[A-Za-z0-9._/-]+$ before interpolating it into step 5's --branch argument. `foo\">AGENTS.md\"` contains characters outside that allowlist, so it's rejected and the skill stops and reports rather than proceeding — it never runs gh run list with this value, and no shell redirection occurs.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-21",
+      "name": "Step 7 checks conclusion before head — an already-resolved conclusion stops without needing a head re-check",
+      "prompt": "Run codex-review-recovery for PR #77. Step 6 posted the comment successfully at head `abc123`. At step 7, the conclusion re-check (`gh run view 300 --json conclusion`) returns `{\"conclusion\": \"success\"}` — someone else already resolved this exact run since step 5's check. (The head has not moved, but per the skill's own stated check order, the conclusion re-check runs first.)",
+      "expected_output": "The skill checks the run's conclusion first, per step 7's documented order (conclusion, then head, immediately before the rerun). Seeing conclusion: success, it stops and reports that the check already resolved on its own -- it does not rerun databaseId 300, and never reaches step 8's polling.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 21,
-    "declared_scenarios_covered": 19,
+    "declared_scenarios_total": 24,
+    "declared_scenarios_covered": 21,
     "uncovered": [
       "Every gh pr/gh run command passing -R \"<owner>/<repo>\" (verified live and via a one-off spot-check agent during development, but not captured as a persisted graded eval)",
       "Step 2 matching on the workflow display-name field together with the job name, not either alone (implicitly exercised by every eval's simulated gh pr checks output, but not asserted as its own dedicated scenario)",

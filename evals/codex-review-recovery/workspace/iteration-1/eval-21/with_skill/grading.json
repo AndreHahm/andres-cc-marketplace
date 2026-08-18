@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-21",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response checks the run's conclusion before checking the head, per step 7's documented order",
+      "passed": true,
+      "evidence": "\"in this order: conclusion first, head last\" -- conclusion re-check performed before any head re-check"
+    },
+    {
+      "text": "The response detects conclusion: success and treats it as already resolved",
+      "passed": true,
+      "evidence": "\"conclusion is 'success'. This triggers the stop condition. Someone else already resolved this exact run\""
+    },
+    {
+      "text": "The response stops and does not call gh run rerun on databaseId 300",
+      "passed": true,
+      "evidence": "\"no gh run rerun is issued\""
+    },
+    {
+      "text": "The response does not proceed to step 8's polling loop",
+      "passed": true,
+      "evidence": "\"Step 8 (polling) is never entered\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

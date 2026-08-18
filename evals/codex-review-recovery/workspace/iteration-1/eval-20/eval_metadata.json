@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-20",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response validates headRefName against ^[A-Za-z0-9._/-]+$ rather than a blocklist of metacharacters",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response recognizes the given headRefName contains characters outside that allowlist",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response rejects the value and stops before ever calling gh run list with it",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not post the retry comment or rerun anything after rejecting the branch name",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

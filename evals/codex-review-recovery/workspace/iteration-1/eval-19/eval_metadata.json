@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-19",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response validates $ARGUMENTS against an allowlist (empty / ^[0-9]+$ / PR-URL pattern) rather than a blocklist of metacharacters",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response recognizes the given value matches none of the three allowed forms",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response rejects the value and stops before ever calling gh pr view with it",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not attempt to sanitize, escape, or otherwise pass the value through",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

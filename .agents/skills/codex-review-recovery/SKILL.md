@@ -74,10 +74,14 @@ See `## Instructions` below for the full step-by-step with exact commands and st
 
 ## Instructions
 
-1. **Resolve the PR**: `gh pr view "$ARGUMENTS" --json number,url,headRefName,headRefOid` (no arg resolves
-   the current branch's PR). Quote `$ARGUMENTS` and reject it outright if it contains shell metacharacters
-   (`;`, `` ` ``, `$(`, `&`, `|`, `(`, `)`) instead of passing it through — it's user-supplied and not
-   validated as a plain PR number/URL before this point. If this fails, tell the user and stop.
+1. **Resolve the PR**: `$ARGUMENTS` is user-supplied and not yet validated as a plain PR number/URL — an
+   incomplete blocklist of shell metacharacters is not enough (a crafted value using an unlisted delimiter,
+   e.g. a quote followed by a newline, can still break out of a quoted `"$ARGUMENTS"` interpolation).
+   Validate with an allowlist instead: accept only an empty value (resolves the current branch's PR), a
+   bare PR number matching `^[0-9]+$`, or a PR URL matching
+   `^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/pull/[0-9]+$`. Reject anything else outright rather
+   than passing it through. Then: `gh pr view "$ARGUMENTS" --json number,url,headRefName,headRefOid`. If
+   this fails, tell the user and stop.
 
    Extract `<owner>/<repo>` from the returned `url` field (`https://github.com/<owner>/<repo>/pull/<n>`)
    and pass it as `-R "<owner>/<repo>"` to every `gh pr`/`gh run` command in steps 2 and 4 through 8 below
@@ -126,10 +130,12 @@ See `## Instructions` below for the full step-by-step with exact commands and st
      --limit 5 --json databaseId,headSha,conclusion,attempt
    ```
    `--workflow` accepts the file name directly here (unlike `gh pr checks`, which only exposes the
-   display name — see step 2). Quote `<headRefName>` exactly as shown — `git check-ref-format` permits
-   shell metacharacters (`;`, `` ` ``, `$(`, `&`, `|`, `(`, `)`) in branch names, so an unquoted
-   interpolation here is exploitable by a maliciously named branch. If `<headRefName>` contains any of
-   those characters, stop and report rather than proceeding.
+   display name — see step 2). `git check-ref-format` permits shell metacharacters — including quotes
+   (`"`) and redirection (`>`) — in branch names, so a blocklist of a few characters is not enough: a name
+   like `foo">AGENTS.md"` passes a blocklist of `; \` $( & | ( )` cleanly, then breaks out of
+   `--branch "<headRefName>"` via shell redirection. Validate `<headRefName>` with an allowlist instead —
+   `^[A-Za-z0-9._/-]+$` (the same pattern `merge-pr`/`finishing-work`/`git-cleanup` already use for ref
+   names in this plugin). If it doesn't match, stop and report rather than proceeding.
    Pick the entry whose `headSha` matches step 4's confirmed `headRefOid`. If no run matches, tell the
    user and stop — nothing has been posted or rerun yet. If **more than one** entry's `headSha` matches,
    also stop and tell the user rather than guessing — a PR reopened or marked ready more than once without
@@ -167,20 +173,23 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    (`opened`/`reopened`/`synchronize`/`ready_for_review`) has no `issue_comment` entry, so the run resolved
    in step 5 has to be explicitly re-run to start a fresh polling window. Two things may have changed
    during step 6's own network round-trip (posting the comment), so re-check both immediately before
-   rerunning, not just one:
-   - **The head may have moved again**: `gh pr view <number> -R "<owner>/<repo>" --json headRefOid --jq
-     '.headRefOid'`. If it no longer matches step 6's confirmed value, apply step 4's own stop condition
-     here too — rerunning the old head's run now risks colliding with the fresh `synchronize`-triggered
-     run for the new commit through the workflow's `concurrency: cancel-in-progress` group (same rationale
-     as step 4 and step 6's own head re-checks).
+   rerunning, not just one — and check them in this order, **conclusion first, head last**, so the head
+   check is the very last thing that happens before the rerun call itself: an earlier version checked head
+   first, which left the conclusion lookup's own network round-trip between the head check and the rerun —
+   still a stale-head window, just a narrower one than before this ordering fix.
    - **The run's conclusion may have changed**: `gh run view <databaseId> -R "<owner>/<repo>" --json
      conclusion`. Apply the same three-way check as step 5: if `conclusion` is now `success`, stop and
      report that the check already resolved on its own — don't rerun an already-passing run. If it's
      still `failure` or `timed_out`, proceed. Anything else, stop and report the unexpected conclusion
      rather than guessing.
+   - **The head may have moved again**: `gh pr view <number> -R "<owner>/<repo>" --json headRefOid --jq
+     '.headRefOid'`. If it no longer matches step 6's confirmed value, apply step 4's own stop condition
+     here too — rerunning the old head's run now risks colliding with the fresh `synchronize`-triggered
+     run for the new commit through the workflow's `concurrency: cancel-in-progress` group (same rationale
+     as step 4 and step 6's own head re-checks).
    Only once both re-checks pass: `gh run rerun <databaseId> -R "<owner>/<repo>"` (the exact `<databaseId>`
-   from step 5 — no fresh run-list lookup needed here, only these two narrow re-checks). **Check this
-   command's exit status too.** If it fails (a transient API error, missing Actions permission, or an
+   from step 5 — no fresh run-list lookup needed here, only these two narrow re-checks, run immediately
+   after the head re-check with no other call in between). **Check this command's exit status too.** If it fails (a transient API error, missing Actions permission, or an
    authentication failure), stop here and report the error rather than proceeding to step 8 — polling a
    run that was never actually rerun would just watch the stale baseline `attempt` for all 10 calls and
    falsely report "still in flight" after ~5 minutes, when nothing is actually happening.
@@ -235,9 +244,14 @@ See `## Instructions` below for the full step-by-step with exact commands and st
   trigger an external side effect (prompting Codex again) for a flow this skill then abandons.
 - Never trusts a head or run-conclusion check from an earlier step across an intervening network call
   without re-verifying it immediately before the next side-effecting action — step 6 re-checks the head
-  right before commenting, and step 7 re-checks both the head and the target run's conclusion right
-  before rerunning it, since any of these could have changed while the previous step's own `gh` call was
-  in flight.
+  right before commenting, and step 7 re-checks both the run's conclusion and (last, immediately before
+  the rerun call) the head right before rerunning it, since any of these could have changed while the
+  previous step's own `gh` call was in flight.
+- Never validates `$ARGUMENTS` (step 1) or `<headRefName>` (step 5) against an incomplete blocklist of
+  shell metacharacters — both are validated against an explicit allowlist instead (a PR-number/URL pattern
+  for `$ARGUMENTS`, `^[A-Za-z0-9._/-]+$` for `<headRefName>`), since a blocklist covering only a few
+  characters (e.g. `; \` $( & | ( )`) leaves quotes and redirection characters (`"`, `>`) free to break
+  out of a quoted shell interpolation.
 - Never assumes a `gh pr comment` or `gh run rerun` call succeeded just because it was issued — step 6
   and step 7 each check that command's own exit status and stop with the error on failure, rather than
   proceeding as if the comment was posted or the rerun happened when it wasn't.
@@ -269,6 +283,12 @@ See `## Instructions` below for the full step-by-step with exact commands and st
 - [ ] Every `gh pr`/`gh run` command from step 2 onward always passes `-R "<owner>/<repo>"` derived from
       step 1's `url` field — never a bare `<number>` that would resolve against the current checkout's
       repo instead of the PR's actual repo
+- [ ] Step 1 always validates `$ARGUMENTS` against the allowlist (empty, `^[0-9]+$`, or the PR-URL
+      pattern) before interpolating it into `gh pr view "$ARGUMENTS"` — never a blocklist of a few
+      metacharacters, which a crafted value with an unlisted delimiter can still break out of
+- [ ] Step 5 always validates `<headRefName>` against `^[A-Za-z0-9._/-]+$` before interpolating it into
+      `--branch "<headRefName>"` — never a blocklist, which leaves quotes/redirection characters free to
+      break out of the quoted interpolation
 - [ ] Step 2 always matches on the `workflow` display-name field together with the job `name`, never on
       `name` alone or on the workflow *file* name, which `gh pr checks` never exposes
 - [ ] Step 2 only proceeds past a `fail` state — `pending`/`pass` always stop with a plain status report,
@@ -291,10 +311,11 @@ See `## Instructions` below for the full step-by-step with exact commands and st
 - [ ] Step 5 always checks the resolved run's `conclusion` before posting anything — stops (reporting it
       already resolved) on `success`, proceeds on `failure`/`timed_out`, and stops (reporting the
       unexpected value) on anything else, never posting the comment on a run that's already `success`
-- [ ] Step 7 always re-fetches and compares `headRefOid` immediately before rerunning, applying step 4's
-      own stop condition on a mismatch — never trusts step 6's earlier head check alone across step 6's
-      own network round-trip
-- [ ] Step 7 always re-checks the target run's current `conclusion` immediately before rerunning it, using
+- [ ] Step 7 always re-fetches and compares `headRefOid` as the very last check immediately before
+      rerunning — after the conclusion re-check, never before it — applying step 4's own stop condition on
+      a mismatch; never trusts step 6's earlier head check alone across step 6's own network round-trip,
+      and never leaves another network call between the head re-check and the rerun itself
+- [ ] Step 7 always re-checks the target run's current `conclusion` before the head re-check, using
       the same three-way outcome as step 5 — never treats `timed_out` as equivalent to `success` (already
       resolved) the way an earlier, narrower version of this check once did
 - [ ] Step 7 always checks the `gh run rerun` command's exit status — a failure always stops the flow
@@ -319,7 +340,7 @@ See `## Instructions` below for the full step-by-step with exact commands and st
       fresh step-3 confirmation
 - [ ] `scripts/smoke_test.py` passes (this skill's own persisted structural smoke test)
 
-**Test suite:** `evals/codex-review-recovery/evals.json` defines 18 scenarios exercising 19 of 21
+**Test suite:** `evals/codex-review-recovery/evals.json` defines 21 scenarios exercising 20 of 23
 behavioral quality gates above directly — the `pending` and already-`pass`ing halves of gate 1 (eval-1,
 eval-4), the human declining the dashboard-confirmation gate (eval-2), the head-moved-during-confirmation
 stop (eval-8), step 5's head-SHA matching in its found-a-match, no-match, and multiple-match-before-any-
@@ -327,19 +348,21 @@ side-effect branches (eval-3, eval-5, eval-9), step 5's own conclusion gate and 
 in all three outcomes (eval-13, eval-14: already-`success`; eval-15: `timed_out` treated as actionable,
 not resolved), the head-moved-during-step-5's-own-lookup re-check (eval-12), step 8's exact-run polling
 and stale/fresh-`attempt` handling in both directions (eval-6, eval-10, eval-11), the no-auto-retry
-rule on a repeat failure (eval-7), step 7's head re-check immediately before rerunning (eval-16), and the
-`gh run rerun`/`gh pr comment` exit-status checks at steps 7 and 6 respectively (eval-17, eval-18). The
-remaining 3 gates (the `-R` flag on every command, step 2's workflow+name-together matching, and step 8's
-`sleep 30` spacing) are exercised live/structurally but not captured as persisted graded evals — see
-`evals.json`'s own `testing_validation_coverage` field for the exact gap.
+rule on a repeat failure (eval-7), step 7's head re-check as the last check immediately before rerunning
+(eval-16), the `gh run rerun`/`gh pr comment` exit-status checks at steps 7 and 6 respectively (eval-17,
+eval-18), the `$ARGUMENTS`/`headRefName` allowlist validations at steps 1 and 5 rejecting a value a
+blocklist would have missed (eval-19, eval-20), and step 7's conclusion-before-head check ordering
+(eval-21). The remaining 3 gates (the `-R` flag on every command, step 2's workflow+name-together
+matching, and step 8's `sleep 30` spacing) are exercised live/structurally but not captured as persisted
+graded evals — see `evals.json`'s own `testing_validation_coverage` field for the exact gap.
 `scripts/smoke_test.py`
 is the separate, cheap, structural check (frontmatter validity, referenced-file existence, Bash-grant
 usage, step-sequence, and `evals.json` presence) that runs immediately, with no LLM judging needed — no
 blind A/B baseline is run against this skill, since its value is a human-gated refusal sequence
 (step 3's confirmation), which a no-skill baseline can't be meaningfully scored against.
 
-**Last dated run record:** 2026-08-18 — `skill-tester` Quick Workflow (72/72 assertions passed across all
-18 scenarios) and `scripts/smoke_test.py` (5/5 checks passed). See
+**Last dated run record:** 2026-08-18 — `skill-tester` Quick Workflow (84/84 assertions passed across all
+21 scenarios) and `scripts/smoke_test.py` (5/5 checks passed). See
 `evals/codex-review-recovery/evals.json`'s own `testing_validation_coverage` field and
 `evals/codex-review-recovery/workspace/iteration-1/quick-result.json` for the structured result — not
 restated here to avoid a second copy drifting out of sync.
@@ -349,5 +372,5 @@ restated here to avoid a second copy drifting out of sync.
 | Resource | Purpose |
 |---|---|
 | `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any SKILL.md edit |
-| `evals/codex-review-recovery/evals.json` | 18 scenario definitions for `skill-tester`'s blind-comparison harness, covering 19 of 21 behavioral quality gates above |
+| `evals/codex-review-recovery/evals.json` | 21 scenario definitions for `skill-tester`'s blind-comparison harness, covering 20 of 23 behavioral quality gates above |
 | `docs/await-codex-review.md` | The workflow this skill recovers — its own "Recovering a stuck check" section cross-references this skill |
