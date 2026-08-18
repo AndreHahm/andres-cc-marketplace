@@ -3,17 +3,17 @@
   "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
   "assertions": [
     {
-      "text": "The description matches repeated individual gh pr checks calls, not a background-shell or until-loop primitive",
+      "text": "The description matches repeated individual gh run view <databaseId> calls targeting the exact run rerun in step 6, not a background-shell or until-loop primitive",
       "type": "functionality",
       "target": "outputs/"
     },
     {
-      "text": "The description stays within the declared Bash(gh pr checks:*) allowed-tools grant (no other tool/scope invoked for polling)",
+      "text": "The description stays within the declared Bash(gh run view:*) allowed-tools grant, and explicitly not the PR-level gh pr checks summary",
       "type": "structure",
       "target": "outputs/"
     },
     {
-      "text": "The description states polling stops early once the state resolves to pass or fail, rather than always running the full attempt count",
+      "text": "The description states a completed result is not trusted until a queued/in_progress status has been observed on an earlier poll first",
       "type": "quality",
       "target": "outputs/"
     },

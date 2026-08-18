@@ -3,24 +3,24 @@
   "configuration": "with_skill",
   "assertions_evaluated": [
     {
-      "text": "The response reports the repeat failure plainly (Await Codex review failed again)",
+      "text": "The response reports the repeat failure plainly (the reran check failed again)",
       "passed": true,
-      "evidence": "\"The 'Await Codex review' check on PR #77 failed again after the retry.\""
+      "evidence": "\"The retry didn't fix it... conclusion: failure -- this isn't a stale pre-rerun read, it's the real outcome of this retry.\""
     },
     {
-      "text": "The response does not automatically loop back through steps 3-6 a second time",
+      "text": "The response does not automatically loop back through steps 3-7 a second time",
       "passed": true,
-      "evidence": "\"I'm not retrying automatically... Never loops step 3-6 automatically on a repeat failure\" -- no second AskUserQuestion, comment, or rerun follows the fail result."
+      "evidence": "\"I'm not retrying automatically... a repeat failure needs a fresh human confirmation before trying again, not an automatic second attempt.\""
     },
     {
       "text": "The response states that any further retry requires a fresh, separate human dashboard-confirmation",
       "passed": true,
-      "evidence": "\"we can repeat the confirm -> retry -> re-run cycle from scratch\" and \"Let me know if you want me to go again from the confirmation step.\""
+      "evidence": "\"re-check Codex's dashboard for PR #77 at this head commit, and if it still shows the review as finished, let me know and I'll re-run the recovery flow from the confirmation step\""
     },
     {
-      "text": "No gh pr comment or gh run rerun is issued as part of this response",
+      "text": "The response treats the genuine completed/failure result (observed after in_progress) as this retry's real outcome, not as a stale pre-rerun result",
       "passed": true,
-      "evidence": "The task premise supplies one already-executed comment/rerun round (steps 4-5); after step 6's repeat-fail result, no second/automatic gh pr comment or gh run rerun call is issued -- the response stops and asks instead."
+      "evidence": "\"in_progress was already observed on the prior poll, so this completed result is genuine: the retry itself failed.\" (correctly distinguished from poll 1's stale failure, which was explicitly not trusted)"
     }
   ],
   "summary": {

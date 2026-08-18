@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-9",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response detects that more than one entry (databaseId 300 and 301) matches the confirmed head SHA (abc123)",
+      "passed": true,
+      "evidence": "\"Checking entries against step 4's confirmed head SHA (abc123): two entries match -- databaseId 300 (conclusion failure) and databaseId 301 (conclusion success).\""
+    },
+    {
+      "text": "The response does not run gh run rerun on databaseId 300",
+      "passed": true,
+      "evidence": "\"Stop here. Do not run gh run rerun on either databaseId.\""
+    },
+    {
+      "text": "The response does not run gh run rerun on databaseId 301",
+      "passed": true,
+      "evidence": "Same line as above -- covers both explicitly."
+    },
+    {
+      "text": "The response tells the user about the ambiguity rather than silently picking one of the two matching runs",
+      "passed": true,
+      "evidence": "\"I can't safely pick which workflow run to re-run... Which run you want re-run -- 300 (the failed one) or something else\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

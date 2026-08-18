@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-9",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response detects that more than one entry (databaseId 300 and 301) matches the confirmed head SHA (abc123)",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not run gh run rerun on databaseId 300",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not run gh run rerun on databaseId 301",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response tells the user about the ambiguity rather than silently picking one of the two matching runs",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

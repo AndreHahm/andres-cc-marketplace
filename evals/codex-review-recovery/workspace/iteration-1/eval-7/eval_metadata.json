@@ -3,12 +3,12 @@
   "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
   "assertions": [
     {
-      "text": "The response reports the repeat failure plainly (Await Codex review failed again)",
+      "text": "The response reports the repeat failure plainly (the reran check failed again)",
       "type": "presence",
       "target": "outputs/"
     },
     {
-      "text": "The response does not automatically loop back through steps 3-6 a second time",
+      "text": "The response does not automatically loop back through steps 3-7 a second time",
       "type": "functionality",
       "target": "outputs/"
     },
@@ -18,7 +18,7 @@
       "target": "outputs/"
     },
     {
-      "text": "No gh pr comment or gh run rerun is issued as part of this response",
+      "text": "The response treats the genuine completed/failure result (observed after in_progress) as this retry's real outcome, not as a stale pre-rerun result",
       "type": "functionality",
       "target": "outputs/"
     }
