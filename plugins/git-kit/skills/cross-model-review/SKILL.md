@@ -30,10 +30,9 @@ I" branch to resolve.
 grant has no path-restriction syntax to enforce that mechanically.** Never write to any path inside
 the repository itself, and never to `.claude/codex-windows-guardrails.local.json` in particular —
 this skill never enables that override on the user's behalf (see "Deliberately NOT done"). The one
-deliberate exception is `git add -N` (Inputs section, below): it mutates the Git **index** only —
-recording an untracked path with an empty placeholder blob so it appears in `git diff` output — never
-the working tree, never file content, never a commit. Trivially reversible (`git reset -- <path>`)
-and never touches anything this skill doesn't already read.
+deliberate exception is `git add -N` (Inputs section, below) — and even that never touches the
+repository's real index: it runs against a throwaway `GIT_INDEX_FILE`, so no state from this skill's
+run persists anywhere the user's own later `git add`/`git commit` could see it.
 
 ## When to Use
 
@@ -84,11 +83,22 @@ untracked file yields nothing from `git diff "$MERGE_BASE" -- <file>` until `git
 add) records it in the index with an empty placeholder blob, after which the same diff command shows
 its full content as an addition. Without this, an all-untracked change set (the common case right
 after `git init` or creating a wholly new file) reports "nothing to review" despite genuinely having
-something to review:
+something to review.
+
+**Do this against a throwaway index, never the repository's real one.** `git add -N` against the
+real `.git/index` is a persistent mutation that outlives this skill's own run — a later, unrelated
+`git commit -a` would then commit that file's full content, even though it was genuinely untracked
+and excluded before this report-only review ever touched it. Point `GIT_INDEX_FILE` at a throwaway
+path for the whole chained invocation instead; verified empirically that `git add -N`/`git diff`
+against a fresh, never-before-existing index path work identically (both tracked-modified and
+newly-intent-added files show up correctly) while the real index stays completely untouched — the
+throwaway path is exported once and every git command in this same chained invocation inherits it
+automatically, so nothing else in this document needs to reference it explicitly:
 
 ```bash
 BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
+export GIT_INDEX_FILE="$(mktemp -u)"
 git add -N -- "${SCOPE:-.}"
 DIFF=(git diff "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")
@@ -125,13 +135,19 @@ etc. as if they were still live shell variables will not see them.
    (note it in the final report as an inspection limit) rather than failing the whole run.
 
    **Also exclude a path that's a symlink resolving outside the repository.** `realpath -- <path>`
-   each candidate; if the result doesn't start with `$(git rev-parse --show-toplevel)` (this step
-   runs before step 4 resolves `$REPO_ROOT` as a named variable — re-run the same command inline
-   here rather than depending on a not-yet-assigned value), exclude it the same way — both dispatch
-   scripts canonicalize target paths before their own containment check and reject the *entire
-   dispatch* on one such entry (a `non_zero_exit`/containment-violation typed failure), which would
-   otherwise force an unnecessary single-model fallback for the whole review over one symlink. Keep
-   it in Claude's own native review regardless (Claude has no such containment constraint); only the
+   each candidate and compare against `$(git rev-parse --show-toplevel)` (this step runs before step
+   4 resolves `$REPO_ROOT` as a named variable — re-run the same command inline here rather than
+   depending on a not-yet-assigned value). **Require an exact match or a path-separator boundary
+   right after it — never a bare string-prefix test.** A plain `starts with` check would wrongly
+   accept `/repo-sibling/file` as "inside" `/repo`, since the string `/repo-sibling` lexically starts
+   with `/repo` even though it's a sibling directory, not a descendant — the same class of bug
+   `codex-review-bridge`'s own `isWithin()` helper already guards against for exactly this reason.
+   Exclude the candidate unless it equals the repo root exactly or starts with `<repo root>/`
+   (trailing separator included in the comparison). Both dispatch scripts canonicalize target paths
+   before their own containment check and reject the *entire dispatch* on one such entry (a
+   `non_zero_exit`/containment-violation typed failure), which would otherwise force an unnecessary
+   single-model fallback for the whole review over one symlink. Keep it in Claude's own native review
+   regardless (Claude has no such containment constraint); only the
    Codex-facing `--target-paths` list is affected.
 
    **Build a Codex-scoped diff text from the eligible paths only, kept separate from `$DIFF_STR`.**
@@ -267,20 +283,20 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
      as the "challenger prompt's rule was violated" case), never silently dropped and never treated as if
      Codex had never run at all.
 
-**First-Send Confirmation (mandatory, once per session, before the *first* real Codex dispatch
-attempted):** `AskUserQuestion` — name the reviewer persona and the target paths about to be sent,
-and state plainly: (a) the dispatched process can read anything under the repository root regardless
-of `--target-paths`, which only scopes what it's asked to focus on and what its findings are checked
-against; (b) **if Step 2 ends up triggering, the dispatch runs `danger-full-access` — no sandbox
-at all, read *and* write/execute — not the `read-only` profile Step 1 uses**; and (c) if Preflight
-step 6 found the diff touching the Codex dispatcher scripts themselves, say so explicitly — the
-dispatcher about to run was not trust-boundary-verified against `$BASE` this run. Ask before the
-backend is resolved, so this covers both possible outcomes, not just the sandboxed one. Options:
-"Send to Codex for this run" / "Stay Claude-native for this run". This is git-kit's own direct
-implementation
-of the first-send-confirmation obligation `codex-review-bridge`'s docs assign to any calling
-component — independent of, and not satisfied by, a first-send gate any other codex-kit component
-may already have fired earlier in the same session.
+**First-Send Confirmation (mandatory, once per *invocation of this skill*, not once per session — a
+later, separate invocation always asks again — before the *first* real Codex dispatch this run):**
+`AskUserQuestion` — name the reviewer persona and target paths, and disclose plainly: (a) the
+dispatched process can read anything under the repository root regardless of `--target-paths`, which
+only scopes what it's checked against; (b) **if Step 2 triggers, the dispatch runs
+`danger-full-access` — no sandbox, read *and* write/execute** — not Step 1's `read-only` profile;
+(c) if Preflight step 6 found the diff touching the Codex dispatcher itself, that it wasn't
+trust-boundary-verified against `$BASE`; and (d) if Preflight step 5 set `REVIEW_UNVERIFIED` or
+`REFUTE_UNVERIFIED`, that the reviewer instructions governing this dispatch came from the working
+tree, not `$BASE` — before Codex is judged against them, never deferred to `inspection_limits`. Ask
+before the backend resolves, covering both outcomes. Options: "Send to Codex for this run" / "Stay
+Claude-native for this run". Git-kit's own direct implementation of the first-send-confirmation
+obligation `codex-review-bridge`'s docs assign to any caller — independent of, and not satisfied by,
+a first-send gate any other codex-kit component may already have fired earlier in the session.
 
 **On "Stay Claude-native for this run": enter single-model mode immediately, before any dispatch is
 attempted** — the same skip-Phase-1's-Codex-pass-and-all-of-Phase-2 path resolver step 3 uses, not
