@@ -81,11 +81,13 @@ prompt, use `$DIFF_STR`.
 
 **Bash tool calls do not share shell state with each other — only the working directory persists
 between them.** Run steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool
-call), ending with an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, and
-`CODEX_DIFF_STR` values. From that point on, every `$VAR` reference in this document is shorthand for
-that literal, already-resolved value — substitute the concrete string directly into every later
-`Bash`/`Read`/`Write` call; a separate tool call re-expanding `$RUN`/`$BASE`/etc. as if they were still
-live shell variables will not see them.
+call), ending with an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`,
+and whether `$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5 below needs this signal
+available *after* the chain, since its own fallback runs as separate `Read`/`Write` tool calls that
+can't be part of this same Bash invocation). From that point on, every `$VAR` reference in this
+document is shorthand for that literal, already-resolved value — substitute the concrete string
+directly into every later `Bash`/`Read`/`Write` call; a separate tool call re-expanding `$RUN`/`$BASE`/
+etc. as if they were still live shell variables will not see them.
 
 1. Run `"${DIFF[@]}"` and check its exit status. A non-zero exit (an invalid `$BASE`, no local `main`
    ref, or any other Git error) is a Preflight failure, not an empty scope — report the Git error and
@@ -111,6 +113,15 @@ live shell variables will not see them.
    document embeds diff text into a Codex-bound instruction file (Phase 1 and Phase 2). Claude's own
    native pass is unaffected and keeps using the full `"${DIFF[@]}"`/`$DIFF_STR` — this containment is
    a Codex dispatch constraint, not a review-scope reduction for Claude.
+
+   **If the eligible-files list is empty after exclusions (every changed file was deleted or had an
+   invalid character), skip Codex entirely and enter single-model mode now — before attempting any
+   dispatch.** `bridge-invoke.mjs` rejects a falsy/empty `--target-paths` outright as a missing
+   required argument, so a dispatch attempt here is guaranteed to fail; forcing it anyway wastes a
+   round-trip and produces a misleading "Codex unavailable" framing when Codex simply had nothing
+   eligible to review. Skip Phase 1's Codex pass and all of Phase 2, same as resolver step 3's
+   single-model path, but record the `inspection_limits` reason as "zero Codex-eligible paths in this
+   diff" rather than "Codex unavailable" — the distinction matters for anyone reading the report.
 3. `RUN=$(mktemp -d)` — scratch dir for both models' findings and any assembled instruction files.
    Not explicitly deleted by this skill (see Phase 3's closing note) — never committed, no persisted
    artifacts, no state file.
@@ -121,13 +132,21 @@ live shell variables will not see them.
    the calling component, not itself, to enforce:
 
    ```bash
-   git show "$BASE:plugins/git-kit/skills/cross-model-review/prompts/review.md" > "$RUN/review.md" 2>/dev/null
-   git show "$BASE:plugins/git-kit/skills/cross-model-review/prompts/refute.md" > "$RUN/refute.md" 2>/dev/null
+   git show "$BASE:plugins/git-kit/skills/cross-model-review/prompts/review.md" > "$RUN/review.md" 2>/dev/null || true
+   git show "$BASE:plugins/git-kit/skills/cross-model-review/prompts/refute.md" > "$RUN/refute.md" 2>/dev/null || true
    ```
 
-   A `git show` failure (non-zero exit, or an empty `$RUN/review.md`/`$RUN/refute.md`) means the
-   file doesn't exist on `$BASE` yet (e.g. this skill's own not-yet-merged first run). Fall back by
-   `Read`-ing the working-tree copy at
+   **The `|| true` on each line is deliberate — a `git show` failure here is expected, not fatal, and
+   must not break the `&&` chain the whole Preflight sequence runs as.** Without it, this expected
+   failure would abort the chained invocation before step 6 or the closing `echo` ever runs, losing
+   every resolved value (`$RUN`, `$REPO_ROOT`, `$BASE`, `$DIFF_STR`, `$CODEX_DIFF_STR`) this whole
+   skill depends on for the rest of the run.
+
+   A `git show` failure (non-zero exit, or an empty `$RUN/review.md`/`$RUN/refute.md` — reflected in
+   the closing `echo`'s non-empty/empty signal for each file) means the file doesn't exist on `$BASE`
+   yet (e.g. this skill's own not-yet-merged first run). Once the chained invocation has returned and
+   its echoed state captured, fall back — as separate tool calls, after the Bash chain, using the
+   just-resolved `$RUN` value — by `Read`-ing the working-tree copy at
    `${CLAUDE_PLUGIN_ROOT}/skills/cross-model-review/prompts/review.md` (respectively `refute.md` —
    note the `skills/cross-model-review/` segment: `${CLAUDE_PLUGIN_ROOT}` is the *plugin* root,
    `plugins/git-kit/`, not this skill's own directory) and `Write`-ing that content to
@@ -137,7 +156,10 @@ live shell variables will not see them.
    `refute.md` below means these materialized `$RUN` copies, never the live path under
    `${CLAUDE_PLUGIN_ROOT}`.
 6. **Check whether the diff itself touches the Codex dispatcher scripts this skill is about to
-   execute** — grep for `plugins/codex-kit/(.*/)?scripts/` against the **unscoped** changed-file list
+   execute** — `grep -E` (extended regex — plain `grep`'s default basic mode treats `(`/`)`/`?` as
+   literal characters and silently fails to match either intended path, verified: plain `grep` exits
+   1 against `plugins/codex-kit/scripts/lib/codex-exec.mjs`, `grep -E` exits 0) for
+   `plugins/codex-kit/(.*/)?scripts/` against the **unscoped** changed-file list
    (`git diff --name-only "$BASE...HEAD"`, deliberately without `-- "$SCOPE"`), never Preflight step
    2's `$SCOPE`-filtered list. This check asks whether the *diff as a whole* modifies the dispatcher
    about to run — a property of the whole diff, not of the narrower review scope. If `$SCOPE` excludes
@@ -210,6 +232,14 @@ implementation
 of the first-send-confirmation obligation `codex-review-bridge`'s docs assign to any calling
 component — independent of, and not satisfied by, a first-send gate any other codex-kit component
 may already have fired earlier in the same session.
+
+**On "Stay Claude-native for this run": enter single-model mode immediately, before any dispatch is
+attempted** — the same skip-Phase-1's-Codex-pass-and-all-of-Phase-2 path resolver step 3 uses, not
+just the zero-Codex-unavailable case. Record the `inspection_limits` reason as "user declined to send
+to Codex" rather than "Codex unavailable" — this is a deliberate opt-out, not a failure, and the
+report should say so accurately. Without this, nothing else in this document transitions the workflow
+out of the two-model path on this answer, leaving Phase 1 free to still attempt the declined dispatch
+or Phase 2 to wait on a Codex envelope that will never exist.
 
 ## Phase 1 — Independent review (fresh-eyes persona)
 
@@ -405,6 +435,15 @@ same as any other artifact containing quoted repo content.
    challenger pass, never triggering the bridge's whole-envelope rejection; it still appears in the
    final report as a Medium-confidence, single-sided finding with the exclusion noted in
    `inspection_limits`.
+8. `prompts/review.md`/`refute.md` don't exist on `$BASE` yet (scenario 5) → the chained Bash
+   invocation's `git show || true` doesn't abort; step 6 and the closing `echo` still run, and the
+   `Read`/`Write` fallback runs afterward using the echoed `$RUN` value.
+9. Every changed file is a deletion or an invalid-charset path (Preflight step 2's eligible list is
+   empty) → single-model mode is entered proactively, before any dispatch attempt, with
+   `inspection_limits` recording "zero Codex-eligible paths" rather than "Codex unavailable."
+10. The First-Send Confirmation is answered "Stay Claude-native for this run" → single-model mode is
+    entered immediately, with `inspection_limits` recording "user declined to send to Codex," never a
+    dispatch attempt on the declined path.
 
 **Quality gates:**
 - [ ] Preflight step 5 always sources reviewer instructions from `$BASE` via `git show`, never
@@ -433,3 +472,11 @@ same as any other artifact containing quoted repo content.
 - [ ] Reviewing the local diff before flipping an existing draft PR to ready is never routed to
       `collaborating-on-a-pr` — the "already-open PR" exclusion applies only to posting a GitHub
       review or reading the PR's remote state, not to this skill's own documented local-diff purpose
+- [ ] Preflight step 5's `git show` calls always carry `|| true` — an expected first-run failure
+      never aborts the chained invocation before step 6 or the closing `echo`
+- [ ] Preflight step 6's dispatcher-trust grep is always run with `-E` — never plain `grep`, which
+      silently fails to match the extended-regex pattern
+- [ ] A dispatch is never attempted when Preflight step 2's eligible-files list is empty — single-model
+      mode is entered proactively instead
+- [ ] "Stay Claude-native for this run" at the First-Send Confirmation always enters single-model mode
+      immediately — never leaves Phase 1/2 to still attempt or wait on a declined Codex dispatch
