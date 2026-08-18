@@ -1,0 +1,8 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states a request to review the local diff before flipping an existing draft PR to ready IS handled by this skill, not routed to collaborating-on-a-pr", "type": "functionality", "target": "When NOT to Use"},
+    {"text": "Response explains the exclusion only covers posting a GitHub review or reading the PR's remote state, not local-diff review", "type": "quality", "target": "When NOT to Use rationale"}
+  ]
+}

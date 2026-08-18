@@ -1,0 +1,8 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response correctly identifies this scenario ends at Low/contested, not High", "type": "functionality", "target": "Phase 3 tier precedence"},
+    {"text": "Response states an explicit Phase 2 refutation always overrides Phase 1 agreement, applied before the High tier", "type": "quality", "target": "Phase 3 tier precedence rule"}
+  ]
+}

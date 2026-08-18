@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states Preflight step 6 uses the unscoped $BASE...HEAD diff, not the $SCOPE-filtered list from step 2", "passed": true, "evidence": "'greps the unscoped git diff --name-only \"$BASE...HEAD\" list -- explicitly not Preflight step 2's $SCOPE-filtered list.'"},
+    {"text": "Response confirms this means the dispatcher-trust check still fires even when SCOPE excludes plugins/codex-kit", "passed": true, "evidence": "'a plugins/codex-kit/scripts/* change is caught regardless of SCOPE=plugins/git-kit.'"},
+    {"text": "Response explains why: the check is about the whole diff, not the narrower review scope", "passed": true, "evidence": "'the check is defined as a property of \"the diff as a whole,\" not the narrower review scope.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

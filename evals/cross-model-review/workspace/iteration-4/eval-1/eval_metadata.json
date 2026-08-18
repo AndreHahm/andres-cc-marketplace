@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states Preflight step 6 uses the unscoped $BASE...HEAD diff, not the $SCOPE-filtered list from step 2", "type": "functionality", "target": "Preflight step 6"},
+    {"text": "Response confirms this means the dispatcher-trust check still fires even when SCOPE excludes plugins/codex-kit", "type": "functionality", "target": "Preflight step 6"},
+    {"text": "Response explains why: the check is about the whole diff, not the narrower review scope", "type": "quality", "target": "Preflight step 6 rationale"}
+  ]
+}

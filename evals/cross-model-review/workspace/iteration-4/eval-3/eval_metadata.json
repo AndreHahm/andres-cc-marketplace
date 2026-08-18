@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states a Claude Phase 1 finding whose location was excluded from --target-paths is dropped before assembling the Codex challenge payload", "type": "functionality", "target": "Phase 2 Codex's pass"},
+    {"text": "Response explains why: the bridge's semanticallyValidate rejects the ENTIRE envelope (not just one finding) on any out-of-scope location", "type": "quality", "target": "Phase 2 rationale"},
+    {"text": "Response states the dropped finding still appears in the final report as a Medium-confidence, single-sided finding with the exclusion disclosed in inspection_limits", "type": "functionality", "target": "Phase 3 Medium tier / inspection_limits"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response identifies Bash(grep:*) and Bash(echo:*) as present in allowed-tools", "passed": true, "evidence": "'All seven have matching Bash(<cmd>:*) entries in the frontmatter's allowed-tools' including grep and echo explicitly enumerated."},
+    {"text": "Response explains why they're needed", "passed": true, "evidence": "Walked through each Preflight step's actual command invocations (git diff, git show, git rev-parse, mktemp, printf, grep, echo) and matched each to its grant."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

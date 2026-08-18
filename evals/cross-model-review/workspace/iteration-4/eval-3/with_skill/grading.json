@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states a Claude Phase 1 finding whose location was excluded from --target-paths is dropped before assembling the Codex challenge payload", "passed": true, "evidence": "Quoted the exact bold instruction to drop the finding before assembly."},
+    {"text": "Response explains why: semanticallyValidate rejects the ENTIRE envelope, not just one finding", "passed": true, "evidence": "'semanticallyValidate rejects the entire returned envelope (not just one finding) if any finding's location falls outside --target-paths.'"},
+    {"text": "Response states the dropped finding still appears in the final report as Medium-confidence, single-sided, with inspection_limits disclosure", "passed": true, "evidence": "'reported as Claude-only/single-sided, with the exclusion recorded in inspection_limits.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

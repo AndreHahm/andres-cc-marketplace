@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response identifies Bash(grep:*) and Bash(echo:*) as present in allowed-tools", "type": "presence", "target": "frontmatter allowed-tools"},
+    {"text": "Response explains why they're needed: Preflight steps 1-6 must run as a single chained Bash invocation, and step 6's grep plus the closing echo of resolved values require literal shell commands, not the separate Grep tool", "type": "quality", "target": "Preflight intro / step 6"}
+  ]
+}
