@@ -11,7 +11,7 @@ description: >-
   pre-PR gate, or high-confidence findings before opening or readying a PR. Not
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery
   (both act on an already-open PR) — this skill never posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add:*)", "Bash(git read-tree:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(cp:*)", "Bash(umask:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -93,22 +93,24 @@ the untracked list **first**, against the still-real index — the throwaway pat
 so nothing has switched over until the `export` line runs:
 
 ```bash
+umask 077
 BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
 UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- "${SCOPE:-.}")
+REAL_INDEX=$(git rev-parse --git-path index)
 export GIT_INDEX_FILE="$(mktemp -u)"
-git read-tree HEAD
+cp "$REAL_INDEX" "$GIT_INDEX_FILE" 2>/dev/null || true
 git add -N -- "${SCOPE:-.}" || true
 DIFF=(git diff "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")   # [ ... ] invokes the test command; matches the Bash(test:*) grant
 DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding in a prompt
 ```
 
-**`git read-tree HEAD` seeds the throwaway index before `git add -N` runs** — otherwise an
-already-tracked-but-now-gitignored file looks brand-new to `git add -N`, which refuses to add a new
-path matching an ignore rule and silently drops it from the index, so it diffs against
-`$MERGE_BASE` as **deleted** rather than modified. Seeding from `HEAD` first restores every
-already-tracked file's real status, leaving `git add -N` only genuinely untracked paths to intent-add.
+**Seed the throwaway index with a byte-for-byte copy of the real one, captured *before*
+`GIT_INDEX_FILE` is exported** — after the export, `$REAL_INDEX` would read back the already-
+overridden path instead, silently copying nothing. This avoids two distinct data-loss bugs a
+from-scratch reseed (e.g. `git read-tree HEAD`) doesn't — see `references/index-seeding-rationale.md`
+for both, and why `umask 077` matters too.
 
 **The `|| true` on `git add -N` matters when `$SCOPE` names only a deletion** — its pathspec needs to
 match something on disk, so a `$SCOPE` resolving only to a deleted tracked file fails outright and,
@@ -131,7 +133,8 @@ same `$MERGE_BASE`, never `$BASE...HEAD` — and all run *after* `git add -N`, s
 **Bash tool calls do not share shell state — only the working directory persists between them.** Run
 steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool call), ending with
 an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`,
-`DISPATCHER_TOUCHED`, and whether `$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5's own fallback runs as separate
+`DISPATCHER_TOUCHED`, `TARGET_PATHS`, `UNTRACKED_FILES`, and whether `$RUN/review.md`/`$RUN/refute.md`
+came out non-empty (step 5's own fallback runs as separate
 `Read`/`Write` calls afterward). From that point on, every `$VAR` reference here is shorthand for
 that literal, already-resolved value — substitute the concrete string into every later
 `Bash`/`Read`/`Write` call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't
@@ -142,20 +145,20 @@ see it.
    ask for a valid `$BASE` rather than silently treating it as "nothing to review." Only a successful
    command (exit 0) with empty stdout means the diff is genuinely empty: report "nothing to review
    against $BASE" (mention `$SCOPE` if set) and stop.
-2. Compute the changed-file list for `--target-paths`: `git diff --name-only "$MERGE_BASE" [-- "$SCOPE"]`.
-   `codex-review-bridge` validates each target path against `^[A-Za-z0-9._/-]+$` and
-   `codex-windows-guardrails` additionally requires the path to still exist on disk — a path
-   containing any other character, or a path the diff *deletes*, cannot go through either dispatch
-   as-is. If any changed path fails that pattern or no longer exists, exclude it from `--target-paths`
-   (note it in the final report as an inspection limit) rather than failing the whole run.
+2. Compute the changed-file list: `git diff --name-only "$MERGE_BASE" [-- "$SCOPE"]`. `codex-review-bridge`
+   validates each target path against `^[A-Za-z0-9._/-]+$` and `codex-windows-guardrails` additionally
+   requires the path to still exist on disk — a path containing any other character, or a path the
+   diff *deletes*, cannot go through either dispatch as-is. Exclude any changed path failing that
+   pattern or no longer existing (note it as an inspection limit) rather than failing the whole run.
+   Assign the final eligible, comma-separated result to `$TARGET_PATHS` — used verbatim as
+   `--target-paths` below, and echoed like every other resolved value.
 
-   **Also exclude a path that's a symlink resolving outside the repository.** `realpath -- <path>`
-   each candidate and compare against `$(git rev-parse --show-toplevel)` (this step runs before step
-   4 resolves `$REPO_ROOT` as a named variable — re-run the same command inline here rather than
-   depending on a not-yet-assigned value). Require an exact match or a path-separator boundary right
-   after it — never a bare string-prefix test — see `references/symlink-exclusion-rationale.md` for
-   why. Keep it in Claude's own native review regardless — only the Codex-facing `--target-paths`
-   list is affected.
+   **Also exclude a path that's a symlink resolving outside the repository — from both this list and
+   `$UNTRACKED_FILES`, reassigning each.** `realpath -- <path>` each candidate, compare against
+   `$(git rev-parse --show-toplevel)` (inline here, before step 4 resolves `$REPO_ROOT`), requiring
+   an exact match or a path-separator boundary right after it, never a bare string-prefix test — see
+   `references/symlink-exclusion-rationale.md` for why, including for `$UNTRACKED_FILES`. Excluded
+   paths stay in Claude's own native review; only what reaches Codex is narrowed.
 
    **Build a Codex-scoped diff text from the eligible paths only, kept separate from `$DIFF_STR`.**
    Both dispatch scripts validate a returned finding's `location` against `--target-paths` and reject
@@ -177,8 +180,7 @@ see it.
    single-model path, but record the `inspection_limits` reason as "zero Codex-eligible paths in this
    diff" rather than "Codex unavailable" — the distinction matters for anyone reading the report.
 3. `RUN=$(mktemp -d)` — scratch dir for both models' findings and any assembled instruction files.
-   Not explicitly deleted by this skill (see Phase 3's closing note) — never committed, no persisted
-   artifacts, no state file.
+   Not explicitly deleted by this skill (see Phase 3's closing note) — never committed, no state file.
 4. Resolve `REPO_ROOT` (`git rev-parse --show-toplevel`).
 5. **Materialize trusted reviewer instructions from `$BASE` — never the working tree.** The working
    tree may *be* the branch under review; loading judging instructions from it would let a reviewed
@@ -272,18 +274,11 @@ node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.
    run and ask via `AskUserQuestion` whether to proceed single-model (Claude only — loses the
    cross-vendor benefit, findings default to Medium confidence since nothing cross-examines them) or
    stop.
-   - **If this failure happens on Phase 1's Codex call** (nothing from Codex has succeeded yet), "single-model"
-     means the full single-model path: skip every remaining Codex dispatch — Phase 1's Codex pass (already
-     failed) and Phase 2 entirely — and follow the single-model paths called out in Phase 2 and Phase 3 below.
-   - **If this failure happens on Phase 2's Codex call** (Phase 1's Codex dispatch already succeeded —
-     `$RUN/codex_fresh_eyes.json` exists, and Claude's own native Phase 2 pass may have too), this is a
-     **partial failure, not full single-model mode — do not discard the already-completed envelopes.**
-     "Single-model" here only means Codex's Phase 2 challenge didn't happen; Phase 3 still merges Codex's
-     Phase 1 findings and Claude's completed Phase 2 pass (if it finished) as usual, and records in
-     `inspection_limits` that Codex's own Phase 2 challenge of Claude's findings didn't complete — any
-     Claude Phase 1 finding left unaddressed by that missing pass falls to the existing Medium tier (same
-     as the "challenger prompt's rule was violated" case), never silently dropped and never treated as if
-     Codex had never run at all.
+   - **On Phase 1's Codex call failing**: full single-model path — skip every remaining Codex
+     dispatch and follow the single-model paths in Phase 2/3.
+   - **On Phase 2's Codex call failing** (Phase 1's Codex dispatch already succeeded): **partial
+     failure, not full single-model — never discard the already-completed envelopes.** See
+     `references/resolver-failure-handling.md` for the full distinction and why it matters.
 
 **First-Send Confirmation (mandatory, once per *invocation of this skill*, not once per session — a
 later, separate invocation always asks again — before the *first* real Codex dispatch this run):**
@@ -323,7 +318,9 @@ field, not something the schema itself enumerates).
 trace call sites when checking semantic correctness — not just the diff hunks; Claude already ran
 `"${DIFF[@]}"` in Preflight step 1, so the diff is already in context — no separate assembly needed
 here). Hold the findings in that envelope shape; write to `$RUN/claude_fresh_eyes.json`
-(`dispatch.reviewer: "claude-fresh-eyes"`, `dispatch.backend: "claude"`).
+(`dispatch.reviewer: "claude-fresh-eyes"`, `dispatch.backend: "claude"`, and every other field —
+nothing fills `dispatch`/`provenance`/`contract_version` automatically the way Codex's dispatch does
+— set explicitly per `references/self-authored-envelope-fields.md`).
 
 **Codex's pass**, via the resolver above (skip entirely in single-model mode — see resolver step 3):
 Codex has no prior context, so its instruction file must state the diff command explicitly —
@@ -334,7 +331,7 @@ append a line naming each path and noting the diff re-run won't show them (see t
 instructing Codex to read each directly. Then `Write` the result to `$RUN/review_for_codex.md`.
 
 Dispatch with `--reviewer-type fresh-eyes-reviewer --instruction-file "$RUN/review_for_codex.md"
---target-paths "<changed files, comma-separated>" --dispatch-id
+--target-paths "$TARGET_PATHS" --dispatch-id
 "cross-model-review-$(date +%s)-fresh-eyes-codex"`. Save the returned envelope to
 `$RUN/codex_fresh_eyes.json`. On a typed failure, apply the resolver's step 3 fallback.
 
@@ -350,8 +347,10 @@ Each side reviews independently again — same clean pass, not a re-read of its 
 but this time with the *other* side's Phase 1 findings as the comparison target. Per finding, the
 challenger persona (`refute.md`) states plainly whether it **confirms**, **refutes**, or is
 **novel** relative to a specific prior finding id — every given finding must be explicitly
-addressed, none silently skipped. This is still just a findings envelope (same shape as Phase 1;
-Claude's own native write may use a descriptive `dispatch.reviewer` like `"claude-challenger"`, but
+addressed, none silently skipped. This is still just a findings envelope (same shape as Phase 1,
+including the same self-authored `dispatch`/`provenance`/`contract_version` fields Phase 1's own
+Claude pass sets explicitly; Claude's own native write may use a descriptive `dispatch.reviewer` like
+`"claude-challenger"`, but
 Codex's `dispatch.reviewer` must exactly match the `--reviewer-type` it was dispatched with — see
 `refute.md`'s Output section) — the classification lives in the `finding` field's own text, not a
 separate schema, since the bridge's envelope shape is fixed and has no verdict-on-another-finding
@@ -445,8 +444,9 @@ alone never keeps it at High once refuted. Apply the tiers below in this order �
   refutes it (only possible if the challenger prompt's "address every given finding" rule was
   violated — flag this as a gap, don't just drop the finding); a Phase 2 "novel" finding not
   independently corroborated by the other side; a Claude Phase 1 finding dropped from the Codex
-  challenge because its `location` was excluded from `--target-paths` (see Phase 2's Codex pass) —
-  structurally single-sided, never cross-examined, not a gap to flag; or every finding in
+  challenge because its `location`, or any of its `components` entries, was excluded from
+  `--target-paths` (see Phase 2's Codex pass) — structurally single-sided, never cross-examined, not
+  a gap to flag; or every finding in
   single-model mode (Phase 2 never ran, so nothing could confirm or refute it — see this phase's own
   single-model note above).
 - A `severity: critical` finding is never silently dropped regardless of confidence tier — surface
@@ -468,7 +468,8 @@ cross-examined list, not to declare the diff clean.
 content, persist under the OS temp directory until the OS or the user cleans it up. This skill has
 no scoped delete capability for it; state this plainly rather than implying automatic cleanup. The
 persisted envelopes should be treated as needing review before being shared or pasted elsewhere, the
-same as any other artifact containing quoted repo content.
+same as any other artifact containing quoted repo content. The throwaway `$GIT_INDEX_FILE` is
+likewise left in place — `umask 077` (Inputs section), not deletion, keeps it user-readable-only.
 
 ## Deliberately NOT done
 

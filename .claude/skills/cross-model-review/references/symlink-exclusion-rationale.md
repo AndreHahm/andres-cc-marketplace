@@ -11,3 +11,14 @@ against for exactly this reason. Exclude the candidate unless it equals the repo
 starts with `<repo root>/` (trailing separator included). Both dispatch scripts canonicalize target
 paths before their own containment check and reject the *entire dispatch* on one such entry, forcing
 an unnecessary single-model fallback over one symlink.
+
+## Why `$UNTRACKED_FILES` needs the same treatment
+
+`$UNTRACKED_FILES` is a separate list (`git ls-files --others`, computed in the Inputs section) —
+it never goes through this step's own changed-file computation above, so nothing else filters it.
+Phase 1 and Phase 2 both append it verbatim to Codex's instructions, telling Codex to read each path
+directly (see the Inputs section's own note on why). An untracked path that's a symlink resolving
+outside the repository would otherwise be named there unfiltered — and since the confirmation already
+states `--target-paths` doesn't constrain what a dispatched process can *read*, following that
+instruction could send content from outside the consented repository to Codex, on top of any
+resulting citation failing semantic validation and discarding the whole envelope.

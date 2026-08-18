@@ -68,7 +68,7 @@ def init_repo(repo_dir: pathlib.Path) -> None:
     # itself, exactly as happened during this suite's own development.
     run_bash(
         repo_dir,
-        "git init -q && git config user.email a@a.com && git config user.name a "
+        "git init -q -b main && git config user.email a@a.com && git config user.name a "
         '&& git config core.excludesFile ""',
     )
 
@@ -169,6 +169,38 @@ def test_gitignored_tracked_file_reports_modified():
         return False, f"expected 'M\\ttracked-fixture.data', got {status_line!r} {detail}"
 
 
+def test_sparse_checkout_entry_not_reported_deleted():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp)
+        init_repo(repo)
+        (repo / "a").mkdir()
+        (repo / "b").mkdir()
+        (repo / "a" / "f").write_text("x")
+        (repo / "b" / "f").write_text("x")
+        commit_all(repo, "init")
+        run_bash(repo, "git checkout -qb feature")
+        run_bash(repo, "git update-index --skip-worktree b/f")
+        (repo / "b" / "f").unlink()
+        (repo / "a" / "f").write_text("y")
+        result = run_bash(
+            repo,
+            diff_build_chain(extra='git diff --name-status "$MERGE_BASE"'),
+        )
+        lines = result.stdout.splitlines()
+        b_reported = any("b/f" in line for line in lines)
+        a_modified = any(line.startswith("M") and "a/f" in line for line in lines)
+        if b_reported:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"sparse-excluded b/f incorrectly appeared in the diff {detail}"
+        if not a_modified:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"expected 'M a/f' in the diff {detail}"
+        return True, "sparse-checkout skip-worktree entry is not misreported as deleted"
+
+
+MARKER_ECHO = 'echo "DISPATCHER_TOUCHED_VALUE=${DISPATCHER_TOUCHED:-UNSET}"'
+
+
 def test_dispatcher_grep_no_match_does_not_abort_chain():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
@@ -177,15 +209,17 @@ def test_dispatcher_grep_no_match_does_not_abort_chain():
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
         (repo / "f.txt").write_text("line1\nline2\n")
-        result = run_bash(repo, preflight_chain())
+        result = run_bash(repo, preflight_chain(extra=MARKER_ECHO))
         if "PREFLIGHT_CHAIN_COMPLETED" not in result.stdout:
             return False, (
                 "chain aborted on the NORMAL no-match case (the common case for nearly every "
                 f"review) -- (exit={result.returncode}): {result.stdout}\n{result.stderr}"
             )
+        if "DISPATCHER_TOUCHED_VALUE=UNSET" not in result.stdout:
+            return False, f"DISPATCHER_TOUCHED was set despite no match: {result.stdout!r}"
         return (
             True,
-            "chain completes when the dispatcher-trust grep finds no match (the ordinary case)",
+            "chain completes and DISPATCHER_TOUCHED stays unset when the grep finds no match",
         )
 
 
@@ -199,11 +233,14 @@ def test_dispatcher_grep_match_detected():
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
         (repo / "plugins" / "codex-kit" / "scripts" / "lib.mjs").write_text("x\ny\n")
-        result = run_bash(repo, preflight_chain())
+        result = run_bash(repo, preflight_chain(extra=MARKER_ECHO))
         if "PREFLIGHT_CHAIN_COMPLETED" not in result.stdout:
             detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
             return False, f"chain should complete when the grep matches {detail}"
-        return True, "chain completes; dispatcher-touch is detectable when the grep matches"
+        if "DISPATCHER_TOUCHED_VALUE=1" not in result.stdout:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"DISPATCHER_TOUCHED was not set to 1 despite a match {detail}"
+        return True, "chain completes and DISPATCHER_TOUCHED=1 is set when the grep matches"
 
 
 def test_real_index_untouched_after_run():
@@ -225,6 +262,7 @@ CHECKS = [
     test_untracked_file_included,
     test_deletion_only_scope_does_not_abort,
     test_gitignored_tracked_file_reports_modified,
+    test_sparse_checkout_entry_not_reported_deleted,
     test_dispatcher_grep_no_match_does_not_abort_chain,
     test_dispatcher_grep_match_detected,
     test_real_index_untouched_after_run,
