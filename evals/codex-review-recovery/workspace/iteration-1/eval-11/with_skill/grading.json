@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-11",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response does not treat the first poll's completed/failure result as this retry's terminal outcome, because its attempt (1) equals the baseline rather than exceeding it",
+      "passed": true,
+      "evidence": "\"attempt (1) equals step 5's baseline attempt (1), not strictly greater than it... a completed result at the baseline attempt is always the stale pre-rerun state\""
+    },
+    {
+      "text": "The response continues polling after the first call rather than stopping and reporting a failure",
+      "passed": true,
+      "evidence": "\"Not reported. Continue polling.\" followed by two further poll calls in the simulated sequence"
+    },
+    {
+      "text": "The response does not require having separately observed queued/in_progress before trusting the eventual attempt-2 result",
+      "passed": true,
+      "evidence": "The response's grading rule is entirely attempt-number-based (\"attempt (2) is strictly greater than the baseline\"), not conditioned on having observed in_progress -- though in_progress happened to appear on poll 2, the trust decision for poll 3 is attributed to the attempt comparison."
+    },
+    {
+      "text": "The response trusts the third poll's completed/success result (attempt 2, exceeding the baseline) and reports success",
+      "passed": true,
+      "evidence": "\"attempt (2) is strictly greater than the baseline (1) and status is completed, so this conclusion genuinely reflects this retry's real outcome. Report success.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

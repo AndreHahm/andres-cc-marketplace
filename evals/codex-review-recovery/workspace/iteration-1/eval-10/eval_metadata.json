@@ -3,23 +3,23 @@
   "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
   "assertions": [
     {
-      "text": "The response does not treat the first poll's completed/failure result as this retry's terminal outcome",
+      "text": "The response trusts the very first poll's completed/success result as genuine",
       "type": "functionality",
       "target": "outputs/"
     },
     {
-      "text": "The response explains that the first poll's result is recognized as stale because no queued/in_progress status had been observed yet",
+      "text": "The response explains this is trusted because attempt (2) is strictly greater than step 5's baseline attempt (1), not because a queued/in_progress status was separately observed",
       "type": "quality",
       "target": "outputs/"
     },
     {
-      "text": "The response continues polling after the first call rather than stopping and reporting a failure",
+      "text": "The response does not wait for further polls or report 'still in flight'",
       "type": "functionality",
       "target": "outputs/"
     },
     {
-      "text": "The response trusts the third poll's completed/success result (after the second poll observed in_progress) and reports success",
-      "type": "functionality",
+      "text": "The response reports success",
+      "type": "presence",
       "target": "outputs/"
     }
   ]

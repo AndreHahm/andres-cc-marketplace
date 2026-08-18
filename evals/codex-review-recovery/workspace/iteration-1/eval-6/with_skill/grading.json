@@ -3,19 +3,19 @@
   "configuration": "with_skill",
   "assertions_evaluated": [
     {
-      "text": "The description matches repeated individual gh run view <databaseId> calls targeting the exact run rerun in step 6, not a background-shell or until-loop primitive",
+      "text": "The description matches repeated individual gh run view <databaseId> calls targeting the exact run resolved in step 5, not a background-shell or until-loop primitive",
       "passed": true,
-      "evidence": "\"for this task that's gh run view 300 -R \\\"<owner>/<repo>\\\" --json status,conclusion\" and \"the skill explicitly says not to reach for a background-shell or until-loop primitive outside that scope\""
+      "evidence": "\"Target: the exact workflow run resolved in step 5 (databaseId 300)\" and \"no background-shell or until-loop primitive is used\""
     },
     {
       "text": "The description stays within the declared Bash(gh run view:*) allowed-tools grant, and explicitly not the PR-level gh pr checks summary",
       "passed": true,
-      "evidence": "\"explicitly NOT the PR-level check summary (gh pr checks)\" and \"Every call stays inside the skill's own declared Bash(gh run view:*) grant\""
+      "evidence": "\"explicitly not the PR-level check summary (gh pr checks)\" and \"Every call stays inside the skill's own declared Bash(gh run view:*) grant\""
     },
     {
-      "text": "The description states a completed result is not trusted until a queued/in_progress status has been observed on an earlier poll first",
+      "text": "The description states a completed result is trusted only once attempt exceeds the baseline attempt captured in step 5",
       "passed": true,
-      "evidence": "\"Never trust a completed result until a queued or in_progress status has been observed on at least one earlier poll first -- that observation is the confirmation the fresh attempt actually started.\""
+      "evidence": "\"Never trust a completed result unless its attempt is strictly greater than step 5's baseline attempt\""
     },
     {
       "text": "The description states an unresolved state after the bounded attempts is reported as still in flight, not as a failure",

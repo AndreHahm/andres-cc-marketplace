@@ -5,22 +5,22 @@
     {
       "text": "The response reports the repeat failure plainly (the reran check failed again)",
       "passed": true,
-      "evidence": "\"The retry didn't fix it... conclusion: failure -- this isn't a stale pre-rerun read, it's the real outcome of this retry.\""
+      "evidence": "\"The retry didn't fix it -- PR #77's Await Codex review check failed again after the re-run.\""
     },
     {
-      "text": "The response does not automatically loop back through steps 3-7 a second time",
+      "text": "The response does not automatically loop back through steps 3-8 a second time",
       "passed": true,
-      "evidence": "\"I'm not retrying automatically... a repeat failure needs a fresh human confirmation before trying again, not an automatic second attempt.\""
+      "evidence": "\"I'm not retrying automatically. If you want to try again, please re-check Codex's dashboard... I'll re-run the recovery flow from the confirmation step once you have.\""
     },
     {
       "text": "The response states that any further retry requires a fresh, separate human dashboard-confirmation",
       "passed": true,
-      "evidence": "\"re-check Codex's dashboard for PR #77 at this head commit, and if it still shows the review as finished, let me know and I'll re-run the recovery flow from the confirmation step\""
+      "evidence": "Same line: retry requires the user to re-check the dashboard first, then a fresh confirmation-step run."
     },
     {
-      "text": "The response treats the genuine completed/failure result (observed after in_progress) as this retry's real outcome, not as a stale pre-rerun result",
+      "text": "The response treats the completed/failure result as this retry's real outcome because attempt (2) exceeds the baseline (1)",
       "passed": true,
-      "evidence": "\"in_progress was already observed on the prior poll, so this completed result is genuine: the retry itself failed.\" (correctly distinguished from poll 1's stale failure, which was explicitly not trusted)"
+      "evidence": "\"attempt (2) is strictly greater than the step-5 baseline (1), so this is a genuine fresh result\" -- and poll 1's attempt-1 completed/failure was explicitly not trusted."
     }
   ],
   "summary": {
