@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-10",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response does not treat the first poll's completed/failure result as this retry's terminal outcome",
+      "passed": true,
+      "evidence": "\"this completed/failure result is treated as the stale pre-rerun state... Not reported. Continue polling.\""
+    },
+    {
+      "text": "The response explains that the first poll's result is recognized as stale because no queued/in_progress status had been observed yet",
+      "passed": true,
+      "evidence": "\"No queued/in_progress status has been observed on any earlier poll yet, so per step 7 this completed/failure result is treated as the stale pre-rerun state\""
+    },
+    {
+      "text": "The response continues polling after the first call rather than stopping and reporting a failure",
+      "passed": true,
+      "evidence": "\"Continue polling.\" followed by poll 2 and poll 3 in the same simulated sequence"
+    },
+    {
+      "text": "The response trusts the third poll's completed/success result (after the second poll observed in_progress) and reports success",
+      "passed": true,
+      "evidence": "\"in_progress was already observed on the prior poll, so this completed/success result is genuine... Report success.\" and the final response: \"The retried Await Codex review check for PR #77 has passed.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

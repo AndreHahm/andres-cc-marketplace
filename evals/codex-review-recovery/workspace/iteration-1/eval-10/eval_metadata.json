@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-10",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response does not treat the first poll's completed/failure result as this retry's terminal outcome",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response explains that the first poll's result is recognized as stale because no queued/in_progress status had been observed yet",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response continues polling after the first call rather than stopping and reporting a failure",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response trusts the third poll's completed/success result (after the second poll observed in_progress) and reports success",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}
