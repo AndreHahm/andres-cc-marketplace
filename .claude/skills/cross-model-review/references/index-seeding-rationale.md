@@ -29,3 +29,15 @@ matches the real `git diff` output exactly, where a from-scratch reseed diverges
 the copied index can land world-readable (0644 in a default-umask reproduction), exposing repo
 filenames and object IDs on a shared machine for as long as the file persists (see the closing note
 on why it isn't deleted either).
+
+## Why the index path comes from `mktemp -d`, not `mktemp -u`
+
+`mktemp -u` only prints an unused name — it never creates or reserves the path, leaving a race
+between that print and the later `cp` on a multi-user host. Another process could create that exact
+path first, as a symlink, before `cp` ever runs; `cp` writing through a pre-existing symlink
+overwrites whatever it points to, and `umask 077` protects nothing about a path this process didn't
+create. `mktemp -d` (no `-u`) doesn't have this problem — it creates the directory itself atomically,
+so no other process can have pre-populated it with anything, symlink or otherwise, before this chain
+ever touches it. Resolving `$RUN` early (in the Inputs section, not Preflight step 3 where it's used
+next) and pointing `GIT_INDEX_FILE` at `"$RUN/index"` — a new file inside that already-safe directory
+— gets the same atomicity guarantee for the index path too, without a second `mktemp` call.
