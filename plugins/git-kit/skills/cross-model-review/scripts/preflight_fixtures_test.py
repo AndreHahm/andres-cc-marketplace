@@ -147,6 +147,29 @@ def test_deletion_only_scope_does_not_abort():
         return True, "diff-build tolerates a SCOPE naming only a deletion"
 
 
+def test_index_copy_failure_is_disclosed():
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = pathlib.Path(tmp)
+        init_repo(repo)
+        (repo / "f.txt").write_text("line1\n")
+        commit_all(repo, "init")
+        run_bash(repo, "git checkout -qb feature")
+        run_bash(
+            repo, 'mv "$(git rev-parse --git-path index)" "$(git rev-parse --git-path index).bak"'
+        )
+        result = run_bash(
+            repo,
+            diff_build_chain(extra='echo "INDEX_COPY_FAILED_VALUE=${INDEX_COPY_FAILED:-UNSET}"'),
+        )
+        if "DIFF_BUILD_COMPLETED" not in result.stdout:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"chain aborted when the real index couldn't be copied {detail}"
+        if "INDEX_COPY_FAILED_VALUE=1" not in result.stdout:
+            detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
+            return False, f"INDEX_COPY_FAILED was not set when the copy failed {detail}"
+        return True, "a failed index copy sets INDEX_COPY_FAILED=1 instead of continuing silently"
+
+
 def test_gitignored_tracked_file_reports_modified():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
@@ -261,6 +284,7 @@ def test_real_index_untouched_after_run():
 CHECKS = [
     test_untracked_file_included,
     test_deletion_only_scope_does_not_abort,
+    test_index_copy_failure_is_disclosed,
     test_gitignored_tracked_file_reports_modified,
     test_sparse_checkout_entry_not_reported_deleted,
     test_dispatcher_grep_no_match_does_not_abort_chain,
