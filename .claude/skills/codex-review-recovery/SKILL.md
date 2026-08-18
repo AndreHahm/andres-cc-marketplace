@@ -77,17 +77,27 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    (`;`, `` ` ``, `$(`, `&`, `|`, `(`, `)`) instead of passing it through — it's user-supplied and not
    validated as a plain PR number/URL before this point. If this fails, tell the user and stop.
 
-2. **Check the current check state**: `gh pr checks <number>`. Find the line whose owning workflow is
-   `await-codex-review.yml` — match on the workflow file, not just the display name "Await Codex review",
-   since a differently-configured workflow could reuse that same display name. If more than one line
-   resolves to that workflow file, stop and tell the user rather than guessing which one to act on.
-   - If no `Await Codex review` line appears at all — this PR's checks haven't included this workflow
-     (e.g. it hasn't run yet, or ran under a different name); tell the user plainly and stop rather than
-     guessing or treating this the same as `fail`.
-   - If it's `pass` — nothing to recover; tell the user it's already succeeded and stop.
-   - If it's `pending` (still running) — nothing to recover yet; tell the user it's still within its
-     30-minute window and stop. Don't treat "it's taking a while" as a reason to intervene.
-   - If it's `fail` — continue to step 3. This is the only state this skill acts on.
+   Extract `<owner>/<repo>` from the returned `url` field (`https://github.com/<owner>/<repo>/pull/<n>`)
+   and pass it as `-R "<owner>/<repo>"` to every `gh pr`/`gh run` command in steps 2, 4, 5, and 6 below —
+   never rely on the current working directory's own git remote for the target repo. `$ARGUMENTS` may
+   name a PR in a different repository entirely; without this, a bare `<number>` in later steps would
+   silently resolve against the current checkout's repo instead of the PR's actual repo.
+
+2. **Check the current check state**: `gh pr checks <number> -R "<owner>/<repo>" --json name,workflow,bucket,link`.
+   `gh pr checks` never exposes a check's owning workflow *file* name — only its workflow *display* name,
+   which for this repo's `await-codex-review.yml` is `Codex review status` (a different string from the
+   file name; verify against the repo actually being checked, since this display name isn't guaranteed
+   portable). Find the entry where `workflow` is that display name and `name` is `Await Codex review` —
+   matching both fields together, not display name alone, since a differently-configured workflow could
+   otherwise reuse either string on its own. If more than one entry matches both, stop and tell the user
+   rather than guessing which one to act on.
+   - If no matching entry appears at all — this PR's checks haven't included this workflow (e.g. it
+     hasn't run yet, or is configured under different names in this repo); tell the user plainly and stop
+     rather than guessing or treating this the same as `fail`.
+   - If `bucket` is `pass` — nothing to recover; tell the user it's already succeeded and stop.
+   - If `bucket` is `pending` (still running) — nothing to recover yet; tell the user it's still within
+     its 30-minute window and stop. Don't treat "it's taking a while" as a reason to intervene.
+   - If `bucket` is `fail` — continue to step 3. This is the only state this skill acts on.
 
 3. **Confirm with the human** — this is the one gate that can't be skipped or inferred, since only the
    human has visibility into Codex's own dashboard: use `AskUserQuestion` — "The 'Await Codex review'
@@ -100,8 +110,9 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    writes the marker git-kit's reviewer-action guard (`guard-raw-pr-review.sh`) requires before it will
    allow a raw `gh pr comment`/`gh pr review` call through; it must be written right before the command,
    not earlier, since the hook only accepts a marker up to 60 seconds old. Then:
-   `gh pr comment <number> --body "@codex review"`. This is what actually prompts Codex to act again — per
-   the connector's own documented triggers (opening a PR, marking a draft ready, or this exact comment).
+   `gh pr comment <number> -R "<owner>/<repo>" --body "@codex review"`. This is what actually prompts
+   Codex to act again — per the connector's own documented triggers (opening a PR, marking a draft ready,
+   or this exact comment).
 
 5. **Re-run the failed check**: posting the comment above does **not** itself re-trigger
    `await-codex-review.yml` — that workflow's own `on:` trigger list
@@ -109,20 +120,22 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    has to be explicitly re-run to start a fresh polling window. Resolve the specific run tied to the PR's
    *current* head SHA — don't re-run a stale run for an old commit:
    ```
-   gh run list --workflow await-codex-review.yml --branch "<headRefName>" --limit 5 \
-     --json databaseId,headSha,conclusion
+   gh run list --workflow await-codex-review.yml --repo "<owner>/<repo>" --branch "<headRefName>" \
+     --limit 5 --json databaseId,headSha,conclusion
    ```
-   Quote `<headRefName>` exactly as shown — `git check-ref-format` permits shell metacharacters
-   (`;`, `` ` ``, `$(`, `&`, `|`, `(`, `)`) in branch names, so an unquoted interpolation here is
-   exploitable by a maliciously named branch. If `<headRefName>` contains any of those characters, stop
-   and report rather than proceeding.
-   Pick the entry whose `headSha` matches step 1's `headRefOid`, then `gh run rerun <databaseId>`.
-   If no run matches the current head SHA at all, tell the user and stop rather than guessing which run
-   to re-run.
+   `--workflow` accepts the file name directly here (unlike `gh pr checks`, which only exposes the
+   display name — see step 2). Quote `<headRefName>` exactly as shown — `git check-ref-format` permits
+   shell metacharacters (`;`, `` ` ``, `$(`, `&`, `|`, `(`, `)`) in branch names, so an unquoted
+   interpolation here is exploitable by a maliciously named branch. If `<headRefName>` contains any of
+   those characters, stop and report rather than proceeding.
+   Pick the entry whose `headSha` matches step 1's `headRefOid`, then
+   `gh run rerun <databaseId> -R "<owner>/<repo>"`. If no run matches the current head SHA at all, tell
+   the user and stop rather than guessing which run to re-run.
 
-6. **Poll briefly and report**: call `gh pr checks <number>` again and check the `Await Codex review`
-   line's state. Repeat this same call up to 10 times, spaced roughly 30 seconds apart, stopping as soon
-   as the state changes from `pending`/still-fresh to `pass` or `fail` — every call stays inside this
+6. **Poll briefly and report**: call `gh pr checks <number> -R "<owner>/<repo>" --json name,workflow,bucket`
+   again and check the same `workflow`+`name`-matched entry's `bucket`. Repeat this same call up to 10
+   times, spaced roughly 30 seconds apart, stopping as soon as `bucket` changes from `pending`/still-fresh
+   to `pass` or `fail` — every call stays inside this
    skill's own declared `Bash(gh pr checks:*)` grant; don't reach for a background-shell or `until`-loop
    primitive outside that scope. This is a much shorter window (~5 minutes total) than the check's own
    30-minute timeout, since we're actively watching for the fresh signal from steps 4-5, not waiting cold.
@@ -164,6 +177,11 @@ See `## Instructions` below for the full step-by-step with exact commands and st
   check
 
 **Quality gates:**
+- [ ] Every `gh pr`/`gh run` command from step 2 onward always passes `-R "<owner>/<repo>"` derived from
+      step 1's `url` field — never a bare `<number>` that would resolve against the current checkout's
+      repo instead of the PR's actual repo
+- [ ] Step 2 always matches on the `workflow` display-name field together with the job `name`, never on
+      `name` alone or on the workflow *file* name, which `gh pr checks` never exposes
 - [ ] Step 2 only proceeds past a `fail` state — `pending`/`pass` always stop with a plain status report,
       never treated as something to recover
 - [ ] Step 3's `AskUserQuestion` always fires before step 4 — never inferred from context or skipped
