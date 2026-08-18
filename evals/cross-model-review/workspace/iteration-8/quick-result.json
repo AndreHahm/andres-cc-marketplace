@@ -1,0 +1,13 @@
+{
+  "mode": "quick",
+  "iteration": 8,
+  "scope": "targeted",
+  "note": "Supplemental Quick Workflow pass covering the sixth reviewer-fix batch on PR #52 (4 new Codex findings from the delta review triggered by the fifth fix batch's push): throwaway GIT_INDEX_FILE for git add -N (fixing a persistent real-index mutation risk in the fifth batch's own fix), path-separator-boundary symlink containment check (fixing a startsWith-without-boundary bug in the fifth batch's own fix), pre-dispatch REVIEW_UNVERIFIED/REFUTE_UNVERIFIED disclosure, and per-invocation (not per-session) First-Send Confirmation scoping. with_skill only, no baseline. SKILL.md briefly exceeded the R13 500-line Critical threshold (501 lines) after these fixes; tightened the First-Send Confirmation paragraph to bring it to 496.",
+  "results": [
+    {"eval_id": 1, "name": "throwaway GIT_INDEX_FILE", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 2, "name": "path-boundary symlink check", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+    {"eval_id": 3, "name": "pre-dispatch unverified-prompt disclosure", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+    {"eval_id": 4, "name": "consent re-asked per invocation", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+  ],
+  "summary": {"assertions_total": 9, "assertions_passed": 9, "pass_rate": 1.0}
+}

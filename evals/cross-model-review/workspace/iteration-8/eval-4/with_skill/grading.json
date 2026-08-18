@@ -1,0 +1,9 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states the First-Send Confirmation fires again on the second invocation", "passed": true, "evidence": "'The First-Send Confirmation fires again on the second invocation.'"},
+    {"text": "Response identifies the scope is 'once per invocation', not 'once per session'", "passed": true, "evidence": "Quoted the exact scoping clause verbatim."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}
