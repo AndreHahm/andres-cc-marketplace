@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states that a brand-new untracked file is invisible to plain git diff regardless of ref form", "type": "functionality", "target": "Inputs section"},
+    {"text": "Response states the skill runs git add -N (intent-to-add) before building DIFF so untracked files appear", "type": "functionality", "target": "Inputs section"},
+    {"text": "Response correctly characterizes git add -N as an index-only, content-free, reversible operation, not a working-tree write", "type": "quality", "target": "intro Write-scope paragraph"}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "mode": "quick",
+  "iteration": 7,
+  "scope": "targeted",
+  "note": "Supplemental Quick Workflow pass covering the fifth reviewer-fix batch on PR #52 (4 new Codex findings from the delta review triggered by the fourth fix batch's push): untracked-file inclusion via git add -N, new Bash grants (git merge-base/git add/realpath), review.md's self-contained envelope-field summary, and symlink-containment exclusion in Preflight step 2. with_skill only, no baseline.",
+  "results": [
+    {"eval_id": 1, "name": "untracked file inclusion via git add -N", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 2, "name": "new Bash grants mapping", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+    {"eval_id": 3, "name": "self-contained envelope schema summary", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 4, "name": "symlink containment exclusion", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+  ],
+  "summary": {"assertions_total": 11, "assertions_passed": 11, "pass_rate": 1.0}
+}

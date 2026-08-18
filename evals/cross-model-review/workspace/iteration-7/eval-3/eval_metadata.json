@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/prompts/review.md",
+  "assertions": [
+    {"text": "Response states review.md now has a self-contained field summary for the case where envelope-schema.md is unavailable", "type": "functionality", "target": "Output section"},
+    {"text": "Response identifies this applies specifically to single-model mode (codex-kit not installed), since git-kit doesn't bundle its own copy of envelope-schema.md", "type": "quality", "target": "Output section rationale"},
+    {"text": "Response lists at least the core fields the self-contained summary covers (location, components, evidence, finding, fix)", "type": "presence", "target": "Output section"}
+  ]
+}

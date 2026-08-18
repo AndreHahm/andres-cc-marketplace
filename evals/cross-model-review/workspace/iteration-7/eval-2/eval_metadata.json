@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response identifies that Bash(git merge-base:*), Bash(git add:*), and Bash(realpath:*) are all present in allowed-tools", "type": "presence", "target": "frontmatter allowed-tools"},
+    {"text": "Response correctly maps each grant to the step that needs it (git merge-base for MERGE_BASE, git add for the -N intent-add, realpath for the symlink containment check)", "type": "quality", "target": "allowed-tools rationale"}
+  ]
+}
