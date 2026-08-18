@@ -35,8 +35,8 @@ Because the upstream skill is AGPL-3.0-or-later and this plugin's own `LICENSE` 
 
 The `git-rebase-sync`, `explain-pr-changes`, and `github-issue-creator` skills were added to this plugin from a staging area whose own provenance could not be confirmed — no `url.txt`/author/license marker was present, and a search of the known external sources cited elsewhere in this notice (`context-engineering-kit`, `claude-code-skills`, `epicenter`) found no match for any of them. They are treated as original content for this plugin. If a source is later identified, this notice should be updated accordingly.
 
-The `dependency-updater`, `merge-pr`, and `manage-codeowners` skills are original content written directly for this plugin — no external source to attribute.
+The `dependency-updater`, `merge-pr`, `manage-codeowners`, and `cross-model-review` skills are original content written directly for this plugin — no external source to attribute.
 
 ---
 
-This notice reflects provenance as of `git-kit`'s initial bootstrap into this marketplace, updated when `git-rebase-sync`, `explain-pr-changes`, `github-issue-creator`, `standalone-commits`, `dependency-updater`, `merge-pr`, and `manage-codeowners` were added. It does not itself grant or restrict any rights — see this plugin's own `LICENSE` (GPL-3.0) for `git-kit`'s own licensing terms.
+This notice reflects provenance as of `git-kit`'s initial bootstrap into this marketplace, updated when `git-rebase-sync`, `explain-pr-changes`, `github-issue-creator`, `standalone-commits`, `dependency-updater`, `merge-pr`, `manage-codeowners`, and `cross-model-review` were added. It does not itself grant or restrict any rights — see this plugin's own `LICENSE` (GPL-3.0) for `git-kit`'s own licensing terms.
