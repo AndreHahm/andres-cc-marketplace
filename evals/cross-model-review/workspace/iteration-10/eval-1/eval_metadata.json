@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states git add -N -- \"${SCOPE:-.}\" now carries || true", "type": "functionality", "target": "Inputs section"},
+    {"text": "Response explains this tolerates a SCOPE resolving only to a deleted tracked file, which would otherwise abort the whole chained Preflight invocation", "type": "quality", "target": "Inputs section rationale"},
+    {"text": "Response states the deletion still shows correctly in git diff afterward regardless of whether the intent-add succeeded", "type": "functionality", "target": "Inputs section"}
+  ]
+}
