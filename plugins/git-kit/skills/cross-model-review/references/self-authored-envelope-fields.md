@@ -17,13 +17,16 @@ different `dispatch.id`/`dispatch.reviewer`):
   unknown shape.
 - `dispatch.id` — follow the same pattern Codex's own dispatch-id uses:
   `cross-model-review-$(date +%s)-fresh-eyes-claude` (respectively `-challenger-claude` in Phase 2).
-- `dispatch.target_paths: $TARGET_PATHS` — Claude's own native pass isn't scoped to
-  `--target-paths` the way Codex's dispatch is (it reviews the full `"${DIFF[@]}"`), but the field
-  still needs a value for the envelope to be well-formed; use the same eligible list Codex received.
-- `provenance: {provider: "anthropic", model: "<this session's own model>", cli_version: null,
+- `dispatch.target_paths` — `ENVELOPE_SCHEMA` requires an array of strings, not the comma-separated
+  `$TARGET_PATHS` string used for the CLI flag. Split `$TARGET_PATHS` on `,` into a JSON array (e.g.
+  `["a.md", "b.md"]`) — Claude's own native pass isn't scoped to `--target-paths` the way Codex's
+  dispatch is (it reviews the full `"${DIFF[@]}"`), but the field still needs a schema-valid value for
+  the envelope to be well-formed; use the same eligible list Codex received.
+- `provenance: {provider: "anthropic", model: "<this session's own model>", cli_version: "n/a",
   execution_profile: "native"}` — self-reported, since there's no CLI wrapper to report it on
-  Claude's behalf. `cli_version` has no equivalent for a native session; leave it `null` rather than
-  inventing a value.
+  Claude's behalf. `cli_version` is a required *string* field with no nullable variant (unlike
+  `components`) — `null` fails schema validation outright; `"n/a"` is the string sentinel for "no CLI
+  version applies to a native session."
 
 None of these fields are validated against `bridge-invoke.mjs`'s strict JSON schema the way Codex's
 returned envelope is — Claude's own envelope is consumed only internally, by this skill's own Phase 2
