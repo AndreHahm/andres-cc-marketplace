@@ -6,10 +6,11 @@ description: >-
   endpoints; and handling GitHub workflows in enterprise or public GitHub environments. Use when
   listing/viewing/editing PRs, managing issues, or automating GitHub Actions/API calls. For creating a
   new PR use `create-pr` (template + pre-commit handling), for merging a PR use `merge-pr`
-  (readiness + merge-rights checks), and for reviewer actions (approve/comment/request-changes) with
-  CODEOWNERS context use `collaborating-on-a-pr` — this skill does not do any of the three; the `gh pr
-  review`/`gh pr comment` examples below are raw reference material only, not a recommendation to run
-  them standalone for a real review.
+  (readiness + merge-rights checks), for reviewer actions (approve/comment/request-changes) with
+  CODEOWNERS context use `collaborating-on-a-pr`, and for retrying a stuck "Await Codex review" check use
+  `codex-review-recovery` (gates on a human dashboard confirmation) — this skill does none of these; the
+  `gh pr review`/`gh pr comment` examples below are raw reference material only, not a recommendation to
+  run them standalone for a real review.
 allowed-tools: Bash(gh pr:*), Bash(gh issue:*), Bash(gh repo view:*), Bash(gh repo create:*), Bash(gh repo set-default:*), Bash(gh workflow:*), Bash(gh run:*), Bash(gh api repos/*/issues:*), Bash(gh api repos/*/branches:*), Bash(gh api repos/*/commits:*), Bash(gh api repos/*/collaborators:*), Bash(gh api repos/*/releases:*), Bash(gh api repos/*/actions/workflows:*), Bash(gh api repos/*/actions/runs:*), Bash(gh api repos/*/actions/jobs:*), Bash(gh api search/repositories:*), Bash(gh api search/code:*), Bash(gh api search/issues:*), Bash(gh api rate_limit:*), Bash(gh config:*), Read
 ---
 
@@ -31,12 +32,17 @@ This skill activates for tasks involving:
   reviewer action with CODEOWNERS context — see `collaborating-on-a-pr`)
 - Managing GitHub issues or repository settings
 - Querying GitHub API endpoints (REST or GraphQL)
-- Working with GitHub Actions workflows
+- Working with GitHub Actions workflows (not retrying the specific "Await Codex review" check after
+  Codex finished on its own dashboard — see `codex-review-recovery`, which gates that action on an
+  explicit human confirmation this skill's raw `gh run rerun` reference does not perform)
 - Performing bulk operations on repositories
 - Integrating with GitHub Enterprise
 - Automating GitHub operations via CLI or API
 
-The `collaborating-on-a-pr` exclusion above (named sibling, stated criterion, reciprocal) follows this repo's shared convention in `.claude/rules/resolve-activation-overlap-bidirectionally.md`.
+The `collaborating-on-a-pr` exclusion above (named sibling, stated criterion, reciprocal) follows this repo's shared convention in `.claude/rules/resolve-activation-overlap-bidirectionally.md`. The
+`codex-review-recovery` exclusion above follows the same convention: this skill's `gh run rerun`
+reference material is generic and ungated, while `codex-review-recovery` exists specifically to
+require a human-confirmed dashboard check before rerunning the `Await Codex review` check.
 
 ## Core Operations
 

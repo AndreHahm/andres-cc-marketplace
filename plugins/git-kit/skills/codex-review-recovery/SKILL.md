@@ -8,7 +8,9 @@ description: >-
   the check. Use when the "Await Codex review" check has failed or timed out and the user says Codex
   already finished on its own dashboard. Not for triggering an initial Codex review (that already happens
   automatically on PR open/reopen/sync) and not for diagnosing why Codex hasn't started reviewing at all —
-  this skill only recovers a review that's already done but stuck in GitHub's own signal gap.
+  this skill only recovers a review that's already done but stuck in GitHub's own signal gap. Not
+  `gh-operations`' generic, ungated `gh run rerun` reference, nor `merge-pr`'s separate
+  `Publish Codex policy result` bypass flow.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR
 allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh run list:*), Bash(gh run rerun:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*)
 ---
