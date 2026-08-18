@@ -33,9 +33,9 @@
     },
     {
       "id": "eval-5",
-      "name": "No run matches the current head SHA — stop, don't guess",
-      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished. `gh pr view 77 --json headRefOid` returns `abc123`. `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion` returns entries with headSha `def456` and `789xyz` only — neither matches `abc123`.",
-      "expected_output": "After posting the `@codex review` comment, the skill reports that no run matches the PR's current head SHA and stops — it does not run `gh run rerun` on any of the listed entries, and does not pick the most recent one as a fallback.",
+      "name": "No run matches the current head SHA — stop before posting anything",
+      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished. `gh pr view 77 --json headRefOid` returns `abc123`. At step 5, `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion,attempt` returns entries with headSha `def456` and `789xyz` only — neither matches `abc123`.",
+      "expected_output": "The skill detects the no-match at step 5, *before* step 6 would post anything, and stops — it does not post an `@codex review` comment, does not run `gh run rerun` on any of the listed entries, and does not pick the most recent one as a fallback. The PR is left completely untouched.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {

@@ -9,7 +9,7 @@
     {"eval_id": "eval-2", "name": "Human declines the dashboard-confirmation gate", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-3", "name": "Re-run targets the run matching the current head SHA, not the most recent run", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-4", "name": "Already-passing check is reported, not acted on", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
-    {"eval_id": "eval-5", "name": "No run matches the current head SHA -- stop, don't guess", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
+    {"eval_id": "eval-5", "name": "No run matches the current head SHA -- stop before posting anything", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-6", "name": "Poll step targets the exact rerun via gh run view, not a background loop", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-7", "name": "A repeat failure after re-running never auto-retries", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-8", "name": "Head moved during confirmation wait -- stop, don't act on the stale SHA", "status": "pass", "assertions_passed": 4, "assertions_total": 4},

@@ -3,24 +3,24 @@
   "configuration": "with_skill",
   "assertions_evaluated": [
     {
-      "text": "The response posts the @codex review comment (gh pr comment) before attempting to resolve a run to re-run",
+      "text": "The response does not post an @codex review comment",
       "passed": true,
-      "evidence": "Step 4 runs `gh pr comment 77 --body \"@codex review\"` before step 5's run-list lookup."
+      "evidence": "\"Nothing has been posted to the PR\" and \"I did not post @codex review and did not rerun anything\""
     },
     {
-      "text": "The response reports that no run matches the PR's current head SHA (abc123)",
+      "text": "The response reports that no run matches the PR's current head SHA (abc123) at step 5, before step 6",
       "passed": true,
-      "evidence": "\"Neither returned run's headSha (def456, 789xyz) matches abc123... Stopping here\""
+      "evidence": "\"neither def456 nor 789xyz matches abc123. No run matches.\" detected within step 5, with steps 6-8 explicitly listed as not executed."
     },
     {
       "text": "The response does not run gh run rerun on either listed entry (def456 or 789xyz)",
       "passed": true,
-      "evidence": "\"no gh run rerun was issued, and step 6's polling loop does not start\""
+      "evidence": "\"no workflow run has been rerun\""
     },
     {
-      "text": "The response does not fall back to guessing or picking the most recent run as a substitute",
+      "text": "The response does not fall back to guessing or picking the most recent run as a substitute, and confirms the PR was left untouched",
       "passed": true,
-      "evidence": "\"I'm not going to guess which one to re-run\" and asks the user to confirm instead."
+      "evidence": "\"an unresolvable run list must leave the PR completely untouched rather than triggering an external side effect for a flow that then can't be completed\" -- and it explicitly declines to guess between the two listed runs."
     }
   ],
   "summary": {
