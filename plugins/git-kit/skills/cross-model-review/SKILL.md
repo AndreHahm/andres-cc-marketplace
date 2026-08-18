@@ -85,12 +85,12 @@ something to review.
 
 **Do this against a throwaway index, never the repository's real one.** `git add -N` against the
 real `.git/index` is a persistent mutation that outlives this skill's own run — a later, unrelated
-`git commit -a` would then commit that file's full content, even though it was genuinely untracked
-before this report-only review touched it. Point `GIT_INDEX_FILE` at a throwaway `mktemp -u` path
-for the whole chained invocation instead (verified empirically: identical results, real index
-untouched); it's exported once and inherited automatically by every later git command here. Capture
-the untracked list **first**, against the still-real index — the throwaway path doesn't exist yet,
-so nothing has switched over until the `export` line runs:
+`git commit -a` would commit that file's full content, even though it was genuinely untracked before
+this report-only review touched it. Point `GIT_INDEX_FILE` at a path inside a freshly `mktemp -d`'d
+scratch dir (`$RUN`, resolved here rather than in Preflight step 3 — see
+`references/index-seeding-rationale.md` for why `mktemp -u` alone isn't safe), exported once and
+inherited by every later git command here. Capture the untracked list **first**, against the
+still-real index — the throwaway path doesn't exist yet until the `export` line runs:
 
 ```bash
 umask 077
@@ -98,7 +98,8 @@ BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
 UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- "${SCOPE:-.}")
 REAL_INDEX=$(git rev-parse --git-path index)
-export GIT_INDEX_FILE="$(mktemp -u)"
+RUN=$(mktemp -d)
+export GIT_INDEX_FILE="$RUN/index"
 cp "$REAL_INDEX" "$GIT_INDEX_FILE" 2>/dev/null || true
 git add -N -- "${SCOPE:-.}" || true
 DIFF=(git diff "$MERGE_BASE")
@@ -107,10 +108,9 @@ DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding 
 ```
 
 **Seed the throwaway index with a byte-for-byte copy of the real one, captured *before*
-`GIT_INDEX_FILE` is exported** — after the export, `$REAL_INDEX` would read back the already-
-overridden path instead, silently copying nothing. This avoids two distinct data-loss bugs a
-from-scratch reseed (e.g. `git read-tree HEAD`) doesn't — see `references/index-seeding-rationale.md`
-for both, and why `umask 077` matters too.
+`GIT_INDEX_FILE` is exported** — after the export, `$REAL_INDEX` reads back the already-overridden
+path, copying nothing. Avoids two distinct data-loss bugs a from-scratch reseed (e.g.
+`git read-tree HEAD`) doesn't — see `references/index-seeding-rationale.md` for both.
 
 **The `|| true` on `git add -N` matters when `$SCOPE` names only a deletion** — its pathspec needs to
 match something on disk, so a `$SCOPE` resolving only to a deleted tracked file fails outright and,
@@ -134,11 +134,10 @@ same `$MERGE_BASE`, never `$BASE...HEAD` — and all run *after* `git add -N`, s
 steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool call), ending with
 an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`,
 `DISPATCHER_TOUCHED`, `TARGET_PATHS`, `UNTRACKED_FILES`, and whether `$RUN/review.md`/`$RUN/refute.md`
-came out non-empty (step 5's own fallback runs as separate
-`Read`/`Write` calls afterward). From that point on, every `$VAR` reference here is shorthand for
-that literal, already-resolved value — substitute the concrete string into every later
-`Bash`/`Read`/`Write` call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't
-see it.
+came out non-empty (step 5's fallback runs as separate `Read`/`Write` calls afterward). From that
+point on, every `$VAR` reference here is shorthand for that literal, already-resolved value —
+substitute the concrete string into every later `Bash`/`Read`/`Write` call; a separate tool call
+re-expanding `$RUN`/`$BASE` as a live variable won't see it.
 
 1. Run `"${DIFF[@]}"` and check its exit status. A non-zero exit (an invalid `$BASE`, no local `main`
    ref, or any other Git error) is a Preflight failure, not an empty scope — report the Git error and
@@ -179,8 +178,9 @@ see it.
    eligible to review. Skip Phase 1's Codex pass and all of Phase 2, same as resolver step 3's
    single-model path, but record the `inspection_limits` reason as "zero Codex-eligible paths in this
    diff" rather than "Codex unavailable" — the distinction matters for anyone reading the report.
-3. `RUN=$(mktemp -d)` — scratch dir for both models' findings and any assembled instruction files.
-   Not explicitly deleted by this skill (see Phase 3's closing note) — never committed, no state file.
+3. `$RUN` — already resolved above (needed early for the throwaway index), also the scratch dir for
+   both models' findings and any assembled instruction files. Not explicitly deleted by this skill
+   (see Phase 3's closing note) — never committed, no state file.
 4. Resolve `REPO_ROOT` (`git rev-parse --show-toplevel`).
 5. **Materialize trusted reviewer instructions from `$BASE` — never the working tree.** The working
    tree may *be* the branch under review; loading judging instructions from it would let a reviewed
