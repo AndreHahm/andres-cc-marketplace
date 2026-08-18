@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states dispatch.reviewer must exactly match the --reviewer-type value Codex was dispatched with, not a substituted name", "type": "functionality", "target": "prompts/refute.md Output section"},
+    {"text": "Response explains that a mismatch causes semanticallyValidate to reject the entire envelope", "type": "quality", "target": "refute.md rationale"},
+    {"text": "Response identifies that Phase 2's actual dispatch uses --reviewer-type challenger-reviewer, so that is the value Codex must echo", "type": "functionality", "target": "SKILL.md Phase 2 dispatch"}
+  ]
+}

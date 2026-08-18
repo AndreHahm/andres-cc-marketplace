@@ -1,0 +1,10 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states the finding is still dropped from the Codex challenge payload", "passed": true, "evidence": "'The finding is dropped from Phase 2's Codex challenge payload, even though location is eligible.'"},
+    {"text": "Response explains the filter checks BOTH location and components entries", "passed": true, "evidence": "Quoted the exact SKILL.md filter language covering both fields."},
+    {"text": "Response explains why location-alone checking is insufficient", "passed": true, "evidence": "'semanticallyValidate rejects the entire returned envelope if any finding's location or any components entry resolves outside --target-paths.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

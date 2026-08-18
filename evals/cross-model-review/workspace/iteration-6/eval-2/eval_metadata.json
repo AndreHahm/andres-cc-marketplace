@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states Preflight step 6's check covers both scripts/ and assets/ under plugins/codex-kit/", "type": "functionality", "target": "Preflight step 6"},
+    {"text": "Response identifies the specific assets files at risk: dangerous-command-instructions.txt and settings.json under codex-windows-guardrails/assets/", "type": "presence", "target": "Preflight step 6 rationale"},
+    {"text": "Response explains why: guarded-dispatch.mjs reads both files to shape/gate a danger-full-access run", "type": "quality", "target": "Preflight step 6 rationale"}
+  ]
+}

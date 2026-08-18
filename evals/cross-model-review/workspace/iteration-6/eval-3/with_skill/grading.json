@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states Phase 2's Codex-bound file includes $RUN/review.md's content, not just $RUN/refute.md", "passed": true, "evidence": "'Phase 2 does include review.md's content, not just refute.md's.'"},
+    {"text": "Response explains the risk without it", "passed": true, "evidence": "'the reference would either be unresolvable ... or Codex could resolve it itself by reading the live working-tree copy ... defeat Preflight step 5's entire purpose.'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states this is a partial failure, not full single-model mode", "passed": true, "evidence": "'a partial failure, not full single-model mode -- do not discard the already-completed envelopes.'"},
+    {"text": "Response states Codex's completed Phase 1 findings and any completed Claude Phase 2 pass are NOT discarded", "passed": true, "evidence": "'Phase 3 merges Codex's Phase 1 findings and Claude's completed native Phase 2 pass as usual.'"},
+    {"text": "Response states only Codex's own Phase 2 challenge is recorded as missing in inspection_limits", "passed": true, "evidence": "'records in inspection_limits that Codex's Phase 2 challenge didn't complete.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

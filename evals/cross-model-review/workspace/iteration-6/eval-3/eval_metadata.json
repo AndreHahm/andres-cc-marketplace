@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states Phase 2's Codex-bound instruction file includes $RUN/review.md's trusted content, not just $RUN/refute.md", "type": "functionality", "target": "Phase 2 Codex's pass"},
+    {"text": "Response explains the risk without it: refute.md's own reference to prompts/review.md would be unresolvable, or Codex could read the live working-tree copy instead of the trusted $BASE copy", "type": "quality", "target": "Phase 2 rationale"}
+  ]
+}

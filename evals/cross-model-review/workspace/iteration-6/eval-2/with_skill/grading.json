@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states Preflight step 6's check covers both scripts/ and assets/", "passed": true, "evidence": "'the regex plugins/codex-kit/(.*/)?(scripts|assets)/ ... matches ... via the assets/ alternation.'"},
+    {"text": "Response identifies the specific assets files at risk", "passed": true, "evidence": "Named both dangerous-command-instructions.txt and settings.json under codex-windows-guardrails/assets/."},
+    {"text": "Response explains why: guarded-dispatch.mjs reads both to shape/gate a danger-full-access run", "passed": true, "evidence": "Quoted 'shape and gate a danger-full-access run' directly."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

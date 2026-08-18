@@ -1,0 +1,9 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states this is a partial failure, not full single-model mode", "type": "functionality", "target": "resolver step 3"},
+    {"text": "Response states Codex's already-completed Phase 1 findings, and any completed Claude Phase 2 pass, are NOT discarded", "type": "functionality", "target": "resolver step 3 partial-failure note"},
+    {"text": "Response states only Codex's own Phase 2 challenge is recorded as missing in inspection_limits", "type": "presence", "target": "resolver step 3 partial-failure note"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states the canonical diff is built from a single ref ($MERGE_BASE), not two-dot form", "passed": true, "evidence": "Quoted the exact code block and 'explicitly not the two-dot $BASE...HEAD form.'"},
+    {"text": "Response correctly states uncommitted changes ARE included", "passed": true, "evidence": "'Yes, the unstaged edit is included.'"},
+    {"text": "Response explains why: two-dot only shows committed differences, single-ref includes working tree", "passed": true, "evidence": "Quoted both explanatory sentences directly from the skill."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
