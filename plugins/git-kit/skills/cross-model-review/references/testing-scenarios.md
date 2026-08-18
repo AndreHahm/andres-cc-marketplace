@@ -88,6 +88,14 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
 23. This skill is invoked twice in the same Claude Code session, reviewing two different diffs → the
     First-Send Confirmation fires again on the second invocation's first real Codex dispatch — the
     "once per session" framing never suppresses it for a later, separate invocation.
+24. Live-verified against this skill's own PR diff (177 files): `[ -n "$SCOPE" ]` (a `test`/`[`
+    invocation) runs without a permission gap, matching the added `Bash(test:*)` grant — confirmed
+    by direct precedent in sibling skills `codex-verify`/`codex-rescue`, which already grant
+    `Bash(test:*)` for the identical bracket-test pattern.
+25. The review scope includes a genuinely untracked file → Codex's own dispatch, told to re-run the
+    canonical diff command in its own subprocess, would not see it (no inherited `GIT_INDEX_FILE`) →
+    `$UNTRACKED_FILES` is captured before the throwaway-index switch and appended explicitly to both
+    Phase 1 and Phase 2's Codex-facing instructions, naming each path so Codex reads it directly.
 
 ## Quality gates
 
@@ -162,3 +170,13 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
       `inspection_limits` as the first place the user learns about it
 - [ ] The First-Send Confirmation always re-fires on a new invocation of this skill, even within the
       same Claude Code session — "once per session" never suppresses it across separate reviews
+- [ ] `allowed-tools` always grants `Bash(test:*)` — the Inputs section's `[ -n "$SCOPE" ]` bracket
+      test is a `test` invocation, matching the same pattern already granted in sibling skills
+      `codex-verify`/`codex-rescue`
+- [ ] `$UNTRACKED_FILES` is always captured before `GIT_INDEX_FILE` switches to the throwaway index
+      — capturing it after would see the empty throwaway index and report everything as untracked
+- [ ] Both Phase 1 and Phase 2's Codex-facing instruction assembly append `$UNTRACKED_FILES` when
+      non-empty — Codex's own subprocess re-running the diff command never sees intent-added files
+      on its own
+- [ ] The stated scenario count in SKILL.md's pointer to this file always matches this file's actual
+      count — never left stale after a scenario is added or removed
