@@ -96,6 +96,12 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
     canonical diff command in its own subprocess, would not see it (no inherited `GIT_INDEX_FILE`) →
     `$UNTRACKED_FILES` is captured before the throwaway-index switch and appended explicitly to both
     Phase 1 and Phase 2's Codex-facing instructions, naming each path so Codex reads it directly.
+26. Live-verified via a full, real two-phase run (both Codex dispatches, both Claude native passes)
+    against this skill's own PR diff: `$SCOPE` set to a pathspec resolving only to a deleted tracked
+    file → `git add -N -- "${SCOPE:-.}"` fails (`fatal: pathspec ... did not match any files`) but
+    the `|| true` tolerates it, the chain continues, and `git diff "$MERGE_BASE" -- "$SCOPE"` still
+    correctly shows the deletion. Unanimous finding: raised independently by Codex and Claude in
+    Phase 1, confirmed by both again in Phase 2, with no refutation from either side.
 
 ## Quality gates
 
@@ -180,3 +186,5 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
       on its own
 - [ ] The stated scenario count in SKILL.md's pointer to this file always matches this file's actual
       count — never left stale after a scenario is added or removed
+- [ ] `git add -N -- "${SCOPE:-.}"` always carries `|| true` — a `$SCOPE` resolving only to a
+      deletion must never abort the chained Preflight invocation before `git diff` runs
