@@ -1,0 +1,40 @@
+{
+  "skill_name": "cross-model-review",
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "description": "Cross-vendor adversarial review of the current diff before a PR is created or a draft PR is flipped to ready-to-merge -- Claude reviews natively, Codex reviews independently through codex-kit, both cross-examine each other's findings.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Full pipeline walkthrough with a contested finding",
+      "prompt": "I'm about to open a PR from my current branch and want an adversarial review first, using this repo's cross-model-review skill. The diff I'm about to review changes src/auth.py: it changes a permission check from all(role in user.roles for role in required) to any(role in user.roles for role in required). Every existing call site passes required as a single-role list like ['admin'], so both forms behave identically for every current caller. Codex is available (codex-kit is installed, a sandboxed profile works). Walk through exactly what you would do, in order, from Preflight through the final report -- do not actually invoke git, Codex, or any external process; describe each step, the exact command/dispatch each step would run, and where you would pause for a confirmation. Assume: Claude's own Phase 1 pass flags this as a possible permission downgrade (major severity); Codex's Phase 2 challenger pass, given that finding, determines from the call-site pattern above that it's actually semantically equivalent and refutes it. Show how Phase 3 would classify and present this specific finding.",
+      "expected_output": "Correctly walks Preflight (empty-diff check, target-paths, RUN scratch dir, REPO_ROOT, and step 5's git show $BASE materialization of review.md/refute.md before anything else) -> resolver (attempt codex-review-bridge with --execution-profile read-only, --cwd/CODEX_KIT_REVIEW_REPO_ROOT, not --repo-root) -> First-Send Confirmation AskUserQuestion before the first real Codex dispatch, disclosing the danger-full-access possibility -> Phase 1 (both sides review independently, envelope shape, severity critical/major/minor) -> Phase 2 (challenger persona, diff command embedded in the Codex instruction file, other side's findings wrapped in a labeled block with the trust boundary restated after it) -> Phase 3 correctly classifies the described finding as Low/contested (one side raised it, the other's Phase 2 pass explicitly refuted it) and states it must still be shown with both sides, never silently dropped -> ends with an AskUserQuestion asking which findings to act on, never auto-editing.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Codex unavailable fallback (isolation_profile_unavailable then guardrails_disabled)",
+      "prompt": "Using this repo's cross-model-review skill on a local Windows machine: codex-kit is installed and the codex CLI is on PATH, but codex-review-bridge's dispatch fails with isolation_profile_unavailable (the read-only sandbox doesn't work on this platform), and codex-windows-guardrails is at its shipped default (disabled, no local override file exists). Walk through exactly what the skill has you do at this point, in order -- do not actually invoke any command, just describe what you would do and why.",
+      "expected_output": "Correctly identifies: resolver step 1 (bridge) attempted, fails with isolation_profile_unavailable -> resolver step 2 falls back to codex-windows-guardrails -> that path is disabled by default and guardrails_disabled is the EXPECTED outcome, not a bug, and the skill explicitly says not to enable it on the user's behalf -> resolver step 3 fires: tell the user Codex is unavailable this run and ask via AskUserQuestion whether to proceed single-model (stating the Medium-confidence-default consequence) or stop. Never silently proceeds as cross-model when it isn't, never enables the guardrails override itself.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "Trust-boundary sourcing when the diff itself touches the skill's own prompts",
+      "prompt": "Using this repo's cross-model-review skill: the diff you're about to review (a branch about to become a PR) itself modifies plugins/git-kit/skills/cross-model-review/prompts/review.md, adding a line to the fresh-eyes persona. Walk through, step by step, where in the skill's Preflight this matters, exactly what command resolves it, and what happens if that command fails because the file doesn't exist yet on $BASE (e.g. this is the skill's own first, not-yet-merged commit). Do not actually run any command -- describe it.",
+      "expected_output": "Identifies Preflight step 5 specifically: reviewer instructions must be materialized from $BASE via git show \"$BASE:plugins/git-kit/skills/cross-model-review/prompts/review.md\", never read live from the working tree, precisely because the working tree may be the branch under review (states the injection risk explicitly: a reviewed diff could otherwise rewrite the rules that judge it). Correctly describes the fallback: if git show fails (file doesn't exist on $BASE yet), fall back to the working-tree copy under ${CLAUDE_PLUGIN_ROOT}, but record this in Phase 3's inspection_limits rather than silently -- and states every later reference to review.md/refute.md means these materialized $RUN copies, not the live path.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "Empty diff",
+      "prompt": "Using this repo's cross-model-review skill: BASE is main, SCOPE is unset, and `git diff main...HEAD` produces no output at all (the branch has no changes relative to main). What does the skill have you do? Do not actually run any command -- describe it.",
+      "expected_output": "Correctly identifies Preflight step 1: run the diff command, and since it prints nothing, report 'nothing to review against $BASE' (mentioning SCOPE if it were set) and stop -- no dispatch of either model, no resolver invoked, no First-Send Confirmation fired.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 5,
+    "declared_scenarios_covered": 5,
+    "uncovered": []
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response follows Preflight -> resolver -> Phase 1 -> Phase 2 -> Phase 3 in that order", "passed": false, "evidence": "Response uses Preflight / Phase 1 / Phase 2 (Codex challenger) / Phase 3 (Reconciliation) -- no distinct 'resolver' step or backend-selection logic anywhere; resolver concept is entirely absent, not just unlabeled."},
+    {"text": "Response states reviewer instructions are sourced from $BASE via git show before Phase 1/2, not the live working tree", "passed": false, "evidence": "Explicitly states 'I have not read this repository's actual cross-model-review skill'; uses generic 'git diff origin/main...HEAD' with no mention of git show, $BASE-anchored instruction sourcing, or a trust boundary at all."},
+    {"text": "Response fires (or describes firing) the First-Send Confirmation AskUserQuestion before the first real Codex dispatch, disclosing the possible danger-full-access outcome", "passed": false, "evidence": "Has a generic 'Pause for confirmation before dispatch' but never mentions target-paths not bounding filesystem access, nor any danger-full-access/read-only distinction -- no windows-guardrails fallback concept exists in this response at all."},
+    {"text": "Response dispatches Codex via codex-review-bridge/codex-windows-guardrails scripts with the correct per-script flags (--cwd + CODEX_KIT_REVIEW_REPO_ROOT for bridge, --repo-root for guardrails), never a raw codex exec", "passed": false, "evidence": "Literally proposes 'codex exec --profile sandboxed --input <bundle>' -- exactly the raw codex exec invocation the real skill explicitly forbids ('never invoked ad hoc via a raw codex exec')."},
+    {"text": "Response classifies the described finding as Low/contested (one side raised it, the other's Phase 2 pass explicitly refuted it) and states both sides must be shown, never silently dropped", "passed": false, "evidence": "Invents its own vocabulary -- 'Downgraded: Major -> Note/Latent-Risk' / 'Severity (final): Minor/Note' -- never uses Low/contested or the skill's severity-times-confidence framing; does keep both sides visible, but under a different, non-matching classification scheme."},
+    {"text": "Response ends with an AskUserQuestion asking which findings to act on, and states no code is edited before that", "passed": true, "evidence": "'Pause for confirmation before finalizing: I'd show you this reconciled report and ask whether you want (a)...(b)...(c)... I would not open the PR myself as part of this flow without that explicit go-ahead'."}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 1, "pass_rate": 0.167}
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "contamination_note": "Re-run after the first baseline attempt was found to have read the real SKILL.md. This run's response.md opens with an explicit confirmation it did not; content is generic/inferred and clearly flagged as uncertain throughout -- genuinely blind.",
+  "assertions_evaluated": [
+    {"text": "Response identifies Preflight step 1 as the relevant step", "passed": false, "evidence": "Refers only to a generic 'diff-computation step' -- has no access to the real step numbering and does not claim to."},
+    {"text": "Response states the diff command runs first, and since it prints nothing, reports 'nothing to review against $BASE' and stops", "passed": true, "evidence": "'I expect the skill to detect that there's nothing to review at the diff-computation step and stop there with a clear \"no changes to review\" message' -- correct substance (early-exit, clear report, stop), close paraphrase rather than the exact string, graded on semantic equivalence."},
+    {"text": "Response states no dispatch of either model occurs, no resolver invoked, no First-Send Confirmation fired", "passed": true, "evidence": "'it would not ... proceed to call out to the other model (Codex/GPT) with an empty diff' -- correctly predicts no dispatch, though it cannot name the First-Send Confirmation mechanism specifically since that requires the real source."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.667}
+}

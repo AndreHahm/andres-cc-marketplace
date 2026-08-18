@@ -1,0 +1,9 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response identifies Preflight step 1 as the relevant step", "type": "presence", "target": "outputs/"},
+    {"text": "Response states the diff command runs first, and since it prints nothing, reports 'nothing to review against $BASE' and stops", "type": "functionality", "target": "outputs/"},
+    {"text": "Response states no dispatch of either model occurs, no resolver invoked, no First-Send Confirmation fired", "type": "quality", "target": "outputs/"}
+  ]
+}
