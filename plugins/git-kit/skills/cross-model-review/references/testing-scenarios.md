@@ -74,15 +74,31 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
 19. `codex-kit` is genuinely not installed (single-model mode) → Claude's native pass still produces
     a correctly-shaped envelope using `review.md`'s self-contained field summary, without needing to
     read `envelope-schema.md` (which doesn't exist in this scenario since git-kit doesn't bundle it).
+20. The review scope includes an untracked file → after this run finishes, `git status` on the real
+    repository still shows it as `??`, exactly as before the run — no lingering intent-to-add entry,
+    since `git add -N` ran against a throwaway `GIT_INDEX_FILE`, never `.git/index`.
+21. A symlink resolves to a path in a sibling directory whose name happens to start with the repo
+    root's own name as a substring (e.g. repo at `/path/repo`, symlink target `/path/repo-sibling/f`)
+    → still excluded from `--target-paths`, since the containment check requires an exact match or a
+    `/`-separator boundary, not a bare string prefix.
+22. `prompts/review.md`/`refute.md` don't exist on `$BASE` yet, so `REVIEW_UNVERIFIED`/
+    `REFUTE_UNVERIFIED` gets set → the First-Send Confirmation discloses this *before* the first real
+    Codex dispatch, not only in Phase 3's final `inspection_limits` after Codex has already run
+    against the unverified instructions.
+23. This skill is invoked twice in the same Claude Code session, reviewing two different diffs → the
+    First-Send Confirmation fires again on the second invocation's first real Codex dispatch — the
+    "once per session" framing never suppresses it for a later, separate invocation.
 
 ## Quality gates
 
 - [ ] Preflight step 5 always sources reviewer instructions from `$BASE` via `git show`, never
       directly from `${CLAUDE_PLUGIN_ROOT}/skills/cross-model-review/...` on the happy path — the
       working-tree copy is a disclosed fallback only, not the default
-- [ ] The First-Send Confirmation always fires before the *first* real Codex dispatch, and always
-      discloses the possible `danger-full-access` outcome and any Preflight step 6 dispatcher-trust
-      gap, not just the sandboxed-vs-not distinction
+- [ ] The First-Send Confirmation always fires before the *first* real Codex dispatch **of this
+      invocation** — never suppressed because an earlier, separate invocation in the same session
+      already asked — and always discloses the possible `danger-full-access` outcome, any Preflight
+      step 6 dispatcher-trust gap, and any Preflight step 5 `REVIEW_UNVERIFIED`/`REFUTE_UNVERIFIED`
+      state, not just the sandboxed-vs-not distinction
 - [ ] Every finding given to a Phase 2 challenger pass is explicitly confirmed or refuted — never
       silently unaddressed, and never left in an undefined third state
 - [ ] A `severity: critical` finding is never dropped regardless of its confidence tier
@@ -136,3 +152,13 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
       at that point in the sequence
 - [ ] review.md's self-contained field summary is used whenever `envelope-schema.md` is unavailable
       (codex-kit not installed) — Claude's native pass is never left without a field contract to follow
+- [ ] `git add -N` always runs against a throwaway `GIT_INDEX_FILE` — the real `.git/index` is never
+      touched, and a `git status` on the real repo after the run shows every previously-untracked
+      file exactly as it did before
+- [ ] The symlink-containment check always requires an exact match or a `/`-separator boundary —
+      never a bare string-prefix comparison that a sibling directory's name could satisfy
+- [ ] The First-Send Confirmation's disclosure always includes Preflight step 5's
+      `REVIEW_UNVERIFIED`/`REFUTE_UNVERIFIED` state when set — never deferred to Phase 3's
+      `inspection_limits` as the first place the user learns about it
+- [ ] The First-Send Confirmation always re-fires on a new invocation of this skill, even within the
+      same Claude Code session — "once per session" never suppresses it across separate reviews
