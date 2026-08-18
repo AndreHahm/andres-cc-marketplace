@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states Preflight step 2 excludes a symlink resolving outside the repository from --target-paths", "passed": true, "evidence": "'Yes, Preflight step 2 explicitly detects a symlink resolving outside the repo... excluded from --target-paths.'"},
+    {"text": "Response explains why: both dispatch scripts reject the entire dispatch, forcing an unnecessary single-model fallback", "passed": true, "evidence": "'both codex-review-bridge and codex-windows-guardrails canonicalize target paths and reject the entire dispatch on one containment violation.'"},
+    {"text": "Response states the file is still covered by Claude's native review", "passed": true, "evidence": "'Yes, by Claude's native pass, since Claude has no such containment constraint.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

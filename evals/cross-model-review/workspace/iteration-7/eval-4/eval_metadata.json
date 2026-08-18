@@ -1,0 +1,9 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states Preflight step 2 excludes a symlink whose target resolves outside the repository from --target-paths", "type": "functionality", "target": "Preflight step 2"},
+    {"text": "Response explains why: both dispatch scripts canonicalize and reject the entire dispatch on one such entry, forcing an unnecessary single-model fallback", "type": "quality", "target": "Preflight step 2 rationale"},
+    {"text": "Response states the file is still covered by Claude's own native review, only excluded from the Codex-facing target-paths", "type": "functionality", "target": "Preflight step 2"}
+  ]
+}

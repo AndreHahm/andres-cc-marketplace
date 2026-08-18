@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states review.md has a self-contained field summary for when envelope-schema.md is unavailable", "passed": true, "evidence": "'the prompt instructs using a self-contained fallback summary written inline in the prompt itself.'"},
+    {"text": "Response identifies this applies to single-model mode since git-kit doesn't bundle its own copy", "passed": true, "evidence": "'git-kit doesn't bundle its own copy... Claude-only/single-model mode per SKILL.md's resolver step 3.'"},
+    {"text": "Response lists at least the core fields the summary covers", "passed": true, "evidence": "Listed id, severity, axis, location, components, evidence, finding, fix, confidence."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

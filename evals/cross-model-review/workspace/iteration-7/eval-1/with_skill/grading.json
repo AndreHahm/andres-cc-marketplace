@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states that a brand-new untracked file is invisible to plain git diff regardless of ref form", "passed": true, "evidence": "'a plain git diff in any form produces no output for a ?? untracked file -- Git only diffs tracked content.'"},
+    {"text": "Response states the skill runs git add -N before building DIFF so untracked files appear", "passed": true, "evidence": "'runs git add -N -- \"${SCOPE:-.}\" immediately before building the DIFF array.'"},
+    {"text": "Response correctly characterizes git add -N as index-only, content-free, reversible", "passed": true, "evidence": "'never touches the working tree, never stages real content, never commits, and is trivially reversible.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

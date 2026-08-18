@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response identifies git merge-base, git add, and realpath are all present in allowed-tools", "passed": true, "evidence": "Listed all 14 Bash grants including the three checked ones."},
+    {"text": "Response correctly maps each grant to the step that needs it", "passed": true, "evidence": "Cited exact line numbers for each usage matching each grant."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}
