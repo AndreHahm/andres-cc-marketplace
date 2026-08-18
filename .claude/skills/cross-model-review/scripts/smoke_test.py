@@ -2,8 +2,11 @@
 """Persisted smoke test for cross-model-review: frontmatter validity,
 referenced prompt-file existence, Bash-scope grant usage, and step-header
 sequencing within the 'Preflight' and 'Codex dispatch resolver' sections --
-structural checks only, since this is a conversational, AskUserQuestion-driven
-skill with no executable logic of its own to simulate."""
+structural (text-level) checks only. For execution-based checks -- the
+Preflight section's bash actually run against real scratch git repos, not
+just read as prose -- see scripts/preflight_fixtures_test.py instead; a
+structural PASS here makes no claim about whether that bash behaves
+correctly when it runs for real."""
 
 import pathlib
 import re
