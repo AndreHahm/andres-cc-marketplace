@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states the pointer to references/testing-scenarios.md now says 25 numbered scenarios", "type": "presence", "target": "Testing & Validation section"},
+    {"text": "Response confirms this matches the actual scenario count in the reference file", "type": "functionality", "target": "references/testing-scenarios.md"}
+  ]
+}

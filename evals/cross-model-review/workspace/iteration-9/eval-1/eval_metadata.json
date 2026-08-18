@@ -1,0 +1,8 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states allowed-tools grants Bash(test:*)", "type": "presence", "target": "frontmatter allowed-tools"},
+    {"text": "Response correctly maps this grant to the [ -n \"$SCOPE\" ] bracket-test usage in the Inputs section", "type": "functionality", "target": "Inputs section"}
+  ]
+}

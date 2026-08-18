@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states $UNTRACKED_FILES is captured via git ls-files before GIT_INDEX_FILE switches", "passed": true, "evidence": "Quoted the exact code and rationale about capturing against the still-real index first."},
+    {"text": "Response states both Phase 1 and Phase 2 append $UNTRACKED_FILES when non-empty", "passed": true, "evidence": "Cited both phases' exact instructions with line numbers."},
+    {"text": "Response explains why: Codex's subprocess never inherits GIT_INDEX_FILE", "passed": true, "evidence": "Quoted the exact rationale sentence."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
