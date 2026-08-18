@@ -74,11 +74,13 @@ If a finding involves exposed credentials, secrets, or API keys, cite the locati
 
 Return findings matching the required JSON schema exactly (`contract_version`, `dispatch`,
 `provenance`, `findings[]`, `verdict`, `inspection_limits` — see
-`codex-review-bridge/references/envelope-schema.md` for the authoritative field list). Per finding:
-`severity` is `critical`/`major`/`minor` (assign honestly — `critical` = data loss/security/crash on
-a normal path; `major` = wrong behavior on a common path, or a real correctness/security issue on an
-edge case; `minor` = everything else worth surfacing); `axis` is a short free-text category
-(`security`, `correctness`, `api-misuse`, `performance`, `maintainability`); `confidence` is
-`high`/`medium`/`low` reflecting your own certainty, independent of what cross-examination later
-does with it. Top-level `verdict` is `approve` (no findings clear the bar) or `needs-attention` (at
-least one does).
+`plugins/codex-kit/skills/codex-review-bridge/references/envelope-schema.md` for the authoritative
+field list). Per finding: `severity` is `critical`/`major`/`minor` (assign honestly — `critical` =
+data loss/security/crash on a normal path; `major` = wrong behavior on a common path, or a real
+correctness/security issue on an edge case; `minor` = everything else worth surfacing); `axis` is a
+short free-text category (`security`, `correctness`, `api-misuse`, `performance`,
+`maintainability`); `confidence` is `high`/`medium`/`low` reflecting your own certainty, independent
+of what cross-examination later does with it. Top-level `verdict` — `approve` or `needs-attention` —
+is this skill's own convention layered on the schema's free-string `verdict` field (the schema
+itself doesn't define this enum, only requires a deterministic pass/fail rule): `approve` when no
+findings clear the bar, `needs-attention` when at least one does.
