@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states $UNTRACKED_FILES is captured via git ls-files --others --exclude-standard before GIT_INDEX_FILE switches to the throwaway index", "type": "functionality", "target": "Inputs section"},
+    {"text": "Response states both Phase 1 and Phase 2 append $UNTRACKED_FILES to Codex's instructions when non-empty", "type": "functionality", "target": "Phase 1 / Phase 2"},
+    {"text": "Response explains why: Codex's own subprocess re-running the diff command never inherits GIT_INDEX_FILE", "type": "quality", "target": "rationale"}
+  ]
+}

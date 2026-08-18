@@ -1,0 +1,12 @@
+{
+  "mode": "quick",
+  "iteration": 9,
+  "scope": "targeted",
+  "note": "Supplemental Quick Workflow pass covering the fix batch from a live, real end-to-end execution of cross-model-review against this branch's own diff (feat/cross-model-review vs main, 177 files) -- not a simulated Codex delta-review round. Found via a genuine Codex fresh-eyes dispatch (real bridge-invoke.mjs call) plus Claude's own native pass: a missing Bash(test:*) grant (confirmed with direct sibling-skill precedent, codex-verify/codex-rescue), a stale scenario count in the SKILL.md pointer (16 vs actual 23 at the time, now 25 after adding two more scenarios documenting these very fixes), and a novel finding neither prior round caught -- Codex's own subprocess re-running the diff command never sees untracked files intent-added via the throwaway GIT_INDEX_FILE, since that env var is scoped to Claude's own Preflight Bash chain only. with_skill only, no baseline.",
+  "results": [
+    {"eval_id": 1, "name": "Bash(test:*) grant mapping", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+    {"eval_id": 2, "name": "UNTRACKED_FILES propagation to Codex", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 3, "name": "scenario count accuracy", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+  ],
+  "summary": {"assertions_total": 7, "assertions_passed": 7, "pass_rate": 1.0}
+}

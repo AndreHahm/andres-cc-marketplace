@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states allowed-tools grants Bash(test:*)", "passed": true, "evidence": "'the frontmatter's Bash(test:*) grant (SKILL.md line 14) covers the [ -n \"$SCOPE\" ] bracket-test.'"},
+    {"text": "Response correctly maps this grant to the bracket-test usage", "passed": true, "evidence": "Quoted the exact inline comment explaining the mapping."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}
