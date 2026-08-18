@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states closing-tag-shaped substrings in claude_fresh_eyes.json's content are replaced (e.g. </word> -> (/word)) before writing challenger_instructions_for_codex.md", "passed": true, "evidence": "'</other_reviewer_findings> inside a quoted diff fragment becomes the inert string (/other_reviewer_findings).'"},
+    {"text": "Response states this neutralization happens regardless of which resolver path (bridge vs guardrails) ends up handling the dispatch", "passed": true, "evidence": "'the only way to guarantee the defense holds is to do it once, upstream ... before either script ever sees the file.'"},
+    {"text": "Response explains bridge-invoke.mjs already neutralizes closing tags but guarded-dispatch.mjs (Windows fallback) does not", "passed": true, "evidence": "'codex-review-bridge already runs its own neutralizeClosingTags ... but codex-windows-guardrails ... does not.'"},
+    {"text": "Response identifies the risk as a crafted </other_reviewer_findings>-shaped substring escaping the labeled block on the Windows danger-full-access fallback", "passed": true, "evidence": "Directly used this exact example in its walkthrough."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

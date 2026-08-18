@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response identifies CODEX_DIFF_STR as computed from eligible files only (excluding the file dropped from --target-paths)", "passed": true, "evidence": "'a separately-computed diff scoped to \"eligible files only\" -- which Preflight step 2 explicitly builds because a path was excluded from --target-paths.'"},
+    {"text": "Response states Claude's own native pass keeps using the full DIFF_STR/\"${DIFF[@]}\", unaffected by the exclusion", "passed": true, "evidence": "'Claude's native pass keeps using the full, unfiltered \"${DIFF[@]}\"/$DIFF_STR from Preflight step 1 (including the deleted file's removal hunk).'"},
+    {"text": "Response explains why: both dispatch scripts validate a finding's location against --target-paths and reject the envelope if it falls outside scope", "passed": true, "evidence": "Cited the exclusion rationale tied to codex-windows-guardrails' on-disk requirement and the target-paths validation mechanism."},
+    {"text": "Response states CODEX_DIFF_STR is used in both Phase 1 and Phase 2's Codex-facing embeds, not just one", "passed": true, "evidence": "Cited both Phase 1's review_for_codex.md and Phase 2's challenger_instructions_for_codex.md use of $CODEX_DIFF_STR."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
