@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response identifies Preflight step 5 specifically as where trusted instruction sourcing happens", "type": "presence", "target": "outputs/"},
+    {"text": "Response states instructions are materialized via git show \"$BASE:...\" rather than read live from the working tree", "type": "functionality", "target": "outputs/"},
+    {"text": "Response explicitly states the injection risk: a reviewed diff could otherwise rewrite the rules that judge it", "type": "quality", "target": "outputs/"},
+    {"text": "Response correctly describes the bootstrap fallback: git show failing falls back to the working-tree copy, recorded in Phase 3's inspection_limits, never silently", "type": "functionality", "target": "outputs/"}
+  ]
+}

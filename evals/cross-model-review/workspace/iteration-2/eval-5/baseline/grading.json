@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response identifies that node fails at the OS level (path/module not found) before either bridge-invoke.mjs or guarded-dispatch.mjs produces its own typed-failure JSON, when codex-kit isn't installed", "passed": false, "evidence": "Imagines a separate 'discovery/availability check' that runs BEFORE any node invocation and prevents a dispatch attempt entirely ('it should never even attempt to run a codex command in this case') -- a different design than reality, where node is actually invoked and fails via module resolution."},
+    {"text": "Response correctly distinguishes this case from isolation_profile_unavailable (a typed failure the bridge script itself returns after successfully starting) and from guardrails_disabled (a typed failure guarded-dispatch.mjs returns)", "passed": true, "evidence": "Clear 3-case comparison table distinguishing 'plugin discovery' vs 'executable resolution' vs 'CLI runtime, after successful process start' -- correctly identifies isolation_profile_unavailable as the deepest, most-informative layer."},
+    {"text": "Response states this collapses into resolver step 3's catch-all and the same AskUserQuestion single-model-or-stop choice", "passed": false, "evidence": "Treats the codex-kit-missing case as resolved earlier/differently ('the phrase \"first real Codex dispatch\" is actually the wrong frame for this scenario -- there is no dispatch attempt') rather than collapsing into the same step-3 fallback the real skill uses for all three cases uniformly."},
+    {"text": "Response states the Medium-confidence consequence if proceeding single-model", "passed": false, "evidence": "No mention of confidence tiers anywhere in the response."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 1, "pass_rate": 0.25}
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response identifies that node fails at the OS level (path/module not found) before either bridge-invoke.mjs or guarded-dispatch.mjs produces its own typed-failure JSON, when codex-kit isn't installed", "passed": true, "evidence": "'node <path> fails at the OS/module-resolution level ... No JavaScript in bridge-invoke.mjs ever runs ... No structured/typed failure is produced.'"},
+    {"text": "Response correctly distinguishes this case from isolation_profile_unavailable (a typed failure the bridge script itself returns after successfully starting) and from guardrails_disabled (a typed failure guarded-dispatch.mjs returns)", "passed": true, "evidence": "Full contrast table distinguishing all three cases by whether the script even starts and whether a typed-failure JSON exists."},
+    {"text": "Response states this collapses into resolver step 3's catch-all and the same AskUserQuestion single-model-or-stop choice", "passed": true, "evidence": "'The raw failure instead falls straight into resolver step 3 ... Step 3's action fires: tell the user Codex is unavailable ... AskUserQuestion whether to proceed single-model ... or stop.'"},
+    {"text": "Response states the Medium-confidence consequence if proceeding single-model", "passed": true, "evidence": "'findings default to Medium confidence since nothing cross-examines them' quoted directly."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

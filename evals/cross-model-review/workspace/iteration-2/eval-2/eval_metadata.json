@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response identifies resolver step 1 (codex-review-bridge) failing with isolation_profile_unavailable as the trigger for falling back to codex-windows-guardrails", "type": "functionality", "target": "outputs/"},
+    {"text": "Response states guardrails_disabled at the shipped default is expected, not a bug, and that the skill never enables it on the user's behalf", "type": "quality", "target": "outputs/"},
+    {"text": "Response describes resolver step 3 firing: tells the user Codex is unavailable this run and asks via AskUserQuestion whether to proceed single-model or stop", "type": "functionality", "target": "outputs/"},
+    {"text": "Response states the single-model fallback defaults findings to Medium confidence since nothing cross-examines them", "type": "quality", "target": "outputs/"},
+    {"text": "Response never claims to silently proceed as a full cross-model review when Codex is actually unavailable", "type": "quality", "target": "outputs/"}
+  ]
+}

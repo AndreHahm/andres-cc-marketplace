@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response identifies Preflight step 5 specifically as where trusted instruction sourcing happens", "passed": false, "evidence": "No access to real step numbering; refers only to a generically-numbered 'Step 1' of its own invented structure."},
+    {"text": "Response states instructions are materialized via git show \"$BASE:...\" rather than read live from the working tree", "passed": true, "evidence": "Independently infers 'git show $BASE:plugins/git-kit/skills/cross-model-review/prompts/review.md' as the idiomatic mechanism."},
+    {"text": "Response explicitly states the injection risk: a reviewed diff could otherwise rewrite the rules that judge it", "passed": true, "evidence": "'a malicious or careless diff could alter the reviewer persona to something that suppresses criticism, before the reviewer ever runs.'"},
+    {"text": "Response correctly describes the bootstrap fallback: git show failing falls back to the working-tree copy, recorded in Phase 3's inspection_limits, never silently", "passed": false, "evidence": "Correctly reasons toward a working-tree fallback as the 'more robust design' but explicitly cannot confirm it, and never mentions inspection_limits since that mechanism is unknown to it."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 2, "pass_rate": 0.5}
+}

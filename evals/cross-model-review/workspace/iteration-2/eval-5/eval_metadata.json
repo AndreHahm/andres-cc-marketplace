@@ -1,0 +1,10 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response identifies that node fails at the OS level (path/module not found) before either bridge-invoke.mjs or guarded-dispatch.mjs produces its own typed-failure JSON, when codex-kit isn't installed at all", "type": "functionality", "target": "outputs/"},
+    {"text": "Response correctly distinguishes this case from isolation_profile_unavailable (a typed failure the bridge script itself returns after successfully starting) and from guardrails_disabled (a typed failure guarded-dispatch.mjs returns)", "type": "quality", "target": "outputs/"},
+    {"text": "Response states this collapses into resolver step 3's catch-all and the same AskUserQuestion single-model-or-stop choice", "type": "functionality", "target": "outputs/"},
+    {"text": "Response states the Medium-confidence consequence if proceeding single-model", "type": "quality", "target": "outputs/"}
+  ]
+}
