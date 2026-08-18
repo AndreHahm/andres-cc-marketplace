@@ -64,6 +64,16 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
 16. The working tree has uncommitted (staged or unstaged) changes on top of the last commit → the
     canonical diff includes them, since it's built from `$MERGE_BASE` as a single ref, not the
     committed-only two-dot `$BASE...HEAD` form.
+17. The change set consists entirely of a brand-new, never-`git add`ed file → `git add -N -- "${SCOPE:-.}"`
+    intent-adds it before the diff is built, so it appears in `git diff` output as a full addition
+    instead of the run reporting "nothing to review."
+18. A changed path is a symlink whose target resolves outside `$REPO_ROOT` → Preflight step 2 excludes
+    it from `--target-paths` (via `realpath`) before any dispatch attempt, instead of the dispatcher's
+    own containment check rejecting the whole envelope and forcing an unnecessary single-model
+    fallback over one file; Claude's own native review still covers it.
+19. `codex-kit` is genuinely not installed (single-model mode) → Claude's native pass still produces
+    a correctly-shaped envelope using `review.md`'s self-contained field summary, without needing to
+    read `envelope-schema.md` (which doesn't exist in this scenario since git-kit doesn't bundle it).
 
 ## Quality gates
 
@@ -117,3 +127,12 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
       `location` and every entry in its `components` array — never `location` alone
 - [ ] `plugin.json` and the marketplace entry's `version` are bumped together whenever a release-worthy
       change (like a new skill) ships, so `claude plugin update` doesn't treat it as unchanged
+- [ ] `git add -N` always runs before the canonical `DIFF`/`CODEX_DIFF` commands, never after — an
+      untracked file added post-diff still won't appear in that run's output
+- [ ] `git add -N`, `git merge-base`, and `realpath` are all declared in `allowed-tools` — never
+      invoked without a matching grant
+- [ ] Preflight step 2's symlink-containment check always resolves `$REPO_ROOT` inline via
+      `git rev-parse --show-toplevel`, never the `$REPO_ROOT` variable — step 4 hasn't assigned it yet
+      at that point in the sequence
+- [ ] review.md's self-contained field summary is used whenever `envelope-schema.md` is unavailable
+      (codex-kit not installed) — Claude's native pass is never left without a field contract to follow

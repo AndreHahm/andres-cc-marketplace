@@ -11,7 +11,7 @@ description: >-
   pre-PR gate, or high-confidence findings before opening or readying a PR. Not
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery
   (both act on an already-open PR) — this skill never posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -29,7 +29,11 @@ I" branch to resolve.
 **`Write` is scoped in practice to `$RUN`, this skill's own scratch dir, even though the frontmatter
 grant has no path-restriction syntax to enforce that mechanically.** Never write to any path inside
 the repository itself, and never to `.claude/codex-windows-guardrails.local.json` in particular —
-this skill never enables that override on the user's behalf (see "Deliberately NOT done").
+this skill never enables that override on the user's behalf (see "Deliberately NOT done"). The one
+deliberate exception is `git add -N` (Inputs section, below): it mutates the Git **index** only —
+recording an untracked path with an empty placeholder blob so it appears in `git diff` output — never
+the working tree, never file content, never a commit. Trivially reversible (`git reset -- <path>`)
+and never touches anything this skill doesn't already read.
 
 ## When to Use
 
@@ -71,11 +75,21 @@ and `B`; it never includes staged or unstaged working-tree changes. Since this s
 purpose is reviewing "the current diff" / "the local working diff" (see the intro and "When to
 Use"), a two-dot diff would silently skip any uncommitted work-in-progress — including the common
 case of reviewing before the first commit is even made. A single-ref `git diff <merge-base>`
-includes the working tree (index and unstaged changes both) on top of the merge-base:
+includes the working tree (index and unstaged changes both) on top of the merge-base.
+
+**Intent-add untracked files before diffing, or they never appear at all.** A brand-new file that
+was never `git add`ed shows up in `git status` as `??` but produces *no* output from `git diff` in
+any ref form, single or two-dot — Git only diffs tracked content. Verified empirically: an isolated
+untracked file yields nothing from `git diff "$MERGE_BASE" -- <file>` until `git add -N` (intent-to-
+add) records it in the index with an empty placeholder blob, after which the same diff command shows
+its full content as an addition. Without this, an all-untracked change set (the common case right
+after `git init` or creating a wholly new file) reports "nothing to review" despite genuinely having
+something to review:
 
 ```bash
 BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
+git add -N -- "${SCOPE:-.}"
 DIFF=(git diff "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")
 DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding in a prompt
@@ -83,7 +97,8 @@ DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding 
 
 To **run** it, use `"${DIFF[@]}"` (quoted, no word-splitting). To **embed** it as text inside a
 prompt, use `$DIFF_STR`. Every other diff invocation in this document (Preflight steps 2 and 6, and
-the `CODEX_DIFF` variant) uses this same `$MERGE_BASE`, never a re-spelled `$BASE...HEAD`.
+the `CODEX_DIFF` variant) uses this same `$MERGE_BASE`, never a re-spelled `$BASE...HEAD` — and all
+of them run *after* the `git add -N` above, so they all see intent-added untracked files too.
 
 ## Preflight
 
@@ -108,6 +123,16 @@ etc. as if they were still live shell variables will not see them.
    containing any other character, or a path the diff *deletes*, cannot go through either dispatch
    as-is. If any changed path fails that pattern or no longer exists, exclude it from `--target-paths`
    (note it in the final report as an inspection limit) rather than failing the whole run.
+
+   **Also exclude a path that's a symlink resolving outside the repository.** `realpath -- <path>`
+   each candidate; if the result doesn't start with `$(git rev-parse --show-toplevel)` (this step
+   runs before step 4 resolves `$REPO_ROOT` as a named variable — re-run the same command inline
+   here rather than depending on a not-yet-assigned value), exclude it the same way — both dispatch
+   scripts canonicalize target paths before their own containment check and reject the *entire
+   dispatch* on one such entry (a `non_zero_exit`/containment-violation typed failure), which would
+   otherwise force an unnecessary single-model fallback for the whole review over one symlink. Keep
+   it in Claude's own native review regardless (Claude has no such containment constraint); only the
+   Codex-facing `--target-paths` list is affected.
 
    **Build a Codex-scoped diff text from the eligible paths only, kept separate from `$DIFF_STR`.**
    Both dispatch scripts validate a returned finding's `location` against `--target-paths` and reject
