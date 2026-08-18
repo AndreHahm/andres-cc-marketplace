@@ -8,7 +8,7 @@
       "target": "outputs/"
     },
     {
-      "text": "The response does not automatically loop back through steps 3-7 a second time",
+      "text": "The response does not automatically loop back through steps 3-8 a second time",
       "type": "functionality",
       "target": "outputs/"
     },
@@ -18,7 +18,7 @@
       "target": "outputs/"
     },
     {
-      "text": "The response treats the genuine completed/failure result (observed after in_progress) as this retry's real outcome, not as a stale pre-rerun result",
+      "text": "The response treats the completed/failure result as this retry's real outcome because attempt (2) exceeds the baseline (1)",
       "type": "functionality",
       "target": "outputs/"
     }

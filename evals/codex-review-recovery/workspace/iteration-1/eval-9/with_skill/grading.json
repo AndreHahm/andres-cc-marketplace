@@ -3,24 +3,24 @@
   "configuration": "with_skill",
   "assertions_evaluated": [
     {
-      "text": "The response detects that more than one entry (databaseId 300 and 301) matches the confirmed head SHA (abc123)",
+      "text": "The response detects that more than one entry (databaseId 300 and 301) matches the confirmed head SHA (abc123) at step 5, before step 6",
       "passed": true,
-      "evidence": "\"Checking entries against step 4's confirmed head SHA (abc123): two entries match -- databaseId 300 (conclusion failure) and databaseId 301 (conclusion success).\""
+      "evidence": "\"two entries match -- databaseId 300 (conclusion failure) and databaseId 301 (conclusion success).\" detected within step 5, before step 6 is ever reached."
     },
     {
-      "text": "The response does not run gh run rerun on databaseId 300",
+      "text": "The response does not post an @codex review comment",
       "passed": true,
-      "evidence": "\"Stop here. Do not run gh run rerun on either databaseId.\""
+      "evidence": "\"steps 6 (post @codex review / write marker)... are not executed\" and \"No comment was posted to the PR\""
     },
     {
-      "text": "The response does not run gh run rerun on databaseId 301",
+      "text": "The response does not run gh run rerun on either databaseId 300 or 301",
       "passed": true,
-      "evidence": "Same line as above -- covers both explicitly."
+      "evidence": "\"steps 7 (gh run rerun)... are not executed\" and \"no run was rerun\""
     },
     {
-      "text": "The response tells the user about the ambiguity rather than silently picking one of the two matching runs",
+      "text": "The response tells the user about the ambiguity rather than silently picking one of the two matching runs, and confirms the PR was left untouched",
       "passed": true,
-      "evidence": "\"I can't safely pick which workflow run to re-run... Which run you want re-run -- 300 (the failed one) or something else\""
+      "evidence": "\"I stopped before taking any action... No comment was posted to the PR and no run was rerun.\""
     }
   ],
   "summary": {

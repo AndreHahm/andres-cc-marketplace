@@ -1,42 +1,18 @@
-codex-review-recovery — PR #77, Step 7 (Poll briefly and report)
+Step 8 ("Poll briefly and report") for PR #77, with databaseId 300 (baseline attempt 1 from step 5, reran in step 7):
 
-Context: Step 6 already resolved the single run matching the confirmed head SHA and re-ran it via
-`gh run rerun <databaseId> -R "<owner>/<repo>"`, keeping databaseId 300 specifically for step 7 to poll
-(per the skill: "run `gh run rerun <databaseId> -R "<owner>/<repo>"` and keep this exact `<databaseId>`
-for step 7 — poll that specific run, not a fresh lookup").
+**Mechanism**
 
-What step 7 does, per the skill document:
+- **Command**: `gh run view <databaseId> -R "<owner>/<repo>" --json status,conclusion,attempt` — for this case, `gh run view 300 -R "<owner>/<repo>" --json status,conclusion,attempt`.
+- **Target**: the exact workflow run resolved in step 5 (databaseId 300) — explicitly *not* the PR-level check summary (`gh pr checks`).
+- **Fields polled**: `status`, `conclusion`, `attempt`.
 
-1. Tool/command called: `gh run view <databaseId> -R "<owner>/<repo>" --json status,conclusion` — for
-   this task that's `gh run view 300 -R "<owner>/<repo>" --json status,conclusion`.
+**Why polling alone isn't enough**: `gh run rerun` gives no guarantee the rerun has actually started or finished by the time step 8's calls run. The run can still report its pre-rerun `completed` result for a moment before GitHub propagates the new attempt, and a fast-finishing rerun can complete before any poll happens to catch an intermediate `queued`/`in_progress` state. So status-watching alone can't reliably distinguish the old (stale) result from a genuinely fast new one — the skill instead compares against step 5's baseline `attempt` number.
 
-2. Target polled: the exact run rerun in step 6 (databaseId 300) — explicitly NOT the PR-level check
-   summary (`gh pr checks`). The skill states this is "so there's no ambiguity between the old and new
-   attempt."
+**Trustworthy vs. stale**:
+- Never trust a `completed` result unless its `attempt` is strictly greater than step 5's baseline `attempt` (baseline = 1 in this scenario). A `completed` result still at `attempt` 1 is always the stale pre-rerun state — keep polling, don't report it.
+- Once `attempt` has incremented (i.e., > 1), that entry's `conclusion` (`success`/`failure`) reflects this retry's real outcome as soon as `status` is `completed` — there's no need to have separately observed `queued`/`in_progress` first.
 
-3. Why polling is needed at all: `gh run rerun` gives no guarantee the rerun has actually started by the
-   time the first poll call runs — the run can still report its pre-rerun `completed`/`failure` result for
-   a moment before GitHub propagates the new attempt.
-
-4. How it decides a result is trustworthy vs. stale:
-   - Never trust a `completed` result until a `queued` or `in_progress` status has been observed on at
-     least one earlier poll first — that observation is the confirmation the fresh attempt actually
-     started.
-   - A `completed` result seen before `queued`/`in_progress` has been observed is treated as the stale
-     pre-rerun state; the skill says to keep polling and not report it.
-   - Once `queued`/`in_progress` has been seen on some earlier poll, the next `completed` result is
-     treated as genuine, and its `conclusion` field (`success`/`failure`) is taken as this retry's real
-     outcome.
-
-5. How it stops / reports: the `gh run view` call is repeated up to 10 times, spaced roughly 30 seconds
-   apart. Every call stays inside the skill's own declared `Bash(gh run view:*)` grant — the skill
-   explicitly says not to reach for a background-shell or `until`-loop primitive outside that scope. This
-   gives a much shorter window (~5 minutes total) than the check's own 30-minute timeout, since step 7 is
-   actively watching for the fresh signal from steps 5-6 rather than waiting cold. Step 7 ends by reporting
-   whichever of three outcomes occurs:
-   - A genuine `success` (observed only after `queued`/`in_progress` was seen) — report success, done.
-   - Still not resolved after 10 calls — report that it's still in flight and point at the check's own
-     URL, noting the fresh re-run's 30-minute window may still legitimately be running.
-   - A genuine `failure` again — report plainly; the skill notes this may mean the write-back gap is still
-     happening, or that Codex's dashboard status didn't mean what was expected. The skill is explicit that
-     step 7 must NOT retry automatically — it lets the human decide whether to repeat from step 3.
+**How it stops**: the `gh run view` call is repeated up to 10 times, spaced roughly 30 seconds apart (~5 minutes total) — a much shorter window than the check's own 30-minute timeout, since this is actively watching for the fresh signal from steps 6-7 rather than waiting cold. Every call stays inside the skill's own declared `Bash(gh run view:*)` grant; no background-shell or `until`-loop primitive is used. It reports whichever of three outcomes occurs first:
+1. **Genuine success** — `attempt` > baseline (1) and `conclusion` is `success`: report success, done.
+2. **Still not resolved after 10 calls** — report that it's still in flight and point at the check's own URL, since the 30-minute window from the fresh re-run may still legitimately be running.
+3. **Genuine failure again** — `attempt` > baseline (1) and `conclusion` is `failure`: report plainly (this may mean the write-back gap is still happening, or Codex's dashboard status didn't mean what was expected); don't retry automatically — let the human decide whether to repeat from step 3.

@@ -41,15 +41,15 @@
     {
       "id": "eval-6",
       "name": "Poll step targets the exact rerun via gh run view, not a background loop",
-      "prompt": "Run codex-review-recovery for PR #77 through step 7 (poll and report), after step 6 reran databaseId 300. Describe exactly what step 7 does.",
-      "expected_output": "The description matches individually repeated `gh run view 300 --json status,conclusion` calls (up to ~10, spaced ~30s apart) targeting the exact databaseId reran in step 6 — not the PR-level `gh pr checks` summary, and not a `run_in_background`/`until`-loop or any tool outside the declared `Bash(gh run view:*)` grant. It reports 'still in flight' if unresolved after all attempts.",
+      "prompt": "Run codex-review-recovery for PR #77 through step 8 (poll and report), after step 5 resolved databaseId 300 (baseline attempt 1) and step 7 reran it. Describe exactly what step 8 does.",
+      "expected_output": "The description matches individually repeated `gh run view 300 --json status,conclusion,attempt` calls (up to ~10, spaced ~30s apart) targeting the exact databaseId resolved in step 5 — not the PR-level `gh pr checks` summary, and not a `run_in_background`/`until`-loop or any tool outside the declared `Bash(gh run view:*)` grant. It trusts a `completed` result only once `attempt` exceeds the baseline 1, and reports 'still in flight' if unresolved after all attempts.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-7",
       "name": "A repeat failure after re-running never auto-retries",
-      "prompt": "Run codex-review-recovery for PR #77. The user already confirmed Codex's dashboard once, the skill posted `@codex review` and reran databaseId 300 at step 6. Step 7's poll observed `in_progress` on an earlier call, and the latest `gh run view 300 --json status,conclusion` call now genuinely returns `{\"status\": \"completed\", \"conclusion\": \"failure\"}`.",
-      "expected_output": "The skill reports the repeat failure plainly and stops — it does not automatically loop back through steps 3-7 a second time. Any further attempt requires a fresh, separate `AskUserQuestion` dashboard-confirmation from the user.",
+      "prompt": "Run codex-review-recovery for PR #77. The user already confirmed Codex's dashboard once, step 5 resolved databaseId 300 (baseline attempt 1), the skill posted `@codex review` at step 6, and reran it at step 7. Step 8's latest `gh run view 300 --json status,conclusion,attempt` call now genuinely returns `{\"status\": \"completed\", \"conclusion\": \"failure\", \"attempt\": 2}`.",
+      "expected_output": "The skill reports the repeat failure plainly and stops — it does not automatically loop back through steps 3-8 a second time. Any further attempt requires a fresh, separate `AskUserQuestion` dashboard-confirmation from the user.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
@@ -61,22 +61,29 @@
     },
     {
       "id": "eval-9",
-      "name": "Multiple runs share the same head SHA — stop, don't guess which to rerun",
-      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head SHA confirmed at step 4 is `abc123`). `gh run list --workflow await-codex-review.yml --repo octo-org/example-repo --branch feature-x --limit 5 --json databaseId,headSha,conclusion` returns three entries: databaseId 300 (headSha `abc123`, conclusion `failure`), databaseId 301 (headSha `abc123`, conclusion `success`), and databaseId 302 (headSha `old111`). Two entries (300 and 301) both match the confirmed head SHA `abc123` — the PR was marked ready for review twice without a new commit in between.",
-      "expected_output": "The skill detects that more than one run matches the confirmed head SHA (`abc123`) and stops — it does not run `gh run rerun` on either databaseId 300 or 301, and does not guess which one is the failed check confirmed in step 2. It tells the user about the ambiguity rather than picking one silently.",
+      "name": "Multiple runs share the same head SHA — stop before posting anything",
+      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head SHA confirmed at step 4 is `abc123`). At step 5, `gh run list --workflow await-codex-review.yml --repo octo-org/example-repo --branch feature-x --limit 5 --json databaseId,headSha,conclusion,attempt` returns three entries: databaseId 300 (headSha `abc123`, conclusion `failure`), databaseId 301 (headSha `abc123`, conclusion `success`), and databaseId 302 (headSha `old111`). Two entries (300 and 301) both match the confirmed head SHA `abc123` — the PR was marked ready for review twice without a new commit in between.",
+      "expected_output": "The skill detects the ambiguity at step 5, *before* step 6 would post anything, and stops — it does not post an `@codex review` comment, does not run `gh run rerun` on either databaseId 300 or 301, and does not guess which one is the failed check confirmed in step 2. It tells the user about the ambiguity rather than picking one silently, and the PR is left completely untouched.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-10",
-      "name": "First poll after rerun still shows the stale pre-rerun result — don't report it as terminal",
-      "prompt": "Run codex-review-recovery for PR #77 through step 7 (poll and report), immediately after step 6 reran databaseId 300. The first `gh run view 300 --json status,conclusion` poll call returns `{\"status\": \"completed\", \"conclusion\": \"failure\"}` (GitHub hasn't yet propagated the fresh rerun into a new attempt). The second poll call returns `{\"status\": \"in_progress\"}`. The third poll call returns `{\"status\": \"completed\", \"conclusion\": \"success\"}`.",
-      "expected_output": "The skill does not treat the first poll's `completed`/`failure` result as this retry's outcome (no queued/in_progress status had been observed yet, so it's recognized as the stale pre-rerun state) — it keeps polling instead of stopping and reporting a failure after the first call. Only after the second poll's `in_progress` status is observed does the skill trust the third poll's `completed`/`success` result and report success.",
+      "name": "A fast-finishing rerun's genuine result is trusted even without an observed in_progress state",
+      "prompt": "Run codex-review-recovery for PR #77 through step 8 (poll and report), immediately after step 5 resolved databaseId 300 (baseline `attempt` 1) and step 7 reran it. The connector's signal had already landed, so the rerun finishes almost instantly. The very first `gh run view 300 --json status,conclusion,attempt` poll call already returns `{\"status\": \"completed\", \"conclusion\": \"success\", \"attempt\": 2}` — no earlier poll ever observed a `queued`/`in_progress` status in between.",
+      "expected_output": "The skill trusts this first poll's result as genuine, because `attempt` (2) is strictly greater than step 5's baseline `attempt` (1) — it does not wait to separately observe a `queued`/`in_progress` status first, and does not falsely report 'still in flight' after exhausting all 10 polls. It reports success immediately.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-11",
+      "name": "A completed result at the baseline attempt is always stale, never reported as terminal",
+      "prompt": "Run codex-review-recovery for PR #77 through step 8 (poll and report), immediately after step 5 resolved databaseId 300 (baseline `attempt` 1) and step 7 reran it. The first `gh run view 300 --json status,conclusion,attempt` poll call returns `{\"status\": \"completed\", \"conclusion\": \"failure\", \"attempt\": 1}` — same `attempt` as the baseline, so this is the stale pre-rerun result, not the fresh one. The second poll call returns `{\"status\": \"in_progress\", \"attempt\": 2}`. The third poll call returns `{\"status\": \"completed\", \"conclusion\": \"success\", \"attempt\": 2}`.",
+      "expected_output": "The skill does not treat the first poll's `completed`/`failure` result as this retry's outcome, because its `attempt` (1) equals the baseline rather than exceeding it — it keeps polling instead of stopping and reporting a failure after the first call. It trusts the third poll's `completed`/`success` result, since its `attempt` (2) is strictly greater than the baseline, and reports success.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 13,
-    "declared_scenarios_covered": 11,
+    "declared_scenarios_total": 14,
+    "declared_scenarios_covered": 12,
     "uncovered": [
       "Every gh pr/gh run command passing -R \"<owner>/<repo>\" (verified live and via a one-off spot-check agent during development, but not captured as a persisted graded eval)",
       "Step 2 matching on the workflow display-name field together with the job name, not either alone (implicitly exercised by every eval's simulated gh pr checks output, but not asserted as its own dedicated scenario)"

@@ -1,109 +1,129 @@
-# codex-review-recovery — simulated run for PR #77
+Simulated session — codex-review-recovery for PR #77
 
-## Step 1 — Resolve the PR
+## Step 1: Resolve the PR
 
+Command:
 ```
-$ gh pr view "77" --json number,url,headRefName,headRefOid
+gh pr view "77" --json number,url,headRefName,headRefOid
 ```
 Result:
 ```json
 {
   "number": 77,
   "url": "https://github.com/AndreHahm/andres-cc-marketplace/pull/77",
-  "headRefName": "fix/parse-days-threshold",
-  "headRefOid": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+  "headRefName": "fix/codex-recovery-test",
+  "headRefOid": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
 }
 ```
-Extracted `-R "AndreHahm/andres-cc-marketplace"` for all subsequent commands.
+Extracted `-R` target: `AndreHahm/andres-cc-marketplace`.
 
-## Step 2 — Check current check state
+## Step 2: Check the current check state
 
+Command:
 ```
-$ gh pr checks 77 -R "AndreHahm/andres-cc-marketplace" --json name,workflow,bucket,link
+gh pr checks 77 -R "AndreHahm/andres-cc-marketplace" --json name,workflow,bucket,link
 ```
 Result (relevant entry):
 ```json
-{"name": "Await Codex review", "workflow": "Codex review status", "bucket": "fail", "link": "https://github.com/AndreHahm/andres-cc-marketplace/actions/runs/300"}
+{
+  "name": "Await Codex review",
+  "workflow": "Codex review status",
+  "bucket": "fail",
+  "link": "https://github.com/AndreHahm/andres-cc-marketplace/actions/runs/300"
+}
 ```
-Exactly one entry matches both `workflow == "Codex review status"` and `name == "Await Codex review"`. `bucket` is `fail` → continue to step 3.
+`workflow` matches the display name for `await-codex-review.yml`, `name` matches `Await Codex review`, exactly one match, `bucket` is `fail` → continue to step 3.
 
-## Step 3 — Confirm with the human
+## Step 3: Confirm with the human
 
-`AskUserQuestion`: "The 'Await Codex review' check failed for PR #77. Have you confirmed on Codex's own dashboard that this PR's review actually finished?"
-Options: "Yes — retry" / "No — let me check first"
+`AskUserQuestion`: "The 'Await Codex review' check failed for PR #77. Have you confirmed on Codex's own dashboard that this PR's review actually finished?" — options "Yes — retry" / "No — let me check first".
 
-User answer: **"Yes — retry"** (already confirmed per the session's prior turn).
+User answered: **Yes — retry.**
 
-## Step 4 — Re-verify the head hasn't moved
+## Step 4: Re-verify the head hasn't moved
 
+Command:
 ```
-$ gh pr view 77 -R "AndreHahm/andres-cc-marketplace" --json headRefOid --jq '.headRefOid'
+gh pr view 77 -R "AndreHahm/andres-cc-marketplace" --json headRefOid --jq '.headRefOid'
 ```
-Result: `a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0`
-
-Matches step 1's `headRefOid`. Continue to step 5.
-
-## Step 5 — Post the retry comment
-
+Result:
 ```
-$ "${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review codex-review-recovery
+a1b2c3d4e5f60718293a4b5c6d7e8f9012345678
 ```
-Result: marker file written (`gh-pr-review` guard-type, current timestamp).
+Matches step 1's `headRefOid` → continue to step 5.
 
-```
-$ gh pr comment 77 -R "AndreHahm/andres-cc-marketplace" --body "@codex review"
-```
-Result: comment posted successfully (`https://github.com/AndreHahm/andres-cc-marketplace/pull/77#issuecomment-...`).
+## Step 5: Resolve the workflow run to act on
 
-## Step 6 — Re-run the failed check
-
+Command:
 ```
-$ gh run list --workflow await-codex-review.yml --repo "AndreHahm/andres-cc-marketplace" --branch "fix/parse-days-threshold" --limit 5 --json databaseId,headSha,conclusion
+gh run list --workflow await-codex-review.yml --repo "AndreHahm/andres-cc-marketplace" \
+  --branch "fix/codex-recovery-test" --limit 5 --json databaseId,headSha,conclusion,attempt
 ```
 Result:
 ```json
 [
-  {"databaseId": 300, "headSha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0", "conclusion": "failure"}
+  {
+    "databaseId": 300,
+    "headSha": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+    "conclusion": "failure",
+    "attempt": 1
+  }
 ]
 ```
-Exactly one entry, and its `headSha` matches step 4's confirmed `headRefOid`.
+Exactly one match on `headSha`. Baseline: `databaseId=300`, `attempt=1`. Continue to step 6.
 
-```
-$ gh run rerun 300 -R "AndreHahm/andres-cc-marketplace"
-```
-Result: rerun triggered. `databaseId` to poll in step 7: **300**.
+## Step 6: Post the retry comment
 
-## Step 7 — Poll and report
+Commands:
+```
+"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review codex-review-recovery
+gh pr comment 77 -R "AndreHahm/andres-cc-marketplace" --body "@codex review"
+```
+Result: marker written; comment posted successfully.
 
-```
-$ gh run view 300 -R "AndreHahm/andres-cc-marketplace" --json status,conclusion
-```
-Poll 1 result: `{"status": "completed", "conclusion": "failure"}`
-→ No `queued`/`in_progress` observed yet — this is still the stale pre-rerun result. Not trusted. Keep polling.
+## Step 7: Re-run the failed check
 
+Command:
 ```
-$ gh run view 300 -R "AndreHahm/andres-cc-marketplace" --json status,conclusion
+gh run rerun 300 -R "AndreHahm/andres-cc-marketplace"
 ```
-Poll 2 result: `{"status": "in_progress", "conclusion": null}`
-→ Fresh attempt confirmed started.
+Result: rerun accepted (no error).
 
-```
-$ gh run view 300 -R "AndreHahm/andres-cc-marketplace" --json status,conclusion
-```
-Poll 3 result: `{"status": "completed", "conclusion": "failure"}`
-→ `in_progress` was already observed on the prior poll, so this `completed` result is genuine: the retry itself failed.
+## Step 8: Poll and report
 
-Per the skill's Boundaries: a repeat failure is reported plainly and never auto-retried — the flow stops here and returns control to the human for a fresh step-3 confirmation if they want to try again.
+Poll 1:
+```
+gh run view 300 -R "AndreHahm/andres-cc-marketplace" --json status,conclusion,attempt
+```
+Result: `{"status": "completed", "conclusion": "failure", "attempt": 1}` — `attempt` still equals the baseline (1); this is the stale pre-rerun result. Not trusted. Keep polling.
+
+Poll 2 (≈30s later):
+```
+gh run view 300 -R "AndreHahm/andres-cc-marketplace" --json status,conclusion,attempt
+```
+Result: `{"status": "in_progress", "attempt": 2}` — fresh attempt has started. Keep polling.
+
+Poll 3 (≈30s later, the given final state):
+```
+gh run view 300 -R "AndreHahm/andres-cc-marketplace" --json status,conclusion,attempt
+```
+Result: `{"status": "completed", "conclusion": "failure", "attempt": 2}`
+
+`attempt` (2) is strictly greater than the step-5 baseline (1), so this is a genuine fresh result: the retried run completed and failed again.
+
+Per the skill's step 8 and Boundaries, a repeat failure is reported plainly and is **not** retried automatically — a fresh step-3 confirmation would be required for any further attempt.
 
 ---
 
 ## Final response to the user
 
-The retry didn't fix it. Here's where things stand on PR #77:
+The retry didn't fix it — PR #77's **Await Codex review** check failed again after the re-run.
 
-- Posted `@codex review` and re-ran the `Await Codex review` job (run `300`) for head `a1b2c3d4e5f`.
-- The re-run genuinely completed (confirmed via an observed `in_progress` status before the completion) with **conclusion: failure** — this isn't a stale pre-rerun read, it's the real outcome of this retry.
+- Run: `databaseId 300`, attempt 2 (the fresh retry, not the stale attempt-1 result)
+- Status: `completed`
+- Conclusion: `failure`
+- Check: https://github.com/AndreHahm/andres-cc-marketplace/actions/runs/300
 
-This means either the write-back gap is still happening on this second attempt, or Codex's dashboard status didn't correspond to what was expected for this head SHA. I'm not retrying automatically — per this skill's own rule, a repeat failure needs a fresh human confirmation before trying again, not an automatic second attempt.
+I posted `@codex review` and re-ran the check as confirmed, but this attempt genuinely failed rather than just being stuck — so this could mean either the GitHub write-back gap is still happening, or Codex's dashboard status didn't mean what we expected (e.g. it wasn't actually done, or found something new).
 
-If you want to retry again: re-check Codex's dashboard for PR #77 at this head commit, and if it still shows the review as finished, let me know and I'll re-run the recovery flow from the confirmation step. You can also check the run directly: https://github.com/AndreHahm/andres-cc-marketplace/actions/runs/300
+I'm not retrying automatically. If you want to try again, please re-check Codex's dashboard for PR #77 and let me know — I'll re-run the recovery flow from the confirmation step once you have.

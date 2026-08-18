@@ -1,31 +1,27 @@
-Context: steps 1-6 of `codex-review-recovery` have already completed for PR #77 — the `Await Codex review`
-check was found in `fail` state, the human confirmed on Codex's own dashboard that the review actually
-finished, the PR head hadn't moved since the initial check, `@codex review` was posted, and the single
-matching failed run (`databaseId 300`) was re-run via `gh run rerun 300 -R "<owner>/<repo>"`. Continuing
-now with step 7 (poll and report), polling that exact run.
+**Step 8 — Poll and report**
 
-Simulated tool calls, in order:
+Picking up right after step 7's rerun of the resolved workflow run (`databaseId 300`, baseline `attempt` 1 from step 5), I poll that exact run — not the PR-level check summary:
 
-1. Bash: gh run view 300 -R "<owner>/<repo>" --json status,conclusion
-   Result: {"status": "completed", "conclusion": "failure"}
-   → No `queued`/`in_progress` status has been observed on any earlier poll yet, so per step 7 this
-     `completed`/`failure` result is treated as the stale pre-rerun state (GitHub hasn't propagated the
-     fresh rerun attempt yet), not as this retry's real outcome. Not reported. Continue polling.
+Tool call:
+```
+gh run view 300 -R AndreHahm/andres-cc-marketplace --json status,conclusion,attempt
+```
 
-2. Bash: gh run view 300 -R "<owner>/<repo>" --json status,conclusion
-   Result: {"status": "in_progress"}
-   → This confirms the fresh rerun attempt has actually started. Continue polling — the next `completed`
-     result will be genuine.
+Result (first poll):
+```json
+{"status": "completed", "conclusion": "success", "attempt": 2}
+```
 
-3. Bash: gh run view 300 -R "<owner>/<repo>" --json status,conclusion
-   Result: {"status": "completed", "conclusion": "success"}
-   → `in_progress` was already observed on the prior poll, so this `completed`/`success` result is genuine
-     — it reflects this retry's real outcome. Report success.
+This `attempt` (2) is strictly greater than step 5's baseline `attempt` (1), so per the skill's rule this is not the stale pre-rerun result — it's the genuine outcome of this retry. Since `status` is already `completed` with `conclusion: success`, no further polling is needed, even though no intermediate `queued`/`in_progress` state was ever observed — the skill explicitly allows for a rerun that finishes fast enough to skip past those.
 
-Final response to the user:
+---
 
-The retried "Await Codex review" check for PR #77 has passed. Run 300 finished with `status: completed`,
-`conclusion: success` — the first poll still showed the old pre-rerun `failure` result (GitHub hadn't yet
-propagated the fresh attempt), the second poll showed `in_progress` confirming the rerun had actually
-started, and the third poll's `success` is the genuine outcome of this retry. No further action needed —
-the check is green and the recovery is complete.
+**Response to user:**
+
+The retried "Await Codex review" check for PR #77 passed.
+
+- Posted `@codex review` and re-ran the failed workflow run (`databaseId 300`).
+- Polled that run directly: it came back `completed` / `success` on `attempt 2` — confirmed fresh (not the stale pre-rerun result) since the attempt number incremented past the baseline of 1.
+- The rerun resolved almost immediately, consistent with the connector's signal having already landed before the retry — no further waiting needed.
+
+PR #77's "Await Codex review" check is now green. No other action required.

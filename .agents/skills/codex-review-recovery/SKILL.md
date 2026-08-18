@@ -66,8 +66,8 @@ check timed out but the review actually finished", "retry the Codex review check
 1. Resolve the PR and check the `Await Codex review` line's state (`gh pr checks`) — only a `fail` state
    is actionable.
 2. Ask the human to confirm Codex's own dashboard actually shows the review finished — never inferred.
-3. On "Yes", re-verify the PR's head hasn't moved since step 1, then post `@codex review` and re-run the
-   matching failed workflow run for that confirmed head SHA.
+3. On "Yes", re-verify the PR's head hasn't moved since step 1, resolve the one matching failed workflow
+   run for that confirmed head SHA, then post `@codex review` and re-run it.
 4. Poll briefly, then report `pass`/still-in-flight/`fail`.
 
 See `## Instructions` below for the full step-by-step with exact commands and state branches.
@@ -80,8 +80,8 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    validated as a plain PR number/URL before this point. If this fails, tell the user and stop.
 
    Extract `<owner>/<repo>` from the returned `url` field (`https://github.com/<owner>/<repo>/pull/<n>`)
-   and pass it as `-R "<owner>/<repo>"` to every `gh pr`/`gh run` command in steps 2, 4, 5, and 6 below —
-   never rely on the current working directory's own git remote for the target repo. `$ARGUMENTS` may
+   and pass it as `-R "<owner>/<repo>"` to every `gh pr`/`gh run` command in steps 2 and 4 through 8 below
+   — never rely on the current working directory's own git remote for the target repo. `$ARGUMENTS` may
    name a PR in a different repository entirely; without this, a bare `<number>` in later steps would
    silently resolve against the current checkout's repo instead of the PR's actual repo.
 
@@ -118,7 +118,28 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    point them at the check for the new commit instead — the original failure this skill was recovering
    may no longer even apply. If the head SHA still matches, continue to step 5.
 
-5. **Post the retry comment**: immediately before running the command below, run
+5. **Resolve the workflow run to act on** — before posting anything, so an unresolvable or ambiguous run
+   list leaves the PR completely untouched rather than triggering an external side effect (a `@codex
+   review` comment, or a rerun) that this flow then abandons:
+   ```
+   gh run list --workflow await-codex-review.yml --repo "<owner>/<repo>" --branch "<headRefName>" \
+     --limit 5 --json databaseId,headSha,conclusion,attempt
+   ```
+   `--workflow` accepts the file name directly here (unlike `gh pr checks`, which only exposes the
+   display name — see step 2). Quote `<headRefName>` exactly as shown — `git check-ref-format` permits
+   shell metacharacters (`;`, `` ` ``, `$(`, `&`, `|`, `(`, `)`) in branch names, so an unquoted
+   interpolation here is exploitable by a maliciously named branch. If `<headRefName>` contains any of
+   those characters, stop and report rather than proceeding.
+   Pick the entry whose `headSha` matches step 4's confirmed `headRefOid`. If no run matches, tell the
+   user and stop — nothing has been posted or rerun yet. If **more than one** entry's `headSha` matches,
+   also stop and tell the user rather than guessing — a PR reopened or marked ready more than once without
+   a new commit can produce multiple runs sharing the same head SHA (this workflow also triggers on
+   `opened`/`reopened`/`ready_for_review`, not just `synchronize`), and picking the wrong one could rerun
+   an already-passing or superseded run instead of the failed one confirmed in step 2. With exactly one
+   match, keep this `<databaseId>` and its current `attempt` number (the baseline for step 8's polling) —
+   nothing has been triggered yet; continue to step 6.
+
+6. **Post the retry comment**: immediately before running the command below, run
    `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review codex-review-recovery` — this
    writes the marker git-kit's reviewer-action guard (`guard-raw-pr-review.sh`) requires before it will
    allow a raw `gh pr comment`/`gh pr review` call through; it must be written right before the command,
@@ -127,45 +148,33 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    Codex to act again — per the connector's own documented triggers (opening a PR, marking a draft ready,
    or this exact comment).
 
-6. **Re-run the failed check**: posting the comment above does **not** itself re-trigger
+7. **Re-run the failed check**: posting the comment above does **not** itself re-trigger
    `await-codex-review.yml` — that workflow's own `on:` trigger list
-   (`opened`/`reopened`/`synchronize`/`ready_for_review`) has no `issue_comment` entry, so the failed run
-   has to be explicitly re-run to start a fresh polling window. Resolve the specific run tied to the head
-   SHA confirmed in step 4 — don't re-run a stale run for an old commit:
-   ```
-   gh run list --workflow await-codex-review.yml --repo "<owner>/<repo>" --branch "<headRefName>" \
-     --limit 5 --json databaseId,headSha,conclusion
-   ```
-   `--workflow` accepts the file name directly here (unlike `gh pr checks`, which only exposes the
-   display name — see step 2). Quote `<headRefName>` exactly as shown — `git check-ref-format` permits
-   shell metacharacters (`;`, `` ` ``, `$(`, `&`, `|`, `(`, `)`) in branch names, so an unquoted
-   interpolation here is exploitable by a maliciously named branch. If `<headRefName>` contains any of
-   those characters, stop and report rather than proceeding.
-   Pick the entry whose `headSha` matches step 4's confirmed `headRefOid`. If no run matches, tell the
-   user and stop rather than guessing which run to re-run. If **more than one** entry's `headSha`
-   matches, also stop and tell the user rather than guessing — a PR reopened or marked ready more than
-   once without a new commit can produce multiple runs sharing the same head SHA (this workflow also
-   triggers on `opened`/`reopened`/`ready_for_review`, not just `synchronize`), and picking the wrong one
-   could rerun an already-passing or superseded run instead of the failed one confirmed in step 2. With
-   exactly one match, run `gh run rerun <databaseId> -R "<owner>/<repo>"` and keep this exact
-   `<databaseId>` for step 7 — poll that specific run, not a fresh lookup.
+   (`opened`/`reopened`/`synchronize`/`ready_for_review`) has no `issue_comment` entry, so the run resolved
+   in step 5 has to be explicitly re-run to start a fresh polling window:
+   `gh run rerun <databaseId> -R "<owner>/<repo>"` (the exact `<databaseId>` from step 5 — no fresh lookup
+   needed here).
 
-7. **Poll briefly and report**: `gh run rerun` gives no guarantee the rerun has actually started by the
-   time this step's first call runs — the run can still report its pre-rerun `completed`/`failure` result
-   for a moment before GitHub propagates the new attempt, and treating that stale result as this retry's
-   outcome would report a failure that never actually happened. Poll the *exact run* rerun in step 6
-   directly, not the PR-level check summary, so there's no ambiguity between the old and new attempt:
-   `gh run view <databaseId> -R "<owner>/<repo>" --json status,conclusion`.
-   - **Never trust a `completed` result until a `queued` or `in_progress` status has been observed on at
-     least one earlier poll first** — that's the confirmation the fresh attempt actually started. A
-     `completed` result seen before that point is still the stale pre-rerun state; keep polling and don't
-     report it.
-   - Once `queued`/`in_progress` has been seen, the *next* `completed` result is genuine: `conclusion` of
-     `success`/`failure` reflects this retry's real outcome.
+8. **Poll briefly and report**: `gh run rerun` gives no guarantee the rerun has actually started, or even
+   finished, by the time this step's calls run — the run can still report its pre-rerun `completed` result
+   for a moment before GitHub propagates the new attempt, and a fast-finishing rerun (e.g. the connector's
+   signal had already landed) can complete before a poll happens to catch a `queued`/`in_progress` state in
+   between, so status-watching alone can't reliably distinguish the old result from a genuinely-fast new
+   one either way. Poll the *exact run* resolved in step 5, not the PR-level check summary, and compare
+   against step 5's baseline `attempt` number instead:
+   `gh run view <databaseId> -R "<owner>/<repo>" --json status,conclusion,attempt`.
+   - **Never trust a `completed` result unless its `attempt` is strictly greater than step 5's baseline
+     `attempt`** — that's what actually distinguishes a genuinely fresh result from the stale pre-rerun
+     one, regardless of whether any poll happened to catch an intermediate `queued`/`in_progress` state.
+     A `completed` result at the baseline `attempt` number is always the stale pre-rerun state; keep
+     polling and don't report it.
+   - Once `attempt` has incremented, that entry's `conclusion` (`success`/`failure`) reflects this retry's
+     real outcome as soon as `status` is `completed` — no need to have separately observed
+     `queued`/`in_progress` first.
    Repeat this call up to 10 times, spaced roughly 30 seconds apart — every call stays inside this
    skill's own declared `Bash(gh run view:*)` grant; don't reach for a background-shell or `until`-loop
    primitive outside that scope. This is a much shorter window (~5 minutes total) than the check's own
-   30-minute timeout, since we're actively watching for the fresh signal from steps 5-6, not waiting cold.
+   30-minute timeout, since we're actively watching for the fresh signal from steps 6-7, not waiting cold.
    Report whichever happens: a genuine `success` (report success, done), still not resolved after 10 calls
    (report that it's still in flight and point at the check's own URL — the 30-minute window from the
    fresh re-run may still legitimately be running), or a genuine `failure` again (report plainly; this may
@@ -178,15 +187,18 @@ See `## Instructions` below for the full step-by-step with exact commands and st
 - Never posts `@codex review` or re-runs anything without the step-3 confirmation — a failed check alone
   is never sufficient grounds to act.
 - Never treats this skill's own polling timeout (5 minutes) as equivalent to the check's real 30-minute
-  timeout — a "still not resolved" report after step 7 is not a failure, just an incomplete wait.
+  timeout — a "still not resolved" report after step 8 is not a failure, just an incomplete wait.
 - Never modifies `await-codex-review.yml`, branch protection, or any required-check configuration — this
   skill only recovers one already-stuck run, it doesn't change the check's own behavior.
-- Never loops step 3-7 automatically on a repeat failure — each retry attempt needs its own fresh human
+- Never loops step 3-8 automatically on a repeat failure — each retry attempt needs its own fresh human
   confirmation, since a second failure is more likely to mean something genuinely wrong rather than a
   repeat of the same transient gap.
 - Never proceeds past step 4 on a moved head — a PR pushed to while step 3's confirmation was pending
   already has its own fresh `Await Codex review` run in flight via the workflow's `synchronize` trigger;
   this skill must stop and point at that instead of guessing.
+- Never posts the retry comment (step 6) before step 5 has successfully resolved exactly one unambiguous
+  run to act on — an unresolvable or ambiguous run list must leave the PR completely untouched, not
+  trigger an external side effect (prompting Codex again) for a flow this skill then abandons.
 - `Bash(gh pr comment:*)`/`Bash(gh run rerun:*)` are scoped at the `gh` subcommand level, not narrower —
   this repo's `allowed-tools` grammar only supports command-prefix matching, so a tighter grant (e.g.
   "only this exact comment body") isn't expressible; the step-3 confirmation gate is what actually bounds
@@ -222,38 +234,43 @@ See `## Instructions` below for the full step-by-step with exact commands and st
 - [ ] Step 4 always re-fetches the PR's current `headRefOid` and compares it against step 1's — a
       mismatch always stops the flow with no comment posted and no re-run issued, never proceeds on the
       stale SHA
-- [ ] Step 6 always matches the re-run target against the head SHA confirmed in step 4 — never re-runs
+- [ ] Step 5 always resolves the run to act on *before* step 6 posts anything — an unresolvable or
+      ambiguous run list always leaves the PR untouched, never posts the retry comment first and then
+      abandons the flow
+- [ ] Step 5 always matches the re-run target against the head SHA confirmed in step 4 — never re-runs
       the first/most-recent run in the list without checking its `headSha`
-- [ ] No run matching the current head SHA at step 6 always stops and reports rather than guessing
-- [ ] More than one run matching the current head SHA at step 6 always stops and reports rather than
+- [ ] No run matching the current head SHA at step 5 always stops and reports rather than guessing
+- [ ] More than one run matching the current head SHA at step 5 always stops and reports rather than
       guessing which one is the failed one confirmed in step 2
-- [ ] Step 7 always polls the exact `databaseId` rerun in step 6 via `gh run view`, never the PR-level
+- [ ] Step 8 always polls the exact `databaseId` resolved in step 5 via `gh run view`, never the PR-level
       `gh pr checks` summary
-- [ ] Step 7 never trusts a `completed` result until a `queued`/`in_progress` status has been observed on
-      an earlier poll first — a `completed` result before that point is always treated as the stale
-      pre-rerun state, never reported as this retry's outcome
-- [ ] Step 7's poll is always a bounded series of individual `gh run view` calls within the declared
+- [ ] Step 8 never trusts a `completed` result unless its `attempt` is strictly greater than step 5's
+      baseline `attempt` — a `completed` result at the baseline `attempt` is always treated as the stale
+      pre-rerun state, never reported as this retry's outcome, regardless of whether an intermediate
+      `queued`/`in_progress` status was ever separately observed
+- [ ] Step 8's poll is always a bounded series of individual `gh run view` calls within the declared
       `allowed-tools` scope, never a background-shell or `until`-loop primitive outside it
-- [ ] A repeat failure after step 7 never triggers an automatic second attempt — always returns to a
+- [ ] A repeat failure after step 8 never triggers an automatic second attempt — always returns to a
       fresh step-3 confirmation
 - [ ] `scripts/smoke_test.py` passes (this skill's own persisted structural smoke test)
 
-**Test suite:** `evals/codex-review-recovery/evals.json` defines 10 scenarios exercising 11 of 13
+**Test suite:** `evals/codex-review-recovery/evals.json` defines 11 scenarios exercising 12 of 14
 behavioral quality gates above directly — the `pending` and already-`pass`ing halves of gate 1 (eval-1,
 eval-4), the human declining the dashboard-confirmation gate (eval-2), the head-moved-during-confirmation
-stop (eval-8), step 6's head-SHA matching in its found-a-match, no-match, and multiple-match branches
-(eval-3, eval-5, eval-9), step 7's exact-run polling and stale-first-poll handling (eval-6, eval-10), and
-the no-auto-retry rule on a repeat failure (eval-7). The remaining 2 gates (the `-R` flag on every
-command, and step 2's workflow+name-together matching) are exercised live/manually but not captured as
-persisted graded evals — see `evals.json`'s own `testing_validation_coverage` field for the exact gap.
+stop (eval-8), step 5's head-SHA matching in its found-a-match, no-match, and multiple-match-before-any-
+side-effect branches (eval-3, eval-5, eval-9), step 8's exact-run polling and stale/fresh-`attempt`
+handling in both directions (eval-6, eval-10, eval-11), and the no-auto-retry rule on a repeat failure
+(eval-7). The remaining 2 gates (the `-R` flag on every command, and step 2's workflow+name-together
+matching) are exercised live/manually but not captured as persisted graded evals — see `evals.json`'s own
+`testing_validation_coverage` field for the exact gap.
 `scripts/smoke_test.py`
 is the separate, cheap, structural check (frontmatter validity, referenced-file existence, Bash-grant
 usage, step-sequence, and `evals.json` presence) that runs immediately, with no LLM judging needed — no
 blind A/B baseline is run against this skill, since its value is a human-gated refusal sequence
 (step 3's confirmation), which a no-skill baseline can't be meaningfully scored against.
 
-**Last dated run record:** 2026-08-18 — `skill-tester` Quick Workflow (40/40 assertions passed across all
-10 scenarios) and `scripts/smoke_test.py` (5/5 checks passed). See
+**Last dated run record:** 2026-08-18 — `skill-tester` Quick Workflow (44/44 assertions passed across all
+11 scenarios) and `scripts/smoke_test.py` (5/5 checks passed). See
 `evals/codex-review-recovery/evals.json`'s own `testing_validation_coverage` field and
 `evals/codex-review-recovery/workspace/iteration-1/quick-result.json` for the structured result — not
 restated here to avoid a second copy drifting out of sync.
@@ -263,5 +280,5 @@ restated here to avoid a second copy drifting out of sync.
 | Resource | Purpose |
 |---|---|
 | `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any SKILL.md edit |
-| `evals/codex-review-recovery/evals.json` | 10 scenario definitions for `skill-tester`'s blind-comparison harness, covering 11 of 13 behavioral quality gates above |
+| `evals/codex-review-recovery/evals.json` | 11 scenario definitions for `skill-tester`'s blind-comparison harness, covering 12 of 14 behavioral quality gates above |
 | `docs/await-codex-review.md` | The workflow this skill recovers — its own "Recovering a stuck check" section cross-references this skill |

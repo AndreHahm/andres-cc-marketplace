@@ -3,22 +3,22 @@
   "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
   "assertions": [
     {
-      "text": "The response detects that more than one entry (databaseId 300 and 301) matches the confirmed head SHA (abc123)",
+      "text": "The response detects that more than one entry (databaseId 300 and 301) matches the confirmed head SHA (abc123) at step 5, before step 6",
       "type": "presence",
       "target": "outputs/"
     },
     {
-      "text": "The response does not run gh run rerun on databaseId 300",
+      "text": "The response does not post an @codex review comment",
       "type": "functionality",
       "target": "outputs/"
     },
     {
-      "text": "The response does not run gh run rerun on databaseId 301",
+      "text": "The response does not run gh run rerun on either databaseId 300 or 301",
       "type": "functionality",
       "target": "outputs/"
     },
     {
-      "text": "The response tells the user about the ambiguity rather than silently picking one of the two matching runs",
+      "text": "The response tells the user about the ambiguity rather than silently picking one of the two matching runs, and confirms the PR was left untouched",
       "type": "quality",
       "target": "outputs/"
     }

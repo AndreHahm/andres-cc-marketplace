@@ -3,7 +3,7 @@
   "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
   "assertions": [
     {
-      "text": "The description matches repeated individual gh run view <databaseId> calls targeting the exact run rerun in step 6, not a background-shell or until-loop primitive",
+      "text": "The description matches repeated individual gh run view <databaseId> calls targeting the exact run resolved in step 5, not a background-shell or until-loop primitive",
       "type": "functionality",
       "target": "outputs/"
     },
@@ -13,7 +13,7 @@
       "target": "outputs/"
     },
     {
-      "text": "The description states a completed result is not trusted until a queued/in_progress status has been observed on an earlier poll first",
+      "text": "The description states a completed result is trusted only once attempt exceeds the baseline attempt captured in step 5",
       "type": "quality",
       "target": "outputs/"
     },
