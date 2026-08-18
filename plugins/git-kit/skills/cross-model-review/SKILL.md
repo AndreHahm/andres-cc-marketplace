@@ -11,7 +11,7 @@ description: >-
   pre-PR gate, or high-confidence findings before opening or readying a PR. Not
   `collaborating-on-a-pr`'s reviewer actions, nor `codex-review-recovery`'s stuck-check recovery
   (both act on an already-open PR) — this skill never posts to or touches GitHub state.
-allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(git diff:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(git add:*)", "Bash(git read-tree:*)", "Bash(git ls-files:*)", "Bash(mktemp:*)", "Bash(date:*)", "Bash(export:*)", "Bash(printf:*)", "Bash(grep:*)", "Bash(echo:*)", "Bash(realpath:*)", "Bash(test:*)", "Bash(node plugins/codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)", "Read", "Write", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Cross-model review
@@ -89,25 +89,31 @@ real `.git/index` is a persistent mutation that outlives this skill's own run �
 before this report-only review touched it. Point `GIT_INDEX_FILE` at a throwaway `mktemp -u` path
 for the whole chained invocation instead (verified empirically: identical results, real index
 untouched); it's exported once and inherited automatically by every later git command here. Capture
-the untracked list **first**, against the still-real index — once `GIT_INDEX_FILE` switches over,
-the throwaway index starts empty and everything would look untracked:
+the untracked list **first**, against the still-real index — the throwaway path doesn't exist yet,
+so nothing has switched over until the `export` line runs:
 
 ```bash
 BASE="${BASE:-main}"
 MERGE_BASE=$(git merge-base "$BASE" HEAD)
 UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- "${SCOPE:-.}")
 export GIT_INDEX_FILE="$(mktemp -u)"
+git read-tree HEAD
 git add -N -- "${SCOPE:-.}" || true
 DIFF=(git diff "$MERGE_BASE")
 [ -n "$SCOPE" ] && DIFF+=(-- "$SCOPE")   # [ ... ] invokes the test command; matches the Bash(test:*) grant
 DIFF_STR=$(printf '%q ' "${DIFF[@]}")   # shell-quoted rendering, for embedding in a prompt
 ```
 
-**The `|| true` here matters when `$SCOPE` names only a deletion** — `git add -N` needs its pathspec
-to match something on disk, so a `$SCOPE` resolving only to a deleted tracked file fails outright
-(`fatal: pathspec ... did not match any files`) and, untolerated, aborts the whole `&&`-chained
-Preflight before `git diff` runs. Verified: the unscoped default never hits this. `git diff
-"$MERGE_BASE" -- "$SCOPE"` still shows the deletion regardless of whether the intent-add succeeded.
+**`git read-tree HEAD` seeds the throwaway index before `git add -N` runs** — otherwise an
+already-tracked-but-now-gitignored file looks brand-new to `git add -N`, which refuses to add a new
+path matching an ignore rule and silently drops it from the index, so it diffs against
+`$MERGE_BASE` as **deleted** rather than modified. Seeding from `HEAD` first restores every
+already-tracked file's real status, leaving `git add -N` only genuinely untracked paths to intent-add.
+
+**The `|| true` on `git add -N` matters when `$SCOPE` names only a deletion** — its pathspec needs to
+match something on disk, so a `$SCOPE` resolving only to a deleted tracked file fails outright and,
+untolerated, aborts the whole `&&`-chained Preflight before `git diff` runs. `git diff "$MERGE_BASE"
+-- "$SCOPE"` still shows the deletion regardless of whether the intent-add succeeded.
 
 **`$UNTRACKED_FILES` matters beyond this chain: Codex's own dispatch can't see intent-added files.**
 Phase 1/2 tell Codex to re-run the diff command itself, in a separate subprocess that never inherits
@@ -124,8 +130,8 @@ same `$MERGE_BASE`, never `$BASE...HEAD` — and all run *after* `git add -N`, s
 
 **Bash tool calls do not share shell state — only the working directory persists between them.** Run
 steps 1-6 below as a single chained Bash invocation (`&&` between them, one tool call), ending with
-an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`, and whether
-`$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5's own fallback runs as separate
+an `echo` of the resolved `BASE`, `REPO_ROOT`, `RUN`, `DIFF_STR`, `CODEX_DIFF_STR`,
+`DISPATCHER_TOUCHED`, and whether `$RUN/review.md`/`$RUN/refute.md` came out non-empty (step 5's own fallback runs as separate
 `Read`/`Write` calls afterward). From that point on, every `$VAR` reference here is shorthand for
 that literal, already-resolved value — substitute the concrete string into every later
 `Bash`/`Read`/`Write` call; a separate tool call re-expanding `$RUN`/`$BASE` as a live variable won't
@@ -146,16 +152,10 @@ see it.
    **Also exclude a path that's a symlink resolving outside the repository.** `realpath -- <path>`
    each candidate and compare against `$(git rev-parse --show-toplevel)` (this step runs before step
    4 resolves `$REPO_ROOT` as a named variable — re-run the same command inline here rather than
-   depending on a not-yet-assigned value). **Require an exact match or a path-separator boundary
-   right after it — never a bare string-prefix test.** A plain `starts with` check would wrongly
-   accept `/repo-sibling/file` as "inside" `/repo`, since the string `/repo-sibling` lexically starts
-   with `/repo` even though it's a sibling directory, not a descendant — the same class of bug
-   `codex-review-bridge`'s own `isWithin()` helper already guards against for exactly this reason.
-   Exclude the candidate unless it equals the repo root exactly or starts with `<repo root>/`
-   (trailing separator included). Both dispatch scripts canonicalize target paths before their own
-   containment check and reject the *entire dispatch* on one such entry, forcing an unnecessary
-   single-model fallback over one symlink. Keep it in Claude's own native review regardless — only
-   the Codex-facing `--target-paths` list is affected.
+   depending on a not-yet-assigned value). Require an exact match or a path-separator boundary right
+   after it — never a bare string-prefix test — see `references/symlink-exclusion-rationale.md` for
+   why. Keep it in Claude's own native review regardless — only the Codex-facing `--target-paths`
+   list is affected.
 
    **Build a Codex-scoped diff text from the eligible paths only, kept separate from `$DIFF_STR`.**
    Both dispatch scripts validate a returned finding's `location` against `--target-paths` and reject
@@ -208,31 +208,30 @@ see it.
    `refute.md` below means these materialized `$RUN` copies, never the live path under
    `${CLAUDE_PLUGIN_ROOT}`.
 6. **Check whether the diff itself touches the Codex dispatcher scripts (or their non-script trust
-   inputs) this skill is about to execute** — `grep -E` (extended regex — plain `grep`'s default
-   basic mode treats `(`/`)`/`?` as literal characters and silently fails to match either intended
-   path, verified: plain `grep` exits 1 against `plugins/codex-kit/scripts/lib/codex-exec.mjs`,
-   `grep -E` exits 0) for `plugins/codex-kit/(.*/)?(scripts|assets)/` against the **unscoped**
-   changed-file list (`git diff --name-only "$MERGE_BASE"`, deliberately without `-- "$SCOPE"`),
-   never Preflight step 2's `$SCOPE`-filtered list. This check asks whether the *diff as a whole*
-   modifies the dispatcher about to run — a property of the whole diff, not of the narrower review
-   scope. If `$SCOPE` excludes `plugins/codex-kit` (e.g. `$SCOPE=plugins/git-kit`), step 2's own list
-   would silently omit a dispatcher change made elsewhere in the same diff, defeating this check
-   entirely on any scoped run. The optional `(.*/)?` group matters: it must also match
-   `plugins/codex-kit/scripts/lib/codex-exec.mjs` — a shared executable both dispatch scripts import
-   and run — not just the deeper `plugins/codex-kit/skills/<name>/scripts/*.mjs` paths; a pattern
-   requiring an extra directory segment before `scripts/` misses that shared file entirely. The
-   `assets/` alternative matters too: `guarded-dispatch.mjs` reads
-   `plugins/codex-kit/skills/codex-windows-guardrails/assets/dangerous-command-instructions.txt` and
-   that skill's own `assets/settings.json` (controlling whether the Windows fallback is enabled at
-   all) to shape and gate a `danger-full-access` run — both live under `assets/`, not `scripts/`, so
-   a `scripts/`-only pattern would miss a diff that weakens either one. Step 5 protects the two
+   inputs) this skill is about to execute** — against the **unscoped** changed-file list
+   (`UNSCOPED_CHANGED_FILES=$(git diff --name-only "$MERGE_BASE")`, deliberately without
+   `-- "$SCOPE"`), never Preflight step 2's `$SCOPE`-filtered list:
+
+   ```bash
+   echo "$UNSCOPED_CHANGED_FILES" | grep -qE 'plugins/codex-kit/(.*/)?(scripts|assets)/' && DISPATCHER_TOUCHED=1 || true
+   ```
+
+   Use `-E` (extended regex) — plain `grep`'s default basic mode treats `(`/`)`/`?` as literal
+   characters and fails to match either path; verified: plain `grep` exits 1 against
+   `plugins/codex-kit/scripts/lib/codex-exec.mjs`, `grep -E` exits 0. **The trailing `|| true` is
+   required**: a no-match is grep's *normal* exit (1) on nearly every review, and untolerated aborts
+   the whole `&&`-chained Preflight before any later step runs. `$DISPATCHER_TOUCHED` (unset unless
+   matched), not grep's exit code, is what the First-Send Confirmation's clause (c) checks — a
+   property of the *whole diff*, which is why a `$SCOPE` excluding `plugins/codex-kit` (e.g.
+   `$SCOPE=plugins/git-kit`) can't silently hide a dispatcher change made elsewhere in the same diff.
+   The pattern's `(.*/)?` group and `assets/` alternative are both required — see
+   `references/dispatcher-trust-pattern.md` for why neither can be dropped. Step 5 protects the two
    *prompt* files against a self-modifying diff; it does nothing for the *executable* or these policy
-   inputs — `bridge-invoke.mjs`/`guarded-dispatch.mjs` (and everything both read at runtime) are run
-   from the working tree by a repo-relative path with no `$BASE` verification of their own. If any
-   match is found, disclose it explicitly at the First-Send Confirmation below (not just a silent
-   proceed) and record in Phase
-   3's `inspection_limits` that the Codex dispatcher itself was not trust-boundary-verified against
-   `$BASE` for this run.
+   inputs — `bridge-invoke.mjs`/`guarded-dispatch.mjs` (and everything both read at runtime) run from
+   the working tree by a repo-relative path with no `$BASE` verification of their own. If
+   `$DISPATCHER_TOUCHED=1`, disclose it explicitly at the First-Send Confirmation below and record in
+   Phase 3's `inspection_limits` that the Codex dispatcher itself wasn't trust-boundary-verified
+   against `$BASE` for this run.
 
 ## Codex dispatch resolver
 
@@ -292,7 +291,7 @@ later, separate invocation always asks again — before the *first* real Codex d
 dispatched process can read anything under the repository root regardless of `--target-paths`, which
 only scopes what it's checked against; (b) **if Step 2 triggers, the dispatch runs
 `danger-full-access` — no sandbox, read *and* write/execute** — not Step 1's `read-only` profile;
-(c) if Preflight step 6 found the diff touching the Codex dispatcher itself, that it wasn't
+(c) if Preflight step 6 set `DISPATCHER_TOUCHED=1`, that it wasn't
 trust-boundary-verified against `$BASE`; and (d) if Preflight step 5 set `REVIEW_UNVERIFIED` or
 `REFUTE_UNVERIFIED`, that the reviewer instructions governing this dispatch came from the working
 tree, not `$BASE` — before Codex is judged against them, never deferred to `inspection_limits`. Ask

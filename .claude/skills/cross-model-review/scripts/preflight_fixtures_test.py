@@ -42,12 +42,13 @@ def extract_inputs_block() -> str:
     return match.group(1)
 
 
-def extract_dispatcher_grep_pattern() -> str:
+def extract_dispatcher_check_command() -> str:
     text = SKILL_MD.read_text(encoding="utf-8")
-    match = re.search(r"for `([^`]+)` against", text)
-    if not match:
-        raise RuntimeError("Could not find Preflight step 6's grep pattern in SKILL.md's prose")
-    return match.group(1)
+    for match in re.finditer(r"```bash\n(.*?)```", text, re.DOTALL):
+        block = match.group(1)
+        if "DISPATCHER_TOUCHED" in block:
+            return block.strip()
+    raise RuntimeError("Could not find Preflight step 6's dispatcher-trust check bash block")
 
 
 def run_bash(repo_dir: pathlib.Path, script: str) -> subprocess.CompletedProcess:
@@ -95,10 +96,12 @@ echo "DIFF_BUILD_COMPLETED"
 
 def preflight_chain(base: str = "main", scope: str = "", extra: str = "") -> str:
     """Reconstruct the *full* single &&-chained Preflight invocation SKILL.md's own intro
-    mandates -- diff-build through the dispatcher-trust grep -- for scenarios specifically about
-    whether the whole chain reaches its closing echo, not just the diff-build portion."""
+    mandates -- diff-build through the dispatcher-trust check -- for scenarios specifically about
+    whether the whole chain reaches its closing echo, not just the diff-build portion. The
+    dispatcher-trust check itself is extracted verbatim (extract_dispatcher_check_command), not
+    reimplemented, so a change to its actual command is exercised automatically."""
     inputs_block = extract_inputs_block()
-    grep_pattern = extract_dispatcher_grep_pattern()
+    dispatcher_check = extract_dispatcher_check_command()
     scope_line = f"SCOPE={scope!r}\n" if scope else "SCOPE=\n"
     return f"""
 set -e
@@ -106,7 +109,7 @@ BASE={base!r}
 {scope_line}
 {inputs_block}
 UNSCOPED_CHANGED_FILES=$(git diff --name-only "$MERGE_BASE")
-echo "$UNSCOPED_CHANGED_FILES" | grep -E {grep_pattern!r} > /dev/null
+{dispatcher_check}
 echo "PREFLIGHT_CHAIN_COMPLETED"
 {extra}
 """
