@@ -78,7 +78,10 @@ export const ENVELOPE_SCHEMA = deepFreeze({
           id: { type: "string" },
           severity: { enum: ["critical", "major", "minor"] },
           axis: { type: "string" },
-          location: { type: "string" },
+          location: {
+            type: "string",
+            description: "A real file path (optionally with :line) inside the target scope that this finding is actually about. Never a prose description of something you could not inspect (e.g. a tool/workspace access limit) -- report that in the top-level inspection_limits array instead, not as a fabricated location here."
+          },
           // A finding that is inherently about a relationship between
           // multiple files (a dependency cycle, a bidirectional coupling, a
           // cross-file consistency/mirror mismatch) lists every other
@@ -106,7 +109,11 @@ export const ENVELOPE_SCHEMA = deepFreeze({
       }
     },
     verdict: { type: "string" },
-    inspection_limits: { type: "array", items: { type: "string" } }
+    inspection_limits: {
+      type: "array",
+      items: { type: "string" },
+      description: "Free-text notes about anything that reduced this review's fidelity -- skipped files, unreadable inputs, or a tool/workspace access limit that stopped you from inspecting something. This is where that content belongs, not findings[] -- a finding's location must be a real file path, so never fabricate one here to report a limitation. Empty array if nothing limited the review."
+    }
   }
 });
 
@@ -425,7 +432,7 @@ async function main() {
     "",
     `<dispatch id="${dispatchId}" reviewer="${reviewerType}"/>`,
     "",
-    "Return findings matching the required JSON schema exactly. Use the reviewer's own severity and axis conventions."
+    "Return findings matching the required JSON schema exactly. Use the reviewer's own severity and axis conventions. Report anything that limited your review (skipped files, unreadable input, a tool/workspace access limit) in inspection_limits -- never as a finding with a fabricated location."
   ].join("\n");
 
   const result = await runCodexExec({
