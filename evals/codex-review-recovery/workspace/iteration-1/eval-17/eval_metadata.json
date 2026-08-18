@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-17",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response runs gh run rerun only after both the head and conclusion re-checks pass",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response checks the gh run rerun command's own exit status rather than assuming it succeeded",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response stops and reports the rerun failure rather than proceeding to step 8",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not poll databaseId 300's stale baseline attempt as if a rerun had actually been triggered",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

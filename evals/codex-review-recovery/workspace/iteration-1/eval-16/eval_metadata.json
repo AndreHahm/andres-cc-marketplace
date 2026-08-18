@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-16",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response re-fetches headRefOid immediately before calling gh run rerun, as a distinct check from the conclusion re-check",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response detects that the re-fetched head (def999) no longer matches the confirmed head (abc123)",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response stops and does not call gh run rerun on databaseId 300",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not proceed to step 8's polling loop",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

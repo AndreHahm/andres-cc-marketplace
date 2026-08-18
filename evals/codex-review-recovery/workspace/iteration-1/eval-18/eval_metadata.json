@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-18",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response checks the gh pr comment command's own exit status rather than assuming it succeeded",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response stops and reports the comment-posting failure rather than proceeding to step 7",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not call gh run rerun on databaseId 300",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not proceed to step 8's polling loop",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
