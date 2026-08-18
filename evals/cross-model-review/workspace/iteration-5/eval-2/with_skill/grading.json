@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states Preflight step 6's grep must run with -E (extended regex)", "passed": true, "evidence": "'The skill explicitly specifies grep -E (extended regex), not plain grep.'"},
+    {"text": "Response explains plain grep's basic mode treats ( ) ? as literal characters", "passed": true, "evidence": "'plain grep uses POSIX Basic Regular Expressions (BRE), where (, ), and ? are literal characters, not grouping/quantifier metacharacters.'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

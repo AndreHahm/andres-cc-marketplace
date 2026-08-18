@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states single-model mode is entered proactively when the eligible-files list is empty, before any dispatch is attempted", "passed": true, "evidence": "'No dispatch is attempted ... skip Codex entirely and enter single-model mode now -- before attempting any dispatch.'"},
+    {"text": "Response explains why: bridge-invoke.mjs rejects an empty --target-paths as a missing required argument", "passed": true, "evidence": "'bridge-invoke.mjs rejects an empty --target-paths outright, so attempting it would just waste a round-trip.'"},
+    {"text": "Response states inspection_limits records 'zero Codex-eligible paths' rather than 'Codex unavailable'", "passed": true, "evidence": "Quoted both exact phrases and explained the distinction."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

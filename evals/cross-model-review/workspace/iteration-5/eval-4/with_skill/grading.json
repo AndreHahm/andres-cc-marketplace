@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states 'Stay Claude-native for this run' enters single-model mode immediately", "passed": true, "evidence": "'routes into single-model mode immediately, before any dispatch is attempted.'"},
+    {"text": "Response states inspection_limits records 'user declined to send to Codex'", "passed": true, "evidence": "Quoted the exact phrase and its distinction from the generic 'Codex unavailable' reason."},
+    {"text": "Response identifies this as the same skip-Phase-1-Codex-and-Phase-2 path resolver step 3 uses, applied to a different trigger", "passed": true, "evidence": "'the same path used by the Codex-dispatch resolver's step 3 fallback.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

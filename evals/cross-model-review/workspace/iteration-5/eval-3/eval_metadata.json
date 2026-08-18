@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states single-model mode is entered proactively when the eligible-files list is empty, before any dispatch is attempted", "type": "functionality", "target": "Preflight step 2"},
+    {"text": "Response explains why: bridge-invoke.mjs rejects an empty --target-paths as a missing required argument, guaranteeing dispatch failure", "type": "quality", "target": "Preflight step 2 rationale"},
+    {"text": "Response states inspection_limits records 'zero Codex-eligible paths' rather than 'Codex unavailable'", "type": "presence", "target": "Preflight step 2"}
+  ]
+}
