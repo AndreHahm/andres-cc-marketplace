@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-12",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The response re-fetches the head SHA immediately before step 6 would post the comment",
+      "passed": true,
+      "evidence": "\"Per the skill: 'step 5's own gh run list call takes real (if brief) time, so immediately before posting anything, re-fetch and compare the head one more time.'\" followed by the gh pr view --json headRefOid call"
+    },
+    {
+      "text": "The response detects that the re-fetched head SHA (def999) no longer matches step 4's confirmed value (abc123)",
+      "passed": true,
+      "evidence": "\"This no longer matches step 4's confirmed value (abc123).\""
+    },
+    {
+      "text": "The response does not post an @codex review comment",
+      "passed": true,
+      "evidence": "\"Do not write the write-git-kit-marker.sh marker. Do not run gh pr comment.\""
+    },
+    {
+      "text": "The response does not run gh run rerun on databaseId 300",
+      "passed": true,
+      "evidence": "\"Do not proceed to step 7 (gh run rerun) or step 8 (polling).\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

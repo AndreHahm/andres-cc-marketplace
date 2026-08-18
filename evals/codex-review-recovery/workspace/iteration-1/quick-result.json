@@ -3,7 +3,7 @@
   "source": "skill-tester",
   "mode": "quick",
   "skill_name": "codex-review-recovery",
-  "summary": {"assertions_passed": 44, "assertions_total": 44, "pass_rate": 1.0},
+  "summary": {"assertions_passed": 52, "assertions_total": 52, "pass_rate": 1.0},
   "results": [
     {"eval_id": "eval-1", "name": "Pending check is reported, not acted on", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-2", "name": "Human declines the dashboard-confirmation gate", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
@@ -15,10 +15,13 @@
     {"eval_id": "eval-8", "name": "Head moved during confirmation wait -- stop, don't act on the stale SHA", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-9", "name": "Multiple runs share the same head SHA -- stop before posting anything", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-10", "name": "A fast-finishing rerun's genuine result is trusted even without an observed in_progress state", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
-    {"eval_id": "eval-11", "name": "A completed result at the baseline attempt is always stale, never reported as terminal", "status": "pass", "assertions_passed": 4, "assertions_total": 4}
+    {"eval_id": "eval-11", "name": "A completed result at the baseline attempt is always stale, never reported as terminal", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
+    {"eval_id": "eval-12", "name": "Head moves during step 5's own lookup -- stop before posting, not just before step 5", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
+    {"eval_id": "eval-13", "name": "Run already resolved by someone else -- stop before rerunning, don't rerun a passing run", "status": "pass", "assertions_passed": 4, "assertions_total": 4}
   ],
-  "coverage": {"declared_scenarios_total": 14, "declared_scenarios_covered": 12, "uncovered": [
+  "coverage": {"declared_scenarios_total": 17, "declared_scenarios_covered": 14, "uncovered": [
     "Every gh pr/gh run command passing -R \"<owner>/<repo>\" (verified live and via a one-off spot-check agent during development, but not captured as a persisted graded eval)",
-    "Step 2 matching on the workflow display-name field together with the job name, not either alone (implicitly exercised by every eval's simulated gh pr checks output, but not asserted as its own dedicated scenario)"
+    "Step 2 matching on the workflow display-name field together with the job name, not either alone (implicitly exercised by every eval's simulated gh pr checks output, but not asserted as its own dedicated scenario)",
+    "Step 8 always running an actual sleep 30 between poll calls (verified structurally via smoke_test.py's check_bash_grants confirming the Bash(sleep:*) grant is invoked in the body, but a text-based simulated eval can't meaningfully assert a real ~30s wall-clock wait occurred)"
   ]}
 }

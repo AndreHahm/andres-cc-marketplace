@@ -12,7 +12,7 @@ description: >-
   `gh-operations`' generic, ungated `gh run rerun` reference, nor `merge-pr`'s separate
   `Publish Codex policy result` bypass flow.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR
-allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh run list:*), Bash(gh run rerun:*), Bash(gh run view:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh run list:*), Bash(gh run rerun:*), Bash(gh run view:*), Bash(sleep:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*)
 ---
 
 # codex-review-recovery
@@ -139,7 +139,12 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    match, keep this `<databaseId>` and its current `attempt` number (the baseline for step 8's polling) —
    nothing has been triggered yet; continue to step 6.
 
-6. **Post the retry comment**: immediately before running the command below, run
+6. **Post the retry comment**: step 5's own `gh run list` call takes real (if brief) time, so immediately
+   before posting anything, re-fetch and compare the head one more time:
+   `gh pr view <number> -R "<owner>/<repo>" --json headRefOid --jq '.headRefOid'`. If it no longer matches
+   step 4's confirmed value, apply step 4's own stop condition here too — the PR moved again during step
+   5's lookup, so treat it exactly like a head that moved during step 3's wait. If it still matches, then
+   immediately before running the command below, run
    `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review codex-review-recovery` — this
    writes the marker git-kit's reviewer-action guard (`guard-raw-pr-review.sh`) requires before it will
    allow a raw `gh pr comment`/`gh pr review` call through; it must be written right before the command,
@@ -151,9 +156,14 @@ See `## Instructions` below for the full step-by-step with exact commands and st
 7. **Re-run the failed check**: posting the comment above does **not** itself re-trigger
    `await-codex-review.yml` — that workflow's own `on:` trigger list
    (`opened`/`reopened`/`synchronize`/`ready_for_review`) has no `issue_comment` entry, so the run resolved
-   in step 5 has to be explicitly re-run to start a fresh polling window:
-   `gh run rerun <databaseId> -R "<owner>/<repo>"` (the exact `<databaseId>` from step 5 — no fresh lookup
-   needed here).
+   in step 5 has to be explicitly re-run to start a fresh polling window. But step 5 captured that run's
+   `conclusion` before step 6's own network round-trip elapsed — someone else could have already recovered
+   it in the meantime (a different maintainer, or a delayed write-back finally landing) — so re-check
+   immediately before rerunning: `gh run view <databaseId> -R "<owner>/<repo>" --json conclusion`. If
+   `conclusion` is no longer `failure` (e.g. it's now `success`), stop and report that the check already
+   resolved on its own — don't rerun an already-passing run. Otherwise:
+   `gh run rerun <databaseId> -R "<owner>/<repo>"` (the exact `<databaseId>` from step 5 — no fresh
+   run-list lookup needed here, only this narrow conclusion re-check).
 
 8. **Poll briefly and report**: `gh run rerun` gives no guarantee the rerun has actually started, or even
    finished, by the time this step's calls run — the run can still report its pre-rerun `completed` result
@@ -171,10 +181,14 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    - Once `attempt` has incremented, that entry's `conclusion` (`success`/`failure`) reflects this retry's
      real outcome as soon as `status` is `completed` — no need to have separately observed
      `queued`/`in_progress` first.
-   Repeat this call up to 10 times, spaced roughly 30 seconds apart — every call stays inside this
-   skill's own declared `Bash(gh run view:*)` grant; don't reach for a background-shell or `until`-loop
-   primitive outside that scope. This is a much shorter window (~5 minutes total) than the check's own
-   30-minute timeout, since we're actively watching for the fresh signal from steps 6-7, not waiting cold.
+   Between each of the up to 10 calls, actually wait — run `sleep 30` (covered by the declared
+   `Bash(sleep:*)` grant) before the next `gh run view` call; without an executable wait, nothing stops
+   all 10 calls from firing back-to-back well before GitHub even processes the rerun, which would report a
+   fresh `queued` run as falsely unresolved after a few seconds instead of genuinely watching for ~5
+   minutes. Don't reach for a background-shell or `until`-loop primitive outside the declared
+   `Bash(gh run view:*)`/`Bash(sleep:*)` scope. This is a much shorter window (~5 minutes total) than the
+   check's own 30-minute timeout, since we're actively watching for the fresh signal from steps 6-7, not
+   waiting cold.
    Report whichever happens: a genuine `success` (report success, done), still not resolved after 10 calls
    (report that it's still in flight and point at the check's own URL — the 30-minute window from the
    fresh re-run may still legitimately be running), or a genuine `failure` again (report plainly; this may
@@ -199,6 +213,10 @@ See `## Instructions` below for the full step-by-step with exact commands and st
 - Never posts the retry comment (step 6) before step 5 has successfully resolved exactly one unambiguous
   run to act on — an unresolvable or ambiguous run list must leave the PR completely untouched, not
   trigger an external side effect (prompting Codex again) for a flow this skill then abandons.
+- Never trusts a head or run-conclusion check from an earlier step across an intervening network call
+  without re-verifying it immediately before the next side-effecting action — step 6 re-checks the head
+  right before commenting, and step 7 re-checks the target run's conclusion right before rerunning it,
+  since either could have changed while the previous step's own `gh` call was in flight.
 - `Bash(gh pr comment:*)`/`Bash(gh run rerun:*)` are scoped at the `gh` subcommand level, not narrower —
   this repo's `allowed-tools` grammar only supports command-prefix matching, so a tighter grant (e.g.
   "only this exact comment body") isn't expressible; the step-3 confirmation gate is what actually bounds
@@ -237,6 +255,11 @@ See `## Instructions` below for the full step-by-step with exact commands and st
 - [ ] Step 5 always resolves the run to act on *before* step 6 posts anything — an unresolvable or
       ambiguous run list always leaves the PR untouched, never posts the retry comment first and then
       abandons the flow
+- [ ] Step 6 always re-fetches and compares `headRefOid` immediately before posting the comment, applying
+      step 4's own stop condition on a mismatch — never trusts step 4's earlier check alone across step 5's
+      own network round-trip
+- [ ] Step 7 always re-checks the target run's current `conclusion` immediately before rerunning it, and
+      stops (reporting it already resolved) rather than rerunning if `conclusion` is no longer `failure`
 - [ ] Step 5 always matches the re-run target against the head SHA confirmed in step 4 — never re-runs
       the first/most-recent run in the list without checking its `headSha`
 - [ ] No run matching the current head SHA at step 5 always stops and reports rather than guessing
@@ -250,27 +273,31 @@ See `## Instructions` below for the full step-by-step with exact commands and st
       `queued`/`in_progress` status was ever separately observed
 - [ ] Step 8's poll is always a bounded series of individual `gh run view` calls within the declared
       `allowed-tools` scope, never a background-shell or `until`-loop primitive outside it
+- [ ] Step 8 always runs an actual `sleep 30` between poll calls — never fires all 10 calls back-to-back
+      with no executable wait, which would report a fresh rerun as falsely unresolved after seconds
 - [ ] A repeat failure after step 8 never triggers an automatic second attempt — always returns to a
       fresh step-3 confirmation
 - [ ] `scripts/smoke_test.py` passes (this skill's own persisted structural smoke test)
 
-**Test suite:** `evals/codex-review-recovery/evals.json` defines 11 scenarios exercising 12 of 14
+**Test suite:** `evals/codex-review-recovery/evals.json` defines 13 scenarios exercising 14 of 17
 behavioral quality gates above directly — the `pending` and already-`pass`ing halves of gate 1 (eval-1,
 eval-4), the human declining the dashboard-confirmation gate (eval-2), the head-moved-during-confirmation
 stop (eval-8), step 5's head-SHA matching in its found-a-match, no-match, and multiple-match-before-any-
-side-effect branches (eval-3, eval-5, eval-9), step 8's exact-run polling and stale/fresh-`attempt`
+side-effect branches (eval-3, eval-5, eval-9), the two intervening-network-call re-checks right before
+each side effect (eval-12: head moved again during step 5's own lookup; eval-13: the target run already
+resolved by someone else before step 7's rerun), step 8's exact-run polling and stale/fresh-`attempt`
 handling in both directions (eval-6, eval-10, eval-11), and the no-auto-retry rule on a repeat failure
-(eval-7). The remaining 2 gates (the `-R` flag on every command, and step 2's workflow+name-together
-matching) are exercised live/manually but not captured as persisted graded evals — see `evals.json`'s own
-`testing_validation_coverage` field for the exact gap.
+(eval-7). The remaining 3 gates (the `-R` flag on every command, step 2's workflow+name-together
+matching, and step 8's `sleep 30` spacing) are exercised live/structurally but not captured as persisted
+graded evals — see `evals.json`'s own `testing_validation_coverage` field for the exact gap.
 `scripts/smoke_test.py`
 is the separate, cheap, structural check (frontmatter validity, referenced-file existence, Bash-grant
 usage, step-sequence, and `evals.json` presence) that runs immediately, with no LLM judging needed — no
 blind A/B baseline is run against this skill, since its value is a human-gated refusal sequence
 (step 3's confirmation), which a no-skill baseline can't be meaningfully scored against.
 
-**Last dated run record:** 2026-08-18 — `skill-tester` Quick Workflow (44/44 assertions passed across all
-11 scenarios) and `scripts/smoke_test.py` (5/5 checks passed). See
+**Last dated run record:** 2026-08-18 — `skill-tester` Quick Workflow (52/52 assertions passed across all
+13 scenarios) and `scripts/smoke_test.py` (5/5 checks passed). See
 `evals/codex-review-recovery/evals.json`'s own `testing_validation_coverage` field and
 `evals/codex-review-recovery/workspace/iteration-1/quick-result.json` for the structured result — not
 restated here to avoid a second copy drifting out of sync.
@@ -280,5 +307,5 @@ restated here to avoid a second copy drifting out of sync.
 | Resource | Purpose |
 |---|---|
 | `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any SKILL.md edit |
-| `evals/codex-review-recovery/evals.json` | 11 scenario definitions for `skill-tester`'s blind-comparison harness, covering 12 of 14 behavioral quality gates above |
+| `evals/codex-review-recovery/evals.json` | 13 scenario definitions for `skill-tester`'s blind-comparison harness, covering 14 of 17 behavioral quality gates above |
 | `docs/await-codex-review.md` | The workflow this skill recovers — its own "Recovering a stuck check" section cross-references this skill |

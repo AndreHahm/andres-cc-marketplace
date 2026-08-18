@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-12",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response re-fetches the head SHA immediately before step 6 would post the comment",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response detects that the re-fetched head SHA (def999) no longer matches step 4's confirmed value (abc123)",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not post an @codex review comment",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not run gh run rerun on databaseId 300",
+      "type": "functionality",
+      "target": "outputs/"
+    }
+  ]
+}

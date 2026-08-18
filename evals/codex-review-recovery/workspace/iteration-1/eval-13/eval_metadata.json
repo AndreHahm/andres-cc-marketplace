@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-13",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response re-checks databaseId 300's conclusion immediately before step 7 would rerun it",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response detects that conclusion is no longer failure (now success)",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not run gh run rerun on databaseId 300",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response reports that the check already resolved on its own rather than proceeding to rerun an already-passing run",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
