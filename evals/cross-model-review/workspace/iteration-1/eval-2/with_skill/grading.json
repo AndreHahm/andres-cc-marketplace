@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response identifies resolver step 1 (codex-review-bridge) failing with isolation_profile_unavailable as the trigger for falling back to codex-windows-guardrails", "passed": true, "evidence": "'Step 3 -- Bridge returns isolation_profile_unavailable ... this is the documented trigger to fall back to Step 2.'"},
+    {"text": "Response states guardrails_disabled at the shipped default is expected, not a bug, and that the skill never enables it on the user's behalf", "passed": true, "evidence": "'The skill is explicit that this is expected, not a bug ... I do not enable this override myself ... I do not create, edit, or suggest silently creating that file'."},
+    {"text": "Response describes resolver step 3 firing: tells the user Codex is unavailable this run and asks via AskUserQuestion whether to proceed single-model or stop", "passed": true, "evidence": "'Step 6 -- Resolver Step 3: degrade, don't retry ... tell the user Codex is unavailable ... ask via a second AskUserQuestion whether to proceed single-model ... or stop the skill run entirely.'"},
+    {"text": "Response states the single-model fallback defaults findings to Medium confidence since nothing cross-examines them", "passed": true, "evidence": "'all findings are capped at Medium confidence as a result' / 'defaults to Medium confidence, since nothing cross-examines them'."},
+    {"text": "Response never claims to silently proceed as a full cross-model review when Codex is actually unavailable", "passed": true, "evidence": "'Summary of what I deliberately do NOT do at this point' explicitly lists never silently proceeding single-model and never reporting results as cross-examined/high-confidence when only one model saw the diff."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

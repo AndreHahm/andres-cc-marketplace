@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response identifies Preflight step 5 specifically as where trusted instruction sourcing happens", "passed": true, "evidence": "'lands squarely on Preflight step 5, \"Materialize trusted reviewer instructions from $BASE -- never the working tree.\"'"},
+    {"text": "Response states instructions are materialized via git show \"$BASE:...\" rather than read live from the working tree", "passed": true, "evidence": "Full git show command block shown and walked through line by line."},
+    {"text": "Response explicitly states the injection risk: a reviewed diff could otherwise rewrite the rules that judge it", "passed": true, "evidence": "'a diff could, in principle, use this to soften or redirect its own review criteria, and no one would catch it because the rules and the thing being judged by the rules would be the same commit.'"},
+    {"text": "Response correctly describes the bootstrap fallback: git show failing falls back to the working-tree copy, recorded in Phase 3's inspection_limits, never silently", "passed": true, "evidence": "'REVIEW_UNVERIFIED=1 is set ... this must never happen silently ... Phase 3 ... must note in its inspection_limits output that reviewer instructions were not trust-boundary-verified against $BASE this run'."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

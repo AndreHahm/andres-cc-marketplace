@@ -1,0 +1,12 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "contamination_note": "Re-run after the first baseline attempt was found to have read the real SKILL.md and this repo's git history. This run's response.md opens with an explicit confirmation it did neither; content is generic/inferred and clearly flagged as uncertain throughout -- genuinely blind.",
+  "assertions_evaluated": [
+    {"text": "Response identifies Preflight step 5 specifically as where trusted instruction sourcing happens", "passed": false, "evidence": "Correctly identifies the conceptual step ('the step where the skill loads its own prompts/review.md to build the instructions it hands to the other model'), but cannot and does not name it 'Preflight step 5' -- it has no access to the real step numbering and says so explicitly."},
+    {"text": "Response states instructions are materialized via git show \"$BASE:...\" rather than read live from the working tree", "passed": true, "evidence": "Independently infers 'git show $BASE:plugins/git-kit/skills/cross-model-review/prompts/review.md' as 'the idiomatic way to read a specific path's content as of a specific ref, without touching the working tree' -- correct mechanism, explicitly caveated as inferred not confirmed."},
+    {"text": "Response explicitly states the injection risk: a reviewed diff could otherwise rewrite the rules that judge it", "passed": true, "evidence": "'the diff under review gets to rewrite the very instructions that govern how it's reviewed, in the same change that's being judged. A PR could, in principle, quietly soften or redirect the fresh eyes persona.'"},
+    {"text": "Response correctly describes the bootstrap fallback: git show failing falls back to the working-tree copy, recorded in Phase 3's inspection_limits, never silently", "passed": false, "evidence": "Correctly reasons toward 'fall back to working-tree copy with the caveat surfaced' as the most likely design, but explicitly cannot confirm this and never mentions inspection_limits or any specific downstream disclosure mechanism, since that requires having read the file."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 2, "pass_rate": 0.5}
+}
