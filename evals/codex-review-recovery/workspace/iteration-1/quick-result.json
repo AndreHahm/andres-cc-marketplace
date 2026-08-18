@@ -3,7 +3,7 @@
   "source": "skill-tester",
   "mode": "quick",
   "skill_name": "codex-review-recovery",
-  "summary": {"assertions_passed": 28, "assertions_total": 28, "pass_rate": 1.0},
+  "summary": {"assertions_passed": 32, "assertions_total": 32, "pass_rate": 1.0},
   "results": [
     {"eval_id": "eval-1", "name": "Pending check is reported, not acted on", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-2", "name": "Human declines the dashboard-confirmation gate", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
@@ -11,7 +11,8 @@
     {"eval_id": "eval-4", "name": "Already-passing check is reported, not acted on", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-5", "name": "No run matches the current head SHA -- stop, don't guess", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
     {"eval_id": "eval-6", "name": "Poll step uses bounded individual checks calls, not a background loop", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
-    {"eval_id": "eval-7", "name": "A repeat failure after re-running never auto-retries", "status": "pass", "assertions_passed": 4, "assertions_total": 4}
+    {"eval_id": "eval-7", "name": "A repeat failure after re-running never auto-retries", "status": "pass", "assertions_passed": 4, "assertions_total": 4},
+    {"eval_id": "eval-8", "name": "Head moved during confirmation wait -- stop, don't act on the stale SHA", "status": "pass", "assertions_passed": 4, "assertions_total": 4}
   ],
-  "coverage": {"declared_scenarios_total": 7, "declared_scenarios_covered": 7, "uncovered": []}
+  "coverage": {"declared_scenarios_total": 8, "declared_scenarios_covered": 8, "uncovered": []}
 }
