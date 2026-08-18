@@ -1,0 +1,9 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states 'Stay Claude-native for this run' at the First-Send Confirmation enters single-model mode immediately", "type": "functionality", "target": "First-Send Confirmation"},
+    {"text": "Response states inspection_limits records 'user declined to send to Codex' rather than 'Codex unavailable'", "type": "presence", "target": "First-Send Confirmation"},
+    {"text": "Response identifies this as the same skip-Phase-1-Codex-and-Phase-2 path resolver step 3 uses, applied to a different trigger (consent, not unavailability)", "type": "quality", "target": "First-Send Confirmation rationale"}
+  ]
+}

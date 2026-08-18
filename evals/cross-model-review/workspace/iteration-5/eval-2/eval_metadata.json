@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/cross-model-review/SKILL.md",
+  "assertions": [
+    {"text": "Response states Preflight step 6's grep must run with -E (extended regex)", "type": "functionality", "target": "Preflight step 6"},
+    {"text": "Response explains plain grep's basic mode treats ( ) ? as literal characters and would silently fail to match the dispatcher path", "type": "quality", "target": "Preflight step 6 rationale"}
+  ]
+}

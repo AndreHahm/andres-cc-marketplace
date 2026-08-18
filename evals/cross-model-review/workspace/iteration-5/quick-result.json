@@ -1,0 +1,13 @@
+{
+  "mode": "quick",
+  "iteration": 5,
+  "scope": "targeted",
+  "note": "Supplemental Quick Workflow pass covering the third reviewer-fix batch on PR #52 (4 new Codex findings from the delta review triggered by the second fix batch's push): git show || true chain preservation, grep -E extended-regex requirement, proactive single-model mode on zero Codex-eligible paths, and declined-consent routing. with_skill only, no baseline.",
+  "results": [
+    {"eval_id": 1, "name": "git show || true chain preservation", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 2, "name": "grep -E extended regex requirement", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+    {"eval_id": 3, "name": "zero-eligible-paths proactive single-model", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 4, "name": "declined-consent routes to single-model", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+  ],
+  "summary": {"assertions_total": 11, "assertions_passed": 11, "pass_rate": 1.0}
+}

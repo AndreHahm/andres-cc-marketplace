@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states the git show lines in Preflight step 5 use '|| true' so a first-run failure doesn't abort the chained Bash invocation", "passed": true, "evidence": "Quoted the exact rationale sentence and confirmed 'cmd || true always exits 0.'"},
+    {"text": "Response explains that without this, step 6 and the closing echo would never run, losing all resolved state", "passed": true, "evidence": "Quoted 'this expected failure would abort the chained invocation before step 6 or the closing echo ever runs.'"},
+    {"text": "Response states the Read/Write fallback runs as separate tool calls after the chain, using the echoed $RUN value and presence signal", "passed": true, "evidence": "'the Read/Write fallback is explicitly stated to run as separate tool calls after the Bash chain returns, using the literal ... $RUN value from the echo.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
