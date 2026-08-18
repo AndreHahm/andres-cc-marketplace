@@ -1,0 +1,9 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response states the local-diff-before-flip request IS handled by this skill, not routed to collaborating-on-a-pr", "passed": true, "evidence": "'The request should be handled by cross-model-review itself, not routed to collaborating-on-a-pr.'"},
+    {"text": "Response explains the exclusion only covers posting a GitHub review or reading remote state", "passed": true, "evidence": "'The governing distinction is action-type, not PR-existence ... collaborating-on-a-pr acts on the PR's already-pushed remote state.'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

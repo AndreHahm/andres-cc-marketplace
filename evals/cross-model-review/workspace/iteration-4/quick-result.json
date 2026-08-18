@@ -1,0 +1,14 @@
+{
+  "mode": "quick",
+  "iteration": 4,
+  "scope": "targeted",
+  "note": "Supplemental Quick Workflow pass covering the second reviewer-fix batch on PR #52 (5 new Codex findings from the delta review triggered by the first fix batch's push): SCOPE-independent dispatcher-trust check, grep/echo Bash grants, excluded-path findings dropped from the Codex challenge, draft-PR routing clarification, and refutation-overrides-agreement precedence. with_skill only, no baseline.",
+  "results": [
+    {"eval_id": 1, "name": "unscoped dispatcher-trust check", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 2, "name": "grep/echo Bash grants", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+    {"eval_id": 3, "name": "excluded-path findings dropped from challenge", "assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+    {"eval_id": 4, "name": "draft PR routing clarification", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+    {"eval_id": 5, "name": "refutation overrides agreement", "assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+  ],
+  "summary": {"assertions_total": 12, "assertions_passed": 12, "pass_rate": 1.0}
+}

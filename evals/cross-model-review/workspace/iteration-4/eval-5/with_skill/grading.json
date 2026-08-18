@@ -1,0 +1,9 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response correctly identifies this scenario ends at Low/contested, not High", "passed": true, "evidence": "'The skill assigns Low / contested, not High.'"},
+    {"text": "Response states an explicit Phase 2 refutation always overrides Phase 1 agreement, applied before the High tier", "passed": true, "evidence": "Quoted 'An explicit Phase 2 refutation always wins, regardless of Phase 1 agreement... evaluated Low/contested first.'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}
