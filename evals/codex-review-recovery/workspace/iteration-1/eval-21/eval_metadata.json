@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-21",
+  "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
+  "assertions": [
+    {
+      "text": "The response checks the run's conclusion before checking the head, per step 7's documented order",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response detects conclusion: success and treats it as already resolved",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response stops and does not call gh run rerun on databaseId 300",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "The response does not proceed to step 8's polling loop",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
