@@ -72,7 +72,14 @@ Commit verified fixes only after separate file/message confirmation.
 
 **Entry:** Validation succeeded.
 
-**Actions:** Dispatch `plugin-auditor` over the declared scope — it dispatches
+**Actions:** If the declared scope includes a skill with `evals/<skill>/evals.json` and/or
+`scripts/smoke_test.*`, ask via `AskUserQuestion` whether to pre-check each with
+`reviewing-evals` before the dispatch below — state the cost (one serial
+`Skill(reviewing-evals)` call per such skill; unlike the fan-out that follows, this doesn't
+parallelize) against the benefit (fewer eval-related findings for Phase 6 to fix). On yes,
+run it per skill and let the operator resolve any FAIL locally before continuing; on no, or
+when no in-scope skill has eval/smoke-test assets, proceed directly — this never runs by
+default. Then dispatch `plugin-auditor` over the declared scope — it dispatches
 `dependency-reviewer`, `consistency-reviewer`, `security-reviewer`, `plugin-validator`
 (whole-plugin), `plugin-rulebook-checker` (Structured output mode), `activation-reviewer`,
 `completeness-reviewer`, the type-matched `*-reviewer`, and `scripts-reviewer`/
