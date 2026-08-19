@@ -47,6 +47,16 @@ SCRIPT = Path(__file__).parent / "check_evals.py"
 # - check_nested_group_alternation: alternation nested inside a group whose
 #   anchors don't wrap the whole group ("^(cat|dog$)") must not get a confident
 #   PASS just because the top-level branch looks long/anchored
+# - check_haystack_after_flags: the haystack check must classify only the
+#   actual second (haystack) argument, not the whole trailing text -- a later
+#   argument merely containing "skill" (e.g. a "skill_mode" condition) must
+#   not be mistaken for confirmation that the haystack itself is SKILL.md
+# - check_mixed_flags: a flags expression mixing a recognized re.X token with
+#   an unresolvable component (re.MULTILINE | FLAGS) must be treated as fully
+#   unresolved, not silently evaluated with only the recognized part
+# - check_escaped_dollar_anchor: an escaped "\$" at the end of a pattern is a
+#   literal dollar character, not a real end-of-string anchor -- must not be
+#   treated as anchoring the pattern
 SMOKE_TEST_PY = r"""
 import re
 
@@ -107,6 +117,15 @@ def check_docstring_example(skill_md_text):
 
 def check_nested_group_alternation(skill_md_text):
     return re.search(r"^(cat|dog$)", skill_md_text)
+
+def check_haystack_after_flags(workflow_text, skill_mode):
+    return re.findall(r"^NEEDLE_UNIQUE$", workflow_text, re.MULTILINE if skill_mode else 0)
+
+def check_mixed_flags(skill_md_text):
+    return re.findall(r"^UNIQUE_MIXED_NEEDLE$", skill_md_text, re.MULTILINE | FLAGS)
+
+def check_escaped_dollar_anchor(skill_md_text):
+    return re.search(r"^cat\$", skill_md_text)
 """
 
 SKILL_MD = (
@@ -240,6 +259,19 @@ def main() -> int:
                     # "$" only anchors the "dog" alternative, "cat" is unanchored
                     "FAIL (anchored matching): re.search(r'^(cat|dog$)') is a "
                     "short, unanchored needle",
+                    # check_haystack_after_flags: "workflow_text" (the real
+                    # haystack) doesn't mention "skill" -- must be flagged,
+                    # even though a later flags argument mentions "skill_mode"
+                    "SKIP (haystack unclear): re.findall(r'^NEEDLE_UNIQUE$') "
+                    "is applied to 'workflow_text'",
+                    # check_mixed_flags: "re.MULTILINE | FLAGS" must be
+                    # treated as fully unresolved, not partially evaluated
+                    "re.findall(r'^UNIQUE_MIXED_NEEDLE$') has a trailing "
+                    "argument ('re.MULTILINE | FLAGS')",
+                    # check_escaped_dollar_anchor: "^cat\$" must FAIL -- the
+                    # escaped "$" is a literal char, not a real end anchor
+                    r"FAIL (anchored matching): re.search(r'^cat\$') is a "
+                    "short, unanchored needle",
                 ],
                 [
                     # Negative assertions: confirm the bugs are actually fixed,
@@ -259,6 +291,17 @@ def main() -> int:
                     # check_nested_group_alternation must NOT get the old,
                     # wrong confident PASS.
                     "PASS (anchored matching): re.search(r'^(cat|dog$)')",
+                    # check_haystack_after_flags must NOT be confidently
+                    # evaluated against the real skill_md_text just because a
+                    # later argument happened to mention "skill".
+                    "re.findall(r'^NEEDLE_UNIQUE$') matches nothing",
+                    # check_mixed_flags must NOT be silently evaluated with
+                    # only the recognized MULTILINE portion.
+                    "re.findall(r'^UNIQUE_MIXED_NEEDLE$') found",
+                    "re.findall(r'^UNIQUE_MIXED_NEEDLE$') matches nothing",
+                    # check_escaped_dollar_anchor must NOT get the old, wrong
+                    # confident PASS (treating the escaped "$" as a real anchor).
+                    r"PASS (anchored matching): re.search(r'^cat\$')",
                 ],
             ),
             (
