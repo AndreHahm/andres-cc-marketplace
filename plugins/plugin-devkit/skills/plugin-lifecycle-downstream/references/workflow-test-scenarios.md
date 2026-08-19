@@ -1,17 +1,19 @@
 # Workflow Test Scenarios
 
-The 12 scenario categories this pipeline's own test coverage requires, each traced
-against the `SKILL.md`/`workflows/run-qa-pipeline.md` prose rather than executed live —
-this trace was performed before this skill's production cutover, when it wasn't yet
+The 13 scenario categories this pipeline's own test coverage requires, each traced
+against the `SKILL.md`/`workflows/run-qa-pipeline.md` prose rather than executed live.
+Scenarios 1-12 were traced before this skill's production cutover, when it wasn't yet
 installed anywhere and a real `Skill()` dispatch wasn't possible. This is the same
 manual-dry-run discipline used throughout this pipeline's development (see
 `feedback_agent_dispatch_ignores_worktree_edits.md`), applied here as the actual test
 mechanism rather than a fallback: each scenario states a concrete setup, the exact
 SKILL.md/workflow section that governs it, and a pass/fail verdict. Two scenarios found
 real gaps during this pass; both were fixed in `SKILL.md`/`run-qa-pipeline.md` before
-this document was finalized, and the verdict below reflects the post-fix text. As of
-this skill's production cutover, a live end-to-end dry run against a small real plugin
-is still outstanding — see the closing note below.
+this document was finalized, and the verdict below reflects the post-fix text. Scenario
+13 was added in a later pass (2026-08-19), when Phase 5's Eval Pre-Check sub-step was
+introduced — traced the same way, against the prose that added it, not backdated into
+the original pre-cutover pass. As of this skill's production cutover, a live end-to-end
+dry run against a small real plugin is still outstanding — see the closing note below.
 
 **Verdict key:** PASS (behavior explicitly specified and traced) · FIXED (a gap was
 found and closed as part of this milestone; verdict is post-fix) · GAP (a gap remains,
@@ -208,17 +210,45 @@ this pipeline's development (the preflight was documented but never actually wir
 every mutating phase); this trace re-confirms the fix holds for both the normal-run and
 External-Entry-as-first-write cases specifically.
 
+## 13. Eval Pre-Check declined and Eval Pre-Check approved
+
+**Setup:** Phase 5 reached with an in-scope skill that has `evals/<skill>/evals.json`
+and/or `scripts/smoke_test.*`; user declines the pre-check, then (separately) approves
+it. A third case: Phase 5 reached with no in-scope skill carrying either asset.
+
+**Traced against:** `run-qa-pipeline.md`'s Phase 5 Actions: "If the declared scope
+includes a skill with `evals/<skill>/evals.json` and/or `scripts/smoke_test.*`, ask via
+`AskUserQuestion` whether to pre-check each with `reviewing-evals` before the dispatch
+below... On yes, run it per skill and let the operator resolve any FAIL locally before
+continuing; on no, or when no in-scope skill has eval/smoke-test assets, proceed
+directly — this never runs by default." `SKILL.md`'s "Optional Phases" section restates
+the same gate with its cost/benefit framing (one serial call per qualifying skill,
+against fewer eval-related Phase 6 findings), and "Quality Gates" separately asserts it
+"never blocks or delays the `plugin-auditor` dispatch when declined or when no in-scope
+skill qualifies."
+
+**Verdict:** PASS — all three branches (declined, approved, no qualifying skill)
+converge on the same `plugin-auditor` dispatch immediately after, with no divergent exit
+path; the "never runs by default" guarantee is stated in three independent places
+(Actions, Optional Phases, Quality Gates), matching this document's own established
+pattern (see #11) for a guarantee worth restating across sections rather than asserted
+once.
+
 ## Summary
 
-10 of 12 scenario categories: PASS on first trace. 2 of 12 (external-entry malformed
+11 of 13 scenario categories: PASS on first trace. 2 of 13 (external-entry malformed
 evidence; final-verification regression routing) found real, previously undocumented
 gaps — both fixed in `SKILL.md`/`run-qa-pipeline.md` before this document was
-finalized, not deferred. `scripts/smoke_test.py` was re-run after each fix and
-continued to pass (frontmatter, referenced-file, Bash-grant, phase-sequence, and
-report-fixture checks unaffected by these prose-only edits).
+finalized, not deferred. `scripts/smoke_test.py` was re-run after each fix (including
+scenario 13's later addition) and continued to pass (frontmatter, referenced-file,
+Bash-grant, phase-sequence, and report-fixture checks unaffected by these prose-only
+edits).
 
 **What this is not:** a live end-to-end pipeline execution. No `Agent()`/`Skill()`
-dispatch was made against a real target plugin for any of the 12 scenarios during this
-trace — that was blocked pre-cutover, since the skill wasn't yet installable. As of the
-production cutover, a real end-to-end dry run against a small real plugin is still a
-needed, separate follow-up, not a substitute this document claims to provide.
+dispatch was made against a real target plugin for any of the 13 scenarios during their
+respective traces — scenarios 1-12 were blocked pre-cutover, since the skill wasn't yet
+installable; scenario 13 was traced the same documentation-only way for consistency with
+the rest of this document, not because live dispatch is still blocked. As of the
+production cutover, a real end-to-end dry run against a small real plugin — which would
+now also exercise Phase 5's Eval Pre-Check live — is still a needed, separate follow-up,
+not a substitute this document claims to provide.

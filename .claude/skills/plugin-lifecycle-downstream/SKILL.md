@@ -335,7 +335,7 @@ Stopped and skipped phases must be recorded explicitly.
 |---|---|
 | `workflows/run-qa-pipeline.md` | Full twelve-phase procedure with entry/actions/decision/exit per phase |
 | `references/pipeline-diagram.md` | Mermaid flowchart of all twelve phases, including the Fix/Re-check loops, Phase 8 External Entry, and the Phase 10 → Phase 8 regression route |
-| `references/workflow-test-scenarios.md` | The 12 required workflow test scenarios, traced against this skill's own text |
+| `references/workflow-test-scenarios.md` | The 13 required workflow test scenarios, traced against this skill's own text |
 | `references/handoff-example.md` | A worked-example Phase 12 handoff report showing every field this pipeline's own run record can populate |
 | `plugin-rulebook/references/evidence-schema.md` | Scope-manifest, Finding, Report Revision, and Evidence Bundle shapes shared across every phase and dispatched component |
 | `plugin-rulebook/scripts/validate_evidence.py` | Schema validator for the four shapes above; also used by this skill's own `scripts/smoke_test.py` fixture check |
@@ -351,12 +351,13 @@ Stopped and skipped phases must be recorded explicitly.
 
 ## Testing & Validation
 
-The 12 required workflow scenarios (scoped/full manifests, Prepare declined/approved,
+The 13 required workflow scenarios (scoped/full manifests, Prepare declined/approved,
 validation/audit success/repair/bounded-failure, Deep Test skip/Scoped/Full, external
 Phase 8 entry valid/stale/malformed, documentation invalidating evidence, final
 verification catching a regression, grading skipped/evidence-only/qualified/refused,
 handoff present/absent, no fixer self-verification, no mutation before preflight and
-approval) are traced in detail in `references/workflow-test-scenarios.md`. Self-check:
+approval, Eval Pre-Check declined/approved) are traced in detail in
+`references/workflow-test-scenarios.md`. Self-check:
 `scripts/smoke_test.py` passes (frontmatter validity, referenced-file existence,
 Bash-scope grant consistency, phase-header sequencing, report-fixture schema
 conformance) — re-run after any `SKILL.md`/`workflows/*.md` edit. See "Quality Gates"
