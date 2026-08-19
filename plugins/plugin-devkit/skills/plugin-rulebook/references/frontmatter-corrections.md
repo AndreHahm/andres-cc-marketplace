@@ -30,3 +30,17 @@ Flag a scoped-Bash entry found in an agent's `tools` field as REQUIRED — repla
 | `Bash(git:*)` `Bash(mkdir:*)` `Bash(node:*)` `Bash(python:*)` | PASS — named tool, scoped |
 | `Bash(git:* mkdir:*)` | PASS — multiple named tools, each explicit |
 
+## R6 — Mechanical Assist for the Tool-Completeness Sub-Check
+
+Narrative "scan the body" review missed the tool-completeness violation four independent times in one
+week in this repo (PR #54's `cd`, PR #51's `sleep`, PR #52's `grep`/`echo`, PR #61's `git diff` — each
+caught only by a later third-party review round, not this check).
+
+Run `${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py --file <target SKILL.md/command path>` as a first
+pass before relying on the narrative scan alone — it mechanically extracts every inline-code command span
+and flags one with no matching `Bash(<prefix>:*)` grant. It's a full-file heuristic, not a diff, and
+finds candidates rather than confirmed violations: verify each reported line against its surrounding
+prose (its own module docstring lists the specific false-positive classes it's known to produce — a
+documentation example quoting grant syntax, a command with extra args beyond a wrapped grant, a word
+that's also ordinary English, a prose ellipsis/wildcard) before treating it as a REQUIRED finding.
+
