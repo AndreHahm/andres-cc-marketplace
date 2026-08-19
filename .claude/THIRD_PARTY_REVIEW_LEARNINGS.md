@@ -22,7 +22,7 @@ reviewed so far has at least one finding of this shape:
 | PR | Assumed behavior | Actual behavior |
 |---|---|---|
 | #47 | `head -1` just stops a pipeline cleanly | `sort \| head -1` under `set -e -o pipefail` can SIGPIPE `sort` and abort the whole script |
-| #47 | Bash `$((10#? assumed))` treats `"08"` as the number 8 | Bash arithmetic reads a leading-zero numeral as **octal**, and `08`/`09` are invalid octal digits → hard error |
+| #47 | Bash `$((VAR))` treats `"08"` as the decimal number 8 | Bash arithmetic reads a leading-zero numeral as **octal**, and `08`/`09` are invalid octal digits → hard error |
 | #49 | `jq -e 'any(...)'` over `--paginate` output matches if *any* page matched | `jq -e`'s exit status is based only on the **last** value it emitted — an earlier page's `true` is silently overridden by a later page's `false` |
 | #49 | A GitHub reaction on a PR can be timestamp-correlated to "the current head" | The Reactions API has **no commit-SHA field at all** — no client-side heuristic can fix this; it's a hard API limitation, not a bug |
 | #51 | `gh pr checks` exposes a workflow's **file name** (`await-codex-review.yml`) | It exposes the workflow's **display name** (`"Codex review status"`) — a different string entirely, only discoverable by requesting the JSON field and checking live |
