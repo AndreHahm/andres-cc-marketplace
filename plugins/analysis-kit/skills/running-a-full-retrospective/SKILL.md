@@ -241,12 +241,16 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
    - `git-kit` (needed for the direct-fix path): `Glob` for any of
      `plugins/git-kit/skills/starting-work/SKILL.md` (this marketplace's own source-tree layout, the
      primary case since this skill ships inside this exact marketplace), `.claude/skills/starting-work/SKILL.md`
-     (an in-development project mirror), or `~/.claude/plugins/cache/*/git-kit/skills/starting-work/SKILL.md`
-     (an end-user installation elsewhere) — a best-effort check across the layouts this skill can actually
+     (an in-development project mirror), or `~/.claude/plugins/cache/**/git-kit/skills/starting-work/SKILL.md`
+     (recursive — an end-user installation elsewhere may nest an extra marketplace/version directory level
+     that a single-`*` glob would miss) — a best-effort check across the layouts this skill can actually
      observe, not a definitive install-state query. If none resolve, drop "Fix directly now" and state why.
-   - `plugin-devkit` (needed for the hand-off path): same three-location check against
-     `.../plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md`. If none resolve, drop "Hand off" and
-     state why.
+   - `plugin-devkit` (needed for the hand-off path): same three-location check (recursive `**` for the
+     cache case) against `.../plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md`. If none resolve,
+     drop "Hand off" and state why. **Remember whichever path actually matched** as
+     `<plugin-devkit-root>` (the directory containing `plugin-devkit`'s own `skills/` folder) — step 4's
+     pipeline-hand-off path reuses this exact resolved root rather than re-deriving or assuming one, since
+     an installed-cache layout's real root won't be `${CLAUDE_PLUGIN_ROOT}/../plugin-devkit`.
 
    Then offer whichever of these remain available:
    - **"Fix directly now, here"** (only offered if a `git-kit` copy was found) — small, mechanical (a doc
@@ -262,14 +266,26 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
 4. **Execute this one topic to completion, whichever path was picked:**
    - *Direct fix*: `Skill(git-kit:starting-work)` first — always, even if the previous topic "just
      finished" and this feels like a continuation (this is the exact trap
-     `starting-work-before-first-change.md`'s own incident names). Resolve which specific file(s) to edit
-     — this path needs a real, editable path, not the looser fallback 5c-4's pipeline-hand-off step 3
-     allows for its `scope` field (that field can tolerate falling back to a bare plugin name, since
-     `plugin-lifecycle-downstream` does further resolution downstream; a direct `Edit`/`Write` here
-     can't): first try resolving the finding's own `<plugin>'s <component>` tag to that component's actual
-     plugin-root-relative file path; if the tag alone doesn't resolve to a specific file, open the
-     finding's cited source report(s) (from its `**Reported in:**` line) to identify it before editing —
-     never guess. Apply the fix directly with `Edit`/`Write` against that file — this is the one explicit
+     `starting-work-before-first-change.md`'s own incident names). **Capture exactly what `starting-work`
+     reports back** — a plain branch (the current checkout stays correct, no path change needed) or a
+     worktree. `starting-work` only *reports* a worktree's path — per its own instructions, it does not
+     change the session's own working directory for you, so this must be done explicitly: `cd` into the
+     reported worktree path before any further command in this topic, and use paths relative to that new
+     location (not the primary checkout) for every subsequent `Edit`/`Write`/`Bash` call, and for the
+     entire `commit` → `create-pr` → `merge-pr` → `finishing-work` chain below, since each of those is
+     itself just a dispatch that operates on wherever the session's cwd currently is. Skipping the `cd`
+     is the same "orphaned worktree" mistake this repo's own `orphaned-worktree-git-read-fallthrough.md`
+     rule already documents (git reads can silently fall through to the primary checkout and look correct
+     while writes land in the wrong place) — applying just as directly to writes landing in the *wrong*
+     checkout as it does to reads from a *removed* one. Then resolve which specific file(s) to edit — this path needs a real,
+     editable path, not the looser fallback 5c-4's pipeline-hand-off step 3 allows for its `scope` field
+     (that field can tolerate falling back to a bare plugin name, since `plugin-lifecycle-downstream` does
+     further resolution downstream; a direct `Edit`/`Write` here can't): first try resolving the finding's
+     own `<plugin>'s <component>` tag to that component's actual plugin-root-relative file path; if the
+     tag alone doesn't resolve to a specific file, open the finding's cited source report(s) (from its
+     `**Reported in:**` line) to identify it before editing — never guess. Apply the fix directly with
+     `Edit`/`Write` against that file, resolved relative to the captured worktree/checkout location from
+     above — this is the one explicit
      exception to the "never write inside a target plugin" boundary stated
      below, scoped strictly to this single, already-human-approved, mechanical change. Then run the
      **full** lifecycle chain, not a shortened one: `Skill(git-kit:commit)` → `Skill(git-kit:create-pr)` →
@@ -309,8 +325,10 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
         list built above).
      4. `Write` both to
         `.claude/output/running-a-full-retrospective/<scope-slug>-<timestamp>-<target>-{manifest,report}.yaml`,
-        then validate each against its schema before dispatching —
-        `Bash(python "${CLAUDE_PLUGIN_ROOT}/../plugin-devkit/skills/plugin-rulebook/scripts/validate_evidence.py" manifest <manifest-path>)`
+        then validate each against its schema before dispatching, using `<plugin-devkit-root>` as
+        resolved in step 3 above (never hardcode `${CLAUDE_PLUGIN_ROOT}/../plugin-devkit` — that only
+        resolves in this marketplace's own source-tree layout, not an installed-cache one) —
+        `Bash(python "<plugin-devkit-root>/skills/plugin-rulebook/scripts/validate_evidence.py" manifest <manifest-path>)`
         and `... report <report-path>` — require exit code 0 on both before proceeding to step 5. A
         freehand-built YAML file is exactly the kind of thing that can drift from the schema silently;
         this catches that before the pipeline itself would reject the bundle mid-loop. If validation
@@ -323,13 +341,23 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
         Documentation/Final Verification/Grading/Handoff normally rather than skipping them. Wait for the
         dispatch to fully finish, including its own commit and whatever worktree/branch it used, before
         continuing — confirm that worktree is closed before this loop iteration ends.
-   - **Once a direct fix merges or a pipeline hand-off dispatch completes successfully**, `Edit` the
-     persisted consolidated report immediately — updating each selected finding's `**Status:**` line from
-     `OPEN` to `FIXED — <one-line summary, e.g. the merge commit SHA or PR number>` — before moving to the
-     continue checkpoint below. This is not optional cleanup: the consolidated report is this skill's own
-     durable progress record, and a resumed Phase 5 run rebuilds its topic queue from whatever findings
-     are still `OPEN` in it. A fixed finding left `OPEN` gets silently requeued and re-presented to the
-     human as if it still needed fixing.
+   - **Once the topic's fix path completes, update the persisted consolidated report before moving to the
+     continue checkpoint below.** This is not optional cleanup: the consolidated report is this skill's
+     own durable progress record, and a resumed Phase 5 run rebuilds its topic queue from whatever
+     findings are still `OPEN` in it — a fixed finding left `OPEN` gets silently requeued and
+     re-presented to the human as if it still needed fixing. The two paths update differently:
+     - *Direct fix*: once the merge lands (confirmed above), `Edit` each selected finding's `**Status:**`
+       line from `OPEN` to `FIXED — <merge commit SHA or PR number>`. This one's a safe blanket update —
+       a direct-fix topic has exactly one atomic outcome per finding (merged, or the failure branch
+       below fired instead), never a partial one.
+     - *Pipeline hand-off*: **never blanket-mark every selected finding `FIXED`.**
+       `plugin-lifecycle-downstream`'s own contract allows it to defer, accept-risk, or exclude an
+       individual finding while still completing the run normally through Phase 12 — a successful
+       dispatch means the *run* completed, not that every finding it was handed actually got fixed. Read
+       the dispatch's own resulting report/handoff and propagate each finding's *actual* reported status
+       (`fixed`/`verified` → `FIXED`; `deferred`/`accepted_risk`/excluded → carry that same status and
+       its stated reason into the `**Status:**` line, not `FIXED`) — one finding at a time, from what the
+       pipeline actually reported, never assumed from the dispatch merely returning.
    - *Deferred*: `Edit` the persisted consolidated report, updating the selected finding's `**Status:**`
      line from `OPEN` to `DEFERRED — <reason>`. This is what keeps the consolidated report itself the
      single durable backlog/progress record — no separate state file.
