@@ -4,9 +4,12 @@
 Recreates the cases exercised during development (2026-08-19, extended after a
 PR review pass found real bugs -- wrong haystack, one-sided anchoring, silently
 dropped non-literal calls, unbounded regex evaluation, unvalidated JSON
-structure) so every claim about this script's behavior stays checkable rather
-than asserted. Builds temporary fixtures, runs check_evals.py as a subprocess,
-and asserts on exit code + expected substrings in stdout/stderr.
+structure -- and a follow-up cross-model review that found negative-count
+validation, alternation-defeats-anchoring, paren-in-string-desyncs-extraction,
+and escaped-quote-truncates-capture) so every claim about this script's
+behavior stays checkable rather than asserted. Builds temporary fixtures, runs
+check_evals.py as a subprocess, and asserts on exit code + expected substrings
+in stdout/stderr.
 """
 
 import json
@@ -23,8 +26,15 @@ SCRIPT = Path(__file__).parent / "check_evals.py"
 # - check_workflow_headers: haystack-unclear SKIP (arg isn't SKILL.md content)
 # - check_dynamic: non-literal pattern (rf-string), must be flagged for manual review
 # - check_catastrophic: ReDoS pattern, must be caught by the regex timeout
+# - check_paren_in_string_arg: an unbalanced '(' inside a trailing string arg must
+#   not desync the call-boundary scan (placed right before check_multiline_flag so
+#   an overrun would corrupt that call's own flags, making a regression detectable)
 # - check_multiline_flag: re.MULTILINE must be forwarded, or ^target$ false-FAILs
 # - check_unsupported_flag: an unrecognized flag must be flagged for manual review
+# - check_alternation: an unanchored alternation (cat|dog) must FAIL per-branch
+# - check_anchored_alternation: a *grouped, anchored* alternation ^(cat|dog)$ must PASS
+# - check_escaped_quote: a pattern containing an escaped copy of its own delimiter
+#   (quo\"te) must be captured in full, not truncated at the escaped quote
 SMOKE_TEST_PY = r"""
 import re
 
@@ -46,11 +56,23 @@ def check_dynamic(skill_md_text, needle):
 def check_catastrophic(skill_md_text):
     return re.findall(r"(a+)+$", skill_md_text)
 
+def check_paren_in_string_arg(skill_md_text):
+    return re.findall(r"^target$", skill_md_text, comment="see docs (appendix")
+
 def check_multiline_flag(skill_md_text):
     return re.findall(r"^target$", skill_md_text, re.MULTILINE)
 
 def check_unsupported_flag(skill_md_text):
     return re.findall(r"unused_pattern", skill_md_text, re.LOCALE)
+
+def check_alternation(skill_md_text):
+    return re.search(r"cat|dog", skill_md_text)
+
+def check_anchored_alternation(skill_md_text):
+    return re.search(r"^(cat|dog)$", skill_md_text)
+
+def check_escaped_quote(skill_md_text):
+    return re.search(r"quo\"te", skill_md_text)
 """
 
 SKILL_MD = (
@@ -98,6 +120,15 @@ EVALS_NON_LIST_UNCOVERED = json.dumps(
         }
     }
 )
+EVALS_NEGATIVE_TOTAL = json.dumps(
+    {
+        "testing_validation_coverage": {
+            "declared_scenarios_total": -1,
+            "declared_scenarios_covered": -1,
+            "uncovered": [],
+        }
+    }
+)
 
 
 def run(*args):
@@ -130,6 +161,8 @@ def main() -> int:
         evals_non_int_total.write_text(EVALS_NON_INT_TOTAL, encoding="utf-8")
         evals_non_list_uncovered = tmp_path / "evals_non_list_uncovered.json"
         evals_non_list_uncovered.write_text(EVALS_NON_LIST_UNCOVERED, encoding="utf-8")
+        evals_negative_total = tmp_path / "evals_negative_total.json"
+        evals_negative_total.write_text(EVALS_NEGATIVE_TOTAL, encoding="utf-8")
 
         cases = [
             (
@@ -151,7 +184,11 @@ def main() -> int:
                     "SKIP (manual review)",
                     "could not be evaluated",
                     "PASS (zero-match guard): re.findall(r'^target$') found",
+                    "FAIL (zero-match guard): re.findall(r'^target$') matches nothing",
                     "LOCALE",
+                    "unanchored alternation",
+                    "PASS (anchored matching): re.search(r'^(cat|dog)$')",
+                    r"""re.search(r'quo\"te')""",
                 ],
             ),
             ("good coverage arithmetic", ["--evals-json", str(evals_good)], 0, ["PASS (counting)"]),
@@ -179,6 +216,12 @@ def main() -> int:
                 ["--evals-json", str(evals_non_list_uncovered)],
                 1,
                 ["FAIL (blocking)", "uncovered"],
+            ),
+            (
+                "malformed evals.json (negative total/covered)",
+                ["--evals-json", str(evals_negative_total)],
+                1,
+                ["FAIL (blocking)", "negative"],
             ),
             ("no args", [], 2, ["at least one of"]),
         ]

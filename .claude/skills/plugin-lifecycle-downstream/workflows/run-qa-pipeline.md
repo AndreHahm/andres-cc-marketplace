@@ -82,8 +82,8 @@ Quick Start steps 4 and 5 (the local-fix loop and the `plugin-auditor` dispatch 
 would be redundant with this phase's own dispatch two sentences below, and step 4's inline
 fix loop would let this phase's own first target-plugin mutation happen here, bypassing the
 Open-PR/Branch-scope preflight and per-batch approval procedure only Phases 2, 4, 6, and 8
-currently have wired in (see "Mutation and Confirmation"). Record any FAIL as a finding
-attributed to that skill instead — it feeds into this phase's own findings normalization
+currently have wired in (see "Mutation and Confirmation"). Record any FAIL or BLOCKED as a
+finding attributed to that skill instead — it feeds into this phase's own findings normalization
 below alongside `plugin-auditor`'s output, and any that remain blocking flow into Phase 6's
 already-gated Fix & Re-audit procedure like any other audit finding, never fixed inline
 here. On no, or when no in-scope skill has eval/smoke-test assets, proceed directly — this
