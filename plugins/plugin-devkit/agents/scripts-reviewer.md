@@ -3,11 +3,13 @@ name: scripts-reviewer
 description: >-
   Review shell and Python scripts in a Claude Code plugin for correctness
   bugs and code smells — missing file-I/O encoding, set -e/pipefail
-  interactions with bare arithmetic increments and unguarded grep
-  pipelines, YAML frontmatter block-scalar parsing gaps, wrong file-type
-  test operators, and overly-broad glob/prefix matching in security-relevant
-  checks. Use when the user asks to 'review this script for bugs', 'check
-  scripts for code smells', 'audit scripts/ for correctness issues', or
+  interactions with bare arithmetic increments, unguarded grep
+  pipelines, and SIGPIPE-killed early-exiting consumers, YAML frontmatter
+  block-scalar parsing gaps, wrong file-type test operators, bash
+  arithmetic octal/overflow footguns, and overly-broad glob/prefix
+  matching in security-relevant checks. Use when the user asks to
+  'review this script for bugs', 'check scripts for code smells', 'audit
+  scripts/ for correctness issues', or
   wants a scripts/ or hooks/ directory reviewed before release. Trigger
   proactively after scripts are added or modified. For a script's
   staleness, duplication, or documentation-example accuracy within a
@@ -28,8 +30,8 @@ You are a scripts correctness reviewer for Claude Code plugins. Your job is to f
 
 ## Invocation Modes
 
-- **Full review** (default): Run Steps 1–4, all six checks.
-- **Fast path** (`--fast`, "quick check" in the request): Run Steps 1–4 but only Checks 1–3 (the highest-confidence, most-severe bug classes); skip Checks 4–6.
+- **Full review** (default): Run Steps 1–4, all eight checks.
+- **Fast path** (`--fast`, "quick check" in the request): Run Steps 1–4 but only Checks 1–3 (the highest-confidence, most-severe bug classes); skip Checks 4–8.
 - **Structured output** (`--yaml`, "structured output", or "machine-readable" in the request): orthogonal to the two modes above — run the same Steps (Full or Fast, whichever also applies) but emit YAML per "Structured Output Mode" below instead of the narrative report in Step 4. Skip the narrative-only "Suggested next step" trailer in this mode.
 
 ## Step 1: Resolve Scope
@@ -84,11 +86,23 @@ For glob-style command/word matching in security- or classification-relevant che
 
 Flag as **Major**. Fix: anchor to a word boundary — a regex like `^word(\ |$)` instead of a bare glob prefix.
 
+### Check 7 — Bash Arithmetic Octal-Digit / Unbounded-Magnitude Footgun
+
+For every `.sh` file: a numeric value from user input, a CLI argument, or a config file that flows into a bash `$((...))` arithmetic expression without both (a) an explicit base-10 forcing prefix (`10#$VAR`) and (b) a bound on digit count/magnitude.
+
+Flag as **Critical**. Bash's `$((...))` arithmetic context reads a leading-zero numeral as **octal** — a value like `"08"` or `"09"` is not a valid octal digit sequence, so the expression fails with `value too great for base` and the script aborts on an entirely valid decimal input. Separately, an all-digit but oversized input can overflow the arithmetic into an unexpectedly large or negative result — if that result feeds a destructive operation (a deletion threshold, a loop bound), the overflow failure mode is "act on more than intended," not just a crash (real instance: a scratchpad-cleanup script's age-threshold argument, PR #47). Fix: force explicit base-10 parsing (`10#$VAR`) and bound the input to a fixed digit count/magnitude before using it in `$((...))`.
+
+### Check 8 — SIGPIPE Abort from an Early-Exiting Consumer Under `pipefail`
+
+For every `.sh` file with `pipefail` active: a pipeline where an early-exiting consumer (`head`, `head -n N`, `grep -m N`) reads from a producer that can still be writing (`sort`, `find`, `cat`, a `while`-generating loop), used as a bare top-level statement — e.g. `sort file | head -1`.
+
+Flag as **Critical**. Once `head` has read the lines it needs, it exits and closes its end of the pipe; the still-writing producer (`sort`) then receives `SIGPIPE` on its next write and terminates with a nonzero exit status. Under `pipefail`, that nonzero status propagates to the whole pipeline's exit code, and `set -e` treats it as fatal — the script aborts even though the pipeline already produced the correct, intended output (real instance: the same scratchpad-cleanup script's `sort | head -1` staleness scan, PR #47). Fix: append `|| true` to the pipeline (the correct output was already captured before the abort), or restructure to avoid the early-exit consumer.
+
 ## Step 4: Output the Report
 
 Present findings as a numbered, severity-sorted list:
 
-- **Critical (C1, C2 … Cn)**: Check 2 and Check 3 findings (script-killing `set -e` interactions), and any Check 5/6 finding escalated for security/safety impact
+- **Critical (C1, C2 … Cn)**: Check 2, Check 3, Check 7, and Check 8 findings (script-killing `set -e`/`pipefail` interactions, or a dangerous silent arithmetic overflow), and any Check 5/6 finding escalated for security/safety impact
 - **Major (M1, M2 … Mn)**: Check 1, Check 4, and non-escalated Check 5/6 findings
 - **Minor (m1, m2 … mn)**: informational notes and `⚠️ Unverified` findings, grouped under a single collapsible block:
 
@@ -119,4 +133,4 @@ findings:
 top_priority_fixes: [highest-impact fix, second fix, third fix]
 ```
 
-`findings[].check` is the numeric check ID (`1`–`6`, per Step 3's six named checks). `findings[].severity` uses `critical | major | minor`, ordered Critical-first same as the narrative report. This agent's fixes are code-level (e.g. `var=$((var+1))`, append `|| true`, anchor a regex) rather than file/frontmatter-structural, so the standard `action` enum (`move_to_references | delete | replace_line | add_field | fix_frontmatter`) rarely fits — omit `action` for nearly every finding and rely on the free-text `fix` field instead; include `action: replace_line` only for the rare finding that is genuinely a single-line swap. Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`verdict`.
+`findings[].check` is the numeric check ID (`1`–`8`, per Step 3's eight named checks). `findings[].severity` uses `critical | major | minor`, ordered Critical-first same as the narrative report. This agent's fixes are code-level (e.g. `var=$((var+1))`, append `|| true`, anchor a regex) rather than file/frontmatter-structural, so the standard `action` enum (`move_to_references | delete | replace_line | add_field | fix_frontmatter`) rarely fits — omit `action` for nearly every finding and rely on the free-text `fix` field instead; include `action: replace_line` only for the rare finding that is genuinely a single-line swap. Do not emit the "Suggested next step" trailer in this mode — a caller requesting structured output already knows to decide this itself from `counts`/`verdict`.
