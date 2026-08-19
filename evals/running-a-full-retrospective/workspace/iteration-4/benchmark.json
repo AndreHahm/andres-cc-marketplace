@@ -1,0 +1,40 @@
+{
+  "skill_name": "running-a-full-retrospective",
+  "iteration": 4,
+  "timestamp": "2026-08-19T11:33:23+02:00",
+  "evals": [
+    {
+      "eval_id": 3,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 7,
+        "assertions_total": 7,
+        "avg_tokens": 9800,
+        "avg_duration_ms": 43000
+      },
+      "baseline": {
+        "pass_rate": 0.7143,
+        "assertions_passed": 5,
+        "assertions_total": 7,
+        "avg_tokens": 8500,
+        "avg_duration_ms": 75000
+      },
+      "delta": {
+        "pass_rate": 0.2857,
+        "tokens": 1300,
+        "duration_ms": -32000
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.7143,
+    "improvement": 0.2857,
+    "avg_tokens_with_skill": 9800,
+    "avg_tokens_baseline": 8500,
+    "token_cost": 1300,
+    "avg_duration_ms_with_skill": 43000,
+    "avg_duration_ms_baseline": 75000,
+    "duration_cost_ms": -32000
+  }
+}
