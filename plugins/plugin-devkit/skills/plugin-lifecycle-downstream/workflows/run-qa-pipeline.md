@@ -78,21 +78,24 @@ Commit verified fixes only after separate file/message confirmation.
 `Skill(reviewing-evals)` call per such skill; unlike the fan-out that follows, this doesn't
 parallelize) against the benefit (fewer eval-related findings for Phase 6 to fix). On yes,
 run it per skill — explicitly instructing it, as part of each invocation, to skip its own
-Quick Start step 5 (the `plugin-auditor` dispatch ask), since this phase's own dispatch two
-sentences below already covers it over the whole declared scope; omitting that instruction
-would trigger a redundant per-skill audit (on yes to its own ask) or a repetitive prompt this
-phase's single gate never advertised (on no) — and let the operator resolve any FAIL locally
-before continuing; on no, or when no in-scope skill has eval/smoke-test assets, proceed
-directly — this never runs by default. Then dispatch `plugin-auditor` over the declared
-scope — it dispatches
-`dependency-reviewer`, `consistency-reviewer`, `security-reviewer`, `plugin-validator`
-(whole-plugin), `plugin-rulebook-checker` (Structured output mode), `activation-reviewer`,
-`completeness-reviewer`, the type-matched `*-reviewer`, and `scripts-reviewer`/
-`hook-reviewer` where applicable, reusing Phase 3's `plugin-rulebook-checker`/
-`plugin-validator` results for scope already covered there instead of re-dispatching.
-Attribute findings to components/files, normalize them into the shared
-schema, preserve each source report, and write an audit rollup. Evaluate the declared
-audit success criteria.
+Quick Start steps 4 and 5 (the local-fix loop and the `plugin-auditor` dispatch ask): step 5
+would be redundant with this phase's own dispatch two sentences below, and step 4's inline
+fix loop would let this phase's own first target-plugin mutation happen here, bypassing the
+Open-PR/Branch-scope preflight and per-batch approval procedure only Phases 2, 4, 6, and 8
+currently have wired in (see "Mutation and Confirmation"). Record any FAIL as a finding
+attributed to that skill instead — it feeds into this phase's own findings normalization
+below alongside `plugin-auditor`'s output, and any that remain blocking flow into Phase 6's
+already-gated Fix & Re-audit procedure like any other audit finding, never fixed inline
+here. On no, or when no in-scope skill has eval/smoke-test assets, proceed directly — this
+never runs by default. Then dispatch `plugin-auditor` over the declared scope — it
+dispatches `dependency-reviewer`, `consistency-reviewer`, `security-reviewer`,
+`plugin-validator` (whole-plugin), `plugin-rulebook-checker` (Structured output mode),
+`activation-reviewer`, `completeness-reviewer`, the type-matched `*-reviewer`, and
+`scripts-reviewer`/`hook-reviewer` where applicable, reusing Phase 3's
+`plugin-rulebook-checker`/`plugin-validator` results for scope already covered there instead
+of re-dispatching. Attribute findings — `plugin-auditor`'s and the Eval Pre-Check's FAILs
+alike — to components/files, normalize them into the shared schema, preserve each source
+report, and write an audit rollup. Evaluate the declared audit success criteria.
 
 **Exit:** If successful, continue. If blocking findings exist, continue only to Phase 6.
 

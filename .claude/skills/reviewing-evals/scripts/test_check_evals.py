@@ -23,6 +23,8 @@ SCRIPT = Path(__file__).parent / "check_evals.py"
 # - check_workflow_headers: haystack-unclear SKIP (arg isn't SKILL.md content)
 # - check_dynamic: non-literal pattern (rf-string), must be flagged for manual review
 # - check_catastrophic: ReDoS pattern, must be caught by the regex timeout
+# - check_multiline_flag: re.MULTILINE must be forwarded, or ^target$ false-FAILs
+# - check_unsupported_flag: an unrecognized flag must be flagged for manual review
 SMOKE_TEST_PY = r"""
 import re
 
@@ -43,12 +45,19 @@ def check_dynamic(skill_md_text, needle):
 
 def check_catastrophic(skill_md_text):
     return re.findall(r"(a+)+$", skill_md_text)
+
+def check_multiline_flag(skill_md_text):
+    return re.findall(r"^target$", skill_md_text, re.MULTILINE)
+
+def check_unsupported_flag(skill_md_text):
+    return re.findall(r"unused_pattern", skill_md_text, re.LOCALE)
 """
 
 SKILL_MD = (
     "This is a skill about cats and dogs.\n"
     "No references directory here.\n"
     "aaaaaaaaaaaaaaaaaaaaaaaaa!\n"
+    "target\n"
 )
 
 EVALS_GOOD = json.dumps(
@@ -141,6 +150,8 @@ def main() -> int:
                     "SKIP (haystack unclear)",
                     "SKIP (manual review)",
                     "could not be evaluated",
+                    "PASS (zero-match guard): re.findall(r'^target$') found",
+                    "LOCALE",
                 ],
             ),
             ("good coverage arithmetic", ["--evals-json", str(evals_good)], 0, ["PASS (counting)"]),

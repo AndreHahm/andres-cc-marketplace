@@ -26,13 +26,22 @@ CALL_RE = re.compile(r"re\.(findall|search)\(")
 
 DEFAULT_REGEX_TIMEOUT_SECONDS = 2.0
 
+# re module flag names this checker knows how to forward. Anything else found
+# in a call's trailing arguments is reported for manual review instead of
+# silently evaluated with different semantics than the original call.
+SUPPORTED_FLAGS = {"MULTILINE", "DOTALL", "IGNORECASE", "VERBOSE", "ASCII", "UNICODE"}
+FLAG_RE = re.compile(r"\bre\.([A-Z]+)\b")
+
 # Runs re.findall in a throwaway subprocess so a pathological target-authored
 # pattern (catastrophic backtracking) can't hang this checker itself.
 _CHILD_SCRIPT = (
     "import json, re, sys\n"
     "data = json.loads(sys.stdin.read())\n"
+    "flags = 0\n"
+    "for name in data.get('flags', []):\n"
+    "    flags |= getattr(re, name)\n"
     "try:\n"
-    "    hits = re.findall(data['pattern'], data['text'])\n"
+    "    hits = re.findall(data['pattern'], data['text'], flags)\n"
     "    print(json.dumps({'ok': True, 'count': len(hits)}))\n"
     "except re.error as e:\n"
     "    print(json.dumps({'ok': False, 'error': str(e)}))\n"
@@ -62,13 +71,26 @@ def _extract_call_arg_text(source: str, arg_start: int) -> str:
     return source[arg_start:i].lstrip(", \t\n")
 
 
-def _safe_findall_count(pattern: str, text: str, timeout: float) -> tuple[bool, int, str]:
-    """Run re.findall(pattern, text) in an isolated subprocess with a hard
-    timeout. Returns (ok, count, error_or_empty)."""
+def _extract_flags(arg_text: str) -> tuple[list[str], list[str]]:
+    """Return (recognized_flag_names, unrecognized_flag_names) found in a
+    call's trailing arguments, e.g. `re.MULTILINE` in
+    `re.findall(pattern, text, re.MULTILINE)`."""
+    recognized = []
+    unrecognized = []
+    for name in FLAG_RE.findall(arg_text):
+        (recognized if name in SUPPORTED_FLAGS else unrecognized).append(name)
+    return recognized, unrecognized
+
+
+def _safe_findall_count(
+    pattern: str, text: str, timeout: float, flags: list[str] | None = None
+) -> tuple[bool, int, str]:
+    """Run re.findall(pattern, text, flags) in an isolated subprocess with a
+    hard timeout. Returns (ok, count, error_or_empty)."""
     try:
         result = subprocess.run(
             [sys.executable, "-c", _CHILD_SCRIPT],
-            input=json.dumps({"pattern": pattern, "text": text}),
+            input=json.dumps({"pattern": pattern, "text": text, "flags": flags or []}),
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -127,7 +149,16 @@ def check_zero_match_and_anchoring(
             )
             continue
 
-        ok, count, error = _safe_findall_count(pattern, skill_md_text, regex_timeout)
+        flags, unrecognized_flags = _extract_flags(arg_text)
+        if unrecognized_flags:
+            findings.append(
+                f"SKIP (manual review): re.findall(r'{pattern}') uses flag(s) "
+                f"{', '.join(unrecognized_flags)} this checker doesn't support -- "
+                "evaluating without them could change match semantics. Verify manually."
+            )
+            continue
+
+        ok, count, error = _safe_findall_count(pattern, skill_md_text, regex_timeout, flags)
         if not ok:
             findings.append(f"SKIP: pattern '{pattern}' could not be evaluated: {error}")
             continue
