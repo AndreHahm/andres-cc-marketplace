@@ -20,8 +20,9 @@ what it actually contains or does — request the real value and read it.
 
 This includes checking a tool's *full* schema for every constrained dimension, not just the one
 already known from a prior incident — a tool can have independent caps or behaviors that compound
-(see `AskUserQuestion`'s per-question *and* per-call caps below, found six review rounds apart on the
-same tool).
+(see `AskUserQuestion`'s per-question *and* per-call caps below: the per-call cap surfaced in a
+*later* review round on the same tool whose per-question cap was already known, not from the initial
+check).
 
 ## Why
 
