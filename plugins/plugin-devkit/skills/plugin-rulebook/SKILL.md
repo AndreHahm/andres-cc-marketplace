@@ -11,7 +11,7 @@ description: >-
   wiring), which is `plugin-validator`'s domain instead, and not scaffolding a plugin's own
   directory structure or package layout in the first place, which is `plugin-development`'s
   domain instead.
-allowed-tools: Read Grep Glob Bash(${CLAUDE_SKILL_DIR}/scripts/r20-sweep.sh:*) Bash(${CLAUDE_SKILL_DIR}/scripts/agent-cost-tracker.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/validate_evidence.py:*)
+allowed-tools: Read Grep Glob Bash(${CLAUDE_SKILL_DIR}/scripts/r20-sweep.sh:*) Bash(${CLAUDE_SKILL_DIR}/scripts/agent-cost-tracker.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/validate_evidence.py:*) Bash(${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py:*)
 ---
 
 # Plugin Rulebook
@@ -149,6 +149,11 @@ Skill and agent frontmatter must not include command-only or unsupported fields.
 **Tool completeness:** Every tool invoked in the command or skill body must be declared in `allowed-tools`. Scan the body for tool name references (`Bash`, `Write`, `Edit`, `Glob`, `Grep`, `Read`, `WebFetch`, `WebSearch`, etc.) — any tool called but absent from `allowed-tools` is a REQUIRED violation. **Agent files — the Bash-scoping rule above does not apply the same way:** an agent's `tools` field has no documented Bash-scoping syntax at all. A `Bash(cmd:*)`-style entry there is a FAIL in the opposite direction — replace with bare `Bash`, never tighten the scope further. Flag as REQUIRED. See `${CLAUDE_SKILL_DIR}/references/frontmatter-corrections.md` for the full reasoning.
 
 **Violation:** Body instructs Claude to run a shell command (Bash) but `Bash(...)` is absent from `allowed-tools`.
+
+**Mechanical assist:** run `${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py --file <target path>` as a
+first pass on the Bash-command case before relying on the narrative scan alone — see
+`${CLAUDE_SKILL_DIR}/references/frontmatter-corrections.md`'s "Mechanical Assist" section for why, and
+its known false-positive classes.
 
 ---
 
@@ -484,6 +489,7 @@ Whether a rule traces back to an official Claude Code doc, and whether that doc 
 | `${CLAUDE_SKILL_DIR}/references/finding-id-fix-contract.md` | Shared bounded-finding-ID fix contract for the five dev skills and `skill-improver-loop` — input/output shape, never-self-verify rule, `skill-improver-loop`'s own attempt-count and two-valid-paths rules |
 | `${CLAUDE_SKILL_DIR}/scripts/mirror-parity-check.sh` | CI-owned, not invoked from within this skill's own Compliance Check Procedure — confirmed consumer is `.github/marketplace-validators.json`'s `plugin-devkit.mirror-parity-check` entry, not an agent-driven check, so it carries no `allowed-tools` Bash grant here |
 | `${CLAUDE_SKILL_DIR}/scripts/r20-sweep.sh` | Automates the R20 sibling sweep's repo-wide grep for a stale rule-count-ceiling mention — see `references/adding-a-new-rule.md`'s Touch List |
+| `${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py` | Mechanical backing check for R6's "Tool completeness" sub-rule — flags a body command span with no matching `Bash(<prefix>:*)` grant; full-file heuristic, not a diff, see its own docstring for known false-positive classes |
 | `${CLAUDE_SKILL_DIR}/scripts/agent-cost-tracker.py` | Reads/updates `assets/agent-cost-history.json` — gives R26's `AskUserQuestion` gate a real cost figure to cite when historical data exists; see `references/overhead-and-cost-rules.md`'s "Cost-Tier Estimation Before Dispatch" |
 | `${CLAUDE_SKILL_DIR}/assets/agent-cost-history.json` | Best-effort registry of observed `Agent()` dispatch cost (tokens, duration), read/written by `scripts/agent-cost-tracker.py` |
 | `${CLAUDE_SKILL_DIR}/scripts/validate_evidence.py` | Validates a YAML/JSON document against `references/evidence-schema.md`'s manifest/finding/report/bundle shapes — invoke as `python scripts/validate_evidence.py <shape> <path>`, or `--self-test` |
