@@ -210,49 +210,72 @@ this pipeline's development (the preflight was documented but never actually wir
 every mutating phase); this trace re-confirms the fix holds for both the normal-run and
 External-Entry-as-first-write cases specifically.
 
-## 13. Eval Pre-Check declined, approved, and nested-dispatch suppression
+## 13. Eval Pre-Check declined, approved, nested-dispatch suppression, and mutation-gate compliance
 
 **Setup:** Phase 5 reached with an in-scope skill that has `evals/<skill>/evals.json`
 and/or `scripts/smoke_test.*`; user declines the pre-check, then (separately) approves
 it. A third case: Phase 5 reached with no in-scope skill carrying either asset. A fourth
 case: the pre-check is approved, and `reviewing-evals` itself reaches its own Quick Start
 step 5 (which asks whether to dispatch `plugin-auditor`) for one of the qualifying
-skills.
+skills. A fifth case: the pre-check is approved and finds a FAIL for one of the
+qualifying skills.
 
-**Traced against (pre-fix):** the original Phase 5 Actions text told the operator to
-"run it per skill and let the operator resolve any FAIL locally before continuing," with
-no instruction covering `reviewing-evals`'s own step 5. **Gap found:** `reviewing-evals`
-Quick Start step 5 unconditionally asks whether to dispatch `plugin-auditor` once all of
-its own checks pass — for every qualifying skill in the pre-check loop, on top of Phase
-5's own single dispatch over the whole declared scope two sentences later. Accepting the
-nested ask would trigger a redundant, expensive per-skill audit; declining it produces a
-repetitive prompt per qualifying skill that Phase 5's own single gate never advertised.
+**Traced against (pre-fix, round 1):** the original Phase 5 Actions text told the
+operator to "run it per skill and let the operator resolve any FAIL locally before
+continuing," with no instruction covering `reviewing-evals`'s own step 5. **Gap found:**
+`reviewing-evals` Quick Start step 5 unconditionally asks whether to dispatch
+`plugin-auditor` once all of its own checks pass — for every qualifying skill in the
+pre-check loop, on top of Phase 5's own single dispatch over the whole declared scope two
+sentences later. Accepting the nested ask would trigger a redundant, expensive per-skill
+audit; declining it produces a repetitive prompt per qualifying skill that Phase 5's own
+single gate never advertised.
 
-**Fix applied:** `run-qa-pipeline.md`'s Phase 5 Actions now explicitly instructs, as part
-of each per-skill invocation, that `reviewing-evals` skip its own Quick Start step 5 —
-`reviewing-evals/SKILL.md`'s step 5 itself now states this same skip condition on its own
-side ("skip this step entirely when the caller explicitly says so"), matching the
-reciprocal loop-breaker pattern `create-pr`/`commit`/`collaborating-on-a-pr` already use
-for the same class of nested-dispatch problem (see `create-pr/SKILL.md`'s "Loop-Breaker
-Convention").
+**Fix applied (round 1):** `run-qa-pipeline.md`'s Phase 5 Actions instructed, as part of
+each per-skill invocation, that `reviewing-evals` skip its own Quick Start step 5 —
+`reviewing-evals/SKILL.md`'s step 5 stated the same skip condition on its own side,
+matching the reciprocal loop-breaker pattern `create-pr`/`commit`/`collaborating-on-a-pr`
+already use for the same class of nested-dispatch problem (see `create-pr/SKILL.md`'s
+"Loop-Breaker Convention").
 
-**Verdict:** FIXED — all four branches (declined, approved, no qualifying skill, and the
-nested-dispatch case) now converge on exactly one `plugin-auditor` dispatch per Phase 5
-run, never zero and never more than one; the "never runs by default" guarantee for the
-pre-check itself is still stated in three independent places (Actions, Optional Phases,
-Quality Gates), matching this document's own established pattern (see #11) for a
-guarantee worth restating across sections rather than asserted once.
+**Traced against (pre-fix, round 2):** a second PR review pass, re-reviewing round 1's
+own fix, found a further gap in the same text: "let the operator resolve any FAIL
+locally before continuing" let Phase 5's pre-check become the run's first target-plugin
+mutation point — but Phase 5 has neither the Open-PR/Branch-scope preflight nor the
+per-batch approval procedure "Mutation and Confirmation" requires before every other fix
+batch (wired in only for Phases 2, 4, 6, and 8). A FAIL found here could be "fixed" with
+none of those safeguards.
+
+**Fix applied (round 2):** Phase 5 Actions now instructs skipping `reviewing-evals`'s
+Quick Start steps 4 *and* 5 on every invocation — step 4's inline-fix loop is what
+created the ungated mutation path. Any FAIL is recorded as a finding attributed to that
+skill instead, feeding into Phase 5's own findings normalization alongside
+`plugin-auditor`'s output; if still blocking, it flows into Phase 6's already-gated Fix &
+Re-audit procedure like any other audit finding, never fixed inline during Phase 5.
+`reviewing-evals/SKILL.md`'s own step 4 states the same skip condition reciprocally,
+mirroring step 5's round-1 fix.
+
+**Verdict:** FIXED (twice) — all five branches (declined, approved, no qualifying skill,
+the nested-dispatch case, and the FAIL-found case) now converge on exactly one
+`plugin-auditor` dispatch per Phase 5 run with zero inline mutations outside the
+pipeline's existing gates; the "never runs by default" guarantee for the pre-check itself
+is still stated in three independent places (Actions, Optional Phases, Quality Gates),
+matching this document's own established pattern (see #11) for a guarantee worth
+restating across sections rather than asserted once. Two independent review passes
+finding two separate real gaps in the same addition is itself worth noting: a
+newly-added pipeline sub-step doesn't get the benefit of this document's own pre-cutover
+trace discipline the original 12 scenarios had — it's exactly the kind of change most in
+need of the live end-to-end dry run still outstanding (see the closing note below).
 
 ## Summary
 
 10 of 13 scenario categories: PASS on first trace. 3 of 13 (external-entry malformed
-evidence; final-verification regression routing; Eval Pre-Check's nested-dispatch
-suppression) found real, previously undocumented gaps — all three fixed in
-`SKILL.md`/`run-qa-pipeline.md` before this document was finalized, not deferred.
-`scripts/smoke_test.py` was re-run after each fix (including scenario 13's later
-addition and its own subsequent fix) and continued to pass (frontmatter,
-referenced-file, Bash-grant, phase-sequence, and report-fixture checks unaffected by
-these prose-only edits).
+evidence; final-verification regression routing; Eval Pre-Check, across two review-found
+gaps: nested-dispatch suppression and mutation-gate compliance) found real, previously
+undocumented gaps — all fixed in `SKILL.md`/`run-qa-pipeline.md` before this document was
+finalized, not deferred. `scripts/smoke_test.py` was re-run after each fix (including
+scenario 13's later addition and both of its own subsequent fixes) and continued to pass
+(frontmatter, referenced-file, Bash-grant, phase-sequence, and report-fixture checks
+unaffected by these prose-only edits).
 
 **What this is not:** a live end-to-end pipeline execution. No `Agent()`/`Skill()`
 dispatch was made against a real target plugin for any of the 13 scenarios during their
