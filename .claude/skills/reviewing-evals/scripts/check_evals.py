@@ -14,6 +14,7 @@ agent-performed, per SKILL.md.
 """
 
 import argparse
+import ast
 import json
 import re
 import subprocess
@@ -24,8 +25,11 @@ from pathlib import Path
 # (e.g. \" inside a "..."-quoted literal) doesn't terminate the capture the
 # way a bare (.*?) would, which stops at the first literal occurrence of the
 # quote character even when it's escaped and semantically part of the string.
-FINDALL_RE = re.compile(r"re\.findall\(\s*r?([\"'])((?:[^\\]|\\.)*?)\1")
-SEARCH_RE = re.compile(r"re\.search\(\s*r?([\"'])((?:[^\\]|\\.)*?)\1")
+# The leading (r?) is now its own capture group -- needed to tell a raw
+# literal (source spelling == runtime value) from a non-raw one (source
+# spelling needs Python's own escape decoding, e.g. "\\s" -> \s) apart.
+FINDALL_RE = re.compile(r"re\.findall\(\s*(r?)([\"'])((?:[^\\]|\\.)*?)\2")
+SEARCH_RE = re.compile(r"re\.search\(\s*(r?)([\"'])((?:[^\\]|\\.)*?)\2")
 CALL_RE = re.compile(r"re\.(findall|search)\(")
 
 DEFAULT_REGEX_TIMEOUT_SECONDS = 2.0
@@ -54,6 +58,38 @@ _CHILD_SCRIPT = (
 
 def _line_number(source: str, pos: int) -> int:
     return source.count("\n", 0, pos) + 1
+
+
+def _decode_literal(prefix: str, quote: str, raw_text: str) -> tuple[bool, str]:
+    """Reconstruct the original Python string-literal token (prefix + quotes
+    + captured text) and decode it via ast.literal_eval, so a non-raw
+    literal's escape sequences (\\s, \\n, \\\\, etc.) resolve to their real
+    runtime value rather than the source spelling -- "^target\\s*$" (a plain
+    string) means \\s (whitespace) at runtime, not the two-character
+    backslash-s sequence its source text shows. A raw literal's value equals
+    its source spelling either way, so this is a no-op for those. Returns
+    (ok, decoded_or_raw_text); ok=False means the token couldn't be decoded
+    faithfully (caller should not evaluate it with confidence)."""
+    token = f"{prefix}{quote}{raw_text}{quote}"
+    try:
+        value = ast.literal_eval(token)
+    except (SyntaxError, ValueError):
+        return False, raw_text
+    if not isinstance(value, str):
+        return False, raw_text
+    return True, value
+
+
+def _is_complete_literal_arg(source: str, end_pos: int) -> bool:
+    """True if the captured literal ending at end_pos is the *complete*
+    first argument to the call -- i.e. immediately followed by a comma or
+    the call's closing paren. False means the literal is only part of a
+    concatenated/constructed pattern (e.g. `r"\\b" + re.escape(needle) +
+    r"\\b"`), so the captured text alone doesn't reflect the real pattern."""
+    i = end_pos
+    while i < len(source) and source[i] in " \t\n":
+        i += 1
+    return i < len(source) and source[i] in (",", ")")
 
 
 def _extract_call_arg_text(source: str, arg_start: int) -> str:
@@ -128,6 +164,49 @@ def _split_top_level_alternation(pattern: str) -> list[str]:
     return branches
 
 
+def _split_top_level_args(arg_text: str) -> list[str]:
+    """Split a call's trailing-argument text on top-level commas (respecting
+    parens/brackets and string literals) into individual argument
+    expressions, e.g. 'skill_md_text, comment="a, b"' ->
+    ['skill_md_text', 'comment="a, b"']."""
+    args = []
+    depth = 0
+    in_string = None
+    current = []
+    i = 0
+    while i < len(arg_text):
+        c = arg_text[i]
+        if in_string:
+            current.append(c)
+            if c == "\\" and i + 1 < len(arg_text):
+                current.append(arg_text[i + 1])
+                i += 2
+                continue
+            if c == in_string:
+                in_string = None
+            i += 1
+            continue
+        if c in ("'", '"'):
+            in_string = c
+            current.append(c)
+        elif c in "([":
+            depth += 1
+            current.append(c)
+        elif c in ")]":
+            depth = max(0, depth - 1)
+            current.append(c)
+        elif c == "," and depth == 0:
+            args.append("".join(current).strip())
+            current = []
+        else:
+            current.append(c)
+        i += 1
+    tail = "".join(current).strip()
+    if tail:
+        args.append(tail)
+    return args
+
+
 def _extract_flags(arg_text: str) -> tuple[list[str], list[str]]:
     """Return (recognized_flag_names, unrecognized_flag_names) found in a
     call's trailing arguments, e.g. `re.MULTILINE` in
@@ -186,8 +265,25 @@ def check_zero_match_and_anchoring(
 
     findall_matches = list(FINDALL_RE.finditer(source))
     for m in findall_matches:
+        prefix, quote, raw_text = m.group(1), m.group(2), m.group(3)
+
+        if not _is_complete_literal_arg(source, m.end()):
+            # Concatenated/constructed pattern (e.g. r"\b" + re.escape(x) +
+            # r"\b") -- the captured literal is only a fragment, not the real
+            # pattern. Leave it out of literal_call_starts so CALL_RE's own
+            # pass below reports it for manual review instead of confidently
+            # (and wrongly) evaluating just the fragment.
+            continue
+
         literal_call_starts.add(m.start())
-        pattern = m.group(2)
+        decode_ok, pattern = _decode_literal(prefix, quote, raw_text)
+        if not decode_ok:
+            findings.append(
+                f"SKIP (manual review): re.findall({prefix}{quote}{raw_text}{quote}, ...) "
+                "-- this literal couldn't be decoded to its real runtime value. "
+                "Verify manually."
+            )
+            continue
         if skill_md_text is None:
             findings.append(
                 f"SKIP: re.findall(r'{pattern}') found but no --skill-md given "
@@ -206,7 +302,16 @@ def check_zero_match_and_anchoring(
             )
             continue
 
+        trailing_args = _split_top_level_args(arg_text)[1:]
         flags, unrecognized_flags = _extract_flags(arg_text)
+        if trailing_args and not flags and not unrecognized_flags:
+            findings.append(
+                f"SKIP (manual review): re.findall(r'{pattern}') has a trailing "
+                f"argument ({trailing_args[-1]!r}) this checker can't statically "
+                "resolve to known flags -- evaluating with zero flags could be "
+                "wrong if it's an indirect flags reference. Verify manually."
+            )
+            continue
         if unrecognized_flags:
             findings.append(
                 f"SKIP (manual review): re.findall(r'{pattern}') uses flag(s) "
@@ -231,8 +336,20 @@ def check_zero_match_and_anchoring(
 
     search_matches = list(SEARCH_RE.finditer(source))
     for m in search_matches:
+        prefix, quote, raw_text = m.group(1), m.group(2), m.group(3)
+
+        if not _is_complete_literal_arg(source, m.end()):
+            continue  # concatenated/constructed -- let CALL_RE's fallback catch it
+
         literal_call_starts.add(m.start())
-        pattern = m.group(2)
+        decode_ok, pattern = _decode_literal(prefix, quote, raw_text)
+        if not decode_ok:
+            findings.append(
+                f"SKIP (manual review): re.search({prefix}{quote}{raw_text}{quote}, ...) "
+                "-- this literal couldn't be decoded to its real runtime value. "
+                "Verify manually."
+            )
+            continue
         branches = _split_top_level_alternation(pattern)
         weak_branches = []
         for branch in branches:
