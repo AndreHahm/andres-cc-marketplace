@@ -67,11 +67,28 @@ editing — never guess. Apply the fix directly with `Edit`/`Write` against that
 the worktree — this is the one explicit exception to the "never write inside a target plugin" boundary
 stated in SKILL.md, scoped strictly to this single, already-human-approved, mechanical change.
 
-Then `Skill(git-kit:commit)` → `Skill(git-kit:create-pr)` → `Skill(git-kit:merge-pr)` — all three from the
-worktree, same as the edit. **Capture the PR number `create-pr` reports back** (or `merge-pr`'s own
-confirmation, if that's the last point it's echoed) — it's needed explicitly in the next step, since
-`finishing-work` cannot be trusted to infer it on its own from this point forward. **Before the next
-step, `cd` back to the primary checkout** — `finishing-work` explicitly cannot run from inside the
+Then `Skill(git-kit:commit)`, **explicitly instructed as part of this invocation to skip its own
+Auto-PR step** — `commit`'s own step 17 would otherwise ask (or, if `push_auto_pr` is `true`,
+auto-invoke) `create-pr` itself after a successful push, and the very next call here invokes
+`create-pr` unconditionally too; without this instruction, a normal "yes, create one" answer to
+`commit`'s own ask produces a second, redundant `create-pr` call against a branch that already has an
+open PR, which fails outright. This mirrors `create-pr`'s own documented Pre-flight Checks pattern
+(passing the same skip-instruction to its own nested `commit` call for the identical reason). Then
+`Skill(git-kit:create-pr)` → `Skill(git-kit:merge-pr)`, **the latter also explicitly instructed to
+decline its own step 8 post-merge-sync prompt** ("Run `finishing-work` now?") every time — `merge-pr`
+runs entirely through remote `gh pr` calls and doesn't itself need the worktree to be the current
+directory, but if its nested prompt is accepted it invokes `Skill(git-kit:finishing-work)` immediately,
+from wherever the session currently is — still the worktree at that point in this sequence, since the
+`cd` back to the primary checkout described below hasn't happened yet. That hits the exact
+worktree-can't-close-itself failure this section works around, just one call earlier and inside
+`merge-pr`'s own nested dispatch instead of this skill's own. Declining that prompt here leaves this
+skill's own explicit `cd`-then-`finishing-work` sequence below as the single, deterministic owner of
+post-merge sync for this topic — never letting the nested prompt's answer decide it. All three calls
+run from the worktree, same as the edit. **Capture the PR number `create-pr` reports back** (or
+`merge-pr`'s own confirmation, if that's the last point it's echoed) — it's needed explicitly in the
+next step, since `finishing-work` cannot be trusted to infer it on its own from this point forward.
+**Before the next step, `cd` back to the primary checkout** — `finishing-work` explicitly cannot run
+from inside the
 feature worktree it's meant to close: its own steps stop when the default branch is already checked out
 elsewhere (the primary checkout, in this case) and the primary checkout can't be synced from a worktree.
 So: return to the primary checkout, *then* `Skill(git-kit:finishing-work) <PR number>` — passing the
