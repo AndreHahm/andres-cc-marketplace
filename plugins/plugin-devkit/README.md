@@ -4,13 +4,13 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-devkit` ships **36 skills**, **24 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
+`plugin-devkit` ships **37 skills**, **24 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
 | **Component authoring** | `agent-development`, `command-development`, `hook-development`, `skill-development`, `workflow-skill-development`, `mcp-integration` |
 | **Plugin structure & governance** | `plugin-development`, `plugin-rulebook`, `plugin-auditor`, `upstream-sources-registry`, `plugin-settings`, `plugin-evaluation`, `marketplace-development`, `plugin-documentation` |
-| **Skill quality & lifecycle** | `component-prototyping`, `skill-refiner-interactive`, `skill-improver-loop`, `skill-tester`, `skill-security`, `skill-stocktake`, `skill-maintenance` |
+| **Skill quality & lifecycle** | `component-prototyping`, `skill-refiner-interactive`, `skill-improver-loop`, `skill-tester`, `reviewing-evals`, `skill-security`, `skill-stocktake`, `skill-maintenance` |
 | **Plugin lifecycle** | `using-plugin-devkit`, `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance` |
 | **Planning & analysis** | `plugin-ideation`, `plugin-planning`, `plugin-comparison`, `plugin-grader`, `analyzing-sessions`, `verify-agent-citations` |
 | **`.claude/rules/` pipeline** | `rule-development`, `rules-extract`, `rules-merge`, `rules-apply`, `rules-review` |
@@ -62,6 +62,7 @@ cc --plugin-dir /path/to/plugin-devkit
 | `skill-refiner-interactive` | Interactively refining an existing skill for clarity, token efficiency, production readiness |
 | `skill-improver-loop` | Running automated fix-review cycles on a skill until it clears `skill-reviewer` |
 | `skill-tester` | Empirically benchmarking a skill against a baseline (timing, token metrics) |
+| `reviewing-evals` | Pre-review self-audit for a skill's evals/smoke-tests, catching recurring defect classes before dispatching to `plugin-auditor` |
 | `skill-security` | Auditing a skill for permission risk, prompt injection, or PII leakage |
 | `skill-stocktake` | Auditing all skills/commands in a project for quality, staleness, and overlap |
 | `skill-maintenance` | Deciding whether and how to propagate a change across plugin-devkit's own components |
