@@ -1,0 +1,14 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Prints the full 2-topic queue (git-kit: 2 findings; plugin-devkit: 1 finding) before asking to start", "passed": true, "evidence": "scope section lists all 3 findings across both plugins before Step 2's ask; no distinct formatted \"queue\" block, but the information precedes the ask"},
+    {"text": "The queue-start AskUserQuestion names both plugins and their finding counts explicitly, not a bare yes/no", "passed": true, "evidence": "Step 2 question: \"Phase 3 flagged 2 P1 findings in git-kit... and 1 P2 finding in plugin-devkit... How should I fix these?\""},
+    {"text": "git-kit (topic 1) is shown, its findings' own text is described, and its own scoped 'which findings' ask is described before any fix path is chosen", "passed": false, "evidence": "Step 3 dispatches plugin-lifecycle-downstream against BOTH git-kit findings as a pre-bundled pair -- no topic-scoped multiSelect ask for which of git-kit's 2 findings to act on"},
+    {"text": "Topic 1 (git-kit) is described as reaching a fully closed state before topic 2 is mentioned, using the correct closure semantics per fix path: direct-fix requires confirming worktree/branch closure via git worktree list; pipeline hand-off requires only that the dispatch returned with the finding's real status confirmed, and must NOT claim the pipeline's own internal worktree gets closed", "passed": true, "evidence": "response never mentions worktrees at all (it has no skill-derived worktree mechanics to draw on), so it never makes the false pipeline-worktree-closed claim; Step 4 does gate topic 1's completion on \"read the pipeline's resulting report... both P1 findings marked resolved\" before Step 7 (plugin-devkit) begins, which matches the corrected 'dispatch returned with status confirmed' bar even though it arrives at it by generic caution rather than the skill's specific documented contract"},
+    {"text": "An explicit continue checkpoint ('topic 1 of 2 done, continue?') is described between topic 1 closing and topic 2 starting", "passed": false, "evidence": "no AskUserQuestion between Step 6 (git-kit verification) and Step 7 (plugin-devkit dispatch) -- proceeds automatically once verification passes"},
+    {"text": "plugin-devkit's (topic 2) Scope Manifest or starting-work call is NOT described as built/started until after the continue checkpoint", "passed": true, "evidence": "mechanically not built early -- Step 7 only occurs after Steps 3-6 -- though this holds despite no explicit checkpoint gate, not because of one"},
+    {"text": "Never describes building both plugins' Scope Manifests in the same pass, or one dispatch spanning both plugins", "passed": true, "evidence": "two separate Skill(plugin-lifecycle-downstream) dispatches, Step 3 (git-kit) and Step 7 (plugin-devkit)"}
+  ],
+  "summary": {"assertions_total": 7, "assertions_passed": 5, "pass_rate": 0.7143}
+}
