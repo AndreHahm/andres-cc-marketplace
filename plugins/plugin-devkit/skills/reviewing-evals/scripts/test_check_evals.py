@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Fixture-based test for check_evals.py. Run: python scripts/test_check_evals.py
 
-Recreates the 5 cases exercised during development (2026-08-19) so the claim
-"tested against 5 fixture cases" in SKILL.md's change history is checkable
-rather than asserted. Builds temporary fixtures, runs check_evals.py as a
-subprocess, and asserts on exit code + expected substrings in stdout/stderr.
+Recreates the cases exercised during development (2026-08-19, extended after a
+PR review pass found real bugs -- wrong haystack, one-sided anchoring, silently
+dropped non-literal calls, unbounded regex evaluation, unvalidated JSON
+structure) so every claim about this script's behavior stays checkable rather
+than asserted. Builds temporary fixtures, runs check_evals.py as a subprocess,
+and asserts on exit code + expected substrings in stdout/stderr.
 """
 
 import json
@@ -15,20 +17,39 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).parent / "check_evals.py"
 
-SMOKE_TEST_PY = """
+# Each function exercises one distinct check_evals.py behavior:
+# - check_referenced_files: zero-match guard (pattern matches nothing in SKILL.md)
+# - check_bad_word: one-sided anchoring (\bcat matches "catalog", must FAIL)
+# - check_workflow_headers: haystack-unclear SKIP (arg isn't SKILL.md content)
+# - check_dynamic: non-literal pattern (rf-string), must be flagged for manual review
+# - check_catastrophic: ReDoS pattern, must be caught by the regex timeout
+SMOKE_TEST_PY = r"""
 import re
 
-def check_referenced_files(text):
-    matches = re.findall(r"references/[^\\s]+\\.md", text)
+def check_referenced_files(skill_md_text):
+    matches = re.findall(r"references/[^\s]+\.md", skill_md_text)
     for m in matches:
         assert True
 
-def check_bad_word(text):
-    if re.search(r"cat", text):
+def check_bad_word(skill_md_text):
+    if re.search(r"\bcat", skill_md_text):
         return True
+
+def check_workflow_headers(workflow_text):
+    return re.findall(r"^##+ Phase (\d+):", workflow_text, re.MULTILINE)
+
+def check_dynamic(skill_md_text, needle):
+    return re.search(rf"{needle}", skill_md_text)
+
+def check_catastrophic(skill_md_text):
+    return re.findall(r"(a+)+$", skill_md_text)
 """
 
-SKILL_MD = "This is a skill about cats and dogs.\nNo references directory here.\n"
+SKILL_MD = (
+    "This is a skill about cats and dogs.\n"
+    "No references directory here.\n"
+    "aaaaaaaaaaaaaaaaaaaaaaaaa!\n"
+)
 
 EVALS_GOOD = json.dumps(
     {
@@ -49,6 +70,25 @@ EVALS_BAD = json.dumps(
     }
 )
 EVALS_MALFORMED = "{not valid json"
+EVALS_ARRAY_ROOT = json.dumps([1, 2, 3])
+EVALS_NON_INT_TOTAL = json.dumps(
+    {
+        "testing_validation_coverage": {
+            "declared_scenarios_total": "four",
+            "declared_scenarios_covered": 3,
+            "uncovered": [],
+        }
+    }
+)
+EVALS_NON_LIST_UNCOVERED = json.dumps(
+    {
+        "testing_validation_coverage": {
+            "declared_scenarios_total": 4,
+            "declared_scenarios_covered": 3,
+            "uncovered": "none",
+        }
+    }
+)
 
 
 def run(*args):
@@ -75,21 +115,59 @@ def main() -> int:
         evals_bad.write_text(EVALS_BAD, encoding="utf-8")
         evals_malformed = tmp_path / "evals_malformed.json"
         evals_malformed.write_text(EVALS_MALFORMED, encoding="utf-8")
+        evals_array_root = tmp_path / "evals_array_root.json"
+        evals_array_root.write_text(EVALS_ARRAY_ROOT, encoding="utf-8")
+        evals_non_int_total = tmp_path / "evals_non_int_total.json"
+        evals_non_int_total.write_text(EVALS_NON_INT_TOTAL, encoding="utf-8")
+        evals_non_list_uncovered = tmp_path / "evals_non_list_uncovered.json"
+        evals_non_list_uncovered.write_text(EVALS_NON_LIST_UNCOVERED, encoding="utf-8")
 
         cases = [
             (
-                "zero-match + unanchored (smoke_test + skill-md)",
-                ["--smoke-test", str(smoke_test), "--skill-md", str(skill_md)],
+                "Check 1: zero-match, one-sided anchoring, haystack-unclear, "
+                "non-literal, and ReDoS timeout",
+                [
+                    "--smoke-test",
+                    str(smoke_test),
+                    "--skill-md",
+                    str(skill_md),
+                    "--regex-timeout",
+                    "0.5",
+                ],
                 1,
-                ["FAIL (zero-match guard)", "FAIL (anchored matching)"],
+                [
+                    "FAIL (zero-match guard)",
+                    "FAIL (anchored matching)",
+                    "SKIP (haystack unclear)",
+                    "SKIP (manual review)",
+                    "could not be evaluated",
+                ],
             ),
             ("good coverage arithmetic", ["--evals-json", str(evals_good)], 0, ["PASS (counting)"]),
             ("bad coverage arithmetic", ["--evals-json", str(evals_bad)], 1, ["FAIL (counting)"]),
             (
-                "malformed evals.json",
+                "malformed evals.json (invalid JSON)",
                 ["--evals-json", str(evals_malformed)],
                 1,
                 ["FAIL (blocking)"],
+            ),
+            (
+                "malformed evals.json (array root)",
+                ["--evals-json", str(evals_array_root)],
+                1,
+                ["FAIL (blocking)", "root value"],
+            ),
+            (
+                "malformed evals.json (non-int total)",
+                ["--evals-json", str(evals_non_int_total)],
+                1,
+                ["FAIL (blocking)", "declared_scenarios_total"],
+            ),
+            (
+                "malformed evals.json (non-list uncovered)",
+                ["--evals-json", str(evals_non_list_uncovered)],
+                1,
+                ["FAIL (blocking)", "uncovered"],
             ),
             ("no args", [], 2, ["at least one of"]),
         ]
@@ -109,7 +187,7 @@ def main() -> int:
             print(f"  - {f}")
         return 1
 
-    print("PASS: all 5 fixture cases behaved as expected")
+    print(f"PASS: all {len(cases)} fixture cases behaved as expected")
     return 0
 
 
