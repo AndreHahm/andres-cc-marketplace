@@ -35,6 +35,12 @@ SCRIPT = Path(__file__).parent / "check_evals.py"
 # - check_anchored_alternation: a *grouped, anchored* alternation ^(cat|dog)$ must PASS
 # - check_escaped_quote: a pattern containing an escaped copy of its own delimiter
 #   (quo\"te) must be captured in full, not truncated at the escaped quote
+# - check_concatenated_pattern: r"\b" + re.escape(x) + r"\b" must be treated as
+#   dynamic (manual review), not confidently evaluated as just the "\b" fragment
+# - check_non_raw_pattern: a non-raw literal's escapes ("\\s" -> \s) must be
+#   decoded to their real runtime value before evaluation, not used as source text
+# - FLAGS / check_indirect_flags: a flags argument passed via a variable reference
+#   must be flagged for manual review, not silently treated as "no flags"
 SMOKE_TEST_PY = r"""
 import re
 
@@ -73,6 +79,17 @@ def check_anchored_alternation(skill_md_text):
 
 def check_escaped_quote(skill_md_text):
     return re.search(r"quo\"te", skill_md_text)
+
+def check_concatenated_pattern(skill_md_text, needle="cat"):
+    return re.search(r"\b" + re.escape(needle) + r"\b", skill_md_text)
+
+def check_non_raw_pattern(skill_md_text):
+    return re.findall("^target\\s*$", skill_md_text, re.MULTILINE)
+
+FLAGS = re.MULTILINE
+
+def check_indirect_flags(skill_md_text):
+    return re.findall(r"^target$", skill_md_text, FLAGS)
 """
 
 SKILL_MD = (
@@ -184,49 +201,89 @@ def main() -> int:
                     "SKIP (manual review)",
                     "could not be evaluated",
                     "PASS (zero-match guard): re.findall(r'^target$') found",
-                    "FAIL (zero-match guard): re.findall(r'^target$') matches nothing",
                     "LOCALE",
                     "unanchored alternation",
                     "PASS (anchored matching): re.search(r'^(cat|dog)$')",
                     r"""re.search(r'quo\"te')""",
+                    # check_paren_in_string_arg: the unresolvable trailing
+                    # 'comment=...' argument must be flagged, not silently
+                    # evaluated with zero flags
+                    "trailing argument",
+                    # check_concatenated_pattern: r"\b" + re.escape(x) + r"\b"
+                    # must be routed to the non-literal/manual-review fallback
+                    "re.search(...) at",
+                    # check_non_raw_pattern: "^target\\s*$" must decode to the
+                    # real regex \s (single backslash), not the 2-char source
+                    # spelling, and must find a match once correctly decoded
+                    r"PASS (zero-match guard): re.findall(r'^target\s*$') found",
+                    # check_indirect_flags: FLAGS (a variable) must be flagged,
+                    # not silently treated as "no flags"
+                    "('FLAGS')",
+                ],
+                [
+                    # Negative assertions: confirm the bugs are actually fixed,
+                    # not just that some other message happens to appear.
+                    # check_concatenated_pattern must NOT be confidently
+                    # evaluated as the "\b" fragment alone (the old, wrong PASS).
+                    "re.search(r'\\b') is anchored",
+                    # check_non_raw_pattern must NOT be evaluated against the
+                    # undecoded double-backslash source spelling.
+                    r"re.findall(r'^target\\s*$')",
                 ],
             ),
-            ("good coverage arithmetic", ["--evals-json", str(evals_good)], 0, ["PASS (counting)"]),
-            ("bad coverage arithmetic", ["--evals-json", str(evals_bad)], 1, ["FAIL (counting)"]),
+            (
+                "good coverage arithmetic",
+                ["--evals-json", str(evals_good)],
+                0,
+                ["PASS (counting)"],
+                [],
+            ),
+            (
+                "bad coverage arithmetic",
+                ["--evals-json", str(evals_bad)],
+                1,
+                ["FAIL (counting)"],
+                [],
+            ),
             (
                 "malformed evals.json (invalid JSON)",
                 ["--evals-json", str(evals_malformed)],
                 1,
                 ["FAIL (blocking)"],
+                [],
             ),
             (
                 "malformed evals.json (array root)",
                 ["--evals-json", str(evals_array_root)],
                 1,
                 ["FAIL (blocking)", "root value"],
+                [],
             ),
             (
                 "malformed evals.json (non-int total)",
                 ["--evals-json", str(evals_non_int_total)],
                 1,
                 ["FAIL (blocking)", "declared_scenarios_total"],
+                [],
             ),
             (
                 "malformed evals.json (non-list uncovered)",
                 ["--evals-json", str(evals_non_list_uncovered)],
                 1,
                 ["FAIL (blocking)", "uncovered"],
+                [],
             ),
             (
                 "malformed evals.json (negative total/covered)",
                 ["--evals-json", str(evals_negative_total)],
                 1,
                 ["FAIL (blocking)", "negative"],
+                [],
             ),
-            ("no args", [], 2, ["at least one of"]),
+            ("no args", [], 2, ["at least one of"], []),
         ]
 
-        for name, args, expected_code, expected_substrings in cases:
+        for name, args, expected_code, expected_substrings, not_expected_substrings in cases:
             code, out, err = run(*args)
             combined = out + err
             if code != expected_code:
@@ -234,6 +291,9 @@ def main() -> int:
             for s in expected_substrings:
                 if s not in combined:
                     failures.append(f"[{name}] missing expected substring: {s!r}")
+            for s in not_expected_substrings:
+                if s in combined:
+                    failures.append(f"[{name}] found substring that should be absent: {s!r}")
 
     if failures:
         print(f"FAIL: {len(failures)} case(s) failed")
