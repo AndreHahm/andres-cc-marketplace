@@ -264,44 +264,52 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
    - If both dependency checks came back empty, the human still gets to choose between "Not now — mark
      deferred" and stopping the queue entirely — never silently skip the ask because no fix path exists.
 4. **Execute this one topic to completion, whichever path was picked:**
-   - *Direct fix*: `Skill(git-kit:starting-work)` first — always, even if the previous topic "just
-     finished" and this feels like a continuation (this is the exact trap
-     `starting-work-before-first-change.md`'s own incident names). **Capture exactly what `starting-work`
-     reports back** — a plain branch (the current checkout stays correct, no path change needed) or a
-     worktree. `starting-work` only *reports* a worktree's path — per its own instructions, it does not
-     change the session's own working directory for you, so this must be done explicitly: `cd` into the
-     reported worktree path before any further command in this topic, and use paths relative to that new
-     location (not the primary checkout) for every subsequent `Edit`/`Write`/`Bash` call, and for the
-     entire `commit` → `create-pr` → `merge-pr` → `finishing-work` chain below, since each of those is
-     itself just a dispatch that operates on wherever the session's cwd currently is. Skipping the `cd`
-     is the same "orphaned worktree" mistake this repo's own `orphaned-worktree-git-read-fallthrough.md`
-     rule already documents (git reads can silently fall through to the primary checkout and look correct
-     while writes land in the wrong place) — applying just as directly to writes landing in the *wrong*
-     checkout as it does to reads from a *removed* one. Then resolve which specific file(s) to edit — this path needs a real,
-     editable path, not the looser fallback 5c-4's pipeline-hand-off step 3 allows for its `scope` field
-     (that field can tolerate falling back to a bare plugin name, since `plugin-lifecycle-downstream` does
-     further resolution downstream; a direct `Edit`/`Write` here can't): first try resolving the finding's
-     own `<plugin>'s <component>` tag to that component's actual plugin-root-relative file path; if the
-     tag alone doesn't resolve to a specific file, open the finding's cited source report(s) (from its
-     `**Reported in:**` line) to identify it before editing — never guess. Apply the fix directly with
-     `Edit`/`Write` against that file, resolved relative to the captured worktree/checkout location from
-     above — this is the one explicit
-     exception to the "never write inside a target plugin" boundary stated
-     below, scoped strictly to this single, already-human-approved, mechanical change. Then run the
-     **full** lifecycle chain, not a shortened one: `Skill(git-kit:commit)` → `Skill(git-kit:create-pr)` →
-     `Skill(git-kit:merge-pr)` → `Skill(git-kit:finishing-work)`. This can't be shortened to skip straight
-     from `commit` to `finishing-work`: `finishing-work` requires a merge to have already landed (it
-     checks for `state == MERGED`) — so `create-pr` and `merge-pr` are load-bearing steps here, not
+   - *Direct fix*: **Before doing anything else, capture the consolidated report's own absolute path**
+     (its path is otherwise always given relative to the primary checkout's `.claude/output/` — this
+     matters below, since `.claude/output/` is gitignored and `starting-work` never copies it into a new
+     worktree). Then `Skill(git-kit:starting-work)` — always, even if the previous topic "just finished"
+     and this feels like a continuation (this is the exact trap `starting-work-before-first-change.md`'s
+     own incident names). **Capture exactly what `starting-work` reports back** — a plain branch (the
+     current checkout stays correct, no path change needed) or a worktree. `starting-work` only *reports*
+     a worktree's path — per its own instructions, it does not change the session's own working directory
+     for you, so this must be done explicitly: `cd` into the reported worktree path before any further
+     command in this topic, and use paths relative to that new location (not the primary checkout) for
+     every subsequent `Edit`/`Write`/`Bash` call and for `commit`/`create-pr`/`merge-pr` below, since each
+     of those is itself just a dispatch that operates on wherever the session's cwd currently is. Skipping
+     the `cd` is the same "orphaned worktree" mistake this repo's own
+     `orphaned-worktree-git-read-fallthrough.md` rule already documents (git reads can silently fall
+     through to the primary checkout and look correct while writes land in the wrong place) — applying
+     just as directly to writes landing in the *wrong* checkout as it does to reads from a *removed* one.
+     Then resolve which specific file(s) to edit — this path needs a real, editable path, not the looser
+     fallback 5c-4's pipeline-hand-off step 3 allows for its `scope` field (that field can tolerate falling
+     back to a bare plugin name, since `plugin-lifecycle-downstream` does further resolution downstream; a
+     direct `Edit`/`Write` here can't): first try resolving the finding's own `<plugin>'s <component>` tag
+     to that component's actual plugin-root-relative file path; if the tag alone doesn't resolve to a
+     specific file, open the finding's cited source report(s) (from its `**Reported in:**` line) to
+     identify it before editing — never guess. Apply the fix directly with `Edit`/`Write` against that
+     file, resolved relative to the worktree — this is the one explicit exception to the "never write
+     inside a target plugin" boundary stated below, scoped strictly to this single, already-human-approved,
+     mechanical change. Then `Skill(git-kit:commit)` → `Skill(git-kit:create-pr)` → `Skill(git-kit:merge-pr)`
+     — all three from the worktree, same as the edit. **Before the next step, `cd` back to the primary
+     checkout** — `finishing-work` explicitly cannot run from inside the feature worktree it's meant to
+     close: its own steps stop when the default branch is already checked out elsewhere (the primary
+     checkout, in this case) and the primary checkout can't be synced from a worktree. So: return to the
+     primary checkout, *then* `Skill(git-kit:finishing-work)`. This can't be shortened to skip straight
+     from `commit` to `finishing-work` either: `finishing-work` requires a merge to have already landed
+     (it checks for `state == MERGED`) — so `create-pr` and `merge-pr` are load-bearing steps here, not
      optional ceremony. But `finishing-work` itself only *tells the human* to run `/git-cleanup`; it
      doesn't remove the worktree, and this skill has no `git worktree remove` grant to do it directly
-     either. So after `finishing-work` returns, `Bash(git worktree list:*)` to confirm the worktree is
-     actually gone before treating the topic as closed. If it's still present, ask the human via
-     `AskUserQuestion` whether `/git-cleanup` has been run yet — options "Yes, it's done" (re-check once
-     more before continuing) / "Not yet — wait" (pause the loop here rather than advancing past an
-     unconfirmed worktree). If the re-check after "Yes, it's done" still shows the worktree present,
-     treat this the same as the failure branch below (stop the loop, don't guess a second time) rather
-     than looping the same question indefinitely. "Direct fix" means skipping the audit/test/grade cycle,
-     not skipping code review, merge, or this closure check.
+     either. So after `finishing-work` returns (from the primary checkout), `Bash(git worktree list:*)` to
+     confirm the worktree is actually gone before treating the topic as closed. If it's still present, ask
+     the human via `AskUserQuestion` whether `/git-cleanup` has been run yet — options "Yes, it's done"
+     (re-check once more before continuing) / "Not yet — wait" (pause the loop here rather than advancing
+     past an unconfirmed worktree). If the re-check after "Yes, it's done" still shows the worktree
+     present, treat this the same as the failure branch below (stop the loop, don't guess a second time)
+     rather than looping the same question indefinitely. **The Status-line update below (and the failure
+     branch's note, if this topic fails) must always target the report's captured absolute path from the
+     very start of this bullet — never a path resolved relative to the worktree**, since that gitignored
+     file was never copied there. "Direct fix" means skipping the audit/test/grade cycle, not skipping
+     code review, merge, or this closure check.
    - *Pipeline hand-off*: build the Scope Manifest + Report Revision for **this one topic only**, per
      `plugin-rulebook/references/evidence-schema.md` (a bare list of findings does not validate against
      any of that schema's four shapes, so the findings must be wrapped in a Report Revision, not written
