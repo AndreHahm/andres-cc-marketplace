@@ -15,10 +15,12 @@ agent-performed, per SKILL.md.
 
 import argparse
 import ast
+import io
 import json
 import re
 import subprocess
 import sys
+import tokenize
 from pathlib import Path
 
 # (?:[^\\]|\\.)*? -- escape-aware lazy match: a backslash-escaped delimiter
@@ -58,6 +60,40 @@ _CHILD_SCRIPT = (
 
 def _line_number(source: str, pos: int) -> int:
     return source.count("\n", 0, pos) + 1
+
+
+def _noncode_spans(source: str) -> list[tuple[int, int]]:
+    """Absolute character-offset (start, end) spans of every COMMENT and
+    STRING token in source, via tokenize -- positions that are commentary
+    or string-literal content, not live executable code. A re.findall/
+    re.search occurrence whose own call text ("re.findall(" / "re.search(",
+    not its string argument) starts inside one of these spans is example
+    text inside a comment or docstring, not a real call the target script
+    executes -- e.g. a commented-out `# re.search(r"cat", skill_md_text)`
+    or a docstring showing `re.findall(r"...", skill_md_text)` as example
+    usage."""
+    line_starts = [0]
+    for line in source.splitlines(keepends=True):
+        line_starts.append(line_starts[-1] + len(line))
+
+    def offset(row: int, col: int) -> int:
+        return line_starts[row - 1] + col
+
+    spans = []
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+            if tok.type in (tokenize.COMMENT, tokenize.STRING):
+                spans.append((offset(*tok.start), offset(*tok.end)))
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        # Malformed/unparseable source -- fall back to no exclusions rather
+        # than silently hiding every call in a file this checker can't
+        # tokenize.
+        return []
+    return spans
+
+
+def _in_noncode(pos: int, spans: list[tuple[int, int]]) -> bool:
+    return any(start <= pos < end for start, end in spans)
 
 
 def _decode_literal(prefix: str, quote: str, raw_text: str) -> tuple[bool, str]:
@@ -164,6 +200,128 @@ def _split_top_level_alternation(pattern: str) -> list[str]:
     return branches
 
 
+def _extract_group_contents(text: str) -> list[str]:
+    """Return the inner text of every parenthesized group found in text
+    (paren/bracket/escape-aware, including nested groups), so a branch can
+    be checked for alternation hidden inside a group without re-deriving
+    paren tracking."""
+    groups = []
+    starts = []
+    in_class = False
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c == "\\" and i + 1 < len(text):
+            i += 2
+            continue
+        if in_class:
+            if c == "]":
+                in_class = False
+            i += 1
+            continue
+        if c == "[":
+            in_class = True
+        elif c == "(":
+            starts.append(i + 1)
+        elif c == ")" and starts:
+            start = starts.pop()
+            groups.append(text[start:i])
+        i += 1
+    return groups
+
+
+def _strip_full_group_wrap(branch: str) -> tuple[str, str, str] | None:
+    """If `branch` is exactly OUTER_LEFT + '(' + inner + ')' + OUTER_RIGHT,
+    where OUTER_LEFT is an optional leading '^'/'\\b', OUTER_RIGHT is an
+    optional trailing '$'/'\\b', and the '(' immediately after OUTER_LEFT
+    matches the ')' immediately before OUTER_RIGHT (the group spans the
+    branch's entire remaining content, not just part of it) -- return
+    (outer_left, inner, outer_right). Otherwise return None.
+
+    This detects the safe case where a branch's own anchors wrap one whole
+    group, so every alternative inside it inherits the same anchoring
+    (e.g. "^(cat|dog)$" == "^cat$|^dog$") -- as opposed to a group that
+    doesn't span the branch's full remaining text (e.g. "^(cat|dog$)",
+    where "$" sits only inside the group and never anchors "cat")."""
+    outer_left = ""
+    rest = branch
+    for prefix in (r"\b", "^"):
+        if rest.startswith(prefix):
+            outer_left = prefix
+            rest = rest[len(prefix) :]
+            break
+    outer_right = ""
+    for suffix in (r"\b", "$"):
+        if rest.endswith(suffix):
+            outer_right = suffix
+            rest = rest[: len(rest) - len(suffix)]
+            break
+    if not rest.startswith("("):
+        return None
+    depth = 0
+    in_class = False
+    close_pos = None
+    i = 0
+    while i < len(rest):
+        c = rest[i]
+        if c == "\\" and i + 1 < len(rest):
+            i += 2
+            continue
+        if in_class:
+            if c == "]":
+                in_class = False
+        elif c == "[":
+            in_class = True
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                close_pos = i
+                break
+        i += 1
+    if close_pos is None or close_pos != len(rest) - 1:
+        return None
+    return outer_left, rest[1:close_pos], outer_right
+
+
+def _branch_anchoring_verdict(branch: str) -> tuple[str, str]:
+    """Recursively classify a single alternation branch as "anchored",
+    "weak" (short and unanchored -- false-positive-prone, e.g. matches
+    "catalog"), or "unresolved" (contains alternation nested inside a
+    group whose anchoring can't be established with confidence). Returns
+    (verdict, the specific sub-pattern responsible for a non-"anchored"
+    verdict)."""
+    wrap = _strip_full_group_wrap(branch)
+    if wrap is not None:
+        outer_left, inner, outer_right = wrap
+        inner_branches = _split_top_level_alternation(inner)
+        if len(inner_branches) > 1:
+            # e.g. "^(cat|dog)$" == "^cat$|^dog$" -- the branch's own
+            # anchors wrap the *entire* group, so each inner alternative
+            # inherits them. Recurse in case a sub-branch is itself
+            # wrapped again.
+            for sub in inner_branches:
+                verdict, detail = _branch_anchoring_verdict(outer_left + sub + outer_right)
+                if verdict != "anchored":
+                    return verdict, detail
+            return "anchored", ""
+    if any(len(_split_top_level_alternation(g)) > 1 for g in _extract_group_contents(branch)):
+        # Alternation nested inside a group, but not in the clean "the
+        # whole branch is one anchored group" shape above -- e.g.
+        # "^(cat|dog$)", where "$" only anchors the "dog" alternative and
+        # "cat" is left unanchored. Too risky to assess with confidence.
+        return "unresolved", branch
+
+    left_anchored = branch.startswith(r"\b") or branch.startswith("^")
+    right_anchored = branch.endswith(r"\b") or branch.endswith("$")
+    is_anchored = left_anchored and right_anchored
+    bare_needle = re.sub(r"[\\^$.*+?()\[\]{}|]", "", branch)
+    if not is_anchored and len(bare_needle) <= 4:
+        return "weak", branch
+    return "anchored", ""
+
+
 def _split_top_level_args(arg_text: str) -> list[str]:
     """Split a call's trailing-argument text on top-level commas (respecting
     parens/brackets and string literals) into individual argument
@@ -261,10 +419,15 @@ def check_zero_match_and_anchoring(
     except OSError as e:
         return [f"FAIL: could not read {smoke_test_path}: {e}"]
 
+    noncode_spans = _noncode_spans(source)
     literal_call_starts = set()
 
     findall_matches = list(FINDALL_RE.finditer(source))
     for m in findall_matches:
+        if _in_noncode(m.start(), noncode_spans):
+            # Example text inside a comment or docstring, not a real call
+            # the target script executes -- ignore it entirely.
+            continue
         prefix, quote, raw_text = m.group(1), m.group(2), m.group(3)
 
         if not _is_complete_literal_arg(source, m.end()):
@@ -336,6 +499,8 @@ def check_zero_match_and_anchoring(
 
     search_matches = list(SEARCH_RE.finditer(source))
     for m in search_matches:
+        if _in_noncode(m.start(), noncode_spans):
+            continue
         prefix, quote, raw_text = m.group(1), m.group(2), m.group(3)
 
         if not _is_complete_literal_arg(source, m.end()):
@@ -352,14 +517,21 @@ def check_zero_match_and_anchoring(
             continue
         branches = _split_top_level_alternation(pattern)
         weak_branches = []
+        unresolved_branches = []
         for branch in branches:
-            left_anchored = branch.startswith(r"\b") or branch.startswith("^")
-            right_anchored = branch.endswith(r"\b") or branch.endswith("$")
-            is_anchored = left_anchored and right_anchored
-            bare_needle = re.sub(r"[\\^$.*+?()\[\]{}|]", "", branch)
-            if not is_anchored and len(bare_needle) <= 4:
-                weak_branches.append(branch)
-        if weak_branches:
+            verdict, detail = _branch_anchoring_verdict(branch)
+            if verdict == "unresolved":
+                unresolved_branches.append(detail)
+            elif verdict == "weak":
+                weak_branches.append(detail)
+        if unresolved_branches:
+            findings.append(
+                f"SKIP (manual review): re.search(r'{pattern}') contains an "
+                "alternation nested inside a group whose anchoring can't be "
+                f"established with confidence ({', '.join(repr(b) for b in unresolved_branches)}). "
+                "Verify manually."
+            )
+        elif weak_branches:
             if len(branches) > 1:
                 findings.append(
                     f"FAIL (anchored matching): re.search(r'{pattern}') is an unanchored "
@@ -384,6 +556,8 @@ def check_zero_match_and_anchoring(
 
     any_call_found = False
     for m in CALL_RE.finditer(source):
+        if _in_noncode(m.start(), noncode_spans):
+            continue
         any_call_found = True
         if m.start() not in literal_call_starts:
             findings.append(

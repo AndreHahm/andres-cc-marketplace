@@ -41,6 +41,12 @@ SCRIPT = Path(__file__).parent / "check_evals.py"
 #   decoded to their real runtime value before evaluation, not used as source text
 # - FLAGS / check_indirect_flags: a flags argument passed via a variable reference
 #   must be flagged for manual review, not silently treated as "no flags"
+# - check_comment_example / check_docstring_example: a re.search/re.findall
+#   occurrence inside a comment or docstring is example text, not a real call --
+#   must be ignored entirely, not evaluated as if it were live code
+# - check_nested_group_alternation: alternation nested inside a group whose
+#   anchors don't wrap the whole group ("^(cat|dog$)") must not get a confident
+#   PASS just because the top-level branch looks long/anchored
 SMOKE_TEST_PY = r"""
 import re
 
@@ -90,6 +96,17 @@ FLAGS = re.MULTILINE
 
 def check_indirect_flags(skill_md_text):
     return re.findall(r"^target$", skill_md_text, FLAGS)
+
+# re.search(r"cat", skill_md_text) -- example only, this line is a comment
+def check_comment_example(skill_md_text):
+    return True
+
+def check_docstring_example(skill_md_text):
+    '''Example usage: re.findall(r"missing_pattern_xyz", skill_md_text)'''
+    return True
+
+def check_nested_group_alternation(skill_md_text):
+    return re.search(r"^(cat|dog$)", skill_md_text)
 """
 
 SKILL_MD = (
@@ -219,6 +236,10 @@ def main() -> int:
                     # check_indirect_flags: FLAGS (a variable) must be flagged,
                     # not silently treated as "no flags"
                     "('FLAGS')",
+                    # check_nested_group_alternation: "^(cat|dog$)" must FAIL --
+                    # "$" only anchors the "dog" alternative, "cat" is unanchored
+                    "FAIL (anchored matching): re.search(r'^(cat|dog$)') is a "
+                    "short, unanchored needle",
                 ],
                 [
                     # Negative assertions: confirm the bugs are actually fixed,
@@ -229,6 +250,15 @@ def main() -> int:
                     # check_non_raw_pattern must NOT be evaluated against the
                     # undecoded double-backslash source spelling.
                     r"re.findall(r'^target\\s*$')",
+                    # check_comment_example: a `# re.search(r"cat", ...)`
+                    # comment must never be evaluated as a real call.
+                    "re.search(r'cat') is a short, unanchored needle",
+                    # check_docstring_example: a docstring's example call text
+                    # must never be evaluated as a real call.
+                    "re.findall(r'missing_pattern_xyz')",
+                    # check_nested_group_alternation must NOT get the old,
+                    # wrong confident PASS.
+                    "PASS (anchored matching): re.search(r'^(cat|dog$)')",
                 ],
             ),
             (
