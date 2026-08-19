@@ -10,19 +10,33 @@ Before building the "how to fix" `AskUserQuestion`, check both dependencies this
 neither is declared in `analysis-kit`'s own `plugin.json`, so neither is guaranteed installed alongside
 this skill:
 
-- `git-kit` (needed for the direct-fix path): `Glob` for any of
-  `plugins/git-kit/skills/starting-work/SKILL.md` (this marketplace's own source-tree layout, the
-  primary case since this skill ships inside this exact marketplace), `.claude/skills/starting-work/SKILL.md`
-  (an in-development project mirror), or `~/.claude/plugins/cache/**/git-kit/skills/starting-work/SKILL.md`
-  (recursive — an end-user installation elsewhere may nest an extra marketplace/version directory level
-  that a single-`*` glob would miss) — a best-effort check across the layouts this skill can actually
-  observe, not a definitive install-state query. If none resolve, drop "Fix directly now" and state why.
-- `plugin-devkit` (needed for the hand-off path): same three-location check (recursive `**` for the
-  cache case) against `.../plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md`. If none resolve,
-  drop "Hand off" and state why. **Remember whichever path actually matched** as
-  `<plugin-devkit-root>` (the directory containing `plugin-devkit`'s own `skills/` folder) — step 4's
-  pipeline-hand-off path reuses this exact resolved root rather than re-deriving or assuming one, since
-  an installed-cache layout's real root won't be `${CLAUDE_PLUGIN_ROOT}/../plugin-devkit`.
+- `git-kit` (needed for the direct-fix path): resolve in this order, stopping at the first match:
+  1. `Glob` for `plugins/git-kit/skills/starting-work/SKILL.md` (this marketplace's own source-tree
+     layout, the primary case since this skill ships inside this exact marketplace).
+  2. `Glob` for `.claude/skills/starting-work/SKILL.md` (an in-development project mirror).
+  3. **Prefer the authoritative install manifest over a raw cache glob.** `Glob` for
+     `~/.claude/plugins/installed_plugins.json` — not every environment has one. If it exists, `Read` it
+     and look under its `plugins` map for any key of the form `git-kit@<marketplace>`; each match's
+     `installPath` is a real, versioned install location, not a stale directory an upgrade or reinstall
+     left behind. Cross-check each matching key against `~/.claude/settings.json`'s own `enabledPlugins`
+     map (`Glob`+`Read`, same existence caveat) — a key explicitly set to `false` there is installed but
+     disabled and should be skipped even though `installed_plugins.json` still lists it; a key absent
+     from `enabledPlugins` defaults to enabled. Use the first still-enabled match's `installPath` (plus
+     `/skills/starting-work/SKILL.md`).
+  4. Only if step 3 found no manifest, no matching key, or the listed `installPath` no longer resolves on
+     disk: fall back to `~/.claude/plugins/cache/**/git-kit/skills/starting-work/SKILL.md` (recursive —
+     an end-user installation elsewhere may nest an extra marketplace/version directory level that a
+     single-`*` glob would miss). This raw glob is a last resort precisely because it can't distinguish an
+     active install from a stale cached one left behind by an upgrade, disable, or uninstall — steps 1-3
+     exist to avoid that ambiguity whenever an authoritative source is actually available.
+
+  If none of the above resolve, drop "Fix directly now" and state why.
+- `plugin-devkit` (needed for the hand-off path): same four-step resolution against
+  `.../plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md`. If none resolve, drop "Hand off" and
+  state why. **Remember whichever path actually matched** as `<plugin-devkit-root>` (the directory
+  containing `plugin-devkit`'s own `skills/` folder) — step 4's pipeline-hand-off path reuses this exact
+  resolved root rather than re-deriving or assuming one, since an installed-cache layout's real root
+  won't be `${CLAUDE_PLUGIN_ROOT}/../plugin-devkit`.
 
 ## Step 4: Execute — direct fix path
 
@@ -54,13 +68,21 @@ the worktree — this is the one explicit exception to the "never write inside a
 stated in SKILL.md, scoped strictly to this single, already-human-approved, mechanical change.
 
 Then `Skill(git-kit:commit)` → `Skill(git-kit:create-pr)` → `Skill(git-kit:merge-pr)` — all three from the
-worktree, same as the edit. **Before the next step, `cd` back to the primary checkout** —
-`finishing-work` explicitly cannot run from inside the feature worktree it's meant to close: its own
-steps stop when the default branch is already checked out elsewhere (the primary checkout, in this case)
-and the primary checkout can't be synced from a worktree. So: return to the primary checkout, *then*
-`Skill(git-kit:finishing-work)`. This can't be shortened to skip straight from `commit` to
-`finishing-work` either: `finishing-work` requires a merge to have already landed (it checks for
-`state == MERGED`) — so `create-pr` and `merge-pr` are load-bearing steps here, not optional ceremony.
+worktree, same as the edit. **Capture the PR number `create-pr` reports back** (or `merge-pr`'s own
+confirmation, if that's the last point it's echoed) — it's needed explicitly in the next step, since
+`finishing-work` cannot be trusted to infer it on its own from this point forward. **Before the next
+step, `cd` back to the primary checkout** — `finishing-work` explicitly cannot run from inside the
+feature worktree it's meant to close: its own steps stop when the default branch is already checked out
+elsewhere (the primary checkout, in this case) and the primary checkout can't be synced from a worktree.
+So: return to the primary checkout, *then* `Skill(git-kit:finishing-work) <PR number>` — passing the
+captured PR number explicitly as its argument, not bare. `finishing-work`'s own step 1 runs
+`gh pr view $ARGUMENTS`, which defaults to the *current branch's* PR when no argument is given; once
+back in the primary checkout, the current branch is whatever the primary checkout has checked out (not
+the just-merged feature branch), so an unqualified call would look up the wrong PR — typically finding
+none at all and stopping before it can confirm the merge or update local `main`. This can't be shortened
+to skip straight from `commit` to `finishing-work` either: `finishing-work` requires a merge to have
+already landed (it checks for `state == MERGED`) — so `create-pr` and `merge-pr` are load-bearing steps
+here, not optional ceremony.
 
 But `finishing-work` itself only *tells the human* to run `/git-cleanup`; it doesn't remove the worktree,
 and this skill has no `git worktree remove` grant to do it directly either. So after `finishing-work`
