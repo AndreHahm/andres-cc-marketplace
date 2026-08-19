@@ -4,7 +4,8 @@ description: >-
   Review shell and Python scripts in a Claude Code plugin for correctness
   bugs and code smells — missing file-I/O encoding, set -e/pipefail
   interactions with bare arithmetic increments, unguarded grep
-  pipelines, and SIGPIPE-killed early-exiting consumers, YAML frontmatter
+  pipelines, and a SIGPIPE-killed producer behind an early-exiting
+  consumer, YAML frontmatter
   block-scalar parsing gaps, wrong file-type test operators, bash
   arithmetic octal/overflow footguns, and overly-broad glob/prefix
   matching in security-relevant checks. Use when the user asks to
@@ -88,13 +89,13 @@ Flag as **Major**. Fix: anchor to a word boundary — a regex like `^word(\ |$)`
 
 ### Check 7 — Bash Arithmetic Octal-Digit / Unbounded-Magnitude Footgun
 
-For every `.sh` file: a numeric value from user input, a CLI argument, or a config file that flows into a bash `$((...))` arithmetic expression without both (a) an explicit base-10 forcing prefix (`10#$VAR`) and (b) a bound on digit count/magnitude.
+For every `.sh` file: a numeric value from user input, a CLI argument, or a config file that flows into a bash `$((...))` arithmetic expression without an explicit base-10 forcing prefix (`10#$VAR`), or without a bound on digit count/magnitude — flag if *either* protection is missing, since each guards a distinct failure mode (see below) and neither substitutes for the other.
 
 Flag as **Critical**. Bash's `$((...))` arithmetic context reads a leading-zero numeral as **octal** — a value like `"08"` or `"09"` is not a valid octal digit sequence, so the expression fails with `value too great for base` and the script aborts on an entirely valid decimal input. Separately, an all-digit but oversized input can overflow the arithmetic into an unexpectedly large or negative result — if that result feeds a destructive operation (a deletion threshold, a loop bound), the overflow failure mode is "act on more than intended," not just a crash (real instance: a scratchpad-cleanup script's age-threshold argument, PR #47). Fix: force explicit base-10 parsing (`10#$VAR`) and bound the input to a fixed digit count/magnitude before using it in `$((...))`.
 
 ### Check 8 — SIGPIPE Abort from an Early-Exiting Consumer Under `pipefail`
 
-For every `.sh` file with `pipefail` active: a pipeline where an early-exiting consumer (`head`, `head -n N`, `grep -m N`) reads from a producer that can still be writing (`sort`, `find`, `cat`, a `while`-generating loop), used as a bare top-level statement — e.g. `sort file | head -1`.
+For every `.sh` file with `pipefail` active: a pipeline where an early-exiting consumer (`head`, `head -n N`, `grep -m N`) reads from a producer that can still be writing (`sort`, `find`, `cat`, a `while`-generating loop), used as a bare top-level statement (not inside an `if`/`while`/`until` *condition*, where `set -e`'s fatal-on-nonzero rule doesn't apply — same exemption Check 2/3 already document) — e.g. `sort file | head -1`.
 
 Flag as **Critical**. Once `head` has read the lines it needs, it exits and closes its end of the pipe; the still-writing producer (`sort`) then receives `SIGPIPE` on its next write and terminates with a nonzero exit status. Under `pipefail`, that nonzero status propagates to the whole pipeline's exit code, and `set -e` treats it as fatal — the script aborts even though the pipeline already produced the correct, intended output (real instance: the same scratchpad-cleanup script's `sort | head -1` staleness scan, PR #47). Fix: append `|| true` to the pipeline (the correct output was already captured before the abort), or restructure to avoid the early-exit consumer.
 
