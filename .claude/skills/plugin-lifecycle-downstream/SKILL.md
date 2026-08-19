@@ -293,6 +293,12 @@ the input contract.
   coverage differences.
 - **Phase 11 Grading:** present the Phase 10 recommendation, then ask whether to run it.
   Grading consumes evidence only and performs no reviewer dispatch.
+- **Phase 5 Eval Pre-Check** (a gated sub-step inside Phase 5, not a numbered phase of its
+  own): if the declared scope includes a skill with eval/smoke-test assets, ask whether to
+  run `reviewing-evals` against each before the `plugin-auditor` dispatch. State the cost —
+  one serial `Skill()` call per such skill, not parallelized like the dispatch it precedes —
+  against the benefit of fewer eval-related findings for Phase 6 to fix. Never runs by
+  default.
 
 ## Documentation Boundary
 
@@ -365,6 +371,8 @@ below for the runtime invariants this pipeline itself must hold at every phase.
 - [ ] Fixers never self-verify.
 - [ ] Original findings and evidence remain traceable.
 - [ ] Deep Test and Grading are explicit opt-ins.
+- [ ] Phase 5's Eval Pre-Check is an explicit opt-in and never blocks or delays the
+      `plugin-auditor` dispatch when declined or when no in-scope skill qualifies.
 - [ ] Phase 10 rechecks every affected evidence source after the last mutation.
 - [ ] Phase 11 performs evidence-only scoring and no duplicate review.
 - [ ] Phase 12 discloses stopped, skipped, deferred, and accepted-risk items.
