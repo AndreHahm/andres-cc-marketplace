@@ -9,7 +9,7 @@ description: >-
   coverage-claim accuracy, assertion non-vacuity, scenario counting,
   run-record presence, and behavior-claim currency. Does not run evals (use
   skill-tester) or review skill quality (use skill-reviewer).
-allowed-tools: Read Glob Grep Bash(python:*) Bash(node:*) AskUserQuestion Skill
+allowed-tools: Read Glob Grep Bash(python:*) Bash(node:*) Bash(git diff:*) AskUserQuestion Skill
 ---
 
 # Eval Review Self-Audit
