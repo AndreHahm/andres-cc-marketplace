@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/analysis-kit/skills/running-a-full-retrospective/SKILL.md",
+  "assertions": [
+    {"text": "Recognizes the request as a multi-analysis consolidation task (not a single analysis)", "type": "presence", "target": "response"},
+    {"text": "Describes asking which analysis types to run with multiSelect framing", "type": "functionality", "target": "response"},
+    {"text": "Describes confirming scope once, not per analysis type", "type": "functionality", "target": "response"},
+    {"text": "No single described AskUserQuestion question carries more than 4 options -- the 5 analysis types are split across two questions", "type": "functionality", "target": "response"},
+    {"text": "Does not skip straight to dispatching an analysis without the picker step", "type": "quality", "target": "response"},
+    {"text": "No crash, malformed output, or contradiction of its own documented phases", "type": "structure", "target": "response"}
+  ]
+}

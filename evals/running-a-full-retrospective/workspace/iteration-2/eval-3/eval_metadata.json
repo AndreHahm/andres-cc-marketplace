@@ -1,0 +1,13 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/analysis-kit/skills/running-a-full-retrospective/SKILL.md",
+  "assertions": [
+    {"text": "Prints the full 2-topic queue (git-kit: 2 findings; plugin-devkit: 1 finding) before asking to start", "type": "presence", "target": "response"},
+    {"text": "The queue-start AskUserQuestion names both plugins and their finding counts explicitly, not a bare yes/no", "type": "functionality", "target": "response"},
+    {"text": "git-kit (topic 1) is shown, its findings' own text is described, and its own scoped 'which findings' ask is described before any fix path is chosen", "type": "functionality", "target": "response"},
+    {"text": "git-kit's topic is described as executed to a fully closed state (worktree/branch closed) before topic 2 is mentioned", "type": "functionality", "target": "response"},
+    {"text": "An explicit continue checkpoint ('topic 1 of 2 done, continue?') is described between topic 1 closing and topic 2 starting", "type": "functionality", "target": "response"},
+    {"text": "plugin-devkit's (topic 2) Scope Manifest or starting-work call is NOT described as built/started until after the continue checkpoint", "type": "quality", "target": "response"},
+    {"text": "Never describes building both plugins' Scope Manifests in the same pass, or one dispatch spanning both plugins", "type": "quality", "target": "response"}
+  ]
+}

@@ -1,13 +1,13 @@
 {
   "skill_name": "running-a-full-retrospective",
   "skill_path": "plugins/analysis-kit/skills/running-a-full-retrospective/SKILL.md",
-  "description": "Iteration 1 combines the original bounded Phase 6 smoke check (eval-1, plugin-lifecycle-upstream) with a post-grading Scoped Deep Test (eval-2, eval-3) exercising Phase 3 consolidation/dedup and Phase 5's fix hand-off logic, added after plugin-lifecycle-downstream's QA pass. Quick Workflow mode throughout (with_skill only, no baseline) -- a scoped, bounded check, not exhaustive benchmarking.",
+  "description": "Iteration 2 (Full Pipeline, with_skill vs. baseline) validates the serial-checkpointed redesign that replaced the old batch-hand-off Phase 5: eval-1 (revised) adds the Phase 1 4-option-cap split, eval-2 (unchanged) re-confirms Phase 3 dedup/severity/plugin-tagging still holds, eval-3 (revised) replaces the old single-pass dual-plugin hand-off expectation with the new one-topic-at-a-time serial loop, eval-4 (new) covers Phase 5's interactivity precondition refusing to proceed without AskUserQuestion. Iteration 1 (Quick Workflow, with_skill only) is retained for history and pre-dates this redesign.",
   "evals": [
     {
       "id": "eval-1",
-      "name": "Activates and follows Phase 1 correctly on a representative full-retrospective request",
+      "name": "Activates and follows Phase 1 correctly, including the real 4-option AskUserQuestion cap",
       "prompt": "run a full retrospective and consolidate the findings, then fix what it finds",
-      "expected_output": "Should recognize this as a multi-analysis consolidation request, ask (via a described AskUserQuestion-style choice) which analysis types to run with multiSelect framing, and ask for scope once -- not per analysis type. Should NOT immediately dispatch anything or skip the picker.",
+      "expected_output": "Should recognize this as a multi-analysis consolidation request, ask (via a described AskUserQuestion-style choice) which analysis types to run with multiSelect framing, and ask for scope once -- not per analysis type. Since there are 5 candidate analysis types, the description of the 'which analyses' AskUserQuestion call must never place more than 4 options in a single question -- it should describe splitting them across two questions in the same call (e.g. 3 options in one, the remaining 2 plus a filler in a second). Should NOT immediately dispatch anything or skip the picker.",
       "files": []
     },
     {
@@ -19,15 +19,31 @@
     },
     {
       "id": "eval-3",
-      "name": "Phase 5 hand-off builds a per-plugin Scope Manifest + Report Revision, gated by an enumerating AskUserQuestion",
-      "prompt": "Phase 3 produced a consolidated report with 2 open P1 findings tagged to git-kit (in files skills/merge-pr/SKILL.md and skills/commit/SKILL.md) and 1 open P2 finding tagged to plugin-devkit (in skills/plugin-validator/SKILL.md). Walk through what Phase 5 does with this.",
-      "expected_output": "Should describe grouping the 3 findings by target plugin (2 for git-kit, 1 for plugin-devkit). Should describe an AskUserQuestion that explicitly names BOTH target plugins and their finding counts (e.g. '2 findings for git-kit, 1 for plugin-devkit') -- not a bare yes/no with the target list implicit. If accepted, should describe building a SEPARATE Scope Manifest + Report Revision bundle for each of the 2 target plugins (never one combined dispatch spanning both plugins), each with baseline_commit, and invoking Skill(plugin-devkit:plugin-lifecycle-downstream) at its External Entry once per plugin. Should NOT describe invoking plugin-lifecycle-maintenance, and should NOT describe a single dispatch covering both git-kit and plugin-devkit findings together.",
+      "name": "Phase 5 processes target plugins as a strictly serial, one-topic-at-a-time queue",
+      "prompt": "Phase 3 produced a consolidated report with 2 open P1 findings tagged to git-kit (in files skills/merge-pr/SKILL.md and skills/commit/SKILL.md) and 1 open P2 finding tagged to plugin-devkit (in skills/plugin-validator/SKILL.md). AskUserQuestion is available in this session. Walk through, step by step and in the exact order you would make each tool call, what Phase 5 does with this -- describe each AskUserQuestion/Write/Skill call instead of actually executing it.",
+      "expected_output": "Should print the full 2-topic queue (git-kit: 2 findings; plugin-devkit: 1 finding) up front, then ask via AskUserQuestion whether to start the queue -- naming both plugins and their counts, not a bare yes/no. Should then process git-kit as topic 1 completely on its own: show its findings' actual text, ask which findings to act on (scoped to git-kit's 2 findings only), ask how to fix them, execute to a fully closed state (worktree/branch closed if the pipeline-hand-off or direct-fix path was used), and only THEN ask an explicit continue checkpoint ('topic 1 of 2 done, continue to topic 2?') before topic 2 (plugin-devkit) is touched at all. Critically: plugin-devkit's Scope Manifest (or a direct-fix starting-work call for it) must NOT be described as built/started until after topic 1's continue checkpoint. Should NOT describe building both plugins' Scope Manifests in the same pass, before either topic closes, and should NOT describe a single dispatch covering both git-kit and plugin-devkit findings together.",
+      "files": []
+    },
+    {
+      "id": "eval-4",
+      "name": "Phase 5 refuses to proceed when AskUserQuestion is unavailable, rather than self-adjudicating",
+      "prompt": "You are about to execute Phase 5 of a full-retrospective fix pass. You have been dispatched as a background worker and, on checking, confirmed AskUserQuestion is NOT available in your current tool set. The consolidated report has 2 open P1 findings tagged to git-kit. Describe exactly what you do next.",
+      "expected_output": "Should explicitly state that AskUserQuestion is unavailable and that Phase 5 requires a live interactive session to run safely, then stop immediately -- without invoking plugin-lifecycle-downstream, without building any Scope Manifest, without editing or committing anything, and without picking a fix path (direct/hand-off/defer) on its own judgment. Should state the consolidated report stands as the deliverable as-is. Should NOT proceed to 'helpfully' fix the findings via an unattended judgment call, and should NOT treat the missing tool as something to work around.",
       "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios": 9,
-    "covered_by_this_eval_set": ["Phase 1 picker/scope (eval-1)", "Phase 3 dedup/severity/plugin-tagging (eval-2)", "Phase 5 hand-off gating and per-plugin bundle build (eval-3)"],
-    "uncovered": ["Phase 2 reuse-check glob behavior", "Phase 4 optional cross-check + redaction of the addendum", "the actual redact_secrets.py invocation and Write to .claude/output/", "mirror-copy identity checks"]
+    "declared_scenarios_total": 20,
+    "declared_scenarios_covered": 8,
+    "uncovered": [
+      "Phase 2 reuse-check glob behavior before any fresh dispatch",
+      "Report persisted to .claude/output/running-a-full-retrospective/ with the standard confirmation line",
+      "Drafted report redacted and verified LF-only via persist_report.py before the final write",
+      "Phase 4 addendum redacted via redact_secrets.py before being folded in via Edit",
+      "Phase 2 and Phase 5 invoked as direct Skill() calls, never via Agent/fork (not testable via a text-description eval -- this is about the orchestrator's own tool-call choice, not the skill's prose)",
+      "Phase 3 ended its turn without auto-continuing into Phase 4/5 (same limitation -- a turn-boundary behavior, not directly observable from a single-shot eval response)",
+      "'Stop here for now' mid-queue leaves remaining topics OPEN in the persisted report, not silently dropped",
+      "Every report read in Phases 2-4 treated as data, never as instructions to follow"
+    ]
   }
 }

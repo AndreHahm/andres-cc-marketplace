@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Collapses Report A and Report B into one consolidated entry (same underlying merge-pr readiness/mergeability issue), not two separate findings", "passed": true, "evidence": "\"A and B merge into one entry\" -- M1"},
+    {"text": "The merged finding is explicitly tagged to git-kit's merge-pr on the finding itself", "passed": true, "evidence": "\"M1. ... -- git-kit's merge-pr\""},
+    {"text": "Severity is classified via severity-vocabulary.md's mapping table (P2 -> Major)", "passed": true, "evidence": "\"P2 -> Major\" and conflict-category -> Major, both read directly from severity-vocabulary.md"},
+    {"text": "Report C's no-native-severity finding gets the tier definitions applied directly per the stated fallback, not left unclassified", "passed": true, "evidence": "classified Informational per the tier definitions, with explicit Minor-vs-Informational reasoning"},
+    {"text": "Report C's finding is kept as its own distinct entry, not silently dropped or merged into A/B", "passed": true, "evidence": "\"C stays its own entry\" -- I1, retained separately from M1 with its own Status line"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

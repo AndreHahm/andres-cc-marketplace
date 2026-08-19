@@ -1,0 +1,106 @@
+{
+  "skill_name": "running-a-full-retrospective",
+  "iteration": 2,
+  "timestamp": "2026-08-19T08:11:30+02:00",
+  "evals": [
+    {
+      "eval_id": 1,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 6,
+        "assertions_total": 6,
+        "avg_tokens": 5200,
+        "avg_duration_ms": 42000
+      },
+      "baseline": {
+        "pass_rate": 0.8333,
+        "assertions_passed": 5,
+        "assertions_total": 6,
+        "avg_tokens": 7200,
+        "avg_duration_ms": 62000
+      },
+      "delta": {
+        "pass_rate": 0.1667,
+        "tokens": -2000,
+        "duration_ms": -20000
+      }
+    },
+    {
+      "eval_id": 2,
+      "with_skill": {
+        "pass_rate": 0.8,
+        "assertions_passed": 4,
+        "assertions_total": 5,
+        "avg_tokens": 9500,
+        "avg_duration_ms": 42000
+      },
+      "baseline": {
+        "pass_rate": 0.8,
+        "assertions_passed": 4,
+        "assertions_total": 5,
+        "avg_tokens": 5200,
+        "avg_duration_ms": 42000
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 4300,
+        "duration_ms": 0
+      }
+    },
+    {
+      "eval_id": 3,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 7,
+        "assertions_total": 7,
+        "avg_tokens": 9500,
+        "avg_duration_ms": 42000
+      },
+      "baseline": {
+        "pass_rate": 0.7143,
+        "assertions_passed": 5,
+        "assertions_total": 7,
+        "avg_tokens": 8500,
+        "avg_duration_ms": 75000
+      },
+      "delta": {
+        "pass_rate": 0.2857,
+        "tokens": 1000,
+        "duration_ms": -33000
+      }
+    },
+    {
+      "eval_id": 4,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 5,
+        "assertions_total": 5,
+        "avg_tokens": 9500,
+        "avg_duration_ms": 21000
+      },
+      "baseline": {
+        "pass_rate": 0.8,
+        "assertions_passed": 4,
+        "assertions_total": 5,
+        "avg_tokens": 8500,
+        "avg_duration_ms": 95000
+      },
+      "delta": {
+        "pass_rate": 0.2,
+        "tokens": 1000,
+        "duration_ms": -74000
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 0.95,
+    "baseline_avg_pass_rate": 0.7869,
+    "improvement": 0.1631,
+    "avg_tokens_with_skill": 8425,
+    "avg_tokens_baseline": 7350,
+    "token_cost": 1075,
+    "avg_duration_ms_with_skill": 36750,
+    "avg_duration_ms_baseline": 68500,
+    "duration_cost_ms": -31750
+  }
+}

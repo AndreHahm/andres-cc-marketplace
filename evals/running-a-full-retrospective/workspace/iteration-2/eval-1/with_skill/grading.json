@@ -1,0 +1,13 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes the request as a multi-analysis consolidation task (not a single analysis)", "passed": true, "evidence": "\"this is exactly running-a-full-retrospective's trigger, not starting-an-analysis... or reviewing-analysis-findings\""},
+    {"text": "Describes asking which analysis types to run with multiSelect framing", "passed": true, "evidence": "both analysis questions set multiSelect: true, covering all 5 skills"},
+    {"text": "Describes confirming scope once, not per analysis type", "passed": true, "evidence": "single scope question in the same call, \"used verbatim for all of them -- not re-asked per type\""},
+    {"text": "No single described AskUserQuestion question carries more than 4 options -- the 5 analysis types are split across two questions", "passed": true, "evidence": "3-option \"Analyses A\" + 2-option \"Analyses B\" (with filler), exact split the skill suggests"},
+    {"text": "Does not skip straight to dispatching an analysis without the picker step", "passed": true, "evidence": "full Phase 1 walkthrough given before any Phase 2 mention"},
+    {"text": "No crash, malformed output, or contradiction of its own documented phases", "passed": true, "evidence": "internally consistent, explicitly cites Phase 3's hard stop for the \"...then fix\" part of the request"}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 6, "pass_rate": 1.0}
+}

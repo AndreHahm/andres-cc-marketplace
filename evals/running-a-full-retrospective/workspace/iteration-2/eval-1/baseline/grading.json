@@ -1,0 +1,13 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes the request as a multi-analysis consolidation task (not a single analysis)", "passed": true, "evidence": "explicitly reasons about \"full\" meaning multiple analysis types before planning"},
+    {"text": "Describes asking which analysis types to run with multiSelect framing", "passed": false, "evidence": "Step 2 is a single-select (multiSelect: false) choice among preset bundles (\"All 5\"/\"Core 3\"/\"Pick individually\"/\"Components+patterns only\"), not a per-skill multiSelect picker"},
+    {"text": "Describes confirming scope once, not per analysis type", "passed": true, "evidence": "Step 1 asks time range once, reused for all dispatches"},
+    {"text": "No single described AskUserQuestion question carries more than 4 options -- the 5 analysis types are split across two questions", "passed": true, "evidence": "each of the 3 questions has exactly 4 options; no InputValidationError risk, though achieved via 3 sequential single-topic questions rather than a 2-question multiSelect split"},
+    {"text": "Does not skip straight to dispatching an analysis without the picker step", "passed": true, "evidence": "3 clarifying questions before any Skill() dispatch"},
+    {"text": "No crash, malformed output, or contradiction of its own documented phases", "passed": true, "evidence": "internally consistent plan"}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 5, "pass_rate": 0.8333}
+}
