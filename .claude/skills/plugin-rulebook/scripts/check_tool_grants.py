@@ -38,6 +38,14 @@ traces to one of these:
   - A cross-reference to what a *different* skill does (starting-work's own
     prose mentions `git worktree remove`, which is git-cleanup's action, not
     starting-work's own).
+  - A command quoted with human-readable placeholder notation (`gh api
+    repos/{owner}/{repo}/labels/...`) that doesn't textually match the
+    grant's own literal glob syntax for the same real invocation (`Bash(gh
+    api repos/*/labels/:*)`) -- same underlying command, different spelling.
+  - A negative reference phrased as "rather than adding a local `X` grant"
+    (explaining a deliberate design choice not to use X) rather than
+    "do not"/"never"/"don't" -- NEGATIVE_INSTRUCTION_RE doesn't recognize
+    this phrasing (merge-pr's own SKILL.md is the real instance found).
 This is a full-file scan, not a diff against what changed, so it re-surfaces
 these on every run rather than only on new lines. Verify each finding against
 the surrounding prose before fixing it -- this script finds candidates, it
@@ -55,9 +63,13 @@ ALLOWED_TOOLS_LIST_ITEM_RE = re.compile(r"^\s*-\s*(.+?)\s*$", re.MULTILINE)
 BASH_GRANT_RE = re.compile(r"Bash\(([^)]*)\)")
 INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
 
-# A finding-suppressing prefix this repo commonly uses to introduce a
-# documentation *example* of what NOT to do, rather than a real instruction.
-# Cheap, not exhaustive -- see the module docstring's known-limitation note.
+# A finding-suppressing prefix this repo commonly uses to label a
+# documentation *example* line -- covers both "what NOT to do" labels
+# (Wrong/Bad/Forbidden/Violation(s)) and "what a correct invocation looks
+# like" labels (Correct/Good/Example(s)); either way it's illustrative
+# prose, not a real instruction this skill itself follows, so a command
+# shown under any of these labels is suppressed rather than flagged. Cheap,
+# not exhaustive -- see the module docstring's known-limitation note.
 EXAMPLE_LINE_PREFIX_RE = re.compile(
     r"^\s*(?:[-*]\s+)?(?:\*\*)?(Wrong|Bad|Forbidden|Correct|Good|Violations?|Examples?)\b:?(?:\*\*)?",
     re.IGNORECASE,
@@ -189,6 +201,29 @@ def parse_allowed_tools_value(frontmatter_text):
     return " ".join(items)
 
 
+def _split_multi_scope(grant_content):
+    """A single Bash(...) call can hold multiple space- or comma-separated
+    scopes -- R6's own documented "multiple named tools, each explicit" form
+    (`Bash(git:* mkdir:*)`, `Bash(npm:*, git:*)`). Split the raw content into
+    one string per scope, while keeping a genuine multi-word prefix like
+    `git diff:*` together as ONE scope: only the *last* word of a real
+    multi-word prefix carries the `:*`/`*` suffix, whereas each sibling scope
+    in a multi-grant call carries its own suffix individually -- accumulate
+    tokens until one ends in that suffix, then close out that scope and start
+    the next."""
+    raw_tokens = [t for t in re.split(r"[,\s]+", grant_content.strip()) if t]
+    scopes = []
+    current = []
+    for tok in raw_tokens:
+        current.append(tok)
+        if tok.endswith(":*") or tok.endswith("*"):
+            scopes.append(" ".join(current))
+            current = []
+    if current:
+        scopes.append(" ".join(current))
+    return scopes or [grant_content.strip()]
+
+
 def extract_bash_grant_prefixes(allowed_tools_value):
     """Return (prefixes, universal) -- `prefixes` is a set of granted Bash
     prefixes as lowercase token tuples (e.g. Bash(git diff:*) -> ("git",
@@ -199,23 +234,33 @@ def extract_bash_grant_prefixes(allowed_tools_value):
     prefixes = set()
     universal = False
     for grant in BASH_GRANT_RE.findall(allowed_tools_value):
-        scope = grant.strip()
-        if scope in ("", "*"):
+        for scope in _split_multi_scope(grant):
+            if scope in ("", "*"):
+                universal = True
+                continue
+            scope = scope[:-2] if scope.endswith(":*") else scope
+            scope = scope.rstrip("*").strip()
+            if not scope:
+                universal = True
+                continue
+            prefixes.add(tuple(scope.lower().split()))
+    # A malformed scoped attempt like `Bash (git:*)` (space before the
+    # paren) doesn't match BASH_GRANT_RE at all, so it never reaches the
+    # loop above -- but its bare "Bash" token would still be present in a
+    # naive whitespace split, and treating that as a real unscoped grant
+    # would silently report the whole file as universally covered instead
+    # of surfacing the parse failure. Only trust a bare "Bash" token when
+    # there's no "Bash(" (with optional space before the paren) anywhere in
+    # the value at all -- a real, intentional unscoped grant never appears
+    # alongside a scoped-looking attempt.
+    if re.search(r"\bBash\s*\(", allowed_tools_value) is None:
+        tokens = allowed_tools_value.replace(",", " ").split()
+        if "Bash" in tokens:
             universal = True
-            continue
-        scope = scope[:-2] if scope.endswith(":*") else scope
-        scope = scope.rstrip("*").strip()
-        if not scope:
-            universal = True
-            continue
-        prefixes.add(tuple(scope.lower().split()))
-    tokens = allowed_tools_value.replace(",", " ").split()
-    if "Bash" in tokens:
-        universal = True
     return prefixes, universal
 
 
-def is_candidate_command_span(line, span_text):
+def is_candidate_command_span(clause, span_text):
     """Is this inline-code span's first token an *exact-case* match for a
     known executable name (KNOWN_EXECUTABLES)? Exact-case, not
     case-insensitive: a real command reference in this repo's prose is
@@ -228,22 +273,41 @@ def is_candidate_command_span(line, span_text):
     (`{var}`), meta-syntax quoting the grant syntax itself (`Bash(git:*)`),
     bare shell-variable references (`$ARGUMENTS`), and path-based script
     invocations (`${CLAUDE_PLUGIN_ROOT}/...`) -- none of those tokenize to a
-    bare lowercase word matching the list. A line flagged by
-    EXAMPLE_LINE_PREFIX_RE (a documentation "Wrong:"/"Bad:" example), or a
-    span matching META_GRANT_SYNTAX_RE (bare `tool:*` notation discussing a
-    grant rather than invoking a command), is suppressed regardless of
-    whether its first token matches."""
+    bare lowercase word matching the list. `clause` (a `;`-delimited segment
+    of the full line, not the whole line -- see check_file) flagged by
+    EXAMPLE_LINE_PREFIX_RE (a documentation "Wrong:"/"Bad:"/"Correct:"/
+    "Good:"/"Example(s):" labeled line), or a span matching
+    META_GRANT_SYNTAX_RE (bare `tool:*` notation discussing a grant rather
+    than invoking a command), is suppressed regardless of whether its first
+    token matches. Scoping the negative-instruction check to the clause
+    rather than the whole line means "Run `git diff` to inspect; do not
+    modify files" no longer suppresses the unrelated `git diff` reference
+    just because "do not" appears later in the same compound sentence."""
     text = span_text.strip()
     if not text:
         return False
-    if EXAMPLE_LINE_PREFIX_RE.search(line):
+    if EXAMPLE_LINE_PREFIX_RE.search(clause):
         return False
-    if NEGATIVE_INSTRUCTION_RE.search(line):
+    if NEGATIVE_INSTRUCTION_RE.search(clause):
         return False
     if META_GRANT_SYNTAX_RE.search(text):
         return False
     first_token = text.split()[0] if text.split() else ""
     return first_token in KNOWN_EXECUTABLES
+
+
+def _clause_containing(line, pos):
+    """Return the `;`-delimited clause of `line` that character offset `pos`
+    falls within, so a negative-instruction phrase ("do not"/"never") in one
+    clause of a compound sentence doesn't suppress a command reference in a
+    *different* clause of the same line."""
+    start = 0
+    for part in line.split(";"):
+        end = start + len(part)
+        if start <= pos <= end:
+            return part
+        start = end + 1  # +1 for the ";" separator this split() consumed
+    return line
 
 
 def is_covered(span_text, granted_prefixes):
@@ -256,13 +320,27 @@ def is_covered(span_text, granted_prefixes):
     contiguous subsequence anywhere within a broader granted prefix (the
     indirect case -- a bare `ruff format` mentioned in background/reference
     prose about what CI itself runs, when this skill always actually invokes
-    it via a longer wrapped prefix like Bash(uv run ruff format:*))."""
+    it via a longer wrapped prefix like Bash(uv run ruff format:*)).
+
+    The string-level startswith check requires a boundary right after the
+    matched prefix -- either the span ends exactly there, the next character
+    is whitespace, or the prefix's own last character is already
+    non-alphanumeric (the intentional mid-token case above). Without this, a
+    `Bash(sh:*)` grant would wrongly "cover" an unrelated `shellcheck ...`
+    span just because the string "sh" is a literal prefix of "shellcheck"."""
     span_norm = " ".join(span_text.strip().lower().split())
     tokens = tuple(span_norm.split())
     n = len(tokens)
     for prefix in granted_prefixes:
-        if span_norm.startswith(" ".join(prefix)):
-            return True
+        prefix_str = " ".join(prefix)
+        if span_norm.startswith(prefix_str):
+            at_boundary = (
+                len(span_norm) == len(prefix_str)
+                or span_norm[len(prefix_str)] == " "
+                or not prefix_str[-1].isalnum()
+            )
+            if at_boundary:
+                return True
         if n <= len(prefix):
             for start in range(len(prefix) - n + 1):
                 if prefix[start : start + n] == tokens:
@@ -285,8 +363,10 @@ def check_file(path):
     body_start_line = text[: len(text) - len(body_text)].count("\n") + 1
     for i, line in enumerate(body_text.splitlines()):
         line_number = body_start_line + i
-        for span_text in INLINE_CODE_RE.findall(line):
-            if not is_candidate_command_span(line, span_text):
+        for m in INLINE_CODE_RE.finditer(line):
+            span_text = m.group(1)
+            clause = _clause_containing(line, m.start())
+            if not is_candidate_command_span(clause, span_text):
                 continue
             if not is_covered(span_text, granted_prefixes):
                 findings.append((line_number, span_text.strip(), granted_prefixes))

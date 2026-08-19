@@ -118,6 +118,61 @@ FIXTURE_NO_FRONTMATTER = """# No frontmatter here
 Run `git diff` anyway, best-effort scan should not crash.
 """
 
+FIXTURE_MULTI_SCOPE_SPACE = """---
+name: multi-scope-space-fixture
+description: test fixture
+allowed-tools: Read Bash(git:* mkdir:*)
+---
+
+# Test Skill
+
+Run `git log -1` then `mkdir foo`.
+"""
+
+FIXTURE_MULTI_SCOPE_COMMA = """---
+name: multi-scope-comma-fixture
+description: test fixture
+allowed-tools: Read Bash(npm:*, git:*)
+---
+
+# Test Skill
+
+Run `git status` then `npm install`.
+"""
+
+FIXTURE_MALFORMED_GRANT_NOT_UNIVERSAL = """---
+name: malformed-grant-fixture
+description: test fixture
+allowed-tools: Read Bash (git:*)
+---
+
+# Test Skill
+
+Run `git diff` to inspect changes.
+"""
+
+FIXTURE_TOKEN_BOUNDARY_GUARD = """---
+name: token-boundary-fixture
+description: test fixture
+allowed-tools: Read Bash(sh:*)
+---
+
+# Test Skill
+
+Run `sh script.sh` (covered), then run `shellcheck script.sh` (NOT covered by Bash(sh:*)).
+"""
+
+FIXTURE_CLAUSE_SCOPED_NEGATION = """---
+name: clause-scoped-negation-fixture
+description: test fixture
+allowed-tools: Read
+---
+
+# Test Skill
+
+Run `git diff` to inspect changes; do not modify files without confirmation.
+"""
+
 
 def main():
     failures = []
@@ -186,6 +241,41 @@ def main():
                 1,
                 ["MISSING GRANT"],
                 [],
+            ),
+            (
+                "space-separated multi-scope Bash(git:* mkdir:*) splits into 2 grants",
+                FIXTURE_MULTI_SCOPE_SPACE,
+                0,
+                ["PASS (tool grants)"],
+                ["MISSING GRANT"],
+            ),
+            (
+                "comma-separated multi-scope Bash(npm:*, git:*) splits into 2 grants",
+                FIXTURE_MULTI_SCOPE_COMMA,
+                0,
+                ["PASS (tool grants)"],
+                ["MISSING GRANT"],
+            ),
+            (
+                "malformed 'Bash (git:*)' (space before paren) never fails open to universal",
+                FIXTURE_MALFORMED_GRANT_NOT_UNIVERSAL,
+                1,
+                ["MISSING GRANT -- command `git diff`"],
+                ["PASS (tool grants)"],
+            ),
+            (
+                "Bash(sh:*) does not wrongly cover unrelated shellcheck span",
+                FIXTURE_TOKEN_BOUNDARY_GUARD,
+                1,
+                ["MISSING GRANT -- command `shellcheck script.sh`"],
+                ["MISSING GRANT -- command `sh script.sh`"],
+            ),
+            (
+                "negative-instruction suppression is clause-scoped, not whole-line",
+                FIXTURE_CLAUSE_SCOPED_NEGATION,
+                1,
+                ["MISSING GRANT -- command `git diff`"],
+                ["PASS (tool grants)"],
             ),
         ]:
             fixture_path = tmp_path / f"{SAFE_FILENAME_RE.sub('_', name)}.md"
