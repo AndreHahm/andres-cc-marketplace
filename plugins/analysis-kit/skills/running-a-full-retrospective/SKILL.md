@@ -12,7 +12,7 @@ description: >-
   prioritized list" — not a single analysis type (use starting-an-analysis
   for that) and not cross-checking reports that already exist (use
   reviewing-analysis-findings directly for that).
-allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(cd:*) Bash(git log -1:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */plugin-rulebook/scripts/validate_evidence.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-downstream) Skill(git-kit:starting-work) Skill(git-kit:commit) Skill(git-kit:create-pr) Skill(git-kit:merge-pr) Skill(git-kit:finishing-work)
+allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(cd:*) Bash(sleep:*) Bash(git log -1:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */plugin-rulebook/scripts/validate_evidence.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-downstream) Skill(git-kit:starting-work) Skill(git-kit:commit) Skill(git-kit:create-pr) Skill(git-kit:merge-pr) Skill(git-kit:finishing-work)
 argument-hint: [optional: which analyses to run, and/or a scope]
 ---
 
@@ -266,9 +266,14 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
      resolve the specific file to edit (tag → plugin-root-relative path, falling back to the finding's
      cited source report — never a guess), apply the fix, then
      `Skill(git-kit:commit)` (explicitly told to skip its own Auto-PR step, since the next call handles
-     that) → `Skill(git-kit:create-pr)` → `Skill(git-kit:merge-pr)` (explicitly told to decline its own
-     post-merge-sync prompt, since this sequence handles that itself below) — all from the worktree,
-     capturing the PR number `create-pr` reports back. `cd` back to the primary checkout before
+     that) → `Skill(git-kit:create-pr)` (explicitly told to answer Ready-to-merge, never its "Draft
+     (default)" — a draft fails `merge-pr`'s own readiness check outright) — all from the worktree,
+     capturing the PR number `create-pr` reports back. Then, **before invoking `merge-pr`**, wait for
+     this repository's required status checks to reach a terminal state: `Skill(git-kit:merge-pr) <PR
+     number>` (explicitly told to decline its own post-merge-sync prompt, since this sequence handles
+     that itself below); if it reports checks still pending/running (not a genuine failure), `Bash(sleep:*)`
+     ~30s and retry, up to 5 attempts, before treating persistent non-passing checks as this topic's
+     failure. `cd` back to the primary checkout before
      `Skill(git-kit:finishing-work) <PR number>` — passed explicitly, since the primary checkout's
      current branch won't have its own PR for a bare call to fall back on; it also can't run from inside
      the worktree it's meant to close. After it returns, `Bash(git worktree list:*)` to confirm the
@@ -383,6 +388,11 @@ After Phase 5, verify before presenting output as final:
       worktree on its own initiative) — and always confirmed via `git worktree list` that the worktree
       was actually gone after this sequence's own `finishing-work` call returned, asking the human if it
       wasn't, rather than assuming `/git-cleanup` had already run
+- [ ] `create-pr` was always told to answer Ready-to-merge, never left on its own "Draft (default)"
+      option — a draft PR fails `merge-pr`'s own readiness check outright
+- [ ] `merge-pr`'s retry loop only retried on checks still pending/running, never on a genuine failure
+      (an actually-failed check, a changes-requested review, no merge rights, a merge conflict, a
+      rejected PR), and stopped after 5 attempts rather than retrying indefinitely
 - [ ] The direct-fix path resolved which specific file to edit by trying the tag-to-plugin-root-path
       resolution first, then falling back to the finding's cited source report if the tag alone doesn't
       resolve — never fell back to a bare plugin name the way the pipeline-hand-off's own `scope` field

@@ -74,19 +74,36 @@ auto-invoke) `create-pr` itself after a successful push, and the very next call 
 `commit`'s own ask produces a second, redundant `create-pr` call against a branch that already has an
 open PR, which fails outright. This mirrors `create-pr`'s own documented Pre-flight Checks pattern
 (passing the same skip-instruction to its own nested `commit` call for the identical reason). Then
-`Skill(git-kit:create-pr)` → `Skill(git-kit:merge-pr)`, **the latter also explicitly instructed to
-decline its own step 8 post-merge-sync prompt** ("Run `finishing-work` now?") every time — `merge-pr`
-runs entirely through remote `gh pr` calls and doesn't itself need the worktree to be the current
-directory, but if its nested prompt is accepted it invokes `Skill(git-kit:finishing-work)` immediately,
-from wherever the session currently is — still the worktree at that point in this sequence, since the
-`cd` back to the primary checkout described below hasn't happened yet. That hits the exact
-worktree-can't-close-itself failure this section works around, just one call earlier and inside
-`merge-pr`'s own nested dispatch instead of this skill's own. Declining that prompt here leaves this
-skill's own explicit `cd`-then-`finishing-work` sequence below as the single, deterministic owner of
-post-merge sync for this topic — never letting the nested prompt's answer decide it. All three calls
-run from the worktree, same as the edit. **Capture the PR number `create-pr` reports back** (or
-`merge-pr`'s own confirmation, if that's the last point it's echoed) — it's needed explicitly in the
-next step, since `finishing-work` cannot be trusted to infer it on its own from this point forward.
+`Skill(git-kit:create-pr)`, **explicitly instructed to answer its own "Draft or Ready-to-merge?" ask
+with Ready-to-merge, never accepting its "Draft (default)" option** — a draft PR fails `merge-pr`'s own
+readiness check outright (`isDraft` must be `false`), and this direct-fix path's whole premise is an
+already-human-approved, mechanical change meant to merge immediately, not sit as a draft. **Capture the
+PR number `create-pr` reports back** — needed for every remaining call in this sequence, since none of
+them can be trusted to infer it correctly on their own from this point forward.
+
+Then, **before invoking `merge-pr`, wait for this repository's required status checks to reach a
+terminal state.** Creating the PR just triggered this repository's CI (`marketplace-ci.yml` runs on the
+PR `opened` event) — it takes real time to run, and `merge-pr`'s own readiness check fails outright,
+non-retrying, the instant any required check is still pending or running, not just when one has actually
+failed. Invoke `Skill(git-kit:merge-pr) <PR number>` (also **explicitly instructed to decline its own
+step 8 post-merge-sync prompt** — see below for why) and read its own reported readiness result: if it
+reports required checks still pending/running (not a genuine failure — a *check* failing, a *review*
+requesting changes, or *no merge rights* are real failures, never retried), wait a short interval
+(`Bash(sleep:*)`, ~30 seconds) and invoke `Skill(git-kit:merge-pr) <PR number>` again, up to 5 attempts total.
+Only treat this as the topic's real failure branch (see below) if a genuine failure is reported, or if
+checks are still not passing after the retry budget is exhausted — never after the first "still pending"
+result alone.
+
+**Why `merge-pr` is also told to decline its own step 8 post-merge-sync prompt** ("Run `finishing-work`
+now?") every time: `merge-pr` runs entirely through remote `gh pr` calls and doesn't itself need the
+worktree to be the current directory, but if its nested prompt is accepted it invokes
+`Skill(git-kit:finishing-work)` immediately, from wherever the session currently is — still the worktree
+at that point in this sequence, since the `cd` back to the primary checkout described below hasn't
+happened yet. That hits the exact worktree-can't-close-itself failure this section works around, just
+one call earlier and inside `merge-pr`'s own nested dispatch instead of this skill's own. Declining that
+prompt here leaves this skill's own explicit `cd`-then-`finishing-work` sequence below as the single,
+deterministic owner of post-merge sync for this topic — never letting the nested prompt's answer decide
+it. All calls in this paragraph run from the worktree, same as the edit.
 **Before the next step, `cd` back to the primary checkout** — `finishing-work` explicitly cannot run
 from inside the
 feature worktree it's meant to close: its own steps stop when the default branch is already checked out
@@ -100,6 +117,16 @@ none at all and stopping before it can confirm the merge or update local `main`.
 to skip straight from `commit` to `finishing-work` either: `finishing-work` requires a merge to have
 already landed (it checks for `state == MERGED`) — so `create-pr` and `merge-pr` are load-bearing steps
 here, not optional ceremony.
+
+**Expect `finishing-work`'s own branch-mismatch ask to fire here as a false positive — this is normal,
+not a sign something went wrong.** `finishing-work`'s step 1 also captures `git branch --show-current`
+and compares it against the PR's `headRefName`, stopping to ask `AskUserQuestion` ("proceed anyway?") on
+any mismatch — a safeguard against accidentally passing an unrelated PR's number. In this sequence that
+mismatch is guaranteed every time: the primary checkout's current branch is always the default branch at
+this point (never the just-merged feature branch, which only ever existed in the now-closing worktree),
+so it can never equal `headRefName`. Answer "proceed anyway" — the PR number was captured directly from
+this sequence's own `create-pr`/`merge-pr` calls, not guessed, so there's nothing actually unrelated
+here despite the ask's wording.
 
 But `finishing-work` itself only *tells the human* to run `/git-cleanup`; it doesn't remove the worktree,
 and this skill has no `git worktree remove` grant to do it directly either. So after `finishing-work`
@@ -192,7 +219,10 @@ still needed fixing. The two paths update differently:
 ## Failure handling
 
 **If a topic fails partway** — on the direct-fix path: a `commit`, `create-pr`, or `merge-pr` failure (a
-failing required check, no merge rights, a merge conflict, a rejected PR); on the pipeline path: a
+required check that actually reached a failed state, checks still not passing after the Step 4 retry
+budget is exhausted, no merge rights, a merge conflict, a rejected PR — never a check merely still
+pending/running, which Step 4's own retry loop already treats as expected and transient, not a failure);
+on the pipeline path: a
 schema-validation failure above, or a `plugin-lifecycle-downstream` dispatch that errors — stop the loop
 immediately in every case: don't advance to the continue checkpoint or the next topic. Leave the failed
 finding(s) `OPEN` with a one-line note describing the failure appended to their `**Status:**` line.
