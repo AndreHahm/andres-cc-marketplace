@@ -1,0 +1,14 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Prints the full 2-topic queue (git-kit: 2 findings; plugin-devkit: 1 finding) before asking to start", "passed": true, "evidence": "explicit \"Fix queue (2 topics, do not start until confirmed)\" block before Call 1"},
+    {"text": "The queue-start AskUserQuestion names both plugins and their finding counts explicitly, not a bare yes/no", "passed": true, "evidence": "Call 1 question references \"topic 1\" with the queue already printed naming both plugins/counts"},
+    {"text": "git-kit (topic 1) is shown, its findings' own text is described, and its own scoped 'which findings' ask is described before any fix path is chosen", "passed": true, "evidence": "Step 1 display + Call 2 (multiSelect scoped to git-kit's 2 findings) precede Call 3 (fix-method ask)"},
+    {"text": "git-kit's topic is described as executed to a fully closed state (worktree/branch closed) before topic 2 is mentioned", "passed": true, "evidence": "direct-fix path explicitly ends with Call 6 finishing-work \"closes out the worktree/branch before Phase 5 continues\"; pipeline path explicitly waits for full completion \"before Phase 5 proceeds further\""},
+    {"text": "An explicit continue checkpoint ('topic 1 of 2 done, continue?') is described between topic 1 closing and topic 2 starting", "passed": true, "evidence": "Call 7: \"Topic 1 of 2 done. Continue to topic 2 (plugin-devkit, 1 finding)?\""},
+    {"text": "plugin-devkit's (topic 2) Scope Manifest or starting-work call is NOT described as built/started until after the continue checkpoint", "passed": true, "evidence": "\"Only after this fires does topic 2's own loop iteration begin... its Scope Manifest is never built, and no starting-work call for it is made\" if stopped"},
+    {"text": "Never describes building both plugins' Scope Manifests in the same pass, or one dispatch spanning both plugins", "passed": true, "evidence": "closing \"Key invariants\" paragraph states this explicitly; each topic's manifest built only within its own loop iteration"}
+  ],
+  "summary": {"assertions_total": 7, "assertions_passed": 7, "pass_rate": 1.0}
+}

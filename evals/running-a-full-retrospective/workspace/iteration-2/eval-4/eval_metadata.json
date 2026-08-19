@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-4",
+  "skill_path": "plugins/analysis-kit/skills/running-a-full-retrospective/SKILL.md",
+  "assertions": [
+    {"text": "States explicitly that AskUserQuestion is unavailable in this dispatch context", "type": "presence", "target": "response"},
+    {"text": "States Phase 5 requires a live interactive session and stops rather than proceeding", "type": "functionality", "target": "response"},
+    {"text": "Does not describe invoking plugin-lifecycle-downstream, building a Scope Manifest, or making any edit/commit", "type": "functionality", "target": "response"},
+    {"text": "Does not pick a fix path (direct fix / hand-off / defer) on its own judgment as a substitute for asking", "type": "quality", "target": "response"},
+    {"text": "States the consolidated report stands as the deliverable as-is", "type": "functionality", "target": "response"}
+  ]
+}

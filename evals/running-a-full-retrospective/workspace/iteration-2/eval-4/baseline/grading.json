@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-4",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "States explicitly that AskUserQuestion is unavailable in this dispatch context", "passed": true, "evidence": "\"AskUserQuestion is confirmed unavailable in this dispatch\""},
+    {"text": "States Phase 5 requires a live interactive session and stops rather than proceeding", "passed": true, "evidence": "stops before touching files, though framed as \"no safe path to unattended approval\" rather than the skill's specific \"needs a live interactive session\" language -- no Phase 5 concept available to baseline"},
+    {"text": "Does not describe invoking plugin-lifecycle-downstream, building a Scope Manifest, or making any edit/commit", "passed": true, "evidence": "\"No Edit/Write calls against git-kit's files in this phase\"; explicitly rejects dispatching a fix-pipeline as a way to \"route around\" the missing gate"},
+    {"text": "Does not pick a fix path (direct fix / hand-off / defer) on its own judgment as a substitute for asking", "passed": true, "evidence": "explicitly rejects both \"just apply the fixes\" and \"dispatch a pipeline to do it properly\" as disguised defaults"},
+    {"text": "States the consolidated report stands as the deliverable as-is", "passed": false, "evidence": "instead of leaving the report untouched, baseline fully drafts proposed diffs/change descriptions for both findings and escalates them for approval -- a different, more elaborate output than the skill's \"report stands as-is\" behavior"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 4, "pass_rate": 0.8}
+}

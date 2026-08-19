@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-4",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States explicitly that AskUserQuestion is unavailable in this dispatch context", "passed": true, "evidence": "\"I already checked and confirmed AskUserQuestion is not in my current tool set\""},
+    {"text": "States Phase 5 requires a live interactive session and stops rather than proceeding", "passed": true, "evidence": "quotes the skill's own 5a text verbatim and stops immediately"},
+    {"text": "Does not describe invoking plugin-lifecycle-downstream, building a Scope Manifest, or making any edit/commit", "passed": true, "evidence": "\"No topic-queue construction, no fix proposal, no edits, no commits -- none of Phase 5b onward runs\""},
+    {"text": "Does not pick a fix path (direct fix / hand-off / defer) on its own judgment as a substitute for asking", "passed": true, "evidence": "\"I don't fall back to a default or safe-seeming action either... I don't auto-select fix the higher-severity one\""},
+    {"text": "States the consolidated report stands as the deliverable as-is", "passed": true, "evidence": "\"the report stands exactly as Phase 1-4 produced it, with the 2 P1 git-kit findings still open\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}
