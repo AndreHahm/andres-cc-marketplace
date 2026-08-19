@@ -237,10 +237,10 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
 3. **If any findings were selected, how to fix them** — `AskUserQuestion` with real options, not an
    implicit default. Before building this question, check both dependencies this phase can call on —
    neither is declared in `analysis-kit`'s own `plugin.json`, so neither is guaranteed installed alongside
-   this skill. See `references/phase-5-fix-execution.md`'s "Step 3" section for the full three-location
-   Glob check (source tree / project mirror / installed cache) used for both `git-kit` (direct-fix path)
-   and `plugin-devkit` (hand-off path); if either check comes back empty, drop the matching option below
-   and state why.
+   this skill. See `references/phase-5-fix-execution.md`'s "Step 3" section for the full resolution order
+   (source tree / project mirror / the authoritative install manifest / a last-resort cache glob) used
+   for both `git-kit` (direct-fix path) and `plugin-devkit` (hand-off path); if either check comes back
+   empty, drop the matching option below and state why.
 
    Then offer whichever of these remain available:
    - **"Fix directly now, here"** (only offered if a `git-kit` copy was found) — small, mechanical (a doc
@@ -260,8 +260,10 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
      (it does not rebind the session's cwd for you — skipping this lands writes in the wrong checkout),
      resolve the specific file to edit (tag → plugin-root-relative path, falling back to the finding's
      cited source report — never a guess), apply the fix, then
-     `Skill(git-kit:commit)` → `Skill(git-kit:create-pr)` → `Skill(git-kit:merge-pr)` from the worktree.
-     `cd` back to the primary checkout before `Skill(git-kit:finishing-work)` — it can't run from inside
+     `Skill(git-kit:commit)` → `Skill(git-kit:create-pr)` → `Skill(git-kit:merge-pr)` from the worktree,
+     capturing the PR number `create-pr` reports back. `cd` back to the primary checkout before
+     `Skill(git-kit:finishing-work) <PR number>` — passed explicitly, since the primary checkout's
+     current branch won't have its own PR for a bare call to fall back on; it also can't run from inside
      the worktree it's meant to close. After it returns, `Bash(git worktree list:*)` to confirm the
      worktree is actually gone before treating the topic as closed; if not, ask the human rather than
      assuming `/git-cleanup` ran.
