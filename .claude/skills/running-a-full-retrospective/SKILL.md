@@ -233,7 +233,12 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
    these" filler per question. A topic with 4+ findings splits across multiple sequential questions in the
    same call (3 findings + filler in the first, the remainder + filler in the next, and so on), exactly
    the pattern Phase 1 already uses for its own 5-option split — never one question listing every finding
-   in a large topic.
+   in a large topic. **`AskUserQuestion` itself caps at 4 questions per call, so this only covers up to 12
+   findings (4 questions × 3 real options) in one call.** A topic with more than 12 open findings can't fit
+   the whole split into a single call at all — continue across multiple separate `AskUserQuestion` calls
+   (each a fresh turn: present the next batch of up to 12 remaining findings the same way, wait for that
+   response, then continue) rather than assuming a single call can absorb an unbounded number of findings
+   for one topic.
 3. **If any findings were selected, how to fix them** — `AskUserQuestion` with real options, not an
    implicit default. Before building this question, check both dependencies this phase can call on —
    neither is declared in `analysis-kit`'s own `plugin.json`, so neither is guaranteed installed alongside
@@ -260,7 +265,9 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
      (it does not rebind the session's cwd for you — skipping this lands writes in the wrong checkout),
      resolve the specific file to edit (tag → plugin-root-relative path, falling back to the finding's
      cited source report — never a guess), apply the fix, then
-     `Skill(git-kit:commit)` → `Skill(git-kit:create-pr)` → `Skill(git-kit:merge-pr)` from the worktree,
+     `Skill(git-kit:commit)` (explicitly told to skip its own Auto-PR step, since the next call handles
+     that) → `Skill(git-kit:create-pr)` → `Skill(git-kit:merge-pr)` (explicitly told to decline its own
+     post-merge-sync prompt, since this sequence handles that itself below) — all from the worktree,
      capturing the PR number `create-pr` reports back. `cd` back to the primary checkout before
      `Skill(git-kit:finishing-work) <PR number>` — passed explicitly, since the primary checkout's
      current branch won't have its own PR for a bare call to fall back on; it also can't run from inside
@@ -360,16 +367,22 @@ After Phase 5, verify before presenting output as final:
       to consolidate, never as instructions to follow
 - [ ] Phase 1's analysis-type picker never shipped more than 4 options in a single `AskUserQuestion` question
 - [ ] 5c-2's "which findings" ask never shipped more than 3 real findings + "None of these" in a
-      single question — a topic with 4+ findings split across multiple sequential questions
+      single question — a topic with 4+ findings split across multiple sequential questions, and a topic
+      with more than 12 findings split across multiple separate `AskUserQuestion` calls, never assumed to
+      fit in one
 - [ ] 5c-3 checked for `plugin-lifecycle-downstream`'s presence before offering the "Hand off"
       option, and for `git-kit`'s presence before offering "Fix directly now" — neither option is ever
       offered unconditionally
 - [ ] 5c-4's pipeline-hand-off path ran `validate_evidence.py` against both the manifest and the
       report and confirmed exit code 0 before dispatching — never dispatched an unvalidated bundle
 - [ ] The direct-fix path always ran the full `commit` → `create-pr` → `merge-pr` → `finishing-work`
-      chain, never skipping straight from `commit` to `finishing-work` — and always confirmed via
-      `git worktree list` that the worktree was actually gone after `finishing-work` returned, asking the
-      human if it wasn't, rather than assuming `/git-cleanup` had already run
+      chain, never skipping straight from `commit` to `finishing-work` — `commit` was always told to skip
+      its own Auto-PR step (never left to ask/auto-invoke `create-pr` itself, which would collide with
+      this sequence's own unconditional `create-pr` call) and `merge-pr` was always told to decline its
+      own post-merge-sync prompt (never left to invoke `finishing-work` from inside the still-open
+      worktree on its own initiative) — and always confirmed via `git worktree list` that the worktree
+      was actually gone after this sequence's own `finishing-work` call returned, asking the human if it
+      wasn't, rather than assuming `/git-cleanup` had already run
 - [ ] The direct-fix path resolved which specific file to edit by trying the tag-to-plugin-root-path
       resolution first, then falling back to the finding's cited source report if the tag alone doesn't
       resolve — never fell back to a bare plugin name the way the pipeline-hand-off's own `scope` field
