@@ -12,7 +12,7 @@ description: >-
   prioritized list" — not a single analysis type (use starting-an-analysis
   for that) and not cross-checking reports that already exist (use
   reviewing-analysis-findings directly for that).
-allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(git log -1:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */plugin-rulebook/scripts/validate_evidence.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-downstream) Skill(git-kit:starting-work) Skill(git-kit:commit) Skill(git-kit:finishing-work)
+allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(git log -1:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */plugin-rulebook/scripts/validate_evidence.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-downstream) Skill(git-kit:starting-work) Skill(git-kit:commit) Skill(git-kit:create-pr) Skill(git-kit:merge-pr) Skill(git-kit:finishing-work)
 argument-hint: [optional: which analyses to run, and/or a scope]
 ---
 
@@ -235,23 +235,57 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
    the pattern Phase 1 already uses for its own 5-option split — never one question listing every finding
    in a large topic.
 3. **If any findings were selected, how to fix them** — `AskUserQuestion` with real options, not an
-   implicit default. Before building this question, `Glob` for
-   `plugins/plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md` — `analysis-kit`'s own
-   `plugin.json` declares no dependency on `plugin-devkit`, so it isn't guaranteed installed alongside
-   this skill. If it's missing, drop the "Hand off" option entirely and state why, leaving only the other
-   two:
-   - **"Fix directly now, here"** — small, mechanical (a doc line, a stale citation); still goes through
-     `commit`'s own gates, but skips the full audit/test cycle. Not appropriate for anything touching
-     behavior, security, or a security-relevant gate.
-   - **"Hand off to `plugin-lifecycle-downstream`"** (only offered if the Glob above found it) — needs
-     review, testing, or touches behavior/security; gets the full audit+fix+test+grade cycle.
+   implicit default. Before building this question, check both dependencies this phase can call on —
+   neither is declared in `analysis-kit`'s own `plugin.json`, so neither is guaranteed installed alongside
+   this skill:
+   - `git-kit` (needed for the direct-fix path): `Glob` for any of
+     `plugins/git-kit/skills/starting-work/SKILL.md` (this marketplace's own source-tree layout, the
+     primary case since this skill ships inside this exact marketplace), `.claude/skills/starting-work/SKILL.md`
+     (an in-development project mirror), or `~/.claude/plugins/cache/*/git-kit/skills/starting-work/SKILL.md`
+     (an end-user installation elsewhere) — a best-effort check across the layouts this skill can actually
+     observe, not a definitive install-state query. If none resolve, drop "Fix directly now" and state why.
+   - `plugin-devkit` (needed for the hand-off path): same three-location check against
+     `.../plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md`. If none resolve, drop "Hand off" and
+     state why.
+
+   Then offer whichever of these remain available:
+   - **"Fix directly now, here"** (only offered if a `git-kit` copy was found) — small, mechanical (a doc
+     line, a stale citation); still goes through the full `commit` → `create-pr` → `merge-pr` →
+     `finishing-work` lifecycle (see 5c-4 below for why this can't be shortened), but skips the full
+     audit/test/grade cycle. Not appropriate for anything touching behavior, security, or a
+     security-relevant gate.
+   - **"Hand off to `plugin-lifecycle-downstream`"** (only offered if a `plugin-devkit` copy was found) —
+     needs review, testing, or touches behavior/security; gets the full audit+fix+test+grade cycle.
    - **"Not now — mark deferred"** — records the finding as deferred with a one-line reason; no execution.
+   - If both dependency checks came back empty, the human still gets to choose between "Not now — mark
+     deferred" and stopping the queue entirely — never silently skip the ask because no fix path exists.
 4. **Execute this one topic to completion, whichever path was picked:**
    - *Direct fix*: `Skill(git-kit:starting-work)` first — always, even if the previous topic "just
      finished" and this feels like a continuation (this is the exact trap
-     `starting-work-before-first-change.md`'s own incident names). Apply the fix, `Skill(git-kit:commit)`,
-     then `Skill(git-kit:finishing-work)` (which hands off to `/git-cleanup` for the actual worktree/branch
-     removal) — this topic's worktree must be gone before the loop continues.
+     `starting-work-before-first-change.md`'s own incident names). Resolve which specific file(s) to edit
+     — this path needs a real, editable path, not the looser fallback 5c-4's pipeline-hand-off step 3
+     allows for its `scope` field (that field can tolerate falling back to a bare plugin name, since
+     `plugin-lifecycle-downstream` does further resolution downstream; a direct `Edit`/`Write` here
+     can't): first try resolving the finding's own `<plugin>'s <component>` tag to that component's actual
+     plugin-root-relative file path; if the tag alone doesn't resolve to a specific file, open the
+     finding's cited source report(s) (from its `**Reported in:**` line) to identify it before editing —
+     never guess. Apply the fix directly with `Edit`/`Write` against that file — this is the one explicit
+     exception to the "never write inside a target plugin" boundary stated
+     below, scoped strictly to this single, already-human-approved, mechanical change. Then run the
+     **full** lifecycle chain, not a shortened one: `Skill(git-kit:commit)` → `Skill(git-kit:create-pr)` →
+     `Skill(git-kit:merge-pr)` → `Skill(git-kit:finishing-work)`. This can't be shortened to skip straight
+     from `commit` to `finishing-work`: `finishing-work` requires a merge to have already landed (it
+     checks for `state == MERGED`) — so `create-pr` and `merge-pr` are load-bearing steps here, not
+     optional ceremony. But `finishing-work` itself only *tells the human* to run `/git-cleanup`; it
+     doesn't remove the worktree, and this skill has no `git worktree remove` grant to do it directly
+     either. So after `finishing-work` returns, `Bash(git worktree list:*)` to confirm the worktree is
+     actually gone before treating the topic as closed. If it's still present, ask the human via
+     `AskUserQuestion` whether `/git-cleanup` has been run yet — options "Yes, it's done" (re-check once
+     more before continuing) / "Not yet — wait" (pause the loop here rather than advancing past an
+     unconfirmed worktree). If the re-check after "Yes, it's done" still shows the worktree present,
+     treat this the same as the failure branch below (stop the loop, don't guess a second time) rather
+     than looping the same question indefinitely. "Direct fix" means skipping the audit/test/grade cycle,
+     not skipping code review, merge, or this closure check.
    - *Pipeline hand-off*: build the Scope Manifest + Report Revision for **this one topic only**, per
      `plugin-rulebook/references/evidence-schema.md` (a bare list of findings does not validate against
      any of that schema's four shapes, so the findings must be wrapped in a Report Revision, not written
@@ -289,20 +323,28 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
         Documentation/Final Verification/Grading/Handoff normally rather than skipping them. Wait for the
         dispatch to fully finish, including its own commit and whatever worktree/branch it used, before
         continuing — confirm that worktree is closed before this loop iteration ends.
+   - **Once a direct fix merges or a pipeline hand-off dispatch completes successfully**, `Edit` the
+     persisted consolidated report immediately — updating each selected finding's `**Status:**` line from
+     `OPEN` to `FIXED — <one-line summary, e.g. the merge commit SHA or PR number>` — before moving to the
+     continue checkpoint below. This is not optional cleanup: the consolidated report is this skill's own
+     durable progress record, and a resumed Phase 5 run rebuilds its topic queue from whatever findings
+     are still `OPEN` in it. A fixed finding left `OPEN` gets silently requeued and re-presented to the
+     human as if it still needed fixing.
    - *Deferred*: `Edit` the persisted consolidated report, updating the selected finding's `**Status:**`
      line from `OPEN` to `DEFERRED — <reason>`. This is what keeps the consolidated report itself the
      single durable backlog/progress record — no separate state file.
    - Any finding left unselected at 5c-2 stays `OPEN`, untouched.
-   - **If a topic fails partway** (a `commit` failure, a schema-validation failure above, or a
-     `plugin-lifecycle-downstream` dispatch that errors): stop the loop immediately — don't advance to the
-     continue checkpoint or the next topic. Leave the failed finding(s) `OPEN` with a one-line note
-     describing the failure appended to their `**Status:**` line. Confirm no half-finished worktree was
-     left open (`Skill(git-kit:finishing-work)`/`/git-cleanup` if a direct-fix worktree exists, or a plain
-     `git worktree list` check for a pipeline-dispatch worktree) before presenting the failure to the
-     human — never leave a dangling worktree as the silent result of an error. If the `git worktree list`
-     check does find one from a failed pipeline dispatch, name its path explicitly in the failure report
-     to the human — this skill never removes it directly (no `git worktree remove` grant), so leaving its
-     path out would make the human search for it themselves.
+   - **If a topic fails partway** — on the direct-fix path: a `commit`, `create-pr`, or `merge-pr` failure
+     (a failing required check, no merge rights, a merge conflict, a rejected PR); on the pipeline path: a
+     schema-validation failure above, or a `plugin-lifecycle-downstream` dispatch that errors — stop the
+     loop immediately in every case: don't advance to the continue checkpoint or the next topic. Leave the
+     failed finding(s) `OPEN` with a one-line note describing the failure appended to their `**Status:**`
+     line. Confirm no half-finished worktree was left open (`Bash(git worktree list:*)` for either path —
+     the direct-fix path's own closure check above already establishes this pattern) before presenting the
+     failure to the human — never leave a dangling worktree as the silent result of an error. If that
+     check finds one, name its path explicitly in the failure report to the human — this skill never
+     removes it directly (no `git worktree remove` grant, and `/git-cleanup` isn't invoked by this skill
+     either), so leaving its path out would make the human search for it themselves.
 5. **Explicit continue checkpoint.** Once the topic is fully closed, `AskUserQuestion`: "Topic `<n>` of
    `<total>` done. Continue to topic `<n+1>` (`<plugin>`, `<count>` findings)?" — options "Continue" /
    "Stop here for now". On "Stop here for now," end the phase; remaining topics stay `OPEN` in the report,
@@ -313,10 +355,12 @@ Never auto-invoke any part of this phase without its own ask, and never reimplem
 pipeline-hand-off path's job stops at handing off a well-formed, plugin-scoped Scope Manifest + Report
 Revision bundle for one topic. This skill's `Write` grant is confined to its own
 `.claude/output/running-a-full-retrospective/` artifacts (the consolidated report, and this phase's
-manifest/report YAML files); its `Edit` grant is confined to Phase 4's addendum fold-in and this phase's
-per-finding Status-line updates, both against that same persisted report. Neither tool is ever used to
-write or edit a file inside a target plugin — that mutation belongs entirely to the direct-fix path's own
-git-kit skills, or to `plugin-lifecycle-downstream`'s own Fix phases.
+manifest/report YAML files) plus, for the direct-fix path only, the specific target-plugin file(s) named
+in an already-selected finding's `scope` (5c-4's one explicit exception). Likewise its `Edit` grant covers
+Phase 4's addendum fold-in, this phase's per-finding Status-line updates, and that same direct-fix
+exception. Outside that one narrow exception, `Write`/`Edit` are never used on a target plugin's files —
+the pipeline-hand-off path's own mutation belongs entirely to `plugin-lifecycle-downstream`'s Fix phases,
+never to this skill directly.
 
 **Exit:** either every topic in the queue was closed (fixed, deferred, or skipped) with an explicit
 continue checkpoint between each, or the human stopped the loop early and the remaining topics stay
@@ -372,9 +416,21 @@ After Phase 5, verify before presenting output as final:
 - [ ] 5c step 2's "which findings" ask never shipped more than 3 real findings + "None of these" in a
       single question — a topic with 4+ findings split across multiple sequential questions
 - [ ] 5c step 3 checked for `plugin-lifecycle-downstream`'s presence before offering the "Hand off"
-      option — never offered it unconditionally
+      option, and for `git-kit`'s presence before offering "Fix directly now" — neither option is ever
+      offered unconditionally
 - [ ] 5c step 4's pipeline-hand-off path ran `validate_evidence.py` against both the manifest and the
       report and confirmed exit code 0 before dispatching — never dispatched an unvalidated bundle
+- [ ] The direct-fix path always ran the full `commit` → `create-pr` → `merge-pr` → `finishing-work`
+      chain, never skipping straight from `commit` to `finishing-work` — and always confirmed via
+      `git worktree list` that the worktree was actually gone after `finishing-work` returned, asking the
+      human if it wasn't, rather than assuming `/git-cleanup` had already run
+- [ ] The direct-fix path resolved which specific file to edit by trying the tag-to-plugin-root-path
+      resolution first, then falling back to the finding's cited source report if the tag alone doesn't
+      resolve — never fell back to a bare plugin name the way the pipeline-hand-off's own `scope` field
+      can, and never guessed or edited more broadly than the resolved file
+- [ ] Every successfully fixed finding (direct-fix merge or pipeline-hand-off completion) had its
+      `**Status:**` line updated from `OPEN` to `FIXED` before the continue checkpoint — never left `OPEN`
+      to be silently requeued on a resumed run
 - [ ] A topic that failed partway stopped the loop immediately, left the failed finding(s) `OPEN` with a
       failure note, and confirmed no worktree was left dangling before advancing — never silently
       continued to the next topic
