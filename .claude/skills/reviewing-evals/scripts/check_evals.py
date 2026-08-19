@@ -230,6 +230,35 @@ def _extract_group_contents(text: str) -> list[str]:
     return groups
 
 
+def _trailing_backslash_count(text: str, end: int) -> int:
+    """Count consecutive backslash characters in text immediately before
+    index `end` (exclusive)."""
+    count = 0
+    i = end - 1
+    while i >= 0 and text[i] == "\\":
+        count += 1
+        i -= 1
+    return count
+
+
+def _is_real_end_anchor(text: str) -> bool:
+    """True if text ends with a genuine right-anchor -- an unescaped '$'
+    or an unescaped '\\b' -- rather than an escaped literal character that
+    merely happens to look like one. "cat\\$" ends with the *literal*
+    character '$' (an odd number of backslashes escapes it), matched
+    anywhere in the haystack, not a real end-of-string anchor -- it still
+    matches "cat$egory", the exact false-anchored case this guards
+    against."""
+    if text.endswith("$"):
+        return _trailing_backslash_count(text, len(text) - 1) % 2 == 0
+    if text.endswith(r"\b"):
+        # The backslash forming \b sits at index len-2; it's a real
+        # anchor only if *that* backslash isn't itself escaped by an odd
+        # number of backslashes before it.
+        return _trailing_backslash_count(text, len(text) - 2) % 2 == 0
+    return False
+
+
 def _strip_full_group_wrap(branch: str) -> tuple[str, str, str] | None:
     """If `branch` is exactly OUTER_LEFT + '(' + inner + ')' + OUTER_RIGHT,
     where OUTER_LEFT is an optional leading '^'/'\\b', OUTER_RIGHT is an
@@ -251,11 +280,9 @@ def _strip_full_group_wrap(branch: str) -> tuple[str, str, str] | None:
             rest = rest[len(prefix) :]
             break
     outer_right = ""
-    for suffix in (r"\b", "$"):
-        if rest.endswith(suffix):
-            outer_right = suffix
-            rest = rest[: len(rest) - len(suffix)]
-            break
+    if _is_real_end_anchor(rest):
+        outer_right = "$" if rest.endswith("$") else r"\b"
+        rest = rest[: len(rest) - len(outer_right)]
     if not rest.startswith("("):
         return None
     depth = 0
@@ -314,7 +341,7 @@ def _branch_anchoring_verdict(branch: str) -> tuple[str, str]:
         return "unresolved", branch
 
     left_anchored = branch.startswith(r"\b") or branch.startswith("^")
-    right_anchored = branch.endswith(r"\b") or branch.endswith("$")
+    right_anchored = _is_real_end_anchor(branch)
     is_anchored = left_anchored and right_anchored
     bare_needle = re.sub(r"[\\^$.*+?()\[\]{}|]", "", branch)
     if not is_anchored and len(bare_needle) <= 4:
@@ -365,15 +392,24 @@ def _split_top_level_args(arg_text: str) -> list[str]:
     return args
 
 
-def _extract_flags(arg_text: str) -> tuple[list[str], list[str]]:
-    """Return (recognized_flag_names, unrecognized_flag_names) found in a
-    call's trailing arguments, e.g. `re.MULTILINE` in
-    `re.findall(pattern, text, re.MULTILINE)`."""
+def _extract_flags(arg_text: str) -> tuple[list[str], list[str], bool]:
+    """Parse a call's trailing-argument text for `re.X` flag tokens.
+    Returns (recognized_flag_names, unrecognized_flag_names, has_residual).
+
+    has_residual is True when something besides recognized/unrecognized
+    `re.X` tokens and `|`/whitespace remains after removing every `re.X`
+    token found -- e.g. a bare variable mixed in via `|`
+    (`re.MULTILINE | FLAGS`). Finding only "MULTILINE" and silently
+    dropping the unresolvable "FLAGS" component would change the call's
+    real semantics, so the whole expression must be treated as
+    unresolved rather than partially trusted."""
     recognized = []
     unrecognized = []
     for name in FLAG_RE.findall(arg_text):
         (recognized if name in SUPPORTED_FLAGS else unrecognized).append(name)
-    return recognized, unrecognized
+    residual = FLAG_RE.sub("", arg_text)
+    residual = re.sub(r"[|\s]", "", residual)
+    return recognized, unrecognized, bool(residual)
 
 
 def _safe_findall_count(
@@ -455,24 +491,27 @@ def check_zero_match_and_anchoring(
             continue
 
         arg_text = _extract_call_arg_text(source, m.end())
-        if "skill" not in arg_text.lower():
+        call_args = _split_top_level_args(arg_text)
+        haystack_arg = call_args[0] if call_args else arg_text
+        if "skill" not in haystack_arg.lower():
             findings.append(
                 f"SKIP (haystack unclear): re.findall(r'{pattern}') is applied to "
-                f"'{arg_text[:60]}', not confirmed as SKILL.md content -- this tool "
+                f"'{haystack_arg[:60]}', not confirmed as SKILL.md content -- this tool "
                 "doesn't execute the target script, so testing it against SKILL.md "
                 "instead would risk a false FAIL (e.g. a check that scans "
                 "workflows/*.md, not SKILL.md). Verify manually."
             )
             continue
 
-        trailing_args = _split_top_level_args(arg_text)[1:]
-        flags, unrecognized_flags = _extract_flags(arg_text)
-        if trailing_args and not flags and not unrecognized_flags:
+        trailing_args = call_args[1:]
+        flags, unrecognized_flags, has_residual = _extract_flags(", ".join(trailing_args))
+        if trailing_args and has_residual:
             findings.append(
                 f"SKIP (manual review): re.findall(r'{pattern}') has a trailing "
-                f"argument ({trailing_args[-1]!r}) this checker can't statically "
-                "resolve to known flags -- evaluating with zero flags could be "
-                "wrong if it's an indirect flags reference. Verify manually."
+                f"argument ({trailing_args[-1]!r}) this checker can't fully resolve "
+                "to known flags -- evaluating with only the recognized portion "
+                "could be wrong if the rest is an indirect flags reference. "
+                "Verify manually."
             )
             continue
         if unrecognized_flags:
