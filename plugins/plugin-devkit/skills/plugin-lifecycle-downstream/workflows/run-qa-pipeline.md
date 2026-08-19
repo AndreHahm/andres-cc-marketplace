@@ -77,9 +77,14 @@ Commit verified fixes only after separate file/message confirmation.
 `reviewing-evals` before the dispatch below — state the cost (one serial
 `Skill(reviewing-evals)` call per such skill; unlike the fan-out that follows, this doesn't
 parallelize) against the benefit (fewer eval-related findings for Phase 6 to fix). On yes,
-run it per skill and let the operator resolve any FAIL locally before continuing; on no, or
-when no in-scope skill has eval/smoke-test assets, proceed directly — this never runs by
-default. Then dispatch `plugin-auditor` over the declared scope — it dispatches
+run it per skill — explicitly instructing it, as part of each invocation, to skip its own
+Quick Start step 5 (the `plugin-auditor` dispatch ask), since this phase's own dispatch two
+sentences below already covers it over the whole declared scope; omitting that instruction
+would trigger a redundant per-skill audit (on yes to its own ask) or a repetitive prompt this
+phase's single gate never advertised (on no) — and let the operator resolve any FAIL locally
+before continuing; on no, or when no in-scope skill has eval/smoke-test assets, proceed
+directly — this never runs by default. Then dispatch `plugin-auditor` over the declared
+scope — it dispatches
 `dependency-reviewer`, `consistency-reviewer`, `security-reviewer`, `plugin-validator`
 (whole-plugin), `plugin-rulebook-checker` (Structured output mode), `activation-reviewer`,
 `completeness-reviewer`, the type-matched `*-reviewer`, and `scripts-reviewer`/
