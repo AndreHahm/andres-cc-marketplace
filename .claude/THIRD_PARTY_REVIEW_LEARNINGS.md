@@ -5,9 +5,11 @@ a PR needs, by catching these bug classes *before* pushing — via self-run trac
 schema/docs checks — rather than relying on the reviewer to find them. Findings for PR #54/#55 were
 captured live during those PRs' own review rounds; findings for PR #52/#51/#49/#47 were reconstructed
 afterward from each PR's actual GitHub review history (`gh api .../pulls/<n>/reviews` and `.../comments`),
-cross-checked against fix commits, since this document didn't exist while those PRs were in flight. Every
-finding cited below was real and confirmed fixed by a follow-up commit unless noted. This document exists
-to shorten the tail next time by naming the recurring *shapes* those findings took.
+cross-checked against fix commits, since this document didn't exist while those PRs were in flight. PR
+#61/#62/#65/#68 (added 2026-08-19) were captured live too, built directly from this document's own
+brainstormed action list. Every finding cited below was real and confirmed fixed by a follow-up commit
+unless noted (a small number were deliberately deferred to a tracking issue instead — marked as such).
+This document exists to shorten the tail next time by naming the recurring *shapes* those findings took.
 
 ---
 
@@ -540,9 +542,94 @@ crash. Also worth a SIGPIPE-under-`pipefail` check on any `sort | head` pattern 
 (flagged independently in round 1 on the same file) — both are cheap, mechanical bash pitfalls worth a
 standing pre-push check for any new bash script in this repo.
 
+**Refinement, verified live 2026-08-19 (`scripts-reviewer` Check 7 work, PR #65):** `10#$VAR` alone breaks
+on a *signed* value — `10#-08` and even plain `10#-8` (no leading zero at all) are both themselves
+"invalid integer constant," because the sign has to sit *outside* the base-qualified literal
+(`-10#08` evaluates correctly to `-8`; `10#-08` does not). A script that legitimately accepts a negative
+value needs the sign stripped and validated separately, magnitude-bounded and base-10-forced on the
+unsigned remainder (`10#${VAR#-}`), then the sign reapplied afterward — `10#$VAR` is only safe as written
+for an already-known-non-negative input.
+
 ---
 
-## Master pre-push checklist (all six PRs)
+## PR #61 / #62 / #65 / #68 — plugin-devkit rules & checkers built from this document (2026-08-19)
+
+This session acted directly on the brainstorm this document produced: added `reviewing-evals`'s 7th
+defect-class check (PR #61), built `check_tool_grants.py` (PR #62), added `scripts-reviewer` Checks 7-8
+(PR #65), and added the `verify-tool-behavior-before-instructing` rule itself (PR #68). New shapes found
+along the way, distinct from anything above:
+
+### Pattern: a rule about precision can itself contain the imprecision it warns against
+
+PR #68's own review — twice, by two different mechanisms — found an overstated absolute claim inside the
+brand-new `verify-tool-behavior-before-instructing.md` rule's own body:
+
+1. A local `cross-model-review` pass (single-model, Claude-native — no Codex dispatch) caught an invented
+   specific number ("found six review rounds apart") with no supporting evidence, in a rule whose entire
+   point is "don't assert unverified specifics."
+2. A real Codex PR review, on the same file, separately caught "Only `ast.parse()` can" (copied from this
+   very document's own PR #55 row) overstating the claim — other real parsers (`libcst`, `parso`) can also
+   do the job; the real point ("a real parser, not regex") didn't need the absolute framing.
+
+**Rule:** a new rule/doc whose subject is precision, verification, or avoiding overstated claims needs an
+extra self-audit pass over its *own* prose for the same defect before push — this class of component is
+disproportionately likely to contain it, precisely because absolute-sounding language ("only X can",
+"always", "never") is the natural way to state a rule crisply, and that's exactly the shape the rule itself
+is warning against.
+
+### Pattern: a review-suggested fix can introduce its own new defect class
+
+`scripts-reviewer`'s Check 8 (PR #65) recommended `|| true` as the fix for a SIGPIPE-abort false failure
+(an early-exiting consumer like `head` killing an upstream producer like `sort` under `pipefail`+`set -e`).
+A later Codex review on the same PR found `|| true` unconditionally converts *any* nonzero exit from that
+pipeline into success — not just the SIGPIPE case — silently masking a genuinely different failure (a
+permission error, a missing input file, disk I/O failure) that should have aborted loudly. The fix traded a
+safe, loud failure for an unsafe, silent one. (Tracked, not yet fixed:
+[#67](https://github.com/AndreHahm/andres-cc-marketplace/issues/67).)
+
+**Rule:** when a fix (yours or a reviewer's suggestion) resolves a cited finding by suppressing/catching an
+error class, check what *else* that suppression now silently swallows — not just whether the original
+symptom is gone.
+
+### Pattern: a mechanical check for "protection present" must recognize equivalent alternate protections, not just one literal idiom
+
+`scripts-reviewer`'s Check 7 (PR #65) flagged any bash arithmetic on a numeric value without a literal
+`10#$VAR` base-10-forcing prefix as Critical. A later Codex review found a real false-positive case: a
+script whose upstream regex validation (`^(0|[1-9][0-9]{0,2})$`) already structurally rejects every value
+that could be misread as octal, making the specific bug the check exists to catch impossible regardless of
+the missing literal prefix. (Tracked, not yet fixed:
+[#66](https://github.com/AndreHahm/andres-cc-marketplace/issues/66).)
+
+**Rule:** a mechanical/heuristic check for "is the known-bad pattern mitigated" should check whether
+*equivalent* protection exists in another form before flagging the one canonical idiom's absence — not
+every fix looks like the fix the checker was written against.
+
+### Confirms: `cross-model-review` catches real issues even in single-model (Claude-only) mode, at zero Codex-dispatch cost
+
+Both local `cross-model-review` passes run this session (PR #65, PR #68) were single-model — the user
+declined Codex dispatch each time via the mandatory First-Send Confirmation — yet both still surfaced real,
+confirmed findings before the first push (3 on PR #65, 1 on PR #68, the "six review rounds apart" claim
+above). This strengthens the existing "run `cross-model-review` locally before the first push, treat its
+findings as the primary pre-push gate" recommendation (PR #55 section, above): even the free, Claude-native-
+only path catches real issues other reviewers would otherwise have to find later, at push→CI→review round-
+trip cost.
+
+### Two more "assumed vs. actual" tool-behavior instances (same shape as the Cross-PR meta-pattern above), self-caught this session
+
+| Assumed behavior | Actual behavior |
+|---|---|
+| `gh api repos/{owner}/{repo}/pulls/comments/{id}/replies` replies to a PR review comment | 404s — the real endpoint requires the PR number in the path: `repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies` |
+| `git ls-remote --heads origin <branch> && echo found \|\| echo not-found` correctly reports whether the branch still exists | `git ls-remote` exits `0` whenever the *query itself* succeeds, regardless of whether any ref matched — a deleted branch still produces exit `0` with empty output; only the actual output content (not the exit code) tells you whether a match was found |
+
+Neither was caught by a reviewer — both were self-caught live in this session (the first via a 404 on
+attempted use; the second by noticing the script's own logic always printed "found" regardless of the real
+state, and re-running with a bare command to check actual output). Both fit the existing Cross-PR
+meta-pattern exactly and are recorded here rather than added to that table directly, since that table's own
+title scopes it to the original six PRs analyzed before this session's work began.
+
+---
+
+## Master pre-push checklist (all PRs analyzed, including this session's #61/#62/#65/#68)
 
 ### Tool, API & language behavior — verify, don't assume
 
@@ -556,6 +643,13 @@ standing pre-push check for any new bash script in this repo.
       variable across separate `Bash` calls?
 - [ ] Any new script whose job is "find/extract X from arbitrary source text in language L": using L's
       real parser (`ast` for Python, etc.) instead of hand-rolled regex/string-scanning?
+- [ ] Any REST API call whose path includes a nested resource ID (e.g. a PR review-comment reply): checked
+      the endpoint's *actual* required path segments live, not assumed from the sibling read/list endpoint's
+      shape? (`.../pulls/comments/{id}/replies` 404s; the real path is
+      `.../pulls/{pull_number}/comments/{comment_id}/replies`.)
+- [ ] Any script that branches on a CLI command's exit code alone (`cmd && ... || ...`) to detect "did X
+      happen": confirmed the command actually returns nonzero on the negative case, rather than exiting `0`
+      whenever the query itself succeeds regardless of match (e.g. `git ls-remote` on a nonexistent ref)?
 
 ### Chain, state & timing
 
@@ -585,6 +679,15 @@ standing pre-push check for any new bash script in this repo.
       `allowed-tools`, checked in this same edit?
 - [ ] When a review finding identifies a bug in one function/code block: grepped the rest of the
       file/component for the same anti-pattern signature before considering the fix complete?
+- [ ] Does a mechanical/heuristic check flag the *absence* of one canonical mitigation idiom? Checked
+      whether an *equivalent* alternate protection already exists elsewhere (e.g. upstream input
+      validation that makes the specific bug structurally impossible) before flagging it?
+- [ ] Does a fix (yours or a review suggestion) resolve a finding by suppressing/catching an error class
+      (e.g. `|| true`)? Checked what *else* that suppression now silently swallows, not just whether the
+      original symptom is gone?
+- [ ] Is this component itself a rule/doc about precision, verification, or avoiding overstated claims?
+      Given its own prose an extra pass for the same defect (absolute language like "only X can", "always",
+      "never") before push — this class of component is disproportionately likely to contain it.
 
 ### Docs & evals
 
@@ -599,6 +702,9 @@ standing pre-push check for any new bash script in this repo.
 
 - [ ] Any numeric input flowing into bash `$((...))` arithmetic: bounded in digit count and forced to
       base 10 (`10#$VAR`)?
+- [ ] Does that value need to accept a negative number? `10#$VAR` alone breaks on a signed value
+      (`10#-08`/`10#-8` are both "invalid integer constant") — sign must be stripped/validated separately
+      and reapplied after base-10 forcing on the unsigned remainder.
 - [ ] Any `sort | head` (or similar early-exiting consumer) in a bash script running under
       `set -e -o pipefail`: confirmed it can't SIGPIPE-abort on large input?
 
@@ -608,6 +714,7 @@ standing pre-push check for any new bash script in this repo.
       `security-reviewer` run against it *before* this first commit (see
       `.claude/rules/require-security-review-before-new-gate.md`)?
 - [ ] Did I run `cross-model-review` locally before the first push, and treat its findings as the primary
-      pre-push gate?
+      pre-push gate? (Confirmed worth doing even when declining Codex dispatch — single-model,
+      Claude-native-only passes caught real issues on both PR #65 and PR #68, at zero extra dispatch cost.)
 - [ ] If dispatching a verification pass, does the prompt explicitly ask for a step-by-step execution
       trace of the chain (not just a general quality/consistency review)?
