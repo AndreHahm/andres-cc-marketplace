@@ -20,8 +20,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-FINDALL_RE = re.compile(r"re\.findall\(\s*r?([\"'])(.*?)\1")
-SEARCH_RE = re.compile(r"re\.search\(\s*r?([\"'])(.*?)\1")
+# (?:[^\\]|\\.)*? -- escape-aware lazy match: a backslash-escaped delimiter
+# (e.g. \" inside a "..."-quoted literal) doesn't terminate the capture the
+# way a bare (.*?) would, which stops at the first literal occurrence of the
+# quote character even when it's escaped and semantically part of the string.
+FINDALL_RE = re.compile(r"re\.findall\(\s*r?([\"'])((?:[^\\]|\\.)*?)\1")
+SEARCH_RE = re.compile(r"re\.search\(\s*r?([\"'])((?:[^\\]|\\.)*?)\1")
 CALL_RE = re.compile(r"re\.(findall|search)\(")
 
 DEFAULT_REGEX_TIMEOUT_SECONDS = 2.0
@@ -56,12 +60,25 @@ def _extract_call_arg_text(source: str, arg_start: int) -> str:
     """From just after a matched pattern's closing quote, scan to the
     matching close-paren of the enclosing re.findall(...)/re.search(...) call
     -- balancing nested parens (e.g. `wf.read_text(encoding="utf-8")`) -- and
-    return the remaining argument text."""
+    return the remaining argument text. String-literal-aware: a paren inside
+    a quoted string argument (e.g. `comment="see docs (section 2"`) doesn't
+    count toward paren depth, since it isn't a real call-structure paren."""
     depth = 1
     i = arg_start
+    in_string = None
     while i < len(source) and depth > 0:
         c = source[i]
-        if c == "(":
+        if in_string:
+            if c == "\\" and i + 1 < len(source):
+                i += 2
+                continue
+            if c == in_string:
+                in_string = None
+            i += 1
+            continue
+        if c in ("'", '"'):
+            in_string = c
+        elif c == "(":
             depth += 1
         elif c == ")":
             depth -= 1
@@ -69,6 +86,46 @@ def _extract_call_arg_text(source: str, arg_start: int) -> str:
                 break
         i += 1
     return source[arg_start:i].lstrip(", \t\n")
+
+
+def _split_top_level_alternation(pattern: str) -> list[str]:
+    """Split a regex pattern on top-level '|' -- e.g. "cat|dog" -> ["cat",
+    "dog"], but "(cat|dog)" -> ["(cat|dog)"] (the | is inside a group, so
+    it's one branch, not two) and "a\\|b" -> ["a\\|b"] (escaped, literal).
+    Character classes (`[...]`) are tracked too, since `|` inside one is a
+    literal pipe character, not alternation."""
+    branches = []
+    depth = 0
+    in_class = False
+    current = []
+    i = 0
+    while i < len(pattern):
+        c = pattern[i]
+        if c == "\\" and i + 1 < len(pattern):
+            current.append(pattern[i : i + 2])
+            i += 2
+            continue
+        if in_class:
+            if c == "]":
+                in_class = False
+            current.append(c)
+        elif c == "[":
+            in_class = True
+            current.append(c)
+        elif c == "(":
+            depth += 1
+            current.append(c)
+        elif c == ")":
+            depth = max(0, depth - 1)
+            current.append(c)
+        elif c == "|" and depth == 0:
+            branches.append("".join(current))
+            current = []
+        else:
+            current.append(c)
+        i += 1
+    branches.append("".join(current))
+    return branches
 
 
 def _extract_flags(arg_text: str) -> tuple[list[str], list[str]]:
@@ -176,20 +233,36 @@ def check_zero_match_and_anchoring(
     for m in search_matches:
         literal_call_starts.add(m.start())
         pattern = m.group(2)
-        left_anchored = pattern.startswith(r"\b") or pattern.startswith("^")
-        right_anchored = pattern.endswith(r"\b") or pattern.endswith("$")
-        is_anchored = left_anchored and right_anchored
-        bare_needle = re.sub(r"[\\^$.*+?()\[\]{}|]", "", pattern)
-        if not is_anchored and len(bare_needle) <= 4:
-            findings.append(
-                f"FAIL (anchored matching): re.search(r'{pattern}') is a short, unanchored "
-                "needle, or anchored on only one side -- likely to false-positive on "
-                r"unrelated prose (e.g. \bcat still matches 'catalog')"
-            )
+        branches = _split_top_level_alternation(pattern)
+        weak_branches = []
+        for branch in branches:
+            left_anchored = branch.startswith(r"\b") or branch.startswith("^")
+            right_anchored = branch.endswith(r"\b") or branch.endswith("$")
+            is_anchored = left_anchored and right_anchored
+            bare_needle = re.sub(r"[\\^$.*+?()\[\]{}|]", "", branch)
+            if not is_anchored and len(bare_needle) <= 4:
+                weak_branches.append(branch)
+        if weak_branches:
+            if len(branches) > 1:
+                findings.append(
+                    f"FAIL (anchored matching): re.search(r'{pattern}') is an unanchored "
+                    "alternation with at least one short, unanchored branch "
+                    f"({', '.join(repr(b) for b in weak_branches)}) -- each branch matches "
+                    "independently, so a short unanchored branch is exactly as "
+                    r"false-positive-prone as a single short pattern (e.g. \bcat still matches "
+                    "'catalog')"
+                )
+            else:
+                findings.append(
+                    f"FAIL (anchored matching): re.search(r'{pattern}') is a short, unanchored "
+                    "needle, or anchored on only one side -- likely to false-positive on "
+                    r"unrelated prose (e.g. \bcat still matches 'catalog')"
+                )
         else:
             findings.append(
                 f"PASS (anchored matching): re.search(r'{pattern}') is anchored on "
                 "both sides or long enough to be specific"
+                + (" (every alternation branch checked independently)" if len(branches) > 1 else "")
             )
 
     any_call_found = False
@@ -260,6 +333,10 @@ def check_coverage_arithmetic(evals_json_path: Path) -> list[str]:
         return [
             f"FAIL (blocking): uncovered is a {type(uncovered).__name__}, expected a JSON array"
         ]
+    if total < 0:
+        return [f"FAIL (blocking): declared_scenarios_total is negative ({total})"]
+    if covered < 0:
+        return [f"FAIL (blocking): declared_scenarios_covered is negative ({covered})"]
 
     findings = []
     if covered + len(uncovered) != total:

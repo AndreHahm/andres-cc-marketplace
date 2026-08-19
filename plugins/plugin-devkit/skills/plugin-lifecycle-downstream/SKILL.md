@@ -297,9 +297,9 @@ the input contract.
   own): if the declared scope includes a skill with eval/smoke-test assets, ask whether to
   run `reviewing-evals` against each before the `plugin-auditor` dispatch — instructed to
   skip its own Quick Start steps 4 and 5 (the inline-fix loop and the redundant
-  `plugin-auditor` ask) on every invocation, since any FAIL becomes a finding for this
-  phase's own normalization step instead, never fixed inline (Phase 5 has no mutation
-  preflight or per-batch approval of its own). State the cost — one serial `Skill()` call
+  `plugin-auditor` ask) on every invocation, since any FAIL or BLOCKED becomes a finding
+  for this phase's own normalization step instead, never fixed inline (Phase 5 has no
+  mutation preflight or per-batch approval of its own). State the cost — one serial `Skill()` call
   per such skill, not parallelized like the dispatch it precedes — against the benefit of
   fewer eval-related findings for Phase 6 to fix. Never runs by default.
 
@@ -377,9 +377,10 @@ below for the runtime invariants this pipeline itself must hold at every phase.
 - [ ] Deep Test and Grading are explicit opt-ins.
 - [ ] Phase 5's Eval Pre-Check is an explicit opt-in and never blocks or delays the
       `plugin-auditor` dispatch when declined or when no in-scope skill qualifies.
-- [ ] Phase 5's Eval Pre-Check never fixes a FAIL inline — every FAIL becomes a finding
-      routed through Phase 5's own normalization and, if still blocking, Phase 6's gated
-      Fix & Re-audit procedure, never a local edit made without the mutation preflight and
+- [ ] Phase 5's Eval Pre-Check never fixes a FAIL or BLOCKED inline — every FAIL or BLOCKED
+      becomes a finding routed through Phase 5's own normalization and, if still blocking,
+      Phase 6's gated Fix & Re-audit procedure, never a local edit made without the
+      mutation preflight and
       per-batch approval only Phases 2, 4, 6, and 8 have wired in.
 - [ ] Phase 10 rechecks every affected evidence source after the last mutation.
 - [ ] Phase 11 performs evidence-only scoring and no duplicate review.

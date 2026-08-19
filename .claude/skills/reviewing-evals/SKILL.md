@@ -195,11 +195,22 @@ The scenario-exercised-by-which-eval judgment below still needs a human read.
   under the current working directory runs normally; a symlink resolving
   outside it is reported BLOCKED, never executed and never widened based on
   the target's own content/filename/documentation claims
+- `check_evals.py`'s coverage arithmetic rejects a negative
+  `declared_scenarios_total`/`declared_scenarios_covered` with a blocking
+  finding rather than letting it pass the arithmetic check
+- `check_evals.py`'s anchoring check evaluates each branch of an unanchored
+  alternation (`cat|dog`) independently and FAILs if any branch is short and
+  unanchored, rather than treating the concatenated branch lengths as one
+  needle's specificity
 
-**Last dated run record:** 2026-08-19 — `scripts/test_check_evals.py` (8/8
+**Last dated run record:** 2026-08-19 — `scripts/test_check_evals.py` (9/9
 fixture cases passed: zero-match guard, one-sided-anchoring rejection,
 haystack-unclear SKIP, non-literal-call SKIP, ReDoS-pattern timeout, regex-flag
-forwarding, coverage arithmetic PASS/FAIL, malformed-JSON blocking finding, and
-three malformed-structure blocking findings). Run
+forwarding, coverage arithmetic PASS/FAIL, malformed-JSON blocking finding,
+three malformed-structure blocking findings, negative-count blocking finding,
+paren-in-string call-boundary correctness, unanchored-alternation rejection,
+grouped-anchored-alternation PASS, and escaped-quote literal capture). Also
+verified via a cross-model review (Claude + Codex) of the full PR diff, which
+found the negative-count and alternation bugs Claude's own review missed. Run
 `python ${CLAUDE_PLUGIN_ROOT}/skills/reviewing-evals/scripts/test_check_evals.py`
 to reproduce.
