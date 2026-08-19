@@ -128,15 +128,16 @@ def _is_complete_literal_arg(source: str, end_pos: int) -> bool:
     return i < len(source) and source[i] in (",", ")")
 
 
-def _extract_call_arg_text(source: str, arg_start: int) -> str:
-    """From just after a matched pattern's closing quote, scan to the
-    matching close-paren of the enclosing re.findall(...)/re.search(...) call
-    -- balancing nested parens (e.g. `wf.read_text(encoding="utf-8")`) -- and
-    return the remaining argument text. String-literal-aware: a paren inside
-    a quoted string argument (e.g. `comment="see docs (section 2"`) doesn't
-    count toward paren depth, since it isn't a real call-structure paren."""
+def _scan_to_close_paren(source: str, start: int) -> int:
+    """From just inside an already-open paren (depth 1), scan to its matching
+    close-paren -- balancing nested parens (e.g. `wf.read_text(encoding="utf-8")`)
+    -- and return that close-paren's index. String-literal-aware: a paren
+    inside a quoted string argument (e.g. `comment="see docs (section 2"`)
+    doesn't count toward paren depth, since it isn't a real call-structure
+    paren. Returns `len(source)` if the paren never closes (malformed/
+    truncated input) rather than raising."""
     depth = 1
-    i = arg_start
+    i = start
     in_string = None
     while i < len(source) and depth > 0:
         c = source[i]
@@ -157,7 +158,15 @@ def _extract_call_arg_text(source: str, arg_start: int) -> str:
             if depth == 0:
                 break
         i += 1
-    return source[arg_start:i].lstrip(", \t\n")
+    return i
+
+
+def _extract_call_arg_text(source: str, arg_start: int) -> str:
+    """From just after a matched pattern's closing quote, scan to the
+    matching close-paren of the enclosing re.findall(...)/re.search(...) call
+    and return the remaining argument text."""
+    end = _scan_to_close_paren(source, arg_start)
+    return source[arg_start:end].lstrip(", \t\n")
 
 
 def _split_top_level_alternation(pattern: str) -> list[str]:
@@ -439,6 +448,40 @@ def _safe_findall_count(
     return True, payload.get("count", 0), ""
 
 
+def _is_absence_check_usage(source: str, call_start: int, args_start: int) -> bool:
+    """Best-effort heuristic (issue #56): does this re.findall(...) result look
+    like it's assigned to a variable and then used to check for *absence*
+    (`if <var>:`, `if not <var>:`, `assert not <var>`) rather than iterated?
+    If so, zero matches is the check's own intended passing outcome, not a
+    vacuous-iteration bug. `args_start` is the position just inside the call's
+    open paren (e.g. `m.end()` from a FINDALL_RE match), used to locate the
+    call's own close paren via `_scan_to_close_paren` before looking ahead.
+
+    Not real data-flow analysis -- just a narrow, bounded textual scan for the
+    exact shapes named in issue #56's suggested fix. A false negative here
+    (a real absence check this heuristic doesn't recognize) just leaves the
+    zero-match guard reporting FAIL as it always has -- no regression. A false
+    positive would wrongly downgrade a real vacuous-iteration bug, so this
+    stays deliberately narrow rather than trying to cover every idiom."""
+    line_start = source.rfind("\n", 0, call_start) + 1
+    prefix_on_line = source[line_start:call_start]
+    assign_m = re.match(r"^\s*(\w+)\s*=\s*$", prefix_on_line)
+    if not assign_m:
+        return False
+    var = re.escape(assign_m.group(1))
+
+    close_paren = _scan_to_close_paren(source, args_start)
+    newline_after_call = source.find("\n", close_paren)
+    if newline_after_call == -1:
+        return False
+    lookahead_lines = source[newline_after_call + 1 :].splitlines()[:5]
+    absence_re = re.compile(
+        rf"^\s*(?:if|elif|while)\s+(?:not\s+)?{var}\s*:"
+        rf"|^\s*assert\s+not\s+{var}\b"
+    )
+    return any(absence_re.match(line) for line in lookahead_lines)
+
+
 def check_zero_match_and_anchoring(
     smoke_test_path: Path, skill_md_text: str | None, regex_timeout: float
 ) -> list[str]:
@@ -526,7 +569,14 @@ def check_zero_match_and_anchoring(
         if not ok:
             findings.append(f"SKIP: pattern '{pattern}' could not be evaluated: {error}")
             continue
-        if count == 0:
+        if count == 0 and _is_absence_check_usage(source, m.start(), m.end()):
+            findings.append(
+                f"SKIP (manual review): re.findall(r'{pattern}') matches nothing, but the "
+                "result appears to be used in an absence check (`if`/`if not`/`assert not` "
+                "on the assigned variable), not iterated -- zero matches may be this check's "
+                "own intended passing outcome. Verify manually rather than confidently FAIL."
+            )
+        elif count == 0:
             findings.append(
                 f"FAIL (zero-match guard): re.findall(r'{pattern}') matches nothing "
                 "against the target's SKILL.md -- any check iterating this result is vacuous"

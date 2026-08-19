@@ -57,6 +57,10 @@ SCRIPT = Path(__file__).parent / "check_evals.py"
 # - check_escaped_dollar_anchor: an escaped "\$" at the end of a pattern is a
 #   literal dollar character, not a real end-of-string anchor -- must not be
 #   treated as anchoring the pattern
+# - check_absence_ok / check_absence_ok_assert (issue #56): a zero-match
+#   re.findall(...) assigned to a variable and then used in `if <var>:` or
+#   `assert not <var>` is an intentional absence check -- must be downgraded
+#   to SKIP (manual review), not confidently FAILed as vacuous iteration
 SMOKE_TEST_PY = r"""
 import re
 
@@ -126,6 +130,17 @@ def check_mixed_flags(skill_md_text):
 
 def check_escaped_dollar_anchor(skill_md_text):
     return re.search(r"^cat\$", skill_md_text)
+
+def check_absence_ok(skill_md_text):
+    matches = re.findall(r"forbidden_word_xyz", skill_md_text)
+    if matches:
+        return False
+    return True
+
+def check_absence_ok_assert(skill_md_text):
+    matches2 = re.findall(r"another_forbidden_xyz", skill_md_text)
+    assert not matches2
+    return True
 """
 
 SKILL_MD = (
@@ -272,6 +287,15 @@ def main() -> int:
                     # escaped "$" is a literal char, not a real end anchor
                     r"FAIL (anchored matching): re.search(r'^cat\$') is a "
                     "short, unanchored needle",
+                    # check_absence_ok / check_absence_ok_assert (issue #56):
+                    # zero matches used in an absence check must be downgraded
+                    # to SKIP, not confidently FAILed.
+                    "SKIP (manual review): re.findall(r'forbidden_word_xyz') "
+                    "matches nothing, but the result appears to be used in "
+                    "an absence check",
+                    "SKIP (manual review): re.findall(r'another_forbidden_xyz') "
+                    "matches nothing, but the result appears to be used in "
+                    "an absence check",
                 ],
                 [
                     # Negative assertions: confirm the bugs are actually fixed,
@@ -302,6 +326,10 @@ def main() -> int:
                     # check_escaped_dollar_anchor must NOT get the old, wrong
                     # confident PASS (treating the escaped "$" as a real anchor).
                     r"PASS (anchored matching): re.search(r'^cat\$')",
+                    # check_absence_ok / check_absence_ok_assert (issue #56)
+                    # must NOT get the old, wrong confident FAIL.
+                    "FAIL (zero-match guard): re.findall(r'forbidden_word_xyz')",
+                    "FAIL (zero-match guard): re.findall(r'another_forbidden_xyz')",
                 ],
             ),
             (
