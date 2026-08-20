@@ -1,50 +1,51 @@
 # Re-Check State Before a Side-Effecting Action
 
-## When this applies
+A skill, workflow, hook, or script that observes external async state it doesn't fully control (a
+CI run's conclusion, a bot's reaction, a PR's head SHA) MUST re-check that state immediately before
+any side-effecting action based on it (posting a comment, rerunning a workflow, merging) — never
+reuse a check from an earlier step, however recent — and MUST handle the observed value's full
+state space, not a pass/fail binary.
 
-Any skill, workflow, hook, or script that (a) observes external async state it doesn't fully
-control (a CI run's conclusion, a bot's reaction, a PR's head SHA, whether a workflow run exists
-yet, another maintainer's action) and (b) then takes an irreversible or side-effecting action
-(posting a comment, rerunning a workflow, merging, resolving a review thread) based on that
-observation.
+## Incorrect
 
-## Rule
+Checks the run's conclusion once, does other work, then acts on the stale value later — and only
+handles pass/fail:
 
-Before any side-effecting action whose correctness depends on previously-observed external state,
-re-check that state immediately before the action fires — not a check inherited from an earlier
-step, however recent. Apply this as one explicit design pass per skill, not a per-incident patch
-added reactively each time a reviewer finds the next stale window:
+```markdown
+Step 4: `gh run view <id> --json conclusion` → conclusion is `failure`.
+Step 5: ask the user whether to proceed (a pause of unknown length).
+Step 6: since step 4 already showed `failure`, rerun the workflow.
+```
 
-1. List every side-effecting call in the skill.
-2. For each one, name what external state it depends on, when that state was last observed, and
-   whether the gap between observation and action is long enough for the state to have changed —
-   a network round-trip, a `Skill()`/`Agent()` dispatch, a human confirmation step, or another step
-   doing unrelated work in between are all long enough.
-3. For any call whose dependency isn't re-checked immediately before it fires, add the re-check.
-4. Enumerate the full state space of whatever's being observed rather than assuming a binary — a
-   GitHub Actions run conclusion has at least
-   success/failure/cancelled/timed_out/neutral/action_required, not just pass/fail.
+By step 6 the run may have already been retried or resolved by someone else — the step-4 check is
+stale — and `cancelled`/`neutral`/`skipped`/`action_required`/`stale`/`startup_failure` were never
+considered as possible outcomes.
 
-This formalizes what the Master pre-push checklist already asks per side-effecting call
-(`.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`, lines 567-569): *"Does this skill/workflow observe
-external async state ... and then take a side-effecting action on it? Does every such action have
-its own immediate re-check right before it fires, not a check inherited from an earlier step?"*
-This rule turns that checklist line into an upfront design pass run once per skill, rather than a
-question answered reactively after a reviewer has already found the next stale window.
+## Correct
+
+Re-checks immediately before the side-effecting call, and branches on the full enum:
+
+```markdown
+Step 6: `gh run view <id> --json conclusion` (re-checked here, not inherited from step 4).
+  - `failure` / `timed_out`      → rerun.
+  - `success`                    → stop, already resolved.
+  - `cancelled` / `neutral` / `skipped` / `action_required` / `stale` / `startup_failure`
+                                  → stop, report the unexpected conclusion.
+```
+
+Get the full enum from the tool's current schema (e.g. `gh run list --help`'s `--status` list) when
+writing this kind of check — don't hand-write a shorter list from memory, since a partial list
+teaches the same incomplete-branch mistake this rule exists to prevent.
 
 ## Why
 
 PR #51 (`codex-review-recovery`) is documented in `.claude/THIRD_PARTY_REVIEW_LEARNINGS.md` as the
-richest PR in the review dataset — 7-8 Codex rounds, ~15 findings — and the same underlying shape
-recurred in a new place almost every round: the skill observed some external state (a PR's head
-SHA, a workflow run's conclusion, whether a run exists yet) and then took an irreversible action
-based on a check that had already gone stale by the time the action executed. This is a textbook
-TOCTOU (time-of-check-to-time-of-use) class. Five distinct occurrences are documented across
-rounds 2, 4, 5 (twice), 6, and 7 — each its own re-check window found and closed independently,
-because each fix addressed only the one instance a reviewer happened to flag that round, rather
-than being applied as a systematic principle across every side-effecting step in the skill.
+richest PR in the review dataset — 7-8 Codex rounds, ~15 findings — and this exact shape (a
+TOCTOU-class stale check feeding a side-effecting action) recurred in a new place almost every
+round: five distinct occurrences across rounds 2, 4, 5 (twice), 6, and 7, each fixed independently
+because each round's fix addressed only the one instance flagged that round.
 
 This is the TOCTOU class recurring at the skill-authoring level, not just the code level —
-[[verify-tool-behavior-before-instructing]] catches "does this tool/API behave the way I assumed
-it does," but says nothing about "has the state I already correctly observed changed by the time I
-act on it." The two failure modes are independent, and both showed up repeatedly in the same PR.
+[[verify-tool-behavior-before-instructing]] catches "does this tool/API behave the way I assumed it
+does," but says nothing about "has the state I already correctly observed changed by the time I act
+on it." The two failure modes are independent, and both showed up repeatedly in the same PR.
