@@ -1,0 +1,16 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Part A: states the gate fires on every PR regardless of what changed, with no bypass flag given", "passed": true, "evidence": "\"the mandatory gate... fires here regardless of what changed... using default BASE=main and no SCOPE\""},
+    {"text": "Part A: states the gate is re-invoked fresh even though cross-model-review was already run manually minutes earlier in the same session — the earlier run does not substitute for it", "passed": true, "evidence": "\"Re-invoke it fresh here even if it was already run manually earlier in this session... The earlier manual run does not satisfy this gate\""},
+    {"text": "Part A: states cross-model-review's own First-Send Confirmation still fires inside the nested call and is not answered on the user's behalf", "passed": true, "evidence": "\"cross-model-review's own mandatory First-Send Confirmation... still fires normally — the user is told, before any dispatch...\""},
+    {"text": "Part B: states step 4 is skipped entirely (no nested invocation) when a valid --bypass-cross-model-review reason is given", "passed": true, "evidence": "\"Pre-flight Checks step 4 is skipped entirely... Skill(git-kit:cross-model-review) is never invoked for this run\""},
+    {"text": "Part B: states the bypass reason is reported in session output only, with no GitHub comment, label, permission check, or PR-body edit", "passed": true, "evidence": "\"No... never written to the PR body, a PR comment, a label, or any other GitHub-visible location\""},
+    {"text": "Part C: states an empty-reason bypass is rejected before step 1 (push) runs, and the PR is not created while the bypass request is invalid", "passed": true, "evidence": "\"the flag is rejected as invalid... does not proceed to create the PR while the bypass request is still invalid\""},
+    {"text": "Does not conflate the cross-model-review bypass with the separate --bypass-codex-review flag/attestation", "passed": true, "evidence": "Explicitly contrasts the two flags in Part B's closing note"},
+    {"text": "Part D: states git status is re-checked after the fix lands, rather than reusing an earlier pre-gate read", "passed": true, "evidence": "\"create-pr re-runs git status (not trusting the earlier, now-stale clean-tree read from Pre-flight step 1 — that read predates the fix and is explicitly called out as stale...)\""},
+    {"text": "Part D: states the fix is re-committed (Skill(git-kit:commit), with the same skip-Auto-PR instruction) before the eventual git push, never left uncommitted or silently pushed unstaged", "passed": true, "evidence": "\"create-pr re-invokes Skill(git-kit:commit), again telling it explicitly to skip its own Auto-PR step... Only after that commit completes does create-pr proceed to... git push\""}
+  ],
+  "summary": {"assertions_total": 9, "assertions_passed": 9, "pass_rate": 1.0}
+}

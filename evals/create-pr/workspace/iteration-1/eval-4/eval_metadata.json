@@ -1,0 +1,13 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/create-pr/SKILL.md",
+  "assertions": [
+    {"text": "Part A: resolves the head SHA (gh pr view --json headRefOid) and the current actor (gh api user) after the PR is created", "type": "functionality", "target": "outputs/ walkthrough Part A"},
+    {"text": "Part A: verifies live write/maintain/admin merge-capable permission before attesting", "type": "functionality", "target": "outputs/ walkthrough Part A"},
+    {"text": "Part A: states the attestation marker is built via jq -n --arg (or equivalent), never by interpolating the reason directly into a shell string", "type": "functionality", "target": "outputs/ walkthrough Part A"},
+    {"text": "Part A: states the bypass is SHA-bound and a new push invalidates it", "type": "quality", "target": "outputs/ walkthrough Part A"},
+    {"text": "Part B: states an empty-reason bypass is rejected before any comment or label action, and the already-created PR is unaffected", "type": "functionality", "target": "outputs/ walkthrough Part B"},
+    {"text": "Part C: states a failed attestation (insufficient permission) is reported plainly as a failure, distinct from success, and that the PR itself still exists and is unaffected", "type": "functionality", "target": "outputs/ walkthrough Part C"},
+    {"text": "Part A: names the specific repo-internal mechanism that actually enforces the SHA-binding — that check_bypass in scripts/marketplace_ci/review.py requires an exact head-SHA match — not just generic 'a new push changes the SHA so it stops matching' reasoning a security-savvy agent could invent without reading this repo's own code", "type": "quality", "target": "outputs/ walkthrough Part A"}
+  ]
+}

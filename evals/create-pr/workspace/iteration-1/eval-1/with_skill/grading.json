@@ -1,0 +1,15 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Checks for uncommitted changes before doing anything else (Pre-flight step 1-3)", "passed": true, "evidence": "\"Run `git status` to check for uncommitted changes... Because there are no uncommitted changes, Skill(git-kit:commit) is NOT invoked\""},
+    {"text": "Invokes the mandatory cross-model-review gate before step 1's git push, unconditionally", "passed": true, "evidence": "\"Cross-model-review gate (mandatory unless --bypass-cross-model-review is given; it was not given in this task, so the gate runs)... Invoke Skill(git-kit:cross-model-review) against the full current diff vs. main\""},
+    {"text": "Re-resolves the PR template rather than assuming one", "passed": true, "evidence": "\"Step 0 — Resolve PR template: Check whether .github/pull_request_template.md exists... If no, fall back to ${CLAUDE_SKILL_DIR}/assets/pull_request_template.md\""},
+    {"text": "Asks draft-vs-ready-to-merge via AskUserQuestion rather than assuming draft", "passed": true, "evidence": "\"Ask draft vs. ready-to-merge via AskUserQuestion... NEEDS RESOLVING: not assumed silently\""},
+    {"text": "Validates the PR title via check-pr-title.py before gh pr create", "passed": true, "evidence": "\"Validate the drafted title against this repo's real CI policy: uv run python \\\"${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py\\\"\""},
+    {"text": "Resolves an assignee (gh api user, falling back to the repo owner) before gh pr create", "passed": true, "evidence": "\"Try gh api user --jq '.login'... If that fails or returns empty, fall back to gh repo view --json owner --jq '.owner.login'\""},
+    {"text": "Writes the gh-pr-create marker immediately before gh pr create, not earlier", "passed": true, "evidence": "\"run: \\\"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh\\\" gh-pr-create create-pr (written right before this step since the guard hook only accepts markers up to 60s old)\""},
+    {"text": "Final narrated gh pr create command includes --assignee and either --draft or no --draft, consistent with the stated draft-vs-ready answer", "passed": true, "evidence": "Both draft and ready-to-merge command variants shown, each with --assignee <login>"}
+  ],
+  "summary": {"assertions_total": 8, "assertions_passed": 8, "pass_rate": 1.0}
+}
