@@ -5,6 +5,8 @@
     {"text": "Runs the normal Pre-flight Checks, including the mandatory cross-model-review gate, before creating the PR", "type": "functionality", "target": "outputs/ walkthrough"},
     {"text": "At the Issue-linking hand-off step, invokes Skill(git-kit:collaborating-on-a-pr) because this is a direct top-level invocation, not a nested call from collaborating-on-a-pr's own Path A", "type": "functionality", "target": "outputs/ walkthrough"},
     {"text": "States the hand-off instructs collaborating-on-a-pr to run only Path A step 2 (verify/patch the Closes #123 line) and never to re-invoke create-pr", "type": "functionality", "target": "outputs/ walkthrough"},
-    {"text": "Never describes creating a second/duplicate PR for the same issue reference", "type": "quality", "target": "outputs/ walkthrough"}
+    {"text": "Never describes creating a second/duplicate PR for the same issue reference", "type": "quality", "target": "outputs/ walkthrough"},
+    {"text": "Part B: states the bypass flag only affects Pre-flight step 4 (skips cross-model-review, reported in session output only, no GitHub side effect) and does not change the issue-linking hand-off at step 6", "type": "functionality", "target": "outputs/ walkthrough Part B"},
+    {"text": "Part B: states the issue-linking hand-off proceeds exactly as in Part A regardless of the bypass flag, and explicitly calls out that the two mechanisms are independent (step 4 fully resolves before step 6 ever runs, no shared state)", "type": "functionality", "target": "outputs/ walkthrough Part B"}
   ]
 }
