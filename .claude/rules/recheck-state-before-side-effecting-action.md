@@ -23,27 +23,45 @@ considered as possible outcomes.
 
 ## Correct
 
-Re-checks immediately before the side-effecting call, and branches on the full enum:
+Re-checks immediately before the side-effecting call, gates on `status` before trusting
+`conclusion` at all, and branches on the full enum:
 
 ```markdown
-Step 6: `gh run view <id> --json conclusion` (re-checked here, not inherited from step 4).
-  - `failure` / `timed_out`      → rerun.
-  - `success`                    → stop, already resolved.
-  - `cancelled` / `neutral` / `skipped` / `action_required` / `stale` / `startup_failure`
+Step 6: `gh run view <id> --json status,conclusion` (re-checked here, not inherited from step 4).
+  - `status` is `queued` / `in_progress`
+                                  → stop, a retry is already underway; don't act yet.
+  - `status` is `completed`, `conclusion` `failure` / `timed_out`
+                                  → rerun.
+  - `status` is `completed`, `conclusion` `success`
+                                  → stop, already resolved.
+  - `status` is `completed`, `conclusion` `cancelled` / `neutral` / `skipped` /
+    `action_required` / `stale` / `startup_failure`
                                   → stop, report the unexpected conclusion.
 ```
 
-Get the full enum from the tool's current schema (e.g. `gh run list --help`'s `--status` list) when
-writing this kind of check — don't hand-write a shorter list from memory, since a partial list
-teaches the same incomplete-branch mistake this rule exists to prevent.
+`conclusion` is only meaningful once `status` is `completed` — reading it without checking `status`
+first misses the case where another actor already started a fresh run. Get both enums from the
+tool's current schema (e.g. `gh run list --help`'s `--status` list) when writing this kind of
+check — don't hand-write a shorter list from memory, since a partial list teaches the same
+incomplete-branch mistake this rule exists to prevent.
+
+## Enforcement
+
+No automated hook backs this rule — whether a given side-effecting call actually re-checked its
+own dependency immediately beforehand is a semantic judgment about a skill's control flow, not a
+pattern a mechanical `PreToolUse` hook can reliably detect. Per this repo's own enforcement-limits
+guidance, a `MUST`-level directive around an irreversible action needs a deterministic backstop to
+be a real guarantee rather than prose alone; here, that backstop is author/reviewer judgment at
+Build/Self-Review time (the same policy-gate model `require-security-review-before-new-gate.md`
+uses), not a hook.
 
 ## Why
 
 PR #51 (`codex-review-recovery`) is documented in `.claude/THIRD_PARTY_REVIEW_LEARNINGS.md` as the
 richest PR in the review dataset — 7-8 Codex rounds, ~15 findings — and this exact shape (a
 TOCTOU-class stale check feeding a side-effecting action) recurred in a new place almost every
-round: five distinct occurrences across rounds 2, 4, 5 (twice), 6, and 7, each fixed independently
-because each round's fix addressed only the one instance flagged that round.
+round from round 2 through round 7, each fixed independently because each round's fix addressed
+only the one instance flagged that round.
 
 This is the TOCTOU class recurring at the skill-authoring level, not just the code level —
 [[verify-tool-behavior-before-instructing]] catches "does this tool/API behave the way I assumed it
