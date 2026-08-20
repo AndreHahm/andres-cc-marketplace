@@ -1,0 +1,15 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Checks for uncommitted changes before doing anything else (Pre-flight step 1-3)", "passed": true, "evidence": "\"git status — confirm branch is feat/example-widget and working tree is clean\""},
+    {"text": "Invokes the mandatory cross-model-review gate before step 1's git push, unconditionally", "passed": false, "evidence": "No mention of any independent/adversarial review step anywhere in the walkthrough; jumps from status checks straight to gathering commit history and creating the PR"},
+    {"text": "Re-resolves the PR template rather than assuming one", "passed": true, "evidence": "\"Check for a PR template in the repo... Look for .github/PULL_REQUEST_TEMPLATE.md\""},
+    {"text": "Asks draft-vs-ready-to-merge via AskUserQuestion rather than assuming draft", "passed": true, "evidence": "\"genuinely ambiguous from 'create a PR for this' alone. I would ask the user explicitly\""},
+    {"text": "Validates the PR title via check-pr-title.py before gh pr create", "passed": false, "evidence": "No mention of any title-policy check; only generic title derivation from commit log, no repo-specific validation step"},
+    {"text": "Resolves an assignee (gh api user, falling back to the repo owner) before gh pr create", "passed": false, "evidence": "\"ASSIGNEE — not mentioned by the user. I would ask whether to self-assign... or leave unassigned\" — defers to asking the user rather than resolving via gh api user with a repo-owner fallback"},
+    {"text": "Writes the gh-pr-create marker immediately before gh pr create, not earlier", "passed": false, "evidence": "No mention of any marker file or guard-hook handshake anywhere in the walkthrough"},
+    {"text": "Final narrated gh pr create command includes --assignee and either --draft or no --draft, consistent with the stated draft-vs-ready answer", "passed": true, "evidence": "Final command includes both --assignee \"<ASSIGNEE: ask user...>\" and --draft with reasoning for the default"}
+  ],
+  "summary": {"assertions_total": 8, "assertions_passed": 4, "pass_rate": 0.5}
+}

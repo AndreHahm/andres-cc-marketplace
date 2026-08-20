@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Runs the normal Pre-flight Checks, including the mandatory cross-model-review gate, before creating the PR", "passed": false, "evidence": "No independent/adversarial review step described anywhere; walkthrough goes directly from status/branch checks to PR creation"},
+    {"text": "At the Issue-linking hand-off step, invokes Skill(git-kit:collaborating-on-a-pr) because this is a direct top-level invocation, not a nested call from collaborating-on-a-pr's own Path A", "passed": false, "evidence": "\"No other tool, skill, or delegated call is involved in a baseline flow — GitHub's own issue-linking behavior is triggered purely by specific keyword text in the PR body\" — no skill invocation at all"},
+    {"text": "States the hand-off instructs collaborating-on-a-pr to run only Path A step 2 (verify/patch the Closes #123 line) and never to re-invoke create-pr", "passed": false, "evidence": "No hand-off exists in this response to carry such an instruction"},
+    {"text": "Never describes creating a second/duplicate PR for the same issue reference", "passed": true, "evidence": "Only a single gh pr create call is described, with verification via gh pr view --json closingIssuesReferences afterward — no duplicate PR"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 1, "pass_rate": 0.25}
+}

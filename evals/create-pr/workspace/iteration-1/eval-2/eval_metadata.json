@@ -1,0 +1,15 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/create-pr/SKILL.md",
+  "assertions": [
+    {"text": "Part A: states the gate fires on every PR regardless of what changed, with no bypass flag given", "type": "functionality", "target": "outputs/ walkthrough Part A"},
+    {"text": "Part A: states the gate is re-invoked fresh even though cross-model-review was already run manually minutes earlier in the same session — the earlier run does not substitute for it", "type": "functionality", "target": "outputs/ walkthrough Part A"},
+    {"text": "Part A: states cross-model-review's own First-Send Confirmation still fires inside the nested call and is not answered on the user's behalf", "type": "functionality", "target": "outputs/ walkthrough Part A"},
+    {"text": "Part B: states step 4 is skipped entirely (no nested invocation) when a valid --bypass-cross-model-review reason is given", "type": "functionality", "target": "outputs/ walkthrough Part B"},
+    {"text": "Part B: states the bypass reason is reported in session output only, with no GitHub comment, label, permission check, or PR-body edit", "type": "functionality", "target": "outputs/ walkthrough Part B"},
+    {"text": "Part C: states an empty-reason bypass is rejected before step 1 (push) runs, and the PR is not created while the bypass request is invalid", "type": "functionality", "target": "outputs/ walkthrough Part C"},
+    {"text": "Does not conflate the cross-model-review bypass with the separate --bypass-codex-review flag/attestation", "type": "quality", "target": "outputs/ walkthrough"},
+    {"text": "Part D: states git status is re-checked after the fix lands, rather than reusing an earlier pre-gate read", "type": "functionality", "target": "outputs/ walkthrough Part D"},
+    {"text": "Part D: states the fix is re-committed (Skill(git-kit:commit), with the same skip-Auto-PR instruction) before the eventual git push, never left uncommitted or silently pushed unstaged", "type": "functionality", "target": "outputs/ walkthrough Part D"}
+  ]
+}

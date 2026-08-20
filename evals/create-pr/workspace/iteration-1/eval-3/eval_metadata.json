@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/create-pr/SKILL.md",
+  "assertions": [
+    {"text": "Runs the normal Pre-flight Checks, including the mandatory cross-model-review gate, before creating the PR", "type": "functionality", "target": "outputs/ walkthrough"},
+    {"text": "At the Issue-linking hand-off step, invokes Skill(git-kit:collaborating-on-a-pr) because this is a direct top-level invocation, not a nested call from collaborating-on-a-pr's own Path A", "type": "functionality", "target": "outputs/ walkthrough"},
+    {"text": "States the hand-off instructs collaborating-on-a-pr to run only Path A step 2 (verify/patch the Closes #123 line) and never to re-invoke create-pr", "type": "functionality", "target": "outputs/ walkthrough"},
+    {"text": "Never describes creating a second/duplicate PR for the same issue reference", "type": "quality", "target": "outputs/ walkthrough"}
+  ]
+}

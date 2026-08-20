@@ -1,0 +1,14 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Part A: resolves the head SHA (gh pr view --json headRefOid) and the current actor (gh api user) after the PR is created", "passed": true, "evidence": "\"re-run git rev-parse HEAD (or read the PR's headRefOid via gh pr view --json headRefOid) immediately before posting anything\"; actor resolved via \"gh api user --jq .login\""},
+    {"text": "Part A: verifies live write/maintain/admin merge-capable permission before attesting", "passed": true, "evidence": "\"at least write permission — maintain and admin also qualify; read or triage should not be able to self-authorize\""},
+    {"text": "Part A: states the attestation marker is built via jq -n --arg (or equivalent), never by interpolating the reason directly into a shell string", "passed": true, "evidence": "\"written to a temporary file... never interpolated directly into a shell command string\" — functionally equivalent safe-embedding approach"},
+    {"text": "Part A: states the bypass is SHA-bound and a new push invalidates it", "passed": true, "evidence": "\"if the branch is pushed to again after the bypass is granted, the bypass should not silently continue to apply to the new SHA\""},
+    {"text": "Part B: states an empty-reason bypass is rejected before any comment or label action, and the already-created PR is unaffected", "passed": true, "evidence": "\"Validate the reason argument... BEFORE creating the PR or posting any attestation... The PR itself can still be created normally\""},
+    {"text": "Part C: states a failed attestation (insufficient permission) is reported plainly as a failure, distinct from success, and that the PR itself still exists and is unaffected", "passed": true, "evidence": "\"The bypass was NOT applied... PR creation and the bypass attestation are independent actions. The PR... still exists\""},
+    {"text": "Part A: names the specific repo-internal mechanism that actually enforces the SHA-binding — that check_bypass in scripts/marketplace_ci/review.py requires an exact head-SHA match — not just generic 'a new push changes the SHA so it stops matching' reasoning a security-savvy agent could invent without reading this repo's own code", "passed": false, "evidence": "Original response only says the SHA \"matters later because the bypass attestation should be bound to a specific commit\" and should not \"silently continue to apply to the new SHA\" — generic security reasoning, never names any specific script, function, or file in this repository. This response was not re-run against a hint (unlike with_skill's rerun for this same assertion), so this FAIL is clean, unhinted evidence of the gap."}
+  ],
+  "summary": {"assertions_total": 7, "assertions_passed": 6, "pass_rate": 0.8571428571428571}
+}

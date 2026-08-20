@@ -1,0 +1,43 @@
+{
+  "skill_name": "create-pr",
+  "skill_path": "plugins/git-kit/skills/create-pr/SKILL.md",
+  "description": "Create pull requests via GitHub CLI with template resolution, draft-vs-ready confirmation, a mandatory cross-model-review pre-flight gate, and optional Codex-review-bypass attestation.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Basic PR creation (no flags)",
+      "prompt": "You are on branch `feat/example-widget`. All work is committed and already pushed to `origin/feat/example-widget`. No PR is open for this branch yet, and no issue was mentioned. The user says: \"create a PR for this.\"\n\nDRY RUN ONLY — this is a test of your reasoning, not a live task. Do not actually invoke Bash, git, gh, or any Skill/Agent tool. Instead, narrate the exact ordered sequence of steps you would take, ending with the literal `gh pr create` command (every flag included, with placeholder values noted for anything you'd need to resolve first) you would run. State explicitly which values need resolving before that command (assignee, title, draft-vs-ready) and how each would be resolved.",
+      "expected_output": "A step-ordered walkthrough that: checks for uncommitted changes first; runs the new mandatory cross-model-review gate (Pre-flight step 4) before ever reaching git push; resolves the PR template (checks for .github/pull_request_template.md, falls back to the bundled asset); asks draft-vs-ready via AskUserQuestion rather than assuming; validates the title via check-pr-title.py; resolves an assignee via gh api user with a repo-owner fallback; writes the gh-pr-create marker immediately before gh pr create; and produces a final gh pr create command that includes --assignee and either --draft or nothing, matching the user's draft-vs-ready answer.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "cross-model-review gate + bypass",
+      "prompt": "Same starting point: branch `feat/example-widget`, everything committed and pushed, no PR open, no issue mentioned.\n\nDRY RUN ONLY — narrate steps, do not actually invoke Bash, git, gh, or any Skill/Agent tool.\n\nPart A: The user says \"create a PR for this.\" Before anything gets pushed or a PR gets opened, does any independent/adversarial review of the diff happen? If so, describe what runs and against what scope of the diff. Does it matter that a similar review was already run manually by hand five minutes ago in this same session against what looks like the same diff — does that earlier run count, or does it need to happen again?\n\nPart B: The user instead says: create a PR for this, with --bypass-cross-model-review \"already reviewed manually, low-risk docs change\". What changes? Is anything posted to GitHub because of this flag?\n\nPart C: The user says: create a PR for this, with --bypass-cross-model-review \"\" (empty reason). What happens?\n\nPart D: Back in Part A's scenario (no bypass flag, the review runs for real). Suppose that review comes back with one finding, the user says to fix it, and fixing it means editing a file in the working tree. Now the diff has changed since the last time anything checked whether the tree was clean. What happens between that edit and the eventual `git push` — is the edit committed automatically, is it left uncommitted, or is the user asked something?",
+      "expected_output": "Part A: the gate fires unconditionally (Skill(git-kit:cross-model-review) invoked against the full diff, default BASE=main, no SCOPE) regardless of what changed, and re-invokes fresh even though it was run manually minutes earlier in the same session — the earlier run never substitutes for this gate. It also correctly notes cross-model-review's own mandatory First-Send Confirmation still fires inside the nested call, unanswered on the user's behalf. Part B: step 4 is skipped entirely instead of invoking the nested skill; the reason is reported in session output only; explicitly no GitHub comment, label, or permission check, and no PR-body edit. Part C: the bypass is rejected before step 1 (push) runs because the reason is empty — the run does not silently fall through to running the gate, and does not create the PR while the bypass request is invalid; it asks for a valid reason. Part D: after the fix lands, git status is re-checked (not reused from the earlier pre-gate read); since the fix is now uncommitted work, Skill(git-kit:commit) is re-invoked (with the same skip-its-own-Auto-PR-step instruction), before proceeding to push — the edit is never left uncommitted and never silently carried into git push without being committed first.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "Issue-linking (Closes #N) via direct invocation",
+      "prompt": "You are invoked as `/create-pr 123` (issue #123 should be closed by this PR) — a direct top-level invocation, not something another skill is delegating to you. Branch `feat/example-widget`, everything committed and pushed, no PR open yet.\n\nDRY RUN ONLY — narrate steps, do not actually invoke Bash, git, gh, or any Skill/Agent tool.\n\nWalk through the full sequence, including how the PR ends up with a line that closes issue #123. If any other tool, skill, or delegated call is involved in making that happen, name it and state exactly what instruction you'd give it, and how you'd confirm the Closes #123 line actually landed in the PR body.",
+      "expected_output": "Runs the normal Pre-flight Checks (including the mandatory cross-model-review gate) and PR-creation steps, then at the Issue-linking hand-off step invokes Skill(git-kit:collaborating-on-a-pr) — since this is a direct top-level invocation, not a nested call from collaborating-on-a-pr's own Path A, so the skip-condition doesn't apply. States it instructs that nested call to run only Path A step 2 (verify/patch the Closes #123 line) and never to re-invoke create-pr itself, since the PR already exists by that point. Never invokes collaborating-on-a-pr a second time or creates a duplicate PR.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "--bypass-codex-review attestation",
+      "prompt": "Same starting point: branch `feat/example-widget`, everything committed and pushed, no PR open, no issue mentioned.\n\nDRY RUN ONLY — narrate steps, do not actually invoke Bash, git, gh, or any Skill/Agent tool.\n\nPart A: The user says: create a PR for this, with --bypass-codex-review \"tested manually, urgent hotfix\". Walk through the full attestation flow after the PR is created: what gets resolved, what gets checked, what gets posted, and how the reason text is safely embedded.\n\nPart B: The user says: create a PR for this, with --bypass-codex-review \"\" (empty reason). What happens?\n\nPart C: Suppose the actor resolved in Part A turns out to lack write/maintain/admin permission on the repo. What is reported, and is the PR itself affected?",
+      "expected_output": "Part A: after gh pr create succeeds, resolves the head SHA (gh pr view --json headRefOid), resolves the current actor (gh api user), verifies live merge-capable permission, builds a schema_version:1 JSON marker via jq -n --arg (never raw shell string interpolation of the reason), posts it as a PR comment, and applies the codex-review-bypassed label — reporting the bypass is SHA-bound and a new push invalidates it. Part B: rejected before posting any comment or applying any label; the already-created PR from step 4 is explicitly stated as unaffected. Part C: attestation not posted, failure reported plainly and distinctly from a success, PR still exists and is explicitly stated as unaffected by the failed attestation.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 4,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "Verify this skill activates on: \"open a PR\" / \"create a pull request\" / \"push this and make a PR\", \"create a PR\" with no issue mentioned, `/create-pr` (this eval set invokes create-pr's SKILL.md directly rather than testing whether a raw user phrase routes to it, so activation-trigger behavior itself is not exercised)",
+      "Verify it does NOT activate on: \"create a PR that closes #123\" (routes to collaborating-on-a-pr instead), \"review this PR\"/\"approve this PR\"/\"request changes on PR #42\" (routes to collaborating-on-a-pr), \"summarize this PR's changes\"/\"update this PR's description\" (routes to explain-pr-changes), \"merge this PR\"/\"is this ready to merge\" (routes to merge-pr) — same reason: this eval set never tests routing/activation, only behavior once already invoked"
+    ]
+  }
+}

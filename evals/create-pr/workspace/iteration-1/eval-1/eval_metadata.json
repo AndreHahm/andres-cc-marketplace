@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/create-pr/SKILL.md",
+  "assertions": [
+    {"text": "Checks for uncommitted changes before doing anything else (Pre-flight step 1-3)", "type": "functionality", "target": "outputs/ walkthrough"},
+    {"text": "Invokes the mandatory cross-model-review gate (Pre-flight step 4) before step 1's git push, unconditionally", "type": "functionality", "target": "outputs/ walkthrough"},
+    {"text": "Re-resolves the PR template (.github/pull_request_template.md, else the bundled asset) rather than assuming one", "type": "functionality", "target": "outputs/ walkthrough"},
+    {"text": "Asks draft-vs-ready-to-merge via AskUserQuestion rather than assuming draft", "type": "functionality", "target": "outputs/ walkthrough"},
+    {"text": "Validates the PR title via check-pr-title.py before gh pr create", "type": "functionality", "target": "outputs/ walkthrough"},
+    {"text": "Resolves an assignee (gh api user, falling back to the repo owner) before gh pr create", "type": "functionality", "target": "outputs/ walkthrough"},
+    {"text": "Writes the gh-pr-create marker immediately before gh pr create, not earlier", "type": "functionality", "target": "outputs/ walkthrough"},
+    {"text": "Final narrated gh pr create command includes --assignee and either --draft or no --draft, consistent with the stated draft-vs-ready answer", "type": "quality", "target": "outputs/ walkthrough"}
+  ]
+}

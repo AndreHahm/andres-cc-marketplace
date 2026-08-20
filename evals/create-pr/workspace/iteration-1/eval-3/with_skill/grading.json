@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs the normal Pre-flight Checks, including the mandatory cross-model-review gate, before creating the PR", "passed": true, "evidence": "\"Mandatory cross-model-review gate, run before ever reaching git push: Invoke Skill(git-kit:cross-model-review) against the full diff... Since no bypass flag... was passed in $ARGUMENTS, this step cannot be skipped\""},
+    {"text": "At the Issue-linking hand-off step, invokes Skill(git-kit:collaborating-on-a-pr) because this is a direct top-level invocation, not a nested call from collaborating-on-a-pr's own Path A", "passed": true, "evidence": "\"This run is a direct top-level invocation of create-pr — it was NOT invoked as a nested dependency from collaborating-on-a-pr's Path A... So the skip condition does not apply, and this step runs... I invoke Skill(git-kit:collaborating-on-a-pr)\""},
+    {"text": "States the hand-off instructs collaborating-on-a-pr to run only Path A step 2 (verify/patch the Closes #123 line) and never to re-invoke create-pr", "passed": true, "evidence": "\"Run only your Path A step 2: verify that the PR body actually contains a Closes #123... Do not run any other path or step. Do not re-invoke create-pr under any circumstance\""},
+    {"text": "Never describes creating a second/duplicate PR for the same issue reference", "passed": true, "evidence": "Only one gh pr create call described; the hand-off is explicitly framed as verify-and-patch of the existing PR, not creation of a new one"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
