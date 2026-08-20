@@ -1,7 +1,7 @@
 {
   "skill_name": "create-pr",
   "iteration": 1,
-  "timestamp": "2026-08-20T19:06:20+02:00",
+  "timestamp": "2026-08-20T20:42:04+02:00",
   "evals": [
     {
       "eval_id": 1,
@@ -29,22 +29,22 @@
       "eval_id": 2,
       "with_skill": {
         "pass_rate": 1.0,
-        "assertions_passed": 9,
-        "assertions_total": 9,
-        "avg_tokens": 72882,
-        "avg_duration_ms": 60239
+        "assertions_passed": 11,
+        "assertions_total": 11,
+        "avg_tokens": 76060,
+        "avg_duration_ms": 83254
       },
       "baseline": {
-        "pass_rate": 0.3333333333333333,
-        "assertions_passed": 3,
-        "assertions_total": 9,
-        "avg_tokens": 69321,
-        "avg_duration_ms": 54166
+        "pass_rate": 0.5454545454545454,
+        "assertions_passed": 6,
+        "assertions_total": 11,
+        "avg_tokens": 75142,
+        "avg_duration_ms": 119394
       },
       "delta": {
-        "pass_rate": 0.6667,
-        "tokens": 3561,
-        "duration_ms": 6073
+        "pass_rate": 0.4545,
+        "tokens": 918,
+        "duration_ms": -36140
       }
     },
     {
@@ -94,13 +94,13 @@
   ],
   "summary": {
     "with_skill_avg_pass_rate": 1.0,
-    "baseline_avg_pass_rate": 0.506,
-    "improvement": 0.494,
-    "avg_tokens_with_skill": 73879,
-    "avg_tokens_baseline": 71161,
-    "token_cost": 2718,
-    "avg_duration_ms_with_skill": 61660,
-    "avg_duration_ms_baseline": 75223,
-    "duration_cost_ms": -13563
+    "baseline_avg_pass_rate": 0.559,
+    "improvement": 0.441,
+    "avg_tokens_with_skill": 74674,
+    "avg_tokens_baseline": 72617,
+    "token_cost": 2057,
+    "avg_duration_ms_with_skill": 67413,
+    "avg_duration_ms_baseline": 91530,
+    "duration_cost_ms": -24117
   }
 }

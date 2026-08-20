@@ -10,6 +10,8 @@
     {"text": "Part C: states an empty-reason bypass is rejected before step 1 (push) runs, and the PR is not created while the bypass request is invalid", "type": "functionality", "target": "outputs/ walkthrough Part C"},
     {"text": "Does not conflate the cross-model-review bypass with the separate --bypass-codex-review flag/attestation", "type": "quality", "target": "outputs/ walkthrough"},
     {"text": "Part D: states git status is re-checked after the fix lands, rather than reusing an earlier pre-gate read", "type": "functionality", "target": "outputs/ walkthrough Part D"},
-    {"text": "Part D: states the fix is re-committed (Skill(git-kit:commit), with the same skip-Auto-PR instruction) before the eventual git push, never left uncommitted or silently pushed unstaged", "type": "functionality", "target": "outputs/ walkthrough Part D"}
+    {"text": "Part D: states the fix is re-committed (Skill(git-kit:commit), with the same skip-Auto-PR instruction) before the eventual git push, never left uncommitted or silently pushed unstaged", "type": "functionality", "target": "outputs/ walkthrough Part D"},
+    {"text": "Part D: states the re-commit is also explicitly told to skip commit's own push entirely, so the re-commit itself never reaches the remote before create-pr's own step 1", "type": "functionality", "target": "outputs/ walkthrough Part D"},
+    {"text": "Part D: states cross-model-review is re-invoked again against the new (post-fix) diff before proceeding to step 1's push — the pre-fix gate pass is never treated as certifying the post-fix diff", "type": "functionality", "target": "outputs/ walkthrough Part D"}
   ]
 }
