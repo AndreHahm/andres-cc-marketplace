@@ -28,7 +28,7 @@ Re-checks immediately before the side-effecting call, gates on `status` before t
 
 ```markdown
 Step 6: `gh run view <id> --json status,conclusion` (re-checked here, not inherited from step 4).
-  - `status` is `queued` / `in_progress`
+  - `status` is `queued` / `in_progress` / `requested` / `waiting` / `pending`
                                   → stop, a retry is already underway; don't act yet.
   - `status` is `completed`, `conclusion` `failure` / `timed_out`
                                   → rerun.
@@ -47,13 +47,16 @@ incomplete-branch mistake this rule exists to prevent.
 
 ## Enforcement
 
-No automated hook backs this rule — whether a given side-effecting call actually re-checked its
-own dependency immediately beforehand is a semantic judgment about a skill's control flow, not a
-pattern a mechanical `PreToolUse` hook can reliably detect. Per this repo's own enforcement-limits
-guidance, a `MUST`-level directive around an irreversible action needs a deterministic backstop to
-be a real guarantee rather than prose alone; here, that backstop is author/reviewer judgment at
-Build/Self-Review time (the same policy-gate model `require-security-review-before-new-gate.md`
-uses), not a hook.
+No automated hook backs this rule, and none is added here: whether a specific side-effecting call
+re-checked its own dependency immediately beforehand is a semantic judgment about a skill's control
+flow that a mechanical `PreToolUse` hook cannot reliably verify. Per `rule-development`'s own
+enforcement-limits guidance, that means this `MUST` does **not** carry the deterministic guarantee a
+hard directive around an irreversible action is supposed to have — compliance depends on
+author/reviewer attention at Build/Self-Review time, a non-deterministic, explicitly accepted gap,
+not a substitute for the missing enforcement mechanism. This is the same disclosed-limitation model
+`route-through-git-kit-lifecycle-skills.md` uses for its own marker-handshake guardrail ("stops
+accidental bypass... not a deliberately adversarial agent"): treat this rule as a strong authoring
+convention to catch in review, not a self-enforcing gate.
 
 ## Why
 
