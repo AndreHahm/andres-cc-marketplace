@@ -1,7 +1,11 @@
 ---
 name: github-issue-creator
 description: >-
-  Convert raw notes, error logs, voice dictation, or screenshots into crisp GitHub-flavored markdown issue reports. Use when the user pastes bug info, error messages, or informal descriptions and wants a structured GitHub issue. Supports images/GIFs for visual evidence.
+  Convert raw notes, error logs, voice dictation, or screenshots into crisp GitHub-flavored markdown
+  issue reports. Use when the user pastes bug info, error messages, or informal descriptions and wants
+  a structured GitHub issue. Supports images/GIFs for visual evidence. Not for a finding tied to an open
+  PR's review thread — that's `handling-review-findings`'s job, which adds required PR/head-SHA/thread
+  traceability this general-purpose template doesn't carry.
 allowed-tools: Write, Read
 ---
 
@@ -11,6 +15,13 @@ Transform messy input (error logs, voice notes, screenshots) into clean, actiona
 
 **Not for filing directly on GitHub** — this skill only writes a local markdown draft under `issues/`; it
 has no `Bash`/`gh` access. Filing a real, live GitHub issue (via `gh issue create`) is `gh-operations`' job.
+
+## When NOT to Use
+
+- **A finding tied to an open PR's review thread** — that's `handling-review-findings`'s job. Its issue
+  path adds required PR/head-SHA/thread traceability this skill's general-purpose template doesn't
+  carry; a bare "write this up as an issue" with no PR/finding context is what belongs here.
+- **Filing directly on GitHub** — see the note above; that's `gh-operations`' job.
 
 ## Output Template
 
