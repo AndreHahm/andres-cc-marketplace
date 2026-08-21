@@ -1,33 +1,33 @@
 {
   "skill_name": "codex-review-recovery",
   "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
-  "description": "Regression checks for the gate order this skill exists to enforce: only act on a genuinely failed check, never skip the human dashboard-confirmation gate, and never post/poll on stale state. Updated 2026-08-21 (three rounds) for the skill's redesign around await-codex-review.yml's new issue_comment trigger: step 5's @codex review comment starts a fresh run on its own (no more resolve-then-gh-run-rerun); the workflow explicitly manages a check-run against the PR's real head SHA via the Checks API since the job's own implicit status attaches to the default branch instead; and since a second PR review round found that a standalone Checks-API check-run has no associated workflow run (so `gh pr checks`'s own `workflow` field, and any match on it, never finds it), step 6 now queries the Checks API directly for the PR's head commit instead of `gh pr checks`.",
+  "description": "Regression checks for the gate order this skill exists to enforce: only act on a genuinely failed check, never skip the human dashboard-confirmation gate, and never post/poll on stale state. Updated 2026-08-21 (four rounds) for the skill's redesign around await-codex-review.yml's new issue_comment trigger. Rounds 1-3 moved step 6 (find the fresh attempt) from gh-run-rerun, to gh-run-list/view, to a direct Checks-API query, after successive review rounds found each prior mechanism's underlying check-run problem. Round 4 (this version), after a third review round, extended the same Checks-API query to steps 2 and 4 as well (a standalone Checks-API check-run has no associated workflow run, so gh pr checks' own workflow field can never match it there either — a prior round-that-only-failed-via-a-comment would otherwise be invisible to step 2's own initial state check) and fixed a REPOSITORY shell-variable reference this skill never defines (copied from the workflow's own env: block by mistake) to the skill's own <owner>/<repo> convention.",
   "evals": [
     {
       "id": "eval-1",
       "name": "Pending check is reported, not acted on",
-      "prompt": "Run codex-review-recovery for PR #77. `gh pr checks 77` shows the `Await Codex review` line as `pending`, 4 minutes into its run. No other context is given.",
-      "expected_output": "The skill reports that the check is still within its 30-minute window and stops — it does not ask the AskUserQuestion dashboard-confirmation question and does not post an `@codex review` comment.",
+      "prompt": "Run codex-review-recovery for PR #77. Step 2's `gh api .../commits/<sha>/check-runs` query returns `{\"status\": \"in_progress\"}` for the `Await Codex review` entry, 4 minutes into its run. No other context is given.",
+      "expected_output": "The skill reports that the check is still within its window and stops — it does not ask the AskUserQuestion dashboard-confirmation question and does not post an `@codex review` comment.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-2",
       "name": "Human declines the dashboard-confirmation gate",
-      "prompt": "Run codex-review-recovery for PR #77. `gh pr checks 77` shows `Await Codex review` as `fail`. The AskUserQuestion step asks whether Codex's own dashboard confirms the review finished, and the user answers 'No — let me check first'.",
-      "expected_output": "The skill stops immediately after the 'No' answer: no `gh pr comment` is posted, and no check-run is queried or polled. The user is told to come back once they've checked the dashboard.",
+      "prompt": "Run codex-review-recovery for PR #77. Step 2's Checks-API query returns `{\"status\": \"completed\", \"conclusion\": \"failure\"}` for the `Await Codex review` entry. The AskUserQuestion step asks whether Codex's own dashboard confirms the review finished, and the user answers 'No — let me check first'.",
+      "expected_output": "The skill stops immediately after the 'No' answer: no `gh pr comment` is posted, and no check-run is queried further. The user is told to come back once they've checked the dashboard.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-3",
       "name": "Step 6 queries the Checks API directly, never gh pr checks' workflow field, for the fresh entry",
       "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head confirmed at step 4 is `abc123`). Step 5 captured `BEFORE_COMMENT=2026-08-21T10:00:00Z` and successfully posted `@codex review`. At step 6, `gh api --paginate repos/<owner>/<repo>/commits/abc123/check-runs --jq '[.check_runs[] | select(.name == \"Await Codex review\" and .started_at >= \"2026-08-21T10:00:00Z\")] | sort_by(.started_at) | last'` returns an empty result on the first attempt, then on the second attempt returns `{\"id\": 999, \"status\": \"in_progress\", \"started_at\": \"2026-08-21T10:00:05Z\"}`.",
-      "expected_output": "The skill queries the Checks API directly for the PR's head commit — it never calls `gh pr checks` for step 6, and never tries to match on a `workflow` field for this entry (a standalone Checks-API-created check-run has none). Seeing an empty result on the first attempt, it keeps polling rather than reporting failure; on the second attempt it recognizes the entry (already filtered server-side by `started_at >= BEFORE_COMMENT`, so no separate staleness check is needed) and proceeds to poll it to completion.",
+      "expected_output": "The skill queries the Checks API directly for the PR's head commit, using `<owner>/<repo>` (never a `$REPOSITORY` shell variable, which this skill has no equivalent of) — it never calls `gh pr checks` for step 6, and never tries to match on a `workflow` field for this entry (a standalone Checks-API-created check-run has none). Seeing an empty result on the first attempt, it keeps polling rather than reporting failure; on the second attempt it recognizes the entry (already filtered server-side by `started_at >= BEFORE_COMMENT`, so no separate staleness check is needed) and proceeds to poll it to completion.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-4",
       "name": "Already-passing check is reported, not acted on",
-      "prompt": "Run codex-review-recovery for PR #77. `gh pr checks 77` shows the `Await Codex review` line as `pass`. No other context is given.",
+      "prompt": "Run codex-review-recovery for PR #77. Step 2's Checks-API query returns `{\"status\": \"completed\", \"conclusion\": \"success\"}` for the `Await Codex review` entry. No other context is given.",
       "expected_output": "The skill reports that the check already succeeded and stops — it does not ask the dashboard-confirmation question and does not post an `@codex review` comment.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
@@ -55,7 +55,7 @@
     {
       "id": "eval-8",
       "name": "Head moved during confirmation wait — stop, don't act on the stale SHA",
-      "prompt": "Run codex-review-recovery for PR #77. `gh pr view 77 --json headRefOid` at step 1 returns `abc123`. `gh pr checks 77` shows `Await Codex review` as `fail`. The user takes a while to answer the AskUserQuestion dashboard-confirmation, then answers 'Yes — retry'. When the skill re-fetches the PR's current head at step 4, `gh pr view 77 --json headRefOid` now returns `def999` — a new commit was pushed to the PR while the user was checking the dashboard.",
+      "prompt": "Run codex-review-recovery for PR #77. `gh pr view 77 --json headRefOid` at step 1 returns `abc123`. Step 2's Checks-API query shows `Await Codex review` as `{\"status\": \"completed\", \"conclusion\": \"failure\"}`. The user takes a while to answer the AskUserQuestion dashboard-confirmation, then answers 'Yes — retry'. When the skill re-fetches the PR's current head at step 4, `gh pr view 77 --json headRefOid` now returns `def999` — a new commit was pushed to the PR while the user was checking the dashboard.",
       "expected_output": "The skill detects that the re-fetched head SHA (`def999`) no longer matches step 1's `abc123` and stops — it does not post an `@codex review` comment. It tells the user the PR's head changed since they confirmed, that a plain push does not automatically start a fresh `Await Codex review` run under the current trigger scope, and that re-invoking this skill for the new head (or posting `@codex review` there) is how to get one — it does not claim a fresh run is already in flight for the new head.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
@@ -82,9 +82,9 @@
     },
     {
       "id": "eval-12",
-      "name": "Check already resolved (pass) by the time step 4 rechecks it — stop before posting anything",
-      "prompt": "Run codex-review-recovery for PR #77. Step 1 confirmed `Await Codex review` as `fail` with head `abc123`. The user confirmed Codex's dashboard shows the review finished. At step 4, the skill re-checks both head and check state: `gh pr view 77 --json headRefOid` still returns `abc123` (unchanged), but `gh pr checks 77 --json name,workflow,bucket` now shows `Await Codex review` as `bucket: pass` — a delayed write-back resolved it after step 1's check but before step 4's recheck.",
-      "expected_output": "The skill detects that the check's `bucket` is now `pass` at step 4 and stops — it does not post an `@codex review` comment, since doing so would only prompt a redundant re-review of an already-passing commit. It reports that the check already resolved on its own.",
+      "name": "Check already resolved (success) by the time step 4 rechecks it — stop before posting anything",
+      "prompt": "Run codex-review-recovery for PR #77. Step 1 confirmed `Await Codex review` as `{\"status\": \"completed\", \"conclusion\": \"failure\"}` with head `abc123`. The user confirmed Codex's dashboard shows the review finished. At step 4, the skill re-checks both head and check state: `gh pr view 77 --json headRefOid` still returns `abc123` (unchanged), but the Checks-API query for `abc123` now returns `{\"status\": \"completed\", \"conclusion\": \"success\"}` — a delayed write-back resolved it after step 1's check but before step 4's recheck.",
+      "expected_output": "The skill detects that the check's `conclusion` is now `success` at step 4 and stops — it does not post an `@codex review` comment, since doing so would only prompt a redundant re-review of an already-passing commit. It reports that the check already resolved on its own.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
@@ -97,7 +97,7 @@
     {
       "id": "eval-14",
       "name": "gh pr comment fails — stop and report, don't poll for a check-run that was never triggered",
-      "prompt": "Run codex-review-recovery for PR #77. Step 4's recheck passes (head still `abc123`, bucket still `fail`). Step 5 writes the guard marker and runs `gh pr comment 77 -R \"<owner>/<repo>\" --body \"@codex review\"` — this command itself fails with a non-zero exit status: `error: HTTP 401: Bad credentials`.",
+      "prompt": "Run codex-review-recovery for PR #77. Step 4's recheck passes (head still `abc123`, conclusion still `failure`). Step 5 writes the guard marker and runs `gh pr comment 77 -R \"<owner>/<repo>\" --body \"@codex review\"` — this command itself fails with a non-zero exit status: `error: HTTP 401: Bad credentials`.",
       "expected_output": "The skill checks the `gh pr comment` command's exit status, sees it failed, and stops here — reporting the authentication error plainly. It does not proceed to step 6's polling, since no comment was actually posted and no fresh check-run was actually triggered.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
@@ -110,9 +110,9 @@
     },
     {
       "id": "eval-16",
-      "name": "No manual gh run rerun, gh run list/view, or gh pr checks is ever issued for step 6",
+      "name": "No manual gh run rerun, gh run list/view, or gh pr checks is ever issued anywhere in the skill",
       "prompt": "Run codex-review-recovery for PR #77 end to end: fail state confirmed, human confirms dashboard, step 4's recheck passes, step 5 posts `@codex review` successfully, step 6 finds and polls the fresh check-run to a `success` conclusion. Describe every `gh` command the skill issued across the whole run.",
-      "expected_output": "The command list includes exactly one `gh pr checks` (step 2), one `gh pr view --json headRefOid` (step 1) plus its step-4 recheck pair (`gh pr view --json headRefOid` and `gh pr checks ... --json name,workflow,bucket`), one `gh pr comment ... --body \"@codex review\"` (step 5), and a bounded series of `gh api --paginate .../commits/<sha>/check-runs` calls (step 6). It never includes a `gh run rerun`, `gh run list`, or `gh run view` call anywhere, and step 6 itself never calls `gh pr checks`.",
+      "expected_output": "The command list includes exactly one `gh pr view --json number,url,headRefName,headRefOid` (step 1), one Checks-API query (step 2), one `gh pr view --json headRefOid` plus one Checks-API recheck (step 4), one `gh pr comment ... --body \"@codex review\"` (step 5), and a bounded series of Checks-API `gh api --paginate .../commits/<sha>/check-runs` calls (step 6). It never includes a `gh run rerun`, `gh run list`, `gh run view`, or `gh pr checks` call anywhere in the sequence — every check-state read goes through the Checks API directly.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
@@ -121,16 +121,30 @@
       "prompt": "Run codex-review-recovery for PR #77 through step 6, after finding the fresh entry. A later push (or another `@codex review` comment) superseded it via the workflow's own concurrency group while this skill was still polling. The next `gh api .../commits/<sha>/check-runs` poll returns `{\"id\": 999, \"status\": \"completed\", \"conclusion\": \"cancelled\"}` for that entry — `await-codex-review.yml`'s own best-effort cancellation cleanup finalized it.",
       "expected_output": "The skill reports the genuine `cancelled` conclusion plainly, naming it as such — it does not report this as `failure` or `success`, and does not silently retry steps 3-6 on its own; any further attempt needs a fresh step-3 confirmation.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-18",
+      "name": "Step 2 recognizes a standalone (workflow-less) check-run's own failure state, not just an Actions-based one",
+      "prompt": "Run codex-review-recovery for PR #79. This PR's head commit has never had a `pull_request`-triggered check-run — a previous `@codex review` comment for this exact head produced only a standalone, Checks-API-created check-run (no associated workflow run), which then timed out. At step 2, `gh api .../commits/<headRefOid>/check-runs --jq '[.check_runs[] | select(.name == \"Await Codex review\")] | sort_by(.started_at) | last'` returns that one entry: `{\"id\": 555, \"status\": \"completed\", \"conclusion\": \"timed_out\"}`.",
+      "expected_output": "The skill recognizes this standalone entry's own `timed_out` conclusion as an actionable, non-success completed state — it proceeds to step 3's confirmation rather than reporting 'no matching entry appears at all' or treating the absence of any `pull_request`-triggered check as if this PR's check had never run.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
+    },
+    {
+      "id": "eval-19",
+      "name": "Step 2 takes the latest-started entry when both an Actions-based and a standalone check-run exist for the same head",
+      "prompt": "Run codex-review-recovery for PR #80. Step 2's Checks-API query for this head returns two entries named `Await Codex review`: one from the original `pull_request`-triggered run (`started_at: 2026-08-21T09:00:00Z`, `conclusion: failure`) and a later one from an `@codex review` comment (`started_at: 2026-08-21T09:30:00Z`, `conclusion: failure`).",
+      "expected_output": "The skill takes the latest-started entry (`started_at: 2026-08-21T09:30:00Z`) as the current state — it does not stop with an 'ambiguous, multiple entries matched' error the way the old `gh pr checks`-based workflow+name matching would have; taking the newest entry is the intended behavior now that two check-runs can legitimately share this name for one commit.",
+      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 20,
-    "declared_scenarios_covered": 17,
+    "declared_scenarios_total": 22,
+    "declared_scenarios_covered": 19,
     "uncovered": [
-      "Every gh pr/gh api command passing -R \"<owner>/<repo>\" (verified live and via a one-off spot-check agent during development, but not captured as a persisted graded eval)",
-      "Step 2 matching on the workflow display-name field together with the job name, not either alone (implicitly exercised by every eval's simulated gh pr checks output, but not asserted as its own dedicated scenario)",
+      "Every gh pr/gh api command using <owner>/<repo> derived from step 1, never a bare number or an undefined shell variable (verified live and via a one-off spot-check agent during development, but not captured as a persisted graded eval)",
+      "Step 4's own Checks-API recheck using the exact same query shape as step 2 (implicitly exercised by eval-12, but the shape-consistency itself isn't asserted as its own dedicated scenario)",
       "Step 6's poll loop always running an actual sleep 30 between calls (verified structurally via smoke_test.py's check_bash_grants confirming the Bash(sleep:*) grant is invoked in the body, but a text-based simulated eval can't meaningfully assert a real wall-clock wait occurred)"
     ],
-    "note": "Rewritten 2026-08-21 in three rounds for the skill's redesign around await-codex-review.yml's new issue_comment trigger (see plugins/git-kit/skills/codex-review-recovery/SKILL.md's Testing & Validation section). Round 1 replaced the old run-resolution/gh-run-rerun-based scenarios with a gh-run-list/gh-run-view-based find-and-poll mechanism. Round 2 replaced that with gh-pr-checks polling (matching a fresh entry by startedAt), after a PR review round found round 1's underlying check-run never actually attached to the PR head. Round 3 (this version) replaced gh-pr-checks matching with a direct Checks-API query for the PR's head commit, after a second PR review round found that a standalone Checks-API-created check-run has no associated workflow run, so gh pr checks' own workflow field (and any match on it) could never find it -- and added eval-17 for the workflow's own new best-effort cancellation-cleanup path. No skill-tester run has been executed against this rewritten scenario set yet."
+    "note": "Rewritten 2026-08-21 in four rounds for the skill's redesign around await-codex-review.yml's new issue_comment trigger (see plugins/git-kit/skills/codex-review-recovery/SKILL.md's Testing & Validation section). Round 1: gh-run-rerun to gh-run-list/view find-and-poll. Round 2: to gh-pr-checks polling (matching by startedAt), after a review round found round 1's check-run never attached to the PR head. Round 3: to a direct Checks-API query for step 6, after a review round found gh pr checks' own workflow field could never match a standalone check-run. Round 4 (this version): extended the same Checks-API query to steps 2 and 4 (a standalone check-run's own failure was otherwise invisible to step 2's initial check), added eval-18/eval-19 for that, and fixed a REPOSITORY shell-variable reference this skill never defines. No skill-tester run has been executed against this rewritten scenario set yet."
   }
 }

@@ -93,33 +93,42 @@ jobs:
 
           # No-op for the pull_request path (CHECK_RUN_ID unset there) -- that path's own
           # implicit job status already attaches to the correct commit, so nothing explicit
-          # is needed. `|| true`: a failed PATCH here (e.g. a transient API error) shouldn't
-          # mask this step's own real exit code, set immediately after each call below.
-          # ALREADY_FINALIZED guards against the EXIT/INT/TERM trap below re-finalizing (and
-          # overwriting) a conclusion this function already set via a normal exit.
+          # is needed. ALREADY_FINALIZED is only set once the PATCH itself actually succeeds
+          # (checked via the `if` below, not `|| true`) -- setting it unconditionally would
+          # mask a transient PATCH failure on a genuine success/failure exit: the EXIT trap
+          # would then see the guard already tripped and skip retrying, leaving the check-run
+          # stuck `in_progress` despite the job having a real conclusion to report. On such a
+          # failure this function returns without having finalized anything, and FINAL_CONCLUSION
+          # (set every time, success or failure, before the guard is even checked) is what lets
+          # the EXIT trap retry with the *correct* value rather than defaulting to `cancelled`.
           ALREADY_FINALIZED=false
+          FINAL_CONCLUSION=""
           finalize_check_run() {
             if [ -n "${CHECK_RUN_ID:-}" ] && [ "$ALREADY_FINALIZED" != true ]; then
-              ALREADY_FINALIZED=true
+              FINAL_CONCLUSION="$1"
               # GitHub's "Update a check run" endpoint requires PATCH; gh api defaults to
               # POST whenever -f fields are present (its create-vs-update auto-detection is
               # based on parameter presence, not the endpoint), so this needs an explicit
               # --method override -- unlike the create call above, whose default POST already
               # matches what "Create a check run" expects.
-              gh api --method PATCH "repos/${REPOSITORY}/check-runs/${CHECK_RUN_ID}" \
-                -f status=completed -f conclusion="$1" >/dev/null || true
+              if gh api --method PATCH "repos/${REPOSITORY}/check-runs/${CHECK_RUN_ID}" \
+                -f status=completed -f conclusion="$FINAL_CONCLUSION" >/dev/null 2>&1; then
+                ALREADY_FINALIZED=true
+              fi
             fi
           }
           # Best-effort: a check-run created via the Checks API (unlike a job's own implicit
           # status) is never auto-completed by GitHub if this job is cancelled -- e.g. a newer
           # trigger superseding it via cancel-in-progress, or the hard timeout-minutes cutoff --
-          # so without this it would stay `in_progress` on the PR forever. Trap EXIT (a normal
-          # exit already finalized via the calls below; this is then a no-op per the guard
-          # above) and INT/TERM (GitHub's own cancellation signal) so a cancelled run still gets
-          # a terminal conclusion where possible. Not a guarantee: it races GitHub's own short
-          # cancellation grace period, and the PATCH call itself needs a network round-trip to
-          # complete within it.
-          trap 'finalize_check_run cancelled' EXIT INT TERM
+          # so without this it would stay `in_progress` on the PR forever. Trap EXIT (retries
+          # with FINAL_CONCLUSION if a normal exit's own PATCH call above failed; a no-op per the
+          # guard if it already succeeded) and INT/TERM (GitHub's own cancellation signal) so a
+          # cancelled run still gets a terminal conclusion where possible. Falls back to
+          # `cancelled` only when FINAL_CONCLUSION was never set at all -- i.e. the job was
+          # killed before reaching any of its own normal exits, not after one merely failed to
+          # PATCH. Still not a full guarantee: it races GitHub's own short cancellation grace
+          # period, and each PATCH call needs a network round-trip to complete within it.
+          trap 'finalize_check_run "${FINAL_CONCLUSION:-cancelled}"' EXIT INT TERM
 
           echo "Waiting for Codex to review commit ${HEAD_SHA}..."
 

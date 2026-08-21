@@ -13,7 +13,7 @@ description: >-
   `gh-operations`' generic, ungated `gh run rerun` reference, nor `merge-pr`'s separate
   `Publish Codex policy result` bypass flow.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR
-allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh api:*), Bash(date:*), Bash(sleep:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh api:*), Bash(date:*), Bash(sleep:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*)
 ---
 
 # codex-review-recovery
@@ -79,8 +79,8 @@ check timed out but the review actually finished", "retry the Codex review check
 
 ## Quick Start
 
-1. Resolve the PR and check the `Await Codex review` line's state (`gh pr checks`) — only a `fail` state
-   is actionable.
+1. Resolve the PR and check the `Await Codex review` check-run's state directly via the Checks API —
+   only a non-`success` completed state is actionable.
 2. Ask the human to confirm Codex's own dashboard actually shows the review finished — never inferred.
 3. On "Yes", re-verify the PR's head hasn't moved since step 1, then post `@codex review` — which both
    prompts Codex again and starts a fresh `Await Codex review` run for the current head.
@@ -100,26 +100,36 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    this fails, tell the user and stop.
 
    Extract `<owner>/<repo>` from the returned `url` field (`https://github.com/<owner>/<repo>/pull/<n>`)
-   and pass it as `-R "<owner>/<repo>"` to every `gh pr`/`gh run` command in steps 2 and 4 through 6 below
-   — never rely on the current working directory's own git remote for the target repo. `$ARGUMENTS` may
-   name a PR in a different repository entirely; without this, a bare `<number>` in later steps would
-   silently resolve against the current checkout's repo instead of the PR's actual repo.
+   and use it in every `gh pr`/`gh api` command in steps 2 and 4 through 6 below — as `-R "<owner>/<repo>"`
+   for `gh pr` commands, and as the literal `repos/<owner>/<repo>/...` path segment for `gh api` calls
+   (never a `$REPOSITORY`-style shell variable, which this skill has no equivalent of) — never rely on the
+   current working directory's own git remote for the target repo. `$ARGUMENTS` may name a PR in a
+   different repository entirely; without this, a bare `<number>` (or an unset variable) in later steps
+   would silently resolve against the current checkout's repo instead of the PR's actual repo.
 
-2. **Check the current check state**: `gh pr checks <number> -R "<owner>/<repo>" --json name,workflow,bucket,link`.
-   `gh pr checks` never exposes a check's owning workflow *file* name — only its workflow *display* name,
-   which for this repo's `await-codex-review.yml` is `Codex review status` (a different string from the
-   file name; verify against the repo actually being checked, since this display name isn't guaranteed
-   portable). Find the entry where `workflow` is that display name and `name` is `Await Codex review` —
-   matching both fields together, not display name alone, since a differently-configured workflow could
-   otherwise reuse either string on its own. If more than one entry matches both, stop and tell the user
-   rather than guessing which one to act on.
-   - If no matching entry appears at all — this PR's checks haven't included this workflow (e.g. it
-     hasn't run yet, or is configured under different names in this repo); tell the user plainly and stop
-     rather than guessing or treating this the same as `fail`.
-   - If `bucket` is `pass` — nothing to recover; tell the user it's already succeeded and stop.
-   - If `bucket` is `pending` (still running) — nothing to recover yet; tell the user it's still within
-     its 30-minute window and stop. Don't treat "it's taking a while" as a reason to intervene.
-   - If `bucket` is `fail` — continue to step 3. This is the only state this skill acts on.
+2. **Check the current check state** — query the Checks API directly for the PR's head commit (step 1's
+   `headRefOid`), not `gh pr checks`: a check-run created via the `issue_comment` path (the Checks API,
+   no associated workflow run — see `docs/await-codex-review.md`'s "Trigger scope") would never match
+   `gh pr checks`'s own `workflow` field, and this step needs to recognize that kind of entry's own
+   completed state just as much as a `pull_request`-triggered one's — otherwise a round whose *only*
+   check-run for this exact head came from a prior `@codex review` comment would report "nothing to
+   recover" even when it genuinely failed:
+   `gh api --paginate "repos/<owner>/<repo>/commits/<headRefOid>/check-runs" --jq '[.check_runs[] |
+   select(.name == "Await Codex review")] | sort_by(.started_at) | last'` (`<owner>/<repo>` from step 1's
+   `url`; `<headRefOid>` from step 1's own resolution). Taking the *latest*-started entry named
+   `Await Codex review` for this commit — rather than requiring exactly one match — also means a head
+   that legitimately has both a `pull_request`-triggered check-run and a later, superseding
+   `issue_comment`-triggered one never trips a false "ambiguous, can't proceed" stop; the newest one is
+   always the one that matters.
+   - Empty result — this PR's head has no check-run under this name at all (e.g. it hasn't run yet); tell
+     the user plainly and stop rather than guessing or treating this the same as a failure.
+   - `status` not yet `completed` — nothing to recover yet; tell the user it's still within its window
+     and stop. Don't treat "it's taking a while" as a reason to intervene.
+   - `status: completed`, `conclusion: success` — nothing to recover; tell the user it already succeeded
+     and stop.
+   - `status: completed`, any other `conclusion` (`failure`, `timed_out`, `cancelled`, or another value)
+     — continue to step 3. Report the actual `conclusion` value to the user rather than collapsing every
+     non-success outcome into a generic "failed".
 
 3. **Confirm with the human** — this is the one gate that can't be skipped or inferred, since only the
    human has visibility into Codex's own dashboard: use `AskUserQuestion` — "The 'Await Codex review'
@@ -141,12 +151,12 @@ See `## Instructions` below for the full step-by-step with exact commands and st
      for the new head. Tell the user the PR's head changed since they confirmed, that no fresh check
      necessarily exists yet for the new commit, and that re-invoking this skill from step 1 for the new head
      is the way to get one (posting `@codex review` there will trigger it).
-   - Re-check the current check state: `gh pr checks <number> -R "<owner>/<repo>" --json name,workflow,bucket`,
-     matching the same `workflow`+`name` pair as step 2. If `bucket` is now `pass`, stop here too — someone
-     else (or a delayed write-back) already resolved this exact check since step 2, and posting `@codex
-     review` now would only prompt a redundant re-review of an already-passing commit. Report that it
-     already resolved on its own.
-   If both checks pass (head unchanged, still `fail`), continue to step 5.
+   - Re-check the current check state, the same way as step 2 (`gh api .../commits/<headRefOid>/check-runs`,
+     latest entry named `Await Codex review` for this same, unchanged head). If `conclusion` is now
+     `success`, stop here too — someone else (or a delayed write-back) already resolved this exact check
+     since step 2, and posting `@codex review` now would only prompt a redundant re-review of an
+     already-passing commit. Report that it already resolved on its own.
+   If both checks pass (head unchanged, still not `success`), continue to step 5.
 
 5. **Post the retry comment**: immediately before running the command below, run
    `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review codex-review-recovery` — this
@@ -175,10 +185,12 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    does, would therefore never find this fresh entry; only the stale, Actions-based entry from step 2
    would ever match. Query check-runs for the PR's head commit directly instead, which carries no such
    association requirement:
-   `gh api --paginate "repos/${REPOSITORY}/commits/<headRefOid>/check-runs" --jq '[.check_runs[] |
+   `gh api --paginate "repos/<owner>/<repo>/commits/<headRefOid>/check-runs" --jq '[.check_runs[] |
    select(.name == "Await Codex review" and .started_at >= "<BEFORE_COMMENT>")] | sort_by(.started_at) |
-   last'` (`<headRefOid>` is step 4's confirmed head; the `started_at >= BEFORE_COMMENT` filter excludes
-   step 2's stale entry directly in the query itself, rather than a separate before/after check).
+   last'` (`<owner>/<repo>` is step 1's own resolved repo — **not** a `$REPOSITORY` shell variable; this
+   skill has none, unlike the workflow's own `env:` block, which is a separate execution context.
+   `<headRefOid>` is step 4's confirmed head; the `started_at >= BEFORE_COMMENT` filter excludes step 2's
+   stale entry directly in the query itself, rather than a separate before/after check).
    Up to 10 times, `sleep 30` between calls (covered by the declared `Bash(gh api:*)`/`Bash(sleep:*)`
    grants; don't reach for a background-shell or `until`-loop primitive outside that scope):
    - Empty result: GitHub hasn't created the fresh check-run yet (or the `@codex review` comment
@@ -210,9 +222,9 @@ See `## Instructions` below for the full step-by-step with exact commands and st
 - Never loops steps 3-6 automatically on a repeat failure — each retry attempt needs its own fresh human
   confirmation, since a second failure is more likely to mean something genuinely wrong rather than a
   repeat of the same transient gap.
-- Never proceeds past step 4 on a moved head, or on a check that's already `pass` — step 4's single recheck
-  covers both pieces of state step 5's post depends on, immediately before that post, rather than reusing
-  step 1's or step 2's now-possibly-stale reads.
+- Never proceeds past step 4 on a moved head, or on a check that's already `success` — step 4's single
+  recheck covers both pieces of state step 5's post depends on, immediately before that post, rather than
+  reusing step 1's or step 2's now-possibly-stale reads.
 - Never assumes a `gh pr comment` call succeeded just because it was issued — step 5 checks that command's
   own exit status and stops with the error on failure, rather than proceeding to step 6 as if the comment
   had been posted when it wasn't.
@@ -221,10 +233,11 @@ See `## Instructions` below for the full step-by-step with exact commands and st
   so step 5's post already starts a fresh run on its own. Rerunning the old run *as well* would race a
   second workflow-run start against the same `codex-review-<PR number>` concurrency group, with
   `cancel-in-progress` non-deterministically cancelling whichever loses.
-- Step 6 never matches on `gh pr checks`'s `workflow` field for the fresh attempt — a standalone,
-  Checks-API-created check-run has no associated workflow run, so that field is never populated for it
-  (confirmed against `gh`'s own source); step 6 queries the Checks API directly for the PR's head commit
-  instead, filtering on `name` and `started_at >= BEFORE_COMMENT` together, never `workflow`+`name`.
+- No step ever matches on `gh pr checks`'s `workflow` field — a standalone, Checks-API-created check-run
+  has no associated workflow run, so that field is never populated for it (confirmed against `gh`'s own
+  source), and steps 2/4 need to recognize that kind of entry's own state just as much as step 6 needs to
+  find a fresh one. All three query the Checks API directly for the PR's head commit instead, matching on
+  `name` alone (plus `started_at >= BEFORE_COMMENT` for step 6's freshness requirement specifically).
 - Relies on `await-codex-review.yml` itself keeping its `issue_comment`-triggered check-run attached to
   the PR's real head SHA (via the Checks API, not the job's own implicit status) — this skill has no
   independent way to verify that association held for a given run; if the workflow's own Checks-API calls
@@ -236,9 +249,6 @@ See `## Instructions` below for the full step-by-step with exact commands and st
   not guaranteed (racing GitHub's own cancellation grace period); a stuck `in_progress` entry that never
   resolves within step 6's own budget is reported the same way as any other "no fresh check-run observed"
   case, not specifically diagnosed as a cancellation.
-- Step 6's "find it" loop never gives up after a single empty result — GitHub takes a few seconds to
-  schedule a run after a webhook fires, so it retries (`sleep 5`, up to 10 times) before reporting that no
-  new run was found; it also never falls back to guessing a `databaseId` if none is found.
 - Never validates `$ARGUMENTS` (step 1) against an incomplete blocklist of shell metacharacters — it's
   validated against an explicit allowlist instead (empty, a bare PR number, or the PR-URL pattern), since a
   blocklist covering only a few characters (e.g. `; \` $( & | ( )`) leaves quotes and a newline free to
@@ -263,22 +273,25 @@ See `## Instructions` below for the full step-by-step with exact commands and st
   check
 
 **Quality gates:**
-- [ ] Every `gh pr` command from step 2 onward always passes `-R "<owner>/<repo>"` derived from step 1's
-      `url` field — never a bare `<number>` that would resolve against the current checkout's repo
-      instead of the PR's actual repo
+- [ ] Every `gh pr`/`gh api` command from step 2 onward always uses `<owner>/<repo>` derived from step 1's
+      `url` field — never a bare `<number>` (for `gh pr`) or a `$REPOSITORY`-style shell variable this
+      skill doesn't have (for `gh api`), either of which would resolve against the wrong repo
 - [ ] Step 1 always validates `$ARGUMENTS` against the allowlist (empty, `^[0-9]+$`, or the PR-URL
       pattern) before interpolating it into `gh pr view "$ARGUMENTS"` — never a blocklist of a few
       metacharacters, which a crafted value with an unlisted delimiter can still break out of
-- [ ] Step 2 always matches on the `workflow` display-name field together with the job `name`, never on
-      `name` alone or on the workflow *file* name, which `gh pr checks` never exposes
-- [ ] Step 2 only proceeds past a `fail` state — `pending`/`pass` always stop with a plain status report,
-      never treated as something to recover
+- [ ] Steps 2 and 4 always query the Checks API directly for the PR's head commit
+      (`gh api .../commits/<headRefOid>/check-runs`), matching on `name == "Await Codex review"` and
+      taking the latest-started entry — never `gh pr checks`'s own `workflow`+`name` pair, which a
+      standalone Checks-API-created check-run (no associated workflow run) can never match
+- [ ] Step 2 only proceeds past a completed, non-`success` conclusion — an empty result, a still-running
+      `status`, or `conclusion: success` all stop with a plain status report, never treated as something
+      to recover
 - [ ] Step 3's `AskUserQuestion` always fires before step 4 — never inferred from context or skipped
       because the user "seems confident"
 - [ ] "No — let me check first" at step 3 always stops the flow with no comment posted
-- [ ] Step 4 always re-fetches both the PR's current `headRefOid` and the check's current `bucket`
-      immediately before step 5's post — a head mismatch or an already-`pass` bucket always stops the flow
-      with no comment posted, never proceeding on stale state reused from step 1/step 2
+- [ ] Step 4 always re-fetches both the PR's current `headRefOid` and the check's current `conclusion`
+      immediately before step 5's post — a head mismatch or an already-`success` conclusion always stops
+      the flow with no comment posted, never proceeding on stale state reused from step 1/step 2
 - [ ] Step 5 always checks the `gh pr comment` command's exit status — a failure always stops the flow
       with the error reported, never silently proceeds to step 6 as if the comment had been posted
 - [ ] This skill never runs `gh run rerun` anywhere — the comment posted in step 5 is the only trigger
@@ -308,17 +321,20 @@ immediately, with no LLM judging needed — no blind A/B baseline is run against
 is a human-gated refusal sequence (step 3's confirmation), which a no-skill baseline can't be meaningfully
 scored against.
 
-**Note:** this skill's mechanism changed substantially (2026-08-21, three rounds) when
+**Note:** this skill's mechanism changed substantially (2026-08-21, four rounds) when
 `await-codex-review.yml` gained an `issue_comment` trigger: round 1 replaced `gh run rerun` with a
 find-and-poll of the fresh workflow run; round 2, after a PR review round confirmed that run's check-run
 wasn't reaching the PR at all, moved to the workflow explicitly managing a check-run against the PR's real
 head SHA via the Checks API, with step 6 polling `gh pr checks` for it; round 3, after a second PR review
 round confirmed a standalone Checks-API-created check-run has no associated workflow run (so `gh pr
 checks`'s own `workflow` field could never match it), moved step 6 to query the Checks API directly
-instead. See "Posting the retry comment now also re-triggers the check itself" above. The evals below were
-updated to match the current mechanism, but have not yet had a fresh `skill-tester` run against the
-updated SKILL.md; the "Last dated run record" below predates all three rounds of this change and reflects
-the old, `gh run rerun`-based design only.
+instead; round 4, after a third PR review round found the same `workflow`-field gap also blinded steps 2
+and 4 to a standalone check-run's own state (and a leftover `$REPOSITORY` reference this skill never
+defines), extended the Checks-API query to steps 2 and 4 as well and fixed that reference. See "Posting
+the retry comment now also re-triggers the check itself" above. The evals below were updated to match the
+current mechanism, but have not yet had a fresh `skill-tester` run against the updated SKILL.md; the "Last
+dated run record" below predates all four rounds of this change and reflects the old, `gh run
+rerun`-based design only.
 
 **Last dated run record:** 2026-08-18 — `skill-tester` Quick Workflow (84/84 assertions passed across all
 21 scenarios) and `scripts/smoke_test.py` (5/5 checks passed). See
