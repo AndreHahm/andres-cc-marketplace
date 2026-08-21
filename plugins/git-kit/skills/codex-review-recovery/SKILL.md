@@ -161,16 +161,22 @@ See `## Instructions` below for the full step-by-step with exact commands and st
    `databaseId` from anything `gh pr checks` reported in step 2), not a rerun of the old failed one — find
    and poll that new run rather than looking for an incremented `attempt` on the old one.
    - **Find it**: up to 10 times, 5 seconds apart, run
-     `gh run list --workflow await-codex-review.yml -R "<owner>/<repo>" --event issue_comment --commit
-     "<headRefOid>" --json databaseId,createdAt,status,conclusion --limit 5` (`<headRefOid>` is step 4's
-     confirmed head — the workflow resolves this same commit live from the PR for an `issue_comment`
-     trigger, so filtering by it here finds the matching run). GitHub takes a few seconds to schedule a
-     run after a webhook fires, so an empty result on the first few attempts is normal, not a failure —
-     `sleep 5` between attempts. Among entries with `createdAt >= "$BEFORE_COMMENT"`, pick the one with the
-     latest `createdAt` (there should normally be exactly one; if more than one qualifies — e.g. a second
-     `@codex review` comment landed independently in the same window — the latest is still the one this
-     step's own comment started). If none appears after 10 attempts (~50 seconds), stop and report that no
-     new run was found — don't fall back to guessing or polling something else.
+     `gh run list --workflow await-codex-review.yml -R "<owner>/<repo>" --event issue_comment --json
+     databaseId,createdAt,status,conclusion --limit 5`.
+     **Do not filter by `--commit`/`--branch`/`headSha`/`headBranch` here** — confirmed against GitHub's
+     own docs: an `issue_comment`-triggered run's `GITHUB_SHA`/`GITHUB_REF` (and so its reported
+     `headSha`/`headBranch`) resolve to the *default branch's* latest commit, never the pull request's
+     head, regardless of which PR the comment was actually posted on. Neither `gh run list` nor `gh run
+     view --json` exposes a pull-request-association field to filter on instead, so this search can only
+     narrow by workflow + event type + timing, not by which PR triggered it. GitHub takes a few seconds to
+     schedule a run after a webhook fires, so an empty result on the first few attempts is normal, not a
+     failure — `sleep 5` between attempts. Among entries with `createdAt >= "$BEFORE_COMMENT"`, pick the
+     one with the latest `createdAt` (there should normally be exactly one; if more than one qualifies —
+     e.g. a second `@codex review` comment landed on *any* PR in this repo, not just this one, in the same
+     window — the latest is still the best-effort pick, since nothing here can distinguish which PR each
+     candidate actually belongs to; see Boundaries for this limitation). If none appears after 10 attempts
+     (~50 seconds), stop and report that no new run was found — don't fall back to guessing or polling
+     something else.
    - **Poll it to completion**: once found, poll that exact `databaseId` — `gh run view <databaseId> -R
      "<owner>/<repo>" --json status,conclusion` — up to 10 times, `sleep 30` between calls (covered by the
      declared `Bash(sleep:*)` grant; don't reach for a background-shell or `until`-loop primitive outside
@@ -207,10 +213,17 @@ See `## Instructions` below for the full step-by-step with exact commands and st
   so step 5's post already starts a fresh run on its own. Rerunning the old run *as well* would race a
   second workflow-run start against the same `codex-review-<PR number>` concurrency group, with
   `cancel-in-progress` non-deterministically cancelling whichever loses.
-- Step 6 never trusts a run outside its own `--event issue_comment` + `--commit <headRefOid>` filter, and
-  never trusts one whose `createdAt` predates step 5's `BEFORE_COMMENT` anchor — either could otherwise
-  match an older, unrelated run (the original failed run from step 2, or an earlier recovery attempt) that
-  step 5's comment did not itself start.
+- Step 6 never trusts a run outside its own `--event issue_comment` filter, and never trusts one whose
+  `createdAt` predates step 5's `BEFORE_COMMENT` anchor — either could otherwise match an older, unrelated
+  run (the original failed run from step 2, or an earlier recovery attempt) that step 5's comment did not
+  itself start.
+- **Known limitation, not fixable client-side:** step 6's search cannot verify the found run actually
+  belongs to *this* PR — `issue_comment`-triggered runs report the default branch's commit/branch, not the
+  PR's, for `headSha`/`headBranch` (confirmed against GitHub's own docs), and neither `gh run list` nor
+  `gh run view --json` exposes a pull-request-association field. If a second, unrelated PR in the same
+  repo also receives an `@codex review` comment within step 6's ~50-second find-window, this step cannot
+  tell the two runs apart and may report on the wrong one. Acceptable for this skill's realistic single
+  human, single-PR-at-a-time usage; not safe to assume away in a repo with concurrent recovery attempts.
 - Step 6's "find it" loop never gives up after a single empty result — GitHub takes a few seconds to
   schedule a run after a webhook fires, so it retries (`sleep 5`, up to 10 times) before reporting that no
   new run was found; it also never falls back to guessing a `databaseId` if none is found.
@@ -260,9 +273,10 @@ See `## Instructions` below for the full step-by-step with exact commands and st
       relied on to start a fresh `Await Codex review` run; a manual rerun alongside it would race the
       workflow's own `issue_comment`-triggered run through the shared `cancel-in-progress` concurrency
       group
-- [ ] Step 6's "find it" search always filters on `--event issue_comment`, `--commit <headRefOid>`
-      (step 4's confirmed head), *and* `createdAt >= ` step 5's `BEFORE_COMMENT` anchor together — never on
-      any one of those alone, which could otherwise match an older, unrelated run
+- [ ] Step 6's "find it" search always filters on `--event issue_comment` *and* `createdAt >= ` step 5's
+      `BEFORE_COMMENT` anchor together — never on `createdAt` alone, which could otherwise match an older,
+      unrelated run; and never adds a `--commit`/`--branch`/`headSha`/`headBranch` filter, since an
+      `issue_comment`-triggered run reports the default branch's commit/branch, not the PR's
 - [ ] Step 6's "find it" search retries (`sleep 5`, up to 10 attempts) before reporting "no new run found"
       — never gives up after a single empty result, and never falls back to guessing a `databaseId`
 - [ ] Among multiple runs matching step 6's filter, the one with the latest `createdAt` is picked

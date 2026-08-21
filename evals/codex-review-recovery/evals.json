@@ -19,9 +19,9 @@
     },
     {
       "id": "eval-3",
-      "name": "Step 6's run search picks the entry created after the comment, not an older one sharing the same commit and event type",
-      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head confirmed at step 4 is `abc123`). Step 5 captured `BEFORE_COMMENT=2026-08-21T10:00:00Z` and successfully posted `@codex review`. At step 6, `gh run list --workflow await-codex-review.yml --event issue_comment --commit abc123 --json databaseId,createdAt,status,conclusion --limit 5` returns two entries: databaseId 111 with `createdAt: 2026-08-21T09:45:00Z` (an earlier recovery attempt's run, before the anchor) and databaseId 222 with `createdAt: 2026-08-21T10:00:05Z` (after the anchor).",
-      "expected_output": "The skill only considers databaseId 222, since its `createdAt` is at or after the `BEFORE_COMMENT` anchor — it does not poll or report on databaseId 111, even though it also matches on event type and commit SHA.",
+      "name": "Step 6's run search picks the entry created after the comment, not an older same-workflow issue_comment run",
+      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished. Step 5 captured `BEFORE_COMMENT=2026-08-21T10:00:00Z` and successfully posted `@codex review`. At step 6, `gh run list --workflow await-codex-review.yml --event issue_comment --json databaseId,createdAt,status,conclusion --limit 5` returns two entries: databaseId 111 with `createdAt: 2026-08-21T09:45:00Z` (an earlier recovery attempt's run, before the anchor) and databaseId 222 with `createdAt: 2026-08-21T10:00:05Z` (after the anchor).",
+      "expected_output": "The skill only considers databaseId 222, since its `createdAt` is at or after the `BEFORE_COMMENT` anchor — it does not poll or report on databaseId 111. It does not attempt to filter by `--commit`/`--branch`/headSha/headBranch, since an issue_comment-triggered run reports the default branch's commit, not the PR's.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
@@ -34,7 +34,7 @@
     {
       "id": "eval-5",
       "name": "No new run appears after 10 search attempts — report plainly, don't guess",
-      "prompt": "Run codex-review-recovery for PR #77. Step 5 posted `@codex review` successfully at head `abc123`, anchor `BEFORE_COMMENT=2026-08-21T10:00:00Z`. At step 6, all 10 `gh run list --workflow await-codex-review.yml --event issue_comment --commit abc123 ...` search attempts (5 seconds apart) return an empty list — no matching run ever appears.",
+      "prompt": "Run codex-review-recovery for PR #77. Step 5 posted `@codex review` successfully, anchor `BEFORE_COMMENT=2026-08-21T10:00:00Z`. At step 6, all 10 `gh run list --workflow await-codex-review.yml --event issue_comment ...` search attempts (5 seconds apart) return an empty list — no matching run ever appears.",
       "expected_output": "After the 10th empty attempt, the skill stops and reports plainly that no new run was found — it does not fall back to polling some other run, does not guess a `databaseId`, and does not treat this as a success or a failure conclusion of the check itself.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
@@ -62,8 +62,8 @@
     {
       "id": "eval-9",
       "name": "Multiple runs match step 6's filter after the anchor — pick the latest by createdAt, don't stop or guess randomly",
-      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head confirmed at step 4 is `abc123`). Step 5 captured `BEFORE_COMMENT=2026-08-21T10:00:00Z` and posted `@codex review`. At step 6, `gh run list --workflow await-codex-review.yml --event issue_comment --commit abc123 --json databaseId,createdAt,status,conclusion --limit 5` returns two entries both at or after the anchor — databaseId 300 (`createdAt: 2026-08-21T10:00:04Z`) and databaseId 301 (`createdAt: 2026-08-21T10:00:06Z`) — because a second person also commented `@codex review` moments later.",
-      "expected_output": "The skill deterministically picks databaseId 301 (the later `createdAt`) to poll and report on — it does not stop and ask the user to disambiguate, and does not pick databaseId 300 or guess randomly between them.",
+      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished. Step 5 captured `BEFORE_COMMENT=2026-08-21T10:00:00Z` and posted `@codex review`. At step 6, `gh run list --workflow await-codex-review.yml --event issue_comment --json databaseId,createdAt,status,conclusion --limit 5` returns two entries both at or after the anchor — databaseId 300 (`createdAt: 2026-08-21T10:00:04Z`) and databaseId 301 (`createdAt: 2026-08-21T10:00:06Z`) — because someone also posted `@codex review` on a *different* PR in the same repo moments later (this workflow's issue_comment trigger and gh run list's fields can't distinguish which PR a run belongs to — see the SKILL.md's Boundaries).",
+      "expected_output": "The skill deterministically picks databaseId 301 (the later `createdAt`) to poll and report on — it does not stop and ask the user to disambiguate, and does not pick databaseId 300 or guess randomly between them. It does not claim certainty that 301 actually belongs to PR #77 — this is the disclosed best-effort limitation, not a guarantee.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
@@ -76,7 +76,7 @@
     {
       "id": "eval-11",
       "name": "The find-loop's first few searches come back empty before the matching run appears — keep retrying, don't give up early",
-      "prompt": "Run codex-review-recovery for PR #77. Step 5 posted `@codex review` successfully at head `abc123`, anchor `BEFORE_COMMENT=2026-08-21T10:00:00Z`. At step 6, the first two `gh run list --workflow await-codex-review.yml --event issue_comment --commit abc123 ...` search attempts return an empty list (GitHub hasn't scheduled the run yet). The third attempt returns one entry, databaseId 500, `createdAt: 2026-08-21T10:00:08Z`.",
+      "prompt": "Run codex-review-recovery for PR #77. Step 5 posted `@codex review` successfully, anchor `BEFORE_COMMENT=2026-08-21T10:00:00Z`. At step 6, the first two `gh run list --workflow await-codex-review.yml --event issue_comment ...` search attempts return an empty list (GitHub hasn't scheduled the run yet). The third attempt returns one entry, databaseId 500, `createdAt: 2026-08-21T10:00:08Z`.",
       "expected_output": "The skill does not report 'no run found' after the first or second empty attempt — it keeps retrying (`sleep 5` between attempts) up to its full budget. On the third attempt, it finds databaseId 500 and proceeds to poll it, rather than having already given up.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
