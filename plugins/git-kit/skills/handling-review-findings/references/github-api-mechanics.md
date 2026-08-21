@@ -38,29 +38,43 @@ by that `id`. Both calls go through `gh api graphql -f query=...`. `gh api` has 
 (SKILL.md's Workflow step 1) — if `$ARGUMENTS` named a PR outside the current checkout's repository,
 scope both calls with `GH_REPO="<owner>/<repo>" gh api graphql ...` instead.
 
-The `reviewThreads` query form actually needed, including the field that bridges a thread node back to
-the REST `comment_id` the reply endpoint above requires, and pagination via `pageInfo`/`endCursor` — a
-single `first: 50` page silently misses any thread beyond the 50th on a PR with more review threads
-than that, so loop on `hasNextPage` rather than treating one page as the complete set:
+The complete, executable `reviewThreads` query — a bare `reviewThreads(...) { ... }` fragment with no
+`query`/variable declaration or `repository(owner:...) { pullRequest(number:...) { ... } }` wrapper is
+**not** a submittable GraphQL document (`gh api --help`'s own GraphQL example shows the same
+`repository(owner: $owner, name: $name)` wrapper for exactly this reason); this is the full shape,
+live-verified against this skill's own use this session. Includes the field that bridges a thread node
+back to the REST `comment_id` the reply endpoint above requires, and pagination via `pageInfo`/
+`endCursor` — a single `first: 50` page silently misses any thread beyond the 50th on a PR with more
+review threads than that, so loop on `hasNextPage` rather than treating one page as the complete set:
 
 ```
-reviewThreads(first: 50, after: $cursor) {
-  pageInfo { hasNextPage endCursor }
-  nodes {
-    id
-    isResolved
-    path
-    line
-    comments(first: 1) {
-      nodes { databaseId body author { login } }
+gh api graphql -F owner="{owner}" -F name="{repo}" -F number={pull_number} -f cursor=null -f query='
+query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 50, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          isResolved
+          path
+          line
+          comments(first: 1) {
+            nodes { databaseId body author { login } }
+          }
+        }
+      }
     }
   }
 }
+'
 ```
 
 Pass `$cursor` as a GraphQL variable (`null` on the first call, then each response's `pageInfo.endCursor`
-on the next), and keep querying while `pageInfo.hasNextPage` is `true` before treating the accumulated
-thread list as complete.
+on the next — set via `-f cursor="<endCursor>"`, not `-f cursor=null`, once a next page exists), and keep
+querying while `pageInfo.hasNextPage` is `true` before treating the accumulated thread list as complete.
+`-F owner=`/`-F name=`/`-F number=` are typed GraphQL variables (`gh api`'s `-F` flag), distinct from
+`-f query=`'s plain string; get `{owner}`/`{repo}` the same way the REST endpoints above do.
 
 `comments.nodes[0].databaseId` is the REST `comment_id` — the missing link between the GraphQL thread
 list and the REST reply endpoint above.
