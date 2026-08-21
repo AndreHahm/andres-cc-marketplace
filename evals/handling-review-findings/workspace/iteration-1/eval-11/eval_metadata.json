@@ -1,0 +1,26 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "States explicitly that a pre-push security-reviewer pass is not a new round -- it's part of finishing the round already in progress",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States this stays true even though the pass found a Critical issue",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States the new Critical finding gets fixed within round 2 itself, not deferred and not treated as consuming round 3's budget",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Does not describe this as opening or advancing to round 3",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

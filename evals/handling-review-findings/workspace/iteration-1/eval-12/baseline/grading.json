@@ -1,0 +1,12 @@
+{
+  "eval_id": 12,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes that Codex's and CodeRabbit's findings describe the same underlying defect despite different wording", "passed": true, "evidence": "\"Both findings describe the same defect: a null-byte handling gap in the sanitize_input() function at the same line.\""},
+    {"text": "States explicitly that this must produce exactly ONE GitHub issue, not two", "passed": true, "evidence": "\"Number of GitHub Issues to File: 1\""},
+    {"text": "Describes checking for an existing issue before filing (a dedup check against already-filed issues)", "passed": false, "evidence": "No mention of checking for an existing filed issue before filing -- goes straight to \"File a single GitHub issue that consolidates both findings\" with no pre-filing dedup check described."},
+    {"text": "States that BOTH reviewers' threads get replied-to, each pointing at the same single issue number", "passed": true, "evidence": "\"In each review thread, post: 'Confirmed and filed as GitHub issue #[N]. See [link] for tracking.'\""},
+    {"text": "States neither thread gets resolved", "passed": false, "evidence": "Directly contradicts: \"Mark both review threads as resolved/addressed in the PR review tool's workflow\" / \"Mark as addressed/resolved (linked to the consolidated issue)\" -- explicitly resolves both threads despite the finding being deferred to an issue, not fixed."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 3, "pass_rate": 0.6}
+}

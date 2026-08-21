@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Classifies Devin's finding as belonging to round 1, the same round as Codex's finding",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Explicitly states that the multi-hour gap between the two reviewers is irrelevant to round classification",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States that a round's boundary is defined by fix-driven pushes, not wall-clock time or reviewer arrival order",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Does not treat Devin's finding as belonging to a later round just because it arrived after Codex's",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

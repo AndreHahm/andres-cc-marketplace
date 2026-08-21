@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Classifies Devin's finding as belonging to round 1, the same round as Codex's finding", "passed": true, "evidence": "\"Both Codex and Devin are reviewing the same head SHA within the same round window\""},
+    {"text": "Explicitly states that the multi-hour gap between the two reviewers is irrelevant to round classification", "passed": true, "evidence": "\"The multi-hour gap between the two reviewers does NOT change this.\" -- quotes round-and-dedup-rules.md directly"},
+    {"text": "States that a round's boundary is defined by fix-driven pushes, not wall-clock time or reviewer arrival order", "passed": true, "evidence": "\"The critical distinction is that a round is defined by fix-driven pushes, not by elapsed time.\""},
+    {"text": "Does not treat Devin's finding as belonging to a later round just because it arrived after Codex's", "passed": true, "evidence": "\"Devin's finding belongs to Round 1.\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

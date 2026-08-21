@@ -1,0 +1,11 @@
+{
+  "eval_id": 10,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes that the user's explicit request for this specific finding overrides the severity gate's default decline", "passed": true, "evidence": "\"This is an explicit, named request to fix this specific Minor finding, overriding the default decline policy.\" -- note: prompt stated the effective policy in plain language for baseline"},
+    {"text": "Routes the finding to the Fix path despite the gate being true and the finding being Minor", "passed": true, "evidence": "\"ACCEPT -- Fix this finding.\""},
+    {"text": "Does not decline the finding just because the gate is on", "passed": true, "evidence": "Fixed, not declined"},
+    {"text": "Explains that the gate only changes the automatic default for findings nobody has separately weighed in on, and an explicit instruction always wins", "passed": true, "evidence": "\"User intent, when explicitly stated for a specific finding, takes precedence over the default severity-based triage rule.\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

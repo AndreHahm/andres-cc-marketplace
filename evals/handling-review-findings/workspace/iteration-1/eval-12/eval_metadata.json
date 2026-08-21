@@ -1,0 +1,31 @@
+{
+  "eval_id": 12,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Recognizes that Codex's and CodeRabbit's findings describe the same underlying defect despite different wording",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States explicitly that this must produce exactly ONE GitHub issue, not two",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Describes checking for an existing issue before filing (a dedup check against already-filed issues)",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States that BOTH reviewers' threads get replied-to, each pointing at the same single issue number",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States neither thread gets resolved",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

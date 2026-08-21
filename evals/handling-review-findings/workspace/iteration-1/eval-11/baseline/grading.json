@@ -1,0 +1,11 @@
+{
+  "eval_id": 11,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "States explicitly that a pre-push security-reviewer pass is not a new round -- it's part of finishing the round already in progress", "passed": true, "evidence": "\"This stays within Round 2. It does NOT open Round 3.\" -- reasoned via its own \"pushed vs unpushed / internal vs external review\" framework, not the skill's specific terminology, but reaches the same conclusion"},
+    {"text": "States this stays true even though the pass found a Critical issue", "passed": true, "evidence": "Never treats the Critical severity as changing the round classification"},
+    {"text": "States the new Critical finding gets fixed within round 2 itself, not deferred and not treated as consuming round 3's budget", "passed": true, "evidence": "\"Fix the path-traversal vulnerability... Update the Round 2 commit(s) to include this fix\""},
+    {"text": "Does not describe this as opening or advancing to round 3", "passed": true, "evidence": "\"Round 3 opens only if external reviewers find issues after this revised Round 2 is pushed and submitted\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

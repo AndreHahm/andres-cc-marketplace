@@ -1,0 +1,11 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States explicitly that a pre-push security-reviewer pass is not a new round -- it's part of finishing the round already in progress", "passed": true, "evidence": "quotes round-and-dedup-rules.md directly: \"is not a new round; it's part of finishing the round already in progress\""},
+    {"text": "States this stays true even though the pass found a Critical issue", "passed": true, "evidence": "\"its own findings are fixed within that same round regardless of the cap\" -- explicit that severity doesn't change this"},
+    {"text": "States the new Critical finding gets fixed within round 2 itself, not deferred and not treated as consuming round 3's budget", "passed": true, "evidence": "\"Its findings must be fixed within that same round, regardless of the two-round cap\""},
+    {"text": "Does not describe this as opening or advancing to round 3", "passed": true, "evidence": "\"This finding stays within round 2. It does not open round 3.\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
