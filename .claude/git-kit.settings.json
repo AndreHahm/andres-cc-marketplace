@@ -9,5 +9,6 @@
   "push_auto_pr": false,
   "pr_merge_type": "REBASE",
   "merge_auto_delete_branch": true,
-  "use_worktree": true
+  "use_worktree": true,
+  "review_findings_severity_gate": false
 }

@@ -85,6 +85,7 @@ To override any of these per project, run `/create-git-kit-local-json` — it cr
 | `pr_merge_type` | `REBASE` | Merge strategy `merge-pr` uses: `MERGE`, `REBASE`, or `SQUASH` |
 | `merge_auto_delete_branch` | `true` | After `merge-pr` merges a PR, delete the just-merged branch without asking |
 | `use_worktree` | `true` | Which option `starting-work`'s plain-branch-vs-worktree question recommends by default — the question itself always still asks |
+| `review_findings_severity_gate` | `false` | `true` restricts `handling-review-findings`'s fix/file pipeline to Critical/Major findings only — a Minor/nit finding is declined outright (unless explicitly requested) instead of being fixed or filed |
 
 Changes to `.claude/git-kit.local.json` take effect on the next invocation — no restart needed, since settings are read by each skill directly rather than a hook.
 
@@ -111,6 +112,7 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 | `dependency-updater` | Scanning package manifests across ecosystems for outdated dependencies, flagging monorepo version conflicts, and proposing updates with confirmation before applying |
 | `merge-pr` | Checking whether a PR is ready to merge (draft/CI/review status), verifying the caller has merge rights, and merging (always with confirmation, never automatically) |
 | `codex-review-recovery` | Recovering a stuck `Await Codex review` check when Codex finished the review on its own dashboard but GitHub never received the write-back — human-confirmed, never inferred from a timeout alone |
+| `handling-review-findings` | Triaging PR review findings across multiple rounds with a mandated two-round fix cap, filing round-3+ (or oversized) findings as tracked GitHub issues, and replying to/resolving individual review threads |
 | `finishing-work` | Syncing back to a clean, current main after a PR merges, before handing off to `git-cleanup` for branch/worktree deletion |
 | `manage-codeowners` | Bootstrapping and maintaining `.github/CODEOWNERS`, a dependency for `merge-pr`'s rights check |
 
@@ -146,7 +148,7 @@ report had stated the closure explicitly until now:
 - **`guard-raw-commit.sh`** blocks a raw `git commit`. `commit` and `standalone-commits` — the two skills that legitimately run `git commit` directly — are allowlisted.
 - **`guard-raw-pr-ops.sh`** blocks a raw `gh pr create` or `gh pr merge`. `create-pr`, `merge-pr`, and `explain-pr-changes` (its no-PR-yet publish path) are allowlisted.
 - **`guard-raw-branch-create.sh`** blocks a raw `git checkout -b`/`-B`, `git switch -c`/`-C`/`--create`, or `git worktree add -b`/`-B`. `starting-work` and `commit` (its on-`main` branch-check fallback) are allowlisted.
-- **`guard-raw-pr-review.sh`** blocks a raw `gh pr review` or `gh pr comment`. `collaborating-on-a-pr`, `explain-pr-changes` (its resolution-table comment), and `codex-review-recovery` (its `@codex review` retry comment) are allowlisted.
+- **`guard-raw-pr-review.sh`** blocks a raw `gh pr review`, `gh pr comment`, a raw `gh api .../pulls/*/comments/*/replies` (reply to a review comment), or a raw `gh api graphql` call containing the `resolveReviewThread` mutation. `collaborating-on-a-pr`, `explain-pr-changes` (its resolution-table comment), `codex-review-recovery` (its `@codex review` retry comment), and `handling-review-findings` (its finding-reply/thread-resolve mechanics) are allowlisted.
 - **`guard-raw-destructive-cleanup.sh`** blocks a raw `git branch -D` targeting a protected branch (`main`/`master`/`develop`/`release/*`), or a raw `git worktree remove --force`/`-f` (a plain, unforced removal already refuses on a dirty or locked worktree via git's own safeguard, so it isn't guarded). `git-cleanup` is allowlisted.
 - **`guard-dirty-worktree-exit.sh`** (`Stop`, not `PreToolUse`) blocks the agent's turn from ending while the session's `starting-work`-locked worktree has uncommitted changes or commits not yet in the resolved default branch — since exiting can remove that worktree via Claude Code's own worktree-session flow. Say "exit anyway" to skip the block for that turn.
 
