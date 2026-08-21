@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the finding as belonging to round 1",
+      "passed": true,
+      "evidence": "\"Round 1 (this is the first review after the PR's first push-for-review...)\""
+    },
+    {
+      "text": "Routes the finding to the Fix path, not the Issue or Decline path",
+      "passed": true,
+      "evidence": "\"Triage decision: FIX\""
+    },
+    {
+      "text": "States that verification is a hard precondition before any reply/resolve action -- never claims a reply or resolve happens on the strength of a pushed commit alone",
+      "passed": false,
+      "evidence": "The drafted reply text is written as something to post now (\"Fixed in config.py:47 by using .get(...)... Will push the fix as a follow-up commit\"), implying the reply is sent before the fix is pushed/verified. Only the RESOLVE step is explicitly gated on verification (\"Not resolved yet... Verify the pushed diff... Only then mark the thread resolved\") -- the reply itself is not gated on verification the way the skill requires for both actions."
+    },
+    {
+      "text": "Describes committing via Skill(git-kit:commit), not a raw `git commit`",
+      "passed": false,
+      "evidence": "No mention of any git-kit commit skill or commit-routing convention anywhere in the file -- only \"push the fix as a follow-up commit\", with no reference to how the commit itself should be made."
+    },
+    {
+      "text": "The drafted reply cites both the fixing commit SHA and a one-line summary of what verification confirmed",
+      "passed": false,
+      "evidence": "The reply text (\"Fixed in config.py:47 by using .get(\\\"timeout\\\", DEFAULT_TIMEOUT)...\") cites a file:line, not a commit SHA, and includes no verification summary distinct from the fix description itself."
+    },
+    {
+      "text": "States the thread is resolved only after the reply, and only because verification actually passed",
+      "passed": true,
+      "evidence": "\"Not resolved yet. The thread stays open until the fix commit is actually pushed to the PR branch... Verify the pushed diff actually addresses config.py:47 as described... Only then mark the thread resolved.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 3,
+    "pass_rate": 0.5
+  }
+}

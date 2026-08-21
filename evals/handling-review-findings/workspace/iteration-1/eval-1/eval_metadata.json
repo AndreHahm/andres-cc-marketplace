@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Classifies the finding as belonging to round 1",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Routes the finding to the Fix path, not the Issue or Decline path",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States that verification is a hard precondition before any reply/resolve action -- never claims a reply or resolve happens on the strength of a pushed commit alone",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Describes committing via Skill(git-kit:commit), not a raw `git commit`",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "The drafted reply cites both the fixing commit SHA and a one-line summary of what verification confirmed",
+      "type": "structure",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States the thread is resolved only after the reply, and only because verification actually passed",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

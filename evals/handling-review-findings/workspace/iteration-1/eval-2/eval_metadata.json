@@ -1,0 +1,36 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Classifies the finding as belonging to round 3",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Explicitly reasons that the finding is new (not a repeat) rather than assuming it",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Routes the finding to the Issue path -- states plainly it is never fixed in-session, despite being small/easy to fix",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "The drafted issue includes the PR URL, head SHA, thread/comment reference, reviewer, and severity fields",
+      "type": "structure",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Uses a plain non-closing reference (\"Found in PR #142\"), never \"Fixes #142\"/\"Closes #142\"",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States the thread is left unresolved, not resolved",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

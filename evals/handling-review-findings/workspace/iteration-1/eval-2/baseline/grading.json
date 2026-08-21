@@ -1,0 +1,41 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the finding as belonging to round 3",
+      "passed": true,
+      "evidence": "\"Belongs to: Round 3 (the current review round).\""
+    },
+    {
+      "text": "Explicitly reasons that the finding is new (not a repeat) rather than assuming it",
+      "passed": true,
+      "evidence": "\"there is no prior round-1 or round-2 comment thread referencing utils.py:88, tmp2, or variable-naming in that function at all.\""
+    },
+    {
+      "text": "Routes the finding to the Issue path -- states plainly it is never fixed in-session, despite being small/easy to fix",
+      "passed": false,
+      "evidence": "Frames the deferral as a soft, situational judgment call rather than a firm rule: \"If the team's convention is instead 'just fix trivial one-line nits inline no matter the round,' that would also be reasonable -- but absent that stated convention, deferring via a tracked issue is the safer default.\" This does not state plainly that round-3+ findings are never fixed in-ession regardless of size -- it presents fixing inline as an equally reasonable alternative choice."
+    },
+    {
+      "text": "The drafted issue includes the PR URL, head SHA, thread/comment reference, reviewer, and severity fields",
+      "passed": false,
+      "evidence": "The \"Traceability\" section includes Source PR, Source review round, File/line, Severity, Finding type, and a vague \"Raised by: PR #142 review, round 3 (see PR #142 review thread for original comment)\" -- there is no head SHA field at all, and no specific thread/comment ID/URL field, only a generic pointer to \"the PR #142 review thread\"."
+    },
+    {
+      "text": "Uses a plain non-closing reference (\"Found in PR #142\"), never \"Fixes #142\"/\"Closes #142\"",
+      "passed": false,
+      "evidence": "Uses \"Tracked separately in #<issue-number> -- not addressing in this PR...\" posted on the PR referencing the issue -- avoids a closing keyword (partial credit for that), but does not follow the skill's specific \"Found in PR #N\" convention/direction at all; it independently invented a different (though also non-closing) phrasing."
+    },
+    {
+      "text": "States the thread is left unresolved, not resolved",
+      "passed": false,
+      "evidence": "\"Resolved: Yes.\" -- direct contradiction of the required behavior; explicitly resolves the thread despite deferring the finding to a follow-up issue rather than fixing it."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 2,
+    "pass_rate": 0.3333333333333333
+  }
+}

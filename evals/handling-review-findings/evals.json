@@ -1,0 +1,49 @@
+{
+  "skill_name": "handling-review-findings",
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "description": "Triage PR review findings across rounds with a mandated two-round fix cap; round 3+ or oversized findings are filed as tracked issues instead of fixed, and a Critical/Major finding always requires explicit risk-acceptance before merge.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Round 1/2 fix path",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #142, this is round 1 (the first review after the PR's first push-for-review; `review_findings_severity_gate` is `false`, the default). Codex just posted exactly one finding:\n\n> **Major** — `parse_config()` at `config.py:47` doesn't handle a missing `timeout` key and raises `KeyError` instead of falling back to the documented default.\n\nTriage this finding and decide: which round does it belong to, does it get fixed/filed/declined, and what happens to its review thread. Write your full triage decision, the exact reply text you would post to the thread, and an explicit statement of whether (and when) you would resolve the thread, to `outputs/triage.md`.",
+      "expected_output": "Classifies the finding as round 1 -> Fix path (not filed, not declined). States plainly that verification is a hard precondition before any reply/resolve action -- the reply is never sent and the thread is never resolved on the strength of a pushed commit alone. Describes committing via Skill(git-kit:commit), not a raw `git commit`. The drafted reply cites both a fixing commit SHA and a one-line summary of what verification confirmed. States the thread is resolved only after that reply, and only because verification actually passed.",
+      "files": ["outputs/triage.md"]
+    },
+    {
+      "id": 2,
+      "name": "Round 3+ issue path",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #142 is now in its third review round (`review_findings_severity_gate` is `false`, the default). This finding was never raised in round 1 or round 2 -- it is genuinely new in round 3:\n\n> **Minor** -- variable name `tmp2` in `utils.py:88` is non-descriptive.\n\nTriage this finding. Write your full triage decision (including which round it belongs to and why it's genuinely new, not a repeat), a drafted GitHub issue body with every required traceability field, the exact non-closing PR reference text you'd use, the exact reply text you would post to the thread, and an explicit statement of whether the thread gets resolved, to `outputs/triage.md`.",
+      "expected_output": "Classifies the finding as round 3, new (not a repeat), not scope-deferred. Since it's round 3+ and not Critical/Major, routes to the Issue path -- explicitly states it is never fixed in-session despite being small/easy to fix. The drafted issue includes the PR URL, head SHA, thread/comment reference, reviewer, and severity fields, and uses a plain non-closing reference (\"Found in PR #142\"), never \"Fixes #142\"/\"Closes #142\". The reply points at the new issue number. States plainly that the thread is left unresolved, not resolved.",
+      "files": ["outputs/triage.md"]
+    },
+    {
+      "id": 3,
+      "name": "Critical/Major hard-cap in round 3+",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #142, round 3 (`review_findings_severity_gate` is `false`, the default). This is the first round this finding has appeared in:\n\n> **Critical** -- SQL injection possible in `build_query()` at `db.py:210` -- user input is concatenated directly into the query string.\n\nTriage this finding AND write the final disclosure report you would give the user before any merge discussion, covering every finding handled this session (just this one). Save the triage decision to `outputs/triage.md` and the disclosure report to `outputs/disclosure.md`.",
+      "expected_output": "Classifies the finding as round 3, Critical severity. Even though it's round 3+, it still gets filed as a GitHub issue (the round cap's fix-vs-file mechanics are unchanged by severity) -- but the disclosure report never implies the PR is safe to merge. The disclosure explicitly names this finding as a merge-blocking risk and states that merging requires a separate, explicit human risk-acceptance decision before `merge-pr` is invoked -- filing the issue is never treated as equivalent to that acceptance. No language suggesting the round cap alone lets the PR 'proceed' with this finding outstanding.",
+      "files": ["outputs/triage.md", "outputs/disclosure.md"]
+    },
+    {
+      "id": 4,
+      "name": "Dedup edge case -- same file+line, different defect",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #142. In round 1, this finding was raised, fixed, and its thread resolved citing commit `abc123f`:\n\n> **Major** (round 1, already resolved) -- authorization check missing in `handler.py:120` -- the endpoint doesn't verify the caller owns the resource before deleting it.\n\nNow, in round 2, a new finding is posted on the exact same file and line:\n\n> **Minor** (round 2, just posted) -- no test coverage for the error path in `handler.py:120` when the resource doesn't exist.\n\nTriage the round-2 finding. Write your full reasoning for whether this is a genuinely new finding or a repeat of the round-1 one, and your fix/file/decline decision, to `outputs/triage.md`.",
+      "expected_output": "Does NOT treat the round-2 finding as a repeat of the round-1 finding merely because they share the same file+line. Explicitly compares the actual defect described (a missing authorization check vs. missing test coverage for an error path) and concludes they are two distinct findings. Classifies the round-2 finding as new, and since it's round 2 (within the two-round cap), routes it to the Fix path rather than the Issue path.",
+      "files": ["outputs/triage.md"]
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 10,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "Two reviewers finish at very different times against the same head SHA, with no fix-driven push between their two arrivals -- both sets of findings belong to the same round.",
+      "A round-1/2 fix is applied and pushed, but its own verification fails -- the thread is never replied-to or resolved off that push; the finding stays open in the same round.",
+      "An issue is filed with nothing else to commit in that round -- the resulting commit is correctly labeled documentation-only and does not open a new round window even though the head SHA changed.",
+      "A human reviewer has an active CHANGES_REQUESTED review alongside an otherwise-fully-triaged round -- the workflow's own report never implies the PR is mergeable; that's merge-pr's call.",
+      "review_findings_severity_gate: true, a Minor/nit finding in round 1, nobody asked for it explicitly -- declined (reply only), never fixed, never filed.",
+      "review_findings_severity_gate: true, same Minor/nit finding, but the user explicitly asks for it to be fixed anyway -- the explicit instruction wins; it's fixed, not declined.",
+      "A security-reviewer pass runs before round 2's fix is pushed and finds a new Critical issue -- fixed within round 2, not treated as opening round 3.",
+      "Two reviewers independently flag the same defect in round 3 -- one issue is filed, not two; both threads get replied-to pointing at the same issue number."
+    ]
+  }
+}

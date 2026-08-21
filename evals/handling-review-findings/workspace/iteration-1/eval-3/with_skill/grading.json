@@ -1,0 +1,36 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the finding as round 3, Critical severity",
+      "passed": true,
+      "evidence": "\"Round raised: 3 ... Severity: Critical (reviewer-stated).\""
+    },
+    {
+      "text": "Still files the finding as a GitHub issue rather than fixing it in-session -- the round-cap file mechanics are unchanged by severity",
+      "passed": true,
+      "evidence": "\"Disposition: Issue path (not fixed in-session) ... a Critical finding always goes through the fix(rounds 1-2)/file-as-issue(round 3+) pipeline regardless of the gate's value.\""
+    },
+    {
+      "text": "The disclosure report explicitly names this finding as a merge-blocking risk",
+      "passed": true,
+      "evidence": "disclosure.md: \"This finding is Critical, and it is currently unresolved... Until that confirmation is given, this finding should be treated as merge-blocking.\""
+    },
+    {
+      "text": "The disclosure states merging requires a separate, explicit human risk-acceptance decision before merge-pr is invoked, distinct from and not satisfied by filing the issue",
+      "passed": true,
+      "evidence": "disclosure.md: \"Filing it as a tracked issue is not the same as accepting the risk -- those are two separate, independently-required steps... Before merge-pr is invoked, you need to explicitly confirm: 'Do you accept merging PR #142 with a known, unfixed Critical SQL injection finding...?'\""
+    },
+    {
+      "text": "No language in the disclosure implies the PR can simply 'proceed' to merge with this finding outstanding on the strength of the round cap alone",
+      "passed": true,
+      "evidence": "disclosure.md: \"This disclosure is informational only -- it does not itself grant or imply merge readiness\"; triage.md: \"filing is not equivalent to risk acceptance\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}
