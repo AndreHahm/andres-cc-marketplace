@@ -90,9 +90,24 @@ GH_SUBCOMMAND=""
 # without a leading `/` or a full `https://api.github.com/...` prefix. A single combined regex
 # expecting the endpoint immediately after `api` misses all of those, letting a perfectly
 # ordinary `gh api -X POST repos/.../replies` invocation fall through unguarded.
+# `api` DOES have to sit immediately after `gh` -- verified against `gh --help`/`gh api --help`
+# (2026-08-21): `gh`'s root command has no persistent flags besides `--help`/`--version`, and `gh
+# api` itself has no `-R`/`--repo` flag either, so there is no real `gh <flag> api ...` invocation
+# for a widened prefix to defend against. A prior revision of this line widened the prefix to
+# tolerate flags there anyway, on an unverified assumption about `gh`'s flag placement -- that
+# widening was itself a regression (it dropped bare-whitespace/`env`-prefixed/indented `gh api ...`
+# as valid prefixes) fixing a bypass that didn't actually exist. Reverted to the original,
+# narrower form below.
 API_RE='(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+api([[:space:]]|$)'
-REPLIES_RE='(^|[[:space:]]|/)repos/[^[:space:]]+/pulls/[^[:space:]]+/comments/[^[:space:]]+/replies([[:space:]]|$)'
-GRAPHQL_RE='(^|[[:space:]]|/)graphql([[:space:]]|$)'
+# Boundary classes below are "not alnum/underscore" (leading) and "not alnum/underscore/hyphen"
+# (trailing), not the narrower "whitespace or /" used previously -- a quoted endpoint
+# (`gh api "repos/.../replies"`, single-quoted, or the trailing `)`/backtick of a `$(...)`/
+# backtick command substitution) has a quote/paren/backtick character immediately before or after
+# the endpoint text, which the narrower classes didn't treat as a valid boundary, letting a quoted
+# invocation bypass both branches entirely despite being a completely ordinary way to write one of
+# these commands.
+REPLIES_RE='(^|[^[:alnum:]_])repos/[^[:space:]]+/pulls/[^[:space:]]+/comments/[^[:space:]]+/replies([^[:alnum:]_-]|$)'
+GRAPHQL_RE='(^|[^[:alnum:]_])graphql([^[:alnum:]_-]|$)'
 if echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+review([[:space:]]|$)'; then
   GH_SUBCOMMAND="gh pr review"
 elif echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+comment([[:space:]]|$)'; then
@@ -101,13 +116,17 @@ elif echo "$COMMAND" | grep -qE "$API_RE" && echo "$COMMAND" | grep -qE "$REPLIE
   GH_SUBCOMMAND="gh api .../comments/{id}/replies"
 elif echo "$COMMAND" | grep -qE "$API_RE" && echo "$COMMAND" | grep -qE "$GRAPHQL_RE"; then
   # Deny-by-default for `gh api graphql`, not "deny only if the command string literally
-  # contains resolveReviewThread": the mutation's `query`/`-F query=@file`/`$(cat ...)`-supplied
-  # body may not appear in the command string at all, so absence of that substring can never be
-  # trusted to mean read-only. Only the narrow, verifiably-read-only case -- an inline
-  # `reviewThreads` lookup with no `mutation` keyword anywhere in the command -- is let through
-  # unguarded; everything else (including a file-supplied body this check can't inspect) is
-  # guarded, which fails closed rather than open.
-  if echo "$COMMAND" | grep -q 'reviewThreads' && ! echo "$COMMAND" | grep -q 'mutation'; then
+  # contains resolveReviewThread": the mutation's query body may not appear in the command string
+  # at all, so absence of the "mutation" substring can never be trusted to mean read-only. Only
+  # the narrow, verifiably-read-only case -- an inline `reviewThreads` lookup with no `mutation`
+  # keyword and no indirection that could hide one -- is let through unguarded; everything else is
+  # guarded, which fails closed rather than open. The indirection check below rejects every form
+  # this check cannot see into: `-F query=@file` (a filename, not the file's real content),
+  # `$(cmd)`/backtick command substitution (the substituted output isn't in the command string
+  # either), and `gh api`'s own `--input <file>` (an alternate whole-request-body-from-file flag).
+  # A command using any of these can never satisfy this carve-out, regardless of what substring
+  # its filename/subshell/flag argument happens to contain.
+  if echo "$COMMAND" | grep -q 'reviewThreads' && ! echo "$COMMAND" | grep -q 'mutation' && ! echo "$COMMAND" | grep -qE '=@|\$\(|`|--input'; then
     exit 0
   fi
   GH_SUBCOMMAND="gh api graphql"
