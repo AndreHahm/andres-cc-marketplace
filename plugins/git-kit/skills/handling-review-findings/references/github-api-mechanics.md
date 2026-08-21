@@ -10,6 +10,10 @@
 
 ## Replying to an inline PR review comment
 
+**The `gh-pr-review` marker (SKILL.md's Workflow / GitHub API Mechanics) goes immediately before this
+reply call, same as the `resolveReviewThread` mutation below** — `guard-raw-pr-review.sh` hard-blocks
+this endpoint without one. If a fresh marker isn't written right before it, the call is denied.
+
 ```
 gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies -f body="..."
 ```

@@ -73,8 +73,13 @@ def check_bash_grants():
     # asterisk -- the body prose spells the same endpoint with {owner}/{repo}-style
     # placeholders instead, so it's translated to a flexible non-whitespace match rather
     # than escaped literally, or every path-pattern grant would false-FAIL here.
+    # The trailing (?!/) guards against a shorter grant (e.g. ".../comments") silently
+    # PASSing as "invoked" when the only real occurrence in the body is actually a longer,
+    # differently-scoped path (e.g. ".../comments/{comment_id}/replies") that happens to
+    # start with the same prefix -- without it, an unanchored match can't tell "invoked"
+    # from "is a textual prefix of something else that's invoked".
     def _grant_pattern(cmd: str) -> str:
-        return r"[^\s]*".join(re.escape(part) for part in cmd.split("*"))
+        return r"[^\s]*".join(re.escape(part) for part in cmd.split("*")) + r"(?!/)"
 
     unused = [cmd for cmd in granted_cmds if not re.search(_grant_pattern(cmd), body)]
     if unused:
