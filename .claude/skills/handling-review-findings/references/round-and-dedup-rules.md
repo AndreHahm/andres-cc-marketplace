@@ -1,5 +1,13 @@
 # Round and Dedup Rules
 
+- [What counts as a round, and where its boundary sits](#what-counts-as-a-round-and-where-its-boundary-sits)
+- [Dedup mechanism: file+line match is a candidate signal, never sufficient by itself](#dedup-mechanism-fileline-match-is-a-candidate-signal-never-sufficient-by-itself)
+- [Scope-based deferral is a separate, unlimited axis from the round cap](#scope-based-deferral-is-a-separate-unlimited-axis-from-the-round-cap)
+- [Hard Cap exception: Critical/Major findings never silently proceed](#hard-cap-exception-criticalmajor-findings-never-silently-proceed)
+- [Severity-gate interaction](#severity-gate-interaction)
+- [Already-fixed threads get resolved with commit-SHA evidence; deferred ones don't get resolved at all](#already-fixed-threads-get-resolved-with-commit-sha-evidence-deferred-ones-dont-get-resolved-at-all)
+- [Worked example](#worked-example)
+
 ## What counts as a round, and where its boundary sits
 
 A round is the window between two fix-driven pushes: round *N* opens at the push that applied round

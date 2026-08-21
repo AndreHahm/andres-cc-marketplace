@@ -1,5 +1,13 @@
 # GitHub API Mechanics
 
+- [Replying to an inline PR review comment](#replying-to-an-inline-pr-review-comment)
+- [Resolving a review thread](#resolving-a-review-thread)
+- [Leaving a thread unresolved on purpose](#leaving-a-thread-unresolved-on-purpose)
+- [Fetching all reviewers together](#fetching-all-reviewers-together)
+- [Issue traceability payload](#issue-traceability-payload)
+- [Issue-filing convention](#issue-filing-convention)
+- [Scratchpad path](#scratchpad-path)
+
 ## Replying to an inline PR review comment
 
 ```
