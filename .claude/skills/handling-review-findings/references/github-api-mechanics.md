@@ -34,13 +34,18 @@ gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies \
 
 There is no REST endpoint for this at all. It requires GitHub's GraphQL API — first a `reviewThreads`
 query on the PR to obtain the thread's opaque node `id`, then the `resolveReviewThread` mutation keyed
-by that `id`. Both calls go through `gh api graphql -f query=...`.
+by that `id`. Both calls go through `gh api graphql -f query=...`. `gh api` has no `-R`/`--repo` flag
+(SKILL.md's Workflow step 1) — if `$ARGUMENTS` named a PR outside the current checkout's repository,
+scope both calls with `GH_REPO="<owner>/<repo>" gh api graphql ...` instead.
 
 The `reviewThreads` query form actually needed, including the field that bridges a thread node back to
-the REST `comment_id` the reply endpoint above requires:
+the REST `comment_id` the reply endpoint above requires, and pagination via `pageInfo`/`endCursor` — a
+single `first: 50` page silently misses any thread beyond the 50th on a PR with more review threads
+than that, so loop on `hasNextPage` rather than treating one page as the complete set:
 
 ```
-reviewThreads(first: 50) {
+reviewThreads(first: 50, after: $cursor) {
+  pageInfo { hasNextPage endCursor }
   nodes {
     id
     isResolved
@@ -53,15 +58,27 @@ reviewThreads(first: 50) {
 }
 ```
 
+Pass `$cursor` as a GraphQL variable (`null` on the first call, then each response's `pageInfo.endCursor`
+on the next), and keep querying while `pageInfo.hasNextPage` is `true` before treating the accumulated
+thread list as complete.
+
 `comments.nodes[0].databaseId` is the REST `comment_id` — the missing link between the GraphQL thread
 list and the REST reply endpoint above.
 
-**The `gh-pr-review` marker (SKILL.md's Workflow / GitHub API Mechanics) goes immediately before the
-`resolveReviewThread` mutation call, never before this read-only `reviewThreads` lookup.** The lookup
-is itself a `Bash` call and would consume a live marker on its own if one were already written,
-leaving the mutation call right after it denied for lack of a marker — confusing, though not unsafe
-(it fails closed). If the lookup and the mutation happen as two separate `Bash` calls, write the
-marker again right before the mutation specifically.
+**The `gh-pr-review` marker (SKILL.md's Workflow / GitHub API Mechanics) goes immediately before
+*every* `gh api graphql` call here, including this `reviewThreads` lookup, not just the
+`resolveReviewThread` mutation below.** An earlier revision of this guard carved out an exception for a
+"verifiably read-only" lookup, matched by checking the command string for `reviewThreads` with no
+`mutation` keyword — that carve-out was removed after three independent reviewers found four different
+ways to defeat a substring match against a raw shell command (indirection via `=@file`/`$(cmd)`/
+backtick/`--input`, a plain shell variable holding the query, and adjacent-quote string concatenation
+splitting the literal word "mutation" across a quote boundary so it never appears contiguously) — see
+`guard-raw-pr-review.sh`'s own header comment for the full history. The guard now denies every
+`gh api graphql` call unconditionally absent a fresh marker, so the lookup needs one too. Since a marker
+is single-use and consumed on the very next `Bash`/`PowerShell` call regardless of whether that call
+matches, if the lookup and the mutation happen as two separate `Bash` calls, write the marker again
+immediately before each one — a marker written once before the lookup is already consumed by the time
+the mutation call runs.
 
 Resolving one thread:
 
@@ -89,10 +106,11 @@ addressed — then simply never call `resolveReviewThread` for it. This is the m
 ## Fetching all reviewers together
 
 Pull every reviewer's inline comments in one call and triage as one batch, rather than per-tool —
-consistent with "the round counter is per-PR, not per-reviewer":
+consistent with "the round counter is per-PR, not per-reviewer". Paginate — a PR with enough inline
+comments to span multiple API pages otherwise silently loses later pages from dedup and triage:
 
 ```
-gh api repos/{owner}/{repo}/pulls/{pull_number}/comments
+gh api repos/{owner}/{repo}/pulls/{pull_number}/comments --paginate
 ```
 
 ## Issue traceability payload

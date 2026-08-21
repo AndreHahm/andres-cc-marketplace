@@ -137,7 +137,7 @@ def check_evals_json_exists():
         data = json.loads(evals_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         return False, f"evals.json is not valid JSON: {exc}"
-    if not data.get("evals"):
+    if not isinstance(data, dict) or not isinstance(data.get("evals"), list) or not data["evals"]:
         return False, "evals.json has no scenarios in 'evals'"
     return True, f"evals.json present with {len(data['evals'])} scenario(s)"
 

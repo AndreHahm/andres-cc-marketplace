@@ -114,13 +114,20 @@ before classifying any finding for the first time in a session.
    PR), a bare PR number (`^[0-9]+$`), or a PR URL
    (`^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/pull/[0-9]+$`) — never pass an unvalidated
    value through to `gh`. `gh pr view $ARGUMENTS --json url` resolves `<owner>/<repo>`; pass
-   `-R "<owner>/<repo>"` on every `gh pr`/`gh api` call below, since `$ARGUMENTS` may name a PR in a
-   different repository than the current checkout. Per
-   `.claude/rules/recheck-state-before-side-effecting-action.md`, re-check `gh pr checks $ARGUMENTS`,
-   `gh pr view $ARGUMENTS --json reviews,comments`, and
-   `gh api repos/{owner}/{repo}/pulls/{n}/comments` (the full inline-thread list) immediately before
-   acting, never from a state snapshot taken earlier in the conversation — a reviewer can post a new
-   round while a previous one is still being fixed.
+   `-R "<owner>/<repo>"` on every `gh pr`/`gh issue` call below, since `$ARGUMENTS` may name a PR in a
+   different repository than the current checkout. **`gh api` has no `-R`/`--repo` flag at all**
+   (verified against `gh api --help`) — never pass `-R` to it. Its REST calls already carry the
+   resolved owner/repo directly in the endpoint path (the `{owner}`/`{repo}` placeholders throughout
+   `references/github-api-mechanics.md` mean the real resolved values, not `-R`); its `gh api graphql`
+   calls target a single fixed global endpoint with no per-call repo argument, so scope those with
+   `GH_REPO="<owner>/<repo>" gh api graphql ...` (`gh api`'s own documented fallback for repository
+   resolution) instead. Per `.claude/rules/recheck-state-before-side-effecting-action.md`, re-check
+   `gh pr checks $ARGUMENTS`, `gh pr view $ARGUMENTS --json reviews,comments`, and
+   `gh api repos/{owner}/{repo}/pulls/{n}/comments --paginate` (the full inline-thread list — paginated,
+   since a PR with enough inline comments to span multiple API pages would otherwise silently lose
+   later pages from dedup and triage) immediately before acting, never from a state snapshot taken
+   earlier in the conversation — a reviewer can post a new round while a previous one is still being
+   fixed.
 2. **Classify each finding**: dedup against earlier rounds (`references/round-and-dedup-rules.md`),
    determine which round it belongs to, determine severity, and determine whether it's scope-deferred
    (too large to fix in-session — an independent, unlimited axis that never consumes a round-cap fix
@@ -152,16 +159,20 @@ before classifying any finding for the first time in a session.
    `references/github-api-mechanics.md`), and only then resolve that thread. **If verification fails**,
    don't reply or resolve — the finding stays open in the same round.
 5. **Issue path** (round 3+, or any round if scope-deferred): before drafting, check
-   `gh issue list` for an existing issue already filed against this PR/head-SHA for the same finding
-   (dedup per step 2's rule) — two reviewers flagging the same defect in the same round must produce
-   one issue, not two; if a match exists, reply pointing at it instead of filing a duplicate. Otherwise
-   draft the issue as a local file under `issues/`, named `YYYY-MM-DD-short-description.md` per
-   `github-issue-creator`'s own naming convention, following every section in that skill's
-   `assets/issue-template.md` (the single source of truth for the template's structure — don't restate
-   its section list here, since that list can drift out of sync with the real file), plus the
-   traceability fields `references/github-api-mechanics.md` specifies (PR URL, head SHA,
-   thread/comment URL, reviewer, severity). File it with `gh issue create --title "<Summary>"
-   --body-file <path>`, using a plain,
+   `gh issue list -R "<owner>/<repo>"` for an existing issue already filed against this PR/head-SHA for
+   the same finding (dedup per step 2's rule) — two reviewers flagging the same defect in the same round
+   must produce one issue, not two; if a match exists, reply pointing at it instead of filing a
+   duplicate. **Both `gh issue` commands below need the same `-R "<owner>/<repo>"` step 1 resolved** —
+   unlike `gh api`, `gh issue list`/`gh issue create` do support `-R`, and omitting it means both
+   commands silently default to the local checkout's own repository, which is wrong whenever
+   `$ARGUMENTS` named a PR in a different one: the dedup check would compare against the wrong
+   repository's issues, and a new issue would get filed there too. Otherwise draft the issue as a local
+   file under `issues/`, named `YYYY-MM-DD-short-description.md` per `github-issue-creator`'s own naming
+   convention, following every section in that skill's `assets/issue-template.md` (the single source of
+   truth for the template's structure — don't restate its section list here, since that list can drift
+   out of sync with the real file), plus the traceability fields `references/github-api-mechanics.md`
+   specifies (PR URL, head SHA, thread/comment URL, reviewer, severity). File it with
+   `gh issue create -R "<owner>/<repo>" --title "<Summary>" --body-file <path>`, using a plain,
    non-closing reference ("Found in PR #N") — never "Fixes #N"/"Closes #N", so a merge doesn't
    auto-close a still-open, still-unaddressed issue. Keep the draft file and stage it alongside the
    round's own fix commit when both exist in the same round; if the issue is the round's only outcome,
@@ -197,11 +208,15 @@ bridges a GraphQL thread node back to the REST `comment_id` the reply endpoint n
 why the shell snippets there are Bash-tool syntax specifically (this repo's agent shell is
 PowerShell-primary; the `Bash` tool is a separate, available surface for POSIX scripting).
 
-Immediately before any reply or resolve call, run
+Immediately before any reply call, resolve call, or `gh api graphql` call of any kind (including the
+read-only `reviewThreads` lookup — the guard has no read-only carve-out, see
+`references/github-api-mechanics.md`'s "Resolving a review thread" section for why), run
 `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review handling-review-findings` — this
 writes the marker git-kit's reviewer-action guard (`guard-raw-pr-review.sh`) requires before it allows
-these specific `gh api` calls through; it must be written right before the command, not earlier, since
-the hook only accepts a marker up to 60 seconds old.
+these specific `gh api` calls through; it must be written right before each such command, not earlier,
+since the hook only accepts a marker up to 60 seconds old and consumes it on first use — if the lookup
+and the mutation happen as two separate `Bash` calls, write the marker again immediately before each
+one.
 
 ## Boundaries
 
