@@ -7,7 +7,8 @@ description: >-
   that closes #123", or "who can review this". Wraps create-pr for issue-linking rather than duplicating
   its flow, and reuses merge-pr's CODEOWNERS check for reviewer context. For a raw one-off `gh pr` lookup
   or edit with no CODEOWNERS context or structured review action needed, see `gh-operations`' reference
-  material instead — this skill owns the orchestrated review flow, not ad hoc `gh` calls.
+  material instead — this skill owns the orchestrated review flow, not ad hoc `gh` calls. Not
+  `handling-review-findings`'s job of triaging findings already posted against an open PR.
 argument-hint: (optional) PR number or URL, and/or an issue number to link — defaults to the current branch's PR if omitted
 allowed-tools: Bash(gh pr view:*), Bash(gh pr review:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user --jq:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, Skill(git-kit:create-pr)
 ---

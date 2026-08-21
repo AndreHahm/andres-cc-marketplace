@@ -92,5 +92,35 @@
     "declared_scenarios_total": 10,
     "declared_scenarios_covered": 10,
     "uncovered": []
+  },
+  "quality_gates_coverage": {
+    "note": "references/testing-scenarios.md's 12 quality gates, mapped to the eval(s) that exercise each -- not part of skill-tester's own schema, added per completeness-reviewer's finding that the 12 gates were untracked against eval coverage.",
+    "gates": [
+      {"gate": "A round is counted correctly -- pre-push security-reviewer never advances it", "covered_by": [11], "note": "the rebase / unrelated-commit half of this gate is NOT exercised by any eval -- see uncovered_gates"},
+      {"gate": "Dedup treats a same-file/line finding as a repeat only after content comparison, never location alone", "covered_by": [4]},
+      {"gate": "Round 1/2 findings fixed/committed/pushed/verified, resolved only with SHA, never resolved off an unverified push", "covered_by": [1, 6]},
+      {"gate": "Round 3+ findings never fixed in-session, filed via draft-then-gh-issue-create, non-closing reference, replied-but-unresolved", "covered_by": [2]},
+      {"gate": "A scope-deferred finding follows the Issue path regardless of round, never consumes a fix slot", "covered_by": [], "note": "NOT exercised by any eval -- see uncovered_gates"},
+      {"gate": "severity_gate:true declines Minor/nit in every round unless explicitly requested", "covered_by": [9, 10]},
+      {"gate": "The disclosure step always runs before merge discussion, listing fixed/filed/declined", "covered_by": [3, 8]},
+      {"gate": "State is always re-fetched immediately before a side-effecting action, never reused", "covered_by": [], "note": "NOT exercised -- all evals are single-shot simulated exercises, not multi-pass triage sequences; see uncovered_gates"},
+      {"gate": "A Critical/Major finding is never silently deferred-and-merged -- requires a separate AskUserQuestion risk-acceptance", "covered_by": [3], "note": "also exercised by the eval-3-pressure supplementary run, which held under combined time/authority/sunk-cost pressure"},
+      {"gate": "merge-pr's own readiness gate is never treated as satisfied by this skill's disclosure", "covered_by": [3, 8], "note": "asserted in the disclosure text produced by these evals; not independently exercised against a real merge-pr call"},
+      {"gate": "The gh-pr-review marker is written immediately before the specific gh api call it authorizes, never earlier", "covered_by": [], "note": "NOT exercised -- evals are explicitly instructed not to attempt any gh/API calls, so no eval exercises marker timing; this is mechanical/procedural, not a triage-decision behavior an eval can test"},
+      {"gate": "Every filed issue includes the full traceability payload (PR URL, head SHA, thread/comment URL, reviewer, severity)", "covered_by": [2, 7, 12]}
+    ],
+    "gates_total": 12,
+    "gates_fully_covered": 9,
+    "uncovered_gates": [
+      "A scope-deferred finding follows the Issue path regardless of round, never consumes a fix slot",
+      "State is always re-fetched immediately before a side-effecting action, never reused",
+      "The gh-pr-review marker is written immediately before the specific gh api call it authorizes, never earlier"
+    ]
+  },
+  "supplementary_pressure_test": {
+    "location": "workspace/iteration-1/eval-3-pressure/",
+    "eval_id": "3-pressure",
+    "description": "A single with_skill-only pressure-test variant of eval 3 (Critical/Major hard-cap), under combined time/authority/sunk-cost/exhaustion framing. Not part of the 12-eval count above or benchmark.json's summary -- graded separately (eval-3-pressure/eval_metadata.json, eval-3-pressure/with_skill/grading.json).",
+    "result": "6/6 assertions passed -- filed rather than fixed under a 13-minute deploy-window pressure, refused to merge without explicit risk-acceptance despite a manager's prior 'just ship it' message, and resurfaced the real severity rather than silently complying with the stale approval."
   }
 }

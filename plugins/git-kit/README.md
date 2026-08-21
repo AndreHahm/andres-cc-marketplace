@@ -1,6 +1,6 @@
 # Git Plugin
 
-Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch lifecycle setup and post-merge sync, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, recovering a stuck Codex-review check, and cross-vendor (Claude + Codex) adversarial pre-PR review.
+Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch lifecycle setup and post-merge sync, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, recovering a stuck Codex-review check, cross-vendor (Claude + Codex) adversarial pre-PR review, and triaging/resolving PR review findings across rounds with a mandated fix-or-file cap.
 
 ## Plugin Target
 
@@ -11,9 +11,9 @@ Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, 
 
 ## Overview
 
-`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, recovering a stuck Codex-review check, and cross-vendor (Claude + Codex) adversarial pre-PR review. Five `PreToolUse` hooks hard-block raw commands that bypass these skills, a `Stop` hook guards exiting a dirty session-locked worktree, and two rules document the plugin's worktree and lifecycle-routing conventions — see Hooks and Rules below.
+`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, recovering a stuck Codex-review check, cross-vendor (Claude + Codex) adversarial pre-PR review, and triaging/resolving PR review findings across rounds with a mandated fix-or-file cap. Five `PreToolUse` hooks hard-block raw commands that bypass these skills, a `Stop` hook guards exiting a dirty session-locked worktree, and two rules document the plugin's worktree and lifecycle-routing conventions — see Hooks and Rules below.
 
-Several skills (`create-pr`, `gh-operations`, `codex-review-recovery`) require GitHub CLI (`gh`) for full functionality.
+Several skills (`create-pr`, `gh-operations`, `codex-review-recovery`, `handling-review-findings`) require GitHub CLI (`gh`) for full functionality.
 `cross-model-review` optionally uses the `codex-kit` plugin for its second, independent reviewer; it
 degrades to Claude-only if `codex-kit` isn't installed.
 
@@ -66,7 +66,8 @@ cc --plugin-dir /path/to/git-kit
   "push_auto_pr": false,
   "pr_merge_type": "REBASE",
   "merge_auto_delete_branch": true,
-  "use_worktree": true
+  "use_worktree": true,
+  "review_findings_severity_gate": false
 }
 ```
 
@@ -89,7 +90,7 @@ To override any of these per project, run `/create-git-kit-local-json` — it cr
 
 Changes to `.claude/git-kit.local.json` take effect on the next invocation — no restart needed, since settings are read by each skill directly rather than a hook.
 
-**Security:** `commit_confirm_before_commit: false`, `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true` all weaken safety or trigger further automation, so `commit` only honors them from `.claude/git-kit.local.json` when that file is *not* tracked by git — it checks with `git ls-files` before applying any of them. Gitignoring the file (as instructed above, and checked by `/create-git-kit-local-json`) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or trigger unattended pushes/PR creation — `commit` falls back to the git-tracked `git-kit.settings.json` defaults for those fields instead. `pr_merge_type`, `merge_auto_delete_branch`, and `use_worktree` are low-risk (a merge-strategy choice, a reversible single-branch deletion, and which option a question recommends without ever skipping it) and are honored from either file, tracked or not. `merge-pr` never auto-merges under any setting — it always asks before merging, and separately verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) first.
+**Security:** `commit_confirm_before_commit: false`, `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true` all weaken safety or trigger further automation, so `commit` only honors them from `.claude/git-kit.local.json` when that file is *not* tracked by git — it checks with `git ls-files` before applying any of them. Gitignoring the file (as instructed above, and checked by `/create-git-kit-local-json`) is what makes it count as untracked; a version of this file committed into the repo (by you or an attacker) can never silently disable the confirmation gate or trigger unattended pushes/PR creation — `commit` falls back to the git-tracked `git-kit.settings.json` defaults for those fields instead. `pr_merge_type`, `merge_auto_delete_branch`, `use_worktree`, and `review_findings_severity_gate` are low-risk (a merge-strategy choice, a reversible single-branch deletion, which option a question recommends without ever skipping it, and a triage-default that never overrides an explicit instruction or the Critical/Major hard cap) and are honored from either file, tracked or not. `merge-pr` never auto-merges under any setting — it always asks before merging, and separately verifies the caller has actual merge rights (repo owner, CODEOWNERS match, or collaborator permission) first.
 
 ## Skills
 

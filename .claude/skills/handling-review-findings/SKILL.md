@@ -53,8 +53,9 @@ verification and resolve this immediately").
 - **Recovering a stuck "Await Codex review" check** — a GitHub-side write-back gap where Codex finished
   on its own dashboard but nothing posted back to GitHub — is `codex-review-recovery`'s job, a
   different problem (a missing signal) from this skill's (an already-posted finding to triage).
-- **Reviewing the local working diff before a PR exists** — that's `cross-model-review`'s job. This
-  skill only ever acts on findings already posted to an already-open PR.
+- **Reviewing the local working diff** (before a PR exists, or before a draft PR is flipped to
+  ready-to-merge) — that's `cross-model-review`'s job. This skill only ever acts on findings already
+  *posted* to an open PR, regardless of the PR's draft/ready state.
 - **Merging the PR** — that's `merge-pr`'s job, with its own independent readiness gate. This skill's
   disclosure step (Workflow step 7) is informational input to that decision, never a substitute for it.
 
@@ -139,20 +140,28 @@ before classifying any finding for the first time in a session.
    changes skill/agent/script behavior, otherwise a re-read of the fix against the finding it addresses.
    **Verification is a hard precondition on replying and resolving — a reply-and-resolve never happens
    on the strength of a pushed commit alone.** Once verification passes: commit via
-   `Skill(git-kit:commit)` (never a raw `git commit` — see
-   `.claude/rules/route-through-git-kit-lifecycle-skills.md`), push, then reply to the finding's own
-   thread stating both the fixing commit's SHA *and* a one-line summary of what verification confirmed
-   (mechanics in `references/github-api-mechanics.md`), and only then resolve that thread. **If
-   verification fails**, don't reply or resolve — the finding stays open in the same round.
+   `Skill(git-kit:commit)` with `--push` (never a raw `git commit` — see
+   `.claude/rules/route-through-git-kit-lifecycle-skills.md`), explicitly requesting the push so it
+   isn't left to `commit`'s own default `AskUserQuestion` (`commit_auto_push` defaults to `false`).
+   **Reply-with-SHA is conditional on the push having actually landed** — if the user declines the
+   push (e.g. `commit`'s confirmation is answered no despite `--push`, or the push itself fails), the
+   commit SHA doesn't yet exist on the remote; don't reply or resolve in that case either — treat it
+   the same as a verification failure and leave the finding open in the same round until the fix is
+   actually pushed. Once the push is confirmed landed, reply to the finding's own thread stating both
+   the fixing commit's SHA *and* a one-line summary of what verification confirmed (mechanics in
+   `references/github-api-mechanics.md`), and only then resolve that thread. **If verification fails**,
+   don't reply or resolve — the finding stays open in the same round.
 5. **Issue path** (round 3+, or any round if scope-deferred): before drafting, check
    `gh issue list` for an existing issue already filed against this PR/head-SHA for the same finding
    (dedup per step 2's rule) — two reviewers flagging the same defect in the same round must produce
    one issue, not two; if a match exists, reply pointing at it instead of filing a duplicate. Otherwise
-   draft the issue as a local file under `issues/` using `github-issue-creator`'s
-   `assets/issue-template.md` structure (Summary, Environment, Reproduction Steps, Expected/Actual
-   Behavior, Impact, Additional Context), plus the traceability fields
-   `references/github-api-mechanics.md` specifies (PR URL, head SHA, thread/comment URL, reviewer,
-   severity). File it with `gh issue create --title "<Summary>" --body-file <path>`, using a plain,
+   draft the issue as a local file under `issues/`, named `YYYY-MM-DD-short-description.md` per
+   `github-issue-creator`'s own naming convention, following every section in that skill's
+   `assets/issue-template.md` (the single source of truth for the template's structure — don't restate
+   its section list here, since that list can drift out of sync with the real file), plus the
+   traceability fields `references/github-api-mechanics.md` specifies (PR URL, head SHA,
+   thread/comment URL, reviewer, severity). File it with `gh issue create --title "<Summary>"
+   --body-file <path>`, using a plain,
    non-closing reference ("Found in PR #N") — never "Fixes #N"/"Closes #N", so a merge doesn't
    auto-close a still-open, still-unaddressed issue. Keep the draft file and stage it alongside the
    round's own fix commit when both exist in the same round; if the issue is the round's only outcome,
@@ -181,8 +190,8 @@ before classifying any finding for the first time in a session.
 
 Two operations here are easy to get wrong: replying to an inline PR review comment goes through
 `gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`, and resolving a
-review thread has **no REST endpoint at all** — it requires GitHub's GraphQL API
-(`resolveReviewThread` mutation, keyed by an opaque thread node ID from a `reviewThreads` query). See
+review thread has **no REST endpoint at all** — it requires `gh api graphql` against GitHub's GraphQL
+API (`resolveReviewThread` mutation, keyed by an opaque thread node ID from a `reviewThreads` query). See
 `references/github-api-mechanics.md` for the exact command shapes, the `reviewThreads` query form that
 bridges a GraphQL thread node back to the REST `comment_id` the reply endpoint needs, and a note on
 why the shell snippets there are Bash-tool syntax specifically (this repo's agent shell is
@@ -219,6 +228,24 @@ the hook only accepts a marker up to 60 seconds old.
 - "review this diff before I open the PR" → `cross-model-review`
 - "is this PR ready to merge" → `merge-pr`
 
+**Test suite:** `evals/handling-review-findings/evals.json` defines 12 scenarios (10 covering every
+named edge-case scenario in `references/testing-scenarios.md`, plus 2 covering the round-1 fix path
+and the round-3+ issue path directly) — see that file's own `testing_validation_coverage` field for
+the gate-level mapping.
+
+**Last dated run record:** 2026-08-21 — `skill-tester` Full Pipeline: 100% with_skill pass rate vs.
+71.9% baseline across all 12 evals (+28.1 percentage points), plus a supplementary single-pass
+pressure-test variant (combined time/authority/sunk-cost framing on the Critical/Major hard-cap
+scenario) that held under pressure. See
+`evals/handling-review-findings/workspace/iteration-1/benchmark.json` for the full per-eval breakdown.
+
+**Security review:** the `guard-raw-pr-review.sh` hook extension this skill required (two new `gh api`
+guard branches) went through a live `security-reviewer` pass on 2026-08-21, per
+`.claude/rules/require-security-review-before-new-gate.md` — it found and fixed 2 Major bypass gaps
+(a positional-flag assumption, and a file-supplied GraphQL body that could pass through unguarded);
+both fixes were re-verified against the reviewer's own bypass commands as regression cases before the
+hook change was committed.
+
 **Concrete scenarios, the full quality-gates checklist, and the round-cap/dedup edge cases** live in
 `references/testing-scenarios.md`. This isn't forced by R13's line-count threshold (this file has
 headroom below it) — it's a deliberate choice matching `cross-model-review`'s own
@@ -232,3 +259,4 @@ of the main procedure a reader follows on every triage pass.
 | `references/round-and-dedup-rules.md` | Full round definition, dedup mechanism, Hard Cap exception, severity-gate interaction, worked example |
 | `references/github-api-mechanics.md` | Exact reply/resolve command shapes, the GraphQL thread-node bridge, batch resolution, issue traceability payload |
 | `references/testing-scenarios.md` | Scenario list and quality-gates checklist |
+| `evals/handling-review-findings/evals.json` | 12-scenario `skill-tester` test suite, with gate-level coverage mapping in `testing_validation_coverage` |

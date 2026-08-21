@@ -11,7 +11,8 @@ description: >-
   diagnosing why Codex hasn't started reviewing at all — this skill only recovers a review that's already
   done but stuck in GitHub's own signal gap. Not
   `gh-operations`' generic, ungated `gh run rerun` reference, nor `merge-pr`'s separate
-  `Publish Codex policy result` bypass flow.
+  `Publish Codex policy result` bypass flow, nor `handling-review-findings`'s triage of what a review
+  actually found.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR
 allowed-tools: Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh api:*), Bash(date:*), Bash(sleep:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*)
 ---
