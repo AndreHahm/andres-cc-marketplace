@@ -10,9 +10,12 @@ see "Adoption modes" below.
 
 ## What it does
 
-The workflow starts when a pull request is opened, reopened, marked ready for review, or updated
-with a new commit (`opened`, `reopened`, `synchronize`, `ready_for_review`), skipping draft pull
-requests. Its `Await Codex review` job stays in progress until either GitHub reports a submitted
+The workflow starts only when Codex's own auto-review connector would actually be asked to look at
+the pull request: the pull request is opened non-draft (`opened`), a draft pull request is marked
+ready for review (`ready_for_review`), or someone posts an explicit `@codex review` comment
+(`issue_comment`) — never on a plain `synchronize` push by itself, since the connector no longer
+auto-reviews every push (see "Trigger scope" below for why this changed). Its `Await Codex review`
+job stays in progress until either GitHub reports a submitted
 review from `chatgpt-codex-connector[bot]` for the pull request's current head commit (a
 commit-exact signal), or the connector posts a `+1` reaction on the pull request at or after this
 push (its no-findings signal — confirmed live, 2026-08-17: a clean review produces no review
@@ -26,25 +29,51 @@ distinguish an active review from a queued, missed, or unavailable one.
 
 ## Workflow contract
 
-1. Runs on `pull_request` events `opened`, `reopened`, `synchronize`, and `ready_for_review`,
-   skipping the job while the pull request is a draft. Marking a draft pull request ready for
-   review fires `ready_for_review`, which runs normally since the pull request is no longer a
-   draft at that point.
+1. Runs on `pull_request` events `opened` and `ready_for_review`, and on `issue_comment` events
+   (`created`) whose body contains `@codex review` and whose issue is actually a pull request
+   (`github.event.issue.pull_request` present) — skipping the job while the pull request is a
+   draft (checked directly from the event for `pull_request`; re-fetched live via `gh api` for
+   `issue_comment`, since that event carries no pull-request sub-object). A plain `synchronize`
+   push is deliberately **not** a trigger — see "Trigger scope" below.
 2. Requests only `contents: read`, `pull-requests: read`, and `issues: read` permissions (the last
-   is needed to read the connector's no-findings reaction — see below) — no checkout, third-party
-   action, custom token, or repository secret is used.
-3. Uses one concurrency group per pull request (`codex-review-<PR number>`) and cancels the
-   previous run when a new commit arrives.
+   is needed to read the connector's no-findings reaction, and to read PR state for an
+   `issue_comment` trigger) — no checkout, third-party action, custom token, or repository secret
+   is used.
+3. Uses one concurrency group per pull request (`codex-review-<PR number>`) and cancels a
+   previous still-running instance of this workflow for the same pull request when a new
+   triggering event (not just any new commit — see point 1) arrives.
 4. Polls two signals every 30 seconds, both fully paginated: GitHub's pull-request reviews
    endpoint (`gh api .../pulls/<PR>/reviews`), and the pull request's reactions endpoint
    (`gh api .../issues/<PR>/reactions`).
 5. Accepts either a review whose author is `chatgpt-codex-connector[bot]` and whose `commit_id`
    equals the current pull request head SHA, or a `+1` reaction from `chatgpt-codex-connector[bot]`
-   whose `created_at` is at or after the triggering event's own `pull_request.updated_at`
-   timestamp — captured once, at trigger time, before this job even starts. Anchoring to the
-   event's own timestamp (rather than a snapshot taken once this job happens to run) means a
-   reaction the connector posts before this job starts polling still counts, while a stale
-   reaction from an earlier commit still doesn't.
+   whose `created_at` is at or after the triggering event's own timestamp — `pull_request.updated_at`
+   for a `pull_request` event, or the comment's own `created_at` for an `issue_comment` event —
+   captured once, at trigger time, before this job even starts. Anchoring to the event's own
+   timestamp (rather than a snapshot taken once this job happens to run) means a reaction the
+   connector posts before this job starts polling still counts, while a stale reaction from an
+   earlier commit still doesn't.
+
+## Trigger scope
+
+Codex's own auto-review connector was originally configured to re-review on every push, so this
+workflow originally mirrored that with a `synchronize` trigger. The connector's own trigger
+configuration has since changed (2026-08-21): it now auto-reviews only when a pull request is
+opened non-draft, or a draft pull request is marked ready for review — a later round needs an
+explicit `@codex review` comment to re-trigger a review. `synchronize` firing this workflow on
+every subsequent push produced a guaranteed ~30-minute timeout on a check nobody could act on
+without knowing to manually comment `@codex review` first. The trigger list above was narrowed to
+match the connector's actual current re-trigger conditions, plus the new `issue_comment` trigger so
+that manual `@codex review` comment itself starts a fresh wait.
+
+`reopened` was dropped along with `synchronize` (not just narrowed to the other two) — the
+connector's own documented triggers are "opening a PR, marking a draft ready, or [the `@codex
+review`] comment" (see `codex-review-recovery`'s SKILL.md), which does not include reopening a
+closed pull request.
+
+**Not decided by this change:** whether the `issue_comment` trigger should also filter by comment
+author (e.g. only PR collaborators, not any commenter) — left unrestricted for now, matching this
+check's existing visibility-only, non-required status. Revisit if that turns out to cause noise.
 
 ## Result semantics
 
@@ -93,9 +122,10 @@ This workflow deliberately does not attempt to recover from that gap itself (see
 detecting or retrying is not this job's responsibility). Recovery is a separate, human-gated skill,
 `Skill(git-kit:codex-review-recovery)`: it asks the human to confirm on Codex's own dashboard that the
 review actually finished — the one piece of information nothing running inside this repository can see —
-then posts an `@codex review` comment (the connector's own documented retry trigger) and re-runs the
-failed check, since posting the comment alone does not itself re-trigger this workflow (its `on:` trigger
-list has no `issue_comment` entry). See that skill's own SKILL.md for the exact procedure.
+then posts an `@codex review` comment (the connector's own documented retry trigger). That comment now
+also re-triggers this workflow directly via its `issue_comment` trigger (see "Trigger scope" above), so
+the skill finds and polls the fresh run the comment itself started rather than manually rerunning the old,
+already-failed one. See that skill's own SKILL.md for the exact procedure.
 
 **Do not react with a manual 👍 as a workaround.** The reaction-match check filters strictly on
 `user.login == "chatgpt-codex-connector[bot]"` — a reaction from any other account, including the PR
@@ -103,8 +133,8 @@ author, is not something a human can spoof from the GitHub UI, by design.
 
 ## Adoption modes
 
-Currently visibility-only: the check runs on every non-draft pull request but is not required by
-branch protection. Making `Await Codex review` a required status check is a real option — a
+Currently visibility-only: the check runs per the trigger scope above (opened non-draft, marked
+ready for review, or an `@codex review` comment) but is not required by branch protection. Making `Await Codex review` a required status check is a real option — a
 missing or late external review would block merging after the workflow times out — but it comes
 with a real, structural tradeoff, not just a pending-validation item; see "Validation before
 requiring this check" below before deciding.
