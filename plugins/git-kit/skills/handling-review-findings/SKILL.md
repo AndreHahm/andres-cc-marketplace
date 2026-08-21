@@ -12,7 +12,7 @@ description: >-
   `collaborating-on-a-pr`'s reviewer actions, `github-issue-creator`'s general issue drafting, or
   `codex-review-recovery`'s stuck-check recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, AskUserQuestion, Skill(git-kit:commit)
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, AskUserQuestion, Skill(git-kit:commit)
 ---
 
 # Handling Review Findings
@@ -113,13 +113,21 @@ before classifying any finding for the first time in a session.
    Validate `$ARGUMENTS` against an allowlist before using it — empty (defaults to the current branch's
    PR), a bare PR number (`^[0-9]+$`), or a PR URL
    (`^https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/pull/[0-9]+$`) — never pass an unvalidated
-   value through to `gh`. `gh pr view $ARGUMENTS --json url,headRefName,isCrossRepository` resolves
-   `<owner>/<repo>`. **When `$ARGUMENTS` is non-empty, verify the resolved PR's head actually matches
-   this checkout before doing anything else in this workflow** — `isCrossRepository: true`, or
-   `headRefName` not equal to `git branch --show-current`, both mean the Fix path's `Skill(git-kit:commit)
-   --push` step (step 4) would commit and push to whatever branch this checkout happens to be on, not
-   the PR actually being triaged, silently telling the wrong thread its finding was fixed. On a
-   mismatch, stop and tell the user to `gh pr checkout $ARGUMENTS` first — never proceed on the wrong
+   value through to `gh`. `gh pr view $ARGUMENTS --json url,headRepositoryOwner,headRepository,headRefOid`
+   resolves `<owner>/<repo>`. **When `$ARGUMENTS` is non-empty, verify the resolved PR's head actually
+   matches this checkout before doing anything else in this workflow.** `isCrossRepository`/`headRefName`
+   alone are not sufficient — `isCrossRepository` only describes the PR head's relationship to its own
+   *base* repository, not whether *this checkout* belongs to that repository, and a same-repo PR whose
+   head branch name coincidentally matches the local branch name passes a name-only check even when the
+   checkout is a different repository entirely (verified: `gh pr view --help` lists `headRepositoryOwner`/
+   `headRepository`/`headRefOid` as the fields that actually identify the head unambiguously). Bind the
+   check to those three fields instead: resolve this checkout's own repository identity
+   (`gh repo view --json owner,name --jq '"\(.owner.login)/\(.name)"'`) and compare it against
+   `<headRepositoryOwner.login>/<headRepository.name>`, and compare `headRefOid` against this checkout's
+   current commit (`git rev-parse HEAD`). Both must match. The Fix path's `Skill(git-kit:commit) --push`
+   step (step 4) would otherwise commit and push to whatever repository/branch this checkout happens to
+   be on, not the PR actually being triaged, silently telling the wrong thread its finding was fixed. On
+   any mismatch, stop and tell the user to `gh pr checkout $ARGUMENTS` first — never proceed on the wrong
    checkout, and never silently substitute the current branch's own PR instead. Once confirmed (or when
    `$ARGUMENTS` was empty, which is inherently the current checkout's own PR), pass
    `-R "<owner>/<repo>"` on every `gh pr`/`gh issue` call below, since `$ARGUMENTS` may name a PR in a
@@ -167,14 +175,18 @@ before classifying any finding for the first time in a session.
    `references/github-api-mechanics.md`), and only then resolve that thread. **If verification fails**,
    don't reply or resolve — the finding stays open in the same round.
 5. **Issue path** (round 3+, or any round if scope-deferred): before drafting, check
-   `gh issue list -R "<owner>/<repo>" --search "PR #<N>" --limit 100` for an existing issue already
-   filed against this PR/head-SHA for the same finding (dedup per step 2's rule). **Never run an
+   `gh issue list -R "<owner>/<repo>" --search "PR #<N>" --state all --limit 100` for an existing issue
+   already filed against this PR/head-SHA for the same finding (dedup per step 2's rule). **Never run an
    unqualified `gh issue list`** — it defaults to a 30-issue result cap (`gh issue list --help`), so on
    a repo with more open issues than that, a real match can silently fall outside the returned set,
-   making the dedup check pass by omission rather than by actually confirming no match exists. Search on
-   `"PR #<N>"` specifically — every issue this skill files always includes that exact "Found in PR #N"
-   text (step 5's own issue-filing convention below), so it's a reliable narrowing term regardless of
-   total issue count; raise `--limit` further if `--search` alone still returns more than 100 hits. Two
+   making the dedup check pass by omission rather than by actually confirming no match exists. **Always
+   include `--state all`** too — the same default-open-only behavior means a matching issue already
+   closed (fixed, or closed as a duplicate/won't-fix) is otherwise invisible to this check, and the
+   dedup invariant ("no duplicate issue for this finding") applies regardless of whether the original
+   is still open. Search on `"PR #<N>"` specifically — every issue this skill files always includes that
+   exact "Found in PR #N" text (step 5's own issue-filing convention below), so it's a reliable
+   narrowing term regardless of total issue count; raise `--limit` further if `--search` alone still
+   returns more than 100 hits. Two
    reviewers flagging the same defect in the same round must produce one issue, not two; if a match
    exists, reply pointing at it instead of filing a duplicate. **Both `gh issue` commands below need the
    same `-R "<owner>/<repo>"` step 1 resolved** — unlike `gh api`, `gh issue list`/`gh issue create` do

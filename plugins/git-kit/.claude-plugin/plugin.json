@@ -1,6 +1,6 @@
 {
   "name": "git-kit",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "description": "Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, git worktrees, notes, bisect, branch lifecycle setup and post-merge sync, branch cleanup, rebase syncing, commit-shaping guidance, PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, recovering a stuck Codex-review check, cross-vendor (Claude + Codex) adversarial pre-PR review, and triaging/resolving PR review findings across rounds with a mandated fix-or-file cap.",
   "author": {
     "name": "Andre Hahm"
