@@ -5,7 +5,7 @@
 # hooks/scripts/guard-raw-destructive-cleanup.sh)
 # check before allowing a raw `git commit` / `gh pr create` / `gh pr merge` /
 # `git checkout -b` / `git switch -c` / `gh pr review` / `gh pr comment` /
-# `gh api .../pulls/*/comments/*/replies` / `gh api graphql` (resolveReviewThread) /
+# `gh api .../pulls/*/comments/*/replies` / any `gh api graphql` call /
 # `git branch -D <protected-branch>` / `git worktree remove` through.
 #
 # Called by the allowlisted skills (commit, standalone-commits, create-pr,

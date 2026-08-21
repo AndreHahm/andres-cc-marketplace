@@ -17,16 +17,40 @@
 # between `api` and the endpoint, and accepts a leading `/` -- see each
 # branch's own inline comment for the reasoning and the reachable-by-accident
 # invocations this guards against. The `gh api graphql` branch denies by
-# default and only carves out the narrow, verifiably-read-only case (an
-# inline `reviewThreads` lookup with no `mutation` keyword anywhere in the
-# command) as unguarded -- a file/`$(cat ...)`-supplied mutation body, which
-# this string-only check cannot inspect, is guarded rather than assumed safe.
-# This narrows, but does not fully close, the gap this file's header
-# previously described as a "known, disclosed residual" for
-# handling-review-findings's two specific endpoints; a raw `gh api .../pulls/*`
-# write call outside these two shapes remains unguarded, mitigated only by
-# every git-kit skill with a broader `gh api` grant being a reviewed,
-# allowlisted component.
+# default for any `gh api graphql` invocation *whose command text this hook
+# can actually see* -- an earlier revision of this file tried to carve out a
+# narrow "verifiably read-only inline `reviewThreads` lookup, no `mutation`
+# keyword, no indirection marker" exception instead, but that carve-out was
+# substring matching against the raw command string, and substring matching
+# a shell command string for safety is not a defensible security boundary:
+# three independent reviewers (a live security-reviewer dispatch, then Codex
+# and CodeRabbit on the resulting PR) each found a *different* way to make
+# the literal substrings "reviewThreads"/"mutation" say something other than
+# what the command actually executes -- `-F query=@file`/`$(cmd)`/backtick/
+# `--input <file>` indirection, a plain shell variable holding the query
+# (`gh api graphql -f query="$var"`), and adjacent-quote string concatenation
+# splitting the literal word "mutation" across a quote boundary
+# (`query='mut'"ation ..."`) so it never appears as a contiguous substring.
+# Each fix closed one shape and the next reviewer found another -- the
+# carve-out was removed rather than patched a fifth time. This means the
+# `reviewThreads` read-only lookup now also requires the marker handshake,
+# same as the mutation -- see `references/github-api-mechanics.md`'s
+# "Resolving a review thread" section for the updated marker-timing guidance.
+# **This is not a claim of unconditional coverage.** This file previously
+# described a "known, disclosed residual" for a raw `gh api .../pulls/*`
+# write call outside the two shapes this file guards; that residual is
+# unchanged by this edit. Two more residuals apply specifically to the
+# `gh api graphql` branch and are tracked in issue #85 (this repo's issue
+# tracker), not fixed here: (1) the shared command-word prefix class below
+# (`(^|[;&|]|[[:space:]])`) doesn't recognize `$(`, a backtick, or a quote
+# character as a valid boundary, so `tid=$(gh api graphql -f query=...)` or
+# `` `gh api graphql ...` `` bypasses every branch in this file, not just
+# this one -- the same gap as the four sibling guard scripts' own subcommand
+# matching; (2) a `gh api graphql` call reached through a script file this
+# hook never inspects (e.g. `bash some-script.sh`, where the script's own
+# body runs `gh api graphql` internally) is invisible to this guard by
+# construction, since the tool call's own command text never contains the
+# literal words this file matches on.
 set -euo pipefail
 
 # Fail closed, not open: if jq isn't available, the script below can't parse
@@ -115,20 +139,10 @@ elif echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[
 elif echo "$COMMAND" | grep -qE "$API_RE" && echo "$COMMAND" | grep -qE "$REPLIES_RE"; then
   GH_SUBCOMMAND="gh api .../comments/{id}/replies"
 elif echo "$COMMAND" | grep -qE "$API_RE" && echo "$COMMAND" | grep -qE "$GRAPHQL_RE"; then
-  # Deny-by-default for `gh api graphql`, not "deny only if the command string literally
-  # contains resolveReviewThread": the mutation's query body may not appear in the command string
-  # at all, so absence of the "mutation" substring can never be trusted to mean read-only. Only
-  # the narrow, verifiably-read-only case -- an inline `reviewThreads` lookup with no `mutation`
-  # keyword and no indirection that could hide one -- is let through unguarded; everything else is
-  # guarded, which fails closed rather than open. The indirection check below rejects every form
-  # this check cannot see into: `-F query=@file` (a filename, not the file's real content),
-  # `$(cmd)`/backtick command substitution (the substituted output isn't in the command string
-  # either), and `gh api`'s own `--input <file>` (an alternate whole-request-body-from-file flag).
-  # A command using any of these can never satisfy this carve-out, regardless of what substring
-  # its filename/subshell/flag argument happens to contain.
-  if echo "$COMMAND" | grep -q 'reviewThreads' && ! echo "$COMMAND" | grep -q 'mutation' && ! echo "$COMMAND" | grep -qE '=@|\$\(|`|--input'; then
-    exit 0
-  fi
+  # Unconditional deny-by-default -- no read-only carve-out. See this file's header comment for
+  # why: a substring-matching carve-out here was tried and independently defeated by 3 different
+  # reviewers using 4 different techniques, so every `gh api graphql` call is guarded now,
+  # including a genuine read-only `reviewThreads` lookup.
   GH_SUBCOMMAND="gh api graphql"
 else
   exit 0
