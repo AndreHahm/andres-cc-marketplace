@@ -2,7 +2,9 @@ name: Codex review status
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, ready_for_review]
+    types: [opened, ready_for_review]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -10,25 +12,60 @@ permissions:
   issues: read
 
 concurrency:
-  group: codex-review-${{ github.event.pull_request.number }}
+  group: codex-review-${{ github.event.pull_request.number || github.event.issue.number }}
   cancel-in-progress: true
 
 jobs:
   await-codex-review:
     name: Await Codex review
-    if: github.event.pull_request.draft == false
+    # Codex's own auto-review connector only re-triggers on: a PR opened
+    # non-draft, a draft PR marked ready-for-review, or an explicit
+    # "@codex review" PR comment -- not on every synchronize push (see
+    # docs/await-codex-review.md). This job's own trigger scope mirrors
+    # that so the 30-minute wait-loop only starts when Codex was actually
+    # asked to look at this push.
+    if: >-
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && contains(github.event.comment.body, '@codex review'))
     runs-on: ubuntu-latest
     timeout-minutes: 33
     env:
       GH_TOKEN: ${{ github.token }}
       REPOSITORY: ${{ github.repository }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      EVENT_TIME: ${{ github.event.pull_request.updated_at }}
+      EVENT_NAME: ${{ github.event_name }}
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      PR_EVENT_TIME: ${{ github.event.pull_request.updated_at }}
+      COMMENT_CREATED_AT: ${{ github.event.comment.created_at }}
     steps:
       - name: Wait for Codex review
         shell: bash
         run: |
+          # issue_comment events carry no pull_request sub-object -- no head
+          # SHA, no draft state. Resolve the PR's current state live instead.
+          # A draft PR can still receive an "@codex review" comment; skip it
+          # here rather than waiting, matching the pull_request-event job
+          # condition's own draft skip above.
+          if [ "$EVENT_NAME" = "issue_comment" ]; then
+            if ! pr_json="$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}")"; then
+              echo "::error::Could not resolve PR #${PR_NUMBER} state."
+              exit 1
+            fi
+            if [ "$(jq -r '.state' <<< "$pr_json")" != "open" ]; then
+              echo "PR #${PR_NUMBER} is not open; skipping."
+              exit 0
+            fi
+            if [ "$(jq -r '.draft' <<< "$pr_json")" = "true" ]; then
+              echo "PR #${PR_NUMBER} is a draft; skipping."
+              exit 0
+            fi
+            HEAD_SHA="$(jq -r '.head.sha' <<< "$pr_json")"
+            EVENT_TIME="$COMMENT_CREATED_AT"
+          else
+            HEAD_SHA="$PR_HEAD_SHA"
+            EVENT_TIME="$PR_EVENT_TIME"
+          fi
+
           echo "Waiting for Codex to review commit ${HEAD_SHA}..."
 
           # A clean (no-findings) Codex review has no review object and no

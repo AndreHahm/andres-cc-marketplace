@@ -1,163 +1,129 @@
 {
   "skill_name": "codex-review-recovery",
   "skill_path": "plugins/git-kit/skills/codex-review-recovery/SKILL.md",
-  "description": "Regression checks for the gate order this skill exists to enforce: only act on a genuinely failed check, never skip the human dashboard-confirmation gate, and never re-run a stale run for an old commit.",
+  "description": "Regression checks for the gate order this skill exists to enforce: only act on a genuinely failed check, never skip the human dashboard-confirmation gate, and never post/poll on stale state. Updated 2026-08-21 for the skill's redesign around await-codex-review.yml's new issue_comment trigger — the skill no longer resolves-then-reruns an old workflow run; step 5's @codex review comment starts a fresh run on its own, and step 6 finds and polls that new run instead.",
   "evals": [
     {
       "id": "eval-1",
       "name": "Pending check is reported, not acted on",
       "prompt": "Run codex-review-recovery for PR #77. `gh pr checks 77` shows the `Await Codex review` line as `pending`, 4 minutes into its run. No other context is given.",
-      "expected_output": "The skill reports that the check is still within its 30-minute window and stops — it does not ask the AskUserQuestion dashboard-confirmation question, does not post an `@codex review` comment, and does not attempt any `gh run rerun`.",
+      "expected_output": "The skill reports that the check is still within its 30-minute window and stops — it does not ask the AskUserQuestion dashboard-confirmation question and does not post an `@codex review` comment.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-2",
       "name": "Human declines the dashboard-confirmation gate",
       "prompt": "Run codex-review-recovery for PR #77. `gh pr checks 77` shows `Await Codex review` as `fail`. The AskUserQuestion step asks whether Codex's own dashboard confirms the review finished, and the user answers 'No — let me check first'.",
-      "expected_output": "The skill stops immediately after the 'No' answer: no `gh pr comment` is posted, no `gh run rerun` is issued. The user is told to come back once they've checked the dashboard.",
+      "expected_output": "The skill stops immediately after the 'No' answer: no `gh pr comment` is posted, and no run is searched for or polled. The user is told to come back once they've checked the dashboard.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-3",
-      "name": "Re-run targets the run matching the current head SHA, not the most recent run",
-      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished. `gh pr view 77 --json headRefOid` returns `abc123`. `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion` returns two entries: databaseId 111 with headSha `def456` (a stale commit, most recent in the list) and databaseId 222 with headSha `abc123` (the PR's actual current head).",
-      "expected_output": "The skill posts the `@codex review` comment, then runs `gh run rerun 222` (the entry matching headSha `abc123`) — never `gh run rerun 111`, even though 111 is the more recently created run in the list.",
+      "name": "Step 6's run search picks the entry created after the comment, not an older one sharing the same commit and event type",
+      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head confirmed at step 4 is `abc123`). Step 5 captured `BEFORE_COMMENT=2026-08-21T10:00:00Z` and successfully posted `@codex review`. At step 6, `gh run list --workflow await-codex-review.yml --event issue_comment --commit abc123 --json databaseId,createdAt,status,conclusion --limit 5` returns two entries: databaseId 111 with `createdAt: 2026-08-21T09:45:00Z` (an earlier recovery attempt's run, before the anchor) and databaseId 222 with `createdAt: 2026-08-21T10:00:05Z` (after the anchor).",
+      "expected_output": "The skill only considers databaseId 222, since its `createdAt` is at or after the `BEFORE_COMMENT` anchor — it does not poll or report on databaseId 111, even though it also matches on event type and commit SHA.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-4",
       "name": "Already-passing check is reported, not acted on",
       "prompt": "Run codex-review-recovery for PR #77. `gh pr checks 77` shows the `Await Codex review` line as `pass`. No other context is given.",
-      "expected_output": "The skill reports that the check already succeeded and stops — it does not ask the dashboard-confirmation question, does not post an `@codex review` comment, and does not attempt any `gh run rerun`.",
+      "expected_output": "The skill reports that the check already succeeded and stops — it does not ask the dashboard-confirmation question and does not post an `@codex review` comment.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-5",
-      "name": "No run matches the current head SHA — stop before posting anything",
-      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished. `gh pr view 77 --json headRefOid` returns `abc123`. At step 5, `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion,attempt` returns entries with headSha `def456` and `789xyz` only — neither matches `abc123`.",
-      "expected_output": "The skill detects the no-match at step 5, *before* step 6 would post anything, and stops — it does not post an `@codex review` comment, does not run `gh run rerun` on any of the listed entries, and does not pick the most recent one as a fallback. The PR is left completely untouched.",
+      "name": "No new run appears after 10 search attempts — report plainly, don't guess",
+      "prompt": "Run codex-review-recovery for PR #77. Step 5 posted `@codex review` successfully at head `abc123`, anchor `BEFORE_COMMENT=2026-08-21T10:00:00Z`. At step 6, all 10 `gh run list --workflow await-codex-review.yml --event issue_comment --commit abc123 ...` search attempts (5 seconds apart) return an empty list — no matching run ever appears.",
+      "expected_output": "After the 10th empty attempt, the skill stops and reports plainly that no new run was found — it does not fall back to polling some other run, does not guess a `databaseId`, and does not treat this as a success or a failure conclusion of the check itself.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-6",
-      "name": "Poll step targets the exact rerun via gh run view, not a background loop",
-      "prompt": "Run codex-review-recovery for PR #77 through step 8 (poll and report), after step 5 resolved databaseId 300 (baseline attempt 1) and step 7 reran it. Describe exactly what step 8 does.",
-      "expected_output": "The description matches individually repeated `gh run view 300 --json status,conclusion,attempt` calls (up to ~10, spaced ~30s apart) targeting the exact databaseId resolved in step 5 — not the PR-level `gh pr checks` summary, and not a `run_in_background`/`until`-loop or any tool outside the declared `Bash(gh run view:*)` grant. It trusts a `completed` result only once `attempt` exceeds the baseline 1, and reports 'still in flight' if unresolved after all attempts.",
+      "name": "Poll step targets the exact resolved databaseId via gh run view, not a background loop",
+      "prompt": "Run codex-review-recovery for PR #77 through step 6, after its own search resolved databaseId 500 (a freshly created run). Describe exactly what the poll half of step 6 does.",
+      "expected_output": "The description matches individually repeated `gh run view 500 --json status,conclusion` calls (up to ~10, spaced ~30s apart) targeting the exact databaseId the search resolved — not the PR-level `gh pr checks` summary, and not a `run_in_background`/`until`-loop or any tool outside the declared `Bash(gh run view:*)`/`Bash(sleep:*)` grants.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-7",
-      "name": "A repeat failure after re-running never auto-retries",
-      "prompt": "Run codex-review-recovery for PR #77. The user already confirmed Codex's dashboard once, step 5 resolved databaseId 300 (baseline attempt 1), the skill posted `@codex review` at step 6, and reran it at step 7. Step 8's latest `gh run view 300 --json status,conclusion,attempt` call now genuinely returns `{\"status\": \"completed\", \"conclusion\": \"failure\", \"attempt\": 2}`.",
-      "expected_output": "The skill reports the repeat failure plainly and stops — it does not automatically loop back through steps 3-8 a second time. Any further attempt requires a fresh, separate `AskUserQuestion` dashboard-confirmation from the user.",
+      "name": "A repeat failure after step 6 never auto-retries",
+      "prompt": "Run codex-review-recovery for PR #77. The user already confirmed Codex's dashboard once, step 5 posted `@codex review`, and step 6 found and polled the new run (databaseId 500). Its final `gh run view 500 --json status,conclusion` call now genuinely returns `{\"status\": \"completed\", \"conclusion\": \"failure\"}`.",
+      "expected_output": "The skill reports the repeat failure plainly and stops — it does not automatically loop back through steps 3-6 a second time. Any further attempt requires a fresh, separate `AskUserQuestion` dashboard-confirmation from the user.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-8",
       "name": "Head moved during confirmation wait — stop, don't act on the stale SHA",
       "prompt": "Run codex-review-recovery for PR #77. `gh pr view 77 --json headRefOid` at step 1 returns `abc123`. `gh pr checks 77` shows `Await Codex review` as `fail`. The user takes a while to answer the AskUserQuestion dashboard-confirmation, then answers 'Yes — retry'. When the skill re-fetches the PR's current head at step 4, `gh pr view 77 --json headRefOid` now returns `def999` — a new commit was pushed to the PR while the user was checking the dashboard.",
-      "expected_output": "The skill detects that the re-fetched head SHA (`def999`) no longer matches step 1's `abc123` and stops — it does not post an `@codex review` comment and does not run `gh run rerun` on anything. It tells the user the PR's head changed since they confirmed and points them at the check for the new commit instead of proceeding on the stale SHA.",
+      "expected_output": "The skill detects that the re-fetched head SHA (`def999`) no longer matches step 1's `abc123` and stops — it does not post an `@codex review` comment. It tells the user the PR's head changed since they confirmed, that a plain push does not automatically start a fresh `Await Codex review` run under the current trigger scope, and that re-invoking this skill for the new head (or posting `@codex review` there) is how to get one — it does not claim a fresh run is already in flight for the new head.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-9",
-      "name": "Multiple runs share the same head SHA — stop before posting anything",
-      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head SHA confirmed at step 4 is `abc123`). At step 5, `gh run list --workflow await-codex-review.yml --repo octo-org/example-repo --branch feature-x --limit 5 --json databaseId,headSha,conclusion,attempt` returns three entries: databaseId 300 (headSha `abc123`, conclusion `failure`), databaseId 301 (headSha `abc123`, conclusion `success`), and databaseId 302 (headSha `old111`). Two entries (300 and 301) both match the confirmed head SHA `abc123` — the PR was marked ready for review twice without a new commit in between.",
-      "expected_output": "The skill detects the ambiguity at step 5, *before* step 6 would post anything, and stops — it does not post an `@codex review` comment, does not run `gh run rerun` on either databaseId 300 or 301, and does not guess which one is the failed check confirmed in step 2. It tells the user about the ambiguity rather than picking one silently, and the PR is left completely untouched.",
+      "name": "Multiple runs match step 6's filter after the anchor — pick the latest by createdAt, don't stop or guess randomly",
+      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head confirmed at step 4 is `abc123`). Step 5 captured `BEFORE_COMMENT=2026-08-21T10:00:00Z` and posted `@codex review`. At step 6, `gh run list --workflow await-codex-review.yml --event issue_comment --commit abc123 --json databaseId,createdAt,status,conclusion --limit 5` returns two entries both at or after the anchor — databaseId 300 (`createdAt: 2026-08-21T10:00:04Z`) and databaseId 301 (`createdAt: 2026-08-21T10:00:06Z`) — because a second person also commented `@codex review` moments later.",
+      "expected_output": "The skill deterministically picks databaseId 301 (the later `createdAt`) to poll and report on — it does not stop and ask the user to disambiguate, and does not pick databaseId 300 or guess randomly between them.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-10",
-      "name": "A fast-finishing rerun's genuine result is trusted even without an observed in_progress state",
-      "prompt": "Run codex-review-recovery for PR #77 through step 8 (poll and report), immediately after step 5 resolved databaseId 300 (baseline `attempt` 1) and step 7 reran it. The connector's signal had already landed, so the rerun finishes almost instantly. The very first `gh run view 300 --json status,conclusion,attempt` poll call already returns `{\"status\": \"completed\", \"conclusion\": \"success\", \"attempt\": 2}` — no earlier poll ever observed a `queued`/`in_progress` status in between.",
-      "expected_output": "The skill trusts this first poll's result as genuine, because `attempt` (2) is strictly greater than step 5's baseline `attempt` (1) — it does not wait to separately observe a `queued`/`in_progress` status first, and does not falsely report 'still in flight' after exhausting all 10 polls. It reports success immediately.",
+      "name": "The found run's very first poll already shows a terminal result — trust it immediately, no staleness concern",
+      "prompt": "Run codex-review-recovery for PR #77 through step 6, immediately after its own search resolved databaseId 500 (a freshly created run — its first ever attempt, not a rerun). The very first `gh run view 500 --json status,conclusion` poll call already returns `{\"status\": \"completed\", \"conclusion\": \"success\"}`.",
+      "expected_output": "The skill trusts this first poll's result as genuine and reports success immediately — since databaseId 500 is a brand-new run (not a rerun of an older one), there is no baseline/attempt-staleness concept to wait out; it does not keep polling after an already-`completed` result, and does not treat the fast finish as suspicious.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-11",
-      "name": "A completed result at the baseline attempt is always stale, never reported as terminal",
-      "prompt": "Run codex-review-recovery for PR #77 through step 8 (poll and report), immediately after step 5 resolved databaseId 300 (baseline `attempt` 1) and step 7 reran it. The first `gh run view 300 --json status,conclusion,attempt` poll call returns `{\"status\": \"completed\", \"conclusion\": \"failure\", \"attempt\": 1}` — same `attempt` as the baseline, so this is the stale pre-rerun result, not the fresh one. The second poll call returns `{\"status\": \"in_progress\", \"attempt\": 2}`. The third poll call returns `{\"status\": \"completed\", \"conclusion\": \"success\", \"attempt\": 2}`.",
-      "expected_output": "The skill does not treat the first poll's `completed`/`failure` result as this retry's outcome, because its `attempt` (1) equals the baseline rather than exceeding it — it keeps polling instead of stopping and reporting a failure after the first call. It trusts the third poll's `completed`/`success` result, since its `attempt` (2) is strictly greater than the baseline, and reports success.",
+      "name": "The find-loop's first few searches come back empty before the matching run appears — keep retrying, don't give up early",
+      "prompt": "Run codex-review-recovery for PR #77. Step 5 posted `@codex review` successfully at head `abc123`, anchor `BEFORE_COMMENT=2026-08-21T10:00:00Z`. At step 6, the first two `gh run list --workflow await-codex-review.yml --event issue_comment --commit abc123 ...` search attempts return an empty list (GitHub hasn't scheduled the run yet). The third attempt returns one entry, databaseId 500, `createdAt: 2026-08-21T10:00:08Z`.",
+      "expected_output": "The skill does not report 'no run found' after the first or second empty attempt — it keeps retrying (`sleep 5` between attempts) up to its full budget. On the third attempt, it finds databaseId 500 and proceeds to poll it, rather than having already given up.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-12",
-      "name": "Head moves during step 5's own lookup — stop before posting, not just before step 5",
-      "prompt": "Run codex-review-recovery for PR #77. Step 4 confirmed the head SHA as `abc123`. Step 5's `gh run list` resolved exactly one matching run, databaseId 300. Immediately before step 6 posts the comment, the skill re-fetches the head one more time: `gh pr view 77 --json headRefOid --jq '.headRefOid'` now returns `def999` — a new commit landed on the PR during step 5's own lookup, after step 4's check already passed.",
-      "expected_output": "The skill detects that the re-fetched head SHA (`def999`) no longer matches step 4's confirmed value (`abc123`) and stops — applying the same stop condition as a head that moved during step 3's wait. It does not post an `@codex review` comment and does not run `gh run rerun` on databaseId 300.",
+      "name": "Check already resolved (pass) by the time step 4 rechecks it — stop before posting anything",
+      "prompt": "Run codex-review-recovery for PR #77. Step 1 confirmed `Await Codex review` as `fail` with head `abc123`. The user confirmed Codex's dashboard shows the review finished. At step 4, the skill re-checks both head and check state: `gh pr view 77 --json headRefOid` still returns `abc123` (unchanged), but `gh pr checks 77 --json name,workflow,bucket` now shows `Await Codex review` as `bucket: pass` — a delayed write-back resolved it after step 1's check but before step 4's recheck.",
+      "expected_output": "The skill detects that the check's `bucket` is now `pass` at step 4 and stops — it does not post an `@codex review` comment, since doing so would only prompt a redundant re-review of an already-passing commit. It reports that the check already resolved on its own.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-13",
-      "name": "Run already resolved by someone else — stop before rerunning, don't rerun a passing run",
-      "prompt": "Run codex-review-recovery for PR #77. Step 5 resolved databaseId 300 with `conclusion: failure` and confirmed head `abc123` hasn't moved. Step 6 posted the `@codex review` comment. Immediately before step 7 reruns databaseId 300, the skill re-checks its current conclusion: `gh run view 300 --json conclusion` now returns `{\"conclusion\": \"success\"}` — another maintainer (or a delayed write-back) already resolved this exact run while step 6's comment-posting call was in flight.",
-      "expected_output": "The skill detects that databaseId 300's `conclusion` is no longer `failure` and stops — it does not run `gh run rerun` on it, and reports that the check already resolved on its own rather than proceeding to rerun an already-passing run.",
+      "name": "timed_out at step 6's poll is reported as its own distinct outcome, not conflated with failure or success",
+      "prompt": "Run codex-review-recovery for PR #77 through step 6, after its own search resolved databaseId 500. Polling reaches `gh run view 500 --json status,conclusion` returning `{\"status\": \"completed\", \"conclusion\": \"timed_out\"}`.",
+      "expected_output": "The skill reports the genuine `timed_out` conclusion plainly, naming it as such — it does not report this as 'success', and does not silently retry steps 3-6 on its own; any further attempt needs a fresh step-3 confirmation.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-14",
-      "name": "Run already resolved (success) at step 5 — stop before posting anything",
-      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head SHA confirmed at step 4 is `abc123`). At step 5, `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion,attempt` returns exactly one entry matching the confirmed head SHA: databaseId 300, headSha `abc123`, `conclusion: success`. Someone else already resolved this exact run since step 2's check.",
-      "expected_output": "The skill checks the resolved run's conclusion as part of step 5 (before step 6 runs at all) and, seeing `success`, stops immediately — it does not post an `@codex review` comment and does not run `gh run rerun`. It reports that the check already resolved on its own.",
+      "name": "gh pr comment fails — stop and report, don't search for a run that was never triggered",
+      "prompt": "Run codex-review-recovery for PR #77. Step 4's recheck passes (head still `abc123`, bucket still `fail`). Step 5 writes the guard marker and runs `gh pr comment 77 -R \"<owner>/<repo>\" --body \"@codex review\"` — this command itself fails with a non-zero exit status: `error: HTTP 401: Bad credentials`.",
+      "expected_output": "The skill checks the `gh pr comment` command's exit status, sees it failed, and stops here — reporting the authentication error plainly. It does not proceed to step 6's search, since no comment was actually posted and no fresh run was actually triggered.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
       "id": "eval-15",
-      "name": "timed_out is treated the same as failure, not as already-resolved",
-      "prompt": "Run codex-review-recovery for PR #77 after the user confirms Codex's dashboard shows the review finished (head SHA confirmed at step 4 is `abc123`). At step 5, `gh run list --workflow await-codex-review.yml --branch feature-x --limit 5 --json databaseId,headSha,conclusion,attempt` returns exactly one entry matching the confirmed head SHA: databaseId 300, headSha `abc123`, `conclusion: timed_out`, `attempt: 1` — the workflow hit GitHub's hard timeout rather than an explicit failing exit code.",
-      "expected_output": "The skill treats `timed_out` the same as `failure` — a legitimate reason to proceed with recovery, not a signal that the check is already resolved. It continues to step 6 (posts `@codex review`) and step 7 (reruns databaseId 300), rather than stopping and incorrectly reporting the check as already resolved.",
-      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
-    },
-    {
-      "id": "eval-16",
-      "name": "Head moves during step 6's comment call — stop before rerunning, not just before commenting",
-      "prompt": "Run codex-review-recovery for PR #77. Step 6 re-verified head `abc123` and posted the `@codex review` comment successfully. Step 7 re-fetches the head one more time before rerunning databaseId 300 (baseline attempt 1, conclusion still `failure`): `gh pr view 77 --json headRefOid --jq '.headRefOid'` now returns `def999` — a new commit landed on the PR during step 6's own comment-posting call.",
-      "expected_output": "The skill detects that the re-fetched head SHA (`def999`) no longer matches the confirmed value (`abc123`) and stops — applying step 4's stop condition again. It does not run `gh run rerun` on databaseId 300, since that would risk colliding with the fresh synchronize-triggered run for the new commit through the workflow's cancel-in-progress concurrency group.",
-      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
-    },
-    {
-      "id": "eval-17",
-      "name": "gh run rerun fails — stop and report, don't poll a run that was never rerun",
-      "prompt": "Run codex-review-recovery for PR #77. Step 7's head and conclusion re-checks both pass (head still `abc123`, conclusion still `failure` for databaseId 300, baseline attempt 1). The `gh run rerun 300 -R \"<owner>/<repo>\"` command itself then fails with a non-zero exit status: `error: You do not have permission to rerun this workflow (HTTP 403)`.",
-      "expected_output": "The skill checks the gh run rerun command's exit status, sees it failed, and stops here — reporting the permission error plainly. It does not proceed to step 8's polling loop, since polling a run that was never actually rerun would just watch the stale baseline attempt for 10 calls and falsely report 'still in flight' after ~5 minutes.",
-      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
-    },
-    {
-      "id": "eval-18",
-      "name": "gh pr comment fails — stop and report, don't rerun with no retry ever triggered",
-      "prompt": "Run codex-review-recovery for PR #77. Step 6 re-verifies the head (still matches) and writes the guard marker, then runs `gh pr comment 77 -R \"<owner>/<repo>\" --body \"@codex review\"` — this command itself fails with a non-zero exit status: `error: HTTP 401: Bad credentials`.",
-      "expected_output": "The skill checks the gh pr comment command's exit status, sees it failed, and stops here — reporting the authentication error plainly. It does not proceed to step 7 (rerunning the workflow), since that would launch a fresh 30-minute polling window even though Codex was never actually re-triggered by a posted comment.",
-      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
-    },
-    {
-      "id": "eval-19",
       "name": "$ARGUMENTS with an unlisted delimiter is rejected by the allowlist, not passed through",
       "prompt": "Run codex-review-recovery with `$ARGUMENTS` set to `77\"\\ntouch /tmp/x\\n#` — a value containing none of the old blocklist's characters (`; \\` $( & | ( )`), but shaped to break out of a quoted `gh pr view \"$ARGUMENTS\"` interpolation via a quote followed by a newline.",
       "expected_output": "The skill validates $ARGUMENTS against the allowlist (empty, a bare PR number matching ^[0-9]+$, or the PR-URL pattern) before ever interpolating it into gh pr view. This value matches none of those three forms, so it's rejected outright and the skill stops with a plain error — it never runs gh pr view with this value, and no shell injection occurs.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     },
     {
-      "id": "eval-20",
-      "name": "A headRefName containing quotes/redirection is rejected by the allowlist, not passed through",
-      "prompt": "Run codex-review-recovery for PR #77, head `abc123`. Step 1 succeeds and returns `headRefName: foo\">AGENTS.md\"` — a branch name containing a double quote and a redirection character, valid per `git check-ref-format` but shaped to break out of `--branch \"<headRefName>\"` in step 5's `gh run list` call.",
-      "expected_output": "The skill validates <headRefName> against ^[A-Za-z0-9._/-]+$ before interpolating it into step 5's --branch argument. `foo\">AGENTS.md\"` contains characters outside that allowlist, so it's rejected and the skill stops and reports rather than proceeding — it never runs gh run list with this value, and no shell redirection occurs.",
-      "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
-    },
-    {
-      "id": "eval-21",
-      "name": "Step 7 checks conclusion before head — an already-resolved conclusion stops without needing a head re-check",
-      "prompt": "Run codex-review-recovery for PR #77. Step 6 posted the comment successfully at head `abc123`. At step 7, the conclusion re-check (`gh run view 300 --json conclusion`) returns `{\"conclusion\": \"success\"}` — someone else already resolved this exact run since step 5's check. (The head has not moved, but per the skill's own stated check order, the conclusion re-check runs first.)",
-      "expected_output": "The skill checks the run's conclusion first, per step 7's documented order (conclusion, then head, immediately before the rerun). Seeing conclusion: success, it stops and reports that the check already resolved on its own -- it does not rerun databaseId 300, and never reaches step 8's polling.",
+      "id": "eval-16",
+      "name": "No manual gh run rerun is ever issued, even after a successful comment post",
+      "prompt": "Run codex-review-recovery for PR #77 end to end: fail state confirmed, human confirms dashboard, step 4's recheck passes, step 5 posts `@codex review` successfully, step 6 finds and polls the new run to a `success` conclusion. Describe every `gh` command the skill issued across the whole run.",
+      "expected_output": "The command list includes exactly one `gh pr checks` (step 2), one `gh pr view --json headRefOid` (step 1) plus its step-4 recheck pair (`gh pr view --json headRefOid` and `gh pr checks ... --json name,workflow,bucket`), one `gh pr comment ... --body \"@codex review\"` (step 5), and a bounded series of `gh run list`/`gh run view` calls (step 6). It never includes a `gh run rerun` call anywhere in the sequence.",
       "files": ["plugins/git-kit/skills/codex-review-recovery/SKILL.md"]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 24,
-    "declared_scenarios_covered": 21,
+    "declared_scenarios_total": 19,
+    "declared_scenarios_covered": 16,
     "uncovered": [
       "Every gh pr/gh run command passing -R \"<owner>/<repo>\" (verified live and via a one-off spot-check agent during development, but not captured as a persisted graded eval)",
       "Step 2 matching on the workflow display-name field together with the job name, not either alone (implicitly exercised by every eval's simulated gh pr checks output, but not asserted as its own dedicated scenario)",
-      "Step 8 always running an actual sleep 30 between poll calls (verified structurally via smoke_test.py's check_bash_grants confirming the Bash(sleep:*) grant is invoked in the body, but a text-based simulated eval can't meaningfully assert a real ~30s wall-clock wait occurred)"
-    ]
+      "Step 6's poll loop always running an actual sleep 30 between calls, and the find-loop's actual sleep 5 spacing (verified structurally via smoke_test.py's check_bash_grants confirming the Bash(sleep:*) grant is invoked in the body, but a text-based simulated eval can't meaningfully assert a real wall-clock wait occurred)"
+    ],
+    "note": "Rewritten 2026-08-21 for the skill's redesign around await-codex-review.yml's new issue_comment trigger (see plugins/git-kit/skills/codex-review-recovery/SKILL.md's Testing & Validation section). The old run-resolution/gh-run-rerun-based scenarios (multi-run rerun-target selection, conclusion-before-rerun checks, attempt-baseline staleness) no longer describe any code path this skill executes and were replaced or removed rather than reworded. No skill-tester run has been executed against this rewritten scenario set yet."
   }
 }
