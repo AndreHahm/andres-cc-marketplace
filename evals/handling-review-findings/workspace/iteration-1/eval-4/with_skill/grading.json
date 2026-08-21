@@ -1,0 +1,36 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not treat the round-2 finding as a repeat of the round-1 finding merely because they share the same file+line",
+      "passed": true,
+      "evidence": "\"file+line match is only a candidate signal, never sufficient by itself to call a finding a repeat. The actual defect content must be compared.\""
+    },
+    {
+      "text": "Explicitly compares the actual defect content between the two findings rather than stopping at the location match",
+      "passed": true,
+      "evidence": "\"Round 1's defect: a missing authorization check... Round 2's defect: missing test coverage for a different code path...\" -- cites round-and-dedup-rules.md's own worked example directly."
+    },
+    {
+      "text": "Concludes the two findings are genuinely distinct (missing authorization check vs. missing test coverage for an error path)",
+      "passed": true,
+      "evidence": "\"Conclusion: this is a genuinely new finding, not a repeat of the round-1 authorization finding.\""
+    },
+    {
+      "text": "Classifies the round-2 finding as new",
+      "passed": true,
+      "evidence": "\"Conclusion: this is a genuinely new finding, not a repeat...\""
+    },
+    {
+      "text": "Routes the round-2 finding to the Fix path (round 2 is within the two-round cap)",
+      "passed": true,
+      "evidence": "\"Round 2 + gate false -> Fix path (Workflow step 4).\" / \"Decision: Fix\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

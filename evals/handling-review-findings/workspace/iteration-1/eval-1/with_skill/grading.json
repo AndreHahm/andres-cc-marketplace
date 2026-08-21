@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the finding as belonging to round 1",
+      "passed": true,
+      "evidence": "\"Round 1 opens at the PR's first push-for-review, with no prior fix-driven push. This is stated to be exactly that review, so this finding belongs to Round 1.\""
+    },
+    {
+      "text": "Routes the finding to the Fix path, not the Issue or Decline path",
+      "passed": true,
+      "evidence": "\"Decision: Fix path (Round 1) — SKILL.md Workflow step 4\""
+    },
+    {
+      "text": "States that verification is a hard precondition before any reply/resolve action -- never claims a reply or resolve happens on the strength of a pushed commit alone",
+      "passed": true,
+      "evidence": "\"Verification is a hard precondition on reply-and-resolve — nothing is posted to the thread until the fix is confirmed correct.\""
+    },
+    {
+      "text": "Describes committing via Skill(git-kit:commit), not a raw `git commit`",
+      "passed": true,
+      "evidence": "\"Commit: via Skill(git-kit:commit) — never a raw git commit (per .claude/rules/route-through-git-kit-lifecycle-skills.md).\""
+    },
+    {
+      "text": "The drafted reply cites both the fixing commit SHA and a one-line summary of what verification confirmed",
+      "passed": true,
+      "evidence": "\"Fixed in <fixing-commit-SHA>: ... Verified by re-reading the fix against the reported defect — the missing-key path now returns the documented default rather than raising.\""
+    },
+    {
+      "text": "States the thread is resolved only after the reply, and only because verification actually passed",
+      "passed": true,
+      "evidence": "\"Resolve: yes, but only after the reply above is posted and only once verification (step 2) has actually passed.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

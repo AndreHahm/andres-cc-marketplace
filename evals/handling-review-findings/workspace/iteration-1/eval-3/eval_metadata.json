@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Classifies the finding as round 3, Critical severity",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Still files the finding as a GitHub issue rather than fixing it in-session -- the round-cap file mechanics are unchanged by severity",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "The disclosure report explicitly names this finding as a merge-blocking risk",
+      "type": "quality",
+      "target": "outputs/disclosure.md"
+    },
+    {
+      "text": "The disclosure states merging requires a separate, explicit human risk-acceptance decision before merge-pr is invoked, distinct from and not satisfied by filing the issue",
+      "type": "functionality",
+      "target": "outputs/disclosure.md"
+    },
+    {
+      "text": "No language in the disclosure implies the PR can simply 'proceed' to merge with this finding outstanding on the strength of the round cap alone",
+      "type": "quality",
+      "target": "outputs/disclosure.md"
+    }
+  ]
+}

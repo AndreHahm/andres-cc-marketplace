@@ -1,0 +1,41 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the finding as belonging to round 3",
+      "passed": true,
+      "evidence": "\"Round classification: Round 3.\""
+    },
+    {
+      "text": "Explicitly reasons that the finding is new (not a repeat) rather than assuming it",
+      "passed": true,
+      "evidence": "\"There is no round 1/2 candidate at utils.py:88 (or anywhere else) describing this same defect... to compare content against, so there is no location or content match to collapse it into. It is genuinely new in round 3...\""
+    },
+    {
+      "text": "Routes the finding to the Issue path -- states plainly it is never fixed in-session, despite being small/easy to fix",
+      "passed": true,
+      "evidence": "\"Path selected: Issue path (Workflow step 3 -> step 5).\" ... impact section: \"Filed rather than fixed in-session solely because this PR is in its third review round and the round cap ... routes round-3+ findings to an issue regardless of how small the fix would be\""
+    },
+    {
+      "text": "The drafted issue includes the PR URL, head SHA, thread/comment reference, reviewer, and severity fields",
+      "passed": true,
+      "evidence": "\"## Review Finding Source\\n- PR: <PR URL...>\\n- Head SHA: <head SHA...>\\n- Review thread/comment: <review thread or comment URL/ID...>\\n- Reviewer: <reviewer tool/handle...>\\n- Severity: Minor\""
+    },
+    {
+      "text": "Uses a plain non-closing reference (\"Found in PR #142\"), never \"Fixes #142\"/\"Closes #142\"",
+      "passed": true,
+      "evidence": "\"Found in PR #142\" (exact match), with explicit note \"(Never Fixes #142 / Closes #142.)\""
+    },
+    {
+      "text": "States the thread is left unresolved, not resolved",
+      "passed": true,
+      "evidence": "\"The thread is NOT resolved.\" ... \"resolveReviewThread is intentionally never called for this thread.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

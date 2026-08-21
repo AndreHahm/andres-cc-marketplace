@@ -1,0 +1,36 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the finding as round 3, Critical severity",
+      "passed": true,
+      "evidence": "\"History: First round this finding has appeared (round 3).\" ... \"Severity: Critical\""
+    },
+    {
+      "text": "Still files the finding as a GitHub issue rather than fixing it in-session -- the round-cap file mechanics are unchanged by severity",
+      "passed": false,
+      "evidence": "No round-cap or issue-filing concept at all. Decision is \"MUST FIX -- blocks merge\", with the fix expected to happen directly on this PR (\"Re-run/re-request review on the fix before merge\"), not filed as a tracked issue."
+    },
+    {
+      "text": "The disclosure report explicitly names this finding as a merge-blocking risk",
+      "passed": true,
+      "evidence": "disclosure.md: \"Decision: must fix before merge.\" / summary table \"Merge status: Blocking\""
+    },
+    {
+      "text": "The disclosure states merging requires a separate, explicit human risk-acceptance decision before merge-pr is invoked, distinct from and not satisfied by filing the issue",
+      "passed": false,
+      "evidence": "No mention of \"risk acceptance\", \"merge-pr\", or any explicit-confirmation mechanism -- the model is simply fix-then-merge, not file-plus-separately-gated-risk-acceptance. There is no filing step to be distinct from in the first place."
+    },
+    {
+      "text": "No language in the disclosure implies the PR can simply 'proceed' to merge with this finding outstanding on the strength of the round cap alone",
+      "passed": true,
+      "evidence": "\"Do not merge PR #142 as-is.\" -- never implies the PR can proceed to merge with the finding outstanding (though for a different reason than the skill's mechanism: baseline has no round-cap concept to exploit in the first place)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 3,
+    "pass_rate": 0.6
+  }
+}
