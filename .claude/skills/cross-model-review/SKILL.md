@@ -52,6 +52,10 @@ on the working diff.
   Codex-adjacent name.
 - **Applying fixes** — this skill is report-only end to end; route any accepted finding through the
   normal edit/commit flow afterward.
+- **Triaging findings already posted to an open PR by an external reviewer** (Codex, Devin, CodeRabbit,
+  a human) — that's `handling-review-findings`'s job. This skill only ever reviews the local working
+  diff *before* a PR exists or before a draft is flipped to ready; once a finding is posted against an
+  actual open PR, it's out of this skill's domain regardless of who or what posted it.
 
 ## Inputs
 

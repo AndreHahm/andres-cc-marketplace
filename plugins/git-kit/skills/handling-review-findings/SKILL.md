@@ -61,6 +61,22 @@ verification and resolve this immediately").
 The exclusions above follow this repo's `.claude/rules/resolve-activation-overlap-bidirectionally.md`
 convention — each named sibling skill carries the reciprocal half of the same exclusion.
 
+## Quick Start
+
+1. Re-fetch current review state (`gh pr checks`, `gh pr view`, the inline-comment list) — never reuse
+   an earlier check.
+2. Classify each finding: dedup against earlier rounds, determine its round, severity, and whether it's
+   scope-deferred.
+3. Apply the round-cap and severity-gate decisions to route it to Fix (rounds 1-2), Issue (round 3+ or
+   scope-deferred), or Decline (severity gate only).
+4. Fix path: verify, then commit/push/reply-with-SHA/resolve. Issue path: dedup against existing
+   issues, file with full traceability, reply, leave unresolved. Decline path: reply only, leave
+   unresolved.
+5. Report fixed/filed/declined plainly before any merge step — a deferred Critical/Major finding needs
+   a separate, explicit risk-acceptance `AskUserQuestion` first.
+
+See `## Workflow` below for the full step-by-step with exact rules and edge cases.
+
 ## Settings
 
 Read `review_findings_severity_gate` (boolean, default `false`) the same way `commit` reads its own
@@ -203,8 +219,11 @@ the hook only accepts a marker up to 60 seconds old.
 - "review this diff before I open the PR" → `cross-model-review`
 - "is this PR ready to merge" → `merge-pr`
 
-**Concrete scenarios, the full quality-gates checklist, and the round-cap/dedup edge cases** — extracted
-per `plugin-rulebook`'s R13 line-count threshold — live in `references/testing-scenarios.md`.
+**Concrete scenarios, the full quality-gates checklist, and the round-cap/dedup edge cases** live in
+`references/testing-scenarios.md`. This isn't forced by R13's line-count threshold (this file has
+headroom below it) — it's a deliberate choice matching `cross-model-review`'s own
+`references/testing-scenarios.md` precedent in this same plugin, keeping the scenario/gate detail out
+of the main procedure a reader follows on every triage pass.
 
 ## Reference Guide
 
