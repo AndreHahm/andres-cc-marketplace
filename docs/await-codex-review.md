@@ -35,13 +35,14 @@ distinguish an active review from a queued, missed, or unavailable one.
    draft (checked directly from the event for `pull_request`; re-fetched live via `gh api` for
    `issue_comment`, since that event carries no pull-request sub-object). A plain `synchronize`
    push is deliberately **not** a trigger — see "Trigger scope" below.
-2. Requests only `contents: read`, `pull-requests: read`, and `issues: read` permissions (the last
-   is needed to read the connector's no-findings reaction, and to read PR state for an
-   `issue_comment` trigger) — no checkout, third-party action, custom token, or repository secret
-   is used.
-3. Uses one concurrency group per pull request (`codex-review-<PR number>`) and cancels a
-   previous still-running instance of this workflow for the same pull request when a new
-   triggering event (not just any new commit — see point 1) arrives.
+2. Requests `contents: read`, `pull-requests: read`, `issues: read` (the last is needed to read the
+   connector's no-findings reaction, and to read PR state for an `issue_comment` trigger), and
+   `checks: write` (needed for point 6 below) — no checkout, third-party action, custom token, or
+   repository secret is used.
+3. Uses one concurrency group per pull request (`codex-review-<PR number>`, plus a run-id-unique
+   suffix for an `issue_comment` event the job's own `if:` will skip — see below) and cancels a
+   previous still-running instance of this workflow for the same pull request when a new triggering
+   event (not just any new commit — see point 1) arrives.
 4. Polls two signals every 30 seconds, both fully paginated: GitHub's pull-request reviews
    endpoint (`gh api .../pulls/<PR>/reviews`), and the pull request's reactions endpoint
    (`gh api .../issues/<PR>/reactions`).
@@ -53,6 +54,20 @@ distinguish an active review from a queued, missed, or unavailable one.
    timestamp (rather than a snapshot taken once this job happens to run) means a reaction the
    connector posts before this job starts polling still counts, while a stale reaction from an
    earlier commit still doesn't.
+6. For an `issue_comment` trigger, explicitly creates and later finalizes a check-run against the
+   pull request's real head SHA via the Checks API (`POST`/`PATCH .../check-runs`), rather than
+   relying on the job's own implicit status. `issue_comment` events check out and report their
+   `GITHUB_SHA`/`GITHUB_REF` against the *default branch's* latest commit, not the pull request's
+   (confirmed against GitHub's own docs) — without this, the job's own status would attach to the
+   wrong commit and never appear in `gh pr checks` for this pull request at all. Not needed for the
+   `pull_request` path, where `GITHUB_SHA` already correctly equals the pull request's head.
+7. **Any PR comment, not just an `@codex review` one, creates a workflow run in the same
+   `codex-review-<PR number>` group** — workflow-level concurrency is evaluated at run-creation
+   time, before the job's own `if:` in point 1 above ever runs, so an unrelated comment would
+   otherwise cancel a legitimately in-progress wait via `cancel-in-progress`, only to have its own
+   job then skipped. The concurrency group (point 3) isolates this: a comment the job's own `if:`
+   is about to skip gets a unique, one-off group suffix (this run's own `github.run_id`) instead of
+   sharing the real group, so it can never collide with — or cancel — an actual wait.
 
 ## Trigger scope
 
@@ -123,9 +138,11 @@ detecting or retrying is not this job's responsibility). Recovery is a separate,
 `Skill(git-kit:codex-review-recovery)`: it asks the human to confirm on Codex's own dashboard that the
 review actually finished — the one piece of information nothing running inside this repository can see —
 then posts an `@codex review` comment (the connector's own documented retry trigger). That comment now
-also re-triggers this workflow directly via its `issue_comment` trigger (see "Trigger scope" above), so
-the skill finds and polls the fresh run the comment itself started rather than manually rerunning the old,
-already-failed one. See that skill's own SKILL.md for the exact procedure.
+also re-triggers this workflow directly via its `issue_comment` trigger (see "Trigger scope" above), and
+since the resulting check-run is explicitly attached to the pull request's own head SHA (point 6 above),
+the skill polls `gh pr checks` for this pull request directly rather than hunting down a separate
+workflow run or manually rerunning the old, already-failed one. See that skill's own SKILL.md for the
+exact procedure.
 
 **Do not react with a manual 👍 as a workaround.** The reaction-match check filters strictly on
 `user.login == "chatgpt-codex-connector[bot]"` — a reaction from any other account, including the PR

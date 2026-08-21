@@ -10,9 +10,17 @@ permissions:
   contents: read
   pull-requests: read
   issues: read
+  checks: write
 
 concurrency:
-  group: codex-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  # Workflow-level concurrency is evaluated at run-creation time, before the job's own `if:`
+  # below ever runs -- so without the second `${{ }}` segment here, *any* issue_comment (not
+  # just an "@codex review" one) would enter this same group and cancel an in-progress
+  # pull_request-triggered wait via cancel-in-progress, only to have its own job skipped by
+  # the `if:` a moment later, leaving the check `cancelled` instead of pass/fail. Give a
+  # comment the job's own `if:` will skip a unique, one-off group (keyed on this run's own
+  # id) instead, so it can never collide with -- or cancel -- a real wait.
+  group: codex-review-${{ github.event.pull_request.number || github.event.issue.number }}-${{ (github.event_name == 'issue_comment' && !contains(github.event.comment.body, '@codex review')) && github.run_id || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -61,10 +69,43 @@ jobs:
             fi
             HEAD_SHA="$(jq -r '.head.sha' <<< "$pr_json")"
             EVENT_TIME="$COMMENT_CREATED_AT"
+
+            # An issue_comment run's own GITHUB_SHA/checkout is the default branch's latest
+            # commit, not the PR's -- confirmed against GitHub's own docs. Left alone, this
+            # job's own implicit status would attach a check-run to that wrong commit, which
+            # would never appear in `gh pr checks` for this PR at all. Explicitly create and
+            # later finalize a check-run against the PR's real head instead, via the Checks
+            # API (needs the `checks: write` permission above).
+            if ! CHECK_RUN_ID="$(
+              gh api "repos/${REPOSITORY}/check-runs" \
+                -f name="Await Codex review" \
+                -f head_sha="$HEAD_SHA" \
+                -f status=in_progress \
+                --jq '.id'
+            )"; then
+              echo "::error::Could not create check-run against PR head ${HEAD_SHA}."
+              exit 1
+            fi
           else
             HEAD_SHA="$PR_HEAD_SHA"
             EVENT_TIME="$PR_EVENT_TIME"
           fi
+
+          # No-op for the pull_request path (CHECK_RUN_ID unset there) -- that path's own
+          # implicit job status already attaches to the correct commit, so nothing explicit
+          # is needed. `|| true`: a failed PATCH here (e.g. a transient API error) shouldn't
+          # mask this step's own real exit code, set immediately after each call below.
+          finalize_check_run() {
+            if [ -n "${CHECK_RUN_ID:-}" ]; then
+              # GitHub's "Update a check run" endpoint requires PATCH; gh api defaults to
+              # POST whenever -f fields are present (its create-vs-update auto-detection is
+              # based on parameter presence, not the endpoint), so this needs an explicit
+              # --method override -- unlike the create call above, whose default POST already
+              # matches what "Create a check run" expects.
+              gh api --method PATCH "repos/${REPOSITORY}/check-runs/${CHECK_RUN_ID}" \
+                -f status=completed -f conclusion="$1" >/dev/null || true
+            fi
+          }
 
           echo "Waiting for Codex to review commit ${HEAD_SHA}..."
 
@@ -104,6 +145,7 @@ jobs:
               )
             ' <<< "$reviews" >/dev/null; then
               echo "Codex review received for ${HEAD_SHA}."
+              finalize_check_run success
               exit 0
             fi
 
@@ -125,6 +167,7 @@ jobs:
               )
             ' <<< "$reactions" >/dev/null; then
               echo "Codex reacted with no findings at or after this push. This does not prove the reaction was for ${HEAD_SHA} specifically -- reactions carry no commit ID."
+              finalize_check_run success
               exit 0
             fi
 
@@ -132,4 +175,5 @@ jobs:
           done
 
           echo "::error::Codex did not submit a review within 30 minutes."
+          finalize_check_run failure
           exit 1
