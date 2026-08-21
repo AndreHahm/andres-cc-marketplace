@@ -124,6 +124,9 @@ running from [LOCAL_PATH] with token [REDACTED_TOKEN].
 - "list open issues on this repo" → `gh-operations`
 - "file this as a real GitHub issue" / "create an issue on GitHub for this bug" → `gh-operations` (its
   `gh issue create`); this skill only drafts a local markdown file, never files a live issue
+- "file an issue for this PR review finding instead of fixing it" → `handling-review-findings`; a
+  finding tied to an open PR's review thread needs the PR/SHA/thread traceability payload that skill's
+  issue path adds on top of this skill's own template, not this skill's general-purpose drafting
 
 **Quality gates:**
 - [ ] Every generated issue follows the structure in `assets/issue-template.md` — never a freeform format

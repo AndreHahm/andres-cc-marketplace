@@ -5,11 +5,12 @@
 # hooks/scripts/guard-raw-destructive-cleanup.sh)
 # check before allowing a raw `git commit` / `gh pr create` / `gh pr merge` /
 # `git checkout -b` / `git switch -c` / `gh pr review` / `gh pr comment` /
+# `gh api .../pulls/*/comments/*/replies` / `gh api graphql` (resolveReviewThread) /
 # `git branch -D <protected-branch>` / `git worktree remove` through.
 #
 # Called by the allowlisted skills (commit, standalone-commits, create-pr,
 # merge-pr, starting-work, collaborating-on-a-pr, explain-pr-changes, git-cleanup,
-# codex-review-recovery)
+# codex-review-recovery, handling-review-findings)
 # immediately before they run the guarded command themselves --
 # the marker must be fresh (<=60s old, checked by the hook) and is consumed
 # on first use, so writing it any earlier than "right before the guarded

@@ -76,6 +76,10 @@ check timed out but the review actually finished", "retry the Codex review check
 - **Checking overall PR merge-readiness once this check is resolved** — see `merge-pr`, which never
   evaluates `Await Codex review` (it's not a required check) and has its own distinct
   `Publish Codex policy result` bypass flow that this skill doesn't touch.
+- **Acting on Codex's actual review findings** once the review itself has posted — that's
+  `handling-review-findings`'s job (triaging across rounds, fixing, filing, or declining). This skill
+  only recovers a *missing signal* (the check never reflected a review that did finish); it never reads
+  or reasons about what the review actually found.
 
 ## Quick Start
 
@@ -269,8 +273,8 @@ See `## Instructions` below for the full step-by-step with exact commands and st
 - "why hasn't Codex reviewed this PR yet" (still pending, nothing stuck) → just check status, don't act
 - "start a Codex review on this PR" (no prior failure) → not this skill's job; the connector already
   triggers automatically
-- "the Codex review found issues, can you fix them" → that's addressing review feedback, not a stuck
-  check
+- "the Codex review found issues, can you fix them" → `handling-review-findings`; that's addressing
+  review feedback, not a stuck check
 
 **Quality gates:**
 - [ ] Every `gh pr`/`gh api` command from step 2 onward always uses `<owner>/<repo>` derived from step 1's
