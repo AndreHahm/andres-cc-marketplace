@@ -95,8 +95,12 @@ jobs:
           # implicit job status already attaches to the correct commit, so nothing explicit
           # is needed. `|| true`: a failed PATCH here (e.g. a transient API error) shouldn't
           # mask this step's own real exit code, set immediately after each call below.
+          # ALREADY_FINALIZED guards against the EXIT/INT/TERM trap below re-finalizing (and
+          # overwriting) a conclusion this function already set via a normal exit.
+          ALREADY_FINALIZED=false
           finalize_check_run() {
-            if [ -n "${CHECK_RUN_ID:-}" ]; then
+            if [ -n "${CHECK_RUN_ID:-}" ] && [ "$ALREADY_FINALIZED" != true ]; then
+              ALREADY_FINALIZED=true
               # GitHub's "Update a check run" endpoint requires PATCH; gh api defaults to
               # POST whenever -f fields are present (its create-vs-update auto-detection is
               # based on parameter presence, not the endpoint), so this needs an explicit
@@ -106,6 +110,16 @@ jobs:
                 -f status=completed -f conclusion="$1" >/dev/null || true
             fi
           }
+          # Best-effort: a check-run created via the Checks API (unlike a job's own implicit
+          # status) is never auto-completed by GitHub if this job is cancelled -- e.g. a newer
+          # trigger superseding it via cancel-in-progress, or the hard timeout-minutes cutoff --
+          # so without this it would stay `in_progress` on the PR forever. Trap EXIT (a normal
+          # exit already finalized via the calls below; this is then a no-op per the guard
+          # above) and INT/TERM (GitHub's own cancellation signal) so a cancelled run still gets
+          # a terminal conclusion where possible. Not a guarantee: it races GitHub's own short
+          # cancellation grace period, and the PATCH call itself needs a network round-trip to
+          # complete within it.
+          trap 'finalize_check_run cancelled' EXIT INT TERM
 
           echo "Waiting for Codex to review commit ${HEAD_SHA}..."
 

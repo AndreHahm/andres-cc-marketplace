@@ -60,7 +60,14 @@ distinguish an active review from a queued, missed, or unavailable one.
    `GITHUB_SHA`/`GITHUB_REF` against the *default branch's* latest commit, not the pull request's
    (confirmed against GitHub's own docs) — without this, the job's own status would attach to the
    wrong commit and never appear in `gh pr checks` for this pull request at all. Not needed for the
-   `pull_request` path, where `GITHUB_SHA` already correctly equals the pull request's head.
+   `pull_request` path, where `GITHUB_SHA` already correctly equals the pull request's head. A
+   check-run created this way is standalone — it has no associated workflow run, so a tool deriving
+   a "workflow" label from the check suite (e.g. `gh pr checks`'s own `workflow` field) won't show
+   one for it, unlike the `pull_request` path's own check. Best-effort only: if this job is
+   cancelled (a newer trigger superseding it via point 7 below, or the hard `timeout-minutes` cutoff)
+   before it reaches one of its own normal exits, an `EXIT`/`INT`/`TERM` trap attempts to finalize the
+   check-run to `cancelled` rather than leaving it stuck `in_progress` forever — not guaranteed, since
+   it races GitHub's own short cancellation grace period.
 7. **Any PR comment, not just an `@codex review` one, creates a workflow run in the same
    `codex-review-<PR number>` group** — workflow-level concurrency is evaluated at run-creation
    time, before the job's own `if:` in point 1 above ever runs, so an unrelated comment would
@@ -140,9 +147,10 @@ review actually finished — the one piece of information nothing running inside
 then posts an `@codex review` comment (the connector's own documented retry trigger). That comment now
 also re-triggers this workflow directly via its `issue_comment` trigger (see "Trigger scope" above), and
 since the resulting check-run is explicitly attached to the pull request's own head SHA (point 6 above),
-the skill polls `gh pr checks` for this pull request directly rather than hunting down a separate
-workflow run or manually rerunning the old, already-failed one. See that skill's own SKILL.md for the
-exact procedure.
+the skill polls the Checks API directly for that commit — not `gh pr checks`, since a standalone
+Checks-API-created check-run has no associated workflow run for that CLI's own `workflow` field to match
+against — rather than hunting down a separate workflow run or manually rerunning the old, already-failed
+one. See that skill's own SKILL.md for the exact procedure.
 
 **Do not react with a manual 👍 as a workaround.** The reaction-match check filters strictly on
 `user.login == "chatgpt-codex-connector[bot]"` — a reaction from any other account, including the PR
