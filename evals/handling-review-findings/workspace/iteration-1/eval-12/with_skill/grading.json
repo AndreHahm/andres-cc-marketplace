@@ -1,0 +1,12 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes that Codex's and CodeRabbit's findings describe the same underlying defect despite different wording", "passed": true, "evidence": "\"Content comparison confirms they are the same defect, not two separate issues.\""},
+    {"text": "States explicitly that this must produce exactly ONE GitHub issue, not two", "passed": true, "evidence": "\"Number of GitHub issues filed: 1\""},
+    {"text": "Describes checking for an existing issue before filing (a dedup check against already-filed issues)", "passed": true, "evidence": "quotes SKILL.md directly: \"before drafting, check gh issue list for an existing issue already filed against this PR/head-SHA for the same finding\""},
+    {"text": "States that BOTH reviewers' threads get replied-to, each pointing at the same single issue number", "passed": true, "evidence": "\"Codex thread: Reply with the issue number/URL... CodeRabbit thread: Reply with the issue number/URL\""},
+    {"text": "States neither thread gets resolved", "passed": true, "evidence": "\"Status: Left unresolved\" for both threads"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

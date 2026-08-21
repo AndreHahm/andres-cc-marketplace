@@ -1,0 +1,12 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Correctly reads review_findings_severity_gate as true and applies the Decline path", "passed": true, "evidence": "\"This finding follows the Decline path (Workflow step 6)\""},
+    {"text": "States plainly the finding is not fixed and not filed as an issue", "passed": true, "evidence": "\"Do NOT fix it. Do NOT file an issue.\""},
+    {"text": "States the finding is acknowledged via a reply only", "passed": true, "evidence": "\"Reply to acknowledge it\" -- drafted reply text provided"},
+    {"text": "States the thread is left unresolved (not resolved), since it wasn't actually handled", "passed": true, "evidence": "\"Status: Leave unresolved (do not call resolveReviewThread)\""},
+    {"text": "Does not route this to the Fix path just because it's round 1 -- correctly overrides the default round-1 fix behavior with the gate's decline rule", "passed": true, "evidence": "Explicitly applies the gate's decline rule instead of the default round-1 fix path"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

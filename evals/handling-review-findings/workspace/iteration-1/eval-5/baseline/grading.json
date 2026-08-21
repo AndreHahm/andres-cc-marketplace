@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Classifies Devin's finding as belonging to round 1, the same round as Codex's finding", "passed": true, "evidence": "\"Devin's finding belongs to Round 1.\""},
+    {"text": "Explicitly states that the multi-hour gap between the two reviewers is irrelevant to round classification", "passed": true, "evidence": "\"Multi-hour gap is irrelevant: Time elapsed between two reviewers examining the same code is independent of round assignment.\""},
+    {"text": "States that a round's boundary is defined by fix-driven pushes, not wall-clock time or reviewer arrival order", "passed": true, "evidence": "\"Round boundaries are commit-driven... A new review round begins when the author pushes a new commit\" -- reaches the same functional principle via independent reasoning, without the skill's exact terminology"},
+    {"text": "Does not treat Devin's finding as belonging to a later round just because it arrived after Codex's", "passed": true, "evidence": "\"Devin's finding belongs to Round 1\" despite arriving after Codex's"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

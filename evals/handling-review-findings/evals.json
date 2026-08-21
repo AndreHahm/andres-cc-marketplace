@@ -30,20 +30,67 @@
       "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #142. In round 1, this finding was raised, fixed, and its thread resolved citing commit `abc123f`:\n\n> **Major** (round 1, already resolved) -- authorization check missing in `handler.py:120` -- the endpoint doesn't verify the caller owns the resource before deleting it.\n\nNow, in round 2, a new finding is posted on the exact same file and line:\n\n> **Minor** (round 2, just posted) -- no test coverage for the error path in `handler.py:120` when the resource doesn't exist.\n\nTriage the round-2 finding. Write your full reasoning for whether this is a genuinely new finding or a repeat of the round-1 one, and your fix/file/decline decision, to `outputs/triage.md`.",
       "expected_output": "Does NOT treat the round-2 finding as a repeat of the round-1 finding merely because they share the same file+line. Explicitly compares the actual defect described (a missing authorization check vs. missing test coverage for an error path) and concludes they are two distinct findings. Classifies the round-2 finding as new, and since it's round 2 (within the two-round cap), routes it to the Fix path rather than the Issue path.",
       "files": ["outputs/triage.md"]
+    },
+    {
+      "id": 5,
+      "name": "Staggered reviewers, same round",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #150. This is round 1 -- the first review after the PR's first push-for-review; no fix-driven push has happened yet. Codex posted a finding against this head SHA 2 hours ago. Devin just posted a completely different finding against the exact same head SHA, right now. No commit has been pushed to this PR between Codex's finding and Devin's finding -- the branch is still sitting at the same SHA both reviewers looked at.\n\nWhich round does Devin's finding belong to, and why? Does the multi-hour gap between the two reviewers change that answer? Write your full reasoning to `outputs/triage.md`.",
+      "expected_output": "Classifies Devin's finding as belonging to round 1, the same round as Codex's finding -- explicitly states that the elapsed time between the two reviewers is irrelevant, since a round's boundary is defined by fix-driven pushes, not wall-clock time. States plainly that no fix-driven push happened between the two findings, so there is no round boundary between them regardless of the multi-hour gap. Does not treat Devin's finding as belonging to a later round just because it arrived after Codex's.",
+      "files": ["outputs/triage.md"]
+    },
+    {
+      "id": 6,
+      "name": "Round 1/2 fix pushed but verification fails",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #150, round 1. Codex flagged: **Major** -- `calculate_discount()` in `pricing.py:34` applies the discount percentage as a whole number instead of dividing by 100, overcharging on every discounted order.\n\nA fix was applied and pushed: `pricing.py:34` now divides by 100 before applying the discount. But when you verify the fix by re-reading it against the finding, you notice the fix divides by 100 in the wrong place -- it still multiplies the raw (un-divided) percentage against the price first, then divides the *result* by 100, which produces a different, still-wrong number for any non-100 price. The bug is not actually fixed.\n\nDecide what happens to the review thread. Write your reasoning and the decision to `outputs/triage.md`.",
+      "expected_output": "Recognizes that verification failed -- the pushed fix does not actually resolve the finding. States explicitly that no reply is posted and the thread is NOT resolved as a result -- reply-and-resolve never happens on the strength of a pushed commit alone, only on the strength of a pushed commit THAT VERIFIES. States that the finding remains open in the same round (round 1), not advanced to a new round, and that the fix needs to be corrected and re-verified before any reply/resolve action.",
+      "files": ["outputs/triage.md"]
+    },
+    {
+      "id": 7,
+      "name": "Issue-only commit does not advance the round",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #150, round 3. The only finding this round is: **Minor** -- inconsistent list formatting in `README.md`'s changelog section. Per the round cap, this gets filed as an issue rather than fixed. There is nothing else to fix or change this round -- the issue draft file under `issues/` is the only thing that would be committed.\n\nWrite: (1) how this commit should be labeled/described, and (2) whether committing it opens a new round window for this PR, even though committing it changes the PR's head SHA. Save both to `outputs/triage.md`.",
+      "expected_output": "States that the commit containing only the issue-draft file must be labeled/described as documentation-only, not a fix. States explicitly that this issue-draft commit does NOT advance the round counter and does NOT open a new round window -- even though it changes the head SHA, it is not a fix-driven push, and only fix-driven pushes open a new round. Any hypothetical next review pass against this new SHA would still belong to round 3's existing window, not a new round 4.",
+      "files": ["outputs/triage.md"]
+    },
+    {
+      "id": 8,
+      "name": "Fully-triaged round with an outstanding human CHANGES_REQUESTED review",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #150, round 2. Codex posted 2 findings this round; both were fixed, verified, replied-to with commit SHAs, and their threads resolved. Separately, a human reviewer (a teammate, not a bot) left a formal GitHub review with status CHANGES_REQUESTED on an earlier round, unrelated to anything Codex flagged, and that review has not been addressed, updated, or dismissed by anyone.\n\nWrite the final disclosure report you would give the user before any merge discussion, covering this round's 2 fixed findings AND the outstanding human review. Save it to `outputs/disclosure.md`.",
+      "expected_output": "The disclosure report accurately reports both Codex findings as fixed/resolved. Crucially, it also explicitly surfaces the outstanding human CHANGES_REQUESTED review as a separate, still-live blocker, and never implies or states that the PR is mergeable or ready -- even though every review-finding this triage pass touched is fully resolved. States plainly that whether the PR can actually merge is merge-pr's determination, not something this disclosure decides, and that the human review needs to be addressed/dismissed independent of this triage pass's own findings.",
+      "files": ["outputs/disclosure.md"]
+    },
+    {
+      "id": 9,
+      "name": "Severity gate true -- Minor finding declined, nobody asked",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #150, round 1. `review_findings_severity_gate` is set to `true` in this project's `.claude/git-kit.local.json`. Codex flagged: **Minor** -- inconsistent quote style (single vs. double quotes) in a docstring in `helpers.py:12`. Nobody -- not the user, not a human reviewer -- has said anything about wanting this specific finding fixed.\n\nTriage this finding. Write your decision and the exact reply text you'd post to the thread, to `outputs/triage.md`.",
+      "expected_output": "Reads the severity gate as `true` and correctly applies the Decline path: a Minor/nit-level finding with nobody explicitly requesting the fix is declined outright, in any round, when the gate is `true` -- even though this is round 1, which would otherwise route to the Fix path under the default `false` gate. States plainly: not fixed, not filed as an issue, acknowledged via a reply only, and the thread is left unresolved (not resolved) since it wasn't actually handled.",
+      "files": ["outputs/triage.md"]
+    },
+    {
+      "id": 10,
+      "name": "Severity gate true -- explicit request overrides the decline default",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #150, round 1. `review_findings_severity_gate` is set to `true`. Codex flagged the exact same finding as before: **Minor** -- inconsistent quote style in a docstring in `helpers.py:12`. This time, the user reviewing this triage explicitly says: \"I know it's a nit, but please fix this specific one too while you're in there.\"\n\nTriage this finding given that explicit request. Write your decision to `outputs/triage.md`.",
+      "expected_output": "Recognizes that the user's explicit request for this specific Minor finding overrides the severity gate's default automatic-decline behavior -- the gate only changes the default for findings nobody has separately weighed in on, and an explicit instruction always wins. Routes this finding to the Fix path despite the gate being `true` and the finding being Minor. Does not decline it just because the gate is on.",
+      "files": ["outputs/triage.md"]
+    },
+    {
+      "id": 11,
+      "name": "Pre-push security-reviewer finding stays within the same round",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #150 is in round 2. Round 2's own fix (addressing a round-1 finding) has been written but not yet pushed. Before pushing, a self-invoked `security-reviewer` verification pass on that not-yet-pushed diff finds a brand-new Critical issue: the round-2 fix itself introduces a path-traversal vulnerability in a file-loading helper it touched.\n\nDoes finding and fixing this new Critical issue open a round 3, or does it stay within round 2? Write your reasoning and what you'd do about the new Critical finding, to `outputs/triage.md`.",
+      "expected_output": "States explicitly that a `security-reviewer` verification pass run BEFORE pushing a round's fix is not a new round -- it's part of finishing the round already in progress (round 2 here), and this stays true even though the pass found a Critical issue. States that the new Critical finding gets fixed within round 2 itself (not deferred, not treated as consuming round 3's budget), consistent with the round cap's own security-review carve-out. Does not describe this as opening or advancing to round 3.",
+      "files": ["outputs/triage.md"]
+    },
+    {
+      "id": 12,
+      "name": "Two reviewers, same round-3 defect -- one issue, not two",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #150, round 3. Two reviewers independently flagged what is clearly the same underlying defect, worded slightly differently:\n\n> Codex: **Major** -- `sanitize_input()` in `validate.py:56` doesn't strip null bytes before passing the string to the downstream parser.\n>\n> CodeRabbit: **Major** -- null byte injection possible in `validate.py:56` -- `sanitize_input()`'s current stripping logic misses `\\x00`.\n\nBoth were posted against the same PR/head SHA in round 3, and no issue has been filed for this PR yet. Decide how many GitHub issues get filed, and what happens to each reviewer's own thread. Write your reasoning to `outputs/triage.md`.",
+      "expected_output": "Recognizes that Codex's and CodeRabbit's findings describe the same underlying defect (missing null-byte stripping in the same function/line) despite different wording, and explicitly states that this must produce exactly ONE GitHub issue, not two. Describes checking for an existing issue before filing (via a dedup check) and, since none exists yet, filing exactly one. States that BOTH reviewers' threads get replied-to, each pointing at the same single issue number -- neither thread gets its own separate issue, and neither thread gets resolved.",
+      "files": ["outputs/triage.md"]
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 10,
-    "declared_scenarios_covered": 2,
-    "uncovered": [
-      "Two reviewers finish at very different times against the same head SHA, with no fix-driven push between their two arrivals -- both sets of findings belong to the same round.",
-      "A round-1/2 fix is applied and pushed, but its own verification fails -- the thread is never replied-to or resolved off that push; the finding stays open in the same round.",
-      "An issue is filed with nothing else to commit in that round -- the resulting commit is correctly labeled documentation-only and does not open a new round window even though the head SHA changed.",
-      "A human reviewer has an active CHANGES_REQUESTED review alongside an otherwise-fully-triaged round -- the workflow's own report never implies the PR is mergeable; that's merge-pr's call.",
-      "review_findings_severity_gate: true, a Minor/nit finding in round 1, nobody asked for it explicitly -- declined (reply only), never fixed, never filed.",
-      "review_findings_severity_gate: true, same Minor/nit finding, but the user explicitly asks for it to be fixed anyway -- the explicit instruction wins; it's fixed, not declined.",
-      "A security-reviewer pass runs before round 2's fix is pushed and finds a new Critical issue -- fixed within round 2, not treated as opening round 3.",
-      "Two reviewers independently flag the same defect in round 3 -- one issue is filed, not two; both threads get replied-to pointing at the same issue number."
-    ]
+    "declared_scenarios_covered": 10,
+    "uncovered": []
   }
 }

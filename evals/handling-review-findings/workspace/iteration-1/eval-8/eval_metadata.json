@@ -1,0 +1,26 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Accurately reports both Codex findings as fixed/resolved this round",
+      "type": "presence",
+      "target": "outputs/disclosure.md"
+    },
+    {
+      "text": "Explicitly surfaces the outstanding human CHANGES_REQUESTED review as a separate, still-live blocker",
+      "type": "functionality",
+      "target": "outputs/disclosure.md"
+    },
+    {
+      "text": "Never implies or states that the PR is mergeable/ready, despite every review-finding this pass touched being fully resolved",
+      "type": "quality",
+      "target": "outputs/disclosure.md"
+    },
+    {
+      "text": "States that whether the PR can actually merge is merge-pr's determination, not decided by this disclosure",
+      "type": "functionality",
+      "target": "outputs/disclosure.md"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Accurately reports both Codex findings as fixed/resolved this round", "passed": true, "evidence": "\"Codex Finding #1 -- Fixed... Codex Finding #2 -- Fixed\""},
+    {"text": "Explicitly surfaces the outstanding human CHANGES_REQUESTED review as a separate, still-live blocker", "passed": true, "evidence": "\"Human Reviewer: CHANGES_REQUESTED (Unaddressed)... Status: BLOCKING\""},
+    {"text": "Never implies or states that the PR is mergeable/ready, despite every review-finding this pass touched being fully resolved", "passed": true, "evidence": "\"the PR cannot proceed to merge\" until the human review is addressed"},
+    {"text": "States that whether the PR can actually merge is merge-pr's determination, not decided by this disclosure", "passed": true, "evidence": "\"The determination of merge readiness belongs entirely to merge-pr; this report is informational input to that decision.\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

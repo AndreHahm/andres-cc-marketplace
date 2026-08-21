@@ -1,0 +1,11 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes that the user's explicit request for this specific finding overrides the severity gate's default decline", "passed": true, "evidence": "\"This explicit instruction overrides the review_findings_severity_gate: true default behavior\""},
+    {"text": "Routes the finding to the Fix path despite the gate being true and the finding being Minor", "passed": true, "evidence": "\"DECISION: FIX\""},
+    {"text": "Does not decline the finding just because the gate is on", "passed": true, "evidence": "Fixed, not declined, despite gate true"},
+    {"text": "Explains that the gate only changes the automatic default for findings nobody has separately weighed in on, and an explicit instruction always wins", "passed": true, "evidence": "quotes SKILL.md directly: \"...unless the user or a human reviewer explicitly asked for that specific finding to be fixed, which always overrides the gate's default decline\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

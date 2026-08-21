@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Recognizes that verification failed -- the pushed fix does not actually resolve the finding",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States explicitly that no reply is posted to the thread as a result",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States explicitly that the thread is NOT resolved",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States the finding remains open in the same round (round 1), not advanced to a new round",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States the fix needs to be corrected and re-verified before any reply/resolve action",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

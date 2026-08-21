@@ -1,0 +1,26 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Recognizes that the user's explicit request for this specific finding overrides the severity gate's default decline",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Routes the finding to the Fix path despite the gate being true and the finding being Minor",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Does not decline the finding just because the gate is on",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Explains that the gate only changes the automatic default for findings nobody has separately weighed in on, and an explicit instruction always wins",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

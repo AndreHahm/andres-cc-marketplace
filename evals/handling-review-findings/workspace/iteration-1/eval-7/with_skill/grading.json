@@ -1,0 +1,11 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States the issue-only commit must be labeled/described as documentation-only, not a fix", "passed": true, "evidence": "\"Classification: Documentation-only (issue draft commit)\""},
+    {"text": "States explicitly that this commit does NOT advance the round counter / does NOT open a new round window", "passed": true, "evidence": "\"Answer: NO -- this commit does NOT open a new round window.\""},
+    {"text": "Explains that even though the commit changes the head SHA, it is not a fix-driven push, and only fix-driven pushes open a new round", "passed": true, "evidence": "quotes round-and-dedup-rules.md: \"an issue-draft-only commit... does not itself open a new window\""},
+    {"text": "States that a hypothetical next review pass against this new SHA still belongs to the existing round's window, not a new round", "passed": true, "evidence": "\"The next round of review (if any) against the new head SHA... still counts as part of round 3, not a new round 4.\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

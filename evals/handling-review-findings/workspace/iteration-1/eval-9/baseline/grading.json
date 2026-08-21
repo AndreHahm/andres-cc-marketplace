@@ -1,0 +1,12 @@
+{
+  "eval_id": 9,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Correctly reads review_findings_severity_gate as true and applies the Decline path", "passed": true, "evidence": "\"DECISION: DECLINE\" -- note: the prompt stated the effective policy in plain language for baseline, since it has no skill access"},
+    {"text": "States plainly the finding is not fixed and not filed as an issue", "passed": true, "evidence": "\"we're going to decline it for this round\" -- decline inherently implies neither fixed nor filed, though not stated as two separate explicit clauses"},
+    {"text": "States the finding is acknowledged via a reply only", "passed": true, "evidence": "Drafted reply text provided acknowledging the finding"},
+    {"text": "States the thread is left unresolved (not resolved), since it wasn't actually handled", "passed": false, "evidence": "No mention anywhere of thread resolution status -- the output only contains a decision and a reply, with no explicit statement about whether the review thread itself is resolved or left open."},
+    {"text": "Does not route this to the Fix path just because it's round 1 -- correctly overrides the default round-1 fix behavior with the gate's decline rule", "passed": true, "evidence": "\"DECLINE\" -- correctly applies the stated policy over any round-based default"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 4, "pass_rate": 0.8}
+}

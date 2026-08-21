@@ -1,0 +1,12 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes that verification failed -- the pushed fix does not actually resolve the finding", "passed": true, "evidence": "\"FAILED -- The fix does not resolve the issue.\""},
+    {"text": "States explicitly that no reply is posted to the thread as a result", "passed": false, "evidence": "Directly contradicts: \"Post a comment on the review thread: Acknowledge the fix attempt... Explain the order-of-operations bug... Request the author rework the fix.\" Baseline recommends posting a reply describing the failure, which the skill's stricter rule (no reply at all until verification passes) does not permit."},
+    {"text": "States explicitly that the thread is NOT resolved", "passed": true, "evidence": "\"Thread Status: KEEP OPEN (Not Resolved)\""},
+    {"text": "States the finding remains open in the same round (round 1), not advanced to a new round", "passed": true, "evidence": "\"Expect a follow-up commit -- the author must re-attempt the fix and push a new commit for re-verification\" (implies still round 1, no round advance suggested)"},
+    {"text": "States the fix needs to be corrected and re-verified before any reply/resolve action", "passed": true, "evidence": "\"the author must re-attempt the fix and push a new commit for re-verification\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 4, "pass_rate": 0.8}
+}

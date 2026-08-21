@@ -1,0 +1,26 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "States the issue-only commit must be labeled/described as documentation-only, not a fix",
+      "type": "presence",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States explicitly that this commit does NOT advance the round counter / does NOT open a new round window",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Explains that even though the commit changes the head SHA, it is not a fix-driven push, and only fix-driven pushes open a new round",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States that a hypothetical next review pass against this new SHA still belongs to the existing round's window, not a new round",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes that verification failed -- the pushed fix does not actually resolve the finding", "passed": true, "evidence": "\"Verification Result: FAILED -- the bug persists\""},
+    {"text": "States explicitly that no reply is posted to the thread as a result", "passed": true, "evidence": "\"Do NOT reply to the review thread -- no GitHub comment should be posted claiming the fix is complete\""},
+    {"text": "States explicitly that the thread is NOT resolved", "passed": true, "evidence": "\"Do NOT resolve the thread -- leave it in unresolved state\""},
+    {"text": "States the finding remains open in the same round (round 1), not advanced to a new round", "passed": true, "evidence": "\"Keep the finding open in Round 1 -- verification failure means the fix was not accepted; the round remains active for this issue\""},
+    {"text": "States the fix needs to be corrected and re-verified before any reply/resolve action", "passed": true, "evidence": "\"Once a proper fix is applied and verification confirms it works: Reply to the thread... Resolve the thread only then\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}
