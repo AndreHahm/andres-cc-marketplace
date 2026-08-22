@@ -1,0 +1,10 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States explicitly that a `security-reviewer` verification pass run BEFORE pushing a round's fix is not a new round -- it's part of finishing the round already in progress (round 2 here), and this stays true even though the pass found a Critical issue", "passed": true, "evidence": "\"explicitly called out as not a new round. It's part of finishing the round already in progress... This holds regardless of the severity of what the pass finds\""},
+    {"text": "States that the new Critical finding gets fixed within round 2 itself (not deferred, not treated as consuming round 3's budget)", "passed": true, "evidence": "\"Fix it now, within round 2, before pushing... do not defer it... do not treat it as consuming a slot in a hypothetical round 3\""},
+    {"text": "Does not describe this as opening or advancing to round 3, and does not invoke any of the three named exceptions or the budget-exhaustion path, since none apply here", "passed": true, "evidence": "\"Does this open round 3? | No\" table row; explicit walkthrough ruling out all three exceptions and the budget-exhaustion path"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

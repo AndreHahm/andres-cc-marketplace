@@ -1,0 +1,11 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Identifies this as exception 1 (direct instruction) -- the user explicitly asked for this specific finding to be filed rather than fixed, overriding the default \"fix everything through the round budget\" behavior", "passed": true, "evidence": "\"Exception 1 — Direct instruction. The user has explicitly instructed that this specific finding be filed as an issue rather than fixed right now\""},
+    {"text": "Does not describe this as a round-3 automatic escalation (that behavior no longer exists) or as the out-of-scope/too-large exceptions, which don't apply here", "passed": true, "evidence": "\"This is not a round-based escalation. The old 'round 3+ automatically becomes an issue' behavior no longer exists... It's also not Exception 2... And it's not Exception 3\""},
+    {"text": "States that the commit containing only the issue-draft file must be labeled/described as documentation-only, not a fix", "passed": true, "evidence": "\"This commit must be labeled/described plainly as documentation-only, not as a fix.\""},
+    {"text": "States explicitly that this issue-draft commit does NOT advance the round counter and does NOT open a new round window -- even though it changes the head SHA, it is not a fix-driven push", "passed": true, "evidence": "\"it does not open a new round window and does not advance the round counter... An issue-draft-only commit is explicitly called out as one of the causes of a SHA change that does not itself open a new round\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

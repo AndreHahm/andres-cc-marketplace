@@ -1,0 +1,10 @@
+{
+  "eval_id": 12,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes that Codex's and CodeRabbit's findings describe the same underlying defect despite different wording, and identifies exception 3 (too large for this session) as the reason it's filed rather than fixed -- explicitly noting this is a judgment call about needing capabilities/analysis beyond a same-session fix, not merely being tedious, and that it applies in round 1 despite the round budget having plenty of room left", "passed": true, "evidence": "\"Decision: one underlying finding, sourced from two reviewers... apply the too-large-for-session exception... Being only in round 1 of 3 doesn't change this\""},
+    {"text": "States this must produce exactly ONE GitHub issue, not two -- describes checking for an existing issue before filing (via a dedup check) and, since none exists yet, filing exactly one", "passed": true, "evidence": "\"One. Since Step 1 established this is a single underlying defect... exactly one GitHub issue should be filed\" (no existing issue stated in the prompt as given)"},
+    {"text": "States that BOTH reviewers' threads get replied-to, each pointing at the same single issue number -- neither thread gets its own separate issue, and neither thread gets resolved", "passed": false, "evidence": "\"Resolve/close both threads in the review tool once the reply is posted... Resolution here means 'acknowledged and tracked,' not 'fixed'\" -- baseline explicitly RESOLVES both threads, directly contradicting the skill's actual rule (a deferred/filed finding's thread is never resolved, since resolving asserts 'this is handled' and it isn't). This is a real, substantive error baseline makes that with_skill does not."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.6666666666666666}
+}

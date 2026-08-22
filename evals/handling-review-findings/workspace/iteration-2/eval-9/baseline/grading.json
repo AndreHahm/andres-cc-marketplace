@@ -1,0 +1,10 @@
+{
+  "eval_id": 9,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Reads the severity gate as `true` and correctly applies the Decline path: a Minor/nit-level finding with nobody explicitly requesting the fix is declined outright, in any round, when the gate is `true` -- even though this is round 1, which would otherwise route to the Fix path under the default `false` gate", "passed": true, "evidence": "\"Decision: DECLINE (do not fix), reply with rationale\""},
+    {"text": "States plainly this is orthogonal to the round budget/exceptions machinery, not a fourth exception", "passed": false, "evidence": "Baseline never mentions the three-named-exceptions framework or the round budget at all -- it reasons about the severity gate in isolation, generic 'auto-action threshold' language with no reference to the skill's own exception/routing structure. Nothing states or implies this check is separate from another named mechanism, since baseline has no concept of one existing."},
+    {"text": "States plainly: not fixed, not filed as an issue, acknowledged via a reply only, and the thread is left unresolved (not resolved) since it wasn't actually handled", "passed": false, "evidence": "Summary table has PR/Round/Finding/Severity gate/Human request/Decision fields but no resolution-status field at all, and the reply text never mentions thread resolution -- 'left unresolved' is never stated anywhere in the output, even though the decline/no-fix/reply-only parts are present."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 1, "pass_rate": 0.3333333333333333}
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 8,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "The disclosure report accurately reports both Codex findings as fixed/resolved", "passed": true, "evidence": "Table: both findings \"Fixed\", \"thread resolved\""},
+    {"text": "Crucially, it also explicitly surfaces the outstanding human CHANGES_REQUESTED review as a separate, still-live blocker, and never implies or states that the PR is mergeable or ready -- even though every review-finding this triage pass touched is fully resolved", "passed": true, "evidence": "\"A human teammate's formal GitHub review, with status CHANGES_REQUESTED... remains open, unaddressed... This report does not assert, and should not be read as implying, that PR #150 is mergeable or ready\""},
+    {"text": "States plainly that whether the PR can actually merge is merge-pr's determination, not something this disclosure decides, and that the human review needs to be addressed/dismissed independent of this triage pass's own findings", "passed": true, "evidence": "\"Whether the PR can actually be merged is a determination for the merge-readiness check (e.g., merge-pr) to make at merge time... get the outstanding CHANGES_REQUESTED review addressed or explicitly dismissed\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

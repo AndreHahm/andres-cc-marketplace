@@ -81,6 +81,12 @@ check timed out but the review actually finished", "retry the Codex review check
   `handling-review-findings`'s job (triaging across rounds, fixing, filing, or declining). This skill
   only recovers a *missing signal* (the check never reflected a review that did finish); it never reads
   or reasons about what the review actually found.
+- **Intentionally starting a fresh review round** as part of `handling-review-findings`'s own round
+  budget — that skill now posts the same kind of trigger comment itself (`@codex review`,
+  `@coderabbitai review`, `/devin review`) once its own round-budget logic decides another round should
+  run. This skill only ever recovers an already-finished-but-stuck check, gated on the step-3
+  human-dashboard confirmation above — it never triggers a review that hasn't run yet, whether that's a
+  PR's first review or `handling-review-findings`'s own deliberate next-round trigger.
 
 ## Quick Start
 

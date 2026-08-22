@@ -1,0 +1,10 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Classifies Devin's finding as belonging to round 1, the same round as Codex's finding -- explicitly states that the elapsed time between the two reviewers is irrelevant, since a round's boundary is defined by fix-driven pushes, not wall-clock time", "passed": true, "evidence": "\"Devin's finding belongs to round 1... The round boundary is defined entirely by fix-driven pushes, not by wall-clock time\""},
+    {"text": "States plainly that no fix-driven push happened between the two findings, so there is no round boundary between them regardless of the multi-hour gap", "passed": true, "evidence": "\"No commit — fix-driven or otherwise — has landed on this PR since that initial push... there is no round boundary between the two arrivals\""},
+    {"text": "Does not treat Devin's finding as belonging to a later round just because it arrived after Codex's", "passed": true, "evidence": "\"only an intervening fix-driven push would have opened a new round and moved Devin's finding into round 2\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 14,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Since `min_rounds` is already satisfied but `max_rounds` isn't, describes asking via AskUserQuestion whether to run another round at all, then (if yes) which reviewer(s)/mode -- not skipping straight to posting", "passed": true, "evidence": "\"The minimum round requirement is already met, so nothing forces another round... I would surface it via AskUserQuestion\" -- 3-option question (trigger round 2 / stop / ask again) covers whether+which together"},
+    {"text": "Correctly describes this as the first trigger-ask in the conversation, so it must actually ask rather than reuse a prior answer", "passed": true, "evidence": "\"This is the first next-round decision point in this conversation — no prior answer exists to reuse\""},
+    {"text": "Lists Codex and CodeRabbit each offering a real default-vs-full choice with the exact literal trigger text shown (`@codex review`/`@codex full review`, `@coderabbitai review`/`@coderabbitai full review`), and Devin offering effectively one choice since its two trigger strings are identical (`/devin review`)", "passed": false, "evidence": "No default-vs-full distinction offered at all for any reviewer; and Devin's trigger is guessed wrong as \"@devin review\" (should be \"/devin review\") since baseline never saw the skill's settings -- explicitly flagged by the agent itself as an assumption: \"exact default trigger strings... are drawn from general, publicly documented conventions... since this is a simulated exercise with no real PR/config to inspect\""},
+    {"text": "States that after the user answers, the chosen trigger string(s) get validated (tracked-ness gate, then regex, then handle-token match) before anything is posted, and that this same answer will be reused for round 3 without asking again", "passed": false, "evidence": "No mention anywhere of any validation mechanism (tracked-ness/regex/handle-token) -- baseline has no concept of this check existing, since it never read the skill"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 2, "pass_rate": 0.5}
+}

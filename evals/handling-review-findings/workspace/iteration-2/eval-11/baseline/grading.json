@@ -1,0 +1,10 @@
+{
+  "eval_id": 11,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "States explicitly that a `security-reviewer` verification pass run BEFORE pushing a round's fix is not a new round -- it's part of finishing the round already in progress (round 2 here), and this stays true even though the pass found a Critical issue", "passed": true, "evidence": "\"the security-reviewer check is simply part of finishing round 2's own fix correctly before it goes out the door\" -- reaches the correct conclusion via an independent (push/external-review-boundary) argument rather than citing severity-invariance explicitly, but never suggests severity could change the answer", "note": "weaker than with_skill: doesn't explicitly address 'even though Critical' as its own point, graded pass on substantive equivalence"},
+    {"text": "States that the new Critical finding gets fixed within round 2 itself (not deferred, not treated as consuming round 3's budget)", "passed": true, "evidence": "\"Fix the path-traversal issue in the same, still-unpushed diff, before any push happens... This becomes the single commit/push\""},
+    {"text": "Does not describe this as opening or advancing to round 3, and does not invoke any of the three named exceptions or the budget-exhaustion path, since none apply here", "passed": true, "evidence": "\"This also is not any kind of exception case... there's no round-budget question here at all\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

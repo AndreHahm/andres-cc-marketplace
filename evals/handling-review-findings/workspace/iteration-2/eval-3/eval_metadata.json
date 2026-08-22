@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Recognizes the round budget is already exhausted and, because `review_findings_generate_issues` is `true`, files the finding as a GitHub issue instead of forcing a fourth round or an in-session fix",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Explicitly distinguishes this from the three named exceptions -- this is the separate, fourth 'budget exhaustion' path, not exception 1/2/3",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Because the finding is Critical, the disclosure report never implies the PR is safe to merge: it explicitly names this finding as a merge-blocking risk and states that merging requires a separate, explicit human risk-acceptance decision before `merge-pr` is invoked -- filing the issue is never treated as equivalent to that acceptance",
+      "type": "functionality",
+      "target": "outputs/disclosure.md"
+    }
+  ]
+}

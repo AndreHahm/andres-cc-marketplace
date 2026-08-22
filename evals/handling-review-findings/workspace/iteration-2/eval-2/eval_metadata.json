@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Identifies this as the \"out-of-scope component\" exception (exception 2) -- the finding concerns a file this PR never changed -- and explicitly states this routes to the Issue path regardless of round or `review_findings_generate_issues`, and regardless of severity being only Minor",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Does NOT attempt to fix it in-session just because it's easy or because round 1 would otherwise be within the fix budget",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "The drafted issue includes the PR URL, head SHA, thread/comment reference, reviewer, and severity fields, and uses a plain non-closing reference (\"Found in PR #142\"), never \"Fixes #142\"/\"Closes #142\"",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "The reply points at the new issue number",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States plainly that the thread is left unresolved, not resolved",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

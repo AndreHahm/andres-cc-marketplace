@@ -1,0 +1,10 @@
+{
+  "eval_id": 10,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes that the user's explicit request for this specific Minor finding overrides the severity gate's default automatic-decline behavior -- the gate only changes the default for findings nobody has separately weighed in on, and an explicit instruction always wins", "passed": true, "evidence": "\"An explicit, specific request from the user... is a direct instruction that overrides that default... Once a human has weighed in specifically on this finding, that explicit instruction takes precedence\""},
+    {"text": "Routes this finding to the Fix path despite the gate being `true` and the finding being Minor", "passed": true, "evidence": "\"Route: Fix path.\""},
+    {"text": "Does not decline it just because the gate is on", "passed": true, "evidence": "\"This finding is fixed, not declined, despite review_findings_severity_gate: true\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

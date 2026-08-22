@@ -1,0 +1,21 @@
+{
+  "eval_id": 15,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "States plainly that since the reviewer/mode choice was already made once this conversation (Codex, full review), it is NOT asked again before triggering round 3 -- the earlier answer is reused",
+      "type": "quality",
+      "target": "outputs/decision.md"
+    },
+    {
+      "text": "Describes re-validating the exact previously-confirmed trigger string (tracked-ness gate, regex, handle-token match) before posting again, rather than skipping validation just because it passed once already this conversation",
+      "type": "quality",
+      "target": "outputs/decision.md"
+    },
+    {
+      "text": "Does not fabricate a new AskUserQuestion call for this round",
+      "type": "quality",
+      "target": "outputs/decision.md"
+    }
+  ]
+}

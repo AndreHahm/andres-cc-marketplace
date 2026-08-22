@@ -1,0 +1,10 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes that the user's explicit request for this specific Minor finding overrides the severity gate's default automatic-decline behavior -- the gate only changes the default for findings nobody has separately weighed in on, and an explicit instruction always wins", "passed": true, "evidence": "\"The gate never overrides an explicit instruction... The user in this scenario explicitly said... That is exactly the named override condition\""},
+    {"text": "Routes this finding to the Fix path despite the gate being `true` and the finding being Minor", "passed": true, "evidence": "\"Decision: Fix path (Workflow step 4)... despite being a Minor/nit under a true severity gate\""},
+    {"text": "Does not decline it just because the gate is on", "passed": true, "evidence": "\"This finding is not declined and not filed\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

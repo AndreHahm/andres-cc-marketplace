@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Classifies the finding as round 1 -> Fix path (not filed, not declined)", "passed": true, "evidence": "\"This is round 1... Fix.\""},
+    {"text": "States plainly that verification is a hard precondition before any reply/resolve action -- the reply is never sent and the thread is never resolved on the strength of a pushed commit alone", "passed": true, "evidence": "\"Verification is a hard precondition before any reply or resolve action.\""},
+    {"text": "Describes committing via Skill(git-kit:commit), not a raw `git commit`", "passed": false, "evidence": "\"Commit the change with a clear, conventional commit message... and push it to the PR branch\" -- generic git commit language, no mention of Skill(git-kit:commit) or the lifecycle-skill routing convention, since baseline never saw the skill."},
+    {"text": "The drafted reply cites both a fixing commit SHA and a one-line summary of what verification confirmed", "passed": true, "evidence": "\"Fixed in `<commit-sha>` — ... Added/updated a test covering the missing-key case and confirmed it passes.\""},
+    {"text": "States the thread is resolved only after that reply, and only because verification actually passed", "passed": true, "evidence": "\"the thread is resolved only after that reply is posted, and only because verification actually confirmed the fix is correct\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 4, "pass_rate": 0.8}
+}

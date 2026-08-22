@@ -1,0 +1,10 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes that Codex's and CodeRabbit's findings describe the same underlying defect despite different wording, and identifies exception 3 (too large for this session) as the reason it's filed rather than fixed -- explicitly noting this is a judgment call about needing capabilities/analysis beyond a same-session fix, not merely being tedious, and that it applies in round 1 despite the round budget having plenty of room left", "passed": true, "evidence": "\"Both describe the identical underlying defect... Exception applied: Exception 3 — too large for this session... This is a judgment call, not a size threshold... Round 1's remaining budget... is unaffected\""},
+    {"text": "States this must produce exactly ONE GitHub issue, not two -- describes checking for an existing issue before filing (via a dedup check) and, since none exists yet, filing exactly one", "passed": true, "evidence": "\"gh issue list -R ... --search \\\"PR #150\\\"... would be the re-check... One issue filed, not two\""},
+    {"text": "States that BOTH reviewers' threads get replied-to, each pointing at the same single issue number -- neither thread gets its own separate issue, and neither thread gets resolved", "passed": true, "evidence": "\"Codex's thread: replied-to... Left unresolved... CodeRabbit's thread: same — replied-to pointing at the same issue number... left unresolved\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Identifies this as the \"out-of-scope component\" exception (exception 2) -- the finding concerns a file this PR never changed -- and explicitly states this routes to the Issue path regardless of round or `review_findings_generate_issues`, and regardless of severity being only Minor", "passed": true, "evidence": "\"Out-of-scope component — applies... routes to the Issue path regardless of round number and regardless of review_findings_generate_issues.\" Severity discussed separately (severity gate is false, doesn't change routing) but not restated in the exact same closing sentence -- substantively equivalent, graded pass on semantic content per the eval protocol's semantic-equivalence rule.", "note": "baseline read evals.json's own top-level `description` field, which names the three exceptions generically -- a mild eval-leak reducing this assertion's discriminating power; see analyst notes."},
+    {"text": "Does NOT attempt to fix it in-session just because it's easy or because round 1 would otherwise be within the fix budget", "passed": true, "evidence": "\"I am explicitly not fixing this in-session just because it happens to be easy (a one-line docstring edit). Ease of fix is not one of the three exceptions\""},
+    {"text": "The drafted issue includes the PR URL, head SHA, thread/comment reference, reviewer, and severity fields, and uses a plain non-closing reference (\"Found in PR #142\"), never \"Fixes #142\"/\"Closes #142\"", "passed": true, "evidence": "\"Traceability\" section lists Source PR, Head SHA, Review thread/comment, Reviewer, Severity; body ends with \"Found in PR #142\""},
+    {"text": "The reply points at the new issue number", "passed": true, "evidence": "\"filed this separately as issue #<NEW_ISSUE_NUMBER>\""},
+    {"text": "States plainly that the thread is left unresolved, not resolved", "passed": true, "evidence": "\"The thread is NOT resolved.\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

@@ -1,0 +1,16 @@
+{
+  "eval_id": 16,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Recognizes the round budget is exhausted but, because `review_findings_generate_issues` is `false` (the default), fixes the finding anyway rather than filing it -- explicitly states the \"fix everything\" default holds even past the nominal round budget, since `max_rounds` only stops this skill from proactively triggering more rounds, it doesn't give a real finding a free pass",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Does not treat budget exhaustion alone as equivalent to one of the three named exceptions",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

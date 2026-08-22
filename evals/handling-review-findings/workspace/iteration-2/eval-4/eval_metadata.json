@@ -1,0 +1,21 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does NOT treat the round-2 finding as a repeat of the round-1 finding merely because they share the same file+line",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Explicitly compares the actual defect described (a missing authorization check vs. missing test coverage for an error path) and concludes they are two distinct findings",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "Classifies the round-2 finding as new, and since none of the three named exceptions apply and the round budget isn't exhausted, routes it to the Fix path",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    }
+  ]
+}
