@@ -7,8 +7,14 @@ captured live during those PRs' own review rounds; findings for PR #52/#51/#49/#
 afterward from each PR's actual GitHub review history (`gh api .../pulls/<n>/reviews` and `.../comments`),
 cross-checked against fix commits, since this document didn't exist while those PRs were in flight. PR
 #61/#62/#65/#68 (added 2026-08-19) were captured live too, built directly from this document's own
-brainstormed action list. Every finding cited below was real and confirmed fixed by a follow-up commit
-unless noted (a small number were deliberately deferred to a tracking issue instead — marked as such).
+brainstormed action list. PR #76 and PR #79 (added 2026-08-22) were reconstructed the same way as
+PR #47/#49/#51/#52 — from each PR's actual GitHub review history, cross-checked against fix commits —
+since this document didn't exist while they were in flight (both merged 2026-08-20). PR #92 (added
+2026-08-21) was also captured live, across four consecutive review rounds on the same mechanism. PR #88
+(added 2026-08-22) was also captured live — a new skill built, then used live (manually, since not yet
+merged) to triage its own introducing PR's review rounds. Every finding cited below was real and confirmed
+fixed by a follow-up commit unless noted (a small number were deliberately deferred to a tracking issue
+instead — marked as such).
 This document exists to shorten the tail next time by naming the recurring *shapes* those findings took.
 
 ---
@@ -629,7 +635,379 @@ title scopes it to the original six PRs analyzed before this session's work bega
 
 ---
 
-## Master pre-push checklist (all PRs analyzed, including this session's #61/#62/#65/#68)
+## PR #76 — `recheck-state-before-side-effecting-action` rule (Codex, 4 review rounds, 2026-08-20)
+
+Reconstructed from PR #76's actual GitHub review history (`gh api .../pulls/76/comments`, cross-checked
+against fix commits) — this document didn't exist while the PR was in flight. All 4 review rounds were
+Codex-only; 6 of 7 findings were fixed, 1 deferred to issue #77.
+
+### Pattern: a new component authored with the wrong *shape* for its type isn't caught by content review alone
+
+Round 1's first finding: `.claude/rules/recheck-state-before-side-effecting-action.md` shipped as a
+numbered procedural walkthrough — the shape of a workflow/skill step-by-step, not a rule.
+`rule-development/SKILL.md`'s own required template (Description → Incorrect → Correct) was never
+followed, even though the file's *content* (the actual TOCTOU guidance) was accurate and well-reasoned.
+Content-focused review — is this advice correct, is it clearly written — doesn't catch a structural
+mismatch between what a component actually contains and what its own type requires it to contain.
+
+**Rule:** before or immediately after writing a new plugin component (a rule, a skill, an agent), check
+that specific component type's own required template/shape — not just whether the content itself is
+correct. This is the review-finding-shaped counterpart to
+`.claude/rules/consult-naming-conventions-first.md`'s already-learned lesson about component *naming*
+(check the convention before naming, not after) — the same principle, one level up: check the convention
+for a component's *structure*, not just its name, before writing it.
+
+### Pattern: the fix for a finding can re-assert the very defect the finding raised
+
+Round 2 fixed "this `MUST` rule has no deterministic enforcement" by adding an "Enforcement" section —
+which round 3 then found was *itself* broken: it cited the evidence that human review isn't deterministic,
+then named human review as the enforcement backstop anyway, directly contradicting itself in the same
+paragraph meant to resolve the original finding. The bug wasn't caught by re-reading the fix once it was
+written — it took a genuinely *fresh* review round on the already-"fixed" text.
+
+**Rule:** a fix for "X is missing/wrong" needs its own honest check for "does my fix actually avoid
+restating X," not just "does my fix add the thing that was missing" — adding an enforcement section
+satisfies the finding's literal ask (a section exists) without necessarily satisfying its substance (the
+section is coherent). This is the same failure mode PR #68's "a rule about precision can contain its own
+imprecision" names, one step removed: there, a *new* component's own prose repeated the defect it was
+about; here, a *fix* for an already-identified defect repeated that same defect inside the fix itself.
+Extends, doesn't replace, the existing pattern.
+
+### Confirms: "enumerate the full state space" compounds when the first fix is itself incomplete
+
+Round 1 found the rule's own workflow-run-conclusion example was truncated (an ironic finding, given the
+rule's whole point is enumerating full state spaces); round 3 found the *fix* for that (adding a `status`
+gate before trusting `conclusion`) was itself incomplete — it covered `queued`/`in_progress` but missed 3
+more real nonterminal statuses (`requested`/`waiting`/`pending`), caught only by a fresh live check of
+`gh --help`. Same lesson as the existing Master checklist item ("have I enumerated the *full* state
+space...") — worth noting only because it recurred *twice in the same PR*, once in the original content
+and again in that content's own fix.
+
+---
+
+## PR #79 — mandatory `cross-model-review` gate in `create-pr` (Codex + Devin, 3 review rounds, 2026-08-20)
+
+Reconstructed from PR #79's actual GitHub review history. Introduced a mandatory pre-push adversarial-
+review gate into `create-pr`'s Pre-flight Checks. 3 review rounds; the round-1 finding recurred, unfixed,
+in a second entry path found in round 3 and deferred to issue #81 — the same finding, in a different door,
+twice.
+
+### Pattern: a new mandatory gate needs checking against *every* path that reaches the guarded action, not just the one that motivated it
+
+Round 1: two reviewers (Codex and Devin), reasoning independently, both found that `create-pr`'s new
+mandatory pre-push review gate could be bypassed — when `create-pr` starts with uncommitted changes, it
+invokes `commit` first, and `commit`'s own step 16 can push on its own (auto-push, or an accepted prompt)
+*before* the new gate ever runs. Fixed by adding a reciprocal push-skip clause to `commit`'s
+nested-invocation path. Round 3, a purely mechanical review pass over the *already-fixed* file, found the
+identical bug class in a **second, entirely separate entry path that was never checked**: `commit`'s own
+*native* Auto-PR flow (`push_auto_pr: true`, or an accepted post-push prompt) still pushes and then invokes
+`create-pr` *after* the push already happened — the new gate reviews an already-published diff on this
+path, exactly as it did on the first. The same finding also named a *third* consumer sharing the identical
+`commit`→`create-pr` chain shape (`running-a-full-retrospective`'s direct-fix flow) as needing the same
+check. This second instance was deliberately deferred rather than fixed in this PR — filed as issue #81,
+explicitly named by the author as "same class of bug as #80, but in a different path."
+
+**Rule:** when a new mandatory gate is inserted to guarantee "X always happens before Y," don't stop at
+fixing the one path that motivated the gate — enumerate *every* entry path that can reach Y and check each
+one independently. Two reviewers converging on the same finding in the primary path (a high-confidence
+signal per PR #92's existing lesson) says nothing about whether a *second*, different path to the same
+guarded action was ever traced — that took a third, separate round. This sharpens PR #54's "re-trace the
+whole chain" pattern into something more specific and more dangerous: it's not just about timing within one
+chain, it's about a gate silently having *multiple doors*, and fixing the one a reviewer happened to walk
+through first doesn't mean the others were checked.
+
+### Confirms: a behavior-changing fix needs every other section of the same file re-checked, not just the section that changed
+
+Round 2 found that fixing the actual dedup-loop procedure (no longer carrying forward a previously-declined
+finding into a later review pass) left the file's own Testing & Validation section still asserting the
+*opposite*, pre-fix behavior — two sections of the same document, one correct and one now stale, directly
+contradicting each other. Same shape as PR #54's Pattern 6 (a stale eval expectation after a behavior fix)
+and this session's own PR #88 findings, just pointed at prose-vs-prose self-consistency within one file
+rather than eval-vs-behavior — worth noting as a third confirming instance of "a fix's own aftermath needs
+tracing through every place the old behavior was described, not just the place it was implemented."
+
+---
+
+## PR #92 — `await-codex-review.yml` trigger-scope + Checks-API redesign (Devin + Codex, 4 review rounds, 2026-08-21)
+
+Narrowed `await-codex-review.yml`'s trigger from firing on every `synchronize` push to only firing when
+Codex's connector would actually re-review (PR opened non-draft, marked ready-for-review, or an explicit
+`@codex review` comment), and redesigned `codex-review-recovery` around the resulting `issue_comment`
+trigger. The mechanism went through four review-driven rounds on the same PR before landing — each round's
+fix created the exact substrate the next round's finding needed to exist.
+
+### Pattern: a correctly-verified fact, traced to only one of its two consequences
+
+Before the first push, `issue_comment` events resolving `GITHUB_SHA`/`GITHUB_REF` to the **default
+branch's** commit (not the PR's) was independently verified live against GitHub's own docs — and used
+correctly to fix one real problem: `codex-review-recovery`'s own search couldn't filter by `--commit
+<PR head SHA>`, since that would never match. What verification caught was applied; what it *didn't*
+prompt was tracing the *same* fact's second consequence in the *same* diff: the workflow's own job status
+(driven by that same `GITHUB_SHA`) would *also* attach its implicit check-run to the wrong commit,
+regardless of the skill's own search logic — never showing up in `gh pr checks` for the PR at all. That
+second consequence was caught only a review round later, by both reviewers independently (Devin's analysis
+tier, Codex P1).
+
+**Rule:** when live verification of a tool/API fact changes one piece of a diff, don't stop after applying
+it there — grep the rest of the *same* diff (and, if the fact is about an ambient value like `GITHUB_SHA`,
+every place that value or its logical equivalent is read) for other code paths the same fact would also
+affect. A verified fact is only as useful as how completely its consequences were traced.
+
+### Pattern: two reviewers independently converging on the identical root cause is a high-confidence signal — but doesn't mean the fix is complete
+
+Round 1 of live review on this PR produced four findings, but really only two distinct root causes — Devin
+and Codex each independently found *both* the concurrency-cancellation bug (workflow-level `concurrency` is
+evaluated before the job's own `if:`, so any PR comment could cancel an in-progress wait) and the
+check-attachment bug above, using different reasoning paths (Devin's "Prompt for agents" traced the
+concurrency-group mechanics directly; Codex's P1 finding traced the consequence for
+`codex-review-recovery`'s own reported behavior). Two independently-reasoning reviewers landing on the same
+conclusion is strong evidence the finding is real, not a false positive — but it does **not** mean the
+*fix* was complete: fixing round 1's two root causes (via a concurrency-group-isolation change and an
+explicit Checks-API-managed check-run) introduced the exact standalone-check-run shape that round 3's
+`gh pr checks`-workflow-field bug then exploited.
+
+**Rule:** treat convergent independent findings as high-confidence signal to prioritize, not as proof the
+resulting fix is itself complete — a fix for a convergent finding still needs its own trace-the-consequences
+pass (see the pattern above), especially when the fix changes *how* state is represented (here: a
+standalone check-run object with no workflow association, a genuinely new kind of entity this repo's
+tooling hadn't had to read before).
+
+### Confirms: iterative review-driven redesign of one mechanism cascades across rounds — same shape as PR #54 Pattern 1
+
+Four consecutive rounds reworked the same "find the fresh check state" mechanism in
+`codex-review-recovery`: round 1 shipped `gh run list`/`gh run view` (self-caught bug: filtered by
+`--commit`, which can never match an `issue_comment`-triggered run); round 2 replaced that with `gh pr
+checks` polling by `startedAt` (review-caught: `gh pr checks`'s `workflow` field is never populated for a
+standalone Checks-API check-run, so this could never find the fresh entry, and a cancelled run was never
+finalized, leaving it stuck `in_progress`); round 3 replaced `gh pr checks` with a direct Checks-API query
+for step 6 only (review-caught: the *same* `workflow`-field gap also blinded steps 2/4's own initial state
+check to a standalone check-run's failure, and a `$REPOSITORY` shell variable this skill never defines had
+been copy-pasted from the workflow's own `env:` block). Each round's fix was correct for the finding it
+addressed and simultaneously left behind (or newly created) the exact gap the next round's reviewers found
+— the same "fixing a symptom without re-tracing the whole surface" shape PR #54's Pattern 1 names for
+multi-skill lifecycle chains, here applying to a single mechanism redesigned incrementally under review
+pressure instead. Reinforces that same rule: when a fix changes *how* a piece of state is represented or
+read, re-simulate every consumer of that state end-to-end, not just the one the current finding names.
+
+### Self-caught: `gh api`'s auto-POST default doesn't tell you which HTTP method the *target endpoint* needs
+
+`gh api`'s own documented default ("GET normally, POST if any `-f`/`-F` parameters are given") correctly
+matches GitHub's "Create a check run" endpoint (`POST /check-runs`) without an explicit `--method`. It does
+**not** extend to "Update a check run", which is `PATCH`-only — passing `-f` fields there without
+`--method PATCH` would silently send a POST that doesn't do what the code intends. Self-caught before any
+push, by checking the *specific* endpoint's own required method rather than assuming the CLI's generic
+default-method rule covered both the create and the update call.
+
+**Rule:** a tool's own generic default-behavior rule (e.g. "adds `-f` → switches to POST") answers "what
+method will this tool send," not "what method does this specific endpoint need" — check each individual
+REST endpoint's own required method, especially when a create and an update call sit next to each other in
+the same script and only one of them happens to align with the tool's default.
+
+### Pattern: a completion/idempotency guard set *before* confirming the guarded action's own success can mask a real failure and produce the wrong fallback value on retry
+
+The workflow's `finalize_check_run` function set its `ALREADY_FINALIZED` guard unconditionally, before
+attempting the PATCH call it guards. A transient PATCH failure (network blip, momentary API error) would
+still trip the guard — silently masking the failure (the check-run stays `in_progress` with no further
+attempt) and, worse, if a later retry path *had* fired anyway, it would have used a different, incorrect
+fallback conclusion (`cancelled`) instead of the real one (`success`/`failure`) the original call was
+trying to record. Found by Codex (P2), not self-caught. Fixed by moving the guard-set to *after* a
+confirmed-successful PATCH, and separately tracking the intended conclusion value (`FINAL_CONCLUSION`) so a
+retry — from an `EXIT`/`INT`/`TERM` trap in this case — uses the *correct* value rather than a generic
+fallback.
+
+**Rule:** in any retry/cleanup/trap design with an idempotency guard ("only do this once"), set the guard
+*after* confirming the guarded action actually succeeded, not before attempting it — setting it early turns
+every transient failure into a permanent, silent one. If a fallback value exists for the "never attempted"
+case, keep it structurally distinct from "attempted and failed," since a naive retry can otherwise
+overwrite a correct-but-not-yet-recorded outcome with the wrong one.
+
+### "Assumed vs. actual" tool-behavior instances from this PR (same shape as the Cross-PR meta-pattern above)
+
+| Assumed behavior | Actual behavior |
+|---|---|
+| A job-level `if:` gates whether workflow-level `concurrency`'s `cancel-in-progress` can cancel another run | GitHub evaluates workflow-level concurrency at run-creation time, **before** any job-level `if:` runs — a run whose own job will be skipped can still cancel an unrelated in-progress run sharing its concurrency group (reviewer-caught, both Devin and Codex independently) |
+| `gh pr checks`'s `workflow` field is populated for any check-run associated with a commit | It's derived from `checkSuite.workflowRun.workflow.name` (confirmed by pulling `gh`'s own source, `pkg/cmd/pr/checks`) — a check-run created directly via the Checks API (no Actions workflow run backing it) has no `workflow` value, so matching on `workflow`+`name` together can never find it (reviewer-caught, Codex P1 + Devin analysis) |
+| `issue_comment`-triggered GitHub Actions runs check out/report against the PR's head commit, same as `pull_request` events | `issue_comment` events resolve `GITHUB_SHA`/`GITHUB_REF` to the **default branch's** latest commit (confirmed against GitHub's own docs before the first push, but only one of its two consequences was traced then — see the first pattern above) |
+
+Extends the existing Cross-PR meta-pattern table's own shape (PR #51's row above is the closest sibling:
+another `gh pr checks`-field-derivation gotcha, this time about `workflow` rather than the display-vs-file
+name distinction) — recorded here per that table's own established convention of scoping new PRs to their
+own subsection rather than appending to the six-PR table directly.
+
+---
+
+## PR #88 — `handling-review-findings` skill build + live dogfooding (Codex + Devin + CodeRabbit, 5 review rounds, 2026-08-21/22)
+
+Built a new git-kit skill formalizing PR-review-finding triage, then used it live (manually — the skill
+wasn't yet merged, so not dispatchable via `Skill()`) to triage its own introducing PR's review rounds.
+This immediately surfaced gaps no internal review had caught, because they only manifest against live
+GitHub state. Also includes a security-relevant hook change that recurred across 4 independent bypass
+techniques found by 3 different reviewers before the fix's root design (a substring-matching carve-out)
+was abandoned rather than patched a 5th time.
+
+### Headline pattern: a substring-matching security carve-out is not a defensible boundary — every "fix" just relocates the bypass
+
+`guard-raw-pr-review.sh`'s `gh api graphql` branch tried to carve out an exception for a "verifiably
+read-only" `reviewThreads` lookup by checking the raw command string for the literal word
+`"reviewThreads"` with no `"mutation"` keyword present. Four independent techniques, found by three
+different reviewers across two rounds, each made those literal substrings say something other than what
+the command actually executes:
+
+1. A live self-dispatched `security-reviewer` pass (this session) found file/`$(cat ...)`-supplied
+   indirection (`-F query=@file`), plus `--input <file>` as an equivalent bypass, in the same pass.
+2. Codex (live PR review, next round) found a plain shell variable holding the query
+   (`gh api graphql -f query="$var"`).
+3. CodeRabbit (live PR review, same round as #2) found adjacent-quote string concatenation splitting the
+   literal word "mutation" across a quote boundary (`query='mut'"ation ..."`) so it never appears as a
+   contiguous substring — a genuinely different technique from Codex's, found independently in parallel.
+
+Each fix closed exactly the one shape just found and left the carve-out's fundamental approach
+(substring-match a shell command for a safety decision) intact — which is why a different bypass appeared
+in the very next round every time. The fix that actually stuck was removing the carve-out entirely: deny
+every `gh api graphql` call unconditionally, with no read-only exception at all, even though that means a
+genuinely safe lookup now also needs the marker handshake.
+
+**Rule:** when a "detect if this specific dangerous case applies" check is built as string/regex matching
+over a raw shell command, and a *second* reviewer finds a *different* way to defeat the same check, stop
+patching the blacklist — the approach itself is the bug, not the specific gap. The number of ways to make
+a substring "not appear literally while still being executed" (indirection via a file, a variable, a
+command substitution, string concatenation, arithmetic construction, base64, ...) is unbounded — the same
+"unbounded adversarial tail" shape PR #55's `ast`-vs-regex lesson already names for source-code parsing,
+here applying to shell-command safety classification instead. If the check's own false-negative cost is a
+security bypass (not just a wrong classification), prefer an unconditional deny with no carve-out over an
+increasingly elaborate blacklist.
+
+### Pattern: your own fix for a reviewer finding can rest on the same class of unverified assumption the finding itself was about
+
+A `cross-model-review` pass (this session, before the first push) flagged that `API_RE`'s prefix regex
+required `gh`/`api` to sit immediately adjacent, and claimed `gh` accepts global flags (`-R owner/repo`,
+`--hostname ...`) before the `api` subcommand — citing this as the reason a caller might write
+`gh -R owner/repo api ...` and bypass the guard. The fix widened the prefix class to tolerate flags there.
+A follow-up `security-reviewer` dispatch, live-testing the *corrected* file, found the widened prefix had
+itself regressed a real, already-covered case (bare-whitespace/`env`-prefixed invocations no longer
+matched) — and, checking the *premise* live (`gh --help`/`gh api --help`), found `gh`'s root command has
+no persistent flags besides `--help`/`--version`, and `gh api` has no `-R`/`--repo` flag either: **there
+was no real `gh <flag> api ...` invocation for the widening to defend against in the first place.** The
+original finding's cited bypass didn't reproduce; the fix for it was a pure regression.
+
+**Rule:** a finding from a review pass (`cross-model-review`, Codex, any reviewer) is not automatically
+ground truth just because it cites a plausible-sounding tool-behavior claim — verify the claim live
+*before* writing the fix, the same "verify, don't assume" discipline this whole document is about, applied
+to the *reviewer's own reasoning* and not just your own. Live-testing the premise (`gh --help`) takes
+under a minute and would have prevented shipping a regression as the fix for a bug that never existed. A
+second review pass on your own fix is what actually caught this here — but catching it one round later is
+strictly worse than catching it before the first commit.
+
+### Pattern: a claimed bug, grounded in real documentation, that still doesn't reproduce live
+
+Codex flagged `gh api graphql -f cursor=null` as broken, citing `gh api --help`'s own documented
+distinction between `-f` (raw string parameter) and `-F` (typed parameter with magic `null`/number
+conversion) — reasoning that `-f cursor=null` sends the literal three-character string `"null"`, not a
+real JSON `null`, to a nullable GraphQL variable. Live-testing the exact command against the real API
+(twice, independently earlier in the session, plus a clean isolated third test specifically to check this
+claim) showed it succeeds and returns correctly paginated results every time. The claim's underlying
+documentation citation was accurate; its conclusion about this specific case wasn't confirmed by
+execution.
+
+**Rule:** even a reviewer finding that cites real, correctly-read documentation still needs to be verified
+by execution before being accepted or declined — a true premise (`-f` is documented as "raw string")
+doesn't guarantee the specific conclusion drawn from it (that this exact GraphQL server/variable
+combination breaks) without actually running it. This is the same discipline as the Cross-PR meta-pattern
+table, pointed at a *reviewer's* claim instead of your own instruction — declining a finding also needs
+live evidence, not just "that reasoning sounds plausible so I'll trust it" in either direction.
+
+### Confirms and extends: `gh`'s own subcommands have inconsistent, non-obvious flag support — verify per-subcommand, not per-CLI
+
+Three separate, real findings in this PR were all instances of "assumed a `gh` flag/default that a sibling
+subcommand supports also applies here":
+
+| Assumed | Actual |
+|---|---|
+| `gh api` supports `-R "<owner>/<repo>"` like `gh pr`/`gh issue` do | `gh api` has **no** `-R`/`--repo` flag at all (`gh api --help`) — REST calls must embed the resolved owner/repo directly in the endpoint path; GraphQL calls need `GH_REPO=<owner>/<repo>` instead |
+| `gh issue list`/`gh issue create` don't need `-R` since the checkout's own repo is "obviously" the target | They silently default to the *local checkout's* repo when `-R` is omitted — exactly wrong when the PR being triaged is in a different repository, and unlike `gh api`, these two *do* support `-R` |
+| `gh issue list` with no flags searches every issue | Defaults to `--limit 30`, **and** to `--state open` only (`gh issue list --help`) — both silently narrow a dedup search below "every issue that could match," in two independent dimensions found by two different reviewers in two separate rounds |
+
+**Rule:** extends the Cross-PR meta-pattern table's own existing rows (PR #51's `gh pr checks`
+display-vs-file-name gap, PR #92's `workflow`-field-empty-for-standalone-check-runs gap) — a single CLI
+tool's subcommands do not share a uniform flag surface or a uniform set of "sensible" defaults, even
+within the same tool family (`gh pr`/`gh issue`/`gh api` all handle repo-targeting differently;
+`gh issue list` narrows on two independent axes at once). Never assume a flag or default carries across
+sibling subcommands — check each one's own `--help` output.
+
+### Pattern: an API field's name describes a different relationship than the one actually needed
+
+`SKILL.md`'s checkout-verification logic checked `isCrossRepository` (true/false) plus a `headRefName`
+string match to decide "does this local checkout belong to the PR being triaged." Both reviewers (Devin
+independently, then Codex with "fresh evidence beyond the earlier finding") found this checks the wrong
+relationship: `isCrossRepository` describes the PR head's relationship to its own *base* repository, not
+whether *this checkout* belongs to that repository — a same-repo PR whose head branch name coincidentally
+matches the local branch name passes the check even when the checkout is a different repository entirely.
+The fix bound the check to `headRepositoryOwner`/`headRepository`/`headRefOid` instead — fields whose
+names, once actually read from `gh pr view --help`'s own field list, unambiguously identify the head.
+
+**Rule:** a field whose name reads as "is this the right thing" needs its actual documented semantics
+checked before being trusted for a safety-relevant comparison — `isCrossRepository` sounds like it should
+answer "is this checkout in the wrong repo," but it answers a related, different question. This is the
+same class as PR #51's `gh pr checks` display-name gap and PR #92's `workflow`-field gap: a field's
+intuitive name and its actual, documented meaning can diverge, and only reading the real field list
+(not guessing from the name) catches it.
+
+### Pattern: narrowing a regex's search scope doesn't fix a false positive if the false-triggering text is inside the narrowed scope too
+
+Codex found `guard-raw-pr-review.sh`'s endpoint checks (`REPLIES_RE`/`GRAPHQL_RE`) search the *entire*
+command string independently of where the matched `gh api` invocation is — so `gh api
+repos/o/r/issues/1/comments -f body=graphql` (an unrelated REST call whose comment *body* happens to
+contain the word "graphql") gets misclassified and denied. A same-session fix attempt narrowed the search
+to just the specific matched `gh api` invocation's own captured text — and didn't actually fix it: a flag
+*value* like `-f body=graphql` is still part of that invocation's own text, so the narrowed search still
+matched it. The rewrite also reintroduced 2 already-fixed regressions (the whitespace-prefix case) by
+redefining the boundary class from scratch instead of reusing the already-verified one. Verified via a
+full regression battery before committing anything, so the broken fix was caught and discarded rather than
+shipped — filed as a tracked issue instead, since correctly distinguishing "the actual endpoint argument"
+from "any other flag's value" needs real `gh` argv-aware parsing, not a regex-only patch.
+
+**Rule:** when a regex-based check's false-positive is "matches the target pattern somewhere it
+shouldn't," narrowing the search's *scope* (whole command → one sub-invocation) only helps if the
+unwanted match was outside the new scope — if it's a flag *value* within the very invocation you're
+trying to permit, scope-narrowing doesn't touch it at all. This is the same underlying limitation as the
+carve-out pattern above and PR #55's `ast`-vs-regex lesson: reliably distinguishing "the positional
+endpoint argument" from "an arbitrary flag's value" requires actually parsing the command's argument
+structure, not pattern-matching over its raw text, regardless of how the search is scoped.
+
+### Pattern: a finding source isn't monolithic — different GitHub review-comment types have structurally different follow-up capabilities
+
+Codex found `SKILL.md`'s Workflow assumes every finding is an inline PR review comment (with a
+`comment_id`/thread node the reply/resolve mechanics can act on) — but step 1's own fetch
+(`gh pr view --json reviews,comments`) also surfaces PR review *bodies* (a top-level summary, no line
+association) and would equally surface a plain conversation comment if one were checked. Neither has a
+resolvable thread. The skill can commit and push a fix for such a finding, then have no defined way to
+complete its own required reply/resolve step.
+
+**Rule:** when a skill's design assumes "a finding" is one uniform kind of object, check whether the
+actual data source (here, three structurally different GitHub API objects — inline review comments, review
+bodies, conversation/issue comments) really is uniform before building follow-up logic that assumes it —
+the same "enumerate the full state space of anything you're branching on" principle PR #51's Master
+checklist already names for a run's `conclusion` field, applied here to "what kind of thing is a finding."
+
+### Methodology note: dogfooding a newly-built skill against its own introducing PR is a high-value, cheap verification step
+
+`handling-review-findings` was built to formalize triaging PR review findings — and this session then
+manually followed its own documented Workflow (not yet mergeable, so not dispatchable via `Skill()`) to
+triage the review rounds on the very PR introducing it. Round 1 alone surfaced 4 real bugs (the `-R`
+misuse, the missing `-R` on `gh issue`, two pagination gaps) that no internal self-review,
+`plugin-rulebook-checker` pass, or `security-reviewer` dispatch had caught — because they only manifest
+when the documented commands are actually run against live GitHub state with a real cross-repo/
+many-issues/many-comments scenario, not when the prose is merely read for internal consistency.
+
+**Rule:** for a skill whose entire job is orchestrating external tool calls, internal review (rulebook
+compliance, activation boundaries, consistency checks) cannot substitute for actually running its own
+documented commands against the real target system at least once before considering it done — the class
+of bug this catches (wrong flags, wrong defaults, incomplete example commands) is systematically invisible
+to prose-level review.
+
+---
+
+## Master pre-push checklist (all PRs analyzed, including this session's #61/#62/#65/#68/#76/#79/#92/#88)
 
 ### Tool, API & language behavior — verify, don't assume
 
@@ -650,6 +1028,46 @@ title scopes it to the original six PRs analyzed before this session's work bega
 - [ ] Any script that branches on a CLI command's exit code alone (`cmd && ... || ...`) to detect "did X
       happen": confirmed the command actually returns nonzero on the negative case, rather than exiting `0`
       whenever the query itself succeeds regardless of match (e.g. `git ls-remote` on a nonexistent ref)?
+- [ ] A `gh api`/similar CLI call that both creates *and* later updates the same kind of resource: checked
+      each call's *specific target endpoint* for its own required HTTP method, rather than trusting the
+      tool's generic default-method rule (e.g. "adds `-f` → switches to POST") to cover both calls — a
+      create and an update endpoint for the same resource can require different methods even when the
+      tool's own default only happens to match one of them.
+- [ ] Any GitHub Actions workflow using `issue_comment` (or another non-`pull_request`-type event): does any
+      instruction assume `GITHUB_SHA`/checked-out content matches the PR's head? It resolves to the
+      *default branch's* latest commit instead — confirmed against GitHub's own docs.
+- [ ] Any GitHub Actions workflow with `concurrency:` set at the workflow (not job) level: does any job have
+      its own `if:` condition? Concurrency is evaluated at run-creation time, *before* that `if:` runs — a
+      run whose job will be skipped can still cancel an unrelated in-progress run sharing its group unless
+      the group key itself accounts for this.
+- [ ] Any code path reading `gh pr checks`' `workflow` field: confirmed the check-run in question is backed
+      by an actual Actions workflow run, not created directly via the Checks API (`POST /check-runs`) —
+      the field is derived from `checkSuite.workflowRun.workflow.name` and is empty/absent for a standalone
+      check-run, so `workflow`+`name` matching can never find one.
+- [ ] Any `gh <subcommand>` call assuming a flag or default carries over from a sibling subcommand (e.g.
+      `-R` on `gh api` because `gh pr`/`gh issue` support it, or `gh issue list` searching every issue by
+      default): checked that *specific* subcommand's own `--help` output, not inferred from a sibling's
+      behavior? `gh api` has no `-R`/`--repo` flag at all; `gh issue list` defaults to `--limit 30` *and*
+      `--state open` simultaneously.
+- [ ] Any API field whose *name* suggests it answers "is this the right target/state" for a
+      safety-relevant comparison (e.g. `isCrossRepository` for "does this checkout match"): confirmed via
+      the tool's own documented field list that its actual semantics match what's being checked, not just
+      what the name implies — a field can describe a real but different relationship than the one needed.
+- [ ] A reviewer's finding (Codex, CodeRabbit, `cross-model-review`, human) cites a specific tool/API
+      behavior as its justification: verified that specific claim live *before* accepting the finding and
+      writing a fix — and before declining it, too. A finding grounded in real, correctly-read
+      documentation can still draw a conclusion that doesn't hold for the specific case in question; a
+      fix for a finding whose own premise doesn't reproduce is a fix for a bug that never existed, and
+      risks being a regression itself.
+- [ ] When narrowing a regex/pattern-match's search *scope* to fix a false positive: confirmed the
+      unwanted match is actually located *outside* the narrowed scope — narrowing from "whole command" to
+      "one sub-invocation" does nothing if the false-triggering text (e.g. a flag's own value) is still
+      inside that sub-invocation. If the check needs to distinguish "the actual target argument" from "any
+      other argument's value," that's real parsing, not a matching-scope adjustment.
+- [ ] Does a skill's design assume "a finding"/"an event"/"a request" is one uniform kind of object? Check
+      whether the actual data source can return structurally different object types (e.g. an inline PR
+      review comment vs. a review body vs. a plain conversation comment — only one has a resolvable
+      thread) before building follow-up logic that assumes uniformity.
 
 ### Chain, state & timing
 
@@ -665,6 +1083,14 @@ title scopes it to the original six PRs analyzed before this session's work bega
       field) rather than assuming it's binary?
 - [ ] Every "confirm X is done/closed" check: does it apply uniformly across every path that reaches it,
       or does it need to be scoped per-path because one path's internals aren't actually observable here?
+- [ ] When live-verifying a tool/API fact changed one piece of the current diff, grepped the *rest* of the
+      same diff (and every other reader of the same ambient value, e.g. `GITHUB_SHA`) for other places that
+      same fact would also apply — a verified fact applied to fix one symptom doesn't mean its other
+      consequences were traced.
+- [ ] Any retry/cleanup/trap logic with an idempotency guard ("only do this once"): is the guard set *after*
+      confirming the guarded action actually succeeded, not before attempting it? And if a distinct fallback
+      value exists for "never attempted," is it kept structurally separate from "attempted and failed," so a
+      retry can't overwrite a correct-but-unconfirmed outcome with the wrong fallback?
 
 ### Scope & completeness
 
@@ -688,6 +1114,18 @@ title scopes it to the original six PRs analyzed before this session's work bega
 - [ ] Is this component itself a rule/doc about precision, verification, or avoiding overstated claims?
       Given its own prose an extra pass for the same defect (absolute language like "only X can", "always",
       "never") before push — this class of component is disproportionately likely to contain it.
+- [ ] Writing a new plugin component (rule, skill, agent, command)? Checked that specific component type's
+      own required template/shape (e.g. a rule needs Description/Incorrect/Correct, not numbered
+      procedural steps) — not just whether the content itself is accurate — before or immediately after
+      writing it, not left for a reviewer to catch as a structural mismatch.
+- [ ] Does a fix for "X is missing/wrong" actually avoid restating X inside the fix itself? Adding the
+      thing a finding asked for (an enforcement section, a status check) satisfies the finding's literal
+      ask without guaranteeing the addition is itself coherent — re-read the fix as skeptically as the
+      original finding was read, ideally in a genuinely fresh pass, not just a glance after writing it.
+- [ ] Does this change insert a new mandatory gate ("X must always happen before Y")? Enumerate *every*
+      entry path that can reach Y, not just the one that motivated the gate — two reviewers converging on
+      the same finding in the primary path is a high-confidence signal that finding is real, but says
+      nothing about whether a second, different path to the same guarded action was ever checked.
 
 ### Docs & evals
 
@@ -713,6 +1151,14 @@ title scopes it to the original six PRs analyzed before this session's work bega
 - [ ] Does this change introduce a new trust-boundary or mutation-gate mechanism? If so, has
       `security-reviewer` run against it *before* this first commit (see
       `.claude/rules/require-security-review-before-new-gate.md`)?
+- [ ] Is a security-relevant check (a guard, a carve-out, an exception to a deny-by-default rule) built as
+      string/regex matching over a raw shell command or other unstructured text? If a *second* reviewer
+      finds a *different* way to defeat the same check, stop patching the blacklist — remove the
+      carve-out/exception in favor of an unconditional deny rather than iterating toward a 5th bypass.
+- [ ] For a skill whose whole job is orchestrating external tool calls: has its own documented Workflow
+      actually been run (manually, if not yet mergeable/dispatchable) against the real target system at
+      least once — not just reviewed for prose consistency — before considering it done? Wrong flags,
+      wrong defaults, and incomplete example commands are systematically invisible to prose-only review.
 - [ ] Did I run `cross-model-review` locally before the first push, and treat its findings as the primary
       pre-push gate? (Confirmed worth doing even when declining Codex dispatch — single-model,
       Claude-native-only passes caught real issues on both PR #65 and PR #68, at zero extra dispatch cost.)
