@@ -981,7 +981,8 @@ Codex found `SKILL.md`'s Workflow assumes every finding is an inline PR review c
 (`gh pr view --json reviews,comments`) also surfaces PR review *bodies* (a top-level summary, no line
 association) and would equally surface a plain conversation comment if one were checked. Neither has a
 resolvable thread. The skill can commit and push a fix for such a finding, then have no defined way to
-complete its own required reply/resolve step.
+complete its own required reply/resolve step. (Tracked, not yet fixed:
+[#94](https://github.com/AndreHahm/andres-cc-marketplace/issues/94).)
 
 **Rule:** when a skill's design assumes "a finding" is one uniform kind of object, check whether the
 actual data source (here, three structurally different GitHub API objects — inline review comments, review
@@ -1033,9 +1034,12 @@ to prose-level review.
       tool's generic default-method rule (e.g. "adds `-f` → switches to POST") to cover both calls — a
       create and an update endpoint for the same resource can require different methods even when the
       tool's own default only happens to match one of them.
-- [ ] Any GitHub Actions workflow using `issue_comment` (or another non-`pull_request`-type event): does any
-      instruction assume `GITHUB_SHA`/checked-out content matches the PR's head? It resolves to the
-      *default branch's* latest commit instead — confirmed against GitHub's own docs.
+- [ ] Any GitHub Actions workflow using `issue_comment`: does any instruction assume `GITHUB_SHA`/
+      checked-out content matches the PR's head? It resolves to the *default branch's* latest commit
+      instead — confirmed against GitHub's own docs. This is specific to `issue_comment`, not a general
+      non-`pull_request`-event rule: `push` sets `GITHUB_SHA` to the pushed commit, and
+      `workflow_dispatch` uses the selected ref's own latest commit — check each event type's own
+      documented `GITHUB_SHA` resolution rather than assuming this one behavior generalizes.
 - [ ] Any GitHub Actions workflow with `concurrency:` set at the workflow (not job) level: does any job have
       its own `if:` condition? Concurrency is evaluated at run-creation time, *before* that `if:` runs — a
       run whose job will be skipped can still cancel an unrelated in-progress run sharing its group unless
