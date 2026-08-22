@@ -31,3 +31,7 @@
 - [ ] Self-reviewed the diff
 - [ ] Tests added/updated where applicable
 - [ ] Documentation updated where applicable
+
+## Open Items (disclosed, not blocking)
+
+<!-- Known limitations, deferred work, or gaps disclosed but not blocking this merge. Use "None" if none. -->
