@@ -308,7 +308,11 @@ session.
    substitute it into a shell command unvalidated, and never let a later check's pass stand in for an
    earlier check's fail.
 
-   First, the entry's own `name`: it's substituted directly into the handle-token regex below
+   **First, drop every entry whose `enabled` field is `false` — before any other check.** That
+   reviewer is not offered as a choice, not merely defaulted-away; it never reaches the `name`/trigger
+   validation below at all.
+
+   Then, for each remaining entry, validate its own `name`: it's substituted directly into the handle-token regex below
    (`^<name>[a-z0-9]*$`) and into a scratchpad filename (`trigger-<name>.txt`), so an unvalidated value
    containing a regex metacharacter could corrupt that pattern, and one containing a path separator
    (`/`, `\`) or `..` could write the scratchpad file outside its intended directory. Require
