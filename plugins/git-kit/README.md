@@ -96,7 +96,7 @@ To override any of these per project, run `/create-git-kit-local-json` — it cr
 | `use_worktree` | `true` | Which option `starting-work`'s plain-branch-vs-worktree question recommends by default — the question itself always still asks |
 | `review_findings_severity_gate` | `false` | `true` restricts `handling-review-findings`'s fix/file pipeline to Critical/Major findings only — a Minor/nit finding is declined outright (unless explicitly requested) instead of being fixed or filed |
 | `review_findings_generate_issues` | `false` | Whether a finding that shows up after `handling-review-findings`'s own round budget is exhausted may be filed as an issue (`true`) instead of fixed anyway (`false`, the default) |
-| `review_findings_min_rounds` / `review_findings_max_rounds` | `1` / `3` | Floor/ceiling on how many review rounds `handling-review-findings` proactively triggers |
+| `review_findings_min_rounds` / `review_findings_max_rounds` | `1` / `3` | Floor/ceiling on how many review cycles `handling-review-findings` proactively triggers |
 | `review_findings_reviewers` | (array, seeded with codex/coderabbit/devin) | Per-reviewer `name`/`enabled`/`default_review_trigger`/`full_review_trigger` config `handling-review-findings` uses to post the next round's trigger comment |
 
 Changes to `.claude/git-kit.local.json` take effect on the next invocation — no restart needed, since settings are read by each skill directly rather than a hook.
