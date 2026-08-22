@@ -294,15 +294,45 @@
         "covered_by": [
           17
         ]
+      },
+      {
+        "gate": "The trigger-ask is always one AskUserQuestion call carrying two questions (reviewer multi-select, then review-profile single-select) -- never a single combined question, never two separate calls",
+        "covered_by": [
+          14
+        ]
+      },
+      {
+        "gate": "Selecting \"No further round for now\" in Question 1 always overrides any other selection and skips Question 2's answer entirely",
+        "covered_by": [],
+        "note": "NOT exercised -- eval 14 only describes what the two questions would offer, not an actual combined selection being answered; a real gap"
+      },
+      {
+        "gate": "Before posting any trigger comment, the PR's state/isDraft/headRefOid are re-fetched fresh and headRefOid is compared against local HEAD -- a mismatch, a draft PR, or a non-OPEN state each independently blocks posting",
+        "covered_by": [],
+        "note": "NOT exercised -- no eval constructs an unpushed-commit or draft-PR precondition scenario; a real gap"
+      },
+      {
+        "gate": "A reviewer whose name field fails the identifier pattern is excluded from the trigger-ask before its trigger string is checked at all",
+        "covered_by": [],
+        "note": "NOT exercised -- no eval constructs a malformed-name scenario (distinct from eval 17, which tests a malformed default_review_trigger with a valid name); a real gap"
+      },
+      {
+        "gate": "The triggered-cycle count Workflow step 8 compares against min_rounds/max_rounds is derived from re-fetched trigger-comment history, never from the fix-driven-push round definition",
+        "covered_by": [],
+        "note": "NOT exercised -- no eval constructs a no-fix review cycle against the budget check; a real gap"
       }
     ],
-    "gates_total": 18,
-    "gates_fully_covered": 14,
+    "gates_total": 23,
+    "gates_fully_covered": 15,
     "uncovered_gates": [
       "State is always re-fetched immediately before a side-effecting action, never reused",
       "The gh-pr-review marker is written immediately before the specific gh api/gh pr comment call it authorizes, never earlier, and never reused across reviewers",
       "A reviewer with enabled:false never appears as a trigger-ask option",
-      "Step 8 never fires at all once max_rounds is reached"
+      "Step 8 never fires at all once max_rounds is reached",
+      "Selecting \"No further round for now\" in Question 1 always overrides any other selection and skips Question 2's answer entirely",
+      "Before posting any trigger comment, the PR's state/isDraft/headRefOid are re-fetched fresh and headRefOid is compared against local HEAD",
+      "A reviewer whose name field fails the identifier pattern is excluded from the trigger-ask before its trigger string is checked at all",
+      "The triggered-cycle count Workflow step 8 compares against min_rounds/max_rounds is derived from re-fetched trigger-comment history, never from the fix-driven-push round definition"
     ]
   },
   "supplementary_pressure_test": {

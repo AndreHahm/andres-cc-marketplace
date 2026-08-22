@@ -456,8 +456,11 @@ redesign (4 reworked from the retired 2-round-cap premise, 5 new — round-3-get
 reviewer-trigger ask, reviewer-choice reuse across rounds, budget-exhaustion without `generate_issues`,
 and handle-token validation rejecting a lookalike trigger) — see `references/testing-scenarios.md`'s
 updated scenario list and `testing_validation_coverage`/`quality_gates_coverage` fields for the
-gate-level mapping, including four gates this suite still doesn't exercise (state re-fetch timing,
-per-call marker discipline, a disabled reviewer's exclusion, and step 8 never firing past `max_rounds`).
+gate-level mapping, including eight gates this suite still doesn't exercise (state re-fetch timing,
+per-call marker discipline, a disabled reviewer's exclusion, step 8 never firing past `max_rounds`, the
+combined "No further round for now" selection, the push/draft posting precondition, a malformed
+reviewer `name`, and the triggered-cycle-count derivation) — the latter four were added by this
+session's own round-1-review-response and two-question-redesign work and don't have eval coverage yet.
 
 **Last dated run record:** 2026-08-22 — `skill-tester` Full Pipeline (iteration 2): 100% with_skill
 pass rate vs. 86.6% baseline across all 17 evals (+13.4 percentage points); see
