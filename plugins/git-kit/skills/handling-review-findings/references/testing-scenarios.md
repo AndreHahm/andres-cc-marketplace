@@ -83,6 +83,36 @@
   exception — one issue is filed, not two; both threads get replied-to pointing at the same issue
   number. Round-agnostic: the exception applies in round 1 exactly as it would in round 3, since it's
   never gated on round budget.
+- A tracked `.claude/git-kit.local.json` sets a reviewer's `enabled: false` — the whole-array
+  trust-boundary resolution at Settings-read time uses the tracked `git-kit.settings.json` array
+  instead, so that reviewer is still offered in Question 1, never silently suppressed by the tracked
+  local file's claim.
+- A tracked `.claude/git-kit.local.json` sets `review_findings_severity_gate: true`,
+  `review_findings_generate_issues: true`, or a `review_findings_max_rounds` lower than the tracked
+  default — each of these three scalar fields falls back to the tracked default too, the same as
+  `enabled`, and the run reports plainly which field(s) were discarded this way.
+- A tracked `.claude/git-kit.local.json` deletes a reviewer entry from its own array, or sets
+  `review_findings_reviewers: []` — the whole-array resolution means this has no effect; the tracked
+  default's full roster is used regardless, rather than a per-entry join that would let a tracked file
+  silently narrow the roster by omission.
+- The trust-boundary check (`git ls-files --error-unmatch :/.claude/git-kit.local.json`) is run from a
+  subdirectory of the repo, not the repo root — the root-anchored `:/` pathspec still correctly reports
+  the file as tracked; a bare relative pathspec would wrongly report "no match" and fail the boundary
+  open.
+- The `max_rounds`-th triggered batch is posted, and its own review comes back with findings — those
+  findings are fixed through the normal Fix path even though 8a's triggered-cycle count already reads
+  `max_rounds` by the time they're classified; they are not treated as post-budget just because the
+  counter is already at the ceiling.
+- A finding arrives from a human comment in a round *after* the round the `max_rounds`-th batch opened
+  — this one is genuinely post-budget: fixed if `review_findings_generate_issues` is `false`, filed if
+  `true`.
+- 8c leaves exactly one reviewer surviving validation (the other two disabled or invalid) and the
+  triggered-cycle count is below `min_rounds` — Question 1 offers that one reviewer plus "No further
+  round for now" (2 options, satisfying `AskUserQuestion`'s minimum), but selecting the stop option
+  doesn't silently end the run below the floor; it reports the floor isn't met and stops for the user to
+  confirm the one reviewer or fix the configuration.
+- 8c leaves zero reviewers surviving validation — 8b's `AskUserQuestion` is skipped entirely; the run
+  reports plainly that no reviewer is available to trigger, naming each excluded entry and 8c's reason.
 
 ## Quality gates
 
@@ -157,3 +187,18 @@
 - [ ] Every issue filed via the Issue path includes the full traceability payload (PR URL, head SHA,
       thread/comment URL, reviewer, severity) — never just the standard `github-issue-creator` template
       fields alone.
+- [ ] The trust boundary is resolved once at Settings-read time (never deferred into 8c, never
+      re-derived per field) using a repo-root-anchored `git ls-files` pathspec, and applies as a group to
+      all four protected fields (`severity_gate`, `generate_issues`, `max_rounds`-lower-than-default, and
+      the *entire* `review_findings_reviewers` array) — never a per-reviewer or per-field join that could
+      let a tracked local file narrow the roster or weaken one field while the others stay protected. The
+      run reports plainly, once, which field(s) were discarded this way.
+- [ ] A finding produced by the review that the `max_rounds`-th triggered batch itself triggered is
+      fixed normally, never routed to the Issue/generate-issues path merely because 8a's aggregate count
+      already reads `max_rounds` when it's classified — only a finding from a genuinely later round is
+      treated as post-budget.
+- [ ] When 8c leaves exactly one validated reviewer, Question 1 includes the stop option regardless of
+      `min_rounds` status (to satisfy `AskUserQuestion`'s 2-option minimum), but below the floor
+      selecting it reports the unmet floor and stops rather than silently ending the run.
+- [ ] When 8c leaves zero validated reviewers, 8b's `AskUserQuestion` is never constructed with an
+      empty or single-item options array — the run reports the configuration gap instead.

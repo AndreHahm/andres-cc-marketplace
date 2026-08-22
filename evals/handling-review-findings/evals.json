@@ -6,7 +6,7 @@
     {
       "id": 1,
       "name": "Round 1/2 fix path",
-      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #142, this is round 1 (the first review after the PR's first push-for-review; `review_findings_severity_gate` is `false`, the default). Codex just posted exactly one finding:\n\n> **Major** \u2014 `parse_config()` at `config.py:47` doesn't handle a missing `timeout` key and raises `KeyError` instead of falling back to the documented default.\n\nTriage this finding and decide: which round does it belong to, does it get fixed/filed/declined, and what happens to its review thread. Write your full triage decision, the exact reply text you would post to the thread, and an explicit statement of whether (and when) you would resolve the thread, to `outputs/triage.md`.",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #142, this is round 1 (the first review after the PR's first push-for-review; `review_findings_severity_gate` is `false`, the default). Codex just posted exactly one finding:\n\n> **Major** — `parse_config()` at `config.py:47` doesn't handle a missing `timeout` key and raises `KeyError` instead of falling back to the documented default.\n\nTriage this finding and decide: which round does it belong to, does it get fixed/filed/declined, and what happens to its review thread. Write your full triage decision, the exact reply text you would post to the thread, and an explicit statement of whether (and when) you would resolve the thread, to `outputs/triage.md`.",
       "expected_output": "Classifies the finding as round 1 -> Fix path (not filed, not declined). States plainly that verification is a hard precondition before any reply/resolve action -- the reply is never sent and the thread is never resolved on the strength of a pushed commit alone. Describes committing via Skill(git-kit:commit), not a raw `git commit`. The drafted reply cites both a fixing commit SHA and a one-line summary of what verification confirmed. States the thread is resolved only after that reply, and only because verification actually passed.",
       "files": [
         "outputs/triage.md"
@@ -186,7 +186,7 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 28,
+    "declared_scenarios_total": 36,
     "declared_scenarios_covered": 19,
     "uncovered": [
       "A Critical finding first appears in round 3 and matches one of the three named exceptions (as opposed to arriving via budget exhaustion) -- filed, with the Hard Cap AskUserQuestion firing. Only the budget-exhaustion variant of this scenario is covered (eval 3); no eval exercises a Critical finding routed to the Issue path via exception 1/2/3 specifically in round 3.",
@@ -197,9 +197,17 @@
       "A review cycle comes back clean or produces only declined/filed findings (no fix-driven push), and the triggered-cycle count is still derived correctly from batch-marker history rather than the fix-driven-push round definition. No eval exercises a no-fix cycle against the budget check.",
       "The user selects \"No further round for now\" in Question 1 together with a reviewer option, and Question 2's answer is correctly ignored. No eval exercises this combined-selection case specifically (eval 14 only exercises describing the options, not a combined selection being made).",
       "The trigger-ask's two questions are answered but the commit(s) meant to be reviewed are still local-only (HEAD doesn't match the PR's headRefOid) -- no trigger comment gets posted. No eval exercises this precondition.",
-      "The trigger-ask's two questions are answered and the local commit is pushed, but the PR is a draft (or closed) -- no trigger comment gets posted. No eval exercises this precondition."
+      "The trigger-ask's two questions are answered and the local commit is pushed, but the PR is a draft (or closed) -- no trigger comment gets posted. No eval exercises this precondition.",
+      "A tracked .claude/git-kit.local.json sets a reviewer's enabled: false -- 8c resolves the tracked-ness gate before touching enabled, so the tracked git-kit.settings.json default wins and the reviewer is still offered. No eval exercises this trust-boundary interaction for enabled specifically.",
+      "The max_rounds-th triggered batch's own review comes back with findings -- those findings are fixed normally even though 8a's count already reads max_rounds by classification time; they are not treated as post-budget. No eval exercises this final-cycle-vs-post-budget distinction.",
+      "A finding arrives from a human comment in a round after the round the max_rounds-th batch opened -- genuinely post-budget, routed per generate_issues. No eval exercises this specific later-round timing (distinct from eval 3/16's budget-exhaustion-by-count scenarios).",
+      "8c leaves exactly one reviewer surviving validation and the triggered-cycle count is below min_rounds -- Question 1 offers that reviewer plus the stop option (2 options, satisfying the AskUserQuestion minimum), but selecting stop reports the unmet floor rather than silently ending the run. No eval exercises this near-zero-reviewer edge case.",
+      "8c leaves zero reviewers surviving validation -- 8b's AskUserQuestion is skipped entirely and the run reports the configuration gap. No eval exercises this case.",
+      "A tracked .claude/git-kit.local.json sets severity_gate/generate_issues/max_rounds-lower-than-default -- each falls back to the tracked default too, same as enabled, with the run reporting which field(s) were discarded. No eval exercises this.",
+      "A tracked .claude/git-kit.local.json deletes a reviewer entry or sets review_findings_reviewers: [] -- the whole-array resolution means the tracked default's full roster is used regardless, never a per-entry join that lets a tracked file narrow the roster by omission. No eval exercises this.",
+      "The trust-boundary check is run from a subdirectory of the repo -- the root-anchored :/ pathspec still correctly reports a tracked file as tracked, unlike a bare relative pathspec which would wrongly report untracked and fail the boundary open. No eval exercises this (not a triage-decision behavior an eval can test without shell execution)."
     ],
-    "note": "28 named edge-case scenarios in references/testing-scenarios.md (post-redesign) -- up from 25 after a round-2 GitHub review on PR #101 (2026-08-22) found the triggered-cycle count couldn't distinguish this skill's own trigger comments from codex-review-recovery's identical-looking retry comment, and miscounted a multi-reviewer selection as one cycle per reviewer instead of one cycle total; fixed via a per-decision batch-id marker appended to every trigger comment, adding 3 new scenarios (recovery-comment exclusion, multi-reviewer batch-counts-once, below-min_rounds omits the stop option), none of which have eval coverage yet (added to uncovered below). The prior 25-scenario baseline (itself up from 20 after this session's round-1-review-response work: malformed reviewer name, the triggered-cycle-count/no-fix-cycle fix, the two-question redesign's combined-selection case, and the push/draft posting precondition x2; and before that, corrected from an earlier miscount of 15 by this skill's own reviewing-evals self-audit) is otherwise unchanged. Evals 14/15/17 cover reviewer-trigger/ask-once/validation scenarios not separately numbered in that file's prose list but described in its own text."
+    "note": "28 named edge-case scenarios in references/testing-scenarios.md (post-redesign) -- up from 25 after a round-2 GitHub review on PR #101 (2026-08-22) found the triggered-cycle count couldn't distinguish this skill's own trigger comments from codex-review-recovery's identical-looking retry comment, and miscounted a multi-reviewer selection as one cycle per reviewer instead of one cycle total; fixed via a per-decision batch-id marker appended to every trigger comment, adding 3 new scenarios (recovery-comment exclusion, multi-reviewer batch-counts-once, below-min_rounds omits the stop option), none of which have eval coverage yet (added to uncovered below). The prior 25-scenario baseline (itself up from 20 after this session's round-1-review-response work: malformed reviewer name, the triggered-cycle-count/no-fix-cycle fix, the two-question redesign's combined-selection case, and the push/draft posting precondition x2; and before that, corrected from an earlier miscount of 15 by this skill's own reviewing-evals self-audit) is otherwise unchanged. Evals 14/15/17 cover reviewer-trigger/ask-once/validation scenarios not separately numbered in that file's prose list but described in its own text. A third round of live GitHub review on PR #101 (2026-08-22, reviewing commit 0e7a079) found the enabled:false filter ran before the tracked-ness trust-boundary check (a real regression from the same commit's own consistency-reviewer:C1 fix), no way to distinguish a final-allowed-cycle's own findings from genuinely post-budget ones, and no handling for fewer than 2 validated reviewers surviving 8c -- fixed by resolving the tracked-ness gate once and applying it to enabled and trigger text alike, redefining 'budget exhausted' as round-after-the-final-batch rather than count-at-ceiling, and adding an explicit fewer-than-2-reviewers path to 8b; adding 5 new scenarios, none of which have eval coverage yet (added to uncovered below). A same-day self-dispatched security-reviewer pass (required by .claude/rules/require-security-review-before-new-gate.md before shipping the enabled-vs-trust-boundary fix above) found the fix was too narrow: only 2 of 5 documented trust-boundary-protected fields ever had a real gate, the reviewer array's enabled protection was defeatable by deleting/replacing the whole array rather than flipping the flag, no disclosure was made when an override was discarded, and the git ls-files check itself failed open when run from a non-root working directory (live-verified). Fixed by hoisting the trust-boundary resolution to Settings-read time, protecting all four field-groups (severity_gate, generate_issues, max_rounds-lower, and the entire reviewers array as one unit -- never a per-field join), adding an explicit discard-disclosure requirement, and root-anchoring the git ls-files pathspec (:/ prefix) -- adding 3 more new scenarios, none of which have eval coverage yet."
   },
   "quality_gates_coverage": {
     "note": "references/testing-scenarios.md's quality gates (post-redesign), mapped to the eval(s) that exercise each -- not part of skill-tester's own schema, kept per completeness-reviewer's original finding that gates need explicit eval-coverage tracking.",
@@ -365,9 +373,29 @@
         "covered_by": [
           20
         ]
+      },
+      {
+        "gate": "The trust boundary is resolved once at Settings-read time (never deferred into 8c, never re-derived per field) using a repo-root-anchored git ls-files pathspec, and applies as a group to all four protected fields (severity_gate, generate_issues, max_rounds-lower-than-default, and the entire review_findings_reviewers array) -- never a per-reviewer or per-field join. The run reports plainly, once, which field(s) were discarded.",
+        "covered_by": [],
+        "note": "NOT exercised -- expanded 2026-08-22 from a self-dispatched security-reviewer pass; a real gap"
+      },
+      {
+        "gate": "A finding produced by the review that the max_rounds-th triggered batch itself triggered is fixed normally, never routed to the Issue/generate-issues path merely because 8a's count already reads max_rounds when classified",
+        "covered_by": [],
+        "note": "NOT exercised -- added 2026-08-22 from a third round of live GitHub review on PR #101; a real gap"
+      },
+      {
+        "gate": "When 8c leaves exactly one validated reviewer, Question 1 includes the stop option regardless of min_rounds status, but below the floor selecting it reports the unmet floor and stops rather than silently ending the run",
+        "covered_by": [],
+        "note": "NOT exercised -- added 2026-08-22 from a third round of live GitHub review on PR #101; a real gap"
+      },
+      {
+        "gate": "When 8c leaves zero validated reviewers, 8b's AskUserQuestion is never constructed with an empty or single-item options array",
+        "covered_by": [],
+        "note": "NOT exercised -- added 2026-08-22 from a third round of live GitHub review on PR #101; a real gap"
       }
     ],
-    "gates_total": 26,
+    "gates_total": 30,
     "gates_fully_covered": 18,
     "uncovered_gates": [
       "State is always re-fetched immediately before a side-effecting action, never reused",
@@ -377,7 +405,11 @@
       "Selecting \"No further round for now\" in Question 1 always overrides any other selection and skips Question 2's answer entirely",
       "Before posting any trigger comment, the PR's state/isDraft/headRefOid are re-fetched fresh and headRefOid is compared against local HEAD",
       "A reviewer whose name field fails the identifier pattern is excluded from the trigger-ask before its trigger string is checked at all",
-      "The triggered-cycle count Workflow step 8 compares against min_rounds/max_rounds is derived from re-fetched trigger-comment history, never from the fix-driven-push round definition"
+      "The triggered-cycle count Workflow step 8 compares against min_rounds/max_rounds is derived from re-fetched trigger-comment history, never from the fix-driven-push round definition",
+      "8c resolves the tracked-ness gate once and applies it to a reviewer's enabled field exactly as it does to trigger-comment text -- a tracked local file's enabled:false is never honored",
+      "A finding produced by the review that the max_rounds-th triggered batch itself triggered is fixed normally, never routed to the Issue/generate-issues path merely because 8a's count already reads max_rounds when classified",
+      "When 8c leaves exactly one validated reviewer, Question 1 includes the stop option regardless of min_rounds status, but below the floor selecting it reports the unmet floor and stops rather than silently ending the run",
+      "When 8c leaves zero validated reviewers, 8b's AskUserQuestion is never constructed with an empty or single-item options array"
     ]
   },
   "supplementary_pressure_test": {
