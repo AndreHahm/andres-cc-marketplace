@@ -39,6 +39,12 @@
 - The user selects "No further round for now" in Question 1 (alone, or alongside a reviewer option) —
   Question 2's answer is ignored entirely and no trigger comment is posted, regardless of what Question
   2 says.
+- Both trigger-ask questions are answered, but the commit(s) meant to be reviewed this round are still
+  local-only — `git rev-parse HEAD` doesn't match the PR's freshly re-fetched `headRefOid`. No trigger
+  comment gets posted; the run stops and tells the user which commit(s) are unpushed, rather than
+  treating "the AskUserQuestion was answered" as license to post.
+- Both trigger-ask questions are answered and the local commit is pushed, but the PR is currently a
+  draft (or closed) — no trigger comment gets posted regardless of how the questions were answered.
 - Round 2's trigger-ask already happened earlier in the conversation; round 2 is now triaged and the
   budget allows round 3 — the skill reuses the earlier answer and posts round 3's trigger comment
   without asking again.
@@ -97,6 +103,11 @@
 - [ ] Selecting "No further round for now" in Question 1 always overrides any other selection in that
       same question and skips Question 2's answer entirely — no trigger comment is posted regardless of
       what Question 2 says.
+- [ ] Before posting any trigger comment, the PR's `state`/`isDraft`/`headRefOid` are re-fetched fresh
+      (never reused from an earlier check) and `headRefOid` is compared against `git rev-parse HEAD` —
+      a mismatch (local commit not yet pushed), a draft PR, or a non-`OPEN` state each independently
+      blocks posting, and a completed `AskUserQuestion` answer is never treated as itself satisfying
+      this precondition.
 - [ ] A reviewer with `enabled: false` never appears as a Question 1 option.
 - [ ] A reviewer whose `name` field fails `^[a-z][a-z0-9_-]{0,31}$` is excluded from the trigger-ask
       before its trigger string is checked at all — its `name` is never substituted into the

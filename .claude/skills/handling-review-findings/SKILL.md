@@ -352,7 +352,30 @@ session.
    earlier answer asks fresh — see `references/round-and-dedup-rules.md`'s "No persisted round-counter
    file" section for why.
 
-   Once the reviewer(s)/mode are decided and validated: for each selected reviewer, write the marker
+   **Before posting anything — re-verify the PR is open, non-draft, and the branch actually pushed. The
+   trigger to post a review-comment is a successful push to an open, non-draft PR, never merely having
+   made a local commit or having gotten an `AskUserQuestion` answer** — answering the two questions above
+   decides *what* to post if and when posting is warranted; it is never itself the signal that posting is
+   warranted now. Re-fetch fresh immediately before posting, per
+   `.claude/rules/recheck-state-before-side-effecting-action.md` (never reuse an earlier check, including
+   one taken earlier in this same step): `gh pr view <number> -R "<owner>/<repo>" --json state,isDraft,
+   headRefOid`, and compare `headRefOid` against this checkout's current `git rev-parse HEAD`. Three
+   independent ways this can fail, each its own stop condition — check all three, not just the first one
+   that comes to mind:
+   - `state` isn't `OPEN` — stop, report plainly, post nothing.
+   - `isDraft` is `true` — stop; a draft PR isn't this trigger's audience (round 1's own automatic CI
+     trigger fires specifically on the draft→ready transition; a manual round trigger from this skill
+     shouldn't fire while the PR is still draft either).
+   - `headRefOid` doesn't equal `git rev-parse HEAD` — the commit(s) this round is meant to get reviewed
+     haven't reached the remote yet, whether or not they've been committed locally. Stop; tell the user
+     plainly which commit(s) are still local-only and that pushing them is what actually clears this
+     precondition — not the commit itself, and not the `AskUserQuestion` answer. Re-run this same check
+     after the push; don't retry blindly, and don't treat "the user said push it" as equivalent to having
+     re-verified the push actually landed.
+
+   Only once all three checks pass does posting proceed. Once the reviewer(s)/mode are decided and
+   validated, and this precondition has just been freshly re-confirmed: for each selected reviewer, write
+   the marker
    (`"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review handling-review-findings`)
    immediately before posting — **a fresh marker per `gh pr comment` call**, since the marker is
    single-use and consumed by the very next `Bash`/`PowerShell` call regardless of whether it matches;
