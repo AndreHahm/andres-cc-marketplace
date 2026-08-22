@@ -1,0 +1,10 @@
+{
+  "eval_id": 20,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States the count (1) is below min_rounds (2), so another cycle is mandatory -- proceeding without asking whether, only which", "passed": true, "evidence": "\"1 < 2, so the current triggered-cycle count is below min_rounds ... another cycle is 'required -- proceed without asking whether, only which.'\""},
+    {"text": "Describes Question 1 as offering only the three validated reviewer options, with no \"No further round for now\" option at all", "passed": true, "evidence": "\"Question 1 ... would be a multi-select with exactly 3 options, one per validated reviewer entry ... No 'No further round for now' option is included.\""},
+    {"text": "Explicitly states the stop option is omitted because the floor hasn't been met yet (not because of reviewer count), and contrasts with the between-min-and-max case where it would normally appear", "passed": true, "evidence": "\"That 4th option is only added when the current triggered-cycle count already meets review_findings_min_rounds ... Within the cap regardless: AskUserQuestion caps options at 4 per question; 3 is comfortably under that\" -- explicitly separates the omission reason (floor unmet) from the cap (unrelated, since 3 < 4 anyway)"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

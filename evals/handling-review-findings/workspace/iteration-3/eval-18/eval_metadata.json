@@ -1,0 +1,21 @@
+{
+  "eval_id": 18,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "States the triggered-cycle count is 1, not 2",
+      "type": "functionality",
+      "target": "outputs/count.md"
+    },
+    {
+      "text": "States the codex-review-recovery comment is excluded because it carries no handling-review-findings-trigger marker, even though its body text is byte-identical to this skill's own Codex trigger",
+      "type": "functionality",
+      "target": "outputs/count.md"
+    },
+    {
+      "text": "Does not conflate \"matches a configured trigger string\" with \"this skill's own trigger\" -- names the marker, not the trigger-string text, as the actual ownership signal",
+      "type": "quality",
+      "target": "outputs/count.md"
+    }
+  ]
+}

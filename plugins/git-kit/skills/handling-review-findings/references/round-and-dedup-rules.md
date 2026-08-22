@@ -50,12 +50,48 @@ register as "completed," and the budget check would never see a count reach `max
 keep re-triggering the same round indefinitely, the exact ceiling it exists to enforce.
 
 Step 8 instead derives the triggered-cycle count from re-fetched state directly: 1 for round 1's
-automatic CI trigger, plus the number of this skill's own trigger comments already posted to the PR —
-top-level `gh pr comment`s whose body, verbatim, matches one of `review_findings_reviewers`'
-`default_review_trigger`/`full_review_trigger` strings. This stays consistent with "No persisted
-round-counter file" below: the count is re-derived from GitHub state every time, not stored anywhere,
-and it advances the moment step 8 posts a trigger comment — independent of whether that cycle's review
-ever produces a fix.
+automatic CI trigger, plus the number of distinct trigger *batches* this skill has posted to the PR —
+never a raw count of matching-text comments. This stays consistent with "No persisted round-counter
+file" below: the count is re-derived from GitHub state every time, not stored anywhere, and it advances
+the moment step 8 posts a trigger batch — independent of whether that cycle's review ever produces a fix.
+
+**A raw verbatim-body match against the reviewer's trigger string is not enough to identify "this
+skill's own trigger," and is not enough to count a multi-reviewer selection as one cycle either** — two
+related gaps a round-2 review on PR #101 found in the original version of this design (2026-08-22):
+
+1. **Ownership ambiguity.** `codex-review-recovery` posts a byte-identical `@codex review` comment as
+   its own stuck-check retry — a fundamentally different action (recovering an already-triggered,
+   stuck review) from this skill's own proactive round trigger. A collaborator posting the same text
+   coincidentally has the identical problem. Matching on body text alone can't distinguish either case
+   from this skill's own post, so either one silently inflates the count and can exhaust `max_rounds`
+   before this skill ever actually triggered that many rounds.
+2. **Batch miscounting.** Selecting multiple reviewers in one Workflow-step-8 decision posts one
+   comment per reviewer — a real, deliberate design choice, since combining multiple reviewers' trigger
+   strings into a single comment risks one reviewer's connector misparsing text meant for another. But
+   every one of those comments answers the *same* decision and should count as *one* cycle, not one per
+   reviewer — a raw per-comment count would let a single 2-reviewer selection consume 2 of the budget's
+   slots.
+
+Both are closed the same way: every trigger comment's body carries a marker,
+`<!-- handling-review-findings-trigger:<batch-id> -->`, appended after the reviewer's own trigger text.
+`<batch-id>` is generated once per Workflow-step-8 decision (a UTC timestamp,
+`date -u +%Y%m%dT%H%M%SZ`) and reused verbatim across every comment that decision posts. The
+triggered-cycle count is the number of *distinct* `<batch-id>` values found in the marker across the
+freshly re-fetched comment list — never a count of comments, and never a count of trigger-string
+matches with no marker. A comment lacking the marker (a `codex-review-recovery` retry, a human's
+coincidentally identical text) is never counted, no matter how closely its body matches a configured
+trigger string; a batch of several reviewers sharing one `<batch-id>` counts once.
+
+**Disclosed gap:** whether an HTML-comment marker trailing the mention text (`@codex review`, etc.)
+changes how Codex/CodeRabbit/Devin's own connectors parse the trigger has not been live-verified against
+a real posted comment as of this writing — each connector's own trigger-detection logic is opaque from
+outside its vendor. The marker is placed after a blank line specifically to minimize the chance of
+interfering with a connector's own mention-parsing, and an HTML comment renders invisibly in GitHub's UI,
+but this is a reasoned assumption, not a confirmed one. Verify this the next time Workflow step 8
+actually posts a trigger comment in a live session, by confirming the targeted reviewer's review still
+arrives normally afterward — if a reviewer stops responding to its own trigger once the marker is added,
+that reviewer's marker placement needs revisiting (e.g. before the mention instead of after), not the
+counting mechanism itself.
 
 ## No persisted round-counter file
 

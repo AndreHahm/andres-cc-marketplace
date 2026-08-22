@@ -49,10 +49,11 @@ full-string match (anchored, no leading/trailing whitespace or newline), and (b)
 `name`, or matches `^<name>[a-z0-9]*$` case-insensitively. A plain substring test is not enough here —
 `@codex-evil review` and `@notcodex review` both *contain* "codex," so a same-file check the earlier
 revision of this rule used would still have offered either as a valid `codex` option; anchoring the
-check to the handle token specifically closes that gap. See Workflow step 8 for the exact three-step
-order and fallback chain, and `references/github-api-mechanics.md`'s "Posting a review-trigger comment"
-section for why the validated string is written to its own per-reviewer file and posted with
-`--body-file` rather than inlined into the command line.
+check to the handle token specifically closes that gap. See Workflow step 8c for the exact three-step
+order and fallback chain. The validated string is still never inlined directly into a shell command —
+it's written to its own per-reviewer scratchpad file and posted with `--body-file` (Workflow step 8d),
+so a value that passed the regex but still contains shell-meaningful characters can never reach shell
+parsing.
 
 ## Round budget bounds triggering, not fixing
 
@@ -130,9 +131,11 @@ fields resolve to the same string instead of needing a special case anywhere ste
 offered as a choice, not merely defaulted-away. Adding a fourth reviewer to the array is a matter of
 appending a fourth object with the same four fields — the settings shape itself doesn't assume exactly
 three reviewers. **Question 1's own option count does, though**: Workflow step 8 offers one option
-per *enabled* reviewer plus a mandatory "No further round for now" option, capped at `AskUserQuestion`'s
-real `maxItems: 4`. With all three seeded reviewers enabled, that's already exactly 4 — a fourth
-*enabled* reviewer would push Question 1 to 5 options, which the tool rejects. Question 2 (the
+per *enabled* reviewer plus, when the triggered-cycle count already meets `review_findings_min_rounds`,
+a "No further round for now" option — omitted entirely below that floor, since another cycle is
+mandatory in that case and the option itself is never offered. When present, this caps Question 1 at
+`AskUserQuestion`'s real `maxItems: 4`. With all three seeded reviewers enabled, that's already exactly
+4 — a fourth *enabled* reviewer would push Question 1 to 5 options, which the tool rejects. Question 2 (the
 default/full review-profile choice) is unaffected by reviewer count — it's always exactly 2 options,
 asked once, applying uniformly to every reviewer selected in Question 1. A fourth reviewer entry with
 `enabled: false` is fine (it's simply never offered); enabling a fourth reviewer requires first disabling

@@ -1,0 +1,10 @@
+{
+  "eval_id": 18,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States the triggered-cycle count is 1, not 2", "passed": true, "evidence": "\"Triggered-cycle count = 1.\" ... \"Total: 1 (automatic round-1 trigger) + 0 (no marked batches from this skill) = 1.\""},
+    {"text": "States the codex-review-recovery comment is excluded because it carries no handling-review-findings-trigger marker, even though its body text is byte-identical to this skill's own Codex trigger", "passed": true, "evidence": "\"That comment has 'no trailing marker of any kind,' so it fails the marker check on its face -- it is never counted, 'no matter how closely its body matches a configured trigger string.'\""},
+    {"text": "Does not conflate \"matches a configured trigger string\" with \"this skill's own trigger\" -- names the marker, not the trigger-string text, as the actual ownership signal", "passed": true, "evidence": "\"never by matching a reviewer's trigger string alone ... The count is the number of distinct <batch-id> values captured from that marker\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 19,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Describes exactly 2 separate gh pr comment calls -- one for Codex (@codex review + marker), one for Devin (/devin review + marker)",
+      "type": "functionality",
+      "target": "outputs/batch.md"
+    },
+    {
+      "text": "States both comments carry the same batch-id, generated once for this decision and reused verbatim across both posts, never a fresh id per reviewer",
+      "type": "functionality",
+      "target": "outputs/batch.md"
+    },
+    {
+      "text": "States these two comments count as exactly ONE additional triggered cycle (not two), so the count after this decision is 2, not 3 -- does not describe counting per-comment",
+      "type": "functionality",
+      "target": "outputs/batch.md"
+    }
+  ]
+}
