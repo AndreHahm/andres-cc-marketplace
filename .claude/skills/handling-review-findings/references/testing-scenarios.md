@@ -48,8 +48,10 @@
   be fixed anyway — the explicit instruction wins; it's fixed, not declined.
 - A `security-reviewer` pass runs before round 2's fix is pushed and finds a new Critical issue — fixed
   within round 2, not treated as opening round 3.
-- Two reviewers independently flag the same defect in round 3 — one issue is filed, not two; both
-  threads get replied-to pointing at the same issue number.
+- Two reviewers independently flag the same underlying defect, which matches the too-large-for-session
+  exception — one issue is filed, not two; both threads get replied-to pointing at the same issue
+  number. Round-agnostic: the exception applies in round 1 exactly as it would in round 3, since it's
+  never gated on round budget.
 
 ## Quality gates
 
