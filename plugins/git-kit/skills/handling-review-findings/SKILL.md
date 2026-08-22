@@ -260,7 +260,10 @@ session.
    run another round at all; on "no," stop here — this run ends with step 7's report as the final
    word, and nothing further gets posted. At `max_rounds`, skip this step entirely — a further finding
    that shows up anyway is handled per `review_findings_generate_issues` (Settings) the next time this
-   skill is invoked.
+   skill is invoked. **`max_rounds` is the authoritative ceiling if the two settings are ever
+   misconfigured with `min_rounds` set higher than `max_rounds`** — treat "at `max_rounds`" as taking
+   precedence over "below `min_rounds`" whenever both would otherwise apply to the same completed-round
+   count, so a bad `min_rounds` value can never push a proactive trigger past the configured ceiling.
 
    **Resolve and validate every trigger string before anything is offered as an option — this order
    matters, not just the checks themselves.** `review_findings_reviewers` (from either
