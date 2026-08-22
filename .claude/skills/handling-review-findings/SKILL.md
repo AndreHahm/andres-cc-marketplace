@@ -13,7 +13,7 @@ description: >-
   `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
   recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(date:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, AskUserQuestion, Skill(git-kit:commit)
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh repo view:*), Bash(gh api user:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(date:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, AskUserQuestion, Skill(git-kit:commit)
 ---
 
 # Handling Review Findings
@@ -87,7 +87,8 @@ convention — each named sibling skill carries the reciprocal half of the same 
    unresolved.
 5. Report fixed/filed/declined plainly before any merge step — a deferred Critical/Major finding needs
    a separate, explicit risk-acceptance `AskUserQuestion` first.
-6. If the round budget allows another round, ask once which reviewer(s)/mode to run next and post the
+6. If the triggered-cycle budget allows another cycle, ask which reviewer(s)/mode to run next — below
+   `min_rounds` this is "which," not "whether," since another cycle is then mandatory — and post the
    trigger comment.
 
 See `## Workflow` below for the full step-by-step with exact rules and edge cases.
@@ -101,8 +102,8 @@ for any field the local file doesn't set.
 | Setting | Default | Meaning |
 |---|---|---|
 | `review_findings_severity_gate` | `false` | Orthogonal — Minor/nit declined outright when `true`, unless explicitly requested |
-| `review_findings_min_rounds` | `1` | Floor on rounds this skill proactively triggers |
-| `review_findings_max_rounds` | `3` | Ceiling on rounds this skill proactively triggers |
+| `review_findings_min_rounds` | `1` | Floor on triggered cycles this skill proactively triggers |
+| `review_findings_max_rounds` | `3` | Ceiling on triggered cycles this skill proactively triggers |
 | `review_findings_generate_issues` | `false` | Whether a post-budget finding may be filed instead of fixed |
 | `review_findings_reviewers` | (array) | Per-reviewer name/enabled/trigger-comment config |
 
@@ -159,9 +160,11 @@ session.
    (verified against `gh api --help`) — never pass `-R` to it. Its REST calls already carry the
    resolved owner/repo directly in the endpoint path (the `{owner}`/`{repo}` placeholders throughout
    `references/github-api-mechanics.md` mean the real resolved values, not `-R`); its `gh api graphql`
-   calls target a single fixed global endpoint with no per-call repo argument, so scope those with
-   `GH_REPO="<owner>/<repo>" gh api graphql ...` (`gh api`'s own documented fallback for repository
-   resolution) instead. Per `.claude/rules/recheck-state-before-side-effecting-action.md`, re-check
+   calls target a single fixed global endpoint with no per-call repo argument, so scope those by
+   passing `owner`/`name` as explicit GraphQL query variables (`-F owner=... -F name=...`, exactly as
+   `references/github-api-mechanics.md`'s `reviewThreads` query already does) rather than an
+   env-var-prefixed invocation whose interaction with this skill's own `Bash(gh api graphql:*)` grant
+   has not been verified. Per `.claude/rules/recheck-state-before-side-effecting-action.md`, re-check
    `gh pr checks $ARGUMENTS`, `gh pr view $ARGUMENTS --json reviews,comments`, and
    `gh api repos/{owner}/{repo}/pulls/{n}/comments --paginate` (the full inline-thread list — paginated,
    since a PR with enough inline comments to span multiple API pages would otherwise silently lose
@@ -171,18 +174,24 @@ session.
 2. **Classify each finding**: dedup against earlier rounds (`references/round-and-dedup-rules.md`),
    determine which round it belongs to, its severity, and whether one of the three named exceptions
    applies (`references/settings-and-round-budget.md`) — including the pre-existing "too large to fix
-   in-session" case, which never consumes a round-budget slot regardless of which round raised it. A
-   Critical/Major finding on a *new security-relevant gate* additionally triggers
+   in-session" case, which never consumes a round-budget slot regardless of which round raised it.
+   **Severity is the higher of the reviewer's own stated label and what the described defect actually
+   warrants** — a comment self-labeled "nit"/"Minor" never downgrades a finding whose described defect
+   is security-, data-loss-, or correctness-critical; the label is a starting point, not the final
+   word. A Critical/Major finding on a *new security-relevant gate* additionally requires
    `.claude/rules/require-security-review-before-new-gate.md`'s own `security-reviewer` dispatch,
-   independent of which round it's in.
+   independent of which round it's in — this is the calling session's responsibility to invoke (via its
+   own `Agent`/`Skill` access), since this skill's own `allowed-tools` grants no dispatch capability for
+   `security-reviewer` itself.
 3. **Apply the exception, budget, and severity-gate decisions**: check the three named exceptions
    first (`references/settings-and-round-budget.md`'s "Issue-filing is the exception" section) — any
-   applies → Issue path (step 5), regardless of round, never consuming round budget. Otherwise: a
-   Minor/nit finding with `review_findings_severity_gate: true` and nobody explicitly requesting the
-   fix → Decline path (step 6). Otherwise → Fix path (step 4), for every round through
-   `review_findings_max_rounds` — there is no round-based automatic escalation to the Issue path
-   anymore. A finding arriving after the round budget is already exhausted → Fix path if
-   `review_findings_generate_issues` is `false`, Issue path if `true`. **A Critical/Major finding never
+   applies → Issue path (step 5), regardless of round, never consuming the triggered-cycle budget (8a).
+   Otherwise: a Minor/nit finding with `review_findings_severity_gate: true` and nobody explicitly
+   requesting the fix → Decline path (step 6). Otherwise → Fix path (step 4) — this applies to a
+   finding arriving in any round, as long as the triggered-cycle count (8a) hasn't yet exceeded
+   `review_findings_max_rounds`; there is no automatic escalation to the Issue path just for arriving
+   in a later round. A finding arriving after the triggered-cycle budget is already exhausted → Fix
+   path if `review_findings_generate_issues` is `false`, Issue path if `true`. **A Critical/Major finding never
    falls through to a silent "proceeds without it" outcome, on any path** — if it ends up on the Issue
    path (via any of the three exceptions, or `review_findings_generate_issues: true` past the budget),
    step 7's disclosure must additionally surface it as a named merge-blocking risk requiring explicit
@@ -265,10 +274,15 @@ session.
    step indefinitely, and why a raw trigger-string match can't distinguish this skill's own post from
    `codex-review-recovery`'s identical-looking retry comment). Compute it as **1 (round 1's automatic
    CI trigger) plus the number of distinct `<batch-id>` values** found in
-   `<!-- handling-review-findings-trigger:<batch-id> -->` markers across the freshly re-fetched comment
-   list (step 1) — never a count of comments, and never a count of trigger-string matches with no
-   marker. A batch is every comment posted for one Question 1/Question 2 decision (8b); several
-   reviewers sharing one batch-id still count as one cycle, never one per reviewer.
+   `<!-- handling-review-findings-trigger:<batch-id> -->` markers **posted by the account actually
+   running this skill** — resolve that account via `gh api user --jq '.login'` and count a marker only
+   on a comment whose `author.login` matches it; a marker on any other author's comment is never
+   counted, no matter how exactly it matches the format, since the marker's own text is published in
+   this file and forgeable by anyone with repo access — the marker alone is not proof of ownership,
+   only marker-plus-own-authorship together is. Search the freshly re-fetched comment list (step 1) —
+   never a count of comments, and never a count of trigger-string matches with no marker. A batch is
+   every comment posted for one Question 1/Question 2 decision (8b); several reviewers sharing one
+   batch-id still count as one cycle, never one per reviewer.
 
    Below `review_findings_min_rounds`, another cycle is required — proceed without asking whether,
    only which (8b's Question 1 drops its stop option in this case). Between `min_rounds` and
@@ -420,6 +434,12 @@ before each one.
   posting — never assume the tool grant alone is the safety boundary.
 - Never substitutes a settings-derived trigger string directly into a `gh pr comment` command line —
   always via a validated, file-based `--body-file` (Workflow step 8), never inline shell interpolation.
+- `Bash(gh api graphql:*)` grants the entire GraphQL surface (including mutations this skill never
+  intends, like `mergePullRequest`/`deleteRef`) — the narrowest form this repo's `allowed-tools`
+  grammar can express, since it can't limit *which* query/mutation document is sent. The only GraphQL
+  documents this skill ever sends are the verbatim `reviewThreads` query and `resolveReviewThread`
+  mutation from `references/github-api-mechanics.md` — never assume the tool grant alone bounds this to
+  those two operations.
 
 ## Testing & Validation
 
@@ -437,10 +457,14 @@ before each one.
 - "review this diff before I open the PR" → `cross-model-review`
 - "is this PR ready to merge" → `merge-pr`
 
-**Test suite:** `evals/handling-review-findings/evals.json` defines 20 scenarios — see
-`references/testing-scenarios.md`'s scenario list and `testing_validation_coverage`/
-`quality_gates_coverage` fields for the gate-level mapping (8 gates still without eval coverage, listed
-there).
+**Test suite:** `evals/handling-review-findings/evals.json` defines 20 scenarios and carries its own
+`testing_validation_coverage`/`quality_gates_coverage` fields for the gate-level mapping (8 gates still
+without eval coverage, listed there) — see `references/testing-scenarios.md` for the scenario list and
+quality-gates checklist text those fields map against.
+
+**Structural smoke test:** `scripts/smoke_test.py` — re-run after any `SKILL.md` edit; checks
+frontmatter validity, referenced-file existence, `Bash` grant usage, Workflow step-header sequencing,
+and `evals.json` presence.
 
 **Last dated run record:** 2026-08-22 — 100% with_skill pass rate across all 20 evals (iteration 2's 17
 scenarios at 100% vs. 86.6% baseline; iteration 3's 3 newest scenarios, evals 18-20, at 100%,
@@ -461,4 +485,5 @@ pass, matching `cross-model-review`'s own `references/testing-scenarios.md` prec
 | `references/settings-and-round-budget.md` | Full settings semantics, the round-budget/`generate_issues` interaction, the three named exceptions, the reviewer-array shape, the tracked-vs-local trust boundary |
 | `references/github-api-mechanics.md` | Exact reply/resolve/trigger-post command shapes, the GraphQL thread-node bridge, batch resolution, issue traceability payload |
 | `references/testing-scenarios.md` | Scenario list and quality-gates checklist |
+| `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any `SKILL.md` edit |
 | `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 20 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate |

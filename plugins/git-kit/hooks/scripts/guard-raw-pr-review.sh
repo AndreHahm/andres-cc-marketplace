@@ -82,9 +82,20 @@ EOF
   exit 0
 fi
 
+# A malformed-JSON failure here must fail closed, not crash-then-warn: under `set -e`, an unguarded
+# `jq` failure aborts the script before any explicit-deny path runs, and this hook's own "onError":
+# "warn" registration then lets the guarded command through with only a warning -- the same
+# fail-open shape the missing-jq-binary check above already guards against, just one step later.
 INPUT=$(cat)
-TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
-COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+DENY_MALFORMED='{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "git-kit'"'"'s reviewer-action guard could not parse the tool-call input as JSON -- failing closed rather than letting a malformed-input crash silently allow the command through."
+  }
+}'
+TOOL_NAME=$(jq -r '.tool_name // empty' <<< "$INPUT") || { echo "$DENY_MALFORMED"; exit 0; }
+COMMAND=$(jq -r '.tool_input.command // empty' <<< "$INPUT") || { echo "$DENY_MALFORMED"; exit 0; }
 
 if { [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "PowerShell" ]; } || [ -z "$COMMAND" ]; then
   exit 0
@@ -143,13 +154,19 @@ API_RE='(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+api([[:space:]]|$)'
 # these commands.
 REPLIES_RE='(^|[^[:alnum:]_])repos/[^[:space:]]+/pulls/[^[:space:]]+/comments/[^[:space:]]+/replies([^[:alnum:]_-]|$)'
 GRAPHQL_RE='(^|[^[:alnum:]_])graphql([^[:alnum:]_-]|$)'
-if echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+review([[:space:]]|$)'; then
+# Herestrings (<<<), not `echo ... | grep -q`, for every match below: under `set -o pipefail`, a
+# `grep -q` match found early enough to leave `$COMMAND` partly unread can SIGPIPE the `echo` that's
+# still writing it, and pipefail then reports that non-zero exit for the pipeline even though grep
+# itself matched -- an `if`/`elif` condition is exempt from `set -e` aborting on that, so the guard
+# would just silently treat a real match as "no match" and fall through toward `else: exit 0` (allow).
+# A herestring feeds the same text without a second process or a pipe, so there's nothing to SIGPIPE.
+if grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+review([[:space:]]|$)' <<< "$COMMAND"; then
   GH_SUBCOMMAND="gh pr review"
-elif echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+comment([[:space:]]|$)'; then
+elif grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+comment([[:space:]]|$)' <<< "$COMMAND"; then
   GH_SUBCOMMAND="gh pr comment"
-elif echo "$COMMAND" | grep -qE "$API_RE" && echo "$COMMAND" | grep -qE "$REPLIES_RE"; then
+elif grep -qE "$API_RE" <<< "$COMMAND" && grep -qE "$REPLIES_RE" <<< "$COMMAND"; then
   GH_SUBCOMMAND="gh api .../comments/{id}/replies"
-elif echo "$COMMAND" | grep -qE "$API_RE" && echo "$COMMAND" | grep -qE "$GRAPHQL_RE"; then
+elif grep -qE "$API_RE" <<< "$COMMAND" && grep -qE "$GRAPHQL_RE" <<< "$COMMAND"; then
   # Unconditional deny-by-default -- no read-only carve-out. See this file's header comment for
   # why: a substring-matching carve-out here was tried and independently defeated by 3 different
   # reviewers using 4 different techniques, so every `gh api graphql` call is guarded now,
