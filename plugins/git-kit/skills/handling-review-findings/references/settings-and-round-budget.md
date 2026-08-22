@@ -66,6 +66,11 @@ cap how many findings get fixed. Every finding raised within a round this skill 
 decides when this skill stops offering another round and starts leaving that decision to whoever else
 might comment on the PR.
 
+Neither field is validated against the other, so a misconfiguration (`min_rounds` set higher than
+`max_rounds`) is possible. `max_rounds` always wins as the ceiling in that case — see Workflow step
+8's explicit precedence note — so a bad `min_rounds` value can never force a trigger past the
+configured ceiling.
+
 ## `review_findings_generate_issues` and budget exhaustion
 
 This setting matters for exactly one situation: a finding that shows up **after** the round budget is
