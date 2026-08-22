@@ -1,18 +1,14 @@
 ---
 name: codex-review-recovery
 description: >-
-  Recover a stuck "Await Codex review" check (`.github/workflows/await-codex-review.yml`) when the
-  external `chatgpt-codex-connector[bot]` finished its review on Codex's own dashboard but never posted a
-  review or reaction to GitHub — a known GitHub-side write-back gap, not a bug in the workflow itself.
-  Confirms with a human before acting — since only a human can see Codex's own dashboard — then retries
-  the check. Use when the "Await Codex review" check has failed or timed out and the user says Codex
-  already finished on its own dashboard. Not for triggering an initial Codex review (that already happens
-  automatically when a PR is opened non-draft or a draft PR is marked ready for review) and not for
-  diagnosing why Codex hasn't started reviewing at all — this skill only recovers a review that's already
-  done but stuck in GitHub's own signal gap. Not
-  `gh-operations`' generic, ungated `gh run rerun` reference, nor `merge-pr`'s separate
-  `Publish Codex policy result` bypass flow, nor `handling-review-findings`'s triage of what a review
-  actually found.
+  Recover a stuck "Await Codex review" check (`.github/workflows/await-codex-review.yml`) when
+  `chatgpt-codex-connector[bot]` finished reviewing on Codex's own dashboard but never posted back to
+  GitHub — a known write-back gap, not a workflow bug. Confirms with a human first, since only a human
+  can see Codex's dashboard, then retries the check. Use when the check failed or timed out and the
+  user says Codex already finished. Not for triggering an initial Codex review (already automatic on
+  PR-ready or draft→ready) or diagnosing why Codex hasn't started — only for a review that's done but
+  stuck. Not `gh-operations`'s ungated `gh run rerun`, `merge-pr`'s bypass flow, or
+  `handling-review-findings`'s review triage.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR
 allowed-tools: Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh api:*), Bash(date:*), Bash(sleep:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*)
 ---
