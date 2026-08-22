@@ -1,5 +1,5 @@
 {
-  "total_tokens": 18000,
-  "duration_ms": 150000,
+  "total_tokens": 102839,
+  "duration_ms": 112747,
   "model": "claude-sonnet-5"
 }

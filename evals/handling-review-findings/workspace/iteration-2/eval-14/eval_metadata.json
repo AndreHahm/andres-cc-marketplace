@@ -3,7 +3,7 @@
   "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
   "assertions": [
     {
-      "text": "Since `min_rounds` is already satisfied but `max_rounds` isn't, describes asking via AskUserQuestion whether to run another round at all, then (if yes) which reviewer(s)/mode -- not skipping straight to posting",
+      "text": "Since `min_rounds` is already satisfied but `max_rounds` isn't, describes a single AskUserQuestion call carrying two questions -- not a single combined question, not two separate calls, not skipping straight to posting",
       "type": "quality",
       "target": "outputs/decision.md"
     },
@@ -13,12 +13,12 @@
       "target": "outputs/decision.md"
     },
     {
-      "text": "Lists Codex and CodeRabbit each offering a real default-vs-full choice with the exact literal trigger text shown (`@codex review`/`@codex full review`, `@coderabbitai review`/`@coderabbitai full review`), and Devin offering effectively one choice since its two trigger strings are identical (`/devin review`)",
+      "text": "Question 1 is multi-select with one option per enabled reviewer (Codex, CodeRabbit, Devin) plus an explicit \"No further round for now\" option, never exceeding the 4-option cap; Question 2 is single-select with exactly 2 options (\"Default review\"/\"Full review\") applied uniformly to whichever reviewer(s) Question 1 selects -- explicitly not a default-vs-full pair of options per reviewer in Question 1",
       "type": "quality",
       "target": "outputs/decision.md"
     },
     {
-      "text": "States that after the user answers, the chosen trigger string(s) get validated (tracked-ness gate, then regex, then handle-token match) before anything is posted, and that this same answer will be reused for round 3 without asking again",
+      "text": "States that if \"No further round for now\" is selected in Question 1, Question 2's answer is ignored and nothing is posted; and that after both questions are answered, each selected reviewer's resolved trigger string gets validated (tracked-ness gate, then regex, then handle-token match) before anything is posted, with this same decision reused for round 3 without asking again",
       "type": "quality",
       "target": "outputs/decision.md"
     }

@@ -28,12 +28,17 @@
 - The user explicitly says "just file that one, don't fix it now" for a specific finding (exception 1)
   — filed as an issue even though it's well within the round budget and easily fixable.
 - Round 1 is triaged and fully handled; the round budget allows another round — the skill asks once,
-  via `AskUserQuestion`, which enabled reviewer(s) and mode to trigger next, then posts the matching
-  trigger comment(s) and ends its run without polling for the response.
-- Devin is one of the reviewers offered in the trigger-ask — its option shows no default/full
-  distinction, since `default_review_trigger` and `full_review_trigger` resolve to the same string.
-- A reviewer has `enabled: false` in `review_findings_reviewers` — it never appears as an option in the
-  trigger-ask.
+  via a single `AskUserQuestion` call carrying two questions (Q1: which enabled reviewer(s), multi-select;
+  Q2: default or full review profile, single-select), then posts the matching trigger comment(s) per
+  reviewer and ends its run without polling for the response.
+- Devin is one of the reviewers offered in Question 1 — selecting either profile in Question 2 for
+  Devin resolves to the same posted string, since its `default_review_trigger` and
+  `full_review_trigger` are identical; this needs no special case in either question's logic.
+- A reviewer has `enabled: false` in `review_findings_reviewers` — it never appears as an option in
+  Question 1.
+- The user selects "No further round for now" in Question 1 (alone, or alongside a reviewer option) —
+  Question 2's answer is ignored entirely and no trigger comment is posted, regardless of what Question
+  2 says.
 - Round 2's trigger-ask already happened earlier in the conversation; round 2 is now triaged and the
   budget allows round 3 — the skill reuses the earlier answer and posts round 3's trigger comment
   without asking again.
@@ -86,7 +91,13 @@
 - [ ] Workflow step 8's reviewer/mode `AskUserQuestion` fires at most once per conversation — a later
       round's trigger reuses the earlier answer rather than asking again, unless this is a fresh session
       with no memory of an earlier answer.
-- [ ] A reviewer with `enabled: false` never appears as a trigger-ask option.
+- [ ] The trigger-ask is always one `AskUserQuestion` call carrying two questions (reviewer multi-select,
+      then review-profile single-select) — never a single combined question offering a default-vs-full
+      pair per reviewer, and never two separate `AskUserQuestion` calls.
+- [ ] Selecting "No further round for now" in Question 1 always overrides any other selection in that
+      same question and skips Question 2's answer entirely — no trigger comment is posted regardless of
+      what Question 2 says.
+- [ ] A reviewer with `enabled: false` never appears as a Question 1 option.
 - [ ] A reviewer whose `name` field fails `^[a-z][a-z0-9_-]{0,31}$` is excluded from the trigger-ask
       before its trigger string is checked at all — its `name` is never substituted into the
       handle-token regex or a scratchpad filename unvalidated.

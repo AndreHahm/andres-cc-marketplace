@@ -320,28 +320,35 @@ session.
 
    Only a reviewer entry that survives all three steps can appear in the `AskUserQuestion` below.
 
-   **The reviewer/mode choice, and the exact validated string behind it, are fixed once per
+   **The reviewer(s)/mode choice, and the exact validated string(s) behind it, are fixed once per
    conversation, not re-derived once per round.** If this conversation hasn't already asked which
-   reviewer(s) and mode to use for the rounds still to come, ask now via a single `AskUserQuestion`
-   call, multi-select, one option per reviewer entry that survived validation above plus an explicit
-   "no round now" option — never more than 4 options total, matching `AskUserQuestion`'s own per-question
-   cap (verified: its schema caps `options` at `maxItems: 4`). **Each reviewer option always shows its
-   `default_review_trigger` mode, never a separate default-vs-full pair of options for the same
-   reviewer** — with 3 reviewers, offering both modes for even one of them (let alone all) risks
-   exceeding the 4-option cap, and the cap is per-question, not a soft guideline to work around by
-   inventing a second question inline. A user who wants a full review instead of a reviewer's default
-   says so in their answer (`AskUserQuestion` always accepts free-form "Other" text, e.g. "Codex, but
-   full review") — substitute that reviewer's already-validated `full_review_trigger` string for the
-   default one in that case, rather than opening a second `AskUserQuestion` call to offer it as a
-   pre-listed choice. A reviewer whose two trigger strings are identical, e.g. Devin, has nothing to
-   switch to either way. Each option's description shows the *exact literal text* that would be
-   posted, not just the reviewer name — the user is confirming a specific string, not a label. Remember
-   both the choice *and* the exact string behind it (including a free-form full-review substitution),
-   and reuse that same string for every later round this run goes on to trigger — don't re-read settings
-   and re-validate from scratch before round 3's trigger just because round 2's already happened, since
-   a settings value could have changed in between and silently diverge from what the user actually
-   confirmed. If a later round needs a reviewer/mode this run hasn't already validated, re-run the
-   three-step check above for it before offering it. A genuinely new session with no memory of an
+   reviewer(s) and mode to use for the rounds still to come, ask now via a single `AskUserQuestion` call
+   carrying **two questions**:
+
+   - **Question 1 — reviewer(s):** multi-select, one option per reviewer entry that survived validation
+     above plus an explicit "No further round for now" option — never more than 4 options total,
+     matching `AskUserQuestion`'s own per-question cap (verified: its schema caps `options` at
+     `maxItems: 4`). Each option's description names the reviewer plainly (not yet the exact trigger
+     text — that depends on Question 2's answer). If "No further round for now" is selected — alone or
+     together with any reviewer option — treat it as authoritative: ignore Question 2's answer entirely
+     and stop here, this run ends with step 7's report as the final word, and nothing further gets
+     posted.
+   - **Question 2 — review profile:** single-select, exactly 2 options, "Default review" / "Full
+     review" — applied uniformly to every reviewer selected in Question 1. This is what keeps the
+     option count within `AskUserQuestion`'s per-question cap even though every reviewer now has two
+     real modes: the profile choice is asked once, as its own question, rather than doubling Question
+     1's option count per reviewer (3 reviewers × 2 modes would be 6 options in one question, well over
+     the cap). For a reviewer whose two trigger strings are identical (Devin), the answer resolves to
+     the same string either way — no special case needed.
+
+   For each reviewer selected in Question 1, resolve its posted string as that reviewer's
+   `default_review_trigger` or `full_review_trigger` (both already validated above) per Question 2's
+   answer. Remember the full decision — which reviewers, and the profile — along with the exact
+   validated string(s) behind it, and reuse it for every later round this run goes on to trigger — don't
+   re-read settings and re-validate from scratch before round 3's trigger just because round 2's already
+   happened, since a settings value could have changed in between and silently diverge from what the
+   user actually confirmed. If a later round needs a reviewer this run hasn't already validated, re-run
+   the three-step check above for it before offering it. A genuinely new session with no memory of an
    earlier answer asks fresh — see `references/round-and-dedup-rules.md`'s "No persisted round-counter
    file" section for why.
 
@@ -430,25 +437,31 @@ gate-level mapping, including four gates this suite still doesn't exercise (stat
 per-call marker discipline, a disabled reviewer's exclusion, and step 8 never firing past `max_rounds`).
 
 **Last dated run record:** 2026-08-22 — `skill-tester` Full Pipeline (iteration 2): 100% with_skill
-pass rate vs. 88.0% baseline across all 17 evals (+12.0 percentage points); see
+pass rate vs. 86.6% baseline across all 17 evals (+13.4 percentage points); see
 `evals/handling-review-findings/workspace/iteration-2/benchmark.json` for the full per-eval breakdown.
 The discrimination margin is smaller than iteration 1's (+28.1 points) mostly because several scenario
 prompts are detailed enough that a careful general-purpose baseline reconstructs the right answer by
 close reading alone, without needing the skill's specific rules — a real eval-design weakness worth
-tightening in a future iteration, not a sign the skill itself regressed. Two evals show a genuine,
+tightening in a future iteration, not a sign the skill itself regressed. Three evals show a genuine,
 skill-attributable gap baseline can't close: eval 9 (severity-gate decline — baseline never states the
-thread is left unresolved) and eval 12 (baseline incorrectly resolves both reviewers' threads after
+thread is left unresolved), eval 14 (baseline asks one single-select question with no review-profile
+question at all, and guesses Devin's trigger string wrong — 0.25 vs. with_skill's 1.0, the widest margin
+in the suite), and eval 12 (baseline incorrectly resolves both reviewers' threads after
 filing an issue, contradicting the "deferred findings are never resolved" rule). Eval 14 also surfaced
 a real skill bug caught before shipping: Workflow step 8's original wording implied offering every
 reviewer's default *and* full mode in one multi-select, which exceeds `AskUserQuestion`'s own
-`options` cap (`maxItems: 4`, verified against its schema) for 3 reviewers — fixed by showing only each
-reviewer's default trigger as its option and accepting a full-review request via `AskUserQuestion`'s
-free-form "Other" text instead of a second pre-listed option, the same workaround the eval's own
-with_skill run independently designed. Eval 14's own `with_skill` grading record still marked that
-correctly-designed output down against the retired assertion until a round-1 `chatgpt-codex-connector`
-review finding on PR #101 caught the mismatch (2026-08-22) — corrected the assertion and grading record
-to match the shipped design, which is what moved this run record from 98.5%/0.75-on-eval-14 to the
-100%/1.0 result above; eval 15's `expected_output` had the same class of staleness (asserting
+`options` cap (`maxItems: 4`, verified against its schema) for 3 reviewers — first fixed by showing
+only each reviewer's default trigger as its option and accepting a full-review request via
+`AskUserQuestion`'s free-form "Other" text instead of a second pre-listed option, the same workaround
+the eval's own with_skill run independently designed. Eval 14's own `with_skill` grading record still
+marked that correctly-designed output down against the retired assertion until a round-1
+`chatgpt-codex-connector` review finding on PR #101 caught the mismatch (2026-08-22) — corrected the
+assertion and grading record to match the then-shipped design. That free-form-"Other" design was itself
+superseded the same day, on direct user feedback, by the current **two-question** design (Question 1:
+reviewer multi-select; Question 2: default-vs-full review profile, single-select) — a cleaner way to
+stay within the 4-option cap without pushing the full-review request into unstructured free text. Eval
+14 was rewritten a second time to test the two-question design and re-run; eval 15's `expected_output`
+had a separate class of staleness (asserting
 re-validation of an already-confirmed trigger string that Workflow step 8 explicitly says not to
 re-validate) and was corrected the same pass, with no change to its pass rate. The old iteration-1 result (100% vs. 71.9%, built on the retired
 "2-round cap, round 3+ always becomes an issue" policy) is superseded and no longer reflects this

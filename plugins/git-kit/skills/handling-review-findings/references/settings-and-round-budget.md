@@ -129,10 +129,12 @@ fields resolve to the same string instead of needing a special case anywhere ste
 `enabled: false` removes that reviewer from step 8's `AskUserQuestion` options entirely — it's not
 offered as a choice, not merely defaulted-away. Adding a fourth reviewer to the array is a matter of
 appending a fourth object with the same four fields — the settings shape itself doesn't assume exactly
-three reviewers. **The trigger-ask's own option count does, though**: Workflow step 8 offers one option
-per *enabled* reviewer plus a mandatory "no round now" option, capped at `AskUserQuestion`'s real
-`maxItems: 4`. With all three seeded reviewers enabled, that's already exactly 4 — a fourth *enabled*
-reviewer would push the question to 5 options, which the tool rejects. A fourth reviewer entry with
+three reviewers. **Question 1's own option count does, though**: Workflow step 8 offers one option
+per *enabled* reviewer plus a mandatory "No further round for now" option, capped at `AskUserQuestion`'s
+real `maxItems: 4`. With all three seeded reviewers enabled, that's already exactly 4 — a fourth
+*enabled* reviewer would push Question 1 to 5 options, which the tool rejects. Question 2 (the
+default/full review-profile choice) is unaffected by reviewer count — it's always exactly 2 options,
+asked once, applying uniformly to every reviewer selected in Question 1. A fourth reviewer entry with
 `enabled: false` is fine (it's simply never offered); enabling a fourth reviewer requires first disabling
-one of the other three, or reworking step 8 to batch/paginate its options — neither of which this skill
-currently does.
+one of the other three, or reworking Question 1 to batch/paginate its options — neither of which this
+skill currently does.
