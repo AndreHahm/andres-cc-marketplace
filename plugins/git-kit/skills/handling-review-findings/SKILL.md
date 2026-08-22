@@ -254,15 +254,28 @@ session.
    readiness gate — required status checks, no outstanding `CHANGES_REQUESTED` review, any branch
    protection "require conversation resolution" setting — still applies in full regardless of this
    workflow's fixed/filed/declined classification.
-8. **Trigger the next round, if the budget allows one.** After step 7's report: below
-   `review_findings_min_rounds`, another round is required — proceed without asking whether, only
+8. **Trigger the next round, if the budget allows one.** After step 7's report, first resolve the
+   **triggered-cycle count** this step actually bounds — see "Triggered-cycle count vs. round" in
+   `references/round-and-dedup-rules.md` for why this is a distinct number from the fix-driven-push
+   "round" used everywhere else in this Workflow: a cycle that comes back clean, or produces only
+   declined/filed findings, never closes a round (no fix-driven push happens), so counting by round here
+   would let this step re-trigger the same still-open round indefinitely, never reaching `max_rounds`.
+   Resolve the count as **1 (round 1's automatic CI trigger) plus the number of this skill's own trigger
+   comments already posted to this PR** — from the freshly re-fetched comment list (step 1), count every
+   top-level `gh pr comment` whose body, verbatim, equals one of `review_findings_reviewers`'
+   `default_review_trigger`/`full_review_trigger` strings (this step's own posts contain nothing else in
+   the body, which is what makes this reliably re-derivable rather than requiring a persisted counter —
+   consistent with "No persisted round-counter file"). Each such comment counts once toward the budget
+   regardless of what its review produced — fixed findings, filed issues, declines, or nothing at all.
+
+   Below `review_findings_min_rounds`, another cycle is required — proceed without asking whether, only
    which. Between `min_rounds` and `review_findings_max_rounds`, ask via `AskUserQuestion` whether to
-   run another round at all; on "no," stop here — this run ends with step 7's report as the final
+   run another cycle at all; on "no," stop here — this run ends with step 7's report as the final
    word, and nothing further gets posted. At `max_rounds`, skip this step entirely — a further finding
    that shows up anyway is handled per `review_findings_generate_issues` (Settings) the next time this
    skill is invoked. **`max_rounds` is the authoritative ceiling if the two settings are ever
    misconfigured with `min_rounds` set higher than `max_rounds`** — treat "at `max_rounds`" as taking
-   precedence over "below `min_rounds`" whenever both would otherwise apply to the same completed-round
+   precedence over "below `min_rounds`" whenever both would otherwise apply to the same triggered-cycle
    count, so a bad `min_rounds` value can never push a proactive trigger past the configured ceiling.
 
    **Resolve and validate every trigger string before anything is offered as an option — this order
@@ -270,7 +283,18 @@ session.
    `git-kit.settings.json` or an overriding `.claude/git-kit.local.json`) is settings data, not a value
    this skill authored — treat it the same way step 1 treats `$ARGUMENTS`: never substitute it into a
    shell command unvalidated, and never let a later check's pass silently stand in for an earlier
-   check's fail. For each reviewer entry, in this exact order:
+   check's fail. **The entry's own `name` field needs this same discipline** — it's substituted directly
+   into the handle-token regex below (`^<name>[a-z0-9]*$`) and into a scratchpad filename
+   (`trigger-<name>.txt`); an unvalidated `name` containing regex metacharacters could corrupt that
+   pattern's matching behavior, and one containing a path separator (`/`, `\`) or `..` could write the
+   scratchpad file outside its intended directory. Validate `name` itself, for every reviewer entry,
+   before doing anything else with it: it must match `^[a-z][a-z0-9_-]{0,31}$` (lowercase identifier,
+   starts with a letter, digits/underscore/hyphen only, 32 chars max — matching the seeded
+   `codex`/`coderabbit`/`devin` convention). A reviewer entry whose `name` fails this check is excluded
+   from this round's options entirely, the same as a reviewer that fails every fallback in step 3 below
+   — never attempt to sanitize or truncate an invalid `name` into something usable.
+
+   For each reviewer entry that passes the `name` check, validate its trigger string in this exact order:
 
    1. **Tracked-ness gate first, before any content check.** If `.claude/git-kit.local.json` exists and
       is itself tracked by git (`git ls-files --error-unmatch .claude/git-kit.local.json` exits `0`),
@@ -405,8 +429,8 @@ updated scenario list and `testing_validation_coverage`/`quality_gates_coverage`
 gate-level mapping, including four gates this suite still doesn't exercise (state re-fetch timing,
 per-call marker discipline, a disabled reviewer's exclusion, and step 8 never firing past `max_rounds`).
 
-**Last dated run record:** 2026-08-22 — `skill-tester` Full Pipeline (iteration 2): 98.5% with_skill
-pass rate vs. 88.0% baseline across all 17 evals (+10.5 percentage points); see
+**Last dated run record:** 2026-08-22 — `skill-tester` Full Pipeline (iteration 2): 100% with_skill
+pass rate vs. 88.0% baseline across all 17 evals (+12.0 percentage points); see
 `evals/handling-review-findings/workspace/iteration-2/benchmark.json` for the full per-eval breakdown.
 The discrimination margin is smaller than iteration 1's (+28.1 points) mostly because several scenario
 prompts are detailed enough that a careful general-purpose baseline reconstructs the right answer by
@@ -420,7 +444,13 @@ reviewer's default *and* full mode in one multi-select, which exceeds `AskUserQu
 `options` cap (`maxItems: 4`, verified against its schema) for 3 reviewers — fixed by showing only each
 reviewer's default trigger as its option and accepting a full-review request via `AskUserQuestion`'s
 free-form "Other" text instead of a second pre-listed option, the same workaround the eval's own
-with_skill run independently designed. The old iteration-1 result (100% vs. 71.9%, built on the retired
+with_skill run independently designed. Eval 14's own `with_skill` grading record still marked that
+correctly-designed output down against the retired assertion until a round-1 `chatgpt-codex-connector`
+review finding on PR #101 caught the mismatch (2026-08-22) — corrected the assertion and grading record
+to match the shipped design, which is what moved this run record from 98.5%/0.75-on-eval-14 to the
+100%/1.0 result above; eval 15's `expected_output` had the same class of staleness (asserting
+re-validation of an already-confirmed trigger string that Workflow step 8 explicitly says not to
+re-validate) and was corrected the same pass, with no change to its pass rate. The old iteration-1 result (100% vs. 71.9%, built on the retired
 "2-round cap, round 3+ always becomes an issue" policy) is superseded and no longer reflects this
 skill's current routing logic; see `evals/handling-review-findings/workspace/iteration-1/benchmark.json`
 for that historical breakdown only. The iteration-1 supplementary pressure-test variant is stale for
@@ -451,6 +481,22 @@ deserves its own dedicated review rather than a side effect of this narrower rou
 now recorded in that hook's own header comment as a disclosed residual rather than left as an
 undocumented gap.
 
+**Round-1 GitHub review findings on PR #101 (2026-08-22):** the automated round-1 review that ran when
+this PR went ready-for-review found two more real gaps neither prior `security-reviewer` pass caught,
+both fixed the same round: (1) a reviewer entry's `name` field was substituted into the handle-token
+regex (`^<name>[a-z0-9]*$`) and a scratchpad filename (`trigger-<name>.txt`) with no validation of its
+own — an unvalidated `name` could corrupt the regex or write outside the intended scratchpad directory;
+fixed by requiring `name` to match `^[a-z][a-z0-9_-]{0,31}$` before it's used anywhere, excluding the
+reviewer entirely otherwise. (2) The round-budget check conflated the fix-driven-push "round" definition
+with the triggered-cycle count `min_rounds`/`max_rounds` actually bound — a cycle that comes back clean
+or produces only declined/filed findings never closes a round, so counting by round could let step 8
+re-trigger the same still-open round indefinitely without ever reaching `max_rounds`; fixed by deriving
+the triggered-cycle count from re-fetched trigger-comment history instead (see "Triggered-cycle count
+vs. round" in `references/round-and-dedup-rules.md`). Two eval-integrity findings from the same round are
+covered above under the run-record note (eval 14/15's stale grading records). One Devin finding
+(`references/settings-and-round-budget.md` overclaiming that a fourth reviewer needs no special
+handling) was also corrected to state the trigger-ask's real 4-option ceiling accurately.
+
 **Concrete scenarios, the full quality-gates checklist, and the round-cap/dedup edge cases** live in
 `references/testing-scenarios.md`. This isn't forced by R13's line-count threshold (this file has
 headroom below it) — it's a deliberate choice matching `cross-model-review`'s own
@@ -465,4 +511,4 @@ of the main procedure a reader follows on every triage pass.
 | `references/settings-and-round-budget.md` | Full settings semantics, the round-budget/`generate_issues` interaction, the three named exceptions, the reviewer-array shape, the tracked-vs-local trust boundary |
 | `references/github-api-mechanics.md` | Exact reply/resolve/trigger-post command shapes, the GraphQL thread-node bridge, batch resolution, issue traceability payload |
 | `references/testing-scenarios.md` | Scenario list and quality-gates checklist |
-| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 17 scenarios, 98.5% with_skill pass rate (iteration 2) |
+| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 17 scenarios, 100% with_skill pass rate (iteration 2) |

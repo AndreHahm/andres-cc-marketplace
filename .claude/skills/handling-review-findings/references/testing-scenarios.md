@@ -39,6 +39,15 @@
   without asking again.
 - A fresh session (no memory of an earlier trigger-ask answer) is asked to triage what turns out to be
   round 3 — it asks the reviewer/mode question again, since there's no persisted state to reuse.
+- A reviewer entry's `name` field is malformed (contains uppercase, a regex metacharacter, or a path
+  separator, e.g. `name: "co.dex"` or `name: "co/dex"`) — that entry is excluded from the trigger-ask
+  entirely, before its trigger string is ever checked, rather than being substituted into the
+  handle-token regex or a scratchpad filename unvalidated.
+- Round 1 comes back clean (no findings at all, or only declined/filed ones) — no fix-driven push
+  happens, so the round never closes under `references/round-and-dedup-rules.md`'s fix-driven-push
+  definition. The trigger-ask's budget check still correctly treats this as one triggered cycle (via
+  the re-derived trigger-comment count), not as "round 1 still incomplete," and doesn't re-offer a
+  trigger-ask indefinitely for the same still-open round.
 - `review_findings_max_rounds` is reached — the skill's report states plainly that no further round
   will be triggered, and Workflow step 8 is skipped entirely (not silently treated as "no more
   findings").
@@ -78,6 +87,14 @@
       round's trigger reuses the earlier answer rather than asking again, unless this is a fresh session
       with no memory of an earlier answer.
 - [ ] A reviewer with `enabled: false` never appears as a trigger-ask option.
+- [ ] A reviewer whose `name` field fails `^[a-z][a-z0-9_-]{0,31}$` is excluded from the trigger-ask
+      before its trigger string is checked at all — its `name` is never substituted into the
+      handle-token regex or a scratchpad filename unvalidated.
+- [ ] The triggered-cycle count Workflow step 8 compares against `min_rounds`/`max_rounds` is derived
+      from re-fetched state (1 for round 1's automatic trigger, plus this skill's own trigger comments
+      found in the current comment list) — never from the fix-driven-push "round" definition, which
+      would never close (and never let the count reach `max_rounds`) for a cycle that comes back clean
+      or produces only declined/filed findings.
 - [ ] Step 8 never fires at all once `review_findings_max_rounds` is reached.
 - [ ] Step 8 never polls for the newly-triggered review's response — it ends this skill's run for the
       current round once the trigger comment(s) are posted.
