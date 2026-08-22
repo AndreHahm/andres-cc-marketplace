@@ -71,8 +71,8 @@
   options, with no "No further round for now" option at all, so the floor can't be defeated by selecting
   it.
 - `review_findings_max_rounds` is reached — the skill's report states plainly that no further round
-  will be triggered, and Workflow step 8 is skipped entirely (not silently treated as "no more
-  findings").
+  will be triggered, and SKILL.md's Workflow step 8 is skipped entirely (not silently treated as "no
+  more findings").
 - `review_findings_severity_gate: true`, a Minor/nit finding in round 1, nobody asked for it explicitly
   — declined (reply only), never fixed, never filed.
 - `review_findings_severity_gate: true`, same Minor/nit finding, but the user explicitly asks for it to

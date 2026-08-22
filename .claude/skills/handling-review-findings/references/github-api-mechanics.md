@@ -132,13 +132,12 @@ characters a shell interprets.
 
 **Every trigger comment's body also carries the batch marker**, `<!--
 handling-review-findings-trigger:<batch-id> -->`, on its own line after a blank line following the
-trigger text — this is what lets Workflow step 8's triggered-cycle count tell this skill's own posts
-apart from `codex-review-recovery`'s identical-looking retry comment (see
-`references/round-and-dedup-rules.md`'s "Triggered-cycle count vs. round" for why a marker is required,
-not optional). `<batch-id>` is generated once per decision (`date -u +%Y%m%dT%H%M%SZ`) and reused
-verbatim across every reviewer's comment for that same decision — never regenerated per reviewer, or
-the count would treat a multi-reviewer selection as multiple cycles instead of one. Write each
-reviewer's validated string plus this marker to its **own** scratchpad file — `trigger-<name>.txt`,
+trigger text — a plain trigger-string match can't tell this skill's own post apart from
+`codex-review-recovery`'s identical-looking retry comment, so the marker (plus the author-ownership
+check in SKILL.md's Workflow step 8a) is what actually identifies a comment as this skill's own. The
+`<batch-id>` generation rule and the full counting mechanism live in SKILL.md's Workflow step 8a/8d —
+not restated here. Write each reviewer's validated string plus this marker to its **own** scratchpad
+file — `trigger-<name>.txt`,
 written immediately before that specific reviewer's post, never one shared filename reused across
 reviewers (a shared name risks a stale prior reviewer's body surviving a failed or out-of-order write
 and getting posted under the next reviewer's marker instead) — then post with `--body-file`:

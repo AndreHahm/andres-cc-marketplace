@@ -4,7 +4,7 @@
 - [Triggered-cycle count vs. round](#triggered-cycle-count-vs-round)
 - [No persisted round-counter file](#no-persisted-round-counter-file)
 - [Dedup mechanism: file+line match is a candidate signal, never sufficient by itself](#dedup-mechanism-fileline-match-is-a-candidate-signal-never-sufficient-by-itself)
-- [Scope-based deferral is a separate, unlimited axis from the round budget](#scope-based-deferral-is-a-separate-unlimited-axis-from-the-round-budget)
+- [Scope-based deferral is a separate, unlimited axis from the triggered-cycle budget](#scope-based-deferral-is-a-separate-unlimited-axis-from-the-triggered-cycle-budget)
 - [Hard Cap exception: Critical/Major findings never silently proceed](#hard-cap-exception-criticalmajor-findings-never-silently-proceed)
 - [Severity-gate interaction](#severity-gate-interaction)
 - [Already-fixed threads get resolved with commit-SHA evidence; deferred ones don't get resolved at all](#already-fixed-threads-get-resolved-with-commit-sha-evidence-deferred-ones-dont-get-resolved-at-all)
@@ -26,8 +26,8 @@ confirm the fix itself doesn't introduce a new Critical/Major problem — is **n
 part of finishing the round already in progress, and its own findings are fixed within that same round
 regardless of the cap (this stays consistent with
 `.claude/rules/require-security-review-before-new-gate.md`, which mandates resolving Critical/Major
-findings before a new gate ships — that mandate isn't suspended by the round budget). Without this
-distinction, a thorough self-review pass could burn through the round budget before an external
+findings before a new gate ships — that mandate isn't suspended by the triggered-cycle budget). Without
+this distinction, a thorough self-review pass could burn through the triggered-cycle budget before an external
 reviewer even sees the diff once.
 
 **The round counter is per-PR, not per-reviewer.** Two tools reviewing the same head SHA in the same
@@ -49,11 +49,11 @@ fix and therefore no push. If step 8 counted by round in that case, the still-op
 register as "completed," and the budget check would never see a count reach `max_rounds` — step 8 would
 keep re-triggering the same round indefinitely, the exact ceiling it exists to enforce.
 
-Step 8 instead derives the triggered-cycle count from re-fetched state directly: 1 for round 1's
-automatic CI trigger, plus the number of distinct trigger *batches* this skill has posted to the PR —
-never a raw count of matching-text comments. This stays consistent with "No persisted round-counter
-file" below: the count is re-derived from GitHub state every time, not stored anywhere, and it advances
-the moment step 8 posts a trigger batch — independent of whether that cycle's review ever produces a fix.
+SKILL.md's Workflow step 8a is the single source of truth for exactly how the count is derived (the
+`<batch-id>` marker, its generation, and the counting rule) — not restated here, to avoid the drift
+risk of two copies of an executable rule falling out of sync. This section instead records *why* a
+naive version of that mechanism doesn't work, since that rationale is what a future edit needs to
+preserve:
 
 **A raw verbatim-body match against the reviewer's trigger string is not enough to identify "this
 skill's own trigger," and is not enough to count a multi-reviewer selection as one cycle either** — two
@@ -72,15 +72,8 @@ related gaps a round-2 review on PR #101 found in the original version of this d
    reviewer — a raw per-comment count would let a single 2-reviewer selection consume 2 of the budget's
    slots.
 
-Both are closed the same way: every trigger comment's body carries a marker,
-`<!-- handling-review-findings-trigger:<batch-id> -->`, appended after the reviewer's own trigger text.
-`<batch-id>` is generated once per Workflow-step-8 decision (a UTC timestamp,
-`date -u +%Y%m%dT%H%M%SZ`) and reused verbatim across every comment that decision posts. The
-triggered-cycle count is the number of *distinct* `<batch-id>` values found in the marker across the
-freshly re-fetched comment list — never a count of comments, and never a count of trigger-string
-matches with no marker. A comment lacking the marker (a `codex-review-recovery` retry, a human's
-coincidentally identical text) is never counted, no matter how closely its body matches a configured
-trigger string; a batch of several reviewers sharing one `<batch-id>` counts once.
+Both are closed by the batch-id marker mechanism in SKILL.md's Workflow step 8a/8d — see there for the
+exact marker format, generation rule, and author-ownership check.
 
 **Disclosed gap:** whether an HTML-comment marker trailing the mention text (`@codex review`, etc.)
 changes how Codex/CodeRabbit/Devin's own connectors parse the trigger has not been live-verified against
@@ -123,21 +116,23 @@ A finding is "new" only if it wasn't already raised (and accepted-and-fixed, or 
 an earlier round. A reviewer re-raising the same finding on unchanged code doesn't reset or advance the
 counter for that specific finding.
 
-## Scope-based deferral is a separate, unlimited axis from the round budget
+## Scope-based deferral is a separate, unlimited axis from the triggered-cycle budget
 
-Scope-based deferral (too large to fix in-session) is one of the three named exceptions that route a
-finding to the Issue path regardless of round — see `references/settings-and-round-budget.md`'s
-"Issue-filing is the exception" section (Exception 3) for the full rule and judgment guidance. The
-short version: it can happen in any round, including round 1, and never consumes a round-budget slot —
-the round budget only governs how many review *cycles* this skill proactively triggers, not how many
-oversized findings get punted to issues along the way.
+Scope-based deferral is Exception 3 of the three named exceptions in
+`references/settings-and-round-budget.md`'s "Issue-filing is the exception" section: the finding is
+real and in-scope but needs work beyond a same-session fix (real data-flow analysis, a multi-file
+architectural change) — a judgment call, not a size threshold, and reserved for findings that need
+capabilities this session doesn't have, not ones that are merely inconvenient. It routes to the Issue
+path regardless of round and can happen in any round, including round 1, never consuming a
+triggered-cycle slot — the cycle budget only governs how many review *cycles* this skill proactively
+triggers, not how many oversized findings get punted to issues along the way.
 
 ## Hard Cap exception: Critical/Major findings never silently proceed
 
 Filing an issue instead of fixing never applies to a Critical or Major finding on the strength of the
 Issue path alone. A Critical/Major finding may still end up *filed* as an issue — via one of the three
 named exceptions in `references/settings-and-round-budget.md`, or via `review_findings_generate_issues:
-true` once the round budget is exhausted — but the PR does not proceed to merge on the strength of that
+true` once the triggered-cycle budget is exhausted — but the PR does not proceed to merge on the strength of that
 filing alone. Filing the issue and reporting it (Workflow step 7) is not itself an acceptance decision;
 merging with a known, unfixed Critical/Major finding requires a separate, explicit `AskUserQuestion`
 confirming the risk is accepted, before `merge-pr` is invoked. This invariant survives this skill's

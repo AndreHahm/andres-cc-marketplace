@@ -278,6 +278,9 @@ See `## Instructions` below for the full step-by-step with exact commands and st
   triggers automatically
 - "the Codex review found issues, can you fix them" → `handling-review-findings`; that's addressing
   review feedback, not a stuck check
+- "the round budget says trigger another review round" → `handling-review-findings`'s own proactive
+  round trigger, not this skill's stuck-check retry, even though both post the same `@codex review`
+  text
 
 **Quality gates:**
 - [ ] Every `gh pr`/`gh api` command from step 2 onward always uses `<owner>/<repo>` derived from step 1's
