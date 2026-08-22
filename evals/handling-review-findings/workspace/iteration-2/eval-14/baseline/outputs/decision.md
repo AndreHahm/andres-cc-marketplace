@@ -1,97 +1,59 @@
-# Next-Round Decision — PR #170, after Round 1
+# PR #170 — Next-Round Decision (Round 1 → Round 2)
 
 ## Situation
 
-- Round 1 was auto-triggered by CI when PR #170 went ready-for-review.
-- Round 1's single finding is fully triaged: fixed, verified, replied to, and resolved.
-- `review_findings_min_rounds` = 1 → already satisfied.
-- `review_findings_max_rounds` = 3 → up to two more rounds (2 and 3) are still allowed.
-- All three seed reviewers (Codex, CodeRabbit, Devin) are enabled, each with its default
-  tracked trigger string.
-- This is the first next-round decision point in this conversation — no prior answer exists
-  to reuse, so the user must be asked now. Per the eval's framing, whatever the user answers
-  here is meant to govern the decision for all remaining possible rounds (2 and 3), not just
-  the immediate next one — I would not re-ask this same question again after round 2 unless
-  something material changes (e.g. a new finding reopens the round, or a reviewer config
-  changes).
+- Round 1 was triggered automatically by CI when the PR went ready-for-review.
+- Round 1 produced exactly one finding, and it is now fully triaged (fixed, verified, replied, resolved).
+- `review_findings_min_rounds = 1` → already satisfied by round 1. Nothing *requires* another round.
+- `review_findings_max_rounds = 3` → two more rounds are still allowed, but not mandated.
+- All three seed reviewers (Codex, CodeRabbit, Devin) are enabled with their default trigger strings.
+- This is the first next-round decision point in this conversation — no prior answer to fall back on, so it must be asked rather than assumed.
 
-## Why ask at all
+Because the config only bounds the decision (min satisfied, max not reached) without forcing an outcome either way, this is a genuine judgment call that belongs to the user, not something to resolve silently. Proceeding to trigger round 2 on my own would be assuming the user wants more review cycles than the minimum; stopping on my own would be assuming they're satisfied — both are real decisions, not mechanical consequences of the settings.
 
-The minimum round requirement is already met, so nothing *forces* another round. But the
-config still permits up to 3 rounds, and the user may want either:
-- to stop now since the bar (`min_rounds`) is cleared and the one finding is resolved, or
-- to keep going and re-request review from all three reviewers, on the theory that a fresh
-  pass after fixes sometimes surfaces new findings (either against the fix itself or elsewhere
-  in the diff), up to the configured ceiling of 3 rounds.
+## What I would ask
 
-This is exactly the kind of judgment call that isn't safe to make silently — it changes
-whether more automated reviewer activity (and possibly more rounds of fixes) happens against
-a PR the user may consider done. So I would surface it via `AskUserQuestion` rather than just
-picking a default.
+I would use a single `AskUserQuestion` call (not raw free-text) with one question, since the choice is a single fork in the road and fits well within the 4-option-per-question cap.
 
-## What I would ask (AskUserQuestion — not actually called, per the prompt's instruction)
+**Question header:** "Trigger round 2 of review?"
 
 **Question text:**
+"Round 1 is fully resolved (1 finding fixed and verified). The minimum required rounds (1) is already satisfied, and up to 2 more rounds are allowed (max 3). Do you want to request another review round now, and if so, from whom?"
 
-> Round 1 on PR #170 is fully resolved and the minimum required rounds (1) is already
-> satisfied. Up to 2 more rounds are still allowed (max is 3). How should I proceed for the
-> rest of this review cycle?
+**Options (exact option labels shown to the user):**
 
-**Header:** `Next round?`
+1. **"Yes — all 3 reviewers (Codex, CodeRabbit, Devin)"**
+   Description shown under the option: Re-requests review from every enabled reviewer by posting one trigger comment per reviewer on PR #170.
 
-**Options presented (single-select):**
+2. **"Yes — pick specific reviewers"**
+   Description: Continue to round 2, but first choose which of the 3 enabled reviewers to re-request (opens a follow-up question rather than assuming "all").
 
-1. **Label:** `Trigger round 2`
-   **Description:** Re-request a fresh review from all three enabled reviewers now, and keep
-   auto-triggering another round the same way after each one resolves, until either a round
-   comes back clean, or round 3 (the max) completes — whichever happens first. I will not ask
-   again at each round boundary; this answer applies for the rest of the cycle.
-   **Literal text that would be posted to PR #170 to trigger round 2** (one PR comment per
-   reviewer's default tracked trigger string):
-   - `@codex review`
-   - `@coderabbitai review`
-   - `@devin review`
+3. **"No — stop here, round 1 was enough"**
+   Description: The minimum-rounds requirement is already met; close out the review-findings workflow for this PR without requesting further rounds.
 
-2. **Label:** `Stop at round 1`
-   **Description:** Minimum rounds is already satisfied and the only finding from round 1 is
-   resolved — end the review-findings cycle here. No further reviewer-trigger comments are
-   posted, and rounds 2–3 are not used even though the config allows them.
-   **Literal text posted:** none — no PR comment is made.
+4. **"Not yet — decide later"**
+   Description: Leave the PR as-is for now; don't post any trigger comments or close the loop. Ask again next time this decision needs to be made.
 
-3. **Label:** `Ask again next time`
-   **Description:** Trigger round 2 now the same way as option 1, but instead of auto-continuing
-   through round 3, ask this same question again once round 2's findings are fully triaged. Use
-   this if you want a checkpoint before every additional round rather than a standing decision
-   for the rest of the cycle.
-   **Literal text posted for round 2 (same as option 1):**
-   - `@codex review`
-   - `@coderabbitai review`
-   - `@devin review`
+I'm keeping "pick specific reviewers" as its own option rather than trying to cram a reviewer-multiselect into this same question, because `AskUserQuestion` options are single-select per question, and per this repo's own convention, a list of related-but-distinct decisions should be asked sequentially, not batched into one overloaded prompt. If the user picks option 2, the very next step is a second, separate `AskUserQuestion` listing Codex / CodeRabbit / Devin as up-to-4 individually toggleable options (or three yes/no questions, if the harness's multiselect support is uncertain) — asked only after this first question resolves, not in parallel with it.
 
-(I'm keeping this to 3 options, each with a short label and a one-line description, matching
-`AskUserQuestion`'s normal shape; only options 1 and 3 involve posting anything to the PR.)
+## Literal trigger-comment text (assumption, stated explicitly)
+
+I do not have access to this skill's actual settings file, so the reviewer trigger strings below are my own general, publicly-documented-convention assumption, not a verified value from `review_findings_reviewers`. If the real settings file defines different literal strings, those should be used instead — this is exactly the kind of tool/API-behavior assumption that should be verified against the real source before being relied on, and I'm flagging it rather than presenting it as confirmed:
+
+- **Codex:** `@codex review`
+- **CodeRabbit:** `@coderabbitai review`
+- **Devin:** `@devin review`
+
+If option 1 ("all 3 reviewers") is chosen, I would post three separate PR comments — one per reviewer, each containing only that reviewer's own trigger string — rather than one combined comment mentioning all three. Reviewer bots typically key off their own exact mention pattern; bundling three mentions into a single comment risks one or more bots not recognizing the trigger, and it also keeps each reviewer's subsequent findings comment easy to attribute to a specific trigger event in the PR timeline.
 
 ## What I would do after the user answers
 
-- **If "Trigger round 2":** Post the three trigger comments above to PR #170 in one round,
-  wait for all three reviewers to respond, triage whatever findings come back (fix/verify/
-  reply/resolve each, same as round 1), and then — without asking again — repeat the same
-  trigger-and-triage cycle for round 3 only if round 2 comes back with findings that required
-  changes and the round count hasn't yet hit the max (3). If round 2 comes back with nothing
-  to fix (a clean pass) or round 3's cap is reached, stop and report the final state.
-- **If "Stop at round 1":** Take no further reviewer action on PR #170. Report that the
-  review-findings cycle is complete (min rounds satisfied, round 1's finding resolved, no
-  further rounds requested), and move on to whatever the user's next instruction is (e.g.
-  merging, or handing off to `create-pr`/`merge-pr` follow-up steps).
-- **If "Ask again next time":** Post the same three trigger comments for round 2, triage its
-  findings, and then re-present this same three-option question (updated to reflect "round 2
-  resolved, 1 round remaining") before deciding whether round 3 happens.
+- **Option 1 (all 3):** Immediately before posting, re-check the PR's actual current state (head SHA, whether it's still open and not already merged/closed, and that no other actor has posted a conflicting re-review request since round 1 closed) rather than trusting the round-1-complete status alone — that status could be stale by the time the trigger comments actually go out. Then post the three trigger comments, record that round 2 has been requested, and move into a wait/poll step for each reviewer's response. Once findings come back (or a reviewer reports no findings), resume the same triage loop used for round 1 — fix/verify/reply/resolve each finding — and only then re-ask this same next-round question, this time checking round count (2) against `review_findings_max_rounds` (3).
 
-## Assumptions made explicit
+- **Option 2 (pick specific reviewers):** Ask the follow-up reviewer-selection question described above, then proceed exactly as option 1 but only for the reviewers selected — posting only their trigger comment(s).
 
-- The exact default trigger strings for Codex, CodeRabbit, and Devin are drawn from general,
-  publicly documented conventions for these tools (`@codex review`, `@coderabbitai review`,
-  `@devin review`) since this is a simulated exercise with no real PR/config to inspect — the
-  project's actual `review_findings_reviewers` config could specify different literal strings.
-- "Trigger" is modeled as one PR comment per reviewer rather than a single combined comment,
-  since each reviewer bot listens for its own mention/trigger string independently.
+- **Option 3 (stop here):** Do not post any trigger comments. Close out the review-findings workflow for this PR at round 1, noting explicitly that this was a user decision to stop early (min_rounds satisfied, max_rounds not reached, user declined further rounds) so a later reader of the PR history understands why no round 2 exists — not silently ending the loop with no record of why. Hand off to whatever the next stage is (e.g., merge-readiness check), rather than assuming the workflow is fully done end-to-end.
+
+- **Option 4 (not yet):** Take no side-effecting action (no comments posted, no state closed out). Leave the decision open and re-ask the identical question the next time a next-round decision needs to be made for this PR, rather than silently defaulting to either "stop" or "continue" after a delay.
+
+In all four branches, I would avoid inferring an answer from round 1's outcome alone (e.g., "only one small finding, so no one will want another round") — the fixed/verified finding count says nothing about whether the user wants the extra safety margin of another review pass before merge, so the decision stays with the user rather than being defaulted.
