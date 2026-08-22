@@ -1,0 +1,9 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes that verification failed -- the pushed fix does not actually resolve the finding", "passed": true, "evidence": "\"the resulting code, read line-by-line against the finding's actual claim, now does the right thing. Here it does not\""},
+    {"text": "States explicitly that no reply is posted and the thread is NOT resolved as a result -- reply-and-resolve never happens on the strength of a pushed commit alone, only on the strength of a pushed commit THAT VERIFIES. States that the finding remains open in the same round (round 1), not advanced to a new round, and that the fix needs to be corrected and re-verified before any reply/resolve action", "passed": true, "evidence": "\"Do not reply to the thread yet... Do not resolve the thread... Round: 1 (unchanged...)... Next step: Apply a corrected fix, re-verify, then reply/resolve\""}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

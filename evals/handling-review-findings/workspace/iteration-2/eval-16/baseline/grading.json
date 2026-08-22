@@ -1,0 +1,9 @@
+{
+  "eval_id": 16,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes the round budget is exhausted but, because `review_findings_generate_issues` is `false` (the default), fixes the finding anyway rather than filing it -- explicitly states the \"fix everything\" default holds even past the nominal round budget, since `max_rounds` only stops this skill from proactively triggering more rounds, it doesn't give a real finding a free pass", "passed": true, "evidence": "\"max_rounds governs how many times this skill will proactively re-trigger an automated review pass... It is a throttle on review-triggering activity, not a statute of limitations on individual findings\""},
+    {"text": "Does not treat budget exhaustion alone as equivalent to one of the three named exceptions", "passed": true, "evidence": "\"it is not one of the recognized 'don't fix this, file it instead' exceptions, and it does not, on its own, excuse a real finding from being fixed\""}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

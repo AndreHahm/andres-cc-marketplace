@@ -1,11 +1,13 @@
 # Round and Dedup Rules
 
 - [What counts as a round, and where its boundary sits](#what-counts-as-a-round-and-where-its-boundary-sits)
+- [No persisted round-counter file](#no-persisted-round-counter-file)
 - [Dedup mechanism: file+line match is a candidate signal, never sufficient by itself](#dedup-mechanism-fileline-match-is-a-candidate-signal-never-sufficient-by-itself)
-- [Scope-based deferral is a separate, unlimited axis from the round cap](#scope-based-deferral-is-a-separate-unlimited-axis-from-the-round-cap)
+- [Scope-based deferral is a separate, unlimited axis from the round budget](#scope-based-deferral-is-a-separate-unlimited-axis-from-the-round-budget)
 - [Hard Cap exception: Critical/Major findings never silently proceed](#hard-cap-exception-criticalmajor-findings-never-silently-proceed)
 - [Severity-gate interaction](#severity-gate-interaction)
 - [Already-fixed threads get resolved with commit-SHA evidence; deferred ones don't get resolved at all](#already-fixed-threads-get-resolved-with-commit-sha-evidence-deferred-ones-dont-get-resolved-at-all)
+- [Why the next-round trigger doesn't poll](#why-the-next-round-trigger-doesnt-poll)
 - [Worked example](#worked-example)
 
 ## What counts as a round, and where its boundary sits
@@ -23,8 +25,8 @@ confirm the fix itself doesn't introduce a new Critical/Major problem — is **n
 part of finishing the round already in progress, and its own findings are fixed within that same round
 regardless of the cap (this stays consistent with
 `.claude/rules/require-security-review-before-new-gate.md`, which mandates resolving Critical/Major
-findings before a new gate ships — that mandate isn't suspended by the round cap). Without this
-distinction, a thorough self-review pass could burn through the two-fix budget before an external
+findings before a new gate ships — that mandate isn't suspended by the round budget). Without this
+distinction, a thorough self-review pass could burn through the round budget before an external
 reviewer even sees the diff once.
 
 **The round counter is per-PR, not per-reviewer.** Two tools reviewing the same head SHA in the same
@@ -36,7 +38,9 @@ rebase onto `main`, an unrelated commit landing on the same branch, or an issue-
 the Issue path) — does not itself open a new window; the next reviewer pass against that new SHA still
 belongs to whichever round's window the PR was already in.
 
-**No persisted round-counter file.** Round classification is a judgment call made fresh at Workflow
+## No persisted round-counter file
+
+Round classification is a judgment call made fresh at Workflow
 step 2 each time findings are triaged, from re-fetched PR state (each finding's own posted timestamp,
 compared against the PR's commit/push history) — never a separately maintained state file. This keeps
 classification consistent with the "state is always re-fetched, never reused" discipline the whole
@@ -64,23 +68,26 @@ A finding is "new" only if it wasn't already raised (and accepted-and-fixed, or 
 an earlier round. A reviewer re-raising the same finding on unchanged code doesn't reset or advance the
 counter for that specific finding.
 
-## Scope-based deferral is a separate, unlimited axis from the round cap
+## Scope-based deferral is a separate, unlimited axis from the round budget
 
-A finding can also be deferred to an issue purely for being too large to fix in-session (e.g. "needs
-real data-flow analysis, not a text-only fix") — this judgment can happen in any round, including round
-1, and does not consume one of the two fix-round slots. The round cap only governs how many review
-*cycles* get chased across pushes; it doesn't cap how many oversized findings get punted to issues along
-the way. A scope-deferred finding follows the same Issue path (Workflow step 5) as a round-3+ finding
-regardless of which round it was raised in.
+Scope-based deferral (too large to fix in-session) is one of the three named exceptions that route a
+finding to the Issue path regardless of round — see `references/settings-and-round-budget.md`'s
+"Issue-filing is the exception" section (Exception 3) for the full rule and judgment guidance. The
+short version: it can happen in any round, including round 1, and never consumes a round-budget slot —
+the round budget only governs how many review *cycles* this skill proactively triggers, not how many
+oversized findings get punted to issues along the way.
 
 ## Hard Cap exception: Critical/Major findings never silently proceed
 
-The round cap's auto-file-and-proceed behavior never applies to a Critical or Major finding, in any
-round. A Critical/Major finding may still be *filed* as an issue in round 3+ rather than fixed — that
-part of the cap is unchanged — but the PR does not proceed to merge on the strength of the round cap
-alone. Filing the issue and reporting it (Workflow step 7) is not itself an acceptance decision; merging
-with a known, unfixed Critical/Major finding requires a separate, explicit `AskUserQuestion` confirming
-the risk is accepted, before `merge-pr` is invoked.
+Filing an issue instead of fixing never applies to a Critical or Major finding on the strength of the
+Issue path alone. A Critical/Major finding may still end up *filed* as an issue — via one of the three
+named exceptions in `references/settings-and-round-budget.md`, or via `review_findings_generate_issues:
+true` once the round budget is exhausted — but the PR does not proceed to merge on the strength of that
+filing alone. Filing the issue and reporting it (Workflow step 7) is not itself an acceptance decision;
+merging with a known, unfixed Critical/Major finding requires a separate, explicit `AskUserQuestion`
+confirming the risk is accepted, before `merge-pr` is invoked. This invariant survives this skill's
+round-budget redesign unchanged — only *which* findings can reach the Issue path in the first place has
+changed (the three named exceptions, or budget exhaustion), not what happens once a finding is there.
 
 Severity here means the reviewer's own stated severity (Codex P1/Critical, Devin's equivalent, a human
 reviewer's explicit "this blocks merge") — a live re-read of the finding at classification time
@@ -103,9 +110,33 @@ still get a paper trail on the PR, not just an issue: every deferred finding's r
 reply pointing at the new issue number, even though the thread itself is left unresolved — an issue
 filed with no trace on the PR reads as the finding being silently dropped.
 
+## Why the next-round trigger doesn't poll
+
+Workflow step 8 posts a trigger comment (`gh pr comment`) to start the next round, then ends this
+skill's own run for that round rather than waiting for the review to actually post back. This is a
+deliberate difference from `codex-review-recovery`, which does poll (up to 10 times, 30 seconds apart)
+after posting its own retry comment — that skill can poll because it's watching one specific,
+already-known-fast GitHub check (`Await Codex review`, a ~30-minute timeout, queried directly via the
+Checks API). This skill's own trigger step has no equivalent uniform signal to poll: CodeRabbit and
+Devin have no comparable named check this skill could query the same way, review completion time is
+unbounded (unlike a check with a fixed timeout), and building three separate polling mechanisms — one
+per reviewer, each with its own unknown completion signal — for a skill whose actual job is triage, not
+orchestration, isn't worth the complexity. Re-invoking this skill once a review has actually posted is
+the mechanism instead — the same "state is always re-fetched, never persisted" discipline this file's
+"No persisted round-counter file" section already applies to round classification applies here too:
+there's no state file recording "round 2 was triggered at time X, expect a response by time Y," just a
+fresh re-fetch of whatever's actually posted when the skill runs next.
+
+This is also why the reviewer/mode choice (Workflow step 8) is remembered only for the lifetime of the
+current conversation, not persisted to disk: a genuinely new session invoking this skill for what turns
+out to be round 3 has no way to know what was decided for round 2 without a persistence mechanism this
+skill deliberately doesn't have, so it asks again rather than guessing or silently reusing a stale
+default.
+
 ## Worked example
 
-The sequence that originally produced this policy (a real PR, condensed):
+The sequence that originally produced this policy (a real PR, condensed) — from before this skill's
+round-budget redesign, when the cap was a fixed two rounds and round 3+ automatically became an issue:
 
 | Round | Trigger | Findings | Disposition |
 |---|---|---|---|
@@ -113,3 +144,10 @@ The sequence that originally produced this policy (a real PR, condensed):
 | *(within round 1)* | `security-reviewer` verification pass on round 1's own fix | 1 Critical + 3 Major | Fixed — same round, not a new one |
 | 2 | Re-review of round 1's pushed fix | 2 | Fixed, re-committed, re-pushed |
 | 3 | Re-review of round 2's pushed fix | 1 | Not fixed — filed as an issue, thread replied-to but left unresolved |
+
+Under the current round-budget design (default `min_rounds: 1`, `max_rounds: 3`,
+`generate_issues: false`), the same sequence plays out differently at round 3: the round 3 finding
+still gets **fixed** (it's within the `max_rounds` budget, and none of the three named exceptions in
+`references/settings-and-round-budget.md` apply to it) rather than automatically filed. A finding would
+only be filed today if it matched one of the three named exceptions, or if it arrived in a round beyond
+`max_rounds` with `generate_issues: true` set.

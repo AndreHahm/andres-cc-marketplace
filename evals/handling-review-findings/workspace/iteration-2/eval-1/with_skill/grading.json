@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Classifies the finding as round 1 -> Fix path (not filed, not declined)", "passed": true, "evidence": "\"This is round 1... Fix path. This is a real, in-scope, round-1 finding, none of the three named exceptions apply\""},
+    {"text": "States plainly that verification is a hard precondition before any reply/resolve action -- the reply is never sent and the thread is never resolved on the strength of a pushed commit alone", "passed": true, "evidence": "\"Verification is a hard precondition on replying and resolving... a reply-and-resolve never happens on the strength of a pushed commit alone\""},
+    {"text": "Describes committing via Skill(git-kit:commit), not a raw `git commit`", "passed": true, "evidence": "\"Commit via `Skill(git-kit:commit)` — never a raw `git commit` per .claude/rules/route-through-git-kit-lifecycle-skills.md\""},
+    {"text": "The drafted reply cites both a fixing commit SHA and a one-line summary of what verification confirmed", "passed": true, "evidence": "\"Fixed in `a1b2c3d`... Verified by re-reading the fix against this finding: a missing timeout key no longer raises, and the value used matches the documented default.\""},
+    {"text": "States the thread is resolved only after that reply, and only because verification actually passed", "passed": true, "evidence": "\"The thread is resolved only after this reply is posted, and only because verification actually passed\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

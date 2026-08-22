@@ -1,0 +1,21 @@
+{
+  "eval_id": 12,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Recognizes that Codex's and CodeRabbit's findings describe the same underlying defect despite different wording, and identifies exception 3 (too large for this session) as the reason it's filed rather than fixed -- explicitly noting this is a judgment call about needing capabilities/analysis beyond a same-session fix, not merely being tedious, and that it applies in round 1 despite the round budget having plenty of room left",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States this must produce exactly ONE GitHub issue, not two -- describes checking for an existing issue before filing (via a dedup check) and, since none exists yet, filing exactly one",
+      "type": "functionality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States that BOTH reviewers' threads get replied-to, each pointing at the same single issue number -- neither thread gets its own separate issue, and neither thread gets resolved",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

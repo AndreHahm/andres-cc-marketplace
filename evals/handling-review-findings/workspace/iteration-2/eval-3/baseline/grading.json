@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Recognizes the round budget is already exhausted and, because `review_findings_generate_issues` is `true`, files the finding as a GitHub issue instead of forcing a fourth round or an in-session fix", "passed": true, "evidence": "\"Because review_findings_generate_issues is true, the correct disposition... is to file it as a GitHub issue rather than force a fourth round\""},
+    {"text": "Explicitly distinguishes this from the three named exceptions -- this is the separate, fourth 'budget exhaustion' path, not exception 1/2/3", "passed": true, "evidence": "Dedicated closing section \"Explicit distinction from the three named exceptions... It is a fourth, separate path\""},
+    {"text": "Because the finding is Critical, the disclosure report never implies the PR is safe to merge: it explicitly names this finding as a merge-blocking risk and states that merging requires a separate, explicit human risk-acceptance decision before `merge-pr` is invoked -- filing the issue is never treated as equivalent to that acceptance", "passed": true, "evidence": "disclosure.md: \"This PR is NOT safe to merge as-is... A human must make an explicit, separate risk-acceptance decision... filing the GitHub issue is a tracking step, not that decision\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

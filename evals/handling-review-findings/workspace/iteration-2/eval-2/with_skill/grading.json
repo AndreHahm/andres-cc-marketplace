@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Identifies this as the \"out-of-scope component\" exception (exception 2) -- the finding concerns a file this PR never changed -- and explicitly states this routes to the Issue path regardless of round or `review_findings_generate_issues`, and regardless of severity being only Minor", "passed": true, "evidence": "\"Conclusion: Exception 2 (out-of-scope component) applies... regardless of: Round... review_findings_generate_issues... Severity — the finding is only Minor, but severity does not affect whether an out-of-scope finding gets filed.\""},
+    {"text": "Does NOT attempt to fix it in-session just because it's easy or because round 1 would otherwise be within the fix budget", "passed": true, "evidence": "\"This finding is explicitly NOT attempted as an in-session fix. Even though a one-line docstring correction would be trivially easy, and even though round 1 would otherwise have plenty of fix-budget room, ease-of-fix is not a factor\""},
+    {"text": "The drafted issue includes the PR URL, head SHA, thread/comment reference, reviewer, and severity fields, and uses a plain non-closing reference (\"Found in PR #142\"), never \"Fixes #142\"/\"Closes #142\"", "passed": true, "evidence": "Issue's own \"## Review Finding Source\" section lists PR URL, Head SHA, Review thread/comment, Reviewer, Severity; PR reference text section states exactly \"Found in PR #142\""},
+    {"text": "The reply points at the new issue number", "passed": true, "evidence": "\"tracking separately rather than fixed here: #<new-issue-number>\""},
+    {"text": "States plainly that the thread is left unresolved, not resolved", "passed": true, "evidence": "\"The thread is left unresolved... simply never call resolveReviewThread for this thread\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reads the severity gate as `true` and correctly applies the Decline path: a Minor/nit-level finding with nobody explicitly requesting the fix is declined outright, in any round, when the gate is `true` -- even though this is round 1, which would otherwise route to the Fix path under the default `false` gate",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States plainly this is orthogonal to the round budget/exceptions machinery, not a fourth exception",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    },
+    {
+      "text": "States plainly: not fixed, not filed as an issue, acknowledged via a reply only, and the thread is left unresolved (not resolved) since it wasn't actually handled",
+      "type": "quality",
+      "target": "outputs/triage.md"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes that verification failed -- the pushed fix does not actually resolve the finding", "passed": true, "evidence": "\"Verification fails.\" with a detailed re-read showing the order-of-operations error persists"},
+    {"text": "States explicitly that no reply is posted and the thread is NOT resolved as a result -- reply-and-resolve never happens on the strength of a pushed commit alone, only on the strength of a pushed commit THAT VERIFIES. States that the finding remains open in the same round (round 1), not advanced to a new round, and that the fix needs to be corrected and re-verified before any reply/resolve action", "passed": true, "evidence": "\"Do not reply... Do not resolve the thread... The finding stays open, in the same round (round 1)... The next correct action is to fix the underlying math properly... then re-verify\""}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

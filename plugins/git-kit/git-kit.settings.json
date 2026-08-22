@@ -10,5 +10,28 @@
   "pr_merge_type": "REBASE",
   "merge_auto_delete_branch": true,
   "use_worktree": true,
-  "review_findings_severity_gate": false
+  "review_findings_severity_gate": false,
+  "review_findings_generate_issues": false,
+  "review_findings_min_rounds": 1,
+  "review_findings_max_rounds": 3,
+  "review_findings_reviewers": [
+    {
+      "name": "codex",
+      "enabled": true,
+      "default_review_trigger": "@codex review",
+      "full_review_trigger": "@codex full review"
+    },
+    {
+      "name": "coderabbit",
+      "enabled": true,
+      "default_review_trigger": "@coderabbitai review",
+      "full_review_trigger": "@coderabbitai full review"
+    },
+    {
+      "name": "devin",
+      "enabled": true,
+      "default_review_trigger": "/devin review",
+      "full_review_trigger": "/devin review"
+    }
+  ]
 }

@@ -3,6 +3,7 @@
 - [Replying to an inline PR review comment](#replying-to-an-inline-pr-review-comment)
 - [Resolving a review thread](#resolving-a-review-thread)
 - [Leaving a thread unresolved on purpose](#leaving-a-thread-unresolved-on-purpose)
+- [Posting a review-trigger comment](#posting-a-review-trigger-comment)
 - [Fetching all reviewers together](#fetching-all-reviewers-together)
 - [Issue traceability payload](#issue-traceability-payload)
 - [Issue-filing convention](#issue-filing-convention)
@@ -112,10 +113,52 @@ done
 
 ## Leaving a thread unresolved on purpose
 
-For a deferred (round-3+, scope-deferred, or declined) finding, reply with the tracking-issue link (or
-the decline acknowledgment) and state explicitly that the thread is being left open until the issue is
-addressed — then simply never call `resolveReviewThread` for it. This is the mechanical counterpart to
-`references/round-and-dedup-rules.md`'s "deferred findings don't get resolved" rule.
+For a deferred (exception-filed, budget-exhausted-and-filed, or declined) finding, reply with the
+tracking-issue link (or the decline acknowledgment) and state explicitly that the thread is being left
+open until the issue is addressed — then simply never call `resolveReviewThread` for it. This is the
+mechanical counterpart to `references/round-and-dedup-rules.md`'s "deferred findings don't get
+resolved" rule.
+
+## Posting a review-trigger comment
+
+Workflow step 8 posts a plain **top-level** PR comment — not an inline reply, and not the same endpoint
+as "Replying to an inline PR review comment" above. `<trigger text>` (a reviewer's
+`default_review_trigger` or `full_review_trigger` from `review_findings_reviewers`, e.g.
+`@codex review`, `@coderabbitai full review`, `/devin review`) is settings data, not something this
+skill authored — it must pass Workflow step 8's three-step check (tracked-ness gate, then the
+allowlist-regex and handle-token checks) *and* must never be inlined directly into the command line,
+even after validating clean, since a value that happens to pass every check could still contain
+characters a shell interprets. Write each reviewer's validated string to its **own** scratchpad file —
+`trigger-<name>.txt`, written immediately before that specific reviewer's post, never one shared
+filename reused across reviewers (a shared name risks a stale prior reviewer's body surviving a failed
+or out-of-order write and getting posted under the next reviewer's marker instead) — then post with
+`--body-file`:
+
+```
+gh pr comment <number> -R "<owner>/<repo>" --body-file "<scratchpad-path>/trigger-<name>.txt"
+```
+
+`--body-file` is a real, confirmed flag on `gh pr comment` specifically (`gh pr comment --help`: `-F,
+--body-file file   Read body text from file`) — not assumed from its presence on other `gh` subcommands
+like `gh issue create`.
+
+Posting one comment per selected reviewer is fine; there's no requirement to combine multiple
+reviewers' trigger strings into a single comment, and combining them risks one reviewer's connector
+misparsing text meant for another.
+
+**The `gh-pr-review` marker goes immediately before this call too**, same as the reply/resolve calls
+above — one fresh marker per `gh pr comment` call, never one marker reused across several reviewers'
+posts, since the marker is consumed by the next `Bash`/`PowerShell` call regardless of match. Unlike
+those two, this call needed no *logic* change to `guard-raw-pr-review.sh` itself — that hook's `gh pr
+comment` branch already matches any `gh pr comment` invocation unconditionally, regardless of the
+comment body, so the existing guard already covers this new call site for the shapes it can see. Only
+this skill's own `allowed-tools` frontmatter needed the addition (`Bash(gh pr comment:*)`), since the
+skill had never posted a top-level comment before this redesign — only inline replies via the
+`.../replies` endpoint above. This coverage isn't unconditional, though: `guard-raw-pr-review.sh`'s own
+header comment discloses residual bypass shapes (command-substitution/backtick/quote-prefix
+indirection, and invocation via a script file the hook never inspects) that apply to every branch in
+that file, including this one — nothing about this new call site closes or reopens those, they're a
+pre-existing property of the guard itself.
 
 ## Fetching all reviewers together
 

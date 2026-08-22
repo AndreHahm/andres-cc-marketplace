@@ -51,6 +51,17 @@
 # body runs `gh api graphql` internally) is invisible to this guard by
 # construction, since the tool call's own command text never contains the
 # literal words this file matches on.
+# A third residual, surfaced by a security-reviewer pass on 2026-08-22 while
+# adding handling-review-findings's new `gh pr comment` trigger-post call
+# (unrelated to the two above): the `git rev-parse --git-dir` check just
+# below allows unconditionally when it finds no repository, before any
+# subcommand match runs -- but every command this file guards, including
+# `gh pr comment -R "<owner>/<repo>"` and the `gh api repos/{owner}/{repo}/...`
+# shapes, works fine outside a local git repo, so "not in a git repo --
+# nothing to guard" doesn't actually hold for this file's own guarded
+# commands. Deliberately left unfixed here: this ordering is shared by the
+# sibling guard scripts too, and reordering it deserves its own dedicated
+# review rather than a side effect of one skill's narrower feature change.
 set -euo pipefail
 
 # Fail closed, not open: if jq isn't available, the script below can't parse

@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Does NOT treat the round-2 finding as a repeat of the round-1 finding merely because they share the same file+line", "passed": true, "evidence": "\"Same file+line is a coincidence of location, not evidence of identity.\""},
+    {"text": "Explicitly compares the actual defect described (a missing authorization check vs. missing test coverage for an error path) and concludes they are two distinct findings", "passed": true, "evidence": "Comparison table contrasting \"Missing authorization check\" vs \"Missing test coverage\"; \"Conclusion: this is a genuinely new, distinct finding.\""},
+    {"text": "Classifies the round-2 finding as new, and since none of the three named exceptions apply and the round budget isn't exhausted, routes it to the Fix path", "passed": true, "evidence": "\"Decision: Fix path.\" with each diversion reason checked and ruled out"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

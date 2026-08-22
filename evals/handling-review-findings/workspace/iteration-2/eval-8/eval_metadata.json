@@ -1,0 +1,21 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "The disclosure report accurately reports both Codex findings as fixed/resolved",
+      "type": "quality",
+      "target": "outputs/disclosure.md"
+    },
+    {
+      "text": "Crucially, it also explicitly surfaces the outstanding human CHANGES_REQUESTED review as a separate, still-live blocker, and never implies or states that the PR is mergeable or ready -- even though every review-finding this triage pass touched is fully resolved",
+      "type": "functionality",
+      "target": "outputs/disclosure.md"
+    },
+    {
+      "text": "States plainly that whether the PR can actually merge is merge-pr's determination, not something this disclosure decides, and that the human review needs to be addressed/dismissed independent of this triage pass's own findings",
+      "type": "quality",
+      "target": "outputs/disclosure.md"
+    }
+  ]
+}

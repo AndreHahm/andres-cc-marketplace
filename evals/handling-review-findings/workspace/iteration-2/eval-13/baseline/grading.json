@@ -1,0 +1,10 @@
+{
+  "eval_id": 13,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Explicitly states that none of the three named exceptions apply (not a direct instruction, not out-of-scope -- the PR already touches this file, not too large for a session), and the round budget (`max_rounds: 3`) is not yet exhausted at round 3", "passed": true, "evidence": "\"None of the three named exceptions apply.\" table; \"Round 3 is still inside max_rounds: 3 — the budget is not exhausted\""},
+    {"text": "Routes the finding to the Fix path -- this is the core behavior change this redesign introduced: a round-3 finding is fixed by default, not automatically escalated to an issue just for arriving in round 3", "passed": true, "evidence": "\"this finding routes to the Fix path, exactly like a round 1 or round 2 finding would\""},
+    {"text": "Does not file this finding just because it's round 3", "passed": true, "evidence": "\"there is no rule implied anywhere in this setup that findings automatically escalate to issues simply because of which round number they arrive in\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

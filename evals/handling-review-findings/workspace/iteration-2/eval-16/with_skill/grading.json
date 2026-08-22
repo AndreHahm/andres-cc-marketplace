@@ -1,0 +1,9 @@
+{
+  "eval_id": 16,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes the round budget is exhausted but, because `review_findings_generate_issues` is `false` (the default), fixes the finding anyway rather than filing it -- explicitly states the \"fix everything\" default holds even past the nominal round budget, since `max_rounds` only stops this skill from proactively triggering more rounds, it doesn't give a real finding a free pass", "passed": true, "evidence": "\"max_rounds only stops this skill from proactively triggering another review round; it was never meant to give a real, in-scope finding a free pass to go unfixed\""},
+    {"text": "Does not treat budget exhaustion alone as equivalent to one of the three named exceptions", "passed": true, "evidence": "Exception check section (\"None of the three exceptions apply\") is kept structurally separate from the following \"Budget-exhaustion rule (the actual controlling rule here)\" section"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

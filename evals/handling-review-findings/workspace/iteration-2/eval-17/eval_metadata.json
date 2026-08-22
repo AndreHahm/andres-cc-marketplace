@@ -1,0 +1,21 @@
+{
+  "eval_id": 17,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Correctly identifies that `@codex-evil review` fails the handle-token check even though it contains \"codex\" as a substring -- the handle token right after `@` is `codex-evil`, which does not equal `codex` and does not match `^codex[a-z0-9]*$` (the hyphen breaks the match)",
+      "type": "quality",
+      "target": "outputs/decision.md"
+    },
+    {
+      "text": "States that this fails content validation (step 2 of the three-step check), so the skill falls back to the git-tracked `git-kit.settings.json` value for codex (`@codex review`) instead of using the untracked local override or silently accepting the lookalike",
+      "type": "quality",
+      "target": "outputs/decision.md"
+    },
+    {
+      "text": "Does not offer `@codex-evil review` as an option, and does not exclude codex entirely from the ask, since a valid tracked fallback exists",
+      "type": "quality",
+      "target": "outputs/decision.md"
+    }
+  ]
+}

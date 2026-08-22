@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT treat the round-2 finding as a repeat of the round-1 finding merely because they share the same file+line", "passed": true, "evidence": "\"a same-file/same-line match only narrows which earlier findings to compare against — it never by itself declares a repeat\""},
+    {"text": "Explicitly compares the actual defect described (a missing authorization check vs. missing test coverage for an error path) and concludes they are two distinct findings", "passed": true, "evidence": "\"Round 1's defect is a missing authorization check... Round 2's defect is a missing test for a different code path\""},
+    {"text": "Classifies the round-2 finding as new, and since none of the three named exceptions apply and the round budget isn't exhausted, routes it to the Fix path", "passed": true, "evidence": "\"Conclusion: round-2 finding is classified as NEW... Decision: Fix path.\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

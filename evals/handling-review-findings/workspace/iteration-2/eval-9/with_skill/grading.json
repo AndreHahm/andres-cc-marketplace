@@ -1,0 +1,10 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Reads the severity gate as `true` and correctly applies the Decline path: a Minor/nit-level finding with nobody explicitly requesting the fix is declined outright, in any round, when the gate is `true` -- even though this is round 1, which would otherwise route to the Fix path under the default `false` gate", "passed": true, "evidence": "\"review_findings_severity_gate: true, the finding is Minor/nit, and nobody has explicitly requested it be fixed. That routes to the Decline path\""},
+    {"text": "States plainly this is orthogonal to the round budget/exceptions machinery, not a fourth exception", "passed": true, "evidence": "\"none of the three named exceptions apply, so the routing falls to the severity-gate check next\" -- explicitly sequences the severity gate as a separate check after the exception check, consistent with orthogonality even without using that exact word"},
+    {"text": "States plainly: not fixed, not filed as an issue, acknowledged via a reply only, and the thread is left unresolved (not resolved) since it wasn't actually handled", "passed": true, "evidence": "Outcome table: \"Fixed: No | Filed as issue: No | Declined: Yes | Thread resolved: No (left open, per Decline-path convention)\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
