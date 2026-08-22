@@ -99,6 +99,12 @@ Read the same way `commit` reads its own settings: `.claude/git-kit.local.json` 
 project-local), falling back to the git-tracked `${CLAUDE_PLUGIN_ROOT}/git-kit.settings.json` defaults
 for any field the local file doesn't set.
 
+**Resolve the trust boundary here, once per invocation, before any protected field is used anywhere in
+this skill** — not per-field, and not deferred to Workflow step 8c. Check with a repo-root-anchored
+`git ls-files --error-unmatch :/.claude/git-kit.local.json` (never the bare relative form — see
+`references/settings-and-round-budget.md`'s "Read order and trust boundary" for why, and for the full
+list of what this protects). Workflow step 8c reuses this resolution rather than re-deriving it.
+
 | Setting | Default | Meaning |
 |---|---|---|
 | `review_findings_severity_gate` | `false` | Orthogonal — Minor/nit declined outright when `true`, unless explicitly requested |
@@ -190,8 +196,12 @@ session.
    requesting the fix → Decline path (step 6). Otherwise → Fix path (step 4) — this applies to a
    finding arriving in any round, as long as the triggered-cycle count (8a) hasn't yet exceeded
    `review_findings_max_rounds`; there is no automatic escalation to the Issue path just for arriving
-   in a later round. A finding arriving after the triggered-cycle budget is already exhausted → Fix
-   path if `review_findings_generate_issues` is `false`, Issue path if `true`. **A Critical/Major finding never
+   in a later round. **"Budget exhausted" means the finding belongs to a round *after* the round the
+   `max_rounds`-th triggered cycle's own batch opened — never merely that the aggregate count already
+   reads `max_rounds` at classification time** (a finding from the final allowed batch's own review is
+   still fixed normally; see `references/settings-and-round-budget.md`'s `generate_issues`/budget-exhaustion
+   section for why). That genuinely-exhausted finding → Fix path if `review_findings_generate_issues` is
+   `false`, Issue path if `true`. **A Critical/Major finding never
    falls through to a silent "proceeds without it" outcome, on any path** — if it ends up on the Issue
    path (via any of the three exceptions, or `review_findings_generate_issues: true` past the budget),
    step 7's disclosure must additionally surface it as a named merge-blocking risk requiring explicit
@@ -307,6 +317,9 @@ session.
      its own question, is what keeps Question 1 within the 4-option cap even though every reviewer has
      two real modes (3 reviewers × 2 modes would be 6 options in one question). A reviewer whose two
      trigger strings are identical (Devin) resolves to the same string either way.
+   - **Fewer than 2 reviewers survive 8c** (`AskUserQuestion` needs 2-4 options, so 0 or 1 surviving
+     reviewer needs its own handling) — see `references/settings-and-round-budget.md`'s "The floor is 4
+     options, not 3" for the exact one-survivor and zero-survivor paths.
 
    Resolve each selected reviewer's posted string as its `default_review_trigger` or
    `full_review_trigger` per Question 2's answer. Remember the full decision — which reviewers, the
@@ -316,15 +329,18 @@ session.
    first. A genuinely new session with no memory of an earlier answer asks fresh — see
    `references/round-and-dedup-rules.md`'s "No persisted round-counter file" section for why.
 
-   **8c. Validate every candidate before it's ever offered as an option.** `review_findings_reviewers`
-   (from either `git-kit.settings.json` or an overriding `.claude/git-kit.local.json`) is settings
-   data, not something this skill authored — treat it the same way step 1 treats `$ARGUMENTS`: never
-   substitute it into a shell command unvalidated, and never let a later check's pass stand in for an
-   earlier check's fail.
+   **8c. Validate every candidate before it's ever offered as an option.** Start from the
+   `review_findings_reviewers` array as the Settings section's trust-boundary resolution already
+   settled it (the whole tracked `git-kit.settings.json` array when `.claude/git-kit.local.json` is
+   tracked, the local file's own array otherwise — never a per-field merge of the two, since every field
+   on a reviewer entry that matters here is itself protected) — never re-derive or second-guess that
+   resolution here. That resolved array is still settings data, not something this skill authored: treat
+   it the same way step 1 treats `$ARGUMENTS` — never substitute it into a shell command unvalidated,
+   and never let a later check's pass stand in for an earlier check's fail.
 
-   **First, drop every entry whose `enabled` field is `false` — before any other check.** That
-   reviewer is not offered as a choice, not merely defaulted-away; it never reaches the `name`/trigger
-   validation below at all.
+   **First, drop every entry whose `enabled` field is `false` — before any other check.** That reviewer
+   is not offered as a choice, not merely defaulted-away; it never reaches the `name`/trigger validation
+   below at all.
 
    Then, for each remaining entry, validate its own `name`: it's substituted directly into the handle-token regex below
    (`^<name>[a-z0-9]*$`) and into a scratchpad filename (`trigger-<name>.txt`), so an unvalidated value
@@ -335,29 +351,20 @@ session.
    anything else with it; a reviewer entry whose `name` fails this is excluded entirely, never
    sanitized or truncated into something usable.
 
-   Then, for each reviewer entry that passes the `name` check, validate its trigger string in this
-   exact order:
+   Then, for each reviewer entry that passes the `name` check, validate its trigger string's *content*
+   (trust was already settled for the whole array above, so this is shape-checking only, defense in
+   depth against a malformed value from either source): (a) the string must match
+   `^[@/][A-Za-z0-9_-]{1,39}( [a-z]{1,12}){1,2}$` as a full-string match (anchored, no
+   leading/trailing whitespace or newline), and (b) the handle token — the characters immediately
+   after the leading `@`/`/` up to the first space — must equal the entry's own `name`, or match
+   `^<name>[a-z0-9]*$` case-insensitively (admits `coderabbitai` for `name: coderabbit`, rejects
+   `codex-evil`/`notcodex` for `name: codex` — a plain substring test doesn't, since both contain
+   "codex" while addressing a different handle). If the resolved value fails this, fall back to the
+   git-tracked `git-kit.settings.json` value for that reviewer/mode; if that also fails, exclude the
+   reviewer entirely and tell the user plainly which one and why — never post anything unvalidated, and
+   never guess at a corrected value.
 
-   1. **Tracked-ness gate first, before any content check.** If `.claude/git-kit.local.json` exists
-      and is itself tracked by git (`git ls-files --error-unmatch .claude/git-kit.local.json` exits
-      `0`), ignore that file's `default_review_trigger`/`full_review_trigger` for this entry entirely
-      and use the git-tracked `git-kit.settings.json` value instead — regardless of whether the local
-      file's value would otherwise pass the checks below. This is the real trust-boundary check
-      (`references/settings-and-round-budget.md`); the content checks below are a second, independent
-      layer, not a substitute for this one.
-   2. **Content validation**, applied to whichever value step 1 selected: (a) the string must match
-      `^[@/][A-Za-z0-9_-]{1,39}( [a-z]{1,12}){1,2}$` as a full-string match (anchored, no
-      leading/trailing whitespace or newline), and (b) the handle token — the characters immediately
-      after the leading `@`/`/` up to the first space — must equal the entry's own `name`, or match
-      `^<name>[a-z0-9]*$` case-insensitively (admits `coderabbitai` for `name: coderabbit`, rejects
-      `codex-evil`/`notcodex` for `name: codex` — a plain substring test doesn't, since both contain
-      "codex" while addressing a different handle).
-   3. **Fallback order.** If the checked value fails step 2, fall back to the git-tracked
-      `git-kit.settings.json` value for that reviewer/mode; if that also fails, exclude the reviewer
-      entirely and tell the user plainly which one and why — never post anything unvalidated, and
-      never guess at a corrected value.
-
-   Only an entry that survives all three steps can appear in 8b's `AskUserQuestion`.
+   Only an entry that survives all these checks can appear in 8b's `AskUserQuestion`.
 
    **8d. Re-verify live state, then post.** The trigger to post is a successful push to an open,
    non-draft PR — never merely a made commit or an answered `AskUserQuestion`; 8b decides *what* to
@@ -458,7 +465,7 @@ before each one.
 - "is this PR ready to merge" → `merge-pr`
 
 **Test suite:** `evals/handling-review-findings/evals.json` defines 20 scenarios and carries its own
-`testing_validation_coverage`/`quality_gates_coverage` fields for the gate-level mapping (8 gates still
+`testing_validation_coverage`/`quality_gates_coverage` fields for the gate-level mapping (12 gates still
 without eval coverage, listed there) — see `references/testing-scenarios.md` for the scenario list and
 quality-gates checklist text those fields map against.
 
@@ -468,7 +475,7 @@ and `evals.json` presence.
 
 **Last dated run record:** 2026-08-22 — 100% with_skill pass rate across all 20 evals (iteration 2's 17
 scenarios at 100% vs. 86.6% baseline; iteration 3's 3 newest scenarios, evals 18-20, at 100%,
-with_skill-only). Full run history, the security-review passes, and the specific findings from two
+with_skill-only). Full run history, the security-review passes, and the specific findings from three
 rounds of live GitHub review on PR #101 (each with its own root cause and fix) live in
 `references/development-history.md` — read it for the "why does the design look like this" story;
 nothing in it is needed to execute a live triage run.

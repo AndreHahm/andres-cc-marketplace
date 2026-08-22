@@ -1,6 +1,6 @@
 # Development History
 
-This file is the build-time audit trail for this skill's round-budget redesign and the two rounds of
+This file is the build-time audit trail for this skill's round-budget redesign and the three rounds of
 live GitHub review that followed — eval run records, the security-review passes, and the specific
 findings each review round caught and fixed. It exists so SKILL.md's own "Testing & Validation" section
 can stay a validation checklist (current activation triggers, current test-suite pointer, current pass
@@ -127,3 +127,43 @@ Whether the trailing HTML-comment marker changes how Codex/CodeRabbit/Devin's ow
 mention text has not been live-verified as of this writing — disclosed in
 `references/round-and-dedup-rules.md`'s own "Disclosed gap" note, to be confirmed the next time this
 skill actually triggers a round in a live session.
+
+A separate self-dispatched `security-reviewer` pass (part of a `plugin-auditor` scoped-diff audit run
+the same day, after round 2's fixes and an unrelated R13 restructuring had both landed) found the
+batch-id marker itself was still forgeable — its exact text is published in this skill's own SKILL.md,
+so any comment containing it, from any author, would satisfy the round-2 fix's marker-presence check.
+Closed by additionally requiring the marker-bearing comment's `author.login` to match the account
+actually running this skill (resolved via `gh api user --jq '.login'`) — marker-plus-own-authorship
+together, never marker alone (Workflow step 8a's current wording).
+
+## Round-3 GitHub review findings on PR #101 (2026-08-22)
+
+The automated round-3 review (Codex, reviewing commit `0e7a079`, the 29-finding plugin-auditor fix
+batch) found that fix batch had introduced one real regression and left two pre-existing design gaps
+unaddressed:
+
+1. **Regression:** the same batch's own `consistency-reviewer:C1` fix ("`enabled: false` is documented
+   as a filter in 5 places but never actually implemented") added the filter as step 8c's very first
+   check, unconditionally — ahead of the tracked-vs-local trust-boundary gate that
+   `references/settings-and-round-budget.md` already listed `enabled: false` under as one of five
+   trust-boundary-protected fields. A tracked `.claude/git-kit.local.json` could therefore silently
+   disable Codex/CodeRabbit/Devin from review, bypassing the exact protection the trigger-string check a
+   few paragraphs later already had. Fixed by resolving the tracked-ness gate once, before touching
+   either `enabled` or trigger text, and applying it uniformly to both.
+2. **Design gap:** nothing distinguished a finding produced by the review that the final allowed
+   (`max_rounds`-th) triggered batch itself triggered from a genuinely later, post-budget finding — both
+   looked identical to a check that only compared the aggregate triggered-cycle count against
+   `max_rounds`. Fixed by redefining "budget exhausted" as belonging to a round *after* the round the
+   final batch opened, not merely "the count already reads `max_rounds`."
+3. **Design gap:** 8b's reviewer/mode question assumed 2-4 validated reviewer options are always
+   available; a configuration where 8c's validation leaves 0 or 1 survivors would either construct an
+   invalid `AskUserQuestion` (below its 2-option minimum) or silently omit the mandatory stop option's
+   compensating slot. Fixed by adding explicit one-survivor and zero-survivor paths to 8b.
+
+None of the three findings had eval coverage before this round; all three are logged as new uncovered
+scenarios/gates in `evals/handling-review-findings/evals.json` pending a future iteration's eval-writing
+pass, per this skill's own "test the fix, not just describe it" standard — the fixes themselves were
+verified by re-reading each against its own finding and cross-checking cited line numbers/quoted text
+against the current file state, the lighter of the two mechanisms
+`.claude/rules/require-tests-for-behavior-changes.md` allows for a skill not flagged
+behavior-critical/frequently-relied-on, rather than a fresh `skill-tester` eval run.
