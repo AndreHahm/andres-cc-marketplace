@@ -57,8 +57,19 @@
 - Round 1 comes back clean (no findings at all, or only declined/filed ones) — no fix-driven push
   happens, so the round never closes under `references/round-and-dedup-rules.md`'s fix-driven-push
   definition. The trigger-ask's budget check still correctly treats this as one triggered cycle (via
-  the re-derived trigger-comment count), not as "round 1 still incomplete," and doesn't re-offer a
+  the re-derived, marker-based batch count), not as "round 1 still incomplete," and doesn't re-offer a
   trigger-ask indefinitely for the same still-open round.
+- `codex-review-recovery` has posted its own `@codex review` retry comment on this same PR (a stuck-check
+  recovery, not a proactive round trigger) — the triggered-cycle count does not count it, since it
+  carries no `handling-review-findings-trigger` marker, even though its body text is byte-identical to
+  what this skill's own Codex trigger would post.
+- The user selects two reviewers (e.g. Codex and Devin) in one Question 1/Question 2 answer — both
+  resulting comments share the same `<batch-id>` marker, and the triggered-cycle count advances by
+  exactly 1 for this decision, never by 2.
+- The current triggered-cycle count is below `review_findings_min_rounds` (e.g. `min_rounds: 2` and only
+  round 1's automatic trigger has happened so far) — Question 1 offers only the validated reviewer
+  options, with no "No further round for now" option at all, so the floor can't be defeated by selecting
+  it.
 - `review_findings_max_rounds` is reached — the skill's report states plainly that no further round
   will be triggered, and Workflow step 8 is skipped entirely (not silently treated as "no more
   findings").
@@ -113,10 +124,19 @@
       before its trigger string is checked at all — its `name` is never substituted into the
       handle-token regex or a scratchpad filename unvalidated.
 - [ ] The triggered-cycle count Workflow step 8 compares against `min_rounds`/`max_rounds` is derived
-      from re-fetched state (1 for round 1's automatic trigger, plus this skill's own trigger comments
-      found in the current comment list) — never from the fix-driven-push "round" definition, which
-      would never close (and never let the count reach `max_rounds`) for a cycle that comes back clean
-      or produces only declined/filed findings.
+      from re-fetched state (1 for round 1's automatic trigger, plus the number of distinct
+      `handling-review-findings-trigger:<batch-id>` markers found in the current comment list) — never
+      from the fix-driven-push "round" definition, which would never close (and never let the count
+      reach `max_rounds`) for a cycle that comes back clean or produces only declined/filed findings.
+- [ ] A comment whose body matches a configured trigger string but carries no
+      `handling-review-findings-trigger` marker (a `codex-review-recovery` retry, a coincidentally
+      identical human comment) is never counted toward the triggered-cycle count.
+- [ ] Every comment posted for one Question 1/Question 2 decision shares the same `<batch-id>`, so a
+      multi-reviewer selection always advances the triggered-cycle count by exactly 1, never by the
+      number of reviewers selected.
+- [ ] When the current triggered-cycle count is below `review_findings_min_rounds`, Question 1 never
+      offers a "No further round for now" option — only when the count already meets or exceeds
+      `min_rounds` does that option appear.
 - [ ] Step 8 never fires at all once `review_findings_max_rounds` is reached.
 - [ ] Step 8 never polls for the newly-triggered review's response — it ends this skill's run for the
       current round once the trigger comment(s) are posted.

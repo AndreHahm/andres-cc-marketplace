@@ -128,11 +128,27 @@ as "Replying to an inline PR review comment" above. `<trigger text>` (a reviewer
 skill authored — it must pass Workflow step 8's three-step check (tracked-ness gate, then the
 allowlist-regex and handle-token checks) *and* must never be inlined directly into the command line,
 even after validating clean, since a value that happens to pass every check could still contain
-characters a shell interprets. Write each reviewer's validated string to its **own** scratchpad file —
-`trigger-<name>.txt`, written immediately before that specific reviewer's post, never one shared
-filename reused across reviewers (a shared name risks a stale prior reviewer's body surviving a failed
-or out-of-order write and getting posted under the next reviewer's marker instead) — then post with
-`--body-file`:
+characters a shell interprets.
+
+**Every trigger comment's body also carries the batch marker**, `<!--
+handling-review-findings-trigger:<batch-id> -->`, on its own line after a blank line following the
+trigger text — this is what lets Workflow step 8's triggered-cycle count tell this skill's own posts
+apart from `codex-review-recovery`'s identical-looking retry comment (see
+`references/round-and-dedup-rules.md`'s "Triggered-cycle count vs. round" for why a marker is required,
+not optional). `<batch-id>` is generated once per decision (`date -u +%Y%m%dT%H%M%SZ`) and reused
+verbatim across every reviewer's comment for that same decision — never regenerated per reviewer, or
+the count would treat a multi-reviewer selection as multiple cycles instead of one. Write each
+reviewer's validated string plus this marker to its **own** scratchpad file — `trigger-<name>.txt`,
+written immediately before that specific reviewer's post, never one shared filename reused across
+reviewers (a shared name risks a stale prior reviewer's body surviving a failed or out-of-order write
+and getting posted under the next reviewer's marker instead) — then post with `--body-file`:
+
+```
+# trigger-<name>.txt content:
+<trigger text>
+
+<!-- handling-review-findings-trigger:<batch-id> -->
+```
 
 ```
 gh pr comment <number> -R "<owner>/<repo>" --body-file "<scratchpad-path>/trigger-<name>.txt"

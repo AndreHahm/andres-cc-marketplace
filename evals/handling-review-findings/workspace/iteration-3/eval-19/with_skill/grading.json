@@ -1,0 +1,10 @@
+{
+  "eval_id": 19,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Describes exactly 2 separate gh pr comment calls -- one for Codex (@codex review + marker), one for Devin (/devin review + marker)", "passed": true, "evidence": "\"Two separate gh pr comment calls -- one per reviewer selected in Question 1 (Codex, Devin)\" with the exact body shape (\"<reviewer's validated default_review_trigger string>\\n\\n<!-- handling-review-findings-trigger:<batch-id> -->\")"},
+    {"text": "States both comments carry the same batch-id, generated once for this decision and reused verbatim across both posts, never a fresh id per reviewer", "passed": true, "evidence": "\"One <batch-id> is generated once for this decision ... and reused verbatim across both comments -- never regenerated per reviewer.\""},
+    {"text": "States these two comments count as exactly ONE additional triggered cycle (not two), so the count after this decision is 2, not 3 -- does not describe counting per-comment", "passed": true, "evidence": "\"Because both of this round-2 decision's comments share the same batch-id, they count as exactly one triggered cycle, not two ... Triggered-cycle count = 1 (round 1) + 1 (this batch) = 2.\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

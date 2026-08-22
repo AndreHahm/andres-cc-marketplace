@@ -1,0 +1,21 @@
+{
+  "eval_id": 20,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {
+      "text": "States the count (1) is below min_rounds (2), so another cycle is mandatory -- proceeding without asking whether, only which",
+      "type": "functionality",
+      "target": "outputs/options.md"
+    },
+    {
+      "text": "Describes Question 1 as offering only the three validated reviewer options, with no \"No further round for now\" option at all",
+      "type": "functionality",
+      "target": "outputs/options.md"
+    },
+    {
+      "text": "Explicitly states the stop option is omitted because the floor hasn't been met yet (not because of reviewer count), and contrasts with the between-min-and-max case where it would normally appear",
+      "type": "quality",
+      "target": "outputs/options.md"
+    }
+  ]
+}

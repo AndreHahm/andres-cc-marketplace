@@ -13,7 +13,7 @@ description: >-
   `github-issue-creator`'s general issue drafting, or `codex-review-recovery`'s stuck-check
   recovery — see When NOT to Use.
 argument-hint: (optional) PR number or URL — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, AskUserQuestion, Skill(git-kit:commit)
+allowed-tools: Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh repo view:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(gh api repos/*/pulls/*/comments:*), Bash(gh api repos/*/pulls/*/comments/*/replies:*), Bash(gh api graphql:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(date:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, AskUserQuestion, Skill(git-kit:commit)
 ---
 
 # Handling Review Findings
@@ -254,143 +254,125 @@ session.
    readiness gate — required status checks, no outstanding `CHANGES_REQUESTED` review, any branch
    protection "require conversation resolution" setting — still applies in full regardless of this
    workflow's fixed/filed/declined classification.
-8. **Trigger the next round, if the budget allows one.** After step 7's report, first resolve the
-   **triggered-cycle count** this step actually bounds — see "Triggered-cycle count vs. round" in
-   `references/round-and-dedup-rules.md` for why this is a distinct number from the fix-driven-push
-   "round" used everywhere else in this Workflow: a cycle that comes back clean, or produces only
-   declined/filed findings, never closes a round (no fix-driven push happens), so counting by round here
-   would let this step re-trigger the same still-open round indefinitely, never reaching `max_rounds`.
-   Resolve the count as **1 (round 1's automatic CI trigger) plus the number of this skill's own trigger
-   comments already posted to this PR** — from the freshly re-fetched comment list (step 1), count every
-   top-level `gh pr comment` whose body, verbatim, equals one of `review_findings_reviewers`'
-   `default_review_trigger`/`full_review_trigger` strings (this step's own posts contain nothing else in
-   the body, which is what makes this reliably re-derivable rather than requiring a persisted counter —
-   consistent with "No persisted round-counter file"). Each such comment counts once toward the budget
-   regardless of what its review produced — fixed findings, filed issues, declines, or nothing at all.
+8. **Trigger the next round, if the budget allows one.** Four sub-steps: resolve how many cycles this
+   skill has already triggered (8a), decide whether/which reviewer(s) to trigger next (8b), validate
+   every candidate before it's ever offered (8c), and re-verify live state immediately before actually
+   posting (8d).
 
-   Below `review_findings_min_rounds`, another cycle is required — proceed without asking whether, only
-   which. Between `min_rounds` and `review_findings_max_rounds`, ask via `AskUserQuestion` whether to
-   run another cycle at all; on "no," stop here — this run ends with step 7's report as the final
-   word, and nothing further gets posted. At `max_rounds`, skip this step entirely — a further finding
-   that shows up anyway is handled per `review_findings_generate_issues` (Settings) the next time this
-   skill is invoked. **`max_rounds` is the authoritative ceiling if the two settings are ever
-   misconfigured with `min_rounds` set higher than `max_rounds`** — treat "at `max_rounds`" as taking
-   precedence over "below `min_rounds`" whenever both would otherwise apply to the same triggered-cycle
-   count, so a bad `min_rounds` value can never push a proactive trigger past the configured ceiling.
+   **8a. Resolve the triggered-cycle count.** This is a distinct number from the fix-driven-push
+   "round" used elsewhere in this Workflow — see `references/round-and-dedup-rules.md`'s
+   "Triggered-cycle count vs. round" for the full rationale (why counting by round would loop this
+   step indefinitely, and why a raw trigger-string match can't distinguish this skill's own post from
+   `codex-review-recovery`'s identical-looking retry comment). Compute it as **1 (round 1's automatic
+   CI trigger) plus the number of distinct `<batch-id>` values** found in
+   `<!-- handling-review-findings-trigger:<batch-id> -->` markers across the freshly re-fetched comment
+   list (step 1) — never a count of comments, and never a count of trigger-string matches with no
+   marker. A batch is every comment posted for one Question 1/Question 2 decision (8b); several
+   reviewers sharing one batch-id still count as one cycle, never one per reviewer.
 
-   **Resolve and validate every trigger string before anything is offered as an option — this order
-   matters, not just the checks themselves.** `review_findings_reviewers` (from either
-   `git-kit.settings.json` or an overriding `.claude/git-kit.local.json`) is settings data, not a value
-   this skill authored — treat it the same way step 1 treats `$ARGUMENTS`: never substitute it into a
-   shell command unvalidated, and never let a later check's pass silently stand in for an earlier
-   check's fail. **The entry's own `name` field needs this same discipline** — it's substituted directly
-   into the handle-token regex below (`^<name>[a-z0-9]*$`) and into a scratchpad filename
-   (`trigger-<name>.txt`); an unvalidated `name` containing regex metacharacters could corrupt that
-   pattern's matching behavior, and one containing a path separator (`/`, `\`) or `..` could write the
-   scratchpad file outside its intended directory. Validate `name` itself, for every reviewer entry,
-   before doing anything else with it: it must match `^[a-z][a-z0-9_-]{0,31}$` (lowercase identifier,
-   starts with a letter, digits/underscore/hyphen only, 32 chars max — matching the seeded
-   `codex`/`coderabbit`/`devin` convention). A reviewer entry whose `name` fails this check is excluded
-   from this round's options entirely, the same as a reviewer that fails every fallback in step 3 below
-   — never attempt to sanitize or truncate an invalid `name` into something usable.
+   Below `review_findings_min_rounds`, another cycle is required — proceed without asking whether,
+   only which (8b's Question 1 drops its stop option in this case). Between `min_rounds` and
+   `max_rounds`, ask (8b) whether to run another cycle at all; on "no," stop here — this run ends with
+   step 7's report as the final word. At `max_rounds`, skip this step entirely — a further finding is
+   handled per `review_findings_generate_issues` (Settings) the next time this skill is invoked.
+   **`max_rounds` is the authoritative ceiling** if `min_rounds` is ever misconfigured higher than it.
 
-   For each reviewer entry that passes the `name` check, validate its trigger string in this exact order:
+   **8b. Decide which reviewer(s)/mode — once per conversation.** If this conversation hasn't already
+   asked, ask now via a single `AskUserQuestion` call carrying two questions:
 
-   1. **Tracked-ness gate first, before any content check.** If `.claude/git-kit.local.json` exists and
-      is itself tracked by git (`git ls-files --error-unmatch .claude/git-kit.local.json` exits `0`),
-      **ignore that file's `default_review_trigger`/`full_review_trigger` for this entry entirely** and
-      use the git-tracked `git-kit.settings.json` value instead — regardless of whether the local
-      file's value would otherwise pass the checks below. This is the actual trust-boundary check
-      (`references/settings-and-round-budget.md`); the content checks in step 2 are a second,
-      independent layer, not a substitute for this one — a well-formed, name-matching string from a
-      *tracked* local file is still rejected here, before its content is ever inspected.
-   2. **Content validation**, applied to whichever value step 1 selected: (a) the string must match
-      `^[@/][A-Za-z0-9_-]{1,39}( [a-z]{1,12}){1,2}$` as a **full-string match** (anchored, no
-      leading/trailing whitespace or newline — not merely "contains a matching substring"), and (b) the
-      **handle token** — the characters immediately after the leading `@`/`/` up to the first space —
-      must equal the entry's own `name`, or match `^<name>[a-z0-9]*$` case-insensitively (this admits
-      `coderabbitai` for a `name: coderabbit` entry, but rejects `codex-evil`/`notcodex` for a `name:
-      codex` entry — a plain substring test, as an earlier revision of this check used, does not: both
-      of those contain "codex" as a substring while addressing a different handle entirely).
-   3. **Fallback order.** If the value being checked (after step 1's tracked-ness substitution) fails
-      step 2, fall back to the git-tracked `git-kit.settings.json` value for that same reviewer/mode; if
-      the tracked value also fails, exclude that reviewer from this round's options entirely and tell
-      the user plainly which reviewer was excluded and why — never post anything unvalidated, and never
-      guess at a corrected value.
-
-   Only a reviewer entry that survives all three steps can appear in the `AskUserQuestion` below.
-
-   **The reviewer(s)/mode choice, and the exact validated string(s) behind it, are fixed once per
-   conversation, not re-derived once per round.** If this conversation hasn't already asked which
-   reviewer(s) and mode to use for the rounds still to come, ask now via a single `AskUserQuestion` call
-   carrying **two questions**:
-
-   - **Question 1 — reviewer(s):** multi-select, one option per reviewer entry that survived validation
-     above plus an explicit "No further round for now" option — never more than 4 options total,
-     matching `AskUserQuestion`'s own per-question cap (verified: its schema caps `options` at
-     `maxItems: 4`). Each option's description names the reviewer plainly (not yet the exact trigger
-     text — that depends on Question 2's answer). If "No further round for now" is selected — alone or
-     together with any reviewer option — treat it as authoritative: ignore Question 2's answer entirely
-     and stop here, this run ends with step 7's report as the final word, and nothing further gets
-     posted.
+   - **Question 1 — reviewer(s):** multi-select, one option per reviewer entry that survives 8c's
+     validation, plus an explicit "No further round for now" option — **only when the triggered-cycle
+     count already meets `min_rounds`** (8a); below the floor, this option is omitted entirely, since
+     stopping isn't a real choice yet. Never more than 4 options total either way, matching
+     `AskUserQuestion`'s own per-question cap (verified: its schema caps `options` at `maxItems: 4`).
+     Each option names the reviewer plainly, not yet the exact trigger text (that depends on Question
+     2). If "No further round for now" is selected — alone or with any reviewer option — treat it as
+     authoritative: ignore Question 2 and stop here, nothing gets posted.
    - **Question 2 — review profile:** single-select, exactly 2 options, "Default review" / "Full
-     review" — applied uniformly to every reviewer selected in Question 1. This is what keeps the
-     option count within `AskUserQuestion`'s per-question cap even though every reviewer now has two
-     real modes: the profile choice is asked once, as its own question, rather than doubling Question
-     1's option count per reviewer (3 reviewers × 2 modes would be 6 options in one question, well over
-     the cap). For a reviewer whose two trigger strings are identical (Devin), the answer resolves to
-     the same string either way — no special case needed.
+     review" — applied uniformly to every reviewer selected in Question 1. Asking the profile once, as
+     its own question, is what keeps Question 1 within the 4-option cap even though every reviewer has
+     two real modes (3 reviewers × 2 modes would be 6 options in one question). A reviewer whose two
+     trigger strings are identical (Devin) resolves to the same string either way.
 
-   For each reviewer selected in Question 1, resolve its posted string as that reviewer's
-   `default_review_trigger` or `full_review_trigger` (both already validated above) per Question 2's
-   answer. Remember the full decision — which reviewers, and the profile — along with the exact
-   validated string(s) behind it, and reuse it for every later round this run goes on to trigger — don't
-   re-read settings and re-validate from scratch before round 3's trigger just because round 2's already
-   happened, since a settings value could have changed in between and silently diverge from what the
-   user actually confirmed. If a later round needs a reviewer this run hasn't already validated, re-run
-   the three-step check above for it before offering it. A genuinely new session with no memory of an
-   earlier answer asks fresh — see `references/round-and-dedup-rules.md`'s "No persisted round-counter
-   file" section for why.
+   Resolve each selected reviewer's posted string as its `default_review_trigger` or
+   `full_review_trigger` per Question 2's answer. Remember the full decision — which reviewers, the
+   profile, and the validated string(s) behind it — and reuse it for every later round this run
+   triggers; don't re-read settings or re-validate from scratch before round 3 just because round 2
+   already happened. If a later round needs a reviewer this run hasn't validated yet, run 8c for it
+   first. A genuinely new session with no memory of an earlier answer asks fresh — see
+   `references/round-and-dedup-rules.md`'s "No persisted round-counter file" section for why.
 
-   **Before posting anything — re-verify the PR is open, non-draft, and the branch actually pushed. The
-   trigger to post a review-comment is a successful push to an open, non-draft PR, never merely having
-   made a local commit or having gotten an `AskUserQuestion` answer** — answering the two questions above
-   decides *what* to post if and when posting is warranted; it is never itself the signal that posting is
-   warranted now. Re-fetch fresh immediately before posting, per
-   `.claude/rules/recheck-state-before-side-effecting-action.md` (never reuse an earlier check, including
-   one taken earlier in this same step): `gh pr view <number> -R "<owner>/<repo>" --json state,isDraft,
-   headRefOid`, and compare `headRefOid` against this checkout's current `git rev-parse HEAD`. Three
-   independent ways this can fail, each its own stop condition — check all three, not just the first one
-   that comes to mind:
+   **8c. Validate every candidate before it's ever offered as an option.** `review_findings_reviewers`
+   (from either `git-kit.settings.json` or an overriding `.claude/git-kit.local.json`) is settings
+   data, not something this skill authored — treat it the same way step 1 treats `$ARGUMENTS`: never
+   substitute it into a shell command unvalidated, and never let a later check's pass stand in for an
+   earlier check's fail.
+
+   First, the entry's own `name`: it's substituted directly into the handle-token regex below
+   (`^<name>[a-z0-9]*$`) and into a scratchpad filename (`trigger-<name>.txt`), so an unvalidated value
+   containing a regex metacharacter could corrupt that pattern, and one containing a path separator
+   (`/`, `\`) or `..` could write the scratchpad file outside its intended directory. Require
+   `^[a-z][a-z0-9_-]{0,31}$` (lowercase identifier, starts with a letter, digits/underscore/hyphen
+   only, 32 chars max — matching the seeded `codex`/`coderabbit`/`devin` convention) before doing
+   anything else with it; a reviewer entry whose `name` fails this is excluded entirely, never
+   sanitized or truncated into something usable.
+
+   Then, for each reviewer entry that passes the `name` check, validate its trigger string in this
+   exact order:
+
+   1. **Tracked-ness gate first, before any content check.** If `.claude/git-kit.local.json` exists
+      and is itself tracked by git (`git ls-files --error-unmatch .claude/git-kit.local.json` exits
+      `0`), ignore that file's `default_review_trigger`/`full_review_trigger` for this entry entirely
+      and use the git-tracked `git-kit.settings.json` value instead — regardless of whether the local
+      file's value would otherwise pass the checks below. This is the real trust-boundary check
+      (`references/settings-and-round-budget.md`); the content checks below are a second, independent
+      layer, not a substitute for this one.
+   2. **Content validation**, applied to whichever value step 1 selected: (a) the string must match
+      `^[@/][A-Za-z0-9_-]{1,39}( [a-z]{1,12}){1,2}$` as a full-string match (anchored, no
+      leading/trailing whitespace or newline), and (b) the handle token — the characters immediately
+      after the leading `@`/`/` up to the first space — must equal the entry's own `name`, or match
+      `^<name>[a-z0-9]*$` case-insensitively (admits `coderabbitai` for `name: coderabbit`, rejects
+      `codex-evil`/`notcodex` for `name: codex` — a plain substring test doesn't, since both contain
+      "codex" while addressing a different handle).
+   3. **Fallback order.** If the checked value fails step 2, fall back to the git-tracked
+      `git-kit.settings.json` value for that reviewer/mode; if that also fails, exclude the reviewer
+      entirely and tell the user plainly which one and why — never post anything unvalidated, and
+      never guess at a corrected value.
+
+   Only an entry that survives all three steps can appear in 8b's `AskUserQuestion`.
+
+   **8d. Re-verify live state, then post.** The trigger to post is a successful push to an open,
+   non-draft PR — never merely a made commit or an answered `AskUserQuestion`; 8b decides *what* to
+   post if and when posting is warranted, never *that* it's warranted now. Re-fetch fresh immediately
+   before posting, per `.claude/rules/recheck-state-before-side-effecting-action.md` (never reuse an
+   earlier check, including one from earlier in this same step): `gh pr view <number> -R
+   "<owner>/<repo>" --json state,isDraft,headRefOid`, and compare `headRefOid` against this checkout's
+   current `git rev-parse HEAD`. Three independent stop conditions:
    - `state` isn't `OPEN` — stop, report plainly, post nothing.
    - `isDraft` is `true` — stop; a draft PR isn't this trigger's audience (round 1's own automatic CI
-     trigger fires specifically on the draft→ready transition; a manual round trigger from this skill
-     shouldn't fire while the PR is still draft either).
-   - `headRefOid` doesn't equal `git rev-parse HEAD` — the commit(s) this round is meant to get reviewed
-     haven't reached the remote yet, whether or not they've been committed locally. Stop; tell the user
-     plainly which commit(s) are still local-only and that pushing them is what actually clears this
-     precondition — not the commit itself, and not the `AskUserQuestion` answer. Re-run this same check
-     after the push; don't retry blindly, and don't treat "the user said push it" as equivalent to having
-     re-verified the push actually landed.
+     trigger fires on the draft→ready transition; a manual trigger shouldn't fire while still draft).
+   - `headRefOid` doesn't equal `git rev-parse HEAD` — the commit(s) meant to be reviewed haven't
+     reached the remote yet. Stop; tell the user which commit(s) are still local-only and that pushing
+     them is what clears this precondition — not the commit itself, not the `AskUserQuestion` answer.
+     Re-run this check after the push; don't retry blindly.
 
-   Only once all three checks pass does posting proceed. Once the reviewer(s)/mode are decided and
-   validated, and this precondition has just been freshly re-confirmed: for each selected reviewer, write
-   the marker
+   Only once all three pass does posting proceed. Generate this decision's `<batch-id>` once
+   (`date -u +%Y%m%dT%H%M%SZ`) and reuse it verbatim across every comment this decision posts — never a
+   fresh id per reviewer, or 8a's batch-grouping breaks. For each selected reviewer: write the marker
    (`"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-review handling-review-findings`)
-   immediately before posting — **a fresh marker per `gh pr comment` call**, since the marker is
-   single-use and consumed by the very next `Bash`/`PowerShell` call regardless of whether it matches;
-   selecting 3 reviewers means 3 separate marker-write-then-post pairs, never one marker reused across
-   several posts. Write each reviewer's confirmed trigger string to its own scratchpad file (e.g.
-   `trigger-<name>.txt`, written immediately before that reviewer's own post — never one shared filename
-   reused across reviewers, which risks a stale prior value surviving a failed or out-of-order write)
-   and post with `--body-file` rather than inlining it into the command line — `gh pr comment <number>
-   -R "<owner>/<repo>" --body-file <scratchpad-path>/trigger-<name>.txt` — so a value that passed the
-   regex but still contains shell-meaningful characters can never reach shell parsing; see
+   immediately before posting — a fresh marker per `gh pr comment` call, since it's single-use and
+   consumed by the very next `Bash`/`PowerShell` call regardless of match; selecting 3 reviewers means
+   3 separate marker-write-then-post pairs. Write that reviewer's trigger string, a blank line, and
+   `<!-- handling-review-findings-trigger:<batch-id> -->` to its own scratchpad file (e.g.
+   `trigger-<name>.txt`, written immediately before that post — never a shared filename across
+   reviewers) and post with `--body-file` — `gh pr comment <number> -R "<owner>/<repo>" --body-file
+   <scratchpad-path>/trigger-<name>.txt` — never inlined into the command line, so a value that passed
+   the regex but still contains shell-meaningful characters can never reach shell parsing; see
    `references/github-api-mechanics.md`'s "Posting a review-trigger comment" section for the exact
-   shape. **This skill's own run ends here for this round** — it does not poll or wait for the
-   newly-triggered review to post back; see `references/round-and-dedup-rules.md` for why. Tell the
-   user plainly which trigger comment(s) were posted and that re-invoking this skill once the review
-   actually posts is how the next round gets triaged.
+   shape. This skill's own run ends here for this round — it does not poll for the newly-triggered
+   review to post back; see `references/round-and-dedup-rules.md` for why. Tell the user plainly which
+   trigger comment(s) were posted and that re-invoking this skill once the review actually posts is how
+   the next round gets triaged.
 
 ## GitHub API Mechanics
 
@@ -451,96 +433,21 @@ before each one.
 - "review this diff before I open the PR" → `cross-model-review`
 - "is this PR ready to merge" → `merge-pr`
 
-**Test suite:** `evals/handling-review-findings/evals.json` defines 17 scenarios rewritten for this
-redesign (4 reworked from the retired 2-round-cap premise, 5 new — round-3-gets-fixed-by-default, the
-reviewer-trigger ask, reviewer-choice reuse across rounds, budget-exhaustion without `generate_issues`,
-and handle-token validation rejecting a lookalike trigger) — see `references/testing-scenarios.md`'s
-updated scenario list and `testing_validation_coverage`/`quality_gates_coverage` fields for the
-gate-level mapping, including eight gates this suite still doesn't exercise (state re-fetch timing,
-per-call marker discipline, a disabled reviewer's exclusion, step 8 never firing past `max_rounds`, the
-combined "No further round for now" selection, the push/draft posting precondition, a malformed
-reviewer `name`, and the triggered-cycle-count derivation) — the latter four were added by this
-session's own round-1-review-response and two-question-redesign work and don't have eval coverage yet.
+**Test suite:** `evals/handling-review-findings/evals.json` defines 20 scenarios — see
+`references/testing-scenarios.md`'s scenario list and `testing_validation_coverage`/
+`quality_gates_coverage` fields for the gate-level mapping (8 gates still without eval coverage, listed
+there).
 
-**Last dated run record:** 2026-08-22 — `skill-tester` Full Pipeline (iteration 2): 100% with_skill
-pass rate vs. 86.6% baseline across all 17 evals (+13.4 percentage points); see
-`evals/handling-review-findings/workspace/iteration-2/benchmark.json` for the full per-eval breakdown.
-The discrimination margin is smaller than iteration 1's (+28.1 points) mostly because several scenario
-prompts are detailed enough that a careful general-purpose baseline reconstructs the right answer by
-close reading alone, without needing the skill's specific rules — a real eval-design weakness worth
-tightening in a future iteration, not a sign the skill itself regressed. Three evals show a genuine,
-skill-attributable gap baseline can't close: eval 9 (severity-gate decline — baseline never states the
-thread is left unresolved), eval 14 (baseline asks one single-select question with no review-profile
-question at all, and guesses Devin's trigger string wrong — 0.25 vs. with_skill's 1.0, the widest margin
-in the suite), and eval 12 (baseline incorrectly resolves both reviewers' threads after
-filing an issue, contradicting the "deferred findings are never resolved" rule). Eval 14 also surfaced
-a real skill bug caught before shipping: Workflow step 8's original wording implied offering every
-reviewer's default *and* full mode in one multi-select, which exceeds `AskUserQuestion`'s own
-`options` cap (`maxItems: 4`, verified against its schema) for 3 reviewers — first fixed by showing
-only each reviewer's default trigger as its option and accepting a full-review request via
-`AskUserQuestion`'s free-form "Other" text instead of a second pre-listed option, the same workaround
-the eval's own with_skill run independently designed. Eval 14's own `with_skill` grading record still
-marked that correctly-designed output down against the retired assertion until a round-1
-`chatgpt-codex-connector` review finding on PR #101 caught the mismatch (2026-08-22) — corrected the
-assertion and grading record to match the then-shipped design. That free-form-"Other" design was itself
-superseded the same day, on direct user feedback, by the current **two-question** design (Question 1:
-reviewer multi-select; Question 2: default-vs-full review profile, single-select) — a cleaner way to
-stay within the 4-option cap without pushing the full-review request into unstructured free text. Eval
-14 was rewritten a second time to test the two-question design and re-run; eval 15's `expected_output`
-had a separate class of staleness (asserting
-re-validation of an already-confirmed trigger string that Workflow step 8 explicitly says not to
-re-validate) and was corrected the same pass, with no change to its pass rate. The old iteration-1 result (100% vs. 71.9%, built on the retired
-"2-round cap, round 3+ always becomes an issue" policy) is superseded and no longer reflects this
-skill's current routing logic; see `evals/handling-review-findings/workspace/iteration-1/benchmark.json`
-for that historical breakdown only. The iteration-1 supplementary pressure-test variant is stale for
-the same reason (built on the old eval 3's premise) and still needs a fresh run against the current
-eval 3 — tracked in `evals.json`'s own `supplementary_pressure_test` field as an open item, not
-re-run in this pass.
-
-**Security review:** the `guard-raw-pr-review.sh` hook extension this skill required historically (two
-new `gh api` guard branches) went through a live `security-reviewer` pass on 2026-08-21, per
-`.claude/rules/require-security-review-before-new-gate.md` — it found and fixed 2 Major bypass gaps
-(a positional-flag assumption, and a file-supplied GraphQL body that could pass through unguarded);
-both fixes were re-verified against the reviewer's own bypass commands as regression cases before the
-hook change was committed. This redesign's own new `gh pr comment` call site went through two more live
-`security-reviewer` passes on 2026-08-22: the first found 1 Critical (an unvalidated, settings-derived
-trigger string reaching shell interpolation) and 2 Major findings (a reviewer's trigger string not
-required to match its own name, and a missing `Bash(git ls-files:*)` grant needed to actually run the
-tracked-vs-local trust-boundary check); a follow-up verification pass confirmed the Critical and one
-Major were fully closed but found the fix for the name-match Major was incomplete in two ways — the
-tracked-vs-local rejection wasn't actually enforced at Workflow step 8's own point of use (only pointed
-at from a reference file), and a plain substring match would still have accepted a lookalike handle
-like `@codex-evil` for a `codex` entry — both are fixed in Workflow step 8's current three-step
-validation order (tracked-ness gate, then anchored regex, then handle-token match) and
-`references/settings-and-round-budget.md`'s trust-boundary section above. One pre-existing, shared
-residual the first pass surfaced (`guard-raw-pr-review.sh` allows unconditionally when its own
-`git rev-parse --git-dir` check finds no repository, before the subcommand match even runs) was left
-unfixed here — it predates this redesign, affects every skill that hook guards, and reordering it
-deserves its own dedicated review rather than a side effect of this narrower round-budget change; it's
-now recorded in that hook's own header comment as a disclosed residual rather than left as an
-undocumented gap.
-
-**Round-1 GitHub review findings on PR #101 (2026-08-22):** the automated round-1 review that ran when
-this PR went ready-for-review found two more real gaps neither prior `security-reviewer` pass caught,
-both fixed the same round: (1) a reviewer entry's `name` field was substituted into the handle-token
-regex (`^<name>[a-z0-9]*$`) and a scratchpad filename (`trigger-<name>.txt`) with no validation of its
-own — an unvalidated `name` could corrupt the regex or write outside the intended scratchpad directory;
-fixed by requiring `name` to match `^[a-z][a-z0-9_-]{0,31}$` before it's used anywhere, excluding the
-reviewer entirely otherwise. (2) The round-budget check conflated the fix-driven-push "round" definition
-with the triggered-cycle count `min_rounds`/`max_rounds` actually bound — a cycle that comes back clean
-or produces only declined/filed findings never closes a round, so counting by round could let step 8
-re-trigger the same still-open round indefinitely without ever reaching `max_rounds`; fixed by deriving
-the triggered-cycle count from re-fetched trigger-comment history instead (see "Triggered-cycle count
-vs. round" in `references/round-and-dedup-rules.md`). Two eval-integrity findings from the same round are
-covered above under the run-record note (eval 14/15's stale grading records). One Devin finding
-(`references/settings-and-round-budget.md` overclaiming that a fourth reviewer needs no special
-handling) was also corrected to state the trigger-ask's real 4-option ceiling accurately.
+**Last dated run record:** 2026-08-22 — 100% with_skill pass rate across all 20 evals (iteration 2's 17
+scenarios at 100% vs. 86.6% baseline; iteration 3's 3 newest scenarios, evals 18-20, at 100%,
+with_skill-only). Full run history, the security-review passes, and the specific findings from two
+rounds of live GitHub review on PR #101 (each with its own root cause and fix) live in
+`references/development-history.md` — read it for the "why does the design look like this" story;
+nothing in it is needed to execute a live triage run.
 
 **Concrete scenarios, the full quality-gates checklist, and the round-cap/dedup edge cases** live in
-`references/testing-scenarios.md`. This isn't forced by R13's line-count threshold (this file has
-headroom below it) — it's a deliberate choice matching `cross-model-review`'s own
-`references/testing-scenarios.md` precedent in this same plugin, keeping the scenario/gate detail out
-of the main procedure a reader follows on every triage pass.
+`references/testing-scenarios.md` — kept out of the main procedure a reader follows on every triage
+pass, matching `cross-model-review`'s own `references/testing-scenarios.md` precedent in this plugin.
 
 ## Reference Guide
 
@@ -550,4 +457,4 @@ of the main procedure a reader follows on every triage pass.
 | `references/settings-and-round-budget.md` | Full settings semantics, the round-budget/`generate_issues` interaction, the three named exceptions, the reviewer-array shape, the tracked-vs-local trust boundary |
 | `references/github-api-mechanics.md` | Exact reply/resolve/trigger-post command shapes, the GraphQL thread-node bridge, batch resolution, issue traceability payload |
 | `references/testing-scenarios.md` | Scenario list and quality-gates checklist |
-| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 17 scenarios, 100% with_skill pass rate (iteration 2) |
+| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 20 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate |

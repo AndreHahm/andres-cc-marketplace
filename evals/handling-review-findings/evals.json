@@ -156,23 +156,50 @@
       "files": [
         "outputs/decision.md"
       ]
+    },
+    {
+      "id": 18,
+      "name": "codex-review-recovery's retry comment is excluded from the triggered-cycle count",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #200. Round 1 was triggered automatically by CI and has already been fully triaged. `handling-review-findings` has not yet posted any trigger comment of its own on this PR. Separately, at some point after round 1, `codex-review-recovery` posted a plain top-level comment on this same PR reading exactly `@codex review` (with no trailing marker of any kind) -- this was a stuck-check recovery action (Codex's review had finished on its own dashboard but never posted back to GitHub), not a proactive round trigger from `handling-review-findings`. `review_findings_min_rounds` is `1`, `review_findings_max_rounds` is `3`.\n\nCompute the current triggered-cycle count that Workflow step 8 would compare against `min_rounds`/`max_rounds`, and explain your reasoning in full. Write your answer to `outputs/count.md`.",
+      "expected_output": "States the triggered-cycle count is 1 (only round 1's automatic CI trigger), not 2. Explicitly states that the codex-review-recovery comment is excluded from the count because it carries no `<!-- handling-review-findings-trigger:<batch-id> -->` marker, even though its body text (`@codex review`) is byte-identical to what this skill's own Codex trigger would post. Does not conflate \"matches a configured trigger string\" with \"this skill's own trigger\" -- explicitly names the marker as the actual ownership signal, not the trigger-string text.",
+      "files": [
+        "outputs/count.md"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "A multi-reviewer selection counts as one triggered cycle, not one per reviewer",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls, and you must NOT actually call AskUserQuestion.\n\nPR #200. Round 1 (CI-triggered) has been fully triaged. The user was already asked (via the two-question trigger-ask) which reviewer(s)/mode to trigger for round 2, and selected both Codex and Devin (Question 1) with the Default review profile (Question 2). `review_findings_max_rounds` is `3`.\n\nDescribe exactly what gets posted for this decision (how many separate `gh pr comment` calls, and what each comment's body contains), and then describe how this decision affects the triggered-cycle count when a round-3 decision is later being made. Write your answer to `outputs/batch.md`.",
+      "expected_output": "Describes exactly 2 separate `gh pr comment` calls for this decision -- one for Codex (body: `@codex review` followed by a blank line and the marker), one for Devin (body: `/devin review` followed by a blank line and the marker) -- and explicitly states both comments carry the *same* `<batch-id>` value, generated once for this decision and reused verbatim across both posts, never a fresh id per reviewer. States plainly that when the triggered-cycle count is next computed, these two comments count as exactly ONE additional cycle (not two), because they share one batch-id -- so the count after this decision is 2 (1 for round 1, 1 for this two-reviewer round-2 batch), not 3. Does not describe counting per-comment.",
+      "files": [
+        "outputs/batch.md"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Below min_rounds, Question 1 omits the \"No further round for now\" option",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls, and you must NOT actually call AskUserQuestion -- instead, describe exactly what you would ask and why.\n\nPR #210. `review_findings_min_rounds` is `2` and `review_findings_max_rounds` is `3`. Round 1 (CI's automatic trigger) has just been fully triaged -- this is the only triggered cycle so far, so the current triggered-cycle count is `1`, which is below `min_rounds` (`2`). All three seed reviewers (Codex, CodeRabbit, Devin) are enabled with valid tracked trigger strings.\n\nDescribe exactly what Question 1 of the trigger-ask would offer as options in this situation, and explain why. Write your answer to `outputs/options.md`.",
+      "expected_output": "States that the current triggered-cycle count (1) is below `min_rounds` (2), so another cycle is mandatory -- proceeding without asking \"whether,\" only \"which.\" Describes Question 1 as offering *only* the three validated reviewer options (Codex, CodeRabbit, Devin), with **no** \"No further round for now\" option at all in this case -- explicitly states this option is omitted specifically because the floor hasn't been met yet, not merely because there happen to be exactly 3 reviewers. Contrasts this with the between-`min_rounds`-and-`max_rounds` case, where that stop option would normally appear as a 4th option. Does not offer a way to select \"no round\" while below the floor.",
+      "files": [
+        "outputs/options.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 25,
-    "declared_scenarios_covered": 16,
+    "declared_scenarios_total": 28,
+    "declared_scenarios_covered": 19,
     "uncovered": [
       "A Critical finding first appears in round 3 and matches one of the three named exceptions (as opposed to arriving via budget exhaustion) -- filed, with the Hard Cap AskUserQuestion firing. Only the budget-exhaustion variant of this scenario is covered (eval 3); no eval exercises a Critical finding routed to the Issue path via exception 1/2/3 specifically in round 3.",
       "A reviewer has enabled: false in review_findings_reviewers -- it never appears as an option in the trigger-ask. No eval constructs a disabled-reviewer scenario.",
       "A fresh session (no memory of an earlier trigger-ask answer) triages what turns out to be round 3 and asks the reviewer/mode question again. Eval 15 only exercises the same-conversation reuse case, never the fresh-session contrast.",
       "review_findings_max_rounds is reached and the skill's report states plainly that no further round will be triggered, with Workflow step 8 skipped entirely, as its own directly-asserted claim. Eval 16's own assertions cover the fix-vs-file routing at budget exhaustion, not this reporting/skip claim specifically -- it appears only incidentally in that eval's with_skill output, not as something any eval's metadata actually requires.",
       "A reviewer entry's name field is malformed (uppercase, a regex metacharacter, or a path separator) and gets excluded from the trigger-ask before its trigger string is ever checked. No eval constructs a malformed-name scenario.",
-      "A review cycle comes back clean or produces only declined/filed findings (no fix-driven push), and the triggered-cycle count is still derived correctly from trigger-comment history rather than the fix-driven-push round definition. No eval exercises a no-fix cycle against the budget check.",
+      "A review cycle comes back clean or produces only declined/filed findings (no fix-driven push), and the triggered-cycle count is still derived correctly from batch-marker history rather than the fix-driven-push round definition. No eval exercises a no-fix cycle against the budget check.",
       "The user selects \"No further round for now\" in Question 1 together with a reviewer option, and Question 2's answer is correctly ignored. No eval exercises this combined-selection case specifically (eval 14 only exercises describing the options, not a combined selection being made).",
       "The trigger-ask's two questions are answered but the commit(s) meant to be reviewed are still local-only (HEAD doesn't match the PR's headRefOid) -- no trigger comment gets posted. No eval exercises this precondition.",
       "The trigger-ask's two questions are answered and the local commit is pushed, but the PR is a draft (or closed) -- no trigger comment gets posted. No eval exercises this precondition."
     ],
-    "note": "25 named edge-case scenarios in references/testing-scenarios.md (post-redesign) -- up from 20 after this session's round-1-review-response work added 5 new scenarios (malformed reviewer name, the triggered-cycle-count/no-fix-cycle fix, the two-question redesign's combined-selection case, and the push/draft posting precondition x2), none of which have eval coverage yet (all 5 added to uncovered below). The prior 20-scenario baseline (and its own history: corrected from an earlier miscount of 15 by this skill's own reviewing-evals self-audit, 2026-08-22) is otherwise unchanged. Evals 14/15/17 cover reviewer-trigger/ask-once/validation scenarios not separately numbered in that file's prose list but described in its own text."
+    "note": "28 named edge-case scenarios in references/testing-scenarios.md (post-redesign) -- up from 25 after a round-2 GitHub review on PR #101 (2026-08-22) found the triggered-cycle count couldn't distinguish this skill's own trigger comments from codex-review-recovery's identical-looking retry comment, and miscounted a multi-reviewer selection as one cycle per reviewer instead of one cycle total; fixed via a per-decision batch-id marker appended to every trigger comment, adding 3 new scenarios (recovery-comment exclusion, multi-reviewer batch-counts-once, below-min_rounds omits the stop option), none of which have eval coverage yet (added to uncovered below). The prior 25-scenario baseline (itself up from 20 after this session's round-1-review-response work: malformed reviewer name, the triggered-cycle-count/no-fix-cycle fix, the two-question redesign's combined-selection case, and the push/draft posting precondition x2; and before that, corrected from an earlier miscount of 15 by this skill's own reviewing-evals self-audit) is otherwise unchanged. Evals 14/15/17 cover reviewer-trigger/ask-once/validation scenarios not separately numbered in that file's prose list but described in its own text."
   },
   "quality_gates_coverage": {
     "note": "references/testing-scenarios.md's quality gates (post-redesign), mapped to the eval(s) that exercise each -- not part of skill-tester's own schema, kept per completeness-reviewer's original finding that gates need explicit eval-coverage tracking.",
@@ -320,10 +347,28 @@
         "gate": "The triggered-cycle count Workflow step 8 compares against min_rounds/max_rounds is derived from re-fetched trigger-comment history, never from the fix-driven-push round definition",
         "covered_by": [],
         "note": "NOT exercised -- no eval constructs a no-fix review cycle against the budget check; a real gap"
+      },
+      {
+        "gate": "A comment matching a configured trigger string but carrying no handling-review-findings-trigger marker (a codex-review-recovery retry, a coincidentally identical human comment) is never counted toward the triggered-cycle count",
+        "covered_by": [
+          18
+        ]
+      },
+      {
+        "gate": "Every comment posted for one Question 1/Question 2 decision shares the same batch-id, so a multi-reviewer selection advances the triggered-cycle count by exactly 1, never by the number of reviewers selected",
+        "covered_by": [
+          19
+        ]
+      },
+      {
+        "gate": "When the triggered-cycle count is below review_findings_min_rounds, Question 1 never offers a \"No further round for now\" option",
+        "covered_by": [
+          20
+        ]
       }
     ],
-    "gates_total": 23,
-    "gates_fully_covered": 15,
+    "gates_total": 26,
+    "gates_fully_covered": 18,
     "uncovered_gates": [
       "State is always re-fetched immediately before a side-effecting action, never reused",
       "The gh-pr-review marker is written immediately before the specific gh api/gh pr comment call it authorizes, never earlier, and never reused across reviewers",
