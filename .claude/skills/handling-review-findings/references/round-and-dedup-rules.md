@@ -1,6 +1,7 @@
 # Round and Dedup Rules
 
 - [What counts as a round, and where its boundary sits](#what-counts-as-a-round-and-where-its-boundary-sits)
+- [Triggered-cycle count vs. round](#triggered-cycle-count-vs-round)
 - [No persisted round-counter file](#no-persisted-round-counter-file)
 - [Dedup mechanism: file+line match is a candidate signal, never sufficient by itself](#dedup-mechanism-fileline-match-is-a-candidate-signal-never-sufficient-by-itself)
 - [Scope-based deferral is a separate, unlimited axis from the round budget](#scope-based-deferral-is-a-separate-unlimited-axis-from-the-round-budget)
@@ -37,6 +38,24 @@ produced findings in that cycle.
 rebase onto `main`, an unrelated commit landing on the same branch, or an issue-draft-only commit (see
 the Issue path) — does not itself open a new window; the next reviewer pass against that new SHA still
 belongs to whichever round's window the PR was already in.
+
+## Triggered-cycle count vs. round
+
+Workflow step 8's `review_findings_min_rounds`/`review_findings_max_rounds` bound a **triggered-cycle
+count** — how many times this skill has proactively triggered a review — not the "round" defined above.
+The two usually track each other, but not always: a round only closes on a fix-driven push, while a
+review cycle this skill triggers can come back clean, or produce only declined/filed findings, with no
+fix and therefore no push. If step 8 counted by round in that case, the still-open round would never
+register as "completed," and the budget check would never see a count reach `max_rounds` — step 8 would
+keep re-triggering the same round indefinitely, the exact ceiling it exists to enforce.
+
+Step 8 instead derives the triggered-cycle count from re-fetched state directly: 1 for round 1's
+automatic CI trigger, plus the number of this skill's own trigger comments already posted to the PR —
+top-level `gh pr comment`s whose body, verbatim, matches one of `review_findings_reviewers`'
+`default_review_trigger`/`full_review_trigger` strings. This stays consistent with "No persisted
+round-counter file" below: the count is re-derived from GitHub state every time, not stored anywhere,
+and it advances the moment step 8 posts a trigger comment — independent of whether that cycle's review
+ever produces a fix.
 
 ## No persisted round-counter file
 

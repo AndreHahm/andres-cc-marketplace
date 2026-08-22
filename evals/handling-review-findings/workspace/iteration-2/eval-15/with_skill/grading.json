@@ -3,7 +3,7 @@
   "configuration": "with_skill",
   "assertions_evaluated": [
     {"text": "States plainly that since the reviewer/mode choice was already made once this conversation (Codex, full review), it is NOT asked again before triggering round 3 -- the earlier answer is reused", "passed": true, "evidence": "\"Conclusion: do not fire AskUserQuestion again. Proceed directly to triggering round 3 by reusing the earlier, already-validated trigger string\""},
-    {"text": "Describes re-validating the exact previously-confirmed trigger string (tracked-ness gate, regex, handle-token match) before posting again, rather than skipping validation just because it passed once already this conversation", "passed": true, "evidence": "\"Re-validate that the remembered trigger string is still the one to use (no re-validation from settings is needed mid-conversation unless a new, not-yet-validated reviewer/mode is being introduced — it isn't here)\""},
+    {"text": "States that the already-validated trigger string is reused as-is, without re-running the tracked-ness/regex/handle-token checks from scratch, since it was already validated earlier this conversation and no new, not-yet-validated reviewer/mode is being introduced here", "passed": true, "evidence": "\"no re-validation from settings is needed mid-conversation unless a new, not-yet-validated reviewer/mode is being introduced — it isn't here\""},
     {"text": "Does not fabricate a new AskUserQuestion call for this round", "passed": true, "evidence": "\"no gh/API calls or AskUserQuestion calls are actually made\""}
   ],
   "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
