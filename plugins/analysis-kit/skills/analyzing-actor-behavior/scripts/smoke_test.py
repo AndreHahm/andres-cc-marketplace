@@ -35,7 +35,7 @@ def check_bash_grants():
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     if not fm_line_match:
         return True, "no allowed-tools line found (skip)"
-    granted_cmds = re.findall(r"Bash\(([\w.*/${}-]+?)(?::|\))", fm_line_match.group(1))
+    granted_cmds = re.findall(r"Bash\(([\w.*/${}\s-]+?)(?::|\))", fm_line_match.group(1))
     granted_cmds = [c.lstrip("*/").split("/")[-1] for c in granted_cmds]
 
     body = text[header_end:]

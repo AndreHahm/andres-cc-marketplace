@@ -5,7 +5,9 @@ description: >-
   SWOT analyses, self-critiques, and self-reflections for each skill, sub-agent, command,
   workflow-skill, and rule active in the session range, reading generated output artifacts
   in scope and re-verifying their stated open items against current repo state rather than
-  trusting them at face value. Generates classified improvement suggestions grouped by
+  trusting them at face value. With explicit per-instance confirmation, also corrects a
+  non-resolving commit SHA it finds in a re-verified artifact, narrowly scoped to that
+  replacement only. Generates classified improvement suggestions grouped by
   component and priority, persisted to .claude/output/analyzing-plugin-components/.
   Use when a request already names component/skill/agent/rule performance
   specifically — auditing skill or agent performance, building an
@@ -49,7 +51,7 @@ For date-range retrospectives or deep taxonomy guidance, read the full phases be
 - **No `.claude/` components were active** — if no skills, agents, commands, or rules were involved, there is nothing to analyze
 - **Single-component review** — a focused review of one skill or one plugin's structure is better served by a dedicated reviewer for that component; this skill adds overhead without benefit for isolated reviews
 - **Code quality** — this skill covers skill and agent behavior, not code correctness; use a diff/code-review tool for that
-- **Want suggestions applied, tested, documented, and committed automatically** — this skill stops at "Top 5 Actions," it never applies them; hand the persisted report to `generating-analysis-recommendations` for a concrete WHAT/WHY/HOW plan, or your project's own improvement workflow if it has one
+- **Want suggestions applied, tested, documented, and committed automatically** — this skill stops at "Top 5 Actions," it never applies its *suggestions*; hand the persisted report to `generating-analysis-recommendations` for a concrete WHAT/WHY/HOW plan, or your project's own improvement workflow if it has one. (A confirmed, narrowly-scoped commit-SHA correction — Phase 2's "Commit SHA doesn't resolve at all" step — is a separate, distinct capability from applying suggestions, and is not affected by this exclusion.)
 - **Full permission-candidate extraction across session transcripts** — this skill's own Permission Friction note (Phase 6) is a qualitative observation only, not a systematic scan; use a dedicated permission-audit tool for that if your project has one
 - **Which external tools or developer frameworks a session used** — counting tool/framework invocations, or auto-detecting a project's framework, is `analyzing-tool-and-framework-use`'s job; this skill assesses component *behavior quality* (SWOT, self-critique), not tool/framework inventory
 - **Actor behavior in the moment** (was a sub-agent's dispatch appropriate, what did the human correct or contribute, how did work hand off between agents) — use `analyzing-actor-behavior` instead; this skill assesses a component's *structural/SWOT quality*, not actor behavior in the moment
@@ -216,7 +218,7 @@ Output two views.
 
 Close with **Top 5 Actions**: the five highest-impact suggestions across all components, in order.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full Phase 3-6 output to a scratch file, then run `Bash("${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/analyzing-plugin-components/<scope-slug>-<timestamp>.md" --label "Session Analysis Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Session Analysis Report written: ...` confirmation line — present its printed output as its own line before the rest of Phase 6's output.
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full Phase 3-6 output to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/analyzing-plugin-components/<scope-slug>-<timestamp>.md" --label "Session Analysis Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Session Analysis Report written: ...` confirmation line — present its printed output as its own line before the rest of Phase 6's output.
 
 **Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
 
