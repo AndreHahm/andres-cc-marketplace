@@ -43,6 +43,7 @@ Any codex-kit component needing prompt-composition guidance, invocation mechanic
 
 **Current test coverage:**
 - `evals/codex-prompt-protocol/evals.json` — 1 defined scenario (locating the XML tag vocabulary and error taxonomy without claiming to be user-invocable). Structurally graded 2026-08-12 (PASS — the reference table correctly points to `prompt-blocks.md` and `error-taxonomy.md`, and `disable-model-invocation: true` plus the "no user-facing trigger" prose both hold); this skill has no independent runtime behavior beyond "is it read correctly," so a live empirical run would add limited value here.
+- `scripts/smoke-tests/codex-prompt-protocol-references.mjs` — mechanically verifies all three concrete scenarios above: every reference-table row's file exists, `disable-model-invocation`/`Read`-only stay set, and a representative set of symbol names cited in `invocation-protocol.md` resolve to real functions in `codex-companion.mjs`/`scripts/lib/*.mjs`.
 
 **Quality gates:**
 - [ ] Every table row's reference file exists at the stated path

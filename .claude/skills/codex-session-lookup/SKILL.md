@@ -58,7 +58,7 @@ Useful alongside `codex-rescue`/`codex-verify`/`codex-research`'s session-resume
 
 **Current test coverage:**
 - `evals/codex-session-lookup/evals.json` — 1 defined scenario (query against `history.jsonl`, correctly identified as Codex CLI's own state, not Claude Code's). Structurally graded 2026-08-12 (PASS — `find-session-id.py --query`, the `~/.codex/history.jsonl` target, and the read-only/not-Claude-Code-sessions framing all match the eval's `expected_output`); not a live empirical run.
-- No persisted smoke test exists for this skill's Python scripts; they can be run directly against a real `~/.codex/` directory for a quick manual check.
+- `scripts/smoke-tests/codex-session-lookup-scripts.mjs` — real functional coverage of both scripts against scratch `history.jsonl`/rollout fixtures, never a real `~/.codex/` directory: 140-char truncation and `--full`, `--last`, malformed-line skipping, `--id-only`, both `.json`/`.jsonl` rollout formats, and missing/empty-file error handling.
 
 **Quality gates:**
 - [ ] Never touches Claude Code's own session files — only `~/.codex/`

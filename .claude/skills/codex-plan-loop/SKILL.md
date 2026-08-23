@@ -103,7 +103,7 @@ Severity-gated response: Critical → fix immediately. Architectural → discuss
 
 **Current test coverage:**
 - `evals/codex-plan-loop/evals.json` — 1 defined scenario (6-phase structure, concrete convergence condition). Structurally graded 2026-08-12 (PASS — SKILL.md's Phase 1-6 headings and Phase 6's concrete two-condition convergence check match the eval's `expected_output`); not a live empirical run.
-- No persisted smoke test exists for this skill (its Codex calls aren't mechanically testable the way a fixed prompt template is — each phase's payload depends on the actual plan/diff content).
+- `scripts/smoke-tests/codex-plan-loop-invariants.mjs` — this skill's Codex calls aren't mechanically testable the way a fixed prompt template is (each phase's payload depends on the actual plan/diff content), but the SKILL.md text's safety-relevant invariants are: Phase 1-6 ordering, the Phase 4 rollback-anchor instruction, Phase 6's concrete convergence exit, and scratch artifacts always staying under `${CLAUDE_PLUGIN_DATA}/codex-loop/`. Not a live Codex-call test.
 
 **Quality gates:**
 - [ ] Every phase's scratch artifact is written under `${CLAUDE_PLUGIN_DATA}/codex-loop/`, never the repo root
