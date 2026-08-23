@@ -41,7 +41,7 @@ This skill reviews *other reports*, not production code or a live session — it
 - **Only one report exists** — nothing to cross-check against; run another analysis-kit skill first if a second perspective is wanted
 - **Comparing the same skill's report across two different sessions/times** — use `comparing-sessions` instead; this skill cross-checks *different skills'* reports from the *same* scope, not the same skill's report over time
 - **A single unacknowledged contradiction as one narrow check among several** — `analyzing-governance-and-conflicts`' session-vs-session conflict category already covers a lighter version of this; use this skill when a full multi-report cross-check across an entire retrospective is actually wanted
-- **Resolving which report is right** — this skill surfaces contradictions and undercuts; deciding which finding to trust returns to the user or the producing skill, same as every other analysis-kit skill's read-only discipline
+- **Resolving which report is right** — this skill surfaces contradictions and undercuts; deciding which finding to trust returns to the user or the producing skill, the same read-only discipline this skill itself follows (two sibling skills — `analyzing-plugin-components`' confirmed SHA correction, `running-a-full-retrospective`'s Phase 5 direct-fix path — hold a narrow, explicitly-gated write exception; this skill has none)
 - **The reports don't exist yet and running several analyses to produce them is also wanted** — use `running-a-full-retrospective` instead; it dispatches the analyses, consolidates their findings, and offers this skill's own cross-check as one step within that flow. Use this skill directly only once the reports already exist and only the cross-check is wanted
 
 ## Phase 1: Identify the Report Paths
@@ -80,7 +80,7 @@ Group by category (Duplicates, Contradictions, Severity Undercuts), most consequ
 
 - **A duplicate isn't automatically a problem.** Two skills covering the same real issue from different analytical angles (e.g. `analyzing-plugin-components`' SWOT weakness and `analyzing-governance-and-conflicts`' conflict finding, both about the same rule violation) is expected overlap, not redundant noise — flag it as a Duplicate so a reader can de-duplicate their own action list, don't frame it as a defect in either producing skill.
 - **Contradiction requires the same subject.** Two findings using similarly strong language about different components are not a contradiction — verify both reports are actually talking about the same file, component, or decision before classifying.
-- **This skill doesn't resolve the contradiction.** Surfacing "these two reports disagree" is the deliverable — deciding which one is right, or reconciling them, returns to the user or the producing skill, same read-only discipline every other analysis-kit skill follows.
+- **This skill doesn't resolve the contradiction.** Surfacing "these two reports disagree" is the deliverable — deciding which one is right, or reconciling them, returns to the user or the producing skill; this skill itself has no write exception (unlike `analyzing-plugin-components`' confirmed SHA correction or `running-a-full-retrospective`'s Phase 5 direct-fix path).
 - **A structural diff isn't a semantic verdict** (same caution `comparing-sessions` already documents) — `comparator.py`'s output only shows which sections exist where; Phase 3's actual judgment must be grounded in what the sections say, not just their presence.
 
 ## Testing & Validation
