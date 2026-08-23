@@ -74,7 +74,7 @@ Per `references/cross-check-taxonomy.md`, classify each candidate finding pair i
 
 Group by category (Duplicates, Contradictions, Severity Undercuts), most consequential first within each group. For each entry, cite both reports' paths and the specific text from each that supports the classification.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, then run `Bash("${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/reviewing-analysis-findings/<scope-slug>-<timestamp>.md" --label "Findings Review Report")`, where `<scope-slug>` names the reports compared (e.g. `analyzing-plugin-components-and-analyzing-governance-2026-08-05`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Findings Review Report written: ...` confirmation line — present its printed output as-is.
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/reviewing-analysis-findings/<scope-slug>-<timestamp>.md" --label "Findings Review Report")`, where `<scope-slug>` names the reports compared (e.g. `analyzing-plugin-components-and-analyzing-governance-2026-08-05`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Findings Review Report written: ...` confirmation line — present its printed output as-is.
 
 ## Gotchas
 
