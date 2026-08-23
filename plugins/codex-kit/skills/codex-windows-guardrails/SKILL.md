@@ -10,7 +10,7 @@ description: >-
   resolver) when the resolved execution profile is Windows-guarded
   danger-full-access -- not invoked directly by end users, and never a
   substitute for a real OS sandbox.
-allowed-tools: Bash(node plugins/codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)
+allowed-tools: Bash(node */codex-kit/skills/codex-windows-guardrails/scripts/guarded-dispatch.mjs:*)
 disable-model-invocation: true
 ---
 
