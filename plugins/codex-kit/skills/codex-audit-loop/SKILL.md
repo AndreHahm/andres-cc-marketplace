@@ -84,7 +84,7 @@ Never creates PRs, deploys, or posts comments without explicit authority. Mode A
 
 **Current test coverage:**
 - `evals/codex-audit-loop/evals.json` — 1 defined scenario (cost/scope confirmation, Mode A's explore-plan-launch-synthesize-converge phases). Structurally graded 2026-08-12 (PASS — the mandatory pre-launch `AskUserQuestion` and Mode A's 5 named phases both match; the eval's own `expected_output` cost figure was stale (`15-26` from an earlier, already-corrected version of this SKILL.md) and has been updated to the current `3-20 per round, up to 10 rounds`); not a live empirical run.
-- No persisted smoke test exists for this skill (its output depends on 3-20 live parallel Codex calls per round against real project state, not a fixed template).
+- `scripts/smoke-tests/codex-audit-loop-invariants.mjs` — this skill's own live Codex output isn't mechanically testable (3-20 live parallel calls per round against real project state), but the SKILL.md text's safety-relevant invariants are: Mode A/B/C ordering, the non-force `git push origin <group-branch>` form, the per-group merge confirmation, and the read-only/never-mutates boundaries. Not a live Codex-call test.
 
 **Quality gates:**
 - [ ] Every mode always confirms scope/cost via `AskUserQuestion` before launching
