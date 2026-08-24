@@ -19,10 +19,21 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 2,
+    "declared_scenarios_total": 13,
+    "declared_scenarios_covered": 1,
     "uncovered": [
-      "check_evals.py's coverage arithmetic rejects a negative declared_scenarios_total/declared_scenarios_covered"
+      "Each of the 6 self-audit checks above, run against a target skill with a known-good evals.json/smoke_test.py, produces zero findings",
+      "Check 5's stale-artifact check correctly identifies a plugin-auditor JSON with a status: open finding that's actually already been fixed in the target's current files",
+      "Step 2's trust boundary: a scripts/smoke_test.py whose resolved path is under the current working directory runs normally; a symlink resolving outside it is reported BLOCKED, never executed and never widened based on the target's own content/filename/documentation claims",
+      "check_evals.py's coverage arithmetic rejects a negative declared_scenarios_total/declared_scenarios_covered with a blocking finding rather than letting it pass the arithmetic check",
+      "check_evals.py's anchoring check evaluates each branch of an unanchored alternation (cat|dog) independently and FAILs if any branch is short and unanchored, rather than treating the concatenated branch lengths as one needle's specificity",
+      "check_evals.py's zero-match guard (issue #56) downgrades a zero-match re.findall(...) to SKIP (manual review), not FAIL, when the result is assigned to a variable and then used in if <var>:/if not <var>:/assert not <var> — but still reports the original confident FAIL when the result is iterated, never suppressing a real finding just because some variable happens to be checked nearby",
+      "Check 6, run against a target skill whose reviewed diff reverses a documented behavior claim and whose evals.json still asserts the old claim in some expected_output, correctly flags it; run again after that expected_output is updated to match, reports clean",
+      "Check 6, run against a reviewed diff with no behavior-reversing change, reports N/A rather than a false finding — it never treats 'found no match to grep for' as evidence of a defect",
+      "Check 6, invoked as a pre-review check on an already-authored branch (not this session's own edits), still correctly resolves the reviewed diff as the branch's full diff against its base — not an empty/narrowed 'this session's changes' scope",
+      "Batch mode: given a comma-separated list of 3+ target skills where one target's scripts/smoke_test.py resolves outside the working-directory boundary (a symlink escape), that target is reported BLOCKED and the batch continues to the remaining targets — a single BLOCKED target never aborts the whole batch, and step 2's trust-boundary check is verified to run fresh per target",
+      "Batch mode, mixed results: given a batch where one target has a real FAIL (e.g. a vacuous assertion) and another target passes clean, the final report lists both findings against their own specific target — never merged into a single aggregate pass/fail for the batch",
+      "Batch mode, step 5: given a batch where all targets pass, confirm exactly one consolidated AskUserQuestion is asked (not one per target) offering plugin-auditor against the full passing set as a declared multi-component scope"
     ]
   }
 }
