@@ -76,6 +76,8 @@ def check_reference_guide_files_exist():
     for p in paths:
         if p.endswith("/"):
             continue  # output directory, not expected to exist yet
+        if "<" in p:
+            continue  # runtime-resolved placeholder (e.g. <plugin-devkit-root>), not a literal path
         resolved = (SKILL_DIR / p).resolve()
         if not resolved.is_file():
             missing.append(p)
