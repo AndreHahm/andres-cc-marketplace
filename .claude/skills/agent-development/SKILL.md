@@ -52,7 +52,7 @@ Before creating a new agent, confirm no built-in agent type (`Explore`, `Plan`, 
 Create a minimal agent in 5 steps:
 
 1. Create `agents/agent-name.md`
-2. Add frontmatter: `name`, `description`, `model: inherit`, `color: blue`
+2. Add frontmatter: `name`, `description`, `model: inherit`, `color: blue`, `tools` (default `Read, Grep, Glob` — least privilege; widen only if the agent's process genuinely needs more)
 3. Write a one-sentence description: `Use this agent when [condition]. Typical triggers include [A], [B], and [C].`
 4. Write the body: start with `You are [role]...` then add responsibilities, process steps, and output format
 5. Add `## When to invoke` with 2–4 prose trigger scenarios
@@ -69,7 +69,7 @@ This section covers the core fields. Modern optional fields (`disallowedTools`, 
 
 ### name (required)
 
-**Format:** lowercase, numbers, hyphens · 3–50 characters · start and end with alphanumeric
+**Format:** lowercase, numbers, hyphens · 3–64 characters · start and end with alphanumeric
 
 | Valid | Invalid | Reason |
 |-------|---------|--------|
@@ -221,7 +221,7 @@ See `references/advanced-patterns.md`, `references/delegation.md`, and `referenc
 2. **Design Expert Persona** — Create compelling expert identity with domain knowledge
 3. **Architect Comprehensive Instructions** — Behavioral boundaries, methodologies, edge cases, output formats
 4. **Optimize for Performance** — Decision frameworks, quality control, workflow patterns, fallback strategies
-5. **Create Identifier** — Concise, descriptive, 2–4 words with hyphens (3–50 chars)
+5. **Create Identifier** — Concise, descriptive, 2–4 words with hyphens (3–64 chars)
 6. **Generate "When to Invoke" Examples** — 2–4 prose trigger scenarios for the body section
 
 ### Method 1: AI-Assisted Generation
@@ -230,7 +230,7 @@ Use the template at [`references/agent-creation-prompt-template.md`](references/
 
 ### Method 2: Manual Creation
 
-1. Choose identifier (3–50 chars, lowercase, hyphens)
+1. Choose identifier (3–64 chars, lowercase, hyphens)
 2. Write one-sentence description with triggering conditions
 3. Select model (`inherit` unless specific capability needed)
 4. Choose color (distinct within the plugin)
@@ -247,7 +247,7 @@ Use the template at [`references/agent-creation-prompt-template.md`](references/
 
 | Component | Rule | Valid | Invalid |
 |-----------|------|-------|---------|
-| Name | 3–50 chars, lowercase, hyphens | `code-reviewer` | `Code_Reviewer`, `ag` |
+| Name | 3–64 chars, lowercase, hyphens | `code-reviewer` | `Code_Reviewer`, `ag` |
 | Description | 10–5,000 chars · one sentence · starts "Use this agent when..." | correct | verbose list of phrases |
 | Model | `inherit`, `sonnet`, `opus`, `haiku`, `fable`, or a full model ID string | `inherit` | `gpt-4` |
 | Color | one of 8 allowed values (`magenta` deprecated) | `blue` | `teal` |
@@ -300,6 +300,7 @@ name: simple-agent
 description: Use this agent when [condition]. Typical triggers include [trigger 1] and [trigger 2].
 model: inherit
 color: blue
+tools: ["Read", "Grep", "Glob"]
 ---
 ```
 
@@ -309,7 +310,7 @@ See [`references/templates.md`](references/templates.md) → **Plugin Agent Temp
 
 | Field | Required | Format |
 |-------|----------|--------|
-| name | Yes | lowercase-hyphens, 3–50 chars |
+| name | Yes | lowercase-hyphens, 3–64 chars |
 | description | Yes | One sentence, "Use this agent when..." |
 | model | Yes | `inherit` / `sonnet` / `opus` / `haiku` / `fable` / full model ID |
 | color | Yes | `red` / `blue` / `green` / `yellow` / `purple` / `orange` / `pink` / `cyan` (`magenta` deprecated) |

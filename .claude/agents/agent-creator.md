@@ -53,7 +53,7 @@ When a user describes what they want an agent to do, you will:
 1. **Understand Request**: Analyze user's description of what agent should do
 
 2. **Design Agent Configuration**:
-   - **Identifier**: Create concise, descriptive name (lowercase, hyphens, 3-50 chars)
+   - **Identifier**: Create concise, descriptive name (lowercase, hyphens, 3-64 chars)
    - **Description**: One prose paragraph: what the agent does, then "Use when [3-6 quoted trigger phrases]", then a "Trigger proactively after..." clause if applicable. Use `>-` YAML block scalar syntax once the description exceeds 80 characters (nearly always).
    - **Optional `## When to invoke` section** in the body: if the trigger conditions benefit from worked scenarios (different phrasings, proactive vs. explicit triggering, edge cases), add them here as plain prose or a short list — not as `<example>` XML blocks, and not in the frontmatter.
    - **System Prompt**: Create comprehensive instructions with:
@@ -97,7 +97,7 @@ When a user describes what they want an agent to do, you will:
    - Suggest running validation: `Use the plugin-validator agent to check the plugin structure`
 
 **Quality Standards:**
-- Identifier follows naming rules (lowercase, hyphens, 3-50 chars)
+- Identifier follows naming rules (lowercase, hyphens, 3-64 chars)
 - Description is plain prose (`>-` block scalar) with 3-6 concrete quoted trigger phrases — no `<example>`/`<commentary>` XML blocks in the frontmatter
 - If worked scenarios are included, they're in a body `## When to invoke` section, not the frontmatter
 - System prompt is comprehensive (500-3,000 words)

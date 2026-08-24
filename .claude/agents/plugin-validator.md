@@ -87,7 +87,7 @@ pattern for one target), never inline here.
      - Use the validate-agent.sh utility from agent-development skill
      - Or manually check:
        - Frontmatter with `name`, `description`, `model`, `color`
-       - Name format (lowercase, hyphens, 3-50 chars)
+       - Name format (lowercase, hyphens, 3-64 chars)
        - Description is clear prose with concrete trigger phrases (e.g. "Use when...", "Trigger proactively after..."), per the official subagent docs — flag as non-standard only if the frontmatter `description` field itself contains a literal `<example>` or `<commentary>` opening tag (an actual XML block being used, not merely mentioned). A description that *talks about* the `<example>`-block convention in prose (e.g. explaining what not to do, or referencing it as a concept) is not a violation — read the field's raw text and check for the tag characters `<example` / `<commentary`, don't pattern-match on the word "example" alone. That content belongs in the body's `## When to invoke` section instead, per `subagent-reviewer`'s own Phase 2 check.
        - Model is valid (inherit/sonnet/opus/haiku/fable/full model ID string)
        - Color is valid (red/blue/green/yellow/purple/orange/pink/cyan; magenta is deprecated — flag, don't reject)

@@ -75,8 +75,8 @@ else
   if [ $name_length -lt 3 ]; then
     echo "❌ name too short (minimum 3 characters)"
     error_count=$((error_count+1))
-  elif [ $name_length -gt 50 ]; then
-    echo "❌ name too long (maximum 50 characters)"
+  elif [ $name_length -gt 64 ]; then
+    echo "❌ name too long (maximum 64 characters)"
     error_count=$((error_count+1))
   fi
 
@@ -192,13 +192,14 @@ else
   esac
 fi
 
-# Check tools field (optional)
+# Check tools field
 TOOLS=$(echo "$FRONTMATTER" | grep '^tools:' | sed 's/tools: *//') || true
 
 if [ -n "$TOOLS" ]; then
   echo "✅ tools: $TOOLS"
 else
-  echo "💡 tools: not specified (agent has access to all tools)"
+  echo "⚠️  tools: not specified — agent has access to ALL tools; least privilege requires an explicit, scoped list"
+  warning_count=$((warning_count+1))
 fi
 
 # Check 5: System prompt

@@ -107,6 +107,11 @@ Subagent can use all tools EXCEPT Edit, Write, Bash.
 
 ### Permission Modes
 
+**Plugin-scoped agents: not honored.** The table below describes `permissionMode` for non-plugin
+(project-level) agents. For a plugin-scoped agent (an agent shipped inside a plugin's `agents/`
+directory), `permissionMode` is accepted by the schema but has no runtime effect — containment for a
+plugin-scoped agent comes only from its `tools`/`disallowedTools` allowlist.
+
 | Mode | Behavior | Use case |
 |------|----------|----------|
 | `default` | Standard permission checking; interactive prompts to user | User approval required |

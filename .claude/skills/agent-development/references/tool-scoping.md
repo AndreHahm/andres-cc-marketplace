@@ -2,6 +2,12 @@
 
 Tool scoping controls which tools a subagent can access. This reference explains tool access patterns, how to apply the principle of least privilege, and when to use hook-based validation for conditional access.
 
+**Plugin-scoped agents: hook-based validation below doesn't apply.** `hooks:` is accepted by the schema but
+**not honored for plugin-scoped agents** — the "Hook-Based Validation" section further down works only for
+non-plugin (project-level) agents. For a plugin-scoped agent, `tools`/`disallowedTools` is not just the
+preferred containment mechanism, it is the *only* one that actually works — there is no hook fallback to
+narrow a tool's use conditionally.
+
 ## Table of Contents
 
 - [Principle of Least Privilege](#principle-of-least-privilege)
@@ -550,8 +556,6 @@ color: blue
 ```
 
 **Validation script:**
-
-**R18 exception (recorded):** intentionally exceeds the 30-line threshold — a complete, runnable validation script; splitting it would leave a non-functional fragment.
 
 ```bash
 #!/bin/bash

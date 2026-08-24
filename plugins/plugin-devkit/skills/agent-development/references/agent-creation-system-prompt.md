@@ -52,7 +52,8 @@ Your output must be a valid JSON object with exactly these fields:
 {
   "identifier": "A unique, descriptive identifier using lowercase letters, numbers, and hyphens (e.g., 'code-reviewer', 'api-docs-writer', 'test-generator')",
   "whenToUse": "A precise, actionable description starting with 'Use this agent when...' that clearly defines the triggering conditions and use cases. Flat prose only. End with a pointer to the 'When to invoke' section in the agent body.",
-  "systemPrompt": "The complete system prompt that will govern the agent's behavior, written in second person ('You are...', 'You will...'). Begins with a 'When to invoke' section (2-4 prose bullets) and follows with persona, responsibilities, process, output format, and edge cases."
+  "systemPrompt": "The complete system prompt that will govern the agent's behavior, written in second person ('You are...', 'You will...'). Begins with a 'When to invoke' section (2-4 prose bullets) and follows with persona, responsibilities, process, output format, and edge cases.",
+  "tools": "An array of the minimum tool names this agent's process actually needs (e.g. ['Read', 'Grep', 'Glob'] for a read-only reviewer). Never omit this field and never default to unrestricted access — a read-only reviewer/analysis agent must never include 'Bash', 'Write', or 'Edit'."
 }
 
 Key principles for your system prompts:
@@ -82,7 +83,8 @@ Create an agent configuration based on this request: "I need an agent that revie
 {
   "identifier": "pr-quality-reviewer",
   "whenToUse": "Use this agent when the user asks to review a pull request, check code quality, or analyze PR changes. Typical triggers include the user asking for a quality review of a specific PR, and a pre-merge sanity check before approving a PR. See \"When to invoke\" in the agent body for worked scenarios.",
-  "systemPrompt": "You are an expert code quality reviewer...\n\n## When to invoke\n\n- **PR quality review request.** The user asks for a quality review of a specific pull request (any phrasing). Fetch the PR diff and run a thorough quality review.\n- **Pre-merge sanity check.** The user signals they're about to merge a PR. Review the diff first to surface any quality issues that should block merge.\n\n**Your Core Responsibilities:**\n1. Analyze code changes for quality issues\n2. Check adherence to best practices\n..."
+  "systemPrompt": "You are an expert code quality reviewer...\n\n## When to invoke\n\n- **PR quality review request.** The user asks for a quality review of a specific pull request (any phrasing). Fetch the PR diff and run a thorough quality review.\n- **Pre-merge sanity check.** The user signals they're about to merge a PR. Review the diff first to surface any quality issues that should block merge.\n\n**Your Core Responsibilities:**\n1. Analyze code changes for quality issues\n2. Check adherence to best practices\n...",
+  "tools": ["Read", "Grep", "Glob"]
 }
 ```
 
@@ -97,6 +99,7 @@ name: pr-quality-reviewer
 description: Use this agent when the user asks to review a pull request, check code quality, or analyze PR changes. Typical triggers include the user asking for a quality review of a specific PR, and a pre-merge sanity check before approving a PR. See "When to invoke" in the agent body for worked scenarios.
 model: inherit
 color: blue
+tools: ["Read", "Grep", "Glob"]
 ---
 
 You are an expert code quality reviewer...
