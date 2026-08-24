@@ -263,7 +263,11 @@ async function handleSetup(argv) {
   // can legitimately contain them (e.g. an ollama-style "llama3.1:8b" or a
   // provider-prefixed "openai/gpt-5"); neither character can terminate a
   // TOML basic string. Found by security review, 2026-08-24.
-  if (options["persist-model"] && !/^[A-Za-z0-9._:/-]{1,64}$/.test(options["persist-model"])) {
+  // != null (not truthy) so an explicitly empty `--persist-model=` is
+  // validated and rejected by this regex like any other malformed value,
+  // rather than silently treated as if the flag were never passed at all.
+  // Found by CodeRabbit review, PR #112, 2026-08-24.
+  if (options["persist-model"] != null && !/^[A-Za-z0-9._:/-]{1,64}$/.test(options["persist-model"])) {
     throw new Error(`--persist-model must match ^[A-Za-z0-9._:/-]{1,64}$: ${options["persist-model"]}`);
   }
   const persistEffort = options["persist-effort"] ? normalizeReasoningEffort(options["persist-effort"]) : null;

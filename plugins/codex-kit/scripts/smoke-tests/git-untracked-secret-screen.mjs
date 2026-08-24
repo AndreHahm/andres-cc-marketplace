@@ -74,5 +74,48 @@ console.log("\n=== collectReviewContext: an untracked secret file's content is n
   }
 }
 
+console.log("\n=== collectReviewContext: a symlink to a secret file is never followed ===");
+{
+  // formatUntrackedFile previously used fs.statSync (follows symlinks) --
+  // an innocuously-named symlink pointing at a real secret file passed the
+  // basename check, then had its TARGET's content read and embedded. Fixed
+  // via lstatSync + skipping every symlink outright. Found by CodeRabbit
+  // review, PR #112, 2026-08-24.
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "codex-kit-secret-screen-symlink-smoke-"));
+  const secretDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-kit-secret-screen-target-"));
+  try {
+    git(["init", "-q"], repoRoot);
+    git(["config", "user.email", "smoke@test.local"], repoRoot);
+    git(["config", "user.name", "Smoke Test"], repoRoot);
+    fs.writeFileSync(path.join(repoRoot, "README.md"), "# scratch repo\n");
+    git(["add", "README.md"], repoRoot);
+    git(["commit", "-q", "-m", "initial"], repoRoot);
+
+    const secretContent = "SYMLINK_TARGET_SECRET_VALUE_THAT_MUST_NOT_LEAK";
+    const secretTarget = path.join(secretDir, "id_rsa");
+    fs.writeFileSync(secretTarget, secretContent);
+
+    const linkPath = path.join(repoRoot, "notes-link.txt");
+    let symlinkCreated = false;
+    try {
+      fs.symlinkSync(secretTarget, linkPath, "file");
+      symlinkCreated = true;
+    } catch (error) {
+      console.log(`SKIP  symlink-to-secret test -- could not create a symlink on this platform (${error.message})`);
+    }
+
+    if (symlinkCreated) {
+      const context = collectReviewContext(repoRoot, { mode: "working-tree" });
+      const combined = JSON.stringify(context);
+
+      check("the symlink target's secret content never appears anywhere in the collected context", !combined.includes(secretContent));
+      check("the innocuously-named symlink is skipped, not silently dropped", /notes-link\.txt[\s\S]*skipped: symbolic link/.test(combined));
+    }
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+    fs.rmSync(secretDir, { recursive: true, force: true });
+  }
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);
 process.exit(fail > 0 ? 1 : 0);

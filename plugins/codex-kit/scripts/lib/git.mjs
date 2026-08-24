@@ -199,9 +199,20 @@ function formatUntrackedFile(cwd, relativePath) {
   const absolutePath = path.join(cwd, relativePath);
   let stat;
   try {
-    stat = fs.statSync(absolutePath);
+    stat = fs.lstatSync(absolutePath);
   } catch {
     return `### ${relativePath}\n(skipped: broken symlink or unreadable file)`;
+  }
+  // lstatSync (not statSync) so a symlink is identified as itself, not
+  // resolved through to its target -- statSync following the link let an
+  // innocuously-named symlink (e.g. notes.txt -> ~/.ssh/id_rsa) pass the
+  // basename check below and then have its TARGET's content read and
+  // embedded in the review context sent to Codex. Skip every symlink
+  // outright rather than resolving and re-checking the target's own name,
+  // since a target's name is not guaranteed to match a secret pattern
+  // either. Found by CodeRabbit review, PR #112, 2026-08-24.
+  if (stat.isSymbolicLink()) {
+    return `### ${relativePath}\n(skipped: symbolic link, not followed)`;
   }
   if (stat.isDirectory()) {
     return `### ${relativePath}\n(skipped: directory)`;

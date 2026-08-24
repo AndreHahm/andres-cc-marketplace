@@ -17,6 +17,21 @@ import path from "node:path";
 let pass = 0;
 let fail = 0;
 
+// Shared by the main invariant and the controlled negative below (CodeRabbit
+// review, PR #112, 2026-08-24) -- extracts scratch-path candidates from BOTH
+// inline code spans (`...`) and fenced code blocks (```...```), and matches
+// both the with- and without-trailing-slash forms of the scratch prefix, so
+// neither check silently misses a real, valid form the other one handles.
+function extractScratchPathSpans(content) {
+  const inlineSpans = content.match(/`[^`]*`/g) || [];
+  const fencedBlocks = content.match(/```[\s\S]*?```/g) || [];
+  return [...inlineSpans, ...fencedBlocks].filter((s) => s.includes("codex-loop"));
+}
+
+function isScopedScratchPath(span) {
+  return span.includes("${CLAUDE_PLUGIN_DATA}/codex-loop");
+}
+
 function check(label, condition, detail = "") {
   if (condition) {
     pass += 1;
@@ -62,11 +77,10 @@ function assertInvariants(content, label) {
   );
 
   results.scratchUnderPluginData = (() => {
-    const codeSpans = content.match(/`[^`]*`/g) || [];
-    const scratchSpans = codeSpans.filter((s) => s.includes("codex-loop/"));
+    const scratchSpans = extractScratchPathSpans(content);
     return (
       scratchSpans.length > 0 &&
-      scratchSpans.every((s) => s.includes("${CLAUDE_PLUGIN_DATA}/codex-loop/"))
+      scratchSpans.every((s) => isScopedScratchPath(s))
     );
   })();
 
@@ -107,10 +121,8 @@ console.log("\n=== Controlled negative: a scratch path missing the env-var prefi
     'mkdir -p "${CLAUDE_PLUGIN_DATA}/codex-loop"',
     'mkdir -p "codex-loop"'
   );
-  const codeSpans = tampered.match(/`[^`]*`/g) || [];
-  const scratchSpans = codeSpans.filter((s) => s.includes("codex-loop/") || s.includes("codex-loop\""));
-  const stillClean =
-    scratchSpans.length > 0 && scratchSpans.every((s) => s.includes("${CLAUDE_PLUGIN_DATA}/codex-loop"));
+  const scratchSpans = extractScratchPathSpans(tampered);
+  const stillClean = scratchSpans.length > 0 && scratchSpans.every((s) => isScopedScratchPath(s));
   check("the scratch-path invariant fails when a bare repo-relative path is used", stillClean === false);
 }
 
