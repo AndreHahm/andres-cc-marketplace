@@ -205,7 +205,12 @@ fi
 # Check for a description/tools contradiction: a description claiming read-only
 # or review-only behavior must not pair with a tools list containing Bash, Write, or Edit
 if [ -n "$TOOLS" ] && [ -n "${DESCRIPTION:-}" ]; then
-  if echo "$DESCRIPTION" | grep -qiE 'read-only|read only|review only|review-only|analysis only|analysis-only'; then
+  # "review only"/"analysis only" (spaced) are deliberately excluded: they read as a scope
+  # limiter in ordinary language ("review only the files changed by this PR") at least as often
+  # as a capability claim, and would false-positive on the former. Only the hyphenated compound
+  # forms are unambiguous capability claims. "read only" isn't excluded the same way -- it doesn't
+  # have the same natural scope-limiter reading in this context.
+  if echo "$DESCRIPTION" | grep -qiE 'read-only|read only|review-only|analysis-only'; then
     if echo "$TOOLS" | grep -qE '\b(Bash|Write|Edit)\b'; then
       echo "❌ description claims read-only/review-only/analysis-only behavior but tools includes Bash/Write/Edit"
       error_count=$((error_count+1))
