@@ -37,7 +37,7 @@ this skill:
   — naming a step-4 match found, if any, as an unusable stale-or-uncertain candidate rather than silently
   omitting it.
 - `plugin-devkit` (needed for the hand-off path, **and — independently — for the direct-fix path**:
-  Step 4's compliance check below unconditionally invokes `Skill(plugin-rulebook)`, one of
+  Step 4's compliance check below unconditionally invokes `Skill(plugin-devkit:plugin-rulebook)`, one of
   `plugin-devkit`'s own skills, regardless of which path is taken): same four-step resolution against
   `.../plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md`, with the same step-4-only-doesn't-count
   rule. If steps 1-3 found no match, drop **both** "Fix directly now" and "Hand off" and state why —
@@ -67,18 +67,35 @@ containment check fails, drop "Fix directly now" for that specific finding only 
 same topic aren't affected) and state why; that finding then only has "Not now — mark deferred"
 available.
 
-**Check for a `.claude/`-mirrored copy of the same component before finalizing this resolution.**
-`Glob` for the mirror path (strip the `plugins/<target>/` prefix from the resolved path and join it to
-`.claude/` — e.g. `plugins/git-kit/skills/merge-pr/SKILL.md` mirrors to
-`.claude/skills/merge-pr/SKILL.md`; a `references/`- or `scripts/`-rooted plugin-level path may have no
-mirror counterpart at all even when the plugin's `skills/` tree does — confirm the specific mirror path
-actually exists with `Glob` rather than assuming one convention holds for every path shape). **If a mirror
-exists, this finding's fix is a two-file write, not one** — editing only the `plugins/<target>/` copy
-leaves the two diverging, and Step 4's own `Skill(plugin-rulebook)` compliance check enforces R19
-(canonical path resolution), which fails outright on exactly that divergence, with no path to recover
-from inside this flow (the only write target this step ever gets human approval for is whatever it
-resolves here). Resolve and containment-check the mirror path the same way as the primary one, and
-treat both as this finding's resolved target from this point on.
+**Check for a `.claude/`-mirrored copy of the same component before finalizing this resolution — but
+only for path shapes that are actually a clean 1:1 mirror.** `plugins/<target>/skills/<name>/...`,
+`agents/<name>.md`, `commands/<name>.md`, and `rules/<name>.md` each mirror to their exact same relative
+path under `.claude/` (e.g. `plugins/git-kit/skills/merge-pr/SKILL.md` → `.claude/skills/merge-pr/SKILL.md`)
+and are each scoped to exactly one component from exactly one plugin — safe to detect by path existence
+alone. **A `hooks/hooks.json` path (or any other plugin-level config file known to be merged/aggregated
+across multiple installed plugins into one shared `.claude/`-side file) is never a candidate for this
+mirror check.** `.claude/hooks/hooks.json` is not a per-plugin mirror at all — it merges hook entries
+from every installed plugin's own `hooks/hooks.json` into one file, so a `.claude/`-side match existing
+proves nothing about which plugin(s) contributed to it, and copying `plugins/<target>/hooks/hooks.json`
+onto it wholesale would silently overwrite every *other* plugin's hooks that happen to already be merged
+into that same file (confirmed empirically: `.claude/hooks/hooks.json` differs from — and is not a subset
+copy of — any single one of `plugins/git-kit/hooks/hooks.json`, `plugins/plugin-devkit/hooks/hooks.json`,
+or `plugins/codex-kit/hooks/hooks.json`). **If the resolved path falls under any plugin's `hooks/`
+directory, drop "Fix directly now" for that finding outright — regardless of whether a `.claude/`-side
+match exists — and route it to the hand-off path instead** (a hook-config edit is a merge operation, not
+a mechanical single-file copy, and is exactly the kind of security-relevant change this option already
+says it isn't appropriate for). For every other path shape, `Glob` for the mirror path (strip the
+`plugins/<target>/` prefix, join to `.claude/`); a `references/`- or `scripts/`-rooted plugin-level path
+may have no mirror counterpart at all even when the plugin's `skills/` tree does — confirm the specific
+mirror path actually exists with `Glob` rather than assuming one convention holds for every path shape.
+
+**If a mirror exists for one of the safe path shapes above, this finding's fix is a two-file write, not
+one** — editing only the `plugins/<target>/` copy leaves the two diverging, and Step 4's own
+`Skill(plugin-devkit:plugin-rulebook)` compliance check enforces R19 (canonical path resolution), which
+fails outright on exactly that divergence, with no path to recover from inside this flow (the only write
+target this step ever gets human approval for is whatever it resolves here). Resolve and containment-check
+the mirror path the same way as the primary one, and treat both as this finding's resolved target from
+this point on.
 
 **Surface the resolved, validated path(s) in the "how to fix" `AskUserQuestion` itself** — name both
 paths directly in the "Fix directly now, here" option's own description text for that finding (one path
@@ -111,10 +128,10 @@ here. Apply the fix directly with `Edit`/`Write` against that already-validated 
 to the worktree — this is the one explicit exception to the "never write inside a target plugin" boundary
 stated in SKILL.md, scoped strictly to this single, already-human-approved, mechanical change. **If Step
 3b found a `.claude/`-mirrored copy, apply the identical edit to both paths, in this same step** — the
-two must never diverge even transiently, since the very next action (`Skill(plugin-rulebook)`, below)
+two must never diverge even transiently, since the very next action (`Skill(plugin-devkit:plugin-rulebook)`, below)
 checks R19 mirror parity before anything gets committed.
 
-**Then run `Skill(plugin-rulebook)` against the edited file(s) before committing** — per
+**Then run `Skill(plugin-devkit:plugin-rulebook)` against the edited file(s) before committing** — per
 `.claude/rules/plugin-rulebook-enforcement.md`'s Mandatory Compliance Triggers, any edit to a Skill/
 Agent/Command/Hook/Rule component requires this check before finalizing, and the direct-fix path is no
 exception just because the pipeline hand-off path already gets this transitively through
