@@ -33,10 +33,7 @@
 
 ## WHAT/WHY/HOW Format
 
-```
-**WHAT:** <the concrete change, naming the file(s)/line(s) if known>
-**WHY:** <the specific evidence from the source finding that justifies this>
-**HOW:** <the concrete steps or approach — cite an existing pattern in the codebase if one exists>
-```
+See SKILL.md's Phase 3 for the literal `**WHAT:**`/`**WHY:**`/`**HOW:**` template — not repeated here to
+avoid two copies drifting apart.
 
 `WHY` must cite the actual source finding, not a generic justification. `HOW` should name a concrete first step, not just "fix this."

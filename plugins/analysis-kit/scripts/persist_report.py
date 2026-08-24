@@ -8,7 +8,7 @@ LF-only, write the final file, re-verify the written file is still
 LF-only, and print the standard confirmation line. Centralizes the exact
 bug class this plugin already found and fixed once (redact_secrets.py's
 missing newline="\\n" on stdout, which corrupted every report written on
-Windows before that fix) behind one call site instead of nine
+Windows before that fix) behind one call site instead of ten
 independently-trusting ones.
 """
 
@@ -23,12 +23,20 @@ from redact_secrets import redact  # noqa: E402
 
 
 def main() -> int:
-    sys.stdout.reconfigure(encoding="utf-8", newline="\n")
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")  # ty: ignore[unresolved-attribute]
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch", required=True, help="Path to the drafted report text")
-    parser.add_argument("--final", required=True, help="Final .claude/output/<skill>/<scope-slug>-<timestamp>.md path")
-    parser.add_argument("--label", required=True, help="Report type label for the confirmation line, e.g. 'Session Analysis Report'")
+    parser.add_argument(
+        "--final",
+        required=True,
+        help="Final .claude/output/<skill>/<scope-slug>-<timestamp>.md path",
+    )
+    parser.add_argument(
+        "--label",
+        required=True,
+        help="Report type label for the confirmation line, e.g. 'Session Analysis Report'",
+    )
     args = parser.parse_args()
 
     scratch_path = Path(args.scratch)
@@ -45,7 +53,8 @@ def main() -> int:
 
     if redacted_bytes.count(b"\r\n") != 0:
         print(
-            f"Error: redacted text still contains CRLF sequences before write -- refusing to persist a corrupted report",
+            "Error: redacted text still contains CRLF sequences before write "
+            "-- refusing to persist a corrupted report",
             file=sys.stderr,
         )
         return 1
@@ -56,7 +65,8 @@ def main() -> int:
     written_bytes = final_path.read_bytes()
     if written_bytes.count(b"\r\n") != 0:
         print(
-            f"Error: written file at {final_path} contains CRLF sequences after write -- the write itself introduced corruption",
+            f"Error: written file at {final_path} contains CRLF sequences after write "
+            "-- the write itself introduced corruption",
             file=sys.stderr,
         )
         return 1
@@ -67,7 +77,7 @@ def main() -> int:
     else:
         print("persist_report: no redaction matches", file=sys.stderr)
 
-    print(f"\U0001F4C4 {args.label} written: `{final_path}`")
+    print(f"\U0001f4c4 {args.label} written: `{final_path}`")
 
     return 0
 

@@ -15,7 +15,7 @@ Session analysis toolkit for Claude Code: component retrospectives, tool/framewo
 
 ## Overview
 
-`analysis-kit` provides 11 skills over a shared deterministic `scripts/` core (component/rule inventory, framework fingerprinting, structural diffing, sequence mining, usage aggregation, session parsing, secret redaction, report persistence — see the Skills table below for what each skill does). Reports from every skill are persisted under `.claude/output/<skill-name>/`, one file per run, so later runs can reference a specific prior report. Before any report is written, every skill runs its scratch draft through `scripts/persist_report.py` — a shared wrapper that redacts common secret-shaped patterns (Authorization/Bearer headers, `.env`-shaped lines, known cloud key prefixes) via `scripts/redact_secrets.py`, verifies the result and the written file are both LF-only, writes the final file, and prints the standard `📄 ... written:` confirmation line, without ever blocking the write. This centralizes a 6-step ritual every report-producing skill previously re-described independently in prose, behind one call site instead of ten.
+`analysis-kit` provides 11 skills over a shared deterministic `scripts/` core (component/rule inventory, framework fingerprinting, structural diffing, sequence mining, usage aggregation, session parsing, secret redaction, report persistence — see the Skills table below for what each skill does). Reports from every skill are persisted under `.claude/output/<skill-name>/`, one file per run, so later runs can reference a specific prior report. Before any report is written, every skill runs its scratch draft through `scripts/persist_report.py` — a shared wrapper that redacts common secret-shaped patterns (Authorization/Bearer headers, `.env`-shaped lines, known cloud key prefixes) via `scripts/redact_secrets.py`, verifies the result and the written file are both LF-only, writes the final file, and prints the standard `📄 ... written:` confirmation line — refusing to write and exiting non-zero instead if the redacted text (or, after writing, the file itself) still contains CRLF sequences, or if the scratch draft can't be read at all. This centralizes a 6-step ritual every report-producing skill previously re-described independently in prose, behind one call site instead of ten.
 
 This plugin has no required dependency on any other plugin. `running-a-full-retrospective`'s optional Phase 5 hand-off is the one exception — if accepted, it dispatches `plugin-devkit`'s `plugin-lifecycle-downstream` (at its External Entry point) to apply fixes; declining that hand-off keeps the run entirely within `analysis-kit`.
 
@@ -47,26 +47,29 @@ cc --plugin-dir /path/to/analysis-kit
 
 ## Quick Start
 
-```bash
+These are skills, not slash commands — invoke them by name in natural language, e.g. "run
+`starting-an-analysis`" or "run `analyzing-plugin-components` since 2026-07-10":
+
+```
 # Not sure which analysis type fits? Start here — it asks, scopes, confirms, runs, then offers the next step.
-> /starting-an-analysis
+> run starting-an-analysis
 
 # Want several analyses run and consolidated into one prioritized list?
-> /running-a-full-retrospective
+> run running-a-full-retrospective
 
 # Already know the skill you want? Invoke it directly:
 
 # Post-session component retrospective, current conversation
-> /analyzing-plugin-components
+> run analyzing-plugin-components
 
 # Post-session component retrospective, since a given date
-> /analyzing-plugin-components 2026-07-10
+> run analyzing-plugin-components since 2026-07-10
 
 # Tool and framework use for the current conversation
-> /analyzing-tool-and-framework-use
+> run analyzing-tool-and-framework-use
 
 # Expand a prior finding into a WHAT/WHY/HOW action plan
-> /generating-analysis-recommendations .claude/output/analyzing-plugin-components/this-conversation-2026-08-01T12-00-00Z.md
+> run generating-analysis-recommendations on .claude/output/analyzing-plugin-components/this-conversation-2026-08-01T12-00-00Z.md
 ```
 
 1. Not sure which single analysis type fits, or want the analyze → expand-findings flow for one report walked through step by step? Run `starting-an-analysis` — it picks the type, asks for scope, confirms before running anything, then offers the next step once a report exists.

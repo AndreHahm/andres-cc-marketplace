@@ -31,11 +31,8 @@ Apply these before emitting the final suggestion list:
 
 ## Output Format
 
-```
-[S##] [P1|P2|P3] [TYPE]  <one-line description>
-Source: <Strength | Weakness | Opportunity | Threat | Critique | Reflection>   Component: <name(s)>
-Detail: <what to change, where, and why — one to three sentences>
-```
+See SKILL.md's Phase 5 for the literal per-suggestion template (`[S##] [P1|P2|P3] [TYPE]` / `Source:` /
+`Detail:`) — not repeated here to avoid two copies drifting apart. The examples below show it applied.
 
 Example:
 ```

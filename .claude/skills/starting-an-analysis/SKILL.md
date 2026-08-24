@@ -2,11 +2,9 @@
 name: starting-an-analysis
 description: >-
   Guided front door for analysis-kit — helps pick which of its 7
-  report-producing analysis skills fits a given need (component/session
-  retrospective, tool and framework usage, actor behavior, governance and
-  conflicts, recurring patterns, comparing two sessions, or comparing a
-  session to a specification), asks for that skill's own required scope,
-  runs it, and then offers a gated next step (generating-analysis-recommendations
+  report-producing analysis skills fits a given need, asks for that
+  skill's own required scope, runs it, and then offers a gated next
+  step (generating-analysis-recommendations
   to expand a finding, reviewing-analysis-findings to cross-check reports
   already found once enough of them exist). Use when a request names no
   specific analysis type — no mention of component/skill performance,
@@ -127,5 +125,6 @@ The dispatched skill's own printed Next-step line already named the natural foll
 
 | File | Purpose | When to read |
 |---|---|---|
+| `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `references/analysis-type-guide.md` | One-paragraph disambiguation for each of the 7 report-producing skills, reused from their own SKILL.md descriptions | Phase 1 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 4 (capture) and Phase 5 (glob) restate inline | Read before Phase 4 |

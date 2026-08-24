@@ -62,7 +62,7 @@ Never populate `WHAT`/`HOW` with content not traceable to the source finding or 
 
 Group by priority bucket, Quick Wins first. Within each bucket, order by estimated benefit. Close with a suggested order of operations, noting any dependency between entries (one entry's fix must land before another's, e.g. a shared file both touch).
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full plan to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/generating-analysis-recommendations/<scope-slug>-<timestamp>.md" --label "Recommendations Plan")`, where `<scope-slug>` derives from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Recommendations Plan written: ...` confirmation line — present its printed output as-is.
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full plan to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/generating-analysis-recommendations/<scope-slug>-<timestamp>.md" --label "Recommendations Plan")`, where `<scope-slug>` derives from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Recommendations Plan written: ...` confirmation line — present its printed output as-is. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
 ## Gotchas
 
@@ -84,6 +84,7 @@ After Phase 4, verify before presenting output as final:
 
 | File | Purpose | When to read |
 |---|---|---|
+| `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `references/classification-rubric.md` | Complexity/risk/benefit bands, priority bucket definitions, WHAT/WHY/HOW format | Phase 2, Phase 3 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 / Persist step restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/generating-analysis-recommendations/` | Where this skill's own reports are persisted, one file per run | Phase 4 (write) |

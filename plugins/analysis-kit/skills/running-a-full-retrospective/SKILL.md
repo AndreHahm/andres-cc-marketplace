@@ -12,7 +12,7 @@ description: >-
   prioritized list" — not a single analysis type (use starting-an-analysis
   for that) and not cross-checking reports that already exist (use
   reviewing-analysis-findings directly for that).
-allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(cd:*) Bash(sleep:*) Bash(git log -1:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */plugin-rulebook/scripts/validate_evidence.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-downstream) Skill(git-kit:starting-work) Skill(git-kit:commit) Skill(git-kit:create-pr) Skill(git-kit:merge-pr) Skill(git-kit:finishing-work)
+allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(cd:*) Bash(sleep:*) Bash(git log -1:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */plugin-rulebook/scripts/validate_evidence.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-downstream) Skill(plugin-rulebook) Skill(git-kit:starting-work) Skill(git-kit:commit) Skill(git-kit:create-pr) Skill(git-kit:merge-pr) Skill(git-kit:finishing-work)
 argument-hint: [optional: which analyses to run, and/or a scope]
 ---
 
@@ -165,7 +165,9 @@ directory — usually the repo root — instead), then run `Bash(python "${CLAUD
 --label "Consolidated Retrospective")`, using the same `<scope-slug>` convention as the date-range skills
 this run dispatched (`../../references/report-discovery-convention.md`). The script redacts the draft,
 verifies the result and the written file are both LF-only, writes the final file, and prints the
-`📄 Consolidated Retrospective written: ...` confirmation line — present its printed output as-is. This
+`📄 Consolidated Retrospective written: ...` confirmation line — present its printed output as-is. If it
+exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it
+refuses to persist) — report that error and stop, never present it as a successful persist. This
 redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not
 remove personal data, so the persisted report may still carry names, emails, or user paths drawn from the
 source reports it consolidates.
@@ -442,10 +444,11 @@ After Phase 5, verify before presenting output as final:
 
 | File | Purpose | When to read |
 |---|---|---|
+| `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `../starting-an-analysis/references/analysis-type-guide.md` | One-paragraph disambiguation for each of the 5 eligible analysis types | Phase 1 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions and per-skill mapping table | Phase 3 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 (reuse check) and Phase 3 (persist) restate inline | Background — sweep this file's site list when editing either |
 | `.claude/output/running-a-full-retrospective/` | Where this skill's own reports are persisted, one file per run | Phase 3 (write) |
-| `../../../plugin-devkit/skills/plugin-rulebook/references/evidence-schema.md` | Scope Manifest + Report Revision shapes this skill's Phase 5 hand-off builds for `plugin-lifecycle-downstream`'s External Entry (cross-plugin — resolves from this file's own location, not `${CLAUDE_PLUGIN_ROOT}`) | Phase 5 |
-| `references/phase-5-fix-execution.md` | Full step-3/step-4 mechanics for the fix loop: dependency checks, the direct-fix worktree/commit/PR/merge/finishing-work chain, the pipeline-hand-off manifest/dispatch steps, Status-line update rules, and failure handling | Phase 5c (executing a topic) |
-| `../../../plugin-devkit/skills/plugin-rulebook/scripts/validate_evidence.py` | Validates a built Scope Manifest/Report Revision against `evidence-schema.md` before dispatch (cross-plugin, same location as the row above) | Phase 5c-4 |
+| `<plugin-devkit-root>/skills/plugin-rulebook/references/evidence-schema.md` | Scope Manifest + Report Revision shapes this skill's Phase 5 hand-off builds for `plugin-lifecycle-downstream`'s External Entry (cross-plugin — `<plugin-devkit-root>` is resolved per `references/phase-5-fix-execution.md`'s Step 3 order, never hardcoded as a relative path) | Phase 5 |
+| `references/phase-5-fix-execution.md` | Full step-3/step-4 mechanics for the fix loop: dependency checks (including the `<plugin-devkit-root>` resolution order the two rows above and below rely on), the direct-fix worktree/commit/PR/merge/finishing-work chain, the pipeline-hand-off manifest/dispatch steps, Status-line update rules, and failure handling | Phase 5c (executing a topic) |
+| `<plugin-devkit-root>/skills/plugin-rulebook/scripts/validate_evidence.py` | Validates a built Scope Manifest/Report Revision against `evidence-schema.md` before dispatch (cross-plugin, same resolution as the row above) | Phase 5c-4 |
