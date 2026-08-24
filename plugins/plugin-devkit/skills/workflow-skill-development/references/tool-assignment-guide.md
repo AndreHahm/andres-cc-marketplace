@@ -155,7 +155,7 @@ Review the skill and tell me if it's good.
 
 ### Skills with `context: fork`
 
-A skill with `context: fork` runs its content as a subagent prompt in isolation (no conversation history). This differs from spawning subagents via the Task tool:
+A skill with `context: fork` runs its content as a subagent prompt in isolation (no conversation history). **Don't confuse this with `Agent(subagent_type: "fork")`** (`agent-development/references/how-subagents-work.md`'s "Context Isolation" section) — that's a separate mechanism, invoked via the Agent tool rather than a skill's frontmatter, that inherits the parent's *full* conversation context, the opposite of what this field does. Both are called "fork," but one starts empty and the other starts with everything; check which one a given instruction actually means before relying on either behavior. This differs from spawning subagents via the Task tool:
 
 | Approach | System prompt | Task prompt | Use when |
 |----------|--------------|-------------|----------|

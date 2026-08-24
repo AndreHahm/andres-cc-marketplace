@@ -194,7 +194,9 @@ A subagent may spawn further nested subagents if it has been granted the `Agent`
 
 ## Context Isolation
 
-A regular (non-fork) subagent starts with a fresh, isolated context window: it does not inherit the main conversation's history, any skills already invoked in the parent session, or files the parent has already read. Pass all context the subagent needs explicitly in the delegation prompt. Forked agents are the exception — they inherit the parent's context instead of starting empty.
+A regular (non-fork) subagent starts with a fresh, isolated context window: it does not inherit the main conversation's history, any skills already invoked in the parent session, or files the parent has already read. Pass all context the subagent needs explicitly in the delegation prompt. `Agent(subagent_type: "fork")` is the exception — it inherits the parent's full conversation context instead of starting empty, and always runs on the parent's own model regardless of any `model` override passed to the call.
+
+**Don't confuse this with a skill's own `context: fork` frontmatter field** (`workflow-skill-development/references/tool-assignment-guide.md`'s "Skills with `context: fork`" section) — that's a separate mechanism that runs the skill's content in an *isolated* subagent with no conversation history, the opposite of what this section describes. Both are called "fork," but one inherits everything and the other inherits nothing; check which one a given instruction actually means before relying on either behavior.
 
 ## Common Patterns
 
@@ -337,6 +339,29 @@ Background subagent tries to run Bash with default mode
 | MCP tools needed | ✅ Available | ❌ Not available |
 | Verbose output OK in main context | ✅ Yes | ❌ No |
 | Permission mode options | All | Restricted |
+
+### A Background Result Isn't Trustworthy Until Verified
+
+A background dispatch (`Agent(subagent_type: "fork")` in particular) can report `status: "completed"`
+having done essentially nothing — no tool calls, no actual work — and that notification looks
+identical to a genuine completed result. This was observed live and reproduced: a fork explicitly
+instructed to execute a multi-step analysis instead returned a short, coordinator-voiced status message
+("I'll wait for it to finish...") with 0-1 tool calls, in under 10 seconds. A controlled A/B follow-up
+test (narrating "I'm launching a background agent" immediately before the fork dispatch, vs. not) failed
+to reproduce the failure in either condition — both ran real tool calls and returned real results — so
+the trigger isn't simply adjacent narration in the dispatching turn; a longer, more complex inherited
+conversation history (as in the original incident) remains a plausible but unconfirmed factor. Don't
+treat a short duration or a low/zero tool-call count as a reliable pre-flight red flag on its own —
+across the entries above, real successful runs completed in the 8-second-to-40-second range with as few
+as 1-4 tool calls, so timing and count alone don't cleanly separate a misfire from a fast, legitimately
+simple task.
+
+**Given the root cause isn't pinned down, verify substance, not just status, whenever a background
+result matters:** before treating a background dispatch's "completed" result as reliable, check that its
+own reported output actually reflects the requested work (concrete findings, specific numbers/paths,
+evidence of real investigation) rather than a meta-statement about waiting, launching, or checking
+progress. If a "completed" background result reads like a status update about *itself* rather than an
+answer to what was asked, treat it as a likely misfire and resend/re-dispatch rather than trusting it.
 
 ## Hooks: Lifecycle and Tool Validation
 
