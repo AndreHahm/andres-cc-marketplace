@@ -368,7 +368,12 @@ function findLatestResumableTaskJob(jobs) {
 }
 
 async function waitForSingleJobSnapshot(cwd, reference, options = {}) {
-  const timeoutMs = Math.max(0, Number(options.timeoutMs) || DEFAULT_STATUS_WAIT_TIMEOUT_MS);
+  // `Number(options.timeoutMs) || DEFAULT` would silently discard an
+  // explicit --timeout-ms 0 (Number(0) is falsy, so || always falls through
+  // to DEFAULT) -- distinguish "not provided" from "explicitly 0" instead.
+  // Found by security review, 2026-08-24.
+  const requestedTimeoutMs = Number(options.timeoutMs);
+  const timeoutMs = Math.max(0, Number.isFinite(requestedTimeoutMs) ? requestedTimeoutMs : DEFAULT_STATUS_WAIT_TIMEOUT_MS);
   const pollIntervalMs = Math.max(100, Number(options.pollIntervalMs) || DEFAULT_STATUS_POLL_INTERVAL_MS);
   const deadline = Date.now() + timeoutMs;
   let snapshot = buildSingleJobSnapshot(cwd, reference);

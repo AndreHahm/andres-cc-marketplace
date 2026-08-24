@@ -39,7 +39,7 @@ Three modes. **Confirm scope and cost with the user via `AskUserQuestion` before
 
 ## Mode B — Multi-branch comparison (`--branches`)
 
-For each named branch vs. `--base`: confirm via `AskUserQuestion` before switching (this changes the checked-out branch, even though the switch itself is non-destructive), then switch, verify clean, run `${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs review --base <base>`. Synthesize: dedupe shared findings, mark branch-specific vs. shared.
+Capture the current branch (`git branch --show-current`) before switching to the first named branch. For each named branch vs. `--base`: confirm via `AskUserQuestion` before switching (this changes the checked-out branch, even though the switch itself is non-destructive), then switch, verify clean, run `${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs review --base <base>`. If "verify clean" finds a dirty tree on a target branch, stop this mode and tell the user rather than switching onto (or away from) uncommitted changes that aren't this mode's own. **After the last named branch is reviewed, switch back to the branch captured at the start** — this mode's own comparisons are read-only, but leaving the user on whichever branch happened to be reviewed last is not. Synthesize: dedupe shared findings, mark branch-specific vs. shared.
 
 ## Mode C — Verified fix loop (`--mode fix`, extends Mode A)
 
