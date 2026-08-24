@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Identifies the foo-validator smoke-test item as resolved/stale, not still open", "passed": true, "evidence": "'should be recorded as resolved/stale -- closed with a note pointing to the resolving artifact'"},
+    {"text": "Records the discrepancy as a Weakness against build-handoff-writer specifically, not against the artifact file itself", "passed": true, "evidence": "Attributes it to build-handoff-writer's structural nature ('handoff reports are point-in-time snapshots with no self-updating mechanism') though without the skill's specific SWOT-Weakness vocabulary"},
+    {"text": "Does not silently drop or ignore the discrepancy", "passed": true, "evidence": "Full discussion of the discrepancy and its implications"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

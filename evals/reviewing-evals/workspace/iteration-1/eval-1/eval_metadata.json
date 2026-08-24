@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/reviewing-evals/SKILL.md",
+  "assertions": [
+    {"text": "Identifies the check as vacuous / a zero-match-guard defect", "type": "quality", "target": "outputs/"},
+    {"text": "Explains that the re.findall(...) result is always empty for this target, so the loop body never runs", "type": "quality", "target": "outputs/"},
+    {"text": "Notes the function always returns True/PASS regardless of actual state", "type": "quality", "target": "outputs/"},
+    {"text": "Applies (explicitly or implicitly) the 'can it fail' test to reach this conclusion", "type": "quality", "target": "outputs/"}
+  ]
+}

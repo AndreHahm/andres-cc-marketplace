@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Explicitly flags that Write and/or Bash should be removed from the tools list", "passed": true, "evidence": "'Bash is unjustified scope creep... should be dropped'; flags Write as broader than needed"},
+    {"text": "States or implies the least-privilege principle as the reason", "passed": true, "evidence": "'violates least privilege' stated explicitly"},
+    {"text": "Recommends the tools list be restricted to Read, Grep, Glob", "passed": true, "evidence": "'A tighter scope would be Read, Grep, Glob'"},
+    {"text": "Does not falsely claim the agent's frontmatter is otherwise invalid", "passed": true, "evidence": "Explicitly notes model/color are valid fields, not problems"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

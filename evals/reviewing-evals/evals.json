@@ -1,0 +1,28 @@
+{
+  "skill_name": "reviewing-evals",
+  "skill_path": "plugins/plugin-devkit/skills/reviewing-evals/SKILL.md",
+  "description": "Pre-review self-audit for a skill's evals and smoke-tests, catching recurring defect classes before the reviewer fan-out.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Review a smoke_test.py with a zero-match vacuous assertion",
+      "prompt": "Here is a check function from a skill's scripts/smoke_test.py. Review it per your Check 1 (assertion non-vacuity) and report any defect found.\n\n```python\ndef check_examples_documented():\n    text = open('SKILL.md').read()\n    matches = re.findall(r'references/\\*\\.md', text)\n    for m in matches:\n        if 'example' not in m:\n            return False, 'missing example reference'\n    return True, 'all example references present'\n```\n\n(Note: this target skill has no references/ directory at all, so the regex `references/\\*\\.md` never matches anything in a real SKILL.md.)",
+      "expected_output": "Flags this as a vacuous assertion under the zero-match-guard defect class: the check iterates over re.findall results that are always empty (since the literal pattern references/\\*\\.md never appears verbatim in prose), so the loop body never executes and the function always returns True/PASS regardless of the actual skill's state.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Review an evals.json with a coverage-claim mismatch",
+      "prompt": "Here is an evals.json excerpt. Review it per your Check 2 (coverage-claim accuracy) and report any defect found.\n\n```json\n{\n  \"evals\": [\n    {\"id\": 1, \"prompt\": \"Create a new skill for X\", \"expected_output\": \"...\"}\n  ],\n  \"testing_validation_coverage\": {\n    \"declared_scenarios_total\": 3,\n    \"declared_scenarios_covered\": 3,\n    \"uncovered\": []\n  }\n}\n```\n\n(Note: the skill's own SKILL.md Testing & Validation section actually lists 3 scenarios: 'creating a skill', 'converting a slash command', and 'improving an existing skill' — but the evals array above has only 1 eval, which exercises only the first scenario.)",
+      "expected_output": "Flags the coverage-claim mismatch: declared_scenarios_covered is claimed as 3 (matching declared_scenarios_total, with an empty uncovered list) but only 1 eval exists, exercising only 1 of the 3 declared scenarios — the other 2 ('converting a slash command', 'improving an existing skill') should appear in uncovered but don't.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "check_evals.py's coverage arithmetic rejects a negative declared_scenarios_total/declared_scenarios_covered"
+    ]
+  }
+}

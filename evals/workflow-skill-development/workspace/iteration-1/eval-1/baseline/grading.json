@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Names one specific pattern from the Pattern Summary table", "passed": false, "evidence": "Names 'Linear, gated phase-pipeline (checklist-with-gates)' -- a self-invented hybrid label, not one of the five table names (Routing/Sequential Pipeline/Linear Progression/Safety Gate/Task-Driven)"},
+    {"text": "Every phase is numbered (Phase 1, Phase 2, ...)", "passed": true, "evidence": "Phase 0 through Phase 4, sequential (0-indexed but still numbered)"},
+    {"text": "Every phase states explicit entry criteria", "passed": true, "evidence": "Every phase has an 'Entry criteria' subsection"},
+    {"text": "Every phase states explicit exit criteria", "passed": true, "evidence": "Every phase has an 'Exit criteria' subsection"},
+    {"text": "Does not dump exhaustive step-by-step detail without deferring to references/ for depth", "passed": false, "evidence": "No references/ file layout or progressive-disclosure split at all -- all detail (CI provider syntax, version-file conventions, commit-type grouping rules) is embedded inline with no deferral structure"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 3, "pass_rate": 0.6}
+}

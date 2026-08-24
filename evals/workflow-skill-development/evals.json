@@ -1,0 +1,43 @@
+{
+  "skill_name": "workflow-skill-development",
+  "skill_path": "plugins/plugin-devkit/skills/workflow-skill-development/SKILL.md",
+  "description": "Guides the design, structuring, and implementation of workflow-based Claude Code skills with multi-step phases.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Design a new multi-step release-checklist workflow skill",
+      "prompt": "Design (produce the SKILL.md outline for) a new Claude Code workflow skill called 'release-checklist' that walks through preparing a software release: verify CI is green, generate a changelog, bump the version number, and create a git tag. Decide which structural pattern fits best and write out the Quick Start plus a full phase-by-phase structure (each phase's entry criteria, numbered actions, and exit criteria) to a file.",
+      "expected_output": "Chooses and names one recognizable pattern from the decision tree (Linear Progression, Safety Gate, Sequential Pipeline, Routing, or Task-Driven), numbers every phase with an explicit entry and exit criterion, and doesn't embed exhaustive detail inline (defers depth to references/).",
+      "files": ["outputs/release-checklist-design.md"]
+    },
+    {
+      "id": 2,
+      "name": "Review a workflow skill with unnumbered phases and a broken reference",
+      "prompt": "Here is a draft Claude Code workflow skill's SKILL.md body. Review it for structural anti-patterns and report what's wrong.\n\n---\n## Steps\n\nFirst, check the current state of the deployment. Then, if everything looks good, proceed to deploy. After deploying, verify the deployment succeeded and notify the team.\n\nSee [rollback-procedure.md](references/rollback-procedure.md) for details on what to do if it fails.\n---\n\n(Note: references/rollback-procedure.md does not exist in this skill's directory.)",
+      "expected_output": "Flags that the phases/steps are unnumbered prose with no explicit entry/exit criteria (AP-6/AP-7), and flags that the references/rollback-procedure.md link is broken (AP-5) since the file doesn't exist.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 20,
+    "declared_scenarios_covered": 4,
+    "uncovered": [
+      "Has an activation-focused description; When to Use/When NOT to Use body sections, if present, are optional organizational aids",
+      "Lists only the tools it actually uses (least privilege)",
+      "Keeps SKILL.md under 500 lines with details in references/workflows",
+      "Has no hardcoded paths (uses {baseDir})",
+      "Has no reference chains (all links one hop from SKILL.md)",
+      "Has a description that triggers correctly (third-person, specific keywords)",
+      "Includes concrete examples for key instructions",
+      "Explains WHY, not just WHAT, for essential principles",
+      "Each step has a clear, specific goal",
+      "Task files are self-contained (sub-agent doesn't need external context)",
+      "Command file paths use the CLAUDE_PLUGIN_ROOT variable, not hardcoded paths",
+      "Context passed between steps is minimal (summaries, not full data)",
+      "Orchestrator command stays lean (<100 tokens per step dispatch)",
+      "Error handling defined for step failures",
+      "Success criteria are measurable for each step",
+      "argument-hint matches body usage in 0-based order (R22)"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/analyzing-sessions/SKILL.md",
+  "assertions": [
+    {"text": "Identifies the foo-validator smoke-test item as resolved/stale, not still open", "type": "quality", "target": "outputs/"},
+    {"text": "Records the discrepancy as a Weakness against build-handoff-writer specifically, not against the artifact file itself", "type": "quality", "target": "outputs/"},
+    {"text": "Does not silently drop or ignore the discrepancy", "type": "quality", "target": "outputs/"}
+  ]
+}

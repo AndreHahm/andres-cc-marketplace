@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/reviewing-evals/SKILL.md",
+  "assertions": [
+    {"text": "Identifies a coverage-claim mismatch between declared_scenarios_covered and the actual number of evals", "type": "quality", "target": "outputs/"},
+    {"text": "Names at least one of the two missing scenarios ('converting a slash command' or 'improving an existing skill')", "type": "quality", "target": "outputs/"},
+    {"text": "States the uncovered list should not be empty", "type": "quality", "target": "outputs/"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/workflow-skill-development/SKILL.md",
+  "assertions": [
+    {"text": "Explicitly flags the unnumbered phases/steps as a structural problem", "type": "quality", "target": "outputs/ review"},
+    {"text": "Explicitly flags missing/implicit exit criteria", "type": "quality", "target": "outputs/ review"},
+    {"text": "Explicitly flags that the references/rollback-procedure.md link is broken", "type": "quality", "target": "outputs/ review"},
+    {"text": "Does not incorrectly claim the snippet has no anti-patterns", "type": "quality", "target": "outputs/ review"}
+  ]
+}

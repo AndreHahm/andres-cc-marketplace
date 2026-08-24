@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Explicitly flags that Write and/or Bash should be removed from the tools list", "passed": true, "evidence": "'Drop Write and Bash from tools, leaving [Read, Grep, Glob]'"},
+    {"text": "States or implies the least-privilege principle as the reason", "passed": true, "evidence": "Cites the skill's own least-privilege line verbatim as the rule violated"},
+    {"text": "Recommends the tools list be restricted to Read, Grep, Glob", "passed": true, "evidence": "'leaving [\"Read\", \"Grep\", \"Glob\"]'"},
+    {"text": "Does not falsely claim the agent's frontmatter is otherwise invalid", "passed": true, "evidence": "Explicitly confirms name/model/color are valid; also caught a real bonus issue (description format)"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

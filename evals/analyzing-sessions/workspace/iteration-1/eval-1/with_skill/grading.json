@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Produces a SWOT table (Strengths/Weaknesses/Opportunities/Threats) for at least the commit skill", "passed": true, "evidence": "'### SWOT: commit (skill)' with a Quadrant|Observations markdown table, matching the skill's Phase 3 template exactly"},
+    {"text": "Weakness or Threat quadrant names the skipped sensitive-file scan", "passed": true, "evidence": "Weaknesses: 'The sensitive-file scan step was skipped in all 3/3 invocations'"},
+    {"text": "At least one P1 suggestion is tied to the 2 unresolved Critical security findings", "passed": true, "evidence": "[S03] P1 FIX 'Require explicit resolution or deferral before a session with unresolved Critical security-reviewer findings ends'"},
+    {"text": "Notes the repeated identical branch-naming question as a pattern", "passed": true, "evidence": "Dedicated SWOT block for the 'Branch-naming clarification loop' plus [S05] suggestion"},
+    {"text": "A report file is persisted to disk", "passed": true, "evidence": "report.md written, 11,092 bytes"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

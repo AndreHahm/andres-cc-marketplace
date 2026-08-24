@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Identifies a coverage-claim mismatch between declared_scenarios_covered and the actual number of evals", "passed": true, "evidence": "'Overcounted coverage claim... declared_scenarios_covered: 3... but the evals array contains only one eval'"},
+    {"text": "Names at least one of the two missing scenarios", "passed": true, "evidence": "Names both: 'converting a slash command' and 'improving an existing skill'"},
+    {"text": "States the uncovered list should not be empty", "passed": true, "evidence": "'Corrected values should be declared_scenarios_covered: 1, uncovered: [\"converting a slash command\", \"improving an existing skill\"]'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

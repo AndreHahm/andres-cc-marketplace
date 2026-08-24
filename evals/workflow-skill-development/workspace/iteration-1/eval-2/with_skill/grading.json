@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Explicitly flags the unnumbered phases/steps as a structural problem", "passed": true, "evidence": "Flags AP-6 (unnumbered phases) explicitly"},
+    {"text": "Explicitly flags missing/implicit exit criteria", "passed": true, "evidence": "Flags AP-7 (missing exit criteria)"},
+    {"text": "Explicitly flags that the references/rollback-procedure.md link is broken", "passed": true, "evidence": "Flags AP-5 (broken file reference), names rollback-procedure.md directly"},
+    {"text": "Does not incorrectly claim the snippet has no anti-patterns", "passed": true, "evidence": "Identifies 3 distinct anti-patterns (AP-6/AP-7, AP-5, AP-8)"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

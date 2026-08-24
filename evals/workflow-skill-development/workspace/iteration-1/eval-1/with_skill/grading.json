@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Names one specific pattern from the Pattern Summary table", "passed": true, "evidence": "'Chosen pattern: Sequential Pipeline, with a Safety Gate sub-pattern applied inside Phase 4' -- names two of the five table patterns explicitly"},
+    {"text": "Every phase is numbered (Phase 1, Phase 2, ...)", "passed": true, "evidence": "Phase 1 through Phase 5, sequential"},
+    {"text": "Every phase states explicit entry criteria", "passed": true, "evidence": "Every phase has an 'Entry criteria' subsection"},
+    {"text": "Every phase states explicit exit criteria", "passed": true, "evidence": "Every phase has an 'Exit criteria' subsection"},
+    {"text": "Does not dump exhaustive step-by-step detail without deferring to references/ for depth", "passed": true, "evidence": "Explicit 'File Layout (Progressive Disclosure)' section naming 3 references/ files (ci-providers.md, version-file-conventions.md, conventional-commits.md) that provider/ecosystem-specific detail is deferred to"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

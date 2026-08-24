@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Agent file has valid frontmatter with name, description, model, and color fields", "passed": true, "evidence": "name, description, tools, model: inherit, color: yellow all present"},
+    {"text": "tools field (if present) is restricted to Read/Grep/Glob only, with no Write/Edit/Bash", "passed": false, "evidence": "tools: Read, Grep, Glob, Bash -- includes Bash despite the task explicitly requiring read-only"},
+    {"text": "description field is a single sentence with no verbose <example> blocks", "passed": true, "evidence": "One long sentence, no <example> tags (though it awkwardly appends a parenthetical tools note)"},
+    {"text": "Body includes a '## When to invoke' section with 2-4 prose trigger scenarios", "passed": false, "evidence": "No '## When to invoke' section anywhere in the body -- sections are Read-only constraint, What you need before starting, Procedure, Report format, What NOT to do"},
+    {"text": "name field is lowercase-hyphenated, 3-50 characters, starts/ends alphanumeric", "passed": true, "evidence": "test-coverage-checker"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 3, "pass_rate": 0.6}
+}

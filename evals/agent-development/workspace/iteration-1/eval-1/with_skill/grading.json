@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Agent file has valid frontmatter with name, description, model, and color fields", "passed": true, "evidence": "name: test-coverage-checker, description present, model: inherit, color: blue all present"},
+    {"text": "tools field (if present) is restricted to Read/Grep/Glob only, with no Write/Edit/Bash", "passed": true, "evidence": "tools: Read, Grep, Glob"},
+    {"text": "description field is a single sentence with no verbose <example> blocks", "passed": true, "evidence": "One sentence starting 'Use this agent when...', no <example> tags"},
+    {"text": "Body includes a '## When to invoke' section with 2-4 prose trigger scenarios", "passed": true, "evidence": "## When to invoke section with 3 bullet scenarios"},
+    {"text": "name field is lowercase-hyphenated, 3-50 characters, starts/ends alphanumeric", "passed": true, "evidence": "test-coverage-checker"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}
