@@ -2,7 +2,7 @@
 name: git-worktrees
 description: >-
   Use when working on multiple branches simultaneously, context switching without stashing, reviewing PRs while developing, testing in isolation, or comparing implementations across branches - provides git worktree commands and workflow patterns for parallel development with multiple working directories. For creating the first worktree/branch to begin a new piece of work (main-sync, branch-naming validation, worktree-vs-branch choice), see `starting-work` instead — this skill is reference material for ongoing multi-worktree management, not the entry point for starting new work.
-allowed-tools: Bash(git worktree:*), Bash(git status:*), Bash(git diff:*), Bash(git checkout:*), Bash(git cherry-pick:*), Bash(git merge:*), Bash(git reset:*), Bash(git log:*), Bash(git fetch:*), Bash(git restore:*), Bash(git stash:*), Bash(diff:*), Bash(npm install:*), Bash(yarn install:*), Bash(pnpm install:*), Bash(bun install:*)
+allowed-tools: Bash(git worktree:*), Bash(git status:*), Bash(git diff:*), Bash(git checkout:*), Bash(git cherry-pick:*), Bash(git merge:*), Bash(git reset:*), Bash(git log:*), Bash(git fetch:*), Bash(git restore:*), Bash(git stash:*), Bash(git branch:*), Bash(git add:*), Bash(diff:*), Bash(npm install:*), Bash(yarn install:*), Bash(pnpm install:*), Bash(bun install:*), AskUserQuestion
 ---
 
 # Git Worktrees
