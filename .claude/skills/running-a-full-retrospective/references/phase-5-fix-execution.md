@@ -67,10 +67,24 @@ containment check fails, drop "Fix directly now" for that specific finding only 
 same topic aren't affected) and state why; that finding then only has "Not now — mark deferred"
 available.
 
-**Surface the resolved, validated path in the "how to fix" `AskUserQuestion` itself** — name it
-directly in the "Fix directly now, here" option's own description text for that finding, so the human
-approves the actual write target, not just the finding's title. Step 4 below then edits exactly this
-already-validated path; it does not re-resolve.
+**Check for a `.claude/`-mirrored copy of the same component before finalizing this resolution.**
+`Glob` for the mirror path (strip the `plugins/<target>/` prefix from the resolved path and join it to
+`.claude/` — e.g. `plugins/git-kit/skills/merge-pr/SKILL.md` mirrors to
+`.claude/skills/merge-pr/SKILL.md`; a `references/`- or `scripts/`-rooted plugin-level path may have no
+mirror counterpart at all even when the plugin's `skills/` tree does — confirm the specific mirror path
+actually exists with `Glob` rather than assuming one convention holds for every path shape). **If a mirror
+exists, this finding's fix is a two-file write, not one** — editing only the `plugins/<target>/` copy
+leaves the two diverging, and Step 4's own `Skill(plugin-rulebook)` compliance check enforces R19
+(canonical path resolution), which fails outright on exactly that divergence, with no path to recover
+from inside this flow (the only write target this step ever gets human approval for is whatever it
+resolves here). Resolve and containment-check the mirror path the same way as the primary one, and
+treat both as this finding's resolved target from this point on.
+
+**Surface the resolved, validated path(s) in the "how to fix" `AskUserQuestion` itself** — name both
+paths directly in the "Fix directly now, here" option's own description text for that finding (one path
+if no mirror exists, both if one does), so the human approves the actual write target(s), not just the
+finding's title. Step 4 below then edits exactly this already-validated path (or path pair); it does
+not re-resolve.
 
 ## Step 4: Execute — direct fix path
 
@@ -91,18 +105,23 @@ silently fall through to the primary checkout and look correct while writes land
 applying just as directly to writes landing in the *wrong* checkout as it does to reads from a *removed*
 one.
 
-The file to edit was already resolved and containment-checked at Step 3b above, and its path was shown
-to the human as part of the "Fix directly now, here" option they approved — do not re-resolve it here.
-Apply the fix directly with `Edit`/`Write` against that already-validated file, resolved relative to
-the worktree — this is the one explicit exception to the "never write inside a target plugin" boundary
-stated in SKILL.md, scoped strictly to this single, already-human-approved, mechanical change.
+The file(s) to edit were already resolved and containment-checked at Step 3b above, and their path(s)
+were shown to the human as part of the "Fix directly now, here" option they approved — do not re-resolve
+here. Apply the fix directly with `Edit`/`Write` against that already-validated file, resolved relative
+to the worktree — this is the one explicit exception to the "never write inside a target plugin" boundary
+stated in SKILL.md, scoped strictly to this single, already-human-approved, mechanical change. **If Step
+3b found a `.claude/`-mirrored copy, apply the identical edit to both paths, in this same step** — the
+two must never diverge even transiently, since the very next action (`Skill(plugin-rulebook)`, below)
+checks R19 mirror parity before anything gets committed.
 
-**Then run `Skill(plugin-rulebook)` against the edited file before committing** — per
+**Then run `Skill(plugin-rulebook)` against the edited file(s) before committing** — per
 `.claude/rules/plugin-rulebook-enforcement.md`'s Mandatory Compliance Triggers, any edit to a Skill/
 Agent/Command/Hook/Rule component requires this check before finalizing, and the direct-fix path is no
 exception just because the pipeline hand-off path already gets this transitively through
 `plugin-lifecycle-downstream`. If it reports a FAIL (REQUIRED rule), fix that before proceeding to
-`commit` below — don't ship a mechanical fix that itself introduces a rulebook violation.
+`commit` below — don't ship a mechanical fix that itself introduces a rulebook violation. A FAIL here
+should never be R19 itself at this point — Step 3b/this step's own mirror handling exists specifically
+to prevent that particular violation from ever reaching this check.
 
 Then `Skill(git-kit:commit)`, **explicitly instructed as part of this invocation to skip its own
 Auto-PR step** — `commit`'s own Auto-PR behavior would otherwise ask (or, if `push_auto_pr` is `true`,
