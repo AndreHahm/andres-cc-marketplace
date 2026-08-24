@@ -235,13 +235,21 @@ An agent is deployment-ready when all phases pass:
 
 ## Security Checklist (Production)
 
+**Plugin-scoped agents (the case this skill covers):** `permissionMode` and `hooks` are accepted by the
+schema but are **not honored for plugin-scoped agents** — see `agent-development/SKILL.md`'s `hooks`
+section. Neither `plan` mode nor a `hooks:` field actually contains a plugin agent's writes; the only
+working hardening mechanism for a plugin-scoped agent is its `tools`/`disallowedTools` allowlist itself.
+The two checklist items below that reference `plan`/hooks apply only to non-plugin (project-level) agents.
+
 - [ ] No unnecessary write access
-- [ ] Read-only agents use `plan` mode or hooks to enforce read-only
-- [ ] Hooks prevent dangerous operations (e.g., SQL writes)
+- [ ] Read-only agents omit `Write`, `Edit`, and `Bash` from `tools` entirely — this is the only hardening
+      that actually works for a plugin-scoped agent; `plan` mode or hooks (project-level agents only)
+- [ ] Hooks prevent dangerous operations (e.g., SQL writes) — project-level agents only, not plugin-scoped
 - [ ] No credentials, API keys, or secrets in body
 - [ ] No hardcoded paths that expose internal structure
 - [ ] Tool scoping follows principle of least privilege
-- [ ] Sensitive-data agents use restricted permission modes
+- [ ] Sensitive-data agents use restricted permission modes (project-level agents only) or, for
+      plugin-scoped agents, a narrowed `tools` allowlist
 
 ---
 

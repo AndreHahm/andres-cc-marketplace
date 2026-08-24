@@ -2,6 +2,13 @@
 
 Permission modes control how subagents handle permission prompts when performing actions that require user approval. This reference explains each mode, how they behave in foreground/background execution, and when to use each.
 
+**Plugin-scoped agents: `permissionMode` is not honored at all.** Everything below describes behavior for
+non-plugin (project-level) agents. A plugin-scoped agent's `permissionMode` field is accepted by the schema
+but has no runtime effect — it is not a working containment mechanism for an agent shipped inside a plugin's
+`agents/` directory. For a plugin-scoped agent, the only actual hardening is its `tools`/`disallowedTools`
+allowlist (see `tool-scoping.md`); don't rely on `plan` mode or `bypassPermissions` to change what a
+plugin-scoped agent can actually do.
+
 ## Table of Contents
 
 - [Permission Modes Overview](#permission-modes-overview)

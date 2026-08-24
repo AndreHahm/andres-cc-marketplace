@@ -2,6 +2,12 @@
 
 Advanced patterns and techniques for production subagents, including hook validation, lifecycle management, subagent chaining, background execution, and error handling.
 
+**Plugin-scoped agents: the Hook Validation Patterns below don't apply.** `hooks:` and `permissionMode:`
+are accepted by the schema but are **not honored for plugin-scoped agents** — every pattern in this
+section (SQL read-only validation, rate-limiting, etc.) works only for non-plugin (project-level) agents.
+For a plugin-scoped agent, the only working containment is its `tools`/`disallowedTools` allowlist itself
+— e.g. omit `Bash` entirely rather than granting it and trying to gate it with a hook.
+
 **R18 exception (recorded):** a few blocks below intentionally exceed the rulebook's 30-line code-block threshold — the rate-limiting validation script (Hook Validation Patterns) is a complete, coherent, runnable script, and the "Example Production Subagent" is a complete, coherent, copy-paste-ready agent file; splitting either would remove the pedagogical value of seeing the complete real example.
 
 ## Table of Contents

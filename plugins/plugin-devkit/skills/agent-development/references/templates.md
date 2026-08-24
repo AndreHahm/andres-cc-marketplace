@@ -2,6 +2,13 @@
 
 Copy-paste starting points for common subagent patterns. Customize name, description, and prompt body for your use case.
 
+**Plugin-scoped agents: `permissionMode` and `hooks:` in the templates below are not honored.** Every
+template here that sets `permissionMode` or `hooks:` (e.g. the background/hook-gated templates) describes
+behavior for a non-plugin (project-level) agent. If you're copying a template into a plugin's `agents/`
+directory, those fields ship harmlessly but do nothing — the template's actual safety comes only from its
+`tools` list. Narrow `tools` to match what the agent's body genuinely does; don't rely on `permissionMode`
+or `hooks:` to contain a plugin-scoped agent copied from one of these templates.
+
 **R18 exception (recorded):** several templates below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent, copy-paste-ready agent file (frontmatter + full body), and this file's whole purpose is providing exactly that; splitting one into multiple blocks would break the copy-paste workflow the file exists to support.
 
 ## Table of Contents
@@ -113,8 +120,7 @@ description: >-
   production logs, identifying performance bottlenecks, or tracking error
   trends. Runs in background; generates report file.
 model: haiku
-tools: Read, Write, Bash(grep|awk|sort:*)
-permissionMode: bypassPermissions
+tools: Read, Write, Grep
 color: blue
 ---
 You are a log analysis specialist.
@@ -125,7 +131,7 @@ You are a log analysis specialist.
 
 Workflow:
 1. Read log file(s)
-2. Extract relevant entries using Bash tools
+2. Extract relevant entries using Grep
 3. Analyze patterns and frequency
 4. Write summary report with top issues
 
@@ -641,7 +647,7 @@ You are [agent role description]...
 ```
 
 **Customize:**
-- `name`: Agent identifier (3–50 chars, lowercase-hyphens)
+- `name`: Agent identifier (3–64 chars, lowercase-hyphens)
 - `description`: One sentence, starts "Use this agent when [condition]."
 - `tools`: Restrict to minimum needed (principle of least privilege)
 - Body: Replace all `[...]` placeholders with specific content for your domain
