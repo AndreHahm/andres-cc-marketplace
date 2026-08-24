@@ -19,16 +19,19 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 9,
+    "declared_scenarios_total": 12,
     "declared_scenarios_covered": 2,
     "uncovered": [
+      "Inventory names at least one component per category present in the session",
       "Every SWOT quadrant has at least one observation (no empty rows)",
-      "Every output artifact found in scope was actually Read, not just listed",
-      "Every non-resolving commit SHA found in a re-checked artifact was searched for a rebase-merge match",
-      "The report was persisted with the standard link line",
-      "A date-range scope checks ~/.claude/projects/ for on-disk transcripts first",
-      "A narrow scope's gap-awareness check ran and any real uncovered window is stated plainly",
-      "No two suggestions share the same Detail description"
+      "Every P1 suggestion names a specific file, section, or step in its Detail field",
+      "Top 5 Actions are drawn from P1 first; P2 entries appear only when no P1 remain",
+      "No two suggestions share the same Detail description — merge duplicates before emitting",
+      "Every output artifact found in scope (concept cards, plans, handoff reports, comparison/grader/dev-rules reports) was actually Read, not just listed by path",
+      "Every non-resolving commit SHA found in a re-checked artifact was searched for a rebase-merge match and, if found, offered to the user as a direct fix",
+      "Any .draft/*.local.md planning document modified in scope was Read for its current state, not just listed",
+      "A date-range scope always checks ~/.claude/projects/ for on-disk transcripts first (including sibling worktree-scoped directories)",
+      "A narrow scope's gap-awareness check (Phase 1) ran, and any real uncovered window it found is stated plainly in the report"
     ]
   }
 }
