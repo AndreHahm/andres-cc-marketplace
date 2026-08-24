@@ -261,8 +261,7 @@ Even with `bypassPermissions`, this subagent can ONLY use Bash (other tools bloc
 ---
 name: code-reviewer
 description: Review code for quality and security
-tools: Read, Grep, Glob, Bash
-permissionMode: plan
+tools: Read, Grep, Glob
 color: blue
 ---
 ```
@@ -276,7 +275,8 @@ Reviewer can:
 Reviewer cannot:
 - Edit files
 - Write new files
-- Run destructive bash commands
+- Run any Bash command (not granted — this is the actual containment for a plugin-scoped
+  agent; `permissionMode` is not honored for one)
 
 ## Foreground vs Background Execution
 
@@ -409,16 +409,16 @@ NO → plan or dontAsk
 ---
 name: code-reviewer
 description: Review code for quality and security
-tools: Read, Grep, Glob, Bash
-permissionMode: plan
+tools: Read, Grep, Glob
 model: sonnet
 color: blue
 ---
 ```
 
 **Behavior:**
-- Foreground: User sees analysis, no prompts for writes (blocked)
-- Background: Analyzes code silently, can't modify anything
+- Foreground and background: can only read, search, and analyze — `Write`/`Edit`/`Bash` are not
+  granted, which is what actually blocks modification for a plugin-scoped agent (not `permissionMode`,
+  which isn't honored for one)
 
 ### Example 2: Code Fixer (File Editing)
 

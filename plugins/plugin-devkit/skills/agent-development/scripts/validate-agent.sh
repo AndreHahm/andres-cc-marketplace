@@ -10,7 +10,7 @@ if [ $# -eq 0 ]; then
   echo ""
   echo "Validates agent file for:"
   echo "  - YAML frontmatter structure"
-  echo "  - Required fields (name, description, model, color)"
+  echo "  - Required fields (name, description, model, color, tools)"
   echo "  - Field formats and constraints"
   echo "  - System prompt presence and length"
   echo "  - Example blocks in description"
@@ -65,8 +65,8 @@ else
   echo "✅ name: $NAME"
 
   # Validate name format
-  if ! [[ "$NAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]$ ]]; then
-    echo "❌ name must start/end with alphanumeric and contain only letters, numbers, hyphens"
+  if ! [[ "$NAME" =~ ^[a-z0-9][a-z0-9-]*[a-z0-9]$ ]]; then
+    echo "❌ name must be lowercase, start/end with alphanumeric, and contain only letters, numbers, hyphens"
     error_count=$((error_count+1))
   fi
 
@@ -198,8 +198,19 @@ TOOLS=$(echo "$FRONTMATTER" | grep '^tools:' | sed 's/tools: *//') || true
 if [ -n "$TOOLS" ]; then
   echo "✅ tools: $TOOLS"
 else
-  echo "⚠️  tools: not specified — agent has access to ALL tools; least privilege requires an explicit, scoped list"
-  warning_count=$((warning_count+1))
+  echo "❌ Missing required field: tools (omitting it grants access to ALL tools; least privilege requires an explicit, scoped list)"
+  error_count=$((error_count+1))
+fi
+
+# Check for a description/tools contradiction: a description claiming read-only
+# or review-only behavior must not pair with a tools list containing Bash, Write, or Edit
+if [ -n "$TOOLS" ] && [ -n "${DESCRIPTION:-}" ]; then
+  if echo "$DESCRIPTION" | grep -qiE 'read-only|review only|review-only|analysis only|analysis-only'; then
+    if echo "$TOOLS" | grep -qE '\b(Bash|Write|Edit)\b'; then
+      echo "❌ description claims read-only/review-only/analysis-only behavior but tools includes Bash/Write/Edit"
+      error_count=$((error_count+1))
+    fi
+  fi
 fi
 
 # Check 5: System prompt

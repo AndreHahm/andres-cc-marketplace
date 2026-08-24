@@ -52,7 +52,7 @@ Before creating a new agent, confirm no built-in agent type (`Explore`, `Plan`, 
 Create a minimal agent in 5 steps:
 
 1. Create `agents/agent-name.md`
-2. Add frontmatter: `name`, `description`, `model: inherit`, `color: blue`, `tools` (default `Read, Grep, Glob` — least privilege; widen only if the agent's process genuinely needs more)
+2. Add frontmatter: `name`, `description`, `model: inherit`, `color: blue`, `tools` (recommended starting point: `Read, Grep, Glob` — least privilege; widen only if the agent's process genuinely needs more. The platform itself defaults an omitted `tools` field to *all* tools, which is exactly why this list should never actually be omitted)
 3. Write a one-sentence description: `Use this agent when [condition]. Typical triggers include [A], [B], and [C].`
 4. Write the body: start with `You are [role]...` then add responsibilities, process steps, and output format
 5. Add `## When to invoke` with 2–4 prose trigger scenarios
@@ -61,7 +61,7 @@ Validate: `scripts/validate-agent.sh agents/your-agent.md`
 
 ## Agent File Structure
 
-See the full file template in [`references/templates.md`](references/templates.md) → **Plugin Agent Template**. Every agent file contains YAML frontmatter (`name`, `description`, `model`, `color`, optional `tools` / `permissionMode` / `hooks`) followed by a system prompt body opening with `You are [role]...` and a `## When to invoke` section with 2–4 prose trigger scenarios.
+See the full file template in [`references/templates.md`](references/templates.md) → **Plugin Agent Template**. Every agent file contains YAML frontmatter (`name`, `description`, `model`, `color`, `tools` — this skill requires `tools` explicitly, see below — plus optional `permissionMode` / `hooks`) followed by a system prompt body opening with `You are [role]...` and a `## When to invoke` section with 2–4 prose trigger scenarios.
 
 ## Frontmatter Fields
 
@@ -113,9 +113,11 @@ Full model ID strings (e.g. `claude-sonnet-4-5`) are also accepted. Use `inherit
 
 **Convention:** Blue/cyan = analysis/review · Green = success tasks · Yellow = validation · Red = critical/security · Purple/orange/pink = uncategorized/available for project-specific use. Use distinct colors for different agents in the same plugin.
 
-### tools (optional)
+### tools (required by this skill's convention)
 
-Restrict to minimum needed (principle of least privilege). Default: all tools.
+The platform schema treats `tools` as optional and defaults to granting *all* tools when omitted — this
+skill requires it explicitly, since an omitted `tools` field is an unrestricted grant, not a safe default.
+Restrict to minimum needed (principle of least privilege).
 
 ```yaml
 tools: ["Read", "Grep", "Glob"]          # Read-only analysis
@@ -314,7 +316,7 @@ See [`references/templates.md`](references/templates.md) → **Plugin Agent Temp
 | description | Yes | One sentence, "Use this agent when..." |
 | model | Yes | `inherit` / `sonnet` / `opus` / `haiku` / `fable` / full model ID |
 | color | Yes | `red` / `blue` / `green` / `yellow` / `purple` / `orange` / `pink` / `cyan` (`magenta` deprecated) |
-| tools | No | Array of tool names (default: all) |
+| tools | Yes (this skill's convention — platform schema itself treats it as optional) | Array of tool names, least privilege |
 
 ### Best Practices
 

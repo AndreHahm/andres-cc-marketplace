@@ -167,12 +167,12 @@ tools: Read, Write, Edit, Bash    # Spaces after commas
 
 ```yaml
 # Read-only analysis
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
 
 # Code editor
 tools: Read, Write, Edit, Bash
 
-# Database analyst
+# Database analyst (needs a query CLI — scope Bash to it, e.g. Bash(psql:*))
 tools: Bash, Read
 
 # Background researcher

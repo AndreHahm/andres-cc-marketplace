@@ -207,10 +207,10 @@ A regular (non-fork) subagent starts with a fresh, isolated context window: it d
 
 ### Read-Only Analysis Subagent
 ```yaml
-tools: Read, Grep, Glob, Bash
-permissionMode: plan
+tools: Read, Grep, Glob
 ```
-Claude can read and search; write operations blocked.
+Claude can read and search; `Write`/`Edit`/`Bash` are not granted, which is the actual containment for
+a plugin-scoped agent (`permissionMode` is not honored for one).
 
 ### Trusted Editor Subagent
 ```yaml
@@ -270,13 +270,20 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 
 ### Permission Modes
 
-- **Production**: Use specific permission modes (dontAsk, acceptEdits)
-- **Untrusted input**: Use plan mode or hook validation
-- **High-risk operations**: Use PreToolUse hooks to validate
+**Plugin-scoped agents: `permissionMode` and hooks are not honored.** The items below describe
+non-plugin (project-level) agents. For a plugin-scoped agent, the only working containment is its
+`tools`/`disallowedTools` allowlist (see Tool Scoping above) — not `plan` mode, not a hook.
 
-### Hook Validation
+- **Production**: Use specific permission modes (dontAsk, acceptEdits) — project-level agents only
+- **Untrusted input**: for a plugin-scoped agent, narrow `tools` to exclude `Bash`/`Write`/`Edit`; `plan`
+  mode or hook validation only work for a project-level agent
+- **High-risk operations**: for a plugin-scoped agent, don't grant the risky tool at all; PreToolUse hooks
+  only work for a project-level agent
 
-Hooks enable conditional validation:
+### Hook Validation (Project-Level Agents Only)
+
+Hooks enable conditional validation for a non-plugin (project-level) agent — **not** for a plugin-scoped
+agent, where this mechanism has no effect:
 ```bash
 # Block SQL write operations
 if echo "$COMMAND" | grep -iE 'INSERT|UPDATE|DELETE|DROP'; then
