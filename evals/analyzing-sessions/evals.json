@@ -1,0 +1,34 @@
+{
+  "skill_name": "analyzing-sessions",
+  "skill_path": "plugins/plugin-devkit/skills/analyzing-sessions/SKILL.md",
+  "description": "Produces SWOT analyses, self-critiques, and improvement suggestions for every component used across a session range.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Retrospective on a session with a skipped safety check and an unresolved Critical finding",
+      "prompt": "Analyze the following session summary as a retrospective (provided inline rather than read from an on-disk transcript, since none exists in this eval environment). Produce a SWOT analysis and classified suggestions following your normal Phase 3-6 procedure, and persist the report as usual (writing to disk is fine even though this is a synthetic scenario).\n\nSession summary: The session invoked Skill(commit) 3 times; each time it skipped the sensitive-file scan step and committed directly without running it. It also invoked Agent(security-reviewer) once against a new hook script, which found 2 Critical findings that were never addressed before the session ended. The user asked the same clarifying question about branch naming twice, 10 minutes apart, with no new information given between the two asks.",
+      "expected_output": "A SWOT with a Weakness/Threat entry naming the skipped sensitive-file scan, at least one P1 suggestion tied to the two unresolved Critical security findings, a note about the repeated identical question, and a persisted report file.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Verify a stale 'still open' claim in a handoff report",
+      "prompt": "As part of a retrospective, you find this excerpt from a persisted build-handoff-writer report's Open Items section: 'Open Item: the foo-validator skill has no smoke test yet.' On checking the actual current state directly, you find that plugins/example-plugin/skills/foo-validator/scripts/smoke_test.py already exists (added 2 days after the handoff report was written). Following your own Verify Open Items procedure, what do you record about this item, and what does this say about the component (build-handoff-writer) that produced the stale artifact?",
+      "expected_output": "Correctly identifies the item as resolved/stale rather than relaying it forward as still-open, records the discrepancy as a Weakness against build-handoff-writer (the artifact's producer) rather than as a note about the artifact file itself, and does not silently drop the discrepancy.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 9,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "Every SWOT quadrant has at least one observation (no empty rows)",
+      "Every output artifact found in scope was actually Read, not just listed",
+      "Every non-resolving commit SHA found in a re-checked artifact was searched for a rebase-merge match",
+      "The report was persisted with the standard link line",
+      "A date-range scope checks ~/.claude/projects/ for on-disk transcripts first",
+      "A narrow scope's gap-awareness check ran and any real uncovered window is stated plainly",
+      "No two suggestions share the same Detail description"
+    ]
+  }
+}

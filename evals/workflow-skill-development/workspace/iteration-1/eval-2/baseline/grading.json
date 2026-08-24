@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Explicitly flags the unnumbered phases/steps as a structural problem", "passed": true, "evidence": "'No actual step list -- one prose paragraph with no numbering/bullets'"},
+    {"text": "Explicitly flags missing/implicit exit criteria", "passed": true, "evidence": "'Every action is vague... no concrete commands, tools, or criteria anywhere'"},
+    {"text": "Explicitly flags that the references/rollback-procedure.md link is broken", "passed": true, "evidence": "'Broken reference -- references/rollback-procedure.md is linked but does not exist'"},
+    {"text": "Does not incorrectly claim the snippet has no anti-patterns", "passed": true, "evidence": "Identifies 7 distinct issues"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

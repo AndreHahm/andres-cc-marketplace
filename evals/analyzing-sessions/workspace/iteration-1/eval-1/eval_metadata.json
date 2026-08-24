@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/analyzing-sessions/SKILL.md",
+  "assertions": [
+    {"text": "Produces a SWOT table (Strengths/Weaknesses/Opportunities/Threats) for at least the commit skill", "type": "structure", "target": "outputs/"},
+    {"text": "Weakness or Threat quadrant names the skipped sensitive-file scan", "type": "quality", "target": "outputs/"},
+    {"text": "At least one P1 suggestion is tied to the 2 unresolved Critical security findings", "type": "quality", "target": "outputs/"},
+    {"text": "Notes the repeated identical branch-naming question as a pattern", "type": "quality", "target": "outputs/"},
+    {"text": "A report file is persisted to disk (not just printed inline)", "type": "functionality", "target": "outputs/"}
+  ]
+}

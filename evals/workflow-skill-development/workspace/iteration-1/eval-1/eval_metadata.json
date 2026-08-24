@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/workflow-skill-development/SKILL.md",
+  "assertions": [
+    {"text": "Names one specific pattern from the Pattern Summary table (Routing, Sequential Pipeline, Linear Progression, Safety Gate, or Task-Driven)", "type": "presence", "target": "outputs/release-checklist-design.md"},
+    {"text": "Every phase is numbered (Phase 1, Phase 2, ...)", "type": "structure", "target": "outputs/release-checklist-design.md"},
+    {"text": "Every phase states explicit entry criteria", "type": "structure", "target": "outputs/release-checklist-design.md"},
+    {"text": "Every phase states explicit exit criteria", "type": "structure", "target": "outputs/release-checklist-design.md"},
+    {"text": "Does not dump exhaustive step-by-step detail directly in the outline without deferring to references/ for depth", "type": "quality", "target": "outputs/release-checklist-design.md"}
+  ]
+}

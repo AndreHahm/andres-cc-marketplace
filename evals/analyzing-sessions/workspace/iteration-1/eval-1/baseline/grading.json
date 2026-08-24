@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Produces a SWOT table (Strengths/Weaknesses/Opportunities/Threats) for at least the commit skill", "passed": false, "evidence": "Produces one merged session-level SWOT (Strengths/Weaknesses/Opportunities/Threats as prose bullet lists) rather than a per-component table specifically for 'commit' -- covers similar content but not structured as the skill's own per-component SWOT-table format"},
+    {"text": "Weakness or Threat quadrant names the skipped sensitive-file scan", "passed": true, "evidence": "Weaknesses: 'Sensitive-file scanning was skipped 3/3 times'"},
+    {"text": "At least one P1 suggestion is tied to the 2 unresolved Critical security findings", "passed": true, "evidence": "Critical #1: 'Resolve the 2 Critical security-reviewer findings on the hook script'"},
+    {"text": "Notes the repeated identical branch-naming question as a pattern", "passed": true, "evidence": "Weaknesses bullet + Minor suggestions #5/#6 address the redundant question"},
+    {"text": "A report file is persisted to disk", "passed": true, "evidence": "report.md written to disk"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 4, "pass_rate": 0.8}
+}

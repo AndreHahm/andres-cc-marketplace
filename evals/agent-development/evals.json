@@ -1,0 +1,30 @@
+{
+  "skill_name": "agent-development",
+  "skill_path": "plugins/plugin-devkit/skills/agent-development/SKILL.md",
+  "description": "Creates, validates, and refines Claude Code plugin agents.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Create a minimal read-only reviewer agent",
+      "prompt": "Create a new Claude Code agent file for a plugin. The agent's job: review a pull request's changed files for missing test coverage and report which changed functions have no corresponding test. It must be read-only (no edits, no writes). Write the complete agent markdown file to disk at agents/test-coverage-checker.md.",
+      "expected_output": "A valid agent .md file with correct frontmatter (name, description, model, color, least-privilege tools: Read/Grep/Glob only, no Write/Edit/Bash), a description avoiding <example> blocks, a system prompt following Required Agent Sections ordering, and a 'When to invoke' section with 2-4 prose trigger scenarios.",
+      "files": ["agents/test-coverage-checker.md"]
+    },
+    {
+      "id": 2,
+      "name": "Review an over-privileged read-only agent",
+      "prompt": "Here is an existing Claude Code agent file. Review it and report any issues with its frontmatter or tool scoping.\n\n---\nname: doc-checker\ndescription: reviews documentation for accuracy\ntools: [\"Read\", \"Grep\", \"Glob\", \"Write\", \"Bash\"]\nmodel: inherit\ncolor: blue\n---\n\nYou are a documentation reviewer. Read the docs and report accuracy issues.\n\n## When to invoke\n- When documentation changes\n- When asked to review docs\n",
+      "expected_output": "Flags that a read-only reviewer (a documentation accuracy checker with no stated need to modify files) should not have Write or Bash in its tools list — recommends restricting to Read/Grep/Glob only, per the least-privilege principle for read-only reviewer/analysis agents.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 5,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "Use similar phrasing in test prompts to verify the agent fires correctly",
+      "Test edge cases from the system prompt",
+      "Run the 7-phase validation workflow (configuration, delegation signal, prompt quality, tool scoping, permission mode, hooks, real-world testing)"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Identifies the foo-validator smoke-test item as resolved/stale, not still open", "passed": true, "evidence": "'confirmed it's now stale: ...smoke_test.py exists, added 2 days after the report was written'"},
+    {"text": "Records the discrepancy as a Weakness against build-handoff-writer specifically, not against the artifact file itself", "passed": true, "evidence": "'recorded as a Weakness in the SWOT of build-handoff-writer... not as a note about the artifact file itself' -- follows the skill's exact instruction"},
+    {"text": "Does not silently drop or ignore the discrepancy", "passed": true, "evidence": "Full paragraph discussing the weakness and its implication"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
