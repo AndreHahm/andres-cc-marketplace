@@ -4,7 +4,7 @@ This reference provides comprehensive documentation for GitHub REST and GraphQL 
 
 **Reference only, in part:** `SKILL.md`'s `allowed-tools` grant for `gh api` is narrower than everything
 documented below — it covers `issues`, `branches`, `commits`, `collaborators`, `releases`,
-`actions/workflows`, `actions/runs`, `actions/jobs`, `search/repositories`, `search/code`, `search/issues`,
+`actions/workflows`, `actions/runs`, `search/repositories`, `search/code`, `search/issues`,
 and `rate_limit`. The entire Pull Requests API section and the entire GraphQL API section below are
 reference-only material — no prefix grant can cover their read operations without also covering their
 write operations (PR merge, PR reviews, webhooks, GraphQL mutations), the same reference-only treatment

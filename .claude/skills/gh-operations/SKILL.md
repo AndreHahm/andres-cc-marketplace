@@ -11,7 +11,7 @@ description: >-
   `codex-review-recovery` (gates on a human dashboard confirmation) — this skill does none of these; the
   `gh pr review`/`gh pr comment` examples below are raw reference material only, not a recommendation to
   run them standalone for a real review.
-allowed-tools: Bash(gh pr:*), Bash(gh issue:*), Bash(gh repo view:*), Bash(gh repo create:*), Bash(gh repo set-default:*), Bash(gh workflow:*), Bash(gh run:*), Bash(gh api repos/*/issues:*), Bash(gh api repos/*/branches:*), Bash(gh api repos/*/commits:*), Bash(gh api repos/*/collaborators:*), Bash(gh api repos/*/releases:*), Bash(gh api repos/*/actions/workflows:*), Bash(gh api repos/*/actions/runs:*), Bash(gh api repos/*/actions/jobs:*), Bash(gh api search/repositories:*), Bash(gh api search/code:*), Bash(gh api search/issues:*), Bash(gh api rate_limit:*), Bash(gh config:*), Read
+allowed-tools: Bash(gh pr:*), Bash(gh issue:*), Bash(gh repo view:*), Bash(gh repo create:*), Bash(gh repo set-default:*), Bash(gh workflow:*), Bash(gh run:*), Bash(gh api repos/*/issues:*), Bash(gh api repos/*/branches:*), Bash(gh api repos/*/commits:*), Bash(gh api repos/*/collaborators:*), Bash(gh api repos/*/releases:*), Bash(gh api repos/*/actions/workflows:*), Bash(gh api repos/*/actions/runs:*), Bash(gh api search/repositories:*), Bash(gh api search/code:*), Bash(gh api search/issues:*), Bash(gh api rate_limit:*), Bash(gh config:*), Read
 ---
 
 # GitHub Operations
@@ -206,7 +206,7 @@ gh api repos/{owner}/{repo}/actions/runs                   # Direct API call (se
 - [ ] `allowed-tools` stays scoped to its current narrowed grant (`gh pr`, `gh issue`, `gh repo`
       view/create/set-default, `gh workflow`, `gh run`, `gh config`, `Read`, and `gh api` scoped to
       `issues`, `branches`, `commits`, `collaborators`, `releases`, `actions/workflows`,
-      `actions/runs`, `actions/jobs`, `search/repositories`, `search/code`, `search/issues`,
+      `actions/runs`, `search/repositories`, `search/code`, `search/issues`,
       and `rate_limit`) — it never silently widens back to a blanket `Bash(gh:*)` or `Bash(gh api:*)`, and
       never gains `gh secret`, `gh auth`, `gh repo delete`, `gh repo clone`, `gh variable`, `gh api`
       access to webhooks/secrets endpoints, `gh api repos/*/pulls:*` (cannot be scoped narrower than the
