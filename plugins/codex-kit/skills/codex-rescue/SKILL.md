@@ -12,7 +12,7 @@ description: >-
   that; codex-rescue delegates one task to one Codex call, not a
   coordinated multi-worktree fix loop.
 argument-hint: "task description [--write] [--model MODEL] [--effort LEVEL] [--resume-last|--resume|--fresh] [--no-preview] [--persist] [--governed]"
-allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(git status:*)", "Bash(git rev-parse:*)", "Bash(git diff:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Read", "Write", "AskUserQuestion"]
+allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(git status:*)", "Bash(git rev-parse:*)", "Bash(git diff:*)", "Bash(git checkout:*)", "Bash(git reset:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Read", "Write", "AskUserQuestion"]
 ---
 
 # Codex Task Delegation + Double-Check
@@ -404,7 +404,11 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
   touched>` for the specific files, or `git reset --hard "$PRE_SHA"` if the user wants the whole working
   tree restored to its pre-delegation state (confirm which scope before running either — `PRE_LIST`
   records what was already dirty before this run started, so a hard reset shouldn't discard changes that
-  predate this delegation).
+  predate this delegation). `allowed-tools`' `Bash(git reset:*)`/`Bash(git checkout:*)` grants are
+  prefix-scoped, not flag-scoped — they can't themselves exclude a destructive flag combination; these
+  two exact-command-forms, not the grant, are what actually bound this to the captured `PRE_SHA` rather
+  than an arbitrary ref, the same disclosed-scoping pattern `codex-audit-loop/SKILL.md`'s
+  `Bash(git push origin:*)` grant already uses.
 
 **Failure:** save to
 `${CLAUDE_PLUGIN_DATA}/reviews/rescue-<YYYYMMDD-HHMMSS>-failed.md` with

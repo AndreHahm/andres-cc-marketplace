@@ -36,9 +36,11 @@ three independent Self-Review passes converged on the same finding.
 ## Prompt construction
 
 Same structure `bridge-invoke.mjs` uses (`<content_trust_boundary>` / `<target_paths>` /
-`<reviewer_instructions>` / `<dispatch>`), with one addition: a `<guardrail_instructions>` block
+`<reviewer_instructions>` / `<content_trust_boundary_restated>` / `<dispatch>` — five tags, not four),
+including the same `neutralizeClosingTags` guard on the interpolated instruction body and the same
+restated trust-boundary block after it, with one addition: a `<guardrail_instructions>` block
 containing `assets/dangerous-command-instructions.txt`'s literal text, inserted after the reviewer's
-own instructions and before the dispatch tag.
+own instructions and before the restated trust-boundary block.
 
 ## Instruction file: checked path and read path must be the same value
 

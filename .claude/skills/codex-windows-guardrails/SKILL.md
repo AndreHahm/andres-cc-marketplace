@@ -168,6 +168,10 @@ provenance field imply otherwise.
       same path value — never a check on one resolution and a read on another
 - [ ] A filesystem-stat error other than "path does not exist" during the secret-file scan always
       aborts the dispatch — never treated as "no secrets found under this path"
+- [ ] The interpolated instruction body always passes through `neutralizeClosingTags` (imported from
+      `codex-review-bridge`'s `bridge-invoke.mjs`, never a second copy) before it reaches the prompt,
+      and the prompt always includes a `<content_trust_boundary_restated>` block after it — this is the
+      one dispatch path with no sandbox at all, so it must never be the one without this guard
 - [ ] A file symlink is checked under both its own name and its resolved real target's name — never
       only the symlink's own name
 - [ ] The instruction-containment check canonicalizes and case-folds both sides (win32) before
