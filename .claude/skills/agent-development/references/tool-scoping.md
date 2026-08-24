@@ -115,7 +115,10 @@ grant while making the choice visible to a reviewer instead of implicit.
 
 **Not `Bash`** — even for read-only-looking commands (`cat`, `grep`, `ls`), `Bash` can run anything;
 it is not itself a read-only tool. If a read-only agent genuinely needs a specific external command
-(e.g. a query CLI), scope it narrowly (`Bash(psql:*)`) rather than granting bare `Bash`.
+(e.g. a query CLI), grant bare `Bash` — an agent's `tools` field has no Bash-scoping syntax, so
+`Bash(psql:*)` is not valid here — and constrain it at the instruction level instead, e.g. "only ever
+invoke `psql`, never any other command," backed by a `PreToolUse` hook if the constraint needs to be
+enforced rather than just instructed (see Pattern 4: Database Analyst below).
 
 **Useful for:**
 - Code analysis
