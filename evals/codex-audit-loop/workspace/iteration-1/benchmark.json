@@ -1,0 +1,40 @@
+{
+  "skill_name": "codex-audit-loop",
+  "iteration": 1,
+  "timestamp": "2026-08-24T07:05:39+02:00",
+  "evals": [
+    {
+      "eval_id": 1,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 2,
+        "assertions_total": 2,
+        "avg_tokens": 0,
+        "avg_duration_ms": 0
+      },
+      "baseline": {
+        "pass_rate": 0.5,
+        "assertions_passed": 1,
+        "assertions_total": 2,
+        "avg_tokens": 0,
+        "avg_duration_ms": 0
+      },
+      "delta": {
+        "pass_rate": 0.5,
+        "tokens": 0,
+        "duration_ms": 0
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.5,
+    "improvement": 0.5,
+    "avg_tokens_with_skill": 0,
+    "avg_tokens_baseline": 0,
+    "token_cost": 0,
+    "avg_duration_ms_with_skill": 0,
+    "avg_duration_ms_baseline": 0,
+    "duration_cost_ms": 0
+  }
+}

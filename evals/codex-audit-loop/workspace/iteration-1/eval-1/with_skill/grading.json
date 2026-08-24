@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response confirms scope/cost with the user before launching (does not silently start 15-26 parallel Codex calls)",
+      "passed": true,
+      "evidence": "\"I want to confirm scope and cost... this skill is explicitly the expensive, whole-project mode (3-20 parallel Codex calls per round, up to 10 rounds until convergence)... Are you OK with up to 10 rounds of parallel Codex calls (3-20 per round)\" -- explicitly names the current (corrected) cost figure, not the stale 15-26 figure, and stops before any call."
+    },
+    {
+      "text": "Response describes Mode A's lens-based approach (explore, plan lenses, launch, synthesize, converge)",
+      "passed": true,
+      "evidence": "\"Explore the project, derive 3-20 independent lenses covering distinct failure surfaces/subsystems, run one Codex adversarial-review per lens in parallel, synthesize and deduplicate findings, and repeat up to 10 rounds until convergence\" -- names all 5 phases in the correct order."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

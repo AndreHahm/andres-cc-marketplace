@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Response mentions dispatching via a subagent for context isolation",
+      "passed": true,
+      "evidence": "Line 7: 'Followed the skill's Quick Start: dispatched a subagent (kept the Codex back-and-forth out of the main conversation) to run node plugins/codex-kit/scripts/codex-companion.mjs task --json...'"
+    },
+    {
+      "text": "Response describes a 2-round discussion structure and an escalation path if unresolved",
+      "passed": true,
+      "evidence": "Explicit '## Codex's Round 1 verdict' and '## Round 2 synthesis' sections; outcome explicitly classified as 'Resolved Disagreement' with reasoning ('no external tiebreak source was needed'), demonstrating the escalation path is understood and correctly not triggered since Round 2 converged."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}
