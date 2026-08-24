@@ -413,8 +413,10 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
 **Failure:** save to
 `${CLAUDE_PLUGIN_DATA}/reviews/rescue-<YYYYMMDD-HHMMSS>-failed.md` with
 the §6 error category and captured stderr, truncated to 500 characters
-(matching `codex-exec.mjs`'s own convention) — stderr can echo fragments
-of repository content, so cap it rather than persisting it unbounded.
+(deliberately tighter than `codex-exec.mjs`'s own 4000-char tail, per
+`codex-windows-guardrails/scripts/guarded-dispatch.mjs`'s framing) — stderr
+can echo fragments of repository content, so cap it rather than persisting
+it unbounded.
 Treat this and the success-path report as sensitive before sharing.
 
 Leave the temp files (`PROMPT_FILE`, `JOB_JSON_FILE`, `JOB_JSON_FILE.stderr`, `pre.list`, `pre.sha`) in

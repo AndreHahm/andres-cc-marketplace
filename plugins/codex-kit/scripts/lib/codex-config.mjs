@@ -61,6 +61,16 @@ export function readCodexConfig() {
 }
 
 export function setOrInsertTopLevelKey(text, key, value) {
+  // value is interpolated bare into a double-quoted TOML string literal
+  // below -- a quote or newline would let the caller inject an arbitrary
+  // additional top-level key into the user's real ~/.codex/config.toml, and
+  // a backslash would produce an invalid TOML escape sequence that could
+  // make the whole file unparseable even without injecting a key. Rejecting
+  // here, not just at the caller, means this primitive stays safe for any
+  // future caller too (found by security review, 2026-08-24).
+  if (/["\\\r\n]/.test(value)) {
+    throw new Error(`setOrInsertTopLevelKey: value for "${key}" must not contain a quote, backslash, or newline`);
+  }
   const line = `${key} = "${value}"`;
   const pattern = new RegExp(`^${key}\\s*=.*$`, "m");
   const { root, rest } = splitAtFirstSection(text);

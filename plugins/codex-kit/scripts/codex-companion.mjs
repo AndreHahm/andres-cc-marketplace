@@ -247,6 +247,27 @@ async function handleSetup(argv) {
   const workspaceRoot = resolveCommandWorkspace(options);
   const actionsTaken = [];
 
+  // decision #4: opt-in persistence only. The caller (commands/setup.md) is
+  // responsible for confirming with the user via AskUserQuestion before ever
+  // passing --persist-model/--persist-effort — this script does not ask.
+  //
+  // Both values are validated BEFORE any of this function's other actions
+  // (including the review-gate toggle below), not just before
+  // writeCodexConfig -- an invalid --persist-model/--persist-effort should
+  // abort the whole run cleanly rather than leave the gate toggle applied
+  // and then fail with no report. Values are validated here because they
+  // reach the user's real, global ~/.codex/config.toml (outside this
+  // plugin's own directory) -- an unvalidated value there is a TOML
+  // key-injection vector, not just a malformed-input concern. `:`/`/` are
+  // allowed alongside the base charset since a custom model_provider slug
+  // can legitimately contain them (e.g. an ollama-style "llama3.1:8b" or a
+  // provider-prefixed "openai/gpt-5"); neither character can terminate a
+  // TOML basic string. Found by security review, 2026-08-24.
+  if (options["persist-model"] && !/^[A-Za-z0-9._:/-]{1,64}$/.test(options["persist-model"])) {
+    throw new Error(`--persist-model must match ^[A-Za-z0-9._:/-]{1,64}$: ${options["persist-model"]}`);
+  }
+  const persistEffort = options["persist-effort"] ? normalizeReasoningEffort(options["persist-effort"]) : null;
+
   if (options["enable-review-gate"]) {
     setConfig(workspaceRoot, "stopReviewGate", true);
     actionsTaken.push(`Enabled the stop-time review gate for ${workspaceRoot}.`);
@@ -255,13 +276,10 @@ async function handleSetup(argv) {
     actionsTaken.push(`Disabled the stop-time review gate for ${workspaceRoot}.`);
   }
 
-  // decision #4: opt-in persistence only. The caller (commands/setup.md) is
-  // responsible for confirming with the user via AskUserQuestion before ever
-  // passing --persist-model/--persist-effort — this script does not ask.
-  if (options["persist-model"] || options["persist-effort"]) {
+  if (options["persist-model"] || persistEffort) {
     const { before, after } = writeCodexConfig({
       model: options["persist-model"],
-      effort: options["persist-effort"]
+      effort: persistEffort
     });
     actionsTaken.push(
       `Persisted to ~/.codex/config.toml: model ${before.model ?? "(unset)"} -> ${after.model ?? "(unset)"} | effort ${before.effort ?? "(unset)"} -> ${after.effort ?? "(unset)"}`

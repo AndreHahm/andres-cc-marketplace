@@ -93,8 +93,11 @@ in an otherwise-unflagged file's *content* is not caught by this check.
 ## 3. Instruction-Containment
 
 The instruction file must not resolve inside any `target-paths` entry — the exact rule
-`codex-review-bridge`'s own `bridge-invoke.mjs` already enforces, reused via its exported `isWithin`
-function rather than reimplemented. **This is deliberately a different check from
+`codex-review-bridge`'s own `bridge-invoke.mjs` already enforces. This script reuses the *rule*, not
+the function: `bridge-invoke.mjs`'s exported `isWithin` is not imported here — `guarded-dispatch.mjs`
+defines its own `isInsideRoot`/`canonicalPathsEqual` (a win32-aware equivalent this script's own
+Windows-only platform needs on top). The two implementations must be kept in sync by hand; see
+`SKILL.md`'s "Public API beyond the CLI" for the full export/consumer breakdown. **This is deliberately a different check from
 repository-boundary** — the instruction file is expected to live in the session scratchpad, *outside*
 the repository, per `.claude/rules/require-gitignored-scratch-locations.md`; checking it against the
 repository root (as an earlier draft did) would reject the very instruction file the caller is

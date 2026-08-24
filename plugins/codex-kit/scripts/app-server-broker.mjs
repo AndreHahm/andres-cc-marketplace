@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
@@ -11,6 +12,26 @@ import { parseBrokerEndpoint } from "./lib/broker-endpoint.mjs";
 
 const STREAMING_METHODS = new Set(["turn/start", "review/start", "thread/compact/start"]);
 const BROKER_AUTH_RPC_CODE = -32002;
+
+// A plain !== compare on the broker token is a timing side-channel -- a
+// same-machine attacker guessing the token byte-by-byte could measure how
+// far the mismatch gets before the strings diverge. crypto.timingSafeEqual
+// requires equal-length buffers, so length is checked first (with a fixed
+// dummy comparison so a length mismatch doesn't short-circuit in
+// meaningfully less time than a same-length wrong-token compare). Found by
+// security review, 2026-08-24.
+function tokensMatch(candidate, expected) {
+  if (typeof candidate !== "string") {
+    return false;
+  }
+  const candidateBuf = Buffer.from(candidate, "utf8");
+  const expectedBuf = Buffer.from(expected, "utf8");
+  if (candidateBuf.length !== expectedBuf.length) {
+    crypto.timingSafeEqual(expectedBuf, expectedBuf);
+    return false;
+  }
+  return crypto.timingSafeEqual(candidateBuf, expectedBuf);
+}
 
 function buildStreamThreadIds(method, params, result) {
   const threadIds = new Set();
@@ -151,7 +172,7 @@ async function main() {
         }
 
         if (message.id !== undefined && message.method === "initialize") {
-          if (message.params?.token !== token) {
+          if (!tokensMatch(message.params?.token, token)) {
             send(socket, {
               id: message.id,
               error: buildJsonRpcError(BROKER_AUTH_RPC_CODE, "Unauthorized: missing or incorrect broker token.")
@@ -173,7 +194,7 @@ async function main() {
         }
 
         if (message.id !== undefined && message.method === "broker/shutdown") {
-          if (!authenticatedSockets.has(socket) && message.params?.token !== token) {
+          if (!authenticatedSockets.has(socket) && !tokensMatch(message.params?.token, token)) {
             send(socket, {
               id: message.id,
               error: buildJsonRpcError(BROKER_AUTH_RPC_CODE, "Unauthorized: missing or incorrect broker token.")

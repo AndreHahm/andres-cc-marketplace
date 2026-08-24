@@ -93,8 +93,21 @@ await (async () => {
   check("initialize with NO token is rejected", Boolean(noToken.error), JSON.stringify(noToken));
 
   const wrongToken = await rpcRoundTrip(target.path, { token: "wrong-" + crypto.randomBytes(8).toString("hex") });
-  check("initialize with WRONG token is rejected", Boolean(wrongToken.error), JSON.stringify(wrongToken));
+  check("initialize with WRONG token (different length) is rejected", Boolean(wrongToken.error), JSON.stringify(wrongToken));
   check("wrong-token rejection uses the dedicated auth RPC error code (-32002)", wrongToken.error?.code === -32002, JSON.stringify(wrongToken));
+
+  // Same length as the real 64-char hex token but wrong content -- exercises
+  // tokensMatch's crypto.timingSafeEqual branch specifically, not just its
+  // length-mismatch fast-reject branch the case above already covers.
+  const sameLengthWrongToken = await rpcRoundTrip(target.path, { token: crypto.randomBytes(32).toString("hex") });
+  check(
+    "initialize with WRONG token (same length as the real token) is rejected",
+    Boolean(sameLengthWrongToken.error),
+    JSON.stringify(sameLengthWrongToken)
+  );
+
+  const nonStringToken = await rpcRoundTrip(target.path, { token: 12345 });
+  check("initialize with a non-string token is rejected, not thrown on", Boolean(nonStringToken.error), JSON.stringify(nonStringToken));
 
   const rightToken = await rpcRoundTrip(target.path, { token: session.token });
   check("initialize with CORRECT token succeeds", Boolean(rightToken.result), JSON.stringify(rightToken));

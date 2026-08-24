@@ -14,7 +14,7 @@
       "id": 2,
       "name": "Secret-file-in-scope refusal",
       "prompt": "You are plugin-auditor's Codex backend resolver, working in the repository at C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-auditor-codex-integration. windows_guardrails is enabled via an untracked .claude/codex-windows-guardrails.local.json you create at the repo root: {\"windows_guardrails\": {\"enabled\": true, \"central_policy_version\": \"1\"}}. Also create an untracked file named '.env' containing 'TEST=1' directly under a fresh scratch directory 'guardrails-eval-scratch/' at the repo root. Per the codex-windows-guardrails skill, construct and run the exact command to attempt a dispatch with target-paths 'guardrails-eval-scratch', a scratchpad instruction file, dispatch-id 'eval-test-2', repo-root the worktree root. Report the exact typed-failure category and detail, and state whether any Codex process was invoked. Clean up all files you created (the local.json and the scratch directory) before finishing.",
-      "expected_output": "Correctly identifies that the untracked local override is honored (guardrails enabled), then observes a `secret_file_in_scope` typed failure citing the .env file's repo-relative path — via real filesystem traversal, not git ls-files (which would miss the untracked file); explicitly states no Codex exec was attempted; cleans up its own test artifacts.",
+      "expected_output": "Correctly identifies that the untracked local override is honored (guardrails enabled), then observes a `secret_file_in_scope` typed failure citing the .env file's repo-relative path \u00e2\u20ac\u201d via real filesystem traversal, not git ls-files (which would miss the untracked file); explicitly states no Codex exec was attempted; cleans up its own test artifacts.",
       "files": []
     },
     {
@@ -26,13 +26,20 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 7,
-    "declared_scenarios_covered": 3,
-    "uncovered": [
-      "A tracked .claude/codex-windows-guardrails.local.json is ignored (fail-closed)",
-      "A target-paths entry outside the repository root is rejected",
-      "A dispatch-id/reviewer-type outside the charset is rejected",
-      "An uppercase-variant secret filename is still rejected on Windows"
-    ]
+    "declared_scenarios_total": 10,
+    "declared_scenarios_covered": 10,
+    "uncovered": [],
+    "covered_by": {
+      "windows_guardrails.enabled false or unset -- returns guardrails_disabled immediately": "evals/codex-windows-guardrails/evals.json eval-1 (live grading.json); also smoke-tested",
+      "A .env (or other sensitive-pattern) file anywhere under a directory target, tracked or not -- secret_file_in_scope": "evals/codex-windows-guardrails/evals.json eval-2 (live grading.json); also smoke-tested",
+      "An instruction file that resolves inside a target-paths entry -- rejected": "evals/codex-windows-guardrails/evals.json eval-3 (live grading.json); also smoke-tested",
+      "A tracked .claude/codex-windows-guardrails.local.json is ignored (fail-closed)": "plugins/codex-kit/scripts/smoke-tests/codex-windows-guardrails-preflight.mjs (\"Tracked local override is ignored\" case)",
+      "A target-paths entry outside the repository root is rejected": "plugins/codex-kit/scripts/smoke-tests/codex-windows-guardrails-preflight.mjs (\"Repository-boundary violation\" case)",
+      "A dispatch-id/reviewer-type outside ^[A-Za-z0-9._-]{1,64}$ is rejected": "plugins/codex-kit/scripts/smoke-tests/codex-windows-guardrails-preflight.mjs (\"Invalid dispatch-id\" case)",
+      "An uppercase-variant secret filename (.ENV) on Windows is still rejected": "plugins/codex-kit/scripts/smoke-tests/codex-windows-guardrails-preflight.mjs (\"Case-insensitive secret match on Windows\" case)",
+      "A target-paths entry containing a prompt tag-closing character or a newline is rejected": "plugins/codex-kit/scripts/smoke-tests/codex-windows-guardrails-preflight.mjs (\"target-paths entry with a prompt tag-closing character\" case)",
+      "A --repo-root that is not the actual git repository toplevel is rejected": "plugins/codex-kit/scripts/smoke-tests/codex-windows-guardrails-preflight.mjs (\"--repo-root that is not the actual git repository toplevel\" case)",
+      "A secret file reached only through a file symlink is rejected, caught via the resolved target basename": "plugins/codex-kit/scripts/smoke-tests/codex-windows-guardrails-preflight.mjs (\"Secret file reached only through an IN-REPO symlink\" case)"
+    }
   }
 }

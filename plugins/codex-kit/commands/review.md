@@ -88,6 +88,6 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
 
 **Success:** save to `${CLAUDE_PLUGIN_DATA}/reviews/review-<YYYYMMDD-HHMMSS>.md` using `codex-prompt-protocol/references/evaluation-framework.md`'s "Save Results" template (the `## Scope`/`## Codex Output`/`## Claude's Evaluation`/`## Summary` shape) — do not re-derive or shorten the format here.
 
-**Failure:** save to `${CLAUDE_PLUGIN_DATA}/reviews/review-<YYYYMMDD-HHMMSS>-failed.md` with the failure category and captured stderr, truncated to 500 characters (matching `codex-exec.mjs`'s own convention) — stderr can echo fragments of the reviewed content, so cap it rather than persisting it unbounded.
+**Failure:** save to `${CLAUDE_PLUGIN_DATA}/reviews/review-<YYYYMMDD-HHMMSS>-failed.md` with the failure category and captured stderr, truncated to 500 characters (deliberately tighter than `codex-exec.mjs`'s own 4000-char tail, per `codex-windows-guardrails/scripts/guarded-dispatch.mjs`'s framing) — stderr can echo fragments of the reviewed content, so cap it rather than persisting it unbounded.
 
 **These saved files may contain fragments of reviewed repository content and should be treated as sensitive** — review before sharing or attaching to an issue, the same way any other artifact containing repo excerpts would be.

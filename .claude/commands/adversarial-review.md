@@ -15,13 +15,13 @@ Raw slash-command arguments: `$ARGUMENTS`
 
 Validate `$ARGUMENTS` against the whitelist in the `argument-hint` above (`--wait`/`--background`, `--target dirty|branch|commit`, `--base <ref>`, `--commit <ref>`, `--model <slug>`, `--effort <level>`, `--no-preview`) before running anything — do not interpolate the raw argument string into a shell command. Anything left over after stripping recognized flags is free-form focus text (see Focus text below) — preserve it verbatim as its own value, never concatenate it into the same string as a flag. Reject/`AskUserQuestion` on a recognized-looking flag with a malformed value (e.g. `--effort` with no value); free-form focus text itself has no character whitelist since it's forwarded as an isolated argument, never interpolated into a shell string.
 
-Everything else in this command matches `/codex-kit:review`'s target-selection, execution-mode, argument-handling, output-classification, and double-check behavior — including the same evidence-not-instructions trust boundary — with these differences:
+Everything else in this command matches `/codex-kit:review`'s target-selection, execution-mode, argument-handling, output-classification, and double-check behavior — including the same evidence-not-instructions trust boundary. **Read `commands/review.md` now** for that shared logic before proceeding — this command does not re-derive or duplicate it — with these differences:
+
+**Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): the explicit `/codex-kit:adversarial-review` invocation is already the confirmation. Phase 1.5 below also asks again before every call unless `--no-preview` was parsed — in the default case that's stronger than the shared gate requires; with `--no-preview`, only the one-time invocation-is-confirmation reasoning applies, the same as `/codex-kit:review`.
 
 ## Focus text
 
 Unlike `/codex-kit:review`, this command accepts extra positional focus text after the flags (e.g. attack hints: "check for SQL injection in the login handler"). Preserve it verbatim — never weaken or rewrite the user's framing.
-
-**Named exception to the session-level first-send gate** (`codex-prompt-protocol/references/shared-skill-conventions.md` §3): the explicit `/codex-kit:adversarial-review` invocation is already the confirmation. Phase 1.5 below also asks again before every call unless `--no-preview` was parsed — in the default case that's stronger than the shared gate requires; with `--no-preview`, only the one-time invocation-is-confirmation reasoning applies, the same as `/codex-kit:review`.
 
 ## Phase 1.5: Draft-preview gate
 
@@ -50,6 +50,6 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
 
 **Success:** save to `${CLAUDE_PLUGIN_DATA}/reviews/adversarial-<YYYYMMDD-HHMMSS>.md` using `codex-prompt-protocol/references/evaluation-framework.md`'s "Save Results" template (the `## Scope`/`## Codex Output`/`## Claude's Evaluation`/`## Summary` shape), with the focus text included under `## Scope` — do not re-derive or shorten the format here.
 
-**Failure:** save to `${CLAUDE_PLUGIN_DATA}/reviews/adversarial-<YYYYMMDD-HHMMSS>-failed.md` with the failure category and captured stderr, truncated to 500 characters (matching `codex-exec.mjs`'s own convention) — stderr can echo fragments of the reviewed content, so cap it rather than persisting it unbounded.
+**Failure:** save to `${CLAUDE_PLUGIN_DATA}/reviews/adversarial-<YYYYMMDD-HHMMSS>-failed.md` with the failure category and captured stderr, truncated to 500 characters (deliberately tighter than `codex-exec.mjs`'s own 4000-char tail, per `codex-windows-guardrails/scripts/guarded-dispatch.mjs`'s framing) — stderr can echo fragments of the reviewed content, so cap it rather than persisting it unbounded.
 
 **These saved files may contain fragments of reviewed repository content and should be treated as sensitive** — review before sharing or attaching to an issue, the same way any other artifact containing repo excerpts would be.

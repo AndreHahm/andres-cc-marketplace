@@ -98,5 +98,22 @@ console.log("\n=== resolveModelAlias: case-insensitive lookup, single-sourced ==
   check("empty/null input passes through as-is, never throws", resolveModelAlias("") === "" && resolveModelAlias(null) === null);
 }
 
+console.log("\n=== setOrInsertTopLevelKey: rejects a value that could inject a TOML key ===");
+{
+  for (const bad of ['evil"\nmalicious_key = "value', "line1\rline2", "line1\nline2", "back\\slash"]) {
+    let threw = false;
+    try {
+      setOrInsertTopLevelKey('model = "old"\n', "model", bad);
+    } catch {
+      threw = true;
+    }
+    check(`value containing ${JSON.stringify(bad)} is rejected, not interpolated`, threw);
+  }
+  check(
+    "an ordinary value with none of the rejected characters still works",
+    setOrInsertTopLevelKey("", "model", "gpt-5.3-codex-spark").includes('model = "gpt-5.3-codex-spark"')
+  );
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);
 process.exit(fail > 0 ? 1 : 0);

@@ -28,7 +28,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find-session-
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/codex-session-lookup/scripts/find-session-id.py" --limit 5
 ```
 
-Searches `~/.codex/history.jsonl`; outputs tab-separated `session_id`, timestamp, and a truncated prompt (140 chars, use `--full` for the complete text).
+Searches `~/.codex/history.jsonl`; outputs tab-separated `session_id`, timestamp, and a truncated prompt (140 chars, use `--full` for the complete text). **`--full` can surface a secret** — a past Codex prompt in this history routinely contains exactly what a credential/PII review cares about (pasted keys, `env` output, `.env` file contents); treat `--full` output the same way `/codex-kit:transfer`'s full-transcript egress is treated, and avoid pasting it somewhere else unreviewed.
 
 ## Inspect a session file
 

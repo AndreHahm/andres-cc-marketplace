@@ -7,9 +7,11 @@ runs the actual Codex call. This is where the bypass-not-modify decision from Se
 
 - `ENVELOPE_SCHEMA` — the canonical findings schema. Exported (additively, no behavior change) from
   `bridge-invoke.mjs` specifically so this script doesn't carry a second copy that could drift.
-- `semanticallyValidate` / `isWithin` — already exported by `bridge-invoke.mjs` for exactly this kind
-  of reuse (its own code comment: "lets smoke tests import the pure validation functions above
-  directly, without triggering a real CLI run").
+- `semanticallyValidate` / `neutralizeClosingTags` — already exported by `bridge-invoke.mjs` for
+  exactly this kind of reuse (its own code comment: "lets smoke tests import the pure validation
+  functions above directly, without triggering a real CLI run"). `isWithin` is also exported but not
+  imported here — the instruction-containment check below reuses the rule, not the function; see
+  `SKILL.md`'s "Public API beyond the CLI" for the full export/consumer breakdown.
 - `isValidToken` — the `^[A-Za-z0-9._-]{1,64}$` charset/length guard `bridge-invoke.mjs` applies to
   `dispatch-id`/`reviewer-type` before either is interpolated into a prompt (and, for `dispatch-id`,
   before it becomes part of a tmpdir path `runCodexExec` later recursively deletes). **This one was
