@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Response mentions dispatching via a subagent for context isolation",
+      "passed": false,
+      "evidence": "No mention of a subagent or any dispatch mechanism anywhere in the response; it states plainly 'I don't have a \"codex\" tool available in this session, so I can't actually dispatch anything to it'."
+    },
+    {
+      "text": "Response describes a 2-round discussion structure and an escalation path if unresolved",
+      "passed": false,
+      "evidence": "No Round 1/Round 2 structure and no escalation path anywhere; the response instead offers two manual alternatives (run it through Codex yourself, or let me review it myself as a stand-in) and asks the user for the missing schema."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Response confirms scope/cost with the user before launching (does not silently start 15-26 parallel Codex calls)",
+      "passed": true,
+      "evidence": "\"Before I kick this off, I want to flag some ambiguity rather than guess and burn a lot of time/tokens on the wrong scope\" -- also stops before launching, though the caution is general (open-ended-task judgment) rather than the skill's own specific, named cost figure."
+    },
+    {
+      "text": "Response describes Mode A's lens-based approach (explore, plan lenses, launch, synthesize, converge)",
+      "passed": false,
+      "evidence": "No structured explore->plan-lenses->launch->synthesize->converge sequence anywhere in the response. It asks generically 'which lenses, concretely?' and 'what's the stop condition?' as open questions, but never describes a named pipeline -- it doesn't know Mode A's specific methodology because it has no skill content."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 1,
+    "pass_rate": 0.5
+  }
+}

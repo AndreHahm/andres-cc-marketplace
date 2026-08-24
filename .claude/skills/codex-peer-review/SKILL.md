@@ -84,7 +84,7 @@ Never ask before Round 1 or Round 2 — only the escalation and final-output ste
 4. An unresolved disagreement after escalation → both positions and the escalation source are presented; no invented tiebreak.
 
 **Current test coverage:**
-- `evals/codex-peer-review/evals.json` — 1 defined scenario (subagent dispatch, 2-round protocol, escalation path). Structurally graded 2026-08-12 (PASS — the mandatory subagent dispatch, Round 1/Round 2 headings, and the Escalation section all match the eval's `expected_output`); not a live empirical run.
+- `evals/codex-peer-review/evals.json` — 1 defined scenario (subagent dispatch, 2-round protocol, escalation path). Structurally graded 2026-08-12 (PASS — the mandatory subagent dispatch, Round 1/Round 2 headings, and the Escalation section all match the eval's `expected_output`). **Live empirical run, 2026-08-24:** `skill-tester` full baseline comparison against a real Codex backend — with-skill 2/2 assertions pass (real subagent dispatch, 2-round protocol with `--resume-last`, correct "Resolved Disagreement" classification with escalation-taxonomy reasoning), baseline 0/2 (no subagent dispatch, no round structure, no Codex integration at all); `grading.json`/`outputs/` on disk under `evals/codex-peer-review/workspace/iteration-1/eval-1/`.
 - `scripts/smoke-tests/codex-peer-review-invariants.mjs` — this skill's own output isn't mechanically testable (it depends on Claude's own position and Codex's live response), but the SKILL.md text's safety-relevant invariants are: Round 1/Round 2/Escalation ordering, the never-ask-before-Round-1-or-2 gate, and the always-dispatch-via-subagent requirement. Not a live Codex-call test.
 
 **Quality gates:**
