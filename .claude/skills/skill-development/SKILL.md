@@ -39,6 +39,7 @@ Identify the entry path and jump in:
 - **Reviewing skill quality** → use the `skill-reviewer` agent
 - **Quick standalone repair (issue already diagnosed)** → run `scripts/repair_skill.py` directly; skip the full skill workflow
 - **Standalone empirical benchmarking of an already-built skill** (with_skill vs. baseline pass rates, timing/token metrics, iteration-over-iteration comparison) → use `skill-tester`. This skill's own Phase 3 is scoped to validating a skill *during its own creation/audit workflow*, not a dedicated benchmark pipeline — don't run both on the same skill in the same pass.
+- **A skill with multi-step phases, sub-agent orchestration, decision trees, or progressive disclosure across `references/`/`workflows/`** → use `workflow-skill-development` instead. This skill covers single-purpose skills with no multi-step workflow (just guidance); `workflow-skill-development` covers workflow/orchestration architecture — sequential pipelines, routing patterns, safety gates, task tracking, or phased execution.
 
 ## Finding-ID Fix Mode
 

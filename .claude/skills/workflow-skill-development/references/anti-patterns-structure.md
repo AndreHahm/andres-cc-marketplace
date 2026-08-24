@@ -54,7 +54,7 @@ The `description` controls activation. The body sections scope behavior after ac
 
 **Symptom:** SKILL.md exceeds 500 lines with everything inlined.
 
-**Why it's wrong:** see `progressive-disclosure-guide.md`'s "The 500-Line Rule" for the full rationale (LLM attention degradation) — not restated here.
+**Why it's wrong:** the LLM's attention degrades as SKILL.md grows past 500 lines — details buried deep in a long file are less reliably followed than the same details split into a linked reference file the LLM reads on demand. (Full rationale: `progressive-disclosure-guide.md`'s "The 500-Line Rule," linked directly from SKILL.md's own Reference Index.)
 
 **Before:** A 900-line SKILL.md with full API documentation, examples, and workflow steps all in one file.
 
@@ -66,7 +66,7 @@ The `description` controls activation. The body sections scope behavior after ac
 
 **Symptom:** SKILL.md links to file A, which links to file B, which links to file C.
 
-**Why it's wrong:** see `progressive-disclosure-guide.md`'s "The One-Level-Deep Rule" for the full rationale — not restated here.
+**Why it's wrong:** each hop degrades context — by the second hop the LLM has lost track of where it started and why. SKILL.md should link to every reference/workflow file directly instead. (Full rationale: `progressive-disclosure-guide.md`'s "The One-Level-Deep Rule," linked directly from SKILL.md's own Reference Index.)
 
 **Before:**
 ```

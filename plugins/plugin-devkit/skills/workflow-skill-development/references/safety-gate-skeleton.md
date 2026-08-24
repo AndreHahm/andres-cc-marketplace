@@ -1,6 +1,7 @@
 # Safety Gate Pattern Skeleton
 
-Structural skeleton for the Safety Gate Pattern (see [workflow-patterns.md](workflow-patterns.md) for when to use it).
+Structural skeleton for the Safety Gate Pattern — use when the skill performs destructive or irreversible
+actions and needs two confirmation gates (review, then execute) before any of them run.
 
 **R18 exception (recorded):** intentionally exceeds the 30-line threshold — the file's own stated purpose is this exact skeleton; trimming would remove the two gates and the individual-execution phase the pattern exists to illustrate.
 
