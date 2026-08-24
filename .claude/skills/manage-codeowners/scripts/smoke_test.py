@@ -152,8 +152,8 @@ def check_step_sequence():
 
         sub_starts = [m.start() for m in re.finditer(r"^### ", section, re.MULTILINE)]
         if sub_starts:
-            bounds = sub_starts + [len(section)]
-            chunks = [section[bounds[i] : bounds[i + 1]] for i in range(len(sub_starts))]
+            bounds = [0, *sub_starts, len(section)]
+            chunks = [section[bounds[i] : bounds[i + 1]] for i in range(len(bounds) - 1)]
         else:
             chunks = [section]
 

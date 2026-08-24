@@ -24,6 +24,14 @@ set -euo pipefail
 
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "Error: not inside a git repository" >&2; exit 1; }
 
+# $file (below) is always repo-root-relative (:(top) pathspec + diff.relative=false),
+# but ruff/ty/git add all resolve a relative path against the current working
+# directory, not the repo root -- if this script is invoked from a subdirectory,
+# those commands would look for $file in the wrong place. Anchoring cwd to the
+# repo root once, up front, keeps every path used below correct regardless of
+# where the invoking shell happened to be.
+cd "$(git rev-parse --show-toplevel)"
+
 if ! command -v uv >/dev/null 2>&1; then
   echo "uv not available -- skipping Python lint/format/type-check" >&2
   exit 0
