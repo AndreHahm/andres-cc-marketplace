@@ -270,7 +270,17 @@ async function handleSetup(argv) {
   if (options["persist-model"] != null && !/^[A-Za-z0-9._:/-]{1,64}$/.test(options["persist-model"])) {
     throw new Error(`--persist-model must match ^[A-Za-z0-9._:/-]{1,64}$: ${options["persist-model"]}`);
   }
-  const persistEffort = options["persist-effort"] ? normalizeReasoningEffort(options["persist-effort"]) : null;
+  // Mirrors the != null presence check above -- normalizeReasoningEffort
+  // itself treats "" the same as omitted (returns null, no error; correct
+  // for its other call site's own optional --effort flag), so an explicitly
+  // empty --persist-effort= must be rejected HERE, before delegating, or it
+  // silently passes as "no preference" instead of aborting like the comment
+  // above already promises for both persist flags together. Found by Codex
+  // review, PR #112, 2026-08-24.
+  if (options["persist-effort"] != null && !String(options["persist-effort"]).trim()) {
+    throw new Error("--persist-effort must not be empty: pass a value (none, minimal, low, medium, high, xhigh) or omit the flag");
+  }
+  const persistEffort = options["persist-effort"] != null ? normalizeReasoningEffort(options["persist-effort"]) : null;
 
   if (options["enable-review-gate"]) {
     setConfig(workspaceRoot, "stopReviewGate", true);
