@@ -4,8 +4,10 @@ description: >-
   Deep-dive research using Codex with Claude's cross-model synthesis. Use
   when asked "codex research", "deep dive with codex", "investigate this
   topic", or "resume" a prior research thread. Not for reviewing code
-  changes/diffs (use the /codex-kit:review command for that) or for
-  verifying an existing written plan/document (use codex-verify for that).
+  changes/diffs (use the /codex-kit:review command for that), for
+  verifying an existing written plan/document (use codex-verify for that),
+  or for validating Claude's own already-formed analysis, design, or
+  recommendation before presenting it (use codex-peer-review for that).
 argument-hint: "topic [path/to/document.md] [--model SLUG] [--effort LEVEL] [--persist] [--no-preview] [resume [follow-up]]"
 allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(sed:*)", "Bash(test:*)", "Bash(echo:*)", "Bash(printf:*)", "Bash(date:*)", "Bash(wc:*)", "Read", "Write", "AskUserQuestion"]
 ---

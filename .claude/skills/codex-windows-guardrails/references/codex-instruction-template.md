@@ -16,8 +16,9 @@ it; it is not a second copy of the text, so the two can't drift out of sync with
 
 ## Where the blocked-category list came from
 
-The categories in that text file are reused verbatim from the original `WINDOWS_GUARDRAILS.md`
-concept's "Blocked categories include, at minimum" list — not re-derived. That document imagined
+The categories in that text file are reused verbatim from an earlier, now-removed planning document's
+"Blocked categories include, at minimum" list — not re-derived (no file named `WINDOWS_GUARDRAILS.md`
+exists in this repository; confirmed via a repo-wide search, 2026-08-24). That planning document imagined
 this list enforced by a runtime hook; this skill enforces it only as much as an instructed model
 chooses to follow it. The text itself leads with the required posture (stay read-only/inspection-only)
 before mentioning the underlying capability, reordered during Self-Review from an earlier draft that

@@ -17,7 +17,9 @@
 
 Whether Codex's own hook runtime supports (or could be extended to support) a genuine
 pre-execution interception event — something that could actually block one dangerous command
-before it runs, the way `WINDOWS_GUARDRAILS.md`'s original "dangerous-command hook" envisioned.
+before it runs, the way an earlier, now-removed planning document's original "dangerous-command hook"
+envisioned (no file named `WINDOWS_GUARDRAILS.md` exists in this repository; confirmed via a
+repo-wide search, 2026-08-24).
 Every `hooks.json` this investigation found only declares session-lifecycle events. That's evidence
 the capability doesn't exist in the examples checked, not proof it can never exist — the Codex CLI's
 own hook system may support more event types than any file in this repo currently declares and uses.

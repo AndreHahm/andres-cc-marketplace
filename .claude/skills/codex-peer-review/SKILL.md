@@ -10,7 +10,8 @@ description: >-
   verifying an existing written plan/document file, use codex-verify
   instead. For a full multi-phase plan-validate-implement-review workflow
   (not just validating an already-formed position), use codex-plan-loop
-  instead.
+  instead. For open-ended investigation of a topic with no existing Claude
+  position to validate, use codex-research instead.
 argument-hint: "[--base <ref>] [question or design summary]"
 allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "AskUserQuestion", "Agent", "WebSearch"]
 ---
