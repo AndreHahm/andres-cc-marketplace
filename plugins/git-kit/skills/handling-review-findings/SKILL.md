@@ -100,10 +100,12 @@ project-local), falling back to the git-tracked `${CLAUDE_PLUGIN_ROOT}/git-kit.s
 for any field the local file doesn't set.
 
 **Resolve the trust boundary here, once per invocation, before any protected field is used anywhere in
-this skill** — not per-field, and not deferred to Workflow step 8c. Check with a repo-root-anchored
-`git ls-files --error-unmatch :/.claude/git-kit.local.json` (never the bare relative form — see
-`references/settings-and-round-budget.md`'s "Read order and trust boundary" for why, and for the full
-list of what this protects). Workflow step 8c reuses this resolution rather than re-deriving it.
+this skill** — not per-field, and not deferred to Workflow step 8c. Check with a repo-root-anchored,
+glob-disabled, quoted pathspec: `git ls-files --error-unmatch ":(top,literal).claude/git-kit.local.json"`
+— **never the bare relative form, and never collapsed to a simple pass/fail on exit code alone**; see
+`references/settings-and-round-budget.md`'s "Read order and trust boundary" for the required 3-way branch
+(tracked / confirmed-untracked / unverifiable-so-fail-closed), why the bare form is unsafe, and the full
+list of what this protects. Workflow step 8c reuses this resolution rather than re-deriving it.
 
 | Setting | Default | Meaning |
 |---|---|---|

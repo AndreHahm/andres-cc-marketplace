@@ -11,20 +11,31 @@
 Read order matches SKILL.md's own Settings section intro — see it for the base rule. This section
 covers the trust-boundary detail that intro doesn't.
 
-Checking whether `.claude/git-kit.local.json` is itself tracked uses a **repo-root-anchored** pathspec,
-not a bare relative one: `git ls-files --error-unmatch :/.claude/git-kit.local.json` — the `:/` magic
-anchors the match to the repository root regardless of the invoking shell's current working directory.
-A plain `git ls-files --error-unmatch .claude/git-kit.local.json` (the form `commit`'s own settings-read
-step still uses, pre-existing there and out of this skill's scope to fix) exits non-zero — "no match" —
-whenever the check runs from any directory other than the repo root, which the documented interpretation
-below would read as "untracked, safe to trust." That misreads a genuinely tracked file as untracked purely
+Checking whether `.claude/git-kit.local.json` is itself tracked uses a **repo-root-anchored,
+glob-disabled** pathspec, not a bare relative one:
+`git ls-files --error-unmatch ":(top,literal).claude/git-kit.local.json"` — the `top` magic anchors the
+match to the repository root regardless of the invoking shell's current working directory, and `literal`
+disables glob-wildcard interpretation of the path. A plain
+`git ls-files --error-unmatch .claude/git-kit.local.json` (the bare relative form — `commit`'s own trust
+check now also uses the anchored, literal form, fixed as part of a `plugin-lifecycle-downstream` pass on
+git-kit; see `issues/2026-08-22-commit-skill-ls-files-cwd-fail-open.md`) exits non-zero — "no match" —
+whenever the check runs from any directory other than the repo root, which a naive two-way interpretation
+would read as "untracked, safe to trust." That misreads a genuinely tracked file as untracked purely
 because of cwd, silently disabling the entire trust boundary with no attacker involved (live-verified:
 running the bare relative form from a subdirectory reports "did not match any file(s)" even for a file
-`git ls-files` confirms tracked from the repo root; the `:/`-anchored form matches correctly from either
-location). A non-zero exit on the anchored form means the file is genuinely untracked (safe to trust for
-the fields below); a zero exit means it's tracked (fall back to the tracked default for those fields
-instead). This is why this skill's `allowed-tools` carries `Bash(git ls-files:*)` — without it, the
-trust-boundary check below has no way to actually run.
+`git ls-files` confirms tracked from the repo root; the anchored form matches correctly from either
+location).
+
+**Branch on the exact outcome — never collapse this to a two-way pass/fail on exit code alone.** Exit 0
+means the file is tracked (fall back to the tracked default for the fields below). Exit 1, specifically
+with git's own `did not match any file(s) known to git` message, means the file is confirmed genuinely
+untracked (only then may its overrides for those fields be honored). Any *other* outcome — a different
+exit code, `git` unavailable, not inside a work tree, or any other error — means the trust state could not
+be verified at all, and must be treated exactly like "tracked": fall back to defaults, and state plainly
+that the check couldn't be verified. A two-way reading that treats "not exit 0" as "confirmed untracked"
+reconstitutes the same fail-open bug the anchored pathspec was meant to close, just one layer up — an
+unverifiable answer is never a safe one. This is why this skill's `allowed-tools` carries
+`Bash(git ls-files:*)` — without it, the trust-boundary check below has no way to actually run.
 
 **Resolve this once per invocation, at Settings-read time (SKILL.md's Settings section) — never
 deferred into Workflow step 8c, and never re-derived per field.** Four groups of overrides are honored
