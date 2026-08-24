@@ -98,7 +98,16 @@ fi
 
 # `git worktree remove --force`/`-f` only -- plain `remove` (no force flag)
 # already refuses on a dirty or locked worktree via git's own safeguard.
-if echo "$COMMAND" | grep -qE "${GIT_PREFIX}worktree[[:space:]]+remove([[:space:]]+-[^[:space:]]+)*[[:space:]]+(--force|-f)([[:space:]]|\$)"; then
+# Checked as two independent conditions (both required) rather than one
+# positional regex: `--force`/`-f` can legally appear either before or after
+# the worktree path argument (`git worktree remove --force <path>` and
+# `git worktree remove <path> --force` are both valid git syntax), and a
+# single regex requiring the flag to immediately follow `remove` (with only
+# `-`-prefixed tokens permitted in between) missed the path-before-flag form
+# entirely -- live-verified: that form produced no denial at all.
+WORKTREE_REMOVE_RE="${GIT_PREFIX}worktree[[:space:]]+remove([[:space:]]|\$)"
+FORCE_FLAG_RE='(^|[[:space:]])(--force|-f)([[:space:]]|$)'
+if echo "$COMMAND" | grep -qE "$WORKTREE_REMOVE_RE" && echo "$COMMAND" | grep -qE "$FORCE_FLAG_RE"; then
   MATCH=true
 fi
 
