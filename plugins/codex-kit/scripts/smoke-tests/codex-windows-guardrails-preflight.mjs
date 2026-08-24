@@ -354,5 +354,39 @@ console.log("\n=== NESTED directory symlink/junction escaping the repository roo
   fs.rmSync(path.join(repoRoot, "a"), { recursive: true, force: true });
 }
 
+console.log("\n=== Prompt-injection guard on instructionBody (source-level, not exercisable via subprocess without a real Codex exec) ===");
+{
+  // Every scenario above deliberately short-circuits BEFORE runCodexExec is
+  // reached (see this file's own header comment) -- neutralizeClosingTags is
+  // applied immediately before that exec call, so it can't be exercised the
+  // same way. Source-inspection is the cheap, meaningful regression guard
+  // instead: if this import or call is ever reverted, this check catches it
+  // without needing a real Codex API call.
+  const source = fs.readFileSync(GUARDED_DISPATCH, "utf8");
+  check(
+    "imports neutralizeClosingTags from bridge-invoke.mjs",
+    /import\s*{[^}]*\bneutralizeClosingTags\b[^}]*}\s*from\s*["'][^"']*bridge-invoke\.mjs["']/.test(source)
+  );
+  check(
+    "applies neutralizeClosingTags to instructionBody before interpolating it into the prompt",
+    /neutralizedInstructionBody\s*=\s*neutralizeClosingTags\(instructionBody\)/.test(source) &&
+      /"<reviewer_instructions>",\s*\n\s*neutralizedInstructionBody,/.test(source)
+  );
+  check(
+    "includes the <content_trust_boundary_restated> block after the interpolated instruction body",
+    source.includes("<content_trust_boundary_restated>") && source.includes("</content_trust_boundary_restated>")
+  );
+
+  console.log("\n=== Controlled negative: reverting the fix is caught ===");
+  const tampered = source.replace(
+    /import\s*{[^}]*}\s*from\s*("[^"]*bridge-invoke\.mjs")/,
+    'import { ENVELOPE_SCHEMA, semanticallyValidate, isValidToken } from $1'
+  );
+  check(
+    "the import-guard check fails on a tampered copy with neutralizeClosingTags removed",
+    /import\s*{[^}]*\bneutralizeClosingTags\b[^}]*}\s*from\s*["'][^"']*bridge-invoke\.mjs["']/.test(tampered) === false
+  );
+}
+
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);
 process.exit(fail > 0 ? 1 : 0);

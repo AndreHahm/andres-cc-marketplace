@@ -17,7 +17,7 @@ description: >-
   inside a longer loop against a plan Claude itself authors in Phase 1, not
   a standalone document check.
 argument-hint: "feature description [--security-focus] [--performance-focus] [--model SLUG] [--effort LEVEL]"
-allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(git rev-parse:*)", "Bash(git status:*)", "Bash(git diff:*)", "Read", "Write", "Edit", "Grep", "Glob", "AskUserQuestion"]
+allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(mkdir:*)", "Bash(cat:*)", "Bash(git rev-parse:*)", "Bash(git status:*)", "Bash(git diff:*)", "Bash(date:*)", "Bash(echo:*)", "Read", "Write", "Edit", "Grep", "Glob", "AskUserQuestion"]
 ---
 
 # Plan → Validate → Implement → Review → Iterate

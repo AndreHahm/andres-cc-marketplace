@@ -7,14 +7,26 @@
 // message is framed as evidence, never as instructions, and stays inside its
 // own delimited block rather than the <task> element.
 //
-// readHookInput is exported but not exercised here: it reads real stdin (fd 0)
-// via fs.readFileSync, which would hang this test without a piped input --
-// its empty/malformed-JSON paths are simple enough (a JSON.parse call) that
-// this is judged an acceptable gap rather than worth an injectable-input refactor.
+// A malformed-stdin scenario now IS exercised below (see "main()'s catch path"),
+// via a real subprocess with piped stdin -- this is exactly the code path
+// hook-reviewer's Critical finding (2026-08-23) lived in: an uncaught
+// JSON.parse failure inside main() previously set process.exitCode = 1 after
+// emitting a decision:"block" JSON, which made Claude Code ignore that JSON
+// entirely and (combined with hooks.json's onError:"warn") let the stop
+// through unreviewed -- silently failing open on exactly the path whose own
+// inline comment claimed it failed closed.
 //
 // Run from plugins/codex-kit/: node scripts/smoke-tests/stop-review-gate-hook.mjs
 
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseStopReviewOutput, buildStopReviewPrompt } from "../stop-review-gate-hook.mjs";
+
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const HOOK_SCRIPT = path.join(SCRIPT_DIR, "..", "stop-review-gate-hook.mjs");
 
 let pass = 0;
 let fail = 0;
@@ -123,6 +135,63 @@ console.log("\n=== buildStopReviewPrompt: trust-boundary framing ===");
     "a whitespace-padded closing-tag variant ('</ claude_response_evidence >') is also neutralized, not just the exact-match form",
     whitespaceClosingTagCount === 1,
     `found ${whitespaceClosingTagCount} occurrences`
+  );
+}
+
+console.log("\n=== main()'s catch path: malformed stdin fails CLOSED, not open ===");
+{
+  const result = spawnSync("node", [HOOK_SCRIPT], { input: "not valid json{{{", encoding: "utf8" });
+  check(
+    "the hook process itself exits 0 -- a non-zero exit here is what previously made Claude Code discard the block decision entirely",
+    result.status === 0,
+    `exit code: ${result.status}`
+  );
+  let decision = null;
+  try {
+    decision = JSON.parse(result.stdout.trim());
+  } catch {
+    /* leave null, checked below */
+  }
+  check(
+    "stdout carries a valid decision:\"block\" JSON payload on a JSON.parse failure",
+    decision !== null && decision.decision === "block",
+    `stdout: ${result.stdout.trim()}`
+  );
+  check(
+    "the block reason states the internal-error fail-closed framing, not a generic crash message",
+    typeof decision?.reason === "string" && decision.reason.includes("failing closed"),
+    decision?.reason ?? ""
+  );
+  check(
+    "the raw error is also written to stderr for operator visibility",
+    result.stderr.length > 0,
+    result.stderr.slice(0, 200)
+  );
+}
+
+console.log("\n=== Controlled negative: reintroducing the fail-open bug is caught ===");
+{
+  // Confirms this test suite would actually catch a regression back to the
+  // exact bug this candidate exists to guard against -- not just that the
+  // fixed script currently behaves correctly.
+  const source = fs.readFileSync(HOOK_SCRIPT, "utf8");
+  const marker = "reason: `Stop review gate hit an unexpected internal error and is failing closed rather than letting the stop through unreviewed: ${message}`\n    });";
+  const withBug = source.replace(marker, `${marker}\n    process.exitCode = 1;`);
+  let regressionCaught = "could not locate the catch-block marker to tamper with";
+  if (withBug !== source) {
+    const tmpPath = path.join(os.tmpdir(), `stop-review-gate-hook-tampered-${process.pid}.mjs`);
+    fs.writeFileSync(tmpPath, withBug);
+    try {
+      const tamperedResult = spawnSync("node", [tmpPath], { input: "not valid json{{{", encoding: "utf8" });
+      regressionCaught = tamperedResult.status !== 0;
+    } finally {
+      fs.rmSync(tmpPath, { force: true });
+    }
+  }
+  check(
+    "a reintroduced process.exitCode = 1 in the catch block is caught (tampered copy exits non-zero)",
+    regressionCaught === true,
+    typeof regressionCaught === "string" ? regressionCaught : ""
   );
 }
 

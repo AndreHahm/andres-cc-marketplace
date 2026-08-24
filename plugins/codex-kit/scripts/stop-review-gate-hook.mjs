@@ -223,10 +223,16 @@ if (isEntryPoint) {
     // internal error is neither of those.
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`${message}\n`);
+    // Exit 0 (implicit, matching the normal blocking path above at line
+    // ~187-191) -- NOT process.exitCode = 1. A non-zero exit here caused
+    // Claude Code to ignore this decision:"block" JSON entirely, and
+    // hooks.json's onError:"warn" for this hook resolved the combination to
+    // "warning logged, continues" -- silently letting the stop through
+    // unreviewed on exactly the uncaught-exception path this comment claims
+    // fails closed. Found by plugin-auditor's hook-reviewer, 2026-08-23.
     emitDecision({
       decision: "block",
       reason: `Stop review gate hit an unexpected internal error and is failing closed rather than letting the stop through unreviewed: ${message}`
     });
-    process.exitCode = 1;
   }
 }
