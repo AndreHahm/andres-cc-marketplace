@@ -12,7 +12,7 @@ description: >-
   prioritized list" — not a single analysis type (use starting-an-analysis
   for that) and not cross-checking reports that already exist (use
   reviewing-analysis-findings directly for that).
-allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(cd:*) Bash(sleep:*) Bash(git log -1:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */plugin-rulebook/scripts/validate_evidence.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-downstream) Skill(plugin-rulebook) Skill(git-kit:starting-work) Skill(git-kit:commit) Skill(git-kit:create-pr) Skill(git-kit:merge-pr) Skill(git-kit:finishing-work)
+allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(cd:*) Bash(sleep:*) Bash(git log -1:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */plugin-rulebook/scripts/validate_evidence.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-downstream) Skill(plugin-devkit:plugin-rulebook) Skill(git-kit:starting-work) Skill(git-kit:commit) Skill(git-kit:create-pr) Skill(git-kit:merge-pr) Skill(git-kit:finishing-work)
 argument-hint: [optional: which analyses to run, and/or a scope]
 ---
 
@@ -258,7 +258,7 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
 
    Then offer whichever of these remain available:
    - **"Fix directly now, here"** (only offered if **both** a `git-kit` copy **and** a `plugin-devkit`
-     copy were found — 5c-4's Step 4 unconditionally runs a `Skill(plugin-rulebook)` compliance check
+     copy were found — 5c-4's Step 4 unconditionally runs a `Skill(plugin-devkit:plugin-rulebook)` compliance check
      against the edit, so this path needs `plugin-devkit` too, not just `git-kit`) — small, mechanical
      (a doc line, a stale citation); still goes through the full `commit` → `create-pr` → `merge-pr` →
      `finishing-work` lifecycle (see 5c-4 below for why this can't be shortened), but skips the full
