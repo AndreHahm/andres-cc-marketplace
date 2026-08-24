@@ -172,7 +172,8 @@ tools: Read, Grep, Glob
 # Code editor
 tools: Read, Write, Edit, Bash
 
-# Database analyst (needs a query CLI — scope Bash to it, e.g. Bash(psql:*))
+# Database analyst (needs a query CLI — grant bare Bash, since Bash(psql:*) scoping
+# syntax isn't valid for agents; constrain to psql at the instruction level instead)
 tools: Bash, Read
 
 # Background researcher
