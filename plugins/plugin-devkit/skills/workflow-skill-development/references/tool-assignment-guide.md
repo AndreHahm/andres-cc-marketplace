@@ -59,7 +59,9 @@ There are three substitution types:
 **Design implications:**
 - Use argument variables when the skill accepts free-form input (file paths, issue numbers)
 - Use positional args when the skill expects structured input (e.g., `/migrate-component SearchBar React Vue`)
-- Use shell preprocessing to inject live context (git status, PR diff) — pairs well with `context: fork`
+- Use shell preprocessing to inject live, author-controlled context (`git status`, `git branch --show-current`) — pairs well with `context: fork`
+
+**Never splice third-party content this way.** Shell preprocessing substitutes its command's output directly into the instruction stream before Claude ever sees the file — the substituted text becomes indistinguishable from the skill's own instructions. Scope it to commands whose output the skill's own author controls. Never use it to inject content someone other than the skill's author could influence — a PR diff, an issue body, a commit message, or any other externally-supplied text — since that hands an attacker a direct line into the instruction stream with no data-only boundary. Read that content with a dedicated tool (`Bash(gh pr diff:*)`, `Read`, etc.) inside the skill's own instructions instead, where it can be explicitly framed as data to evaluate rather than directives to follow.
 
 **When documenting these patterns in a skill:** Describe the syntax textually (as this file does) rather than using the raw patterns. Code fences and inline code do NOT prevent substitution — the loader processes the raw file content before any Markdown parsing.
 

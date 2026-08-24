@@ -44,6 +44,7 @@ Use this checklist to self-review a workflow skill before submission.
 - [ ] **allowed-tools matches actual usage** (no unused tools listed)
 - [ ] **Least privilege** — no Write/Bash on read-only skills
 - [ ] **No Bash for file operations** (Glob/Grep/Read/Write used instead)
+- [ ] **No bare `Bash` grant** — any Bash grant is scoped to the specific command(s) actually invoked (e.g. `Bash(git:* date:*)`), per plugin-rulebook R6
 - [ ] **Subagent prompts are specific** (not "analyze this")
 - [ ] **Subagent prompts define return format** (markdown structure, JSON schema, or checklist)
 - [ ] **Agent tools declared with `tools:`** (not `allowed-tools:`)

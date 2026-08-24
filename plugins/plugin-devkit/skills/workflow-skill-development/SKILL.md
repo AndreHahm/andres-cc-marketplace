@@ -149,7 +149,7 @@ How many distinct paths does the skill have?
 
 Every workflow skill needs the same skeleton, regardless of pattern. See [skill-skeleton.md](references/skill-skeleton.md) for the full template.
 
-Skills support three types of string substitutions: dollar-prefixed variables for arguments and session ID, and exclamation-backtick syntax for shell preprocessing. The skill loader processes these before Claude sees the file — even inside code fences — so never use the raw syntax in documentation text. See [tool-assignment-guide.md](references/tool-assignment-guide.md) for the full variable reference and usage guidance.
+Skills support three types of string substitutions: dollar-prefixed variables for arguments and session ID, and exclamation-backtick syntax for shell preprocessing. The skill loader processes these before Claude sees the file — even inside code fences — so never use the raw syntax in documentation text. Scope shell preprocessing to author-controlled commands only (`git status`, not a PR diff or other third-party content) — its output is spliced directly into the instruction stream with no data-only boundary. See [tool-assignment-guide.md](references/tool-assignment-guide.md) for the full variable reference and usage guidance.
 
 ## Implementation Process
 
@@ -166,10 +166,9 @@ Collect from the user:
 
 ### Step 2: Create Directory Structure
 
-```bash
-mkdir -p <PLUGIN_ROOT>/tasks
-# Optional: mkdir -p <PLUGIN_ROOT>/agents
-```
+`tasks/` (and, optionally, `agents/`) don't need to be created ahead of time — `Write`ing the first file under
+`<PLUGIN_ROOT>/tasks/step-1-<workflow>-<name>.md` creates any missing parent directories automatically. No
+`Bash(mkdir:*)` grant is needed for this step.
 
 All task files go directly in `tasks/` — no subdirectories.
 
@@ -196,6 +195,15 @@ Launch general-purpose agent:
 
 **Capture**: <What to extract from result>
 ```
+
+### Step 5: Verify
+
+Confirm the workflow actually works before considering it done:
+1. Walk through the Validation Checklist above end-to-end against the finished skill/command.
+2. Invoke `plugin-rulebook` for naming, tool-scoping, and formatting compliance.
+3. Run `scripts/smoke_test.py` if the target skill has one persisted.
+4. Test at least one real invocation through the orchestrator command, confirming each step's captured
+   output matches what the next step expects.
 
 ## Execution Patterns
 
@@ -289,16 +297,17 @@ Map your component type to the right tool set. Full guide in [tool-assignment-gu
 |---------------|---------------|
 | Read-only analysis skill | Read, Glob, Grep, TodoRead, TodoWrite |
 | Interactive analysis skill | Read, Glob, Grep, AskUserQuestion, TodoRead, TodoWrite |
-| Code generation skill | Read, Glob, Grep, Write, Bash, TodoRead, TodoWrite |
-| Pipeline skill | Read, Write, Glob, Grep, Bash, AskUserQuestion, Task, TaskCreate, TaskList, TaskUpdate, TodoRead, TodoWrite |
+| Code generation skill | Read, Glob, Grep, Write, `Bash(python:*)` (scoped to the actual interpreter invoked), TodoRead, TodoWrite |
+| Pipeline skill | Read, Write, Glob, Grep, `Bash(git:*)` (scoped to the actual commands invoked), AskUserQuestion, Task, TaskCreate, TaskList, TaskUpdate, TodoRead, TodoWrite |
 | Read-only agent | Read, Grep, Glob, TodoRead, TodoWrite |
-| Action agent | Read, Grep, Glob, Write, Bash, TodoRead, TodoWrite |
+| Action agent | Read, Grep, Glob, Write, `Bash(git:*)` (scoped to the actual commands invoked), TodoRead, TodoWrite |
 
 **Key rules:**
 - Use Glob (not `find`), Grep (not `grep`), Read (not `cat`) — always prefer dedicated tools
 - Skills use `allowed-tools:` — agents use `tools:`
 - List only tools that instructions actually reference
 - Read-only components should never have Write or Bash
+- Never grant a bare `Bash` — scope it to the specific command(s) the instructions actually invoke (e.g. `Bash(git:* date:*)`, `Bash(python:*)`), per plugin-rulebook R6; a bare `Bash` grants shell access far beyond what any instruction in the component calls for
 
 ## Frontmatter Options
 
@@ -352,15 +361,40 @@ A well-designed workflow skill or command:
 - [ ] Success criteria are measurable for each step
 - [ ] If the orchestrator command accepts arguments, `argument-hint` matches what the body actually consumes, in 0-based order (`\$0` = first argument, not `\$1`) — plugin-rulebook R22
 
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "design a workflow skill for X" / "build a skill with multi-step phases"
+- "which pattern fits this workflow — routing, pipeline, safety gate?"
+- "review this workflow skill's structure" / "refactor this skill's phases"
+
+**Verify it does NOT activate on:**
+- "write the domain content for this skill" → this teaches structure, not domain expertise
+- "create a slash command" with no multi-step workflow → `command-development`
+- "fix a bug in this plugin's hook" → `hook-development`
+
+**Quality gates:**
+- Every item in the Validation Checklist above, run against a known-good workflow skill (a passing
+  example already in this plugin, e.g. `plugin-lifecycle-downstream`), is satisfied
+- Every item in the Validation Checklist, run against a deliberately reintroduced anti-pattern
+  (unnumbered phases, a bare `Bash` grant, a >500-line SKILL.md), correctly flags it
+- `scripts/smoke_test.py` passes (frontmatter validity, Reference-Index file existence, AP-N uniqueness)
+  — re-run after any SKILL.md edit
+- The Pattern Selection decision tree, walked against each of the 5 patterns' own "When to use"
+  description, resolves to that same pattern — no two patterns share an ambiguous entry point
+
 ## Reference Index
 
 | Type | Resource | Content |
 |------|----------|---------|
 | Reference | [workflow-patterns.md](references/workflow-patterns.md) | 5 patterns with structural skeletons and examples |
+| Reference | [safety-gate-skeleton.md](references/safety-gate-skeleton.md) | Full Safety Gate Pattern skeleton (extracted from workflow-patterns.md) |
 | Reference | [anti-patterns-structure.md](references/anti-patterns-structure.md) | AP-1–AP-10: structure and workflow design anti-patterns |
 | Reference | [anti-patterns-tooling-content.md](references/anti-patterns-tooling-content.md) | AP-11–AP-20: tool, content, scalability, and description anti-patterns |
 | Reference | [tool-assignment-guide.md](references/tool-assignment-guide.md) | Tool selection matrix, component comparison, subagent guidance |
 | Reference | [progressive-disclosure-guide.md](references/progressive-disclosure-guide.md) | Content splitting rules, the 500-line rule, sizing guidelines |
+| Reference | [skill-skeleton.md](references/skill-skeleton.md) | Standard SKILL.md skeleton template, regardless of pattern |
+| Reference | [task-file-template.md](references/task-file-template.md) | Template for `tasks/step-N-<workflow>-<name>.md` files |
 | Workflow | [design-a-workflow-skill.md](workflows/design-a-workflow-skill.md) | 6-phase creation process from scope to self-review |
 | Workflow | [review-checklist.md](workflows/review-checklist.md) | Structured self-review checklist for submission readiness |
 | Script | [smoke_test.py](scripts/smoke_test.py) | Structural smoke test (frontmatter, Reference-Index file existence, AP-N uniqueness) |
