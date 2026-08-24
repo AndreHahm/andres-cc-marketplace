@@ -38,19 +38,27 @@ export function appendLogLine(logFile, message) {
   if (!logFile || !normalized) {
     return;
   }
-  fs.appendFileSync(logFile, `[${nowIso()}] ${normalized}\n`, "utf8");
+  // mode is only applied if this call itself creates the file -- a no-op
+  // when createJobLogFile already created it with 0o600, and self-protecting
+  // for any future caller that appends without creating first. Found by
+  // security review, 2026-08-24.
+  fs.appendFileSync(logFile, `[${nowIso()}] ${normalized}\n`, { encoding: "utf8", mode: 0o600 });
 }
 
 export function appendLogBlock(logFile, title, body) {
   if (!logFile || !body) {
     return;
   }
-  fs.appendFileSync(logFile, `\n[${nowIso()}] ${title}\n${String(body).trimEnd()}\n`, "utf8");
+  fs.appendFileSync(logFile, `\n[${nowIso()}] ${title}\n${String(body).trimEnd()}\n`, { encoding: "utf8", mode: 0o600 });
 }
 
 export function createJobLogFile(workspaceRoot, jobId, title) {
   const logFile = resolveJobLogFile(workspaceRoot, jobId);
-  fs.writeFileSync(logFile, "", "utf8");
+  // mode: 0o600, matching the sibling job .json file's own convention (POSIX
+  // only -- a no-op on Windows, which doesn't implement the same permission
+  // bits) -- this log can carry the same reviewed-content fragments the
+  // .json file already restricts. Found by security review, 2026-08-24.
+  fs.writeFileSync(logFile, "", { encoding: "utf8", mode: 0o600 });
   if (title) {
     appendLogLine(logFile, `Starting ${title}.`);
   }

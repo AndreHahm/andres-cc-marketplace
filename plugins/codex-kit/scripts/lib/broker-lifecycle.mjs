@@ -103,7 +103,11 @@ export function loadBrokerSession(cwd) {
 
 export function saveBrokerSession(cwd, session) {
   const stateDir = resolveStateDir(cwd);
-  fs.mkdirSync(stateDir, { recursive: true });
+  // mode: 0o700, matching ensureStateDir's own convention elsewhere (POSIX
+  // only) -- the session file this directory holds already carries mode
+  // 0o600, so the containing directory shouldn't be world/group-readable
+  // either. Found by security review, 2026-08-24.
+  fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
   writeJsonFile(resolveBrokerStateFile(cwd), session, { mode: 0o600 });
 }
 

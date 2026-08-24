@@ -58,8 +58,9 @@ the first failure:
    everything under the root regardless of what scope the caller declared) against `git-kit`'s
    sensitive-filename patterns. Typed failure `secret_file_in_scope` on any match.
 4. **Instruction-containment check** — the instruction file must not resolve inside any
-   `target-paths` entry (the same rule `codex-review-bridge` itself enforces — reused directly, not
-   reimplemented). Typed failure on a violation.
+   `target-paths` entry (the same rule `codex-review-bridge` itself enforces — the rule is reused,
+   the function is reimplemented here as a win32-aware `isInsideRoot`; see
+   `references/preflight-checks.md`). Typed failure on a violation.
 5. **Dispatch** — builds the prompt (reviewer instructions + the dangerous-command allowlist from
    `assets/dangerous-command-instructions.txt`, both wrapped in the same content-trust-boundary
    framing `codex-review-bridge` uses), calls `runCodexExec` with `sandbox: "danger-full-access"`,
@@ -140,12 +141,12 @@ provenance field imply otherwise.
   caught via the resolved target's basename, not the symlink's own name.
 
 **Current test coverage:**
-- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (16 scenarios, run from
+- `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (20 scenarios, run from
   `plugins/codex-kit/`) — every bullet above, executed against real scratch git repositories, not a
   template check.
 - `evals/codex-windows-guardrails/` (3 evals, live-run with real `grading.json`/`outputs/` on disk —
   see `plugins/codex-kit/README.md`'s Known Limitations and `CONTRIBUTING.md` for how this compares
-  to its codex-kit siblings: `codex-review-bridge` has partial live coverage (2 of 3 evals), the
+  to its codex-kit siblings: `codex-review-bridge` has partial live coverage (3 of 4 evals), the
   other 9 have structural grading only, not a live run).
 - **Not yet exercised end-to-end:** the enabled `danger-full-access` dispatch path itself — every
   scenario above tests the disabled-by-default short-circuit or a pre-flight refusal, never a real

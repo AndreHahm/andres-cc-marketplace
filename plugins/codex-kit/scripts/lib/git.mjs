@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { isProbablyText } from "./fs.mjs";
 import { formatCommandFailure, runCommand, runCommandChecked } from "./process.mjs";
+import { matchesSecretFilename } from "./secret-filenames.mjs";
 
 const MAX_UNTRACKED_BYTES = 24 * 1024;
 const DEFAULT_INLINE_DIFF_MAX_FILES = 2;
@@ -204,6 +205,16 @@ function formatUntrackedFile(cwd, relativePath) {
   }
   if (stat.isDirectory()) {
     return `### ${relativePath}\n(skipped: directory)`;
+  }
+  // git ls-files --others --exclude-standard (used to enumerate untracked
+  // files) removes the common gitignored .env case, but not an untracked,
+  // non-ignored secrets.json/.npmrc/id_rsa -- this screen catches those
+  // before their content ever reaches Codex, matching the same pattern list
+  // codex-windows-guardrails' guarded-dispatch.mjs already applies to its
+  // own danger-full-access scan. Found by security review, 2026-08-24.
+  const matched = matchesSecretFilename(path.basename(relativePath), process.platform === "win32");
+  if (matched) {
+    return `### ${relativePath}\n(skipped: filename matches sensitive-filename pattern ${matched})`;
   }
   if (stat.size > MAX_UNTRACKED_BYTES) {
     return `### ${relativePath}\n(skipped: ${stat.size} bytes exceeds ${MAX_UNTRACKED_BYTES} byte limit)`;

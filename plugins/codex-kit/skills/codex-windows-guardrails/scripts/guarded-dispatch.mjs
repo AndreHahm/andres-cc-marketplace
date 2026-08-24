@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 import { runCodexExec } from "../../../scripts/lib/codex-exec.mjs";
+import { matchesSecretFilename } from "../../../scripts/lib/secret-filenames.mjs";
 import { ENVELOPE_SCHEMA, semanticallyValidate, isValidToken, neutralizeClosingTags } from "../../codex-review-bridge/scripts/bridge-invoke.mjs";
 
 // Consolidated guardrail dispatch for local Windows danger-full-access Codex
@@ -18,37 +19,17 @@ import { ENVELOPE_SCHEMA, semanticallyValidate, isValidToken, neutralizeClosingT
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SKILL_DIR = path.resolve(SCRIPT_DIR, "..");
 
-// Matches plugins/git-kit/scripts/scan-staged-files.sh's bash `case`
-// statement, which is case-sensitive -- but this check runs only on Windows
-// against real NTFS filenames (not, like scan-staged-files.sh, git path
-// strings that could originate from any platform's checkout), where a
-// case-sensitive-only match would miss ".ENV"/"ID_RSA"/etc. Matched
-// case-insensitively when running on win32, same platform gate isInsideRoot
-// below already uses for the same reason.
-const SECRET_FILENAME_PATTERNS = [
-  /^\.env(\..*)?$/,
-  /secret/,
-  /credential/,
-  /\.key$/,
-  /\.pem$/,
-  /password/,
-  /token/,
-  /^id_rsa$/,
-  /^id_ed25519$/,
-  /^id_ecdsa$/,
-  /^id_dsa$/,
-  /^service-account\.json$/,
-  /\.p12$/,
-  /\.pfx$/,
-  /\.jks$/,
-  /^\.npmrc$/,
-  /^\.pgpass$/,
-  /^\.netrc$/
-];
-
+// Shared pattern list, imported from scripts/lib/secret-filenames.mjs (see
+// that module's own header for why this is now the single copy). Matches
+// plugins/git-kit/scripts/scan-staged-files.sh's bash `case` statement,
+// which is case-sensitive -- but this check runs only on Windows against
+// real NTFS filenames (not, like scan-staged-files.sh, git path strings that
+// could originate from any platform's checkout), where a case-sensitive-only
+// match would miss ".ENV"/"ID_RSA"/etc. Matched case-insensitively when
+// running on win32, same platform gate isInsideRoot below already uses for
+// the same reason.
 function matchesSecretPattern(basename) {
-  const flags = process.platform === "win32" ? "i" : "";
-  return SECRET_FILENAME_PATTERNS.find((re) => new RegExp(re.source, flags).test(basename));
+  return matchesSecretFilename(basename, process.platform === "win32");
 }
 
 function typedFailure(category, detail) {

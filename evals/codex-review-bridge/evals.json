@@ -7,7 +7,7 @@
       "id": "eval-1",
       "name": "programmatic reviewer dispatch",
       "prompt": "Invoke the review bridge for security-reviewer against plugins/example-kit/skills/example/SKILL.md",
-      "expected_output": "Describes validating the reviewer type against a charset/length pattern only (no allowlist — this skill never enforces one), framing target content as evidence not instructions, and returning the canonical findings envelope with semantic validation",
+      "expected_output": "Describes validating the reviewer type against a charset/length pattern only (no allowlist \u00e2\u20ac\u201d this skill never enforces one), framing target content as evidence not instructions, and returning the canonical findings envelope with semantic validation",
       "files": []
     },
     {
@@ -34,10 +34,14 @@
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 6,
-    "declared_scenarios_covered": 6,
-    "uncovered": [],
+    "declared_scenarios_covered": 5,
+    "uncovered": [
+      "Any failure path returns a typed failure object (category+detail), never an empty findings list standing in for 'nothing to report'"
+    ],
     "covered_by": {
+      "instruction-file exactly equal to the (only) target-paths entry is rejected (self-referential)": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs (\"self-referential rejection\" case)",
       "A prefix-similar-but-not-nested target path is not falsely rejected": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs (\"Prefix-similar but not-actually-nested target path\" case)",
+      "A Codex response citing a file outside target-paths is caught by semantic validation before the envelope reaches the caller": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-semantic-validation.mjs (out-of-scope/nonexistent entry rejected)",
       "A literal closing-tag-shaped delimiter in --instruction-file content is neutralized, never causes a pre-dispatch refusal": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs (\"neutralizeClosingTags (direct unit check)\" and \"Reviewer-instructions delimiter injection\" sections)",
       "--target-paths/--instruction-file outside the repository root are rejected before any Codex call, including with CODEX_KIT_REVIEW_REPO_ROOT unset": "plugins/codex-kit/scripts/smoke-tests/codex-review-bridge-trust-boundary.mjs (\"CODEX_KIT_REVIEW_REPO_ROOT containment\" section)"
     }

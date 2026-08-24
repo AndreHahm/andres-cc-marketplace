@@ -328,10 +328,11 @@ mkdir -p "${CLAUDE_PLUGIN_DATA}/reviews"
 
 **Failure:** save to
 `${CLAUDE_PLUGIN_DATA}/reviews/verify-<YYYYMMDD-HHMMSS>-failed.md` with
-the §6 error category, stderr (truncated to 500 characters, matching
-`codex-exec.mjs`'s own convention — stderr can echo document fragments,
-so cap it), and the document path. Treat this and the success-path report
-as sensitive before sharing.
+the §6 error category, stderr (truncated to 500 characters, deliberately
+tighter than `codex-exec.mjs`'s own 4000-char tail, per
+`codex-windows-guardrails/scripts/guarded-dispatch.mjs`'s framing — stderr
+can echo document fragments, so cap it), and the document path. Treat this
+and the success-path report as sensitive before sharing.
 
 Leave the temp files (`PROMPT_FILE`, `JOB_JSON_FILE`, `JOB_JSON_FILE.stderr`) in `${CLAUDE_PLUGIN_DATA}/tmp/`
 — a plugin-private data directory, never part of the reviewed repository. No active cleanup step requires

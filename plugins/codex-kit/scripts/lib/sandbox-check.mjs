@@ -1,4 +1,5 @@
 import { runCommand } from "./process.mjs";
+import { redactSecrets } from "./codex-exec.mjs";
 
 const PROBE_TIMEOUT_MS = 15000;
 
@@ -21,10 +22,15 @@ export function checkSandboxViability(cwd) {
   );
 
   if (result.error) {
-    return { viable: false, detail: result.error.message };
+    return { viable: false, detail: redactSecrets(result.error.message) };
   }
 
-  const combined = `${result.stdout}\n${result.stderr}`;
+  // Setup runs at the auth-failure surface -- captured stdout/stderr from a
+  // real codex exec call is exactly where a leaked credential is most
+  // plausible to appear. Redacted before it ever reaches the setup report,
+  // matching codex-exec.mjs's own use of this same function on its stderr
+  // tail. Found by security review, 2026-08-24.
+  const combined = redactSecrets(`${result.stdout}\n${result.stderr}`);
   if (/CreateProcessAsUserW|sandbox|permission denied|access is denied/i.test(combined) && result.status !== 0) {
     return { viable: false, detail: combined.trim().slice(0, 500) };
   }
