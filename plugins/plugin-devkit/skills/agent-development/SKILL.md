@@ -333,6 +333,7 @@ See [`references/templates.md`](references/templates.md) → **Plugin Agent Temp
 | Complete agent examples | [`references/complete-agent-examples.md`](references/complete-agent-examples.md) | Production-ready agents for common use cases |
 | Validation script | [`scripts/validate-agent.sh`](scripts/validate-agent.sh) | Validate agent file structure |
 | Trigger testing | [`scripts/test-agent-trigger.sh`](scripts/test-agent-trigger.sh) | Test agent triggering in real scenarios |
+| Structural smoke test | [`scripts/smoke_test.py`](scripts/smoke_test.py) | Frontmatter validity, Bash-grant usage, referenced-file existence, frontmatter-field documentation cross-check |
 | Subagent architecture | [`references/how-subagents-work.md`](references/how-subagents-work.md) | Delegation mechanisms, execution models, hooks lifecycle |
 | Templates | [`references/templates.md`](references/templates.md) | Copy-paste starting points for common agent types |
 | Configuration reference | [`references/configuration-reference.md`](references/configuration-reference.md) | Complete YAML frontmatter field reference |
