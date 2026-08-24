@@ -134,7 +134,19 @@ Changes to `.claude/git-kit.local.json` take effect on the next invocation — n
 
 **Cadence:** quarterly, or before any release milestone, whichever comes first.
 **How to run:** invoke `plugin-lifecycle-downstream`'s Validate phase against `plugins/git-kit/` (Phase 1 only is sufficient for a routine sweep; run Phase 2/3 too if Phase 1 surfaces findings worth scoring/fixing).
-**Last full sweep:** 2026-07-27 — commit `63a040e`.
+**Last full sweep:** 2026-08-24 — commit `c8ab7bf`.
+
+**2026-08-24 full downstream sweep:** a full `plugin-lifecycle-downstream` pass (Phases 1-8) found and
+fixed, across 12 commits: 5 REQUIRED rulebook violations (missing `allowed-tools` grants for tools
+already in use); a fail-open trust-boundary check in `commit` (a cwd-relative pathspec silently trusted
+a tracked, and therefore untrusted, local settings file — hardened across 4 security-review rounds,
+including routing staged-filename handling through 2 new scripts to close a command-injection surface
+quoting alone didn't close); the identical trust-boundary bug in `handling-review-findings`; and a live
+guard bypass in `guard-raw-destructive-cleanup.sh` (`git worktree remove <path> --force` — flag *after*
+the path — wasn't blocked, only the flag-first form was). A residual, narrower instance of the
+command-injection pattern (step 6's interactive file-selection path in `commit`) was deferred as
+accepted-risk rather than attempted a fifth round — see the repo-root `issues/` directory:
+`2026-08-24-commit-skill-remaining-shell-injection-surfaces.md`.
 
 **2026-08-05 pre-existing findings — closed 2026-08-12:** a `plugin-grader` audit on 2026-08-05 flagged
 5 pre-existing items as "not fixed, recommended for a separate maintenance pass." A 2026-08-12
