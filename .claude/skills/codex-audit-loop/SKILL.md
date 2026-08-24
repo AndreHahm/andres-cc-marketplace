@@ -16,7 +16,7 @@ description: >-
   that; codex-audit-loop finds and (Mode C only) fixes existing defects, it
   never plans new functionality or structure.
 argument-hint: "[--mode audit|compare|fix] [--branches <b1,b2,...>] [--base <ref>]"
-allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(git rev-parse:*)", "Bash(git status:*)", "Bash(git switch:*)", "Bash(git worktree add:*)", "Bash(git worktree remove:*)", "Bash(git merge:*)", "Bash(git push origin:*)", "Bash(mkdir:*)", "Bash(echo:*)", "Bash(date:*)", "Read", "Grep", "Glob", "AskUserQuestion", "Agent", "BashOutput", "KillShell"]
+allowed-tools: ["Bash(node */codex-kit/scripts/codex-companion.mjs:*)", "Bash(git rev-parse:*)", "Bash(git status:*)", "Bash(git branch --show-current:*)", "Bash(git switch:*)", "Bash(git worktree add:*)", "Bash(git worktree remove:*)", "Bash(git merge:*)", "Bash(git push origin:*)", "Bash(mkdir:*)", "Bash(echo:*)", "Bash(date:*)", "Read", "Grep", "Glob", "AskUserQuestion", "Agent", "BashOutput", "KillShell"]
 ---
 
 # Whole-project multi-lens audit
