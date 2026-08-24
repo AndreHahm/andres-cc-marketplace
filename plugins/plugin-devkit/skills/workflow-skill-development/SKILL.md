@@ -302,7 +302,7 @@ Map your component type to the right tool set. Full guide in [tool-assignment-gu
 | Code generation skill | Read, Glob, Grep, Write, `Bash(python:*)` (scoped to the actual interpreter invoked), TodoRead, TodoWrite |
 | Pipeline skill | Read, Write, Glob, Grep, `Bash(git:*)` (scoped to the actual commands invoked), AskUserQuestion, Task, TaskCreate, TaskList, TaskUpdate, TodoRead, TodoWrite |
 | Read-only agent | Read, Grep, Glob, TodoRead, TodoWrite |
-| Action agent | Read, Grep, Glob, Write, `Bash(git:*)` (scoped to the actual commands invoked), TodoRead, TodoWrite |
+| Action agent | Read, Grep, Glob, Write, `Bash` (bare — an agent's `tools` field has no Bash-scoping syntax; see Key rules below), TodoRead, TodoWrite |
 
 **Key rules:**
 - Use Glob (not `find`), Grep (not `grep`), Read (not `cat`) — always prefer dedicated tools
