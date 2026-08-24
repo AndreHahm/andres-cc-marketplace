@@ -36,12 +36,18 @@ this skill:
   If steps 1-3 found no match (a step-4-only match doesn't count), drop "Fix directly now" and state why
   — naming a step-4 match found, if any, as an unusable stale-or-uncertain candidate rather than silently
   omitting it.
-- `plugin-devkit` (needed for the hand-off path): same four-step resolution against
+- `plugin-devkit` (needed for the hand-off path, **and — independently — for the direct-fix path**:
+  Step 4's compliance check below unconditionally invokes `Skill(plugin-rulebook)`, one of
+  `plugin-devkit`'s own skills, regardless of which path is taken): same four-step resolution against
   `.../plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md`, with the same step-4-only-doesn't-count
-  rule. If steps 1-3 found no match, drop "Hand off" and state why. **Remember whichever of steps 1-3
-  actually matched** as `<plugin-devkit-root>` (the directory containing `plugin-devkit`'s own `skills/`
-  folder) — step 4's pipeline-hand-off path reuses this exact resolved root rather than re-deriving or
-  assuming one, since an installed-cache layout's real root won't be `${CLAUDE_PLUGIN_ROOT}/../plugin-devkit`.
+  rule. If steps 1-3 found no match, drop **both** "Fix directly now" and "Hand off" and state why —
+  `analysis-kit` declares no required dependency on `plugin-devkit` (see this plugin's own README), so a
+  standalone install with `git-kit` but no `plugin-devkit` is a real, supported configuration this check
+  must catch before either option is offered, not partway through executing one of them with a worktree
+  already created and a file already edited. **Remember whichever of steps 1-3 actually matched** as
+  `<plugin-devkit-root>` (the directory containing `plugin-devkit`'s own `skills/` folder) — step 4's
+  pipeline-hand-off path reuses this exact resolved root rather than re-deriving or assuming one, since an
+  installed-cache layout's real root won't be `${CLAUDE_PLUGIN_ROOT}/../plugin-devkit`.
 
 ## Step 3b: File-path resolution and containment check (direct-fix path only)
 
