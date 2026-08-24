@@ -95,10 +95,10 @@
   `review_findings_reviewers: []` — the whole-array resolution means this has no effect; the tracked
   default's full roster is used regardless, rather than a per-entry join that would let a tracked file
   silently narrow the roster by omission.
-- The trust-boundary check (`git ls-files --error-unmatch :/.claude/git-kit.local.json`) is run from a
-  subdirectory of the repo, not the repo root — the root-anchored `:/` pathspec still correctly reports
-  the file as tracked; a bare relative pathspec would wrongly report "no match" and fail the boundary
-  open.
+- The trust-boundary check (`git ls-files --error-unmatch ":(top,literal).claude/git-kit.local.json"`) is
+  run from a subdirectory of the repo, not the repo root — the anchored, glob-disabled pathspec still
+  correctly reports the file as tracked; a bare relative pathspec would wrongly report "no match" and
+  fail the boundary open.
 - The `max_rounds`-th triggered batch is posted, and its own review comes back with findings — those
   findings are fixed through the normal Fix path even though 8a's triggered-cycle count already reads
   `max_rounds` by the time they're classified; they are not treated as post-budget just because the
