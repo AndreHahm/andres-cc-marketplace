@@ -32,6 +32,26 @@ All notable changes to this plugin are documented here.
 - Raised the `SessionEnd` hook's timeout from 5s to 12s (its own internal cleanup budget could already exceed 5s, risking a mid-cleanup kill); added a fast-fail timeout to the Stop hook's Codex-availability probe; and switched `state.json`/`broker.json`/job-file writes to atomic temp-file-then-rename.
 - Added a `## Known Limitations` section to `README.md` and a clarifying note to `codex-review-bridge/references/envelope-schema.md` for 2 previously-undocumented gaps (`executionProfile` not threaded into the returned envelope, 6 semantic-validation checks defined but not yet enforced).
 - Corrected `README.md`/`plugin.json`/`marketplace.json`'s stale "not yet operational" claim about `plugin-marketplace-review` (its `ReviewScope` input now exists; the skill is documentation-only by design, never CI-executed — see `[1.0.0-alpha.1]`'s original claim below, now superseded); removed the destructive `Bash(rm -f */tmp/*:*)` grant from `codex-rescue`/`codex-verify`/`codex-research` (illusory path scoping — `${CLAUDE_PLUGIN_DATA}` can't be expanded inside `allowed-tools`); narrowed all 13 `Bash(node */scripts/codex-companion.mjs:*)` grants to the plugin-qualified path; added rollback instructions to `codex-rescue`'s Phase 5; closed a stale prompt-injection vector surviving in `invocation-protocol.md` §8 (raw `cat` append, superseded by the `sed` neutralization pattern elsewhere); finished the `--json`→`--print-job-id` job-ID-capture conversion across the remaining `invocation-protocol.md` sites that still described the superseded form; and narrowed `codex-audit-loop`'s `Bash(git push:*)` to `Bash(git push origin:*)` plus an exact non-force command form, matching its own no-force-push policy.
+- Fixed all 3 Critical findings from the Phase 5 audit — a prompt-injection gap in the
+  unsandboxed `codex-windows-guardrails` dispatch path, and the Stop hook failing open
+  (instead of closed) on an uncaught exception — plus 3 Major runtime-breaking
+  permission-scope bugs (`codex-rescue`'s missing rollback grants, `codex-plan-loop`'s
+  missing Pattern B grants, a reverted over-removal on `codex-audit-loop`).
+- Closed the remaining security-relevant Major findings from the Phase 5 audit: a TOML
+  key-injection risk in `--persist-model`/`--persist-effort`, untracked secret files
+  reaching Codex via `/codex-kit:review` (closed by extracting a shared
+  `scripts/lib/secret-filenames.mjs` module), a non-constant-time broker-token comparison
+  (now timing-safe), and several file/dir permission and redaction gaps; plus a
+  doc-accuracy sweep (stale export counts, eval coverage math, charset claims, test counts).
+- Added the missing bidirectional activation exclusion between `codex-research` and
+  `codex-peer-review`; fixed a falsy-0 timeout bug (`--timeout-ms 0` was silently
+  discarded); added a missing branch-restore step to `codex-audit-loop`'s Mode B;
+  corrected a dangling reference to a nonexistent `WINDOWS_GUARDRAILS.md` planning
+  document; and documented `guarded-dispatch.mjs`'s own pre-flight error-category
+  vocabulary.
+- `codex-audit-loop` and `codex-peer-review` each gained a real live `skill-tester`
+  baseline-comparison run (both clearly beat baseline), upgrading this plugin's
+  live-eval-coverage count from 2 to 4 of its 11 skills.
 
 ## [1.0.0-alpha.1] - 2026-08-08
 
