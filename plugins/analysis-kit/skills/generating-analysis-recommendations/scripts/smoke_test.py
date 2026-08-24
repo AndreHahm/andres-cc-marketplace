@@ -12,7 +12,20 @@ import sys
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
-PLUGIN_ROOT = SKILL_DIR.parent.parent
+
+
+def _find_repo_root(start: pathlib.Path) -> pathlib.Path:
+    for parent in (start, *start.parents):
+        if (parent / ".git").exists():
+            return parent
+    return start.parents[2]  # fallback: should be unreachable inside this repo
+
+
+# Resolved against the repository root rather than SKILL_DIR.parent.parent so this
+# check works identically from the plugins/analysis-kit/ tree and from the .claude/
+# development mirror -- the latter's SKILL_DIR.parent.parent is .claude/, which has
+# no scripts/ or references/ of its own.
+PLUGIN_ROOT = _find_repo_root(SKILL_DIR) / "plugins" / "analysis-kit"
 
 
 def check_frontmatter():
@@ -39,7 +52,17 @@ def check_bash_grants():
     granted_cmds = [c.lstrip("*/").split("/")[-1] for c in granted_cmds]
 
     body = text[header_end:]
-    unused = [cmd for cmd in granted_cmds if not re.search(re.escape(cmd.split(" ")[0]), body)]
+    # Exclude the Reference Guide table from the "used" search -- a grant's basename
+    # appearing only as a documentation pointer there (e.g. a Reference Guide row
+    # naming a file that happens to share a basename with a granted script) must not
+    # count as "used". Everything before that section (Phase prose, inline command
+    # examples) still counts, including invocations described outside a literal
+    # Bash(...) span (e.g. a shared references/ file's own plain command text).
+    ref_guide_start = body.find("\n## Reference Guide\n")
+    searchable_body = body[:ref_guide_start] if ref_guide_start != -1 else body
+    unused = [
+        cmd for cmd in granted_cmds if not re.search(re.escape(cmd.split(" ")[0]), searchable_body)
+    ]
     if unused:
         return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(
             sorted(set(unused))

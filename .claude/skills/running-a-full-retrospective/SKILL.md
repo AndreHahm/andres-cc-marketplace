@@ -257,8 +257,10 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
    empty, drop the matching option below and state why.
 
    Then offer whichever of these remain available:
-   - **"Fix directly now, here"** (only offered if a `git-kit` copy was found) — small, mechanical (a doc
-     line, a stale citation); still goes through the full `commit` → `create-pr` → `merge-pr` →
+   - **"Fix directly now, here"** (only offered if **both** a `git-kit` copy **and** a `plugin-devkit`
+     copy were found — 5c-4's Step 4 unconditionally runs a `Skill(plugin-rulebook)` compliance check
+     against the edit, so this path needs `plugin-devkit` too, not just `git-kit`) — small, mechanical
+     (a doc line, a stale citation); still goes through the full `commit` → `create-pr` → `merge-pr` →
      `finishing-work` lifecycle (see 5c-4 below for why this can't be shortened), but skips the full
      audit/test/grade cycle. Not appropriate for anything touching behavior, security, or a
      security-relevant gate. **Before offering this option, resolve the specific file for each
