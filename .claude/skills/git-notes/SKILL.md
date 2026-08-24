@@ -5,7 +5,7 @@ description: >-
   status, test results, code quality annotations, or supplementing commit
   messages post-hoc - provides git notes commands and patterns for attaching
   non-invasive metadata to Git objects.
-allowed-tools: Bash(git notes:*), Bash(git log:*), Bash(git config notes.:*), Bash(git config --add notes.:*), Bash(git push origin refs/notes/:*), Bash(git fetch:*)
+allowed-tools: Bash(git notes:*), Bash(git log:*), Bash(git config notes.:*), Bash(git config --add notes.:*), Bash(git push origin refs/notes/:*), Bash(git fetch:*), Bash(git show:*)
 ---
 
 # Git Notes

@@ -8,7 +8,7 @@ description: >-
   into multiple commits, see standalone-commits instead.
 argument-hint: Optional flags (--no-verify, --amend, --push) followed by an optional commit message
 model: haiku
-allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(git checkout -b:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(git rev-parse:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/unstage-flagged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/lint-staged-python.sh:*), Read, Skill(git-kit:create-pr)
+allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(git checkout -b:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(git rev-parse:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/unstage-flagged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/lint-staged-python.sh:*), AskUserQuestion, Read, Skill(git-kit:create-pr)
 ---
 
 # Claude Command: Commit
