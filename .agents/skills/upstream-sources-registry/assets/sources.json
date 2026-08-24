@@ -94,6 +94,19 @@
       "last_verified": null,
       "last_verified_snapshot": null,
       "custom": false
+    },
+    {
+      "id": "skill-authoring-evaluations-guidance",
+      "name": "Claude Skill authoring best practices -- evaluation-driven development / testing checklist",
+      "url": "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices",
+      "authority": "guide",
+      "volatility": "evolving",
+      "enabled": true,
+      "manual_rank_override": null,
+      "cited_by": [],
+      "last_verified": "2026-08-24",
+      "last_verified_snapshot": "docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices 302-redirects here. This is Anthropic's GENERAL Agent Skills guide (claude.ai / Claude API code-execution tool), not Claude-Code-specific -- it separately links out to code.claude.com/docs/en/skills as 'Use Skills in Claude Code'. 'Evaluation and iteration' section, step 2 of evaluation-driven development: 'Create evaluations: Build three scenarios that test these gaps.' Final 'Checklist for effective Skills' > Testing subsection, literal bullet: 'At least three evaluations created.' Explicitly guide-tier, not spec-tier: the page itself states 'There is not currently a built-in way to run these evaluations. Users can create their own evaluation system.' -- no platform enforcement exists for this number. The page's own example evals JSON schema (fields: skills/query/files/expected_behavior) is illustrative only and does NOT match plugin-devkit's own skill-tester evals.json schema (prompt/expected_output/testing_validation_coverage) -- don't treat the two as the same format. Registered while drafting .draft/_open/plugin-devkit/rules/testing-mandate-rules-concept.md's R28 min_eval_scenarios threshold; not yet cited by a shipped rule.",
+      "custom": true
     }
   ]
 }
