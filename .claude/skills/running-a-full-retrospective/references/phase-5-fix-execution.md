@@ -24,19 +24,24 @@ this skill:
      from `enabledPlugins` defaults to enabled. Use the first still-enabled match's `installPath` (plus
      `/skills/starting-work/SKILL.md`).
   4. Only if step 3 found no manifest, no matching key, or the listed `installPath` no longer resolves on
-     disk: fall back to `~/.claude/plugins/cache/**/git-kit/skills/starting-work/SKILL.md` (recursive —
-     an end-user installation elsewhere may nest an extra marketplace/version directory level that a
-     single-`*` glob would miss). This raw glob is a last resort precisely because it can't distinguish an
-     active install from a stale cached one left behind by an upgrade, disable, or uninstall — steps 1-3
-     exist to avoid that ambiguity whenever an authoritative source is actually available.
+     disk: `Glob` (never execute) `~/.claude/plugins/cache/**/git-kit/skills/starting-work/SKILL.md`
+     (recursive — an end-user installation elsewhere may nest an extra marketplace/version directory
+     level that a single-`*` glob would miss), purely to report its presence in the failure message
+     below. **A step-4-only match does not count as resolved** — it can't distinguish an active install
+     from a stale cached one left behind by an upgrade, disable, or uninstall, and steps 1-3 exist to
+     avoid that ambiguity whenever an authoritative source is actually available. Treat a step-4-only
+     match the same as no match at all for the purpose of enabling an option below; do not resolve to it
+     and do not execute anything found this way.
 
-  If none of the above resolve, drop "Fix directly now" and state why.
+  If steps 1-3 found no match (a step-4-only match doesn't count), drop "Fix directly now" and state why
+  — naming a step-4 match found, if any, as an unusable stale-or-uncertain candidate rather than silently
+  omitting it.
 - `plugin-devkit` (needed for the hand-off path): same four-step resolution against
-  `.../plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md`. If none resolve, drop "Hand off" and
-  state why. **Remember whichever path actually matched** as `<plugin-devkit-root>` (the directory
-  containing `plugin-devkit`'s own `skills/` folder) — step 4's pipeline-hand-off path reuses this exact
-  resolved root rather than re-deriving or assuming one, since an installed-cache layout's real root
-  won't be `${CLAUDE_PLUGIN_ROOT}/../plugin-devkit`.
+  `.../plugin-devkit/skills/plugin-lifecycle-downstream/SKILL.md`, with the same step-4-only-doesn't-count
+  rule. If steps 1-3 found no match, drop "Hand off" and state why. **Remember whichever of steps 1-3
+  actually matched** as `<plugin-devkit-root>` (the directory containing `plugin-devkit`'s own `skills/`
+  folder) — step 4's pipeline-hand-off path reuses this exact resolved root rather than re-deriving or
+  assuming one, since an installed-cache layout's real root won't be `${CLAUDE_PLUGIN_ROOT}/../plugin-devkit`.
 
 ## Step 3b: File-path resolution and containment check (direct-fix path only)
 
@@ -86,8 +91,15 @@ Apply the fix directly with `Edit`/`Write` against that already-validated file, 
 the worktree — this is the one explicit exception to the "never write inside a target plugin" boundary
 stated in SKILL.md, scoped strictly to this single, already-human-approved, mechanical change.
 
+**Then run `Skill(plugin-rulebook)` against the edited file before committing** — per
+`.claude/rules/plugin-rulebook-enforcement.md`'s Mandatory Compliance Triggers, any edit to a Skill/
+Agent/Command/Hook/Rule component requires this check before finalizing, and the direct-fix path is no
+exception just because the pipeline hand-off path already gets this transitively through
+`plugin-lifecycle-downstream`. If it reports a FAIL (REQUIRED rule), fix that before proceeding to
+`commit` below — don't ship a mechanical fix that itself introduces a rulebook violation.
+
 Then `Skill(git-kit:commit)`, **explicitly instructed as part of this invocation to skip its own
-Auto-PR step** — `commit`'s own step 17 would otherwise ask (or, if `push_auto_pr` is `true`,
+Auto-PR step** — `commit`'s own Auto-PR behavior would otherwise ask (or, if `push_auto_pr` is `true`,
 auto-invoke) `create-pr` itself after a successful push, and the very next call here invokes
 `create-pr` unconditionally too; without this instruction, a normal "yes, create one" answer to
 `commit`'s own ask produces a second, redundant `create-pr` call against a branch that already has an
@@ -105,7 +117,7 @@ terminal state.** Creating the PR just triggered this repository's CI (`marketpl
 PR `opened` event) — it takes real time to run, and `merge-pr`'s own readiness check fails outright,
 non-retrying, the instant any required check is still pending or running, not just when one has actually
 failed. Invoke `Skill(git-kit:merge-pr) <PR number>` (also **explicitly instructed to decline its own
-step 8 post-merge-sync prompt** — see below for why) and read its own reported readiness result: if it
+post-merge-sync prompt** — see below for why) and read its own reported readiness result: if it
 reports required checks still pending/running (not a genuine failure — a *check* failing, a *review*
 requesting changes, or *no merge rights* are real failures, never retried), wait a short interval
 (`Bash(sleep:*)`, ~30 seconds) and invoke `Skill(git-kit:merge-pr) <PR number>` again, up to 5 attempts total.
@@ -113,7 +125,7 @@ Only treat this as the topic's real failure branch (see below) if a genuine fail
 checks are still not passing after the retry budget is exhausted — never after the first "still pending"
 result alone.
 
-**Why `merge-pr` is also told to decline its own step 8 post-merge-sync prompt** ("Run `finishing-work`
+**Why `merge-pr` is also told to decline its own post-merge-sync prompt** ("Run `finishing-work`
 now?") every time: `merge-pr` runs entirely through remote `gh pr` calls and doesn't itself need the
 worktree to be the current directory, but if its nested prompt is accepted it invokes
 `Skill(git-kit:finishing-work)` immediately, from wherever the session currently is — still the worktree
@@ -128,7 +140,7 @@ from inside the
 feature worktree it's meant to close: its own steps stop when the default branch is already checked out
 elsewhere (the primary checkout, in this case) and the primary checkout can't be synced from a worktree.
 So: return to the primary checkout, *then* `Skill(git-kit:finishing-work) <PR number>` — passing the
-captured PR number explicitly as its argument, not bare. `finishing-work`'s own step 1 runs
+captured PR number explicitly as its argument, not bare. `finishing-work`'s own PR-resolution step runs
 `gh pr view $ARGUMENTS`, which defaults to the *current branch's* PR when no argument is given; once
 back in the primary checkout, the current branch is whatever the primary checkout has checked out (not
 the just-merged feature branch), so an unqualified call would look up the wrong PR — typically finding
