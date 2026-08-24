@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>", and/or --bypass-cross-model-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git branch:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:cross-model-review)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:cross-model-review)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
