@@ -72,7 +72,12 @@ export async function sendBrokerShutdown(endpoint, token = null, timeoutMs = 200
 }
 
 export function spawnBrokerProcess({ scriptPath, cwd, endpoint, pidFile, logFile, token, env = process.env }) {
-  const logFd = fs.openSync(logFile, "a");
+  // mode: 0o600 on open covers the create-new-file case; chmodSync covers
+  // the append-to-existing-file case, since fs.openSync's mode option is
+  // create-time-only and does not retroactively narrow an already-existing
+  // file's permissions. Found by CodeRabbit review, PR #112, 2026-08-24.
+  const logFd = fs.openSync(logFile, "a", 0o600);
+  fs.fchmodSync(logFd, 0o600);
   const child = spawn(process.execPath, [scriptPath, "serve", "--endpoint", endpoint, "--cwd", cwd, "--pid-file", pidFile], {
     cwd,
     env: { ...env, CODEX_KIT_APP_SERVER_TOKEN: token },
@@ -108,6 +113,13 @@ export function saveBrokerSession(cwd, session) {
   // 0o600, so the containing directory shouldn't be world/group-readable
   // either. Found by security review, 2026-08-24.
   fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
+  // chmodSync is required alongside mkdirSync's own mode option: mode is
+  // create-time-only and is silently a no-op when stateDir already existed
+  // (e.g. from before this mode option was added) -- chmodSync guarantees
+  // the narrowed permission regardless of whether this call just created
+  // the directory or found it already there. Found by CodeRabbit review,
+  // PR #112, 2026-08-24.
+  fs.chmodSync(stateDir, 0o700);
   writeJsonFile(resolveBrokerStateFile(cwd), session, { mode: 0o600 });
 }
 

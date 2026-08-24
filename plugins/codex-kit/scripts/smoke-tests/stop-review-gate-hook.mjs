@@ -20,7 +20,6 @@
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseStopReviewOutput, buildStopReviewPrompt } from "../stop-review-gate-hook.mjs";
@@ -179,7 +178,14 @@ console.log("\n=== Controlled negative: reintroducing the fail-open bug is caugh
   const withBug = source.replace(marker, `${marker}\n    process.exitCode = 1;`);
   let regressionCaught = "could not locate the catch-block marker to tamper with";
   if (withBug !== source) {
-    const tmpPath = path.join(os.tmpdir(), `stop-review-gate-hook-tampered-${process.pid}.mjs`);
+    // Beside HOOK_SCRIPT, not os.tmpdir() -- this file's relative imports
+    // (./lib/codex.mjs etc.) resolve from its OWN directory. A copy under
+    // os.tmpdir() has no ./lib/ sibling, so Node fails module resolution
+    // and exits non-zero before main()'s catch block is ever reached --
+    // the assertion below would then pass vacuously (any crash looks like
+    // "regression caught"), not because the tampered catch path actually
+    // ran. Found by CodeRabbit review, PR #112, 2026-08-24.
+    const tmpPath = path.join(SCRIPT_DIR, "..", `stop-review-gate-hook-tampered-${process.pid}.mjs`);
     fs.writeFileSync(tmpPath, withBug);
     try {
       const tamperedResult = spawnSync("node", [tmpPath], { input: "not valid json{{{", encoding: "utf8" });

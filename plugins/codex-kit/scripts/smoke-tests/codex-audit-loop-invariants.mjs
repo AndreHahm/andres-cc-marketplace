@@ -43,8 +43,16 @@ function assertInvariants(content, label) {
 
   results.pushCommandNeverCarriesForceFlag = (() => {
     const codeSpans = content.match(/`[^`]*`/g) || [];
-    const pushSpans = codeSpans.filter((s) => s.includes("git push origin"));
-    return pushSpans.length > 0 && pushSpans.every((s) => !s.includes("--force"));
+    // Match every `git push` span regardless of option placement (not just
+    // the literal "git push origin" substring, which misses a
+    // `git push -f origin <branch>` form entirely) and reject -f/--force/
+    // --force-with-lease as option tokens. Found by CodeRabbit review, PR
+    // #112, 2026-08-24.
+    const pushSpans = codeSpans.filter((s) => /\bgit\s+push\b/.test(s));
+    return (
+      pushSpans.length > 0 &&
+      pushSpans.every((s) => !/(?:^|\s)(?:-f|--force(?:-with-lease)?)(?=\s|`|$)/.test(s))
+    );
   })();
 
   results.disclosesNeverForcePushing = content.includes(

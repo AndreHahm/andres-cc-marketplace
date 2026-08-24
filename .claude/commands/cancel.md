@@ -11,7 +11,9 @@ Validate `$ARGUMENTS` against the whitelist in the `argument-hint` above (`[job-
 
 If no job-id was given, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" status --all --json` yourself first (via your own Bash tool call) to check for active jobs. If more than one is active, `AskUserQuestion` to disambiguate which one to cancel before proceeding — never guess or cancel all of them. If exactly one is active, use its id. If none are active, tell the user and stop.
 
-Once a specific job-id is determined (from `$ARGUMENTS` or from disambiguation above), check whether it's a `codex-rescue`-kind job (from the `status`/disambiguation output above) — **if so, say before cancelling** that cancellation does **not** revert any file changes already made (the user must `git restore` manually to undo them); the explicit `/codex-kit:cancel` invocation is this command's own consent (it's not model-invocable), so this is a disclosure, not an additional confirmation gate. Then run:
+If a job-id *was* given explicitly via `$ARGUMENTS`, the lookup above never ran — still run `node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" status --all --json` yourself first, so the classification step below has a status entry to check against for this validated id, not just an unconditioned guess.
+
+Once a specific job-id is determined (from `$ARGUMENTS` or from disambiguation above), check whether it's a `codex-rescue`-kind job (from the status output above) — **if so, say before cancelling** that cancellation does **not** revert any file changes already made (the user must `git restore` manually to undo them); the explicit `/codex-kit:cancel` invocation is this command's own consent (it's not model-invocable), so this is a disclosure, not an additional confirmation gate. Then run:
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" cancel "<validated job-id>"

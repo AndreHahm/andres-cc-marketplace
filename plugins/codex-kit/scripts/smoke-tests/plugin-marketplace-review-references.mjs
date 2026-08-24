@@ -22,6 +22,20 @@ import path from "node:path";
 let pass = 0;
 let fail = 0;
 
+// Shared by the main invariant and both controlled negatives below
+// (CodeRabbit review, PR #112, 2026-08-24) -- splits and normalizes each
+// allowed-tools list entry so a bare, unquoted `Skill` (valid YAML flow-
+// sequence syntax: `allowed-tools: [Read, Grep, Glob, Skill]`) is caught,
+// not just the quoted `"Skill"` form the prior regex-only check matched.
+function hasNoBashOrSkillGrant(content) {
+  const match = content.match(/allowed-tools:\s*\[([^\]]*)\]/);
+  if (!match) return false;
+  const grants = match[1]
+    .split(",")
+    .map((grant) => grant.trim().replace(/^["']|["']$/g, ""));
+  return !grants.some((grant) => grant === "Skill" || grant.startsWith("Bash"));
+}
+
 function check(label, condition, detail = "") {
   if (condition) {
     pass += 1;
@@ -40,12 +54,7 @@ function assertInvariants(content, label) {
 
   results.disableModelInvocation = /disable-model-invocation:\s*true/.test(content);
 
-  results.noBashOrSkillGrant = (() => {
-    const match = content.match(/allowed-tools:\s*\[([^\]]*)\]/);
-    if (!match) return false;
-    const grants = match[1];
-    return !/Bash|["']Skill["']/.test(grants);
-  })();
+  results.noBashOrSkillGrant = hasNoBashOrSkillGrant(content);
 
   results.documentsThePastViolation = content.includes(
     "an earlier revision's broader `Bash(node:*)` grant was a real least-privilege violation"
@@ -104,9 +113,22 @@ console.log("\n=== Controlled negative: a reintroduced Bash grant is caught ==="
     'allowed-tools: ["Read", "Grep", "Glob"]',
     'allowed-tools: ["Read", "Grep", "Glob", "Bash(node:*)"]'
   );
-  const match = tampered.match(/allowed-tools:\s*\[([^\]]*)\]/);
-  const stillClean = match ? !/Bash|["']Skill["']/.test(match[1]) : false;
-  check("the no-Bash/Skill-grant invariant fails on a tampered copy with Bash reintroduced", stillClean === false);
+  check(
+    "the no-Bash/Skill-grant invariant fails on a tampered copy with Bash reintroduced",
+    hasNoBashOrSkillGrant(tampered) === false
+  );
+}
+
+console.log("\n=== Controlled negative: a bare (unquoted) Skill grant is caught ===");
+{
+  const tampered = realContent.replace(
+    'allowed-tools: ["Read", "Grep", "Glob"]',
+    "allowed-tools: [Read, Grep, Glob, Skill]"
+  );
+  check(
+    "the no-Bash/Skill-grant invariant fails on a tampered copy with a bare Skill entry",
+    hasNoBashOrSkillGrant(tampered) === false
+  );
 }
 
 console.log("\n=== Controlled negative: a renamed/removed cited function is caught ===");
