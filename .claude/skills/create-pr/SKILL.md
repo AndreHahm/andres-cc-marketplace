@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>", and/or --bypass-cross-model-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), AskUserQuestion, Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:cross-model-review)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), AskUserQuestion, Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:cross-model-review)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -14,6 +14,18 @@ allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), 
 This guide explains how to create pull requests using GitHub CLI in our project.
 
 **Important**: All PR titles and descriptions should be written in English.
+
+## When to Use
+
+- Creating a new PR, running `/create-pr`
+- "open a PR", "create a pull request", "push this and make a PR"
+
+## When NOT to Use
+
+- **Linking an issue at PR creation time, or reviewer actions on an existing PR** — see
+  `collaborating-on-a-pr` instead; it wraps this skill for the issue-linking case.
+- **Deciding whether a review comment gets fixed, filed as an issue, or declined** — that's
+  `handling-review-findings`'s job, for a PR that already exists.
 
 ## Flags
 

@@ -132,7 +132,9 @@ done
 
 ## Bulk Operations
 
-See `pr-operations.md`'s "Bulk Operations" section for PR-specific bulk-operation examples (close-by-label, add-label — bulk-approve is explicitly not supported, see that section), and `issue-operations.md`'s "Bulk Operations" section for issue-specific ones — this section covers execution *patterns* (parallelism, confirmation) that apply on top of either.
+PR- and issue-specific bulk-operation examples (close-by-label, add-label; bulk-approve is
+deliberately not supported) live in `SKILL.md`'s own linked reference files, not here — this section
+covers execution *patterns* (parallelism, confirmation) that apply on top of either.
 
 ### Parallel Execution
 
@@ -420,6 +422,5 @@ gh pr list --json number,title | \
   done
 ```
 
-Bulk-approving PRs in a loop is deliberately not documented here — see `pr-operations.md`'s "Bulk
-Operations" section for why (`gh pr review` is guarded outside `collaborating-on-a-pr`, which reviews
-one PR at a time with its own CODEOWNERS check and confirmation).
+Bulk-approving PRs in a loop is deliberately not documented here: `gh pr review` is guarded outside
+`collaborating-on-a-pr`, which reviews one PR at a time with its own CODEOWNERS check and confirmation.

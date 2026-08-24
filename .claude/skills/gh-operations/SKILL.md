@@ -11,7 +11,7 @@ description: >-
   `codex-review-recovery` (gates on a human dashboard confirmation) — this skill does none of these; the
   `gh pr review`/`gh pr comment` examples below are raw reference material only, not a recommendation to
   run them standalone for a real review.
-allowed-tools: Bash(gh pr:*), Bash(gh issue:*), Bash(gh repo view:*), Bash(gh repo create:*), Bash(gh repo set-default:*), Bash(gh workflow:*), Bash(gh run:*), Bash(gh api repos/*/issues:*), Bash(gh api repos/*/branches:*), Bash(gh api repos/*/commits:*), Bash(gh api repos/*/collaborators:*), Bash(gh api repos/*/releases:*), Bash(gh api repos/*/actions/workflows:*), Bash(gh api repos/*/actions/runs:*), Bash(gh api search/repositories:*), Bash(gh api search/code:*), Bash(gh api search/issues:*), Bash(gh api rate_limit:*), Bash(gh config:*), Read
+allowed-tools: Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr checks:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(gh issue edit:*), Bash(gh issue close:*), Bash(gh repo view:*), Bash(gh repo create:*), Bash(gh repo set-default:*), Bash(gh workflow:*), Bash(gh run:*), Bash(gh api repos/*/issues:*), Bash(gh api repos/*/branches:*), Bash(gh api repos/*/commits:*), Bash(gh api repos/*/collaborators:*), Bash(gh api repos/*/releases:*), Bash(gh api repos/*/actions/workflows:*), Bash(gh api repos/*/actions/runs:*), Bash(gh api search/repositories:*), Bash(gh api search/code:*), Bash(gh api search/issues:*), Bash(gh api rate_limit:*), Bash(gh config:*), Read
 ---
 
 # GitHub Operations
@@ -173,7 +173,7 @@ gh pr list                                                  # List PRs
 gh pr view 123                                              # View PR details
 gh pr checks 123                                            # Check PR status
 # Merge PR — see the merge-pr skill (checks readiness + rights first)
-gh pr comment 123 --body "LGTM"                            # Comment on PR
+# Comment/review a PR — see collaborating-on-a-pr (gh pr comment/review are guarded outside it)
 gh issue create --title "Title" --body "Description"       # Create issue
 gh workflow run workflow-name                               # Run workflow
 gh repo view --web                                          # Open repo in browser
@@ -203,8 +203,9 @@ gh api repos/{owner}/{repo}/actions/runs                   # Direct API call (se
       action — they stay reference material only, per this skill's own description
 - [ ] The LINEAR/`NOLINEAR:` PR title convention is always presented as an optional, org-specific example
       — never asserted as this project's actual convention
-- [ ] `allowed-tools` stays scoped to its current narrowed grant (`gh pr`, `gh issue`, `gh repo`
-      view/create/set-default, `gh workflow`, `gh run`, `gh config`, `Read`, and `gh api` scoped to
+- [ ] `allowed-tools` stays scoped to its current narrowed grant (`gh pr list/view/edit/checks`,
+      `gh issue list/create/edit/close`, `gh repo` view/create/set-default, `gh workflow`, `gh run`,
+      `gh config`, `Read`, and `gh api` scoped to
       `issues`, `branches`, `commits`, `collaborators`, `releases`, `actions/workflows`,
       `actions/runs`, `search/repositories`, `search/code`, `search/issues`,
       and `rate_limit`) — it never silently widens back to a blanket `Bash(gh:*)` or `Bash(gh api:*)`, and
