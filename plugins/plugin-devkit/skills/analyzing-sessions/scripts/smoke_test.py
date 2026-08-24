@@ -27,7 +27,9 @@ def check_frontmatter():
     if end == -1:
         return False, "frontmatter block is never closed"
     fm = text[4:end]
-    if "name:" not in fm or "description:" not in fm:
+    if not re.search(r"^name:", fm, re.MULTILINE) or not re.search(
+        r"^description:", fm, re.MULTILINE
+    ):
         return False, "missing required frontmatter field ('name' or 'description')"
     return True, "frontmatter present and closed"
 

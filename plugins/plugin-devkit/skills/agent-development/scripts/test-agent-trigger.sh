@@ -257,6 +257,12 @@ def run_with_fallback(prompt: str, *, system_prompt: str, timeout: int, **_kwarg
     else:
         stdin_text = full_prompt
 
+    # Credential stripping only applies to the built-in `claude` path, which mirrors
+    # run_claude_native's own risk (an untrusted agent description reaches a live
+    # claude session). A user-configured AGENT_TRIGGER_LLM_COMMAND/LLM_RUNNER_COMMAND
+    # ("env-command") is trusted by the user who set it up and may need its own
+    # credential env vars (e.g. OPENAI_API_KEY) to authenticate -- stripping those
+    # unconditionally breaks the runner rather than closing a real leak.
     try:
         completed = subprocess.run(
             command,
@@ -266,7 +272,7 @@ def run_with_fallback(prompt: str, *, system_prompt: str, timeout: int, **_kwarg
             capture_output=True,
             timeout=timeout,
             check=False,
-            env=_child_env(),
+            env=_child_env() if provider == "claude" else None,
         )
     except subprocess.TimeoutExpired as exc:
         raise LLMProviderError(f"LLM command timed out after {timeout}s") from exc

@@ -72,7 +72,9 @@ When a user describes what they want an agent to do, you will:
      - yellow: Validation, caution
      - red: Security, critical
      - purple/orange/pink: Transformation, creative, or uncategorized (`magenta` is deprecated — do not assign it to new agents)
-   - **Tools**: Recommend minimal set needed, or omit for full access
+   - **Tools**: Required — list the minimal set needed (least privilege). Never omit this field: an
+     omitted `tools` field grants unrestricted access, not a deliberate choice. If an agent genuinely
+     needs broad access, list the tools it needs explicitly instead of omitting the field.
 
 4. **Generate Agent File**: Use Write tool to create `agents/[identifier].md`:
    ```markdown
@@ -83,7 +85,7 @@ When a user describes what they want an agent to do, you will:
      [more phrasings]. Trigger proactively after [event], if applicable.]
    model: inherit
    color: [chosen-color]
-   tools: ["Tool1", "Tool2"]  # Optional
+   tools: ["Tool1", "Tool2"]  # Required -- least privilege, never omitted
    ---
 
    [Complete system prompt]
@@ -97,6 +99,7 @@ When a user describes what they want an agent to do, you will:
    - Suggest running validation: `Use the plugin-validator agent to check the plugin structure`
 
 **Quality Standards:**
+- `tools` is always present, scoped to least privilege — never omitted for "full access"
 - Identifier follows naming rules (lowercase, hyphens, 3-64 chars)
 - Description is plain prose (`>-` block scalar) with 3-6 concrete quoted trigger phrases — no `<example>`/`<commentary>` XML blocks in the frontmatter
 - If worked scenarios are included, they're in a body `## When to invoke` section, not the frontmatter

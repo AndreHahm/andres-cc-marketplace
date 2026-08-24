@@ -27,7 +27,9 @@ def check_frontmatter():
     if end == -1:
         return False, "frontmatter block is never closed"
     fm = text[4:end]
-    if "name:" not in fm or "description:" not in fm:
+    if not re.search(r"^name:", fm, re.MULTILINE) or not re.search(
+        r"^description:", fm, re.MULTILINE
+    ):
         return False, "missing required frontmatter field ('name' or 'description')"
     return True, "frontmatter present and closed"
 
@@ -54,14 +56,18 @@ def _usage_search_body(body):
     if start == -1:
         return body
     end = body.find("\n## ", start + 10)
-    return body[:start] + body[end if end != -1 else len(body):]
+    return body[:start] + body[end if end != -1 else len(body) :]
 
 
 def check_bash_grants():
     frontmatter, body, _ = _frontmatter_and_body()
     tokens, bare_bash = _granted_bash_tokens(frontmatter)
     if bare_bash:
-        return False, "bare 'Bash' grant found in allowed-tools -- scope it to specific command(s), per plugin-rulebook R6"
+        return (
+            False,
+            "bare 'Bash' grant found in allowed-tools -- scope it to specific "
+            "command(s), per plugin-rulebook R6",
+        )
     if tokens is None:
         return True, "no allowed-tools line found (skip)"
     if not tokens:
