@@ -9,7 +9,9 @@ description: >-
   coverage-claim accuracy, assertion non-vacuity, scenario counting,
   run-record presence, and behavior-claim currency. Accepts a single skill
   path or a comma-separated list for a batch sweep. Does not run evals (use
-  skill-tester) or review skill quality (use skill-reviewer).
+  skill-tester) or review skill quality (use skill-reviewer). Executes the
+  target skill's own scripts/smoke_test.* under a resolved-path trust boundary
+  as part of Check 1 — this is real code execution, not read-only analysis.
 argument-hint: "[skill-path | skill-path,skill-path,...]"
 allowed-tools: Read Glob Grep Bash(python:*) Bash(node:*) Bash(git diff:*) AskUserQuestion Skill
 ---
@@ -30,7 +32,7 @@ instead of over multiple review rounds.
 
 ## When NOT to Use
 
-- **Running evals or benchmarking** — use `skill-tester` (it executes evals with_skill vs baseline; this skill only checks their structure)
+- **Running evals or benchmarking** — use `skill-tester` (it executes evals with_skill vs baseline; this skill only checks `evals.json`'s structure — it does not execute the evals themselves, though it does execute the target's own `scripts/smoke_test.*` as part of Check 1, under the trust boundary in step 2 below)
 - **Reviewing skill quality** — use `skill-reviewer` (structure, content, clarity; this skill checks eval artifacts only)
 - **Fixing eval defects** — this skill finds and reports; route fixes through `skill-development` or direct edits, then re-run this check
 
@@ -61,9 +63,12 @@ instead of over multiple review rounds.
    specific target — never merge findings across targets into one combined pass/fail.
 4. **Reporting each target's own outcome (FAIL, BLOCKED, or clean) is unconditional and applies
    regardless of what the rest of this step does** — never gated behind the caller-skip branch below.
-   For a target with a FAIL: this skill has no `Write`/`Edit` grant itself (see `allowed-tools` above) —
-   route the fix through `skill-development` or a direct edit made by the caller/session, then re-run
-   from step 2 for that target. For a target that's BLOCKED: it does not enter this fix-and-re-run loop at
+   For a target with a FAIL: this skill has no `Write`/`Edit` grant listed *directly* in its own
+   `allowed-tools` — but its unscoped `Skill` grant reaches other skills (`skill-development`,
+   `plugin-auditor`) that do have `Write`/`Edit`, so "no direct grant" is not the same guarantee as "cannot
+   mutate anything." When the caller-skip branch below is active, this skill must not itself invoke
+   `skill-development` or `plugin-auditor` to apply a fix — route the fix through a direct edit made by the
+   caller/session instead, then re-run from step 2 for that target. For a target that's BLOCKED: it does not enter this fix-and-re-run loop at
    all (a boundary escape isn't something an eval edit fixes, and re-running step 2 on an unchanged path
    just re-blocks it) — report it and exclude it from the batch's passing set; a human decides what to do
    about a target whose smoke-test path resolves outside the working-directory boundary, not this skill.
@@ -105,7 +110,7 @@ of these seven classes. The self-audit below checks each.
 
 | Class | One-line | Usual reviewer |
 |---|---|---|
-| Vacuous assertion | A check that can't fail (zero-match iteration, over-narrow regex, unanchored substring) | scripts-reviewer, completeness-reviewer |
+| Vacuous assertion | A check that can't fail (zero-match iteration, over-narrow regex, unanchored substring) | (this skill), completeness-reviewer |
 | Coverage-claim mismatch | `evals.json` says N covered / `uncovered: []` but an eval doesn't exercise the scenario it claims | completeness-reviewer |
 | Missing scenario tracking | Uncovered scenarios exist but no `uncovered: [...]` entry records them | completeness-reviewer |
 | Counting inconsistency | SKILL.md says "K scenarios" but the list or `evals.json` has a different count | completeness-reviewer |
@@ -129,12 +134,12 @@ that silently reports pass), but this check hasn't been validated against
 that case yet; apply the "can it fail" test at the bottom manually if the
 target's smoke test isn't Python.
 
-The zero-match-guard and anchored-matching checks below are intentionally-duplicated,
-fast local copies of `scripts-reviewer`'s Check 1/6 (zero-match iteration,
-overly-broad matching), scoped to eval/smoke-test scripts specifically so they can run
-before dispatch instead of waiting for the fan-out. If `scripts-reviewer`'s own check
-definitions change, revisit these too — they're not derived from a shared source, so
-they can drift independently.
+The zero-match-guard and anchored-matching checks below are owned by this skill, not
+duplicated from `scripts-reviewer` — `scripts-reviewer`'s own numbered checks (Check 1:
+Missing File-I/O Encoding, Check 6: Overly-Broad Glob/Prefix Matching) cover different
+defect shapes and neither implements zero-match-iteration detection. These checks are
+scoped to eval/smoke-test scripts specifically so they can run before dispatch instead
+of waiting for the fan-out.
 
 Run `${CLAUDE_PLUGIN_ROOT}/skills/reviewing-evals/scripts/check_evals.py --smoke-test <path> --skill-md <path>`
 (this skill's own bundled script, not the target's — a bare `scripts/check_evals.py`
@@ -367,3 +372,14 @@ verified via a cross-model review (Claude + Codex) of the full PR diff, which
 found the negative-count and alternation bugs Claude's own review missed. Run
 `python ${CLAUDE_PLUGIN_ROOT}/skills/reviewing-evals/scripts/test_check_evals.py`
 to reproduce.
+
+## Reference Guide
+
+| Resource | Purpose |
+|---|---|
+| `scripts/check_evals.py` | Bundled script for the mechanical portions of Checks 1 and 2 (vacuous-assertion pattern extraction, coverage arithmetic) |
+| `scripts/test_check_evals.py` | Fixture-based test suite for `check_evals.py` itself |
+| `scripts/smoke_test.py` | This skill's own structural self-test |
+| `skill-tester`'s `references/eval-schema.md` | Owns and schema-defines `evals.json`'s `testing_validation_coverage` object |
+| `plugin-auditor` skill | Typical downstream caller — dispatched after Checks 1-6 pass, against the passing target set |
+| `.claude/THIRD_PARTY_REVIEW_LEARNINGS.md` | Source of the seven recurring defect classes this skill checks for |
