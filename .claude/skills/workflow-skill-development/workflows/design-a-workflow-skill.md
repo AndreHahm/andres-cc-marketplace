@@ -77,7 +77,9 @@ A 6-phase process for creating a workflow-based skill from scratch.
 
 4. **Check for Bash misuse.** Any action using Bash for file operations (grep, find, cat) should use the dedicated tool instead.
 
-5. **For agents**, repeat this process for the agent's tool list. Agent tools are specified with `tools:` not `allowed-tools:`.
+5. **If Bash is genuinely needed**, scope it to the specific command(s) actually invoked (e.g. `Bash(git:* date:*)`) — never grant a bare `Bash`, per plugin-rulebook R6.
+
+6. **For agents**, repeat this process for the agent's tool list. Agent tools are specified with `tools:` not `allowed-tools:`.
 
 The complete tool selection matrix is in `references/tool-assignment-guide.md` (one hop from SKILL.md — not a required read if Phase 4 is clear).
 

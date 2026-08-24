@@ -2,8 +2,6 @@
 
 Common mistakes in workflow-based skill structure and workflow design (AP-1 through AP-10).
 
-**R18 exception (recorded):** AP-6's "After" example below intentionally exceeds the rulebook's 30-line code-block threshold — it's a complete, coherent before/after illustration; splitting it would break it.
-
 ---
 
 ## Structure Anti-Patterns

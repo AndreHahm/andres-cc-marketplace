@@ -2,8 +2,6 @@
 
 Standard skeleton for every workflow-based skill, regardless of pattern.
 
-**R18 exception (recorded):** intentionally exceeds the 30-line threshold — the file's own stated purpose is this exact "standard skeleton for every workflow-based skill"; trimming would contradict that.
-
 ```markdown
 ---
 name: kebab-case-name

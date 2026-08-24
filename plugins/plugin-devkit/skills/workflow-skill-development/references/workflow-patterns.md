@@ -2,8 +2,6 @@
 
 Five patterns for structuring workflow-based skills. Choose based on your skill's decision structure, not its domain.
 
-**R18 exception (recorded):** several pattern skeletons below intentionally exceed the rulebook's 30-line code-block threshold — each is a complete, coherent structural skeleton; splitting one would break the pattern it's illustrating.
-
 ---
 
 ## 1. Routing Pattern
@@ -169,44 +167,7 @@ Then execute the full pipeline: step1 -> step2 -> step3
 - Exact commands shown to user before execution
 - Individual action execution (so partial failures don't block remaining work)
 
-**Structural skeleton:**
-
-```markdown
-## Core Principle: SAFETY FIRST
-
-**Never [perform action] without explicit user confirmation.**
-
-## Workflow
-
-### Phase 1: Comprehensive Analysis
-Gather ALL information upfront before any action.
-[Data gathering commands]
-
-### Phase 2: Categorize
-[Decision tree for categorizing items]
-| Category | Meaning | Action |
-|----------|---------|--------|
-| SAFE | Verified safe | Standard action |
-| RISKY | Needs review | User decides |
-| KEEP | Active/needed | No action |
-
-### GATE 1: Present Complete Analysis
-Present everything in ONE comprehensive view.
-[Formatted summary with categories]
-Use AskUserQuestion with clear options.
-**Do not proceed until user responds.**
-
-### GATE 2: Final Confirmation with Exact Commands
-Show the EXACT commands that will run.
-Use `AskUserQuestion` — question: "Run these exact commands?", options: "Confirm" / "Cancel".
-
-### Phase 3: Execute
-Run each action as a **separate command**.
-Report result of each. Continue on individual failure.
-
-### Phase 4: Report
-[Summary of what was done and what remains]
-```
+**Structural skeleton:** see [safety-gate-skeleton.md](safety-gate-skeleton.md) for the full skeleton (two gates, individual-execution phase, and report phase).
 
 **Key design decisions:**
 - Two gates, not one: first to review the plan, second to approve exact commands
