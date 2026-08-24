@@ -150,8 +150,9 @@ already landed (it checks for `state == MERGED`) — so `create-pr` and `merge-p
 here, not optional ceremony.
 
 **Expect `finishing-work`'s own branch-mismatch ask to fire here as a false positive — this is normal,
-not a sign something went wrong.** `finishing-work`'s step 1 also captures `git branch --show-current`
-and compares it against the PR's `headRefName`, stopping to ask `AskUserQuestion` ("proceed anyway?") on
+not a sign something went wrong.** `finishing-work`'s own branch-mismatch check also captures
+`git branch --show-current` and compares it against the PR's `headRefName`, stopping to ask
+`AskUserQuestion` ("proceed anyway?") on
 any mismatch — a safeguard against accidentally passing an unrelated PR's number. In this sequence that
 mismatch is guaranteed every time: the primary checkout's current branch is always the default branch at
 this point (never the just-merged feature branch, which only ever existed in the now-closing worktree),
