@@ -35,26 +35,42 @@ def check_frontmatter():
 def _granted_bash_tokens(frontmatter):
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     if not fm_line_match:
-        return None
-    bash_blocks = re.findall(r"Bash\(([^)]+)\)", fm_line_match.group(1))
+        return None, False
+    grant_text = fm_line_match.group(1)
+    bare_bash = bool(re.search(r"\bBash\b(?!\()", grant_text))
+    bash_blocks = re.findall(r"Bash\(([^)]+)\)", grant_text)
     tokens = []
     for block in bash_blocks:
         for token in block.split():
             tokens.append(token.split(":")[0])
-    return tokens
+    return tokens, bare_bash
+
+
+def _usage_search_body(body):
+    # Exclude the Tool Assignment Quick Reference section, which documents R6's own
+    # scoped-Bash example (e.g. "Bash(git:*)") -- a real grant must be used in an actual
+    # instruction elsewhere, not merely satisfied by the guidance text that explains the rule.
+    start = body.find("## Tool Assignment Quick Reference")
+    if start == -1:
+        return body
+    end = body.find("\n## ", start + 10)
+    return body[:start] + body[end if end != -1 else len(body):]
 
 
 def check_bash_grants():
     frontmatter, body, _ = _frontmatter_and_body()
-    tokens = _granted_bash_tokens(frontmatter)
+    tokens, bare_bash = _granted_bash_tokens(frontmatter)
+    if bare_bash:
+        return False, "bare 'Bash' grant found in allowed-tools -- scope it to specific command(s), per plugin-rulebook R6"
     if tokens is None:
         return True, "no allowed-tools line found (skip)"
     if not tokens:
         return True, "no Bash(...) grants found (skip)"
+    search_body = _usage_search_body(body)
     unused = []
     for t in tokens:
         needle = t.split("/")[-1] if "/" in t else t
-        if not re.search(re.escape(needle), body):
+        if not re.search(rf"\b{re.escape(needle)}\b", search_body):
             unused.append(t)
     if unused:
         return False, "Bash grant(s) never referenced anywhere in the body: " + ", ".join(

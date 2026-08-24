@@ -32,7 +32,7 @@ A 6-phase process for creating a workflow-based skill from scratch.
 
 2. **Map to a pattern** using the Pattern Selection decision tree in SKILL.md's Pattern Selection section.
 
-3. **Validate the choice.** Does your skill's workflow naturally fit the selected pattern's skeleton? If you're forcing it, try a different pattern. Full structural skeletons are in `references/workflow-patterns.md` (one hop from SKILL.md — not a required read during this step).
+3. **Validate the choice.** Does your skill's workflow naturally fit the selected pattern's skeleton? If you're forcing it, try a different pattern. Full structural skeletons live in `references/workflow-patterns.md`, which SKILL.md's own Reference Index already links to directly — not a required read during this step, and not a hop through this workflow file.
 
 **Exit:** Pattern selected and validated against your skill's structure.
 
@@ -69,7 +69,7 @@ A 6-phase process for creating a workflow-based skill from scratch.
 
 **Actions:**
 
-1. **For each action in each phase**, identify the tool it needs — see `references/tool-assignment-guide.md`'s "Tool Selection Matrix" for the canonical operation-to-tool mapping (not restated here to avoid drift)
+1. **For each action in each phase**, identify the tool it needs. `references/tool-assignment-guide.md`'s "Tool Selection Matrix" — linked directly from SKILL.md's Reference Index — has the canonical operation-to-tool mapping (not restated here to avoid drift)
 
 2. **Compile the unique tool list.** This becomes your `allowed-tools` in frontmatter.
 
@@ -81,7 +81,8 @@ A 6-phase process for creating a workflow-based skill from scratch.
 
 6. **For agents**, repeat this process for the agent's tool list. Agent tools are specified with `tools:` not `allowed-tools:`.
 
-The complete tool selection matrix is in `references/tool-assignment-guide.md` (one hop from SKILL.md — not a required read if Phase 4 is clear).
+The complete tool selection matrix lives in `references/tool-assignment-guide.md`, linked directly from
+SKILL.md's own Reference Index — not a required read if Phase 4 is clear, and not a hop through this file.
 
 **Exit:** Validated tool list for each component (skill, agents).
 
@@ -117,7 +118,8 @@ The complete tool selection matrix is in `references/tool-assignment-guide.md` (
 
 6. **Verify progressive disclosure:** SKILL.md contains only what's needed for every invocation. Details are in linked files.
 
-The content-splitting heuristic is in `references/progressive-disclosure-guide.md` (one hop from SKILL.md).
+The content-splitting heuristic lives in `references/progressive-disclosure-guide.md`, linked directly
+from SKILL.md's own Reference Index — not a hop through this file.
 
 **Exit:** All content files written, line counts within limits.
 
@@ -129,9 +131,9 @@ The content-splitting heuristic is in `references/progressive-disclosure-guide.m
 
 **Actions:**
 
-1. **Run the review checklist** (`workflows/review-checklist.md` — one hop from SKILL.md).
+1. **Run the review checklist** — `workflows/review-checklist.md`, linked directly from SKILL.md alongside this file.
 
-2. **Check anti-patterns** against `references/anti-patterns-structure.md` (AP-1–AP-10) and `references/anti-patterns-tooling-content.md` (AP-11–AP-20). Scan for each one.
+2. **Check anti-patterns** against `references/anti-patterns-structure.md` (AP-1–AP-10) and `references/anti-patterns-tooling-content.md` (AP-11–AP-20), both linked directly from SKILL.md's own Reference Index. Scan for each one.
 
 3. **Validate file references.** Every path in SKILL.md must resolve to an existing file.
 
