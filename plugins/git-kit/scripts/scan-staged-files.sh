@@ -22,36 +22,65 @@ if [ "${1:-}" = "--null" ] || [ "${1:-}" = "-z" ]; then
   null_mode=1
 fi
 
-git -c diff.relative=false diff --cached --name-only -z | while IFS= read -r -d '' file; do
-  flagged=0
-  name="$(basename "$file")"
+is_flagged() {
+  local path="$1" name segments seg
+  name="$(basename "$path")"
   case "$name" in
     .env|.env.*|*secret*|*credential*|*.key|*.pem|*password*|*token*|\
     id_rsa|id_ed25519|id_ecdsa|id_dsa|service-account.json|*.p12|*.pfx|*.jks|\
     .npmrc|.pgpass|.netrc)
-      flagged=1
+      return 0
       ;;
   esac
   # Basename-only matching misses a sensitive *directory* component (e.g.
   # config/secrets/prod.yaml) -- also check each path segment against the
   # loose-substring patterns (the exact-filename and extension patterns above
   # don't apply to directory names, so they're deliberately not repeated here).
-  if [ "$flagged" = "0" ]; then
-    IFS='/' read -ra segments <<< "$file"
-    for seg in "${segments[@]}"; do
-      case "$seg" in
-        *secret*|*credential*|*password*|*token*)
-          flagged=1
-          break
-          ;;
-      esac
-    done
+  IFS='/' read -ra segments <<< "$path"
+  for seg in "${segments[@]}"; do
+    case "$seg" in
+      *secret*|*credential*|*password*|*token*)
+        return 0
+        ;;
+    esac
+  done
+  return 1
+}
+
+emit() {
+  if [ "$null_mode" = "1" ]; then
+    printf '%s\0' "$1"
+  else
+    printf '%s\n' "$1"
   fi
-  if [ "$flagged" = "1" ]; then
-    if [ "$null_mode" = "1" ]; then
-      printf '%s\0' "$file"
-    else
-      printf '%s\n' "$file"
-    fi
-  fi
+}
+
+# --name-status (not --name-only) and -M (rename detection) are required to
+# catch a staged rename correctly: `git diff --cached --name-only` reports
+# only the destination path for a rename, so a file renamed *into* a flagged
+# directory (e.g. config/plain.txt -> config/secrets/plain.txt) would be
+# flagged and unstaged at its new path only -- leaving the rename's other
+# half (the staged deletion of the old path) untouched. Restoring just the
+# new path from the index then silently turns the rename into "delete the
+# old path, don't add the new one" once committed, rather than actually
+# rejecting the rename. Emitting *both* paths for a flagged rename lets
+# unstage-flagged-files.sh restore the whole rename, not half of it.
+git -c diff.relative=false diff --cached --name-status -z -M | \
+while IFS= read -r -d '' status; do
+  case "$status" in
+    R*)
+      IFS= read -r -d '' old_path
+      IFS= read -r -d '' new_path
+      if is_flagged "$new_path" || is_flagged "$old_path"; then
+        emit "$old_path"
+        emit "$new_path"
+      fi
+      ;;
+    *)
+      IFS= read -r -d '' path
+      if is_flagged "$path"; then
+        emit "$path"
+      fi
+      ;;
+  esac
 done
