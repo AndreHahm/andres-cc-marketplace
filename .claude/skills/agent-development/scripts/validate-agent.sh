@@ -205,7 +205,7 @@ fi
 # Check for a description/tools contradiction: a description claiming read-only
 # or review-only behavior must not pair with a tools list containing Bash, Write, or Edit
 if [ -n "$TOOLS" ] && [ -n "${DESCRIPTION:-}" ]; then
-  if echo "$DESCRIPTION" | grep -qiE 'read-only|review only|review-only|analysis only|analysis-only'; then
+  if echo "$DESCRIPTION" | grep -qiE 'read-only|read only|review only|review-only|analysis only|analysis-only'; then
     if echo "$TOOLS" | grep -qE '\b(Bash|Write|Edit)\b'; then
       echo "❌ description claims read-only/review-only/analysis-only behavior but tools includes Bash/Write/Edit"
       error_count=$((error_count+1))
