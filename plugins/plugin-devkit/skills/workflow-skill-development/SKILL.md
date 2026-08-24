@@ -363,4 +363,5 @@ A well-designed workflow skill or command:
 | Reference | [progressive-disclosure-guide.md](references/progressive-disclosure-guide.md) | Content splitting rules, the 500-line rule, sizing guidelines |
 | Workflow | [design-a-workflow-skill.md](workflows/design-a-workflow-skill.md) | 6-phase creation process from scope to self-review |
 | Workflow | [review-checklist.md](workflows/review-checklist.md) | Structured self-review checklist for submission readiness |
+| Script | [smoke_test.py](scripts/smoke_test.py) | Structural smoke test (frontmatter, Reference-Index file existence, AP-N uniqueness) |
 | Skill | `plugin-rulebook` | Plugin-level rules — invoke before finalizing any workflow skill |

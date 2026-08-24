@@ -251,6 +251,7 @@ After Phase 6, verify these gates before presenting output as final:
 | `references/swot-framework.md` | Quadrant prompts and category-specific patterns | Phase 3 |
 | `references/critique-reflection-framework.md` | Question sets per category; rationalizations to reject | Phase 4 |
 | `references/suggestion-taxonomy.md` | Priority tiers, type definitions, merge rules, examples | Phase 5 |
+| `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, Bash-grant usage, Reference-Guide file existence, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `enhancement-suggestor` agent | Expands a single P1/P2 suggestion into a full classified WHAT/WHY/HOW plan | Phase 6, on request |
 | `.claude/output/analyzing-sessions/` | Where this skill's own reports are persisted, one file per run | Phase 6 (write), Phase 2 of a later run (read, if in scope) |
 | `plugin-lifecycle-maintenance`'s `improve-a-plugin` workflow | Typical downstream consumer — takes this skill's persisted report and drives it through a human-decision gate into an applied, committed fix | After this skill's report is produced |

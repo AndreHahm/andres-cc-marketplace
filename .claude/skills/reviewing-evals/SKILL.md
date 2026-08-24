@@ -282,6 +282,11 @@ structural findings) for both in full.
 
 ## Testing & Validation
 
+**This skill's own structural self-test** lives at `scripts/smoke_test.py` (frontmatter validity,
+Bash-grant usage, bundled-script existence, Pre-Review-Self-Audit check-header sequencing) — run it
+directly, not through this skill's own Check 1-6 above, which audit a *target* skill's eval artifacts,
+not this skill's own SKILL.md.
+
 **Verify this skill activates on:**
 - "review these evals before I send this to plugin-auditor"
 - "check this skill's evals.json/smoke_test.py for known defect classes"
