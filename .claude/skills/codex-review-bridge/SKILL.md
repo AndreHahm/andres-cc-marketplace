@@ -9,7 +9,7 @@ description: >-
   normal conversation. For a local Windows danger-full-access dispatch (the
   one profile this bridge always refuses), see codex-windows-guardrails
   instead.
-allowed-tools: ["Bash(node \"${CLAUDE_PLUGIN_ROOT}/skills/codex-review-bridge/scripts/bridge-invoke.mjs\":*)", "Read"]
+allowed-tools: ["Bash(node */codex-kit/skills/codex-review-bridge/scripts/bridge-invoke.mjs:*)", "Read"]
 disable-model-invocation: true
 ---
 
