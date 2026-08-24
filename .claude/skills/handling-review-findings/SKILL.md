@@ -71,6 +71,11 @@ verification and resolve this immediately").
   *posted* to an open PR, regardless of the PR's draft/ready state.
 - **Merging the PR** — that's `merge-pr`'s job, with its own independent readiness gate. This skill's
   disclosure step (Workflow step 7) is informational input to that decision, never a substitute for it.
+- **Summarizing existing review comments into an updated PR description's own informational table** —
+  that's `explain-pr-changes`'s job (its Step 4). That table is a byproduct of rewriting the PR body,
+  carries no round-budget/severity-gate discipline, and never replies to, resolves, or files a real
+  GitHub issue for a finding — this skill owns any of those actions once a finding is being formally
+  triaged.
 
 The exclusions above follow this repo's `.claude/rules/resolve-activation-overlap-bidirectionally.md`
 convention — each named sibling skill carries the reciprocal half of the same exclusion.
@@ -403,16 +408,11 @@ session.
 
 ## GitHub API Mechanics
 
-Three operations here are easy to get wrong: replying to an inline PR review comment goes through
-`gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`, resolving a
-review thread has **no REST endpoint at all** — it requires `gh api graphql` against GitHub's GraphQL
-API (`resolveReviewThread` mutation, keyed by an opaque thread node ID from a `reviewThreads` query) —
-and posting a review-trigger comment (Workflow step 8) is a plain top-level `gh pr comment`, not an
-inline reply. See `references/github-api-mechanics.md` for the exact command shapes, the
-`reviewThreads` query form that bridges a GraphQL thread node back to the REST `comment_id` the reply
-endpoint needs, and a note on why the shell snippets there are Bash-tool syntax specifically (this
-repo's agent shell is PowerShell-primary; the `Bash` tool is a separate, available surface for POSIX
-scripting).
+Three operations here are easy to get wrong — replying to an inline review comment
+(`gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`), resolving a review
+thread (no REST endpoint at all, `gh api graphql` only), and posting a review-trigger comment — see
+`references/github-api-mechanics.md` for the exact command shapes and pitfalls; this section only states
+the marker-handshake requirement shared by all of them.
 
 Immediately before any reply call, resolve call, review-trigger post, or `gh api graphql` call of any
 kind (including the read-only `reviewThreads` lookup — the guard has no read-only carve-out, see

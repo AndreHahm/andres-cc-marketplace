@@ -236,23 +236,20 @@ git worktree lock --reason "Reference checkout" ../project-main
 To combine specific changes from multiple feature branches:
 
 ```bash
-# Create worktrees for each feature to review
+# Create worktrees for each feature to review, then diff against main
 git worktree add ../project-feature-1 feature-1
 git worktree add ../project-feature-2 feature-2
-
-# Review changes in each worktree
 diff ../project/src/module.js ../project-feature-1/src/module.js
 diff ../project/src/module.js ../project-feature-2/src/module.js
+```
 
-# From main worktree, selectively take changes
+```bash
+# From main worktree, selectively take changes (or cherry-pick specific commits instead)
 cd ../project
 git checkout feature-1 -- src/moduleA.js src/utils.js
 git checkout feature-2 -- src/moduleB.js
+git cherry-pick abc1234  # from feature-1, if cherry-picking instead
 # Then use the `commit` skill to commit the combined result -- raw `git commit` is guarded.
-
-# Or cherry-pick specific commits
-git cherry-pick abc1234  # from feature-1
-git cherry-pick def5678  # from feature-2
 
 # Clean up
 git worktree remove ../project-feature-1

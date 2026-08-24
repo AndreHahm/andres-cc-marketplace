@@ -97,20 +97,18 @@ Installing dependencies with pnpm...
 Dependencies installed successfully
 ```
 
-**Python project:**
+**Python or Rust project** (detection only — step 5d only derives an install *command* for Node.js
+projects; a `requirements.txt`/`Cargo.toml` detection is reported, but no `pip`/`cargo` install runs,
+since `allowed-tools` doesn't grant those package managers):
 
 ```
 Detected Python project with requirements.txt
-Installing dependencies with pip...
-Dependencies installed successfully
+No automatic install command for this project type -- install dependencies manually if needed
 ```
-
-**Rust project:**
 
 ```
 Detected Rust project with Cargo.toml
-Building project with cargo...
-Project built successfully
+No automatic install command for this project type -- install dependencies manually if needed
 ```
 
 ## Common Workflows

@@ -57,6 +57,7 @@ def run_bash(repo_dir: pathlib.Path, script: str) -> subprocess.CompletedProcess
         cwd=str(repo_dir),
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=30,
     )
 
@@ -119,10 +120,10 @@ def test_untracked_file_included():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
         init_repo(repo)
-        (repo / "f.txt").write_text("line1\n")
+        (repo / "f.txt").write_text("line1\n", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
-        (repo / "new_untracked.txt").write_text("brand new\n")
+        (repo / "new_untracked.txt").write_text("brand new\n", encoding="utf-8")
         marker = "UNTRACKED_VISIBLE=yes"
         check = f'git diff "$MERGE_BASE" | grep -q new_untracked.txt && echo {marker}'
         result = run_bash(repo, diff_build_chain(extra=check))
@@ -136,7 +137,7 @@ def test_deletion_only_scope_does_not_abort():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
         init_repo(repo)
-        (repo / "f.txt").write_text("line1\n")
+        (repo / "f.txt").write_text("line1\n", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
         run_bash(repo, "rm f.txt")
@@ -151,7 +152,7 @@ def test_index_copy_failure_is_disclosed():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
         init_repo(repo)
-        (repo / "f.txt").write_text("line1\n")
+        (repo / "f.txt").write_text("line1\n", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
         run_bash(
@@ -174,11 +175,11 @@ def test_gitignored_tracked_file_reports_modified():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
         init_repo(repo)
-        (repo / "tracked-fixture.data").write_text("line1\n")
+        (repo / "tracked-fixture.data").write_text("line1\n", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
         run_bash(repo, "echo 'tracked-fixture.data' >> .git/info/exclude")
-        (repo / "tracked-fixture.data").write_text("line1\nline2\n")
+        (repo / "tracked-fixture.data").write_text("line1\nline2\n", encoding="utf-8")
         result = run_bash(
             repo,
             diff_build_chain(extra='git diff --name-status "$MERGE_BASE" -- tracked-fixture.data'),
@@ -198,13 +199,13 @@ def test_sparse_checkout_entry_not_reported_deleted():
         init_repo(repo)
         (repo / "a").mkdir()
         (repo / "b").mkdir()
-        (repo / "a" / "f").write_text("x")
-        (repo / "b" / "f").write_text("x")
+        (repo / "a" / "f").write_text("x", encoding="utf-8")
+        (repo / "b" / "f").write_text("x", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
         run_bash(repo, "git update-index --skip-worktree b/f")
         (repo / "b" / "f").unlink()
-        (repo / "a" / "f").write_text("y")
+        (repo / "a" / "f").write_text("y", encoding="utf-8")
         result = run_bash(
             repo,
             diff_build_chain(extra='git diff --name-status "$MERGE_BASE"'),
@@ -228,10 +229,10 @@ def test_dispatcher_grep_no_match_does_not_abort_chain():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
         init_repo(repo)
-        (repo / "f.txt").write_text("line1\n")
+        (repo / "f.txt").write_text("line1\n", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
-        (repo / "f.txt").write_text("line1\nline2\n")
+        (repo / "f.txt").write_text("line1\nline2\n", encoding="utf-8")
         result = run_bash(repo, preflight_chain(extra=MARKER_ECHO))
         if "PREFLIGHT_CHAIN_COMPLETED" not in result.stdout:
             return False, (
@@ -250,12 +251,14 @@ def test_dispatcher_grep_match_detected():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
         init_repo(repo)
-        (repo / "f.txt").write_text("line1\n")
+        (repo / "f.txt").write_text("line1\n", encoding="utf-8")
         (repo / "plugins" / "codex-kit" / "scripts").mkdir(parents=True)
-        (repo / "plugins" / "codex-kit" / "scripts" / "lib.mjs").write_text("x\n")
+        (repo / "plugins" / "codex-kit" / "scripts" / "lib.mjs").write_text("x\n", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
-        (repo / "plugins" / "codex-kit" / "scripts" / "lib.mjs").write_text("x\ny\n")
+        (repo / "plugins" / "codex-kit" / "scripts" / "lib.mjs").write_text(
+            "x\ny\n", encoding="utf-8"
+        )
         result = run_bash(repo, preflight_chain(extra=MARKER_ECHO))
         if "PREFLIGHT_CHAIN_COMPLETED" not in result.stdout:
             detail = f"(exit={result.returncode}): {result.stdout}\n{result.stderr}"
@@ -270,10 +273,10 @@ def test_real_index_untouched_after_run():
     with tempfile.TemporaryDirectory() as tmp:
         repo = pathlib.Path(tmp)
         init_repo(repo)
-        (repo / "f.txt").write_text("line1\n")
+        (repo / "f.txt").write_text("line1\n", encoding="utf-8")
         commit_all(repo, "init")
         run_bash(repo, "git checkout -qb feature")
-        (repo / "new_untracked.txt").write_text("brand new\n")
+        (repo / "new_untracked.txt").write_text("brand new\n", encoding="utf-8")
         run_bash(repo, preflight_chain())
         status = run_bash(repo, "git status --porcelain")
         if "?? new_untracked.txt" not in status.stdout:
