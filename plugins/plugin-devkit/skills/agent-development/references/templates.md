@@ -204,8 +204,7 @@ description: >-
   generating reports, analyzing patterns, or answering questions about existing
   data. Read-only; no modifications allowed.
 model: sonnet
-tools: Read, Grep, Glob, Bash
-permissionMode: plan
+tools: Read, Grep, Glob
 ---
 
 # Purpose
@@ -241,7 +240,9 @@ This subagent analyzes existing data, searches files, and generates insights wit
 
 ## Permission Handling
 
-All write operations are blocked (permissionMode: plan). If Claude attempts a write:
+Write operations are unavailable because `tools` omits `Write`/`Edit`/`Bash` — this is the only
+containment that actually works for a plugin-scoped agent (`permissionMode` is not honored for
+plugin-scoped agents). If asked to make a change, respond:
 - Explanation: "Write operations not allowed; this is read-only."
 - Suggestion: "I can generate a report with recommendations instead."
 ```
@@ -258,8 +259,7 @@ description: >-
   reviewing code changes, analyzing security, checking performance, or
   validating against standards. Analysis only; no modifications.
 model: sonnet
-tools: Read, Grep, Glob, Bash
-permissionMode: plan
+tools: Read, Grep, Glob
 ---
 
 # Purpose

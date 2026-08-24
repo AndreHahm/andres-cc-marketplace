@@ -89,29 +89,20 @@ color: blue
 ---
 ```
 
-### No Specification (Inherit All)
+### Anti-Pattern: No Specification (Inherit All)
 
-**Method:** Omit both `tools` and `disallowedTools`.
+**Omitting both `tools` and `disallowedTools`** is not a deliberate scoping choice — it silently grants
+every available tool. This skill's own convention requires `tools` explicitly on every agent; treat this
+shape as something to fix, not a legitimate option to reach for.
 
 ```yaml
+# Anti-pattern — do not do this:
 # No tools field = inherit all tools
 ```
 
-Subagent inherits all tools from parent conversation.
-
-**When to use:**
-- Subagent needs all available tools
-- Risk of being too permissive (not recommended)
-
-**Example (rare case):**
-```yaml
----
-name: full-power-agent
-description: Do anything needed
-# Inherits all tools
-color: blue
----
-```
+**If an agent genuinely needs broad access, list the tools it needs explicitly** rather than omitting the
+field — e.g. `tools: ["Read", "Grep", "Glob", "Write", "Edit", "Bash", "Agent"]` states the same effective
+grant while making the choice visible to a reviewer instead of implicit.
 
 ## Tool Categories & Common Patterns
 
@@ -121,7 +112,10 @@ color: blue
 - `Read` - Read file contents
 - `Grep` - Search file contents
 - `Glob` - Find files by pattern
-- `Bash` - Execute commands (read-only operations)
+
+**Not `Bash`** — even for read-only-looking commands (`cat`, `grep`, `ls`), `Bash` can run anything;
+it is not itself a read-only tool. If a read-only agent genuinely needs a specific external command
+(e.g. a query CLI), scope it narrowly (`Bash(psql:*)`) rather than granting bare `Bash`.
 
 **Useful for:**
 - Code analysis
@@ -135,7 +129,6 @@ color: blue
 name: code-analyzer
 description: Analyze code structure and patterns
 tools: Read, Grep, Glob
-permissionMode: plan
 color: blue
 ---
 ```
@@ -195,7 +188,11 @@ color: blue
 - `Read` - Read documentation/code
 - `Grep` - Search for specific patterns
 - `Glob` - Find files
-- `Bash` - Run queries/scripts
+- `Bash` - Run queries/scripts. **An agent's `tools` field has no Bash-scoping syntax at all** — unlike a
+  skill/command's `allowed-tools`, a scoped `Bash(cmd:*)` entry here does not function as scoping and is
+  itself a rulebook violation (R6); bare `Bash` is the correct, and only, form for granting Bash to an
+  agent. If narrower containment is genuinely needed, that has to come from the agent's own instructions
+  and judgment, not the tool grant.
 - `Agent` - Delegate to other subagents (the tool was renamed from `Task` to `Agent` in Claude Code v2.1.63; `Task(...)` still works as a legacy alias)
 
 **Useful for:**
@@ -210,7 +207,6 @@ color: blue
 name: architecture-researcher
 description: Analyze architecture and dependencies
 tools: Read, Grep, Glob, Bash, Agent
-permissionMode: plan
 color: blue
 ---
 ```

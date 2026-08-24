@@ -20,11 +20,11 @@ Verify the agent file is correctly formatted with all required fields.
 **Checklist:**
 - [ ] File is Markdown with YAML frontmatter (`---` delimiters)
 - [ ] `name` present: lowercase-hyphen, 3–64 chars
-- [ ] `description` present: ≤1024 chars
+- [ ] `description` present: 10–5,000 chars (this skill's own agent-description limit — not R21's 1024-char SKILL.md-description limit, a different field)
 - [ ] `model` field valid: `inherit`, `sonnet`, `opus`, `haiku`, `fable`, or a full model ID
 - [ ] `model` role fit (advisory, not blocking): if the agent's role is clearly orchestrator/implementer/quality-gate, compare against the role-tier mapping in `references/configuration-reference.md` — a mismatch is worth a Minor note, not a required change; `inherit` is never itself a violation
 - [ ] `color` (if present): use the current valid list in `references/configuration-reference.md` — don't duplicate a separate enum here
-- [ ] `tools` (if present): exact tool names (capitalized: `Read`, `Write`, `Bash`)
+- [ ] `tools` present (required by this skill's convention): exact tool names (capitalized: `Read`, `Write`, `Bash`), scoped to least privilege
 - [ ] `disallowedTools` (if present): exact tool names; don't use both `tools` and `disallowedTools` unless intentional
 - [ ] `permissionMode` (if present): `default`, `manual` (alias for `default`, v2.1.200+), `acceptEdits`, `dontAsk`, `auto`, `bypassPermissions`, or `plan`
 - [ ] YAML syntax valid (proper indentation, no typos)
@@ -109,9 +109,9 @@ Verify tool access matches the agent's purpose (principle of least privilege).
 | Purpose | Required Tools | Should Deny |
 |---------|----------------|-------------|
 | Read-only analysis | Read, Grep, Glob | Write, Edit, Bash |
-| Code review | Read, Grep, Glob, Bash | Write, Edit |
+| Code review | Read, Grep, Glob | Write, Edit, Bash |
 | Code fixes | Read, Write, Edit, Bash | — |
-| Database analysis | Bash (validated via hook) | Write, Edit |
+| Database analysis | Read, `Bash` — an agent's `tools` field has no Bash-scoping syntax at all; bare `Bash` is the only correct form (a scoped `Bash(cmd:*)` entry here is itself an R6 violation, the opposite of the skill/command case); hooks don't contain a plugin-scoped agent either | Write, Edit |
 
 **Fix over-scoped tools:**
 ```yaml

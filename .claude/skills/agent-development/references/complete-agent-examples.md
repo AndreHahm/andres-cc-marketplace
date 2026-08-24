@@ -334,7 +334,10 @@ Restrict or expand based on agent needs:
 - **Read-only agents**: `["Read", "Grep", "Glob"]`
 - **Generator agents**: `["Read", "Write", "Grep"]`
 - **Executor agents**: `["Read", "Write", "Bash", "Grep"]`
-- **Full access**: Omit tools field
+
+Never omit the `tools` field to get "full access" — an omitted `tools` field defaults to *all* tools,
+which is an unrestricted grant, not a deliberate choice. If an agent genuinely needs broad access, list
+the tools it needs explicitly instead.
 
 ### Customize Colors
 
