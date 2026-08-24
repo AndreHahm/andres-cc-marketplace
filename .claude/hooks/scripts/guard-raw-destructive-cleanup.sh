@@ -98,16 +98,31 @@ fi
 
 # `git worktree remove --force`/`-f` only -- plain `remove` (no force flag)
 # already refuses on a dirty or locked worktree via git's own safeguard.
-# Checked as two independent conditions (both required) rather than one
-# positional regex: `--force`/`-f` can legally appear either before or after
-# the worktree path argument (`git worktree remove --force <path>` and
-# `git worktree remove <path> --force` are both valid git syntax), and a
+# `--force`/`-f` can legally appear either before or after the worktree path
+# argument (`git worktree remove --force <path>` and
+# `git worktree remove <path> --force` are both valid git syntax), so a
 # single regex requiring the flag to immediately follow `remove` (with only
-# `-`-prefixed tokens permitted in between) missed the path-before-flag form
+# `-`-prefixed tokens permitted in between) misses the path-before-flag form
 # entirely -- live-verified: that form produced no denial at all.
-WORKTREE_REMOVE_RE="${GIT_PREFIX}worktree[[:space:]]+remove([[:space:]]|\$)"
+#
+# The force-flag check is scoped to each `worktree remove` invocation's own
+# argument span (from `remove` up to the next `;`/`&`/`|` command separator
+# or end of string), not run independently against the whole `$COMMAND`
+# string -- `$COMMAND` is the raw Bash/PowerShell tool_input.command and can
+# legally contain multiple chained sub-commands (`&&`/`;`/`|`). An earlier
+# version of this check ran `WORKTREE_REMOVE_RE`/`FORCE_FLAG_RE` as two fully
+# independent conditions against the entire string, which meant a bare `-f`
+# anywhere in the whole command -- e.g. an unrelated chained
+# `rm -f`/`make -f`/`docker ... -f` -- would falsely deny a `git worktree
+# remove <path>` call that itself had no force flag at all (live-verified:
+# `git worktree remove ./clean-path && rm -f tmpfile` was denied even though
+# the worktree-remove half had no force flag). Bounding the force-flag check
+# to just the matched invocation's own span (excluding `;`/`&`/`|`) closes
+# that false-positive while still catching a force flag anywhere within a
+# genuine `worktree remove` call's own argument list.
 FORCE_FLAG_RE='(^|[[:space:]])(--force|-f)([[:space:]]|$)'
-if echo "$COMMAND" | grep -qE "$WORKTREE_REMOVE_RE" && echo "$COMMAND" | grep -qE "$FORCE_FLAG_RE"; then
+WORKTREE_REMOVE_SPANS=$(echo "$COMMAND" | grep -oE "${GIT_PREFIX}worktree[[:space:]]+remove[^;&|]*" || true)
+if [ -n "$WORKTREE_REMOVE_SPANS" ] && echo "$WORKTREE_REMOVE_SPANS" | grep -qE "$FORCE_FLAG_RE"; then
   MATCH=true
 fi
 
