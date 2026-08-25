@@ -40,6 +40,14 @@ from inventory_common import (  # noqa: E402  # ty: ignore[unresolved-import]
 SCHEMA_VERSION = "1.0.0"
 INVENTORY_FILENAME = "plugin-inventory.json"
 
+# Fields a human-approved 'update' operation may actually set on a component
+# record. 'id'/'name'/'type' are structural identity, never updated in place;
+# 'status' only ever changes via 'status-transition' (which keeps
+# status_history in sync); every history/scoring field is append-only,
+# editable only through history.append_*/repair-history's own
+# explicit-confirmation gate -- none of those belong here.
+ALLOWED_UPDATE_FIELDS = {"path", "functional_role", "domain", "compatibility", "created_on"}
+
 # Logical component types this script has a real filesystem-convention
 # detector for. Of the remaining logical types, only mcp-server/lsp-server
 # have any detector at all (manifest-declared -- see
@@ -133,11 +141,14 @@ def empty_inventory(plugin_id, plugin_name):
 def build_plan(inventory, discovered):
     """Compare discovered candidates against the canonical inventory's
     current active components and produce a deterministic plan: add /
-    update (path change) / no-op per candidate. Missing-active-component
-    and rename detection both need human identity confirmation, not a
-    heuristic guess -- so both are surfaced as `conflict` entries here,
-    resolved later via an approved `status-transition` operation (see
-    apply_status_transition), never auto-applied by this function."""
+    update (path change) / no-op per candidate. Missing-active-component,
+    rename detection, and a discovered candidate matching an existing
+    *non-active* record (planned/retired/deprecated/superseded -- e.g. a
+    planned component that has now actually been built) all need human
+    identity confirmation, not a heuristic guess -- so all three are
+    surfaced as `conflict` entries here, resolved later via an approved
+    `status-transition` operation (see apply_status_transition), never
+    auto-applied by this function."""
     existing_by_key = {(c["name"], c["type"]): c for c in inventory.get("components", [])}
     discovered_keys = {(c["name"], c["type"]) for c in discovered}
     plan = []
@@ -156,22 +167,37 @@ def build_plan(inventory, discovered):
                     "requires_approval": True,
                 }
             )
-        elif existing.get("status") == "active" and existing.get("path") != candidate["path"]:
-            plan.append(
-                {
-                    "operation": "update",
-                    "id": existing["id"],
-                    "name": candidate["name"],
-                    "field": "path",
-                    "old_value": existing.get("path"),
-                    "new_value": candidate["path"],
-                    "evidence": [candidate["path"]] if candidate["path"] else [],
-                    "requires_approval": True,
-                }
-            )
+        elif existing.get("status") == "active":
+            if existing.get("path") != candidate["path"]:
+                plan.append(
+                    {
+                        "operation": "update",
+                        "id": existing["id"],
+                        "name": candidate["name"],
+                        "field": "path",
+                        "old_value": existing.get("path"),
+                        "new_value": candidate["path"],
+                        "evidence": [candidate["path"]] if candidate["path"] else [],
+                        "requires_approval": True,
+                    }
+                )
+            else:
+                plan.append(
+                    {"operation": "no-op", "name": candidate["name"], "type": candidate["type"]}
+                )
         else:
             plan.append(
-                {"operation": "no-op", "name": candidate["name"], "type": candidate["type"]}
+                {
+                    "operation": "conflict",
+                    "id": existing["id"],
+                    "name": existing["name"],
+                    "type": existing["type"],
+                    "reason": f"a discovered candidate matches an existing {existing['status']!r} "
+                    "record -- requires a status-transition decision (e.g. activate a planned "
+                    "component now that it's built, restore a retired/deprecated/superseded one) "
+                    "before this can be reconciled, never an automatic no-op",
+                    "requires_approval": True,
+                }
             )
 
     for existing in inventory.get("components", []):
@@ -260,7 +286,9 @@ def apply_plan(inventory, approved_operations):
     per-operation-type logic to the shared `inventory_common.reconcile`
     module -- only `apply_add` (the component-record shape) is this script's
     own."""
-    return reconcile.apply_plan(inventory, approved_operations, apply_add, "components")
+    return reconcile.apply_plan(
+        inventory, approved_operations, apply_add, "components", ALLOWED_UPDATE_FIELDS
+    )
 
 
 def validate_inventory(inventory):
@@ -377,7 +405,7 @@ def cmd_check(args):
     if not os.path.exists(args.inventory_path):
         raise SystemExit(f"no inventory at {args.inventory_path} -- run bootstrap first")
     inventory = json_store.read_json(args.inventory_path)
-    validate_inventory(inventory)
+    reconcile.validate_or_exit(validate_inventory, inventory, context="check")
     discovered = discover_components(args.plugin_dir)
     plan = build_plan(inventory, discovered)
     drift = [op for op in plan if op["operation"] != "no-op"]

@@ -441,6 +441,148 @@ def check_cli_bootstrap_check_roundtrip():
         return True, f"bootstrap+check round-trip clean ({result['drift_count']} drift)"
 
 
+def check_non_active_reappearance_conflict():
+    """Scenario 12 (Conflict, non-active record reappears): a discovered
+    candidate matching an existing 'retired' record must be surfaced as a
+    conflict, never silently no-op'd -- the fix for a cross-model-review
+    finding that build_plan's discovery loop only ever compared against
+    'active' records, silently no-op'ing a planned/retired/deprecated/
+    superseded record's reappearance."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+        inventory["components"][0]["status"] = "retired"
+        inventory_path.write_text(json.dumps(inventory), encoding="utf-8")
+
+        plan = _run("plan", plugin_dir, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
+        operations = json.loads(plan.stdout)["operations"]
+        conflicts = [
+            op for op in operations if op["operation"] == "conflict" and op["name"] == "skill-a"
+        ]
+        if not conflicts:
+            return False, f"expected a conflict entry for retired skill-a, got: {operations}"
+        return True, "retired record's reappearance correctly surfaced as a conflict, not no-op"
+
+
+def check_check_clean_rejection_on_invalid_inventory():
+    """Scenario 13 (Check, clean rejection on an invalid inventory): a
+    hand-corrupted inventory must make check exit non-zero with a clean
+    rejection message, never an uncaught Python traceback -- the fix for a
+    cross-model-review finding that cmd_check called validate_inventory
+    directly, unwrapped by reconcile.validate_or_exit."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+        inventory["components"][0]["functional_role"] = "not_a_real_functional_role"
+        inventory_path.write_text(json.dumps(inventory), encoding="utf-8")
+
+        check = _run("check", inventory_path, plugin_dir)
+        if check.returncode == 0:
+            return False, "check accepted an invalid functional_role -- should have been rejected"
+        if "Traceback" in check.stderr:
+            return False, f"check crashed with an uncaught traceback: {check.stderr.strip()}"
+        return True, "check correctly rejected an invalid inventory with a clean message"
+
+
+def check_apply_update_rejects_history_field():
+    """Scenario 14 (Apply rejects an out-of-allowlist update field): an
+    approved plan naming status_history directly in an 'update' operation
+    must be rejected before any write -- the fix for a cross-model-review
+    finding that apply_update had no field allowlist, letting an 'update'
+    operation silently overwrite append-only history and bypass
+    repair-history's own --confirm gate."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        before = inventory_path.read_text(encoding="utf-8")
+        component_id = json.loads(before)["components"][0]["id"]
+        plan = _run("plan", plugin_dir, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "bad_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": component_id,
+                        "field": "status_history",
+                        "new_value": [],
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", plugin_dir, inventory_path, plan_path, expected_hash)
+        if apply.returncode == 0:
+            return False, "apply accepted an update to status_history -- should have been rejected"
+        after = inventory_path.read_text(encoding="utf-8")
+        if before != after:
+            return False, "inventory file was modified despite the rejected update"
+        return True, "apply correctly rejected an out-of-allowlist update field (status_history)"
+
+
+def check_import_grading_score_range_rejection():
+    """Scenario 15 (Import grading rejects an out-of-range/non-numeric
+    score): a report with final_score outside [0, 10] must be rejected
+    before any write -- the fix for a cross-model-review finding that
+    imported scores were never type/range-checked."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        report_path = pathlib.Path(tmpdir) / "report.json"
+        report_path.write_text(
+            json.dumps(
+                {
+                    "target": "skill-a",
+                    "target_type": "skill",
+                    "graded_at": "2026-08-25T10:00:00Z",
+                    "final_score": 999,
+                    "gates_applied": [],
+                    "grader_schema_version": "1.1.0",
+                }
+            ),
+            encoding="utf-8",
+        )
+        result = _run("import-grading", plugin_dir, inventory_path, report_path, "skill-a", "skill")
+        if result.returncode == 0:
+            return (
+                False,
+                "import-grading accepted an out-of-range score (999) -- should be rejected",
+            )
+        component = json.loads(inventory_path.read_text(encoding="utf-8"))["components"][0]
+        if component["score"] is not None:
+            return False, f"score should be unchanged (None), got {component['score']!r}"
+        return True, "import-grading correctly rejected an out-of-range score before any write"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -454,6 +596,10 @@ CHECKS = [
     check_repair_history_structural_rejection,
     check_enum_rejection,
     check_cli_bootstrap_check_roundtrip,
+    check_non_active_reappearance_conflict,
+    check_check_clean_rejection_on_invalid_inventory,
+    check_apply_update_rejects_history_field,
+    check_import_grading_score_range_rejection,
 ]
 
 

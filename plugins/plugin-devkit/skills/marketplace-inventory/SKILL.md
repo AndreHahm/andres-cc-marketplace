@@ -156,15 +156,27 @@ generic JSON Schema validator against it (no such dependency is available in thi
 ## Failure Handling
 
 - **Missing inventory in Check/Plan mode**: report bootstrap required; never synthesize one.
-- **Malformed JSON or schema mismatch**: stop before any mutation; show the validation error.
+- **Malformed JSON or schema mismatch**: stop before any mutation; show the validation error. Every
+  validator call in `bootstrap`/`apply`/`import-grading`/`check` is routed through
+  `reconcile.validate_or_exit`, which converts a rejection into a clean `SystemExit` message — never an
+  uncaught Python traceback, in any of these four subcommands.
 - **Missing active plugin** (a `conflict` operation): requires a deprecate/supersede/retire decision,
   applied as a `status-transition` operation (see Plan mode above) — never auto-retired just because it
   disappeared from `marketplace.json`, and never applied as the bare `conflict` shape itself.
+- **Non-active record reappears** (a `conflict` operation): a discovered candidate matching an existing
+  `planned`/`retired`/`deprecated`/`superseded` record (e.g. a planned plugin that's now actually in the
+  marketplace manifest) is surfaced as a `conflict`, resolved via `status-transition` like any other —
+  never a silent `no-op` that would leave the record's lifecycle status silently out of sync with reality.
 - **`plugin_id` mismatch** (a `conflict` operation, regardless of the record's own `status` — not
   restricted to `active`): a plugin's own `plugin-inventory.json` disagrees with this record's `id` —
   needs a human decision about which is correct, never silently trusted.
-- **Invalid plugin-grader report**: `import-grading` raises `GradingReportError` — reject the import,
-  current scores/histories stay unchanged.
+- **Invalid plugin-grader report**: `import-grading` raises `GradingReportError` (including a
+  `plugin_final_score`/`plugin_security_score` that isn't a real number in `[0, 10]`) — reject the
+  import, current scores/histories stay unchanged.
+- **Out-of-allowlist `update` field**: `apply` only permits an `update` operation to set
+  `source`/`functional_role`/`domains`/`compatibility`/`created_on` — `id`, `status`, and every history/
+  scoring field are refused with `SystemExit` before any write. `status` only ever changes via
+  `status-transition`; history/scoring fields are append-only.
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
 - **Stale plugin inventory during repair**: skip that plugin's update and report the required
   `plugin-inventory` run — never patch around a stale per-plugin file from this script.
@@ -198,6 +210,18 @@ generic JSON Schema validator against it (no such dependency is available in thi
     confirm `validate_inventory` rejects it before any write
 11. **Self-check** — `scripts/smoke_test.py` passes (this skill's own persisted smoke test, including a
     live bootstrap+check round-trip against this repo's own root), re-run after any edit
+12. **Conflict, non-active record reappears** — a discovered candidate matches an existing
+    `planned`/`retired`/`deprecated`/`superseded` record (e.g. a planned plugin that's now actually in
+    the marketplace manifest); confirm `plan` emits a `conflict`, never a silent `no-op`
+13. **Check, clean rejection on an invalid inventory** — hand-corrupt an on-disk inventory (e.g. an
+    out-of-vocabulary `functional_role`); confirm `check` exits non-zero with a clean rejection message,
+    never an uncaught Python traceback
+14. **Apply rejects an out-of-allowlist `update` field** — construct an approved plan with an `update`
+    operation naming `status_history` (or any other non-allowlisted field) directly; confirm `apply`
+    rejects it before any write, never silently overwriting append-only history
+15. **Import grading rejects an out-of-range/non-numeric score** — construct a plugin-grader report with
+    `plugin_final_score` set to `999`, a negative number, or a boolean; confirm `import-grading` rejects
+    it before any write, current scores/history unchanged
 
 **Quality gates:**
 - [ ] `scripts/marketplace-inventory.py` is always invoked for discovery, plan construction, and apply
