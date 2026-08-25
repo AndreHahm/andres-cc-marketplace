@@ -209,10 +209,20 @@ def compute_rollup(data):
     component_security_scores = data.get("component_security_scores") or {}
     security_gates_applied = []
     if component_security_scores:
+        missing = set(component_scores) - set(component_security_scores)
+        extra = set(component_security_scores) - set(component_scores)
+        if missing or extra:
+            raise ValueError(
+                "component_security_scores must have exactly one entry per "
+                "component_scores key when non-empty (a partial map would silently "
+                f"compute Gate P4 over an incomplete subset): missing={sorted(missing)}, "
+                f"extra={sorted(extra)}"
+            )
         security_values = list(component_security_scores.values())
         security_raw = sum(security_values) / len(security_values)
         weakest_security_name = min(
-            component_security_scores, key=lambda k: component_security_scores[k]
+            component_security_scores,
+            key=lambda name: (component_security_scores[name], name),
         )
         security_caps = []
         if component_security_scores[weakest_security_name] < 4:

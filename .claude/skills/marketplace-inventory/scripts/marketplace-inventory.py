@@ -111,16 +111,23 @@ def build_plan(inventory, discovered, repo_root):
 
     for candidate in discovered:
         existing = existing_by_name.get(candidate["name"])
+        plugin_inventory = read_plugin_inventory(repo_root, candidate["source"])
         if existing is None:
-            plan.append(
-                {
-                    "operation": "add",
-                    "name": candidate["name"],
-                    "source": candidate["source"],
-                    "evidence": [".claude-plugin/marketplace.json"],
-                    "requires_approval": True,
-                }
-            )
+            add_op = {
+                "operation": "add",
+                "name": candidate["name"],
+                "source": candidate["source"],
+                "evidence": [".claude-plugin/marketplace.json"],
+                "requires_approval": True,
+            }
+            if plugin_inventory is not None and plugin_inventory.get("plugin_id"):
+                # This plugin already has its own plugin-inventory.json (independently
+                # bootstrapped before the marketplace-wide inventory existed) -- reuse its
+                # recorded plugin_id instead of minting a new one, or the freshly-added
+                # marketplace record would disagree with it and surface a spurious
+                # plugin_id-mismatch conflict on the very next check.
+                add_op["id"] = plugin_inventory["plugin_id"]
+            plan.append(add_op)
         elif existing.get("status") == "active":
             if existing.get("source") != candidate["source"]:
                 plan.append(
@@ -152,7 +159,6 @@ def build_plan(inventory, discovered, repo_root):
                 }
             )
 
-        plugin_inventory = read_plugin_inventory(repo_root, candidate["source"])
         if plugin_inventory is None:
             missing_plugin_inventories.append(candidate["name"])
         elif existing and plugin_inventory.get("plugin_id") != existing.get("id"):
@@ -188,8 +194,23 @@ def apply_add(inventory, operation, existing_ids):
     ("active" when a real marketplace.json source exists, "planned"
     otherwise), but an explicit `operation["status"]` always wins -- this
     mirrors plugin-inventory.py's own `apply_add`, which documents why
-    truthiness alone isn't safe to rely on for every caller."""
-    new_id = models.generate_id("plugin", existing_ids)
+    truthiness alone isn't safe to rely on for every caller.
+
+    `operation["id"]`, when present, is reused verbatim instead of minting a
+    fresh one -- `build_plan` sets this when the plugin already has its own
+    plugin-inventory.json (independently bootstrapped before this marketplace
+    inventory existed), so the new marketplace record agrees with that
+    plugin's already-recorded plugin_id instead of immediately conflicting
+    with it on the next check."""
+    requested_id = operation.get("id")
+    if requested_id is not None:
+        if requested_id in existing_ids:
+            raise ValueError(
+                f"apply_add: requested id {requested_id!r} already exists in this inventory"
+            )
+        new_id = requested_id
+    else:
+        new_id = models.generate_id("plugin", existing_ids)
     existing_ids.add(new_id)
     today = reconcile.today()
     status = operation.get("status", "active" if operation["source"] else "planned")
@@ -287,7 +308,9 @@ def cmd_bootstrap(args):
 def cmd_plan(args):
     if not os.path.exists(args.inventory_path):
         raise SystemExit(f"no inventory at {args.inventory_path} -- run bootstrap first")
-    inventory = json_store.read_json(args.inventory_path)
+    inventory = reconcile.validate_or_exit(
+        json_store.read_json, args.inventory_path, context="plan"
+    )
     discovered = discover_plugins(args.repo_root)
     plan, missing_plugin_inventories = build_plan(inventory, discovered, args.repo_root)
     print(
@@ -354,7 +377,9 @@ def cmd_import_grading(args):
 def cmd_check(args):
     if not os.path.exists(args.inventory_path):
         raise SystemExit(f"no inventory at {args.inventory_path} -- run bootstrap first")
-    inventory = json_store.read_json(args.inventory_path)
+    inventory = reconcile.validate_or_exit(
+        json_store.read_json, args.inventory_path, context="check"
+    )
     reconcile.validate_or_exit(validate_inventory, inventory, context="check")
     discovered = discover_plugins(args.repo_root)
     plan, missing_plugin_inventories = build_plan(inventory, discovered, args.repo_root)

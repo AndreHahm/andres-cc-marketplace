@@ -284,6 +284,8 @@ def check_status_transition():
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
         plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
         plan = _run("plan", repo_root, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
         expected_hash = json.loads(plan.stdout)["expected_hash"]
         plan_path = pathlib.Path(tmpdir) / "transition_plan.json"
         plan_path.write_text(
@@ -326,6 +328,8 @@ def check_enum_rejection():
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
         plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
         plan = _run("plan", repo_root, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
         expected_hash = json.loads(plan.stdout)["expected_hash"]
         plan_path = pathlib.Path(tmpdir) / "bad_plan.json"
         plan_path.write_text(
@@ -473,6 +477,8 @@ def check_apply_update_rejects_history_field():
         before = inventory_path.read_text(encoding="utf-8")
         plugin_id = json.loads(before)["plugins"][0]["id"]
         plan = _run("plan", repo_root, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
         expected_hash = json.loads(plan.stdout)["expected_hash"]
         plan_path = pathlib.Path(tmpdir) / "bad_plan.json"
         plan_path.write_text(

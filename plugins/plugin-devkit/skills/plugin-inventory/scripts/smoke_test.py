@@ -342,6 +342,8 @@ def check_enum_rejection():
         inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
         component_id = inventory["components"][0]["id"]
         current_hash_result = _run("plan", plugin_dir, inventory_path)
+        if current_hash_result.returncode != 0:
+            return False, f"plan failed: {current_hash_result.stderr.strip()}"
         expected_hash = json.loads(current_hash_result.stdout)["expected_hash"]
         plan_path = pathlib.Path(tmpdir) / "bad_plan.json"
         plan_path.write_text(
@@ -519,6 +521,8 @@ def check_apply_update_rejects_history_field():
         before = inventory_path.read_text(encoding="utf-8")
         component_id = json.loads(before)["components"][0]["id"]
         plan = _run("plan", plugin_dir, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
         expected_hash = json.loads(plan.stdout)["expected_hash"]
         plan_path = pathlib.Path(tmpdir) / "bad_plan.json"
         plan_path.write_text(
