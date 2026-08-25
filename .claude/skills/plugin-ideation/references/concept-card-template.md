@@ -10,6 +10,7 @@ Two templates — pick the one matching Step 1's scope answer. Both are written 
 # Plugin Concept: <name-candidate-1>
 
 **Generated:** <UTC timestamp>
+**Seeded from:** <path to Conception Brief, or "Not applicable — no Conception Brief">
 **Scope:** Whole new plugin
 
 ## Problem
@@ -41,6 +42,7 @@ Run `plugin-planning` against this Concept Card to produce a component inventory
 # Component Concept: <name-candidate-1>
 
 **Generated:** <UTC timestamp>
+**Seeded from:** <path to Conception Brief, or "Not applicable — no Conception Brief">
 **Scope:** New component in `<target-plugin-name>`
 **Component type:** Skill | Agent | Command | Hook
 

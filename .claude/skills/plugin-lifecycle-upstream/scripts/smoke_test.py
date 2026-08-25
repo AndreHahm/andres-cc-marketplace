@@ -81,7 +81,47 @@ def check_phase_sequence():
     return True, "phase/step headers sequential in every workflow file checked"
 
 
-CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants, check_phase_sequence]
+def check_skillmd_phase_range():
+    # A phase-insertion/removal edit can leave SKILL.md's own prose ("Phase N", table
+    # cells, quality-gate bullets) pointing at a number outside the workflow's actual
+    # current range -- check_phase_sequence only validates workflows/*.md's own headers,
+    # not SKILL.md's separate prose mentions of the same phases, so this check exists to
+    # close that gap.
+    workflows_dir = SKILL_DIR / "workflows"
+    if not workflows_dir.exists():
+        return True, "no workflows/ directory (skip)"
+    phase_numbers = set()
+    for wf in sorted(workflows_dir.glob("*.md")):
+        text = wf.read_text(encoding="utf-8")
+        phase_numbers |= {int(n) for n in re.findall(r"^##+ Phase (\d+):", text, re.MULTILINE)}
+    if not phase_numbers:
+        return True, "no Phase N headers found in workflows/ (skip)"
+    max_phase = max(phase_numbers)
+    text = SKILL_MD.read_text(encoding="utf-8")
+    header_end = text.find("\n---\n", 4) + 5
+    body = text[header_end:]
+    # A "Phase N" mention describing a *different* skill's own numbering (e.g.
+    # "Downstream's own Phase 5 ... a separate, later Phase 11 (Grading)") is not a
+    # stale self-reference -- skip any match whose containing sentence (bounded by the
+    # nearest '.' before it) mentions "downstream", the one other lifecycle pipeline
+    # this file cross-references by phase number.
+    out_of_range = set()
+    for m in re.finditer(r"\bPhase (\d+)\b", body):
+        n = int(m.group(1))
+        if 1 <= n <= max_phase:
+            continue
+        sentence_start = body.rfind(".", 0, m.start()) + 1
+        sentence = body[sentence_start:m.end()]
+        if "downstream" in sentence.lower():
+            continue
+        out_of_range.add(n)
+    out_of_range = sorted(out_of_range)
+    if out_of_range:
+        return False, f"SKILL.md references Phase number(s) outside the workflow's actual 1-{max_phase} range: {out_of_range}"
+    return True, f"every 'Phase N' mention in SKILL.md falls within the workflow's actual 1-{max_phase} range"
+
+
+CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants, check_phase_sequence, check_skillmd_phase_range]
 
 
 def main():

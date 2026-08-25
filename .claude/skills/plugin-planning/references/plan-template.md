@@ -8,7 +8,7 @@ Written to `.claude/output/plugin-planning/<slug>-<timestamp>.md`.
 # Plugin Plan: <name>
 
 **Generated:** <UTC timestamp>
-**Concept source:** <path to Concept Card, or "direct description (ideation skipped)">
+**Concept source:** <path to Concept Card, path to Conception Brief ("direct from plugin-conception, ideation skipped"), or "direct description (ideation skipped)">
 
 ## Component Inventory
 

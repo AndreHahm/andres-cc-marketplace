@@ -7,9 +7,10 @@ description: >-
   plugin idea", "ideate a plugin", "what should I build", "propose a name for a plugin",
   "check if a plugin like X already exists", or describes a rough problem they want a
   plugin or new skill/agent/command to solve, without yet having a concrete design.
-  Produces a Concept Card, not a design or implementation — see plugin-planning for the
-  next step.
-argument-hint: "[rough idea or problem statement]"
+  Also accepts a Create-classification Conception Brief path from plugin-conception as a
+  seeded starting point for the interview. Produces a Concept Card, not a design or
+  implementation — see plugin-planning for the next step.
+argument-hint: "[rough idea, problem statement, or path to a Create-classification Conception Brief]"
 allowed-tools: Read Glob Grep Write Bash(date:*) Skill
 ---
 
@@ -38,6 +39,7 @@ Brainstorms and refines a rough idea into a validated concept through an actual 
 ## When NOT to Use
 
 - The user already has a concrete design (components, triggers, scope decided) — go straight to `plugin-planning` or the relevant Design skill (`skill-development`, `agent-development`, `command-development`, `hook-development`, `rule-development`)
+- It isn't yet clear whether this is genuinely new, or an Enhance/Repair/Consolidate/Reposition of something that already exists — use `plugin-conception` first to classify it; a Create outcome hands a light Conception Brief straight back here, seeding (not skipping) Step 2's interview
 - Reviewing or scoring an *existing* plugin's quality — use `plugin-grader` instead
 - Comparing two already-identified plugins/components side-by-side — use `plugin-comparison` instead
 - Scaffolding plugin files — use `plugin-development`; ideation produces a concept, not files
@@ -51,7 +53,9 @@ This determines which Concept Card template applies (Step 6) and narrows the ove
 
 ## Step 2: Interview the User
 
-This is brainstorming, not intake — even a detailed `$ARGUMENTS` gets at least one real round of dialogue before moving on. Never skip straight to Step 3 on the reasoning that "the idea already answers this."
+If `$ARGUMENTS` resolves to an existing file under `.claude/output/plugin-conception/`, `Read` it in full and check its Metadata table's `Concept type` field reads **Create** before treating it as a seed — `plugin-conception` itself routes any other classification to `plugin-planning`/Fix, never here, so a brief with a different `Concept type` reaching this skill means it was passed in by mistake; tell the user and ask how to proceed rather than silently interviewing against it. Once confirmed Create, treat its Executive Concept and Evidence and Assumptions sections exactly like a detailed `$ARGUMENTS` string below: a starting point for the interview, not a substitute for it.
+
+This is brainstorming, not intake — even a detailed `$ARGUMENTS` (or a Conception Brief's problem statement) gets at least one real round of dialogue before moving on. Never skip straight to Step 3 on the reasoning that "the idea already answers this."
 
 Use `AskUserQuestion` for each round — free-form ("Other") answers are expected and normal here, this is not a multiple-choice form:
 
@@ -120,9 +124,10 @@ If the Concept Card's overlap classification is **None** or **Partial**, ask wit
 5. **Partial overlap detected** — confirm the finding is presented to the user via `AskUserQuestion` for reaction before Step 4, not just recorded silently in the Concept Card
 6. **Name collision** — construct a case where a proposed candidate collides with an existing plugin name; confirm it's excluded from the final candidate list
 7. **Name candidates presented** — confirm the user picks via `AskUserQuestion` rather than the skill unilaterally declaring a "preferred" candidate
+8. **Conception Brief path given** — `$ARGUMENTS` resolves to a file under `.claude/output/plugin-conception/`; confirm Step 2 still runs a real `AskUserQuestion` interview round rather than treating the Brief's Executive Concept as already-confirmed
 
 **Quality gates:**
-- [ ] Step 2 always runs at least one interview round via `AskUserQuestion`, even when `$ARGUMENTS` is detailed — never shortcuts to "summarize and confirm"
+- [ ] Step 2 always runs at least one interview round via `AskUserQuestion`, even when `$ARGUMENTS` is detailed or seeded from a Conception Brief — never shortcuts to "summarize and confirm"
 - [ ] Overlap search always runs before name candidates are proposed — never skipped
 - [ ] A Partial overlap finding is always surfaced to the user for reaction before Step 4 — never only recorded in the final card
 - [ ] Every proposed name passes the R4 kebab-case pattern before being shown to the user
@@ -140,3 +145,4 @@ If the Concept Card's overlap classification is **None** or **Partial**, ask wit
 | `plugin-planning` skill | Next step — turns an accepted Concept Card into a component inventory and content-depth plan |
 | `plugin-comparison` skill | Reused installed-plugin resolution pattern (Step 3) |
 | `plugin-rulebook` R4 | Naming pattern validated in Step 4 |
+| `plugin-conception` skill | Optional prior step — a Create-classification Conception Brief can seed Step 2's interview, but never replaces it |
