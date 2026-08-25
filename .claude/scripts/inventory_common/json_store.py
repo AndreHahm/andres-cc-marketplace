@@ -68,13 +68,36 @@ class InventoryLock:
     actual requirement is "one writer at a time on one machine, reject a
     concurrent/stale apply rather than merge it," which this satisfies
     without an external dependency.
+
+    A lock older than `stale_after_seconds` is treated as abandoned (its
+    writer was killed, crashed, or lost the host after creating the
+    lockfile but before `__exit__` could remove it) and reclaimed before
+    the next retry -- an age heuristic, not a real PID-liveness check
+    (which has no portable, dependency-free implementation across POSIX
+    and Windows), but enough to recover from a routine interrupted
+    invocation without a human having to manually find and delete the
+    stray file. The default (10 minutes) is deliberately far longer than
+    any of this module's own operations should ever take, to avoid
+    reclaiming a lock a slow-but-still-alive writer genuinely still holds.
     """
 
-    def __init__(self, path, timeout_seconds=30, poll_interval=0.2):
+    def __init__(self, path, timeout_seconds=30, poll_interval=0.2, stale_after_seconds=600):
         self.lock_path = path + ".lock"
         self.timeout_seconds = timeout_seconds
         self.poll_interval = poll_interval
+        self.stale_after_seconds = stale_after_seconds
         self._acquired = False
+
+    def _reclaim_if_stale(self):
+        try:
+            age = time.time() - os.path.getmtime(self.lock_path)
+        except FileNotFoundError:
+            return  # already gone -- released by its owner, or reclaimed by another waiter
+        if age > self.stale_after_seconds:
+            try:
+                os.remove(self.lock_path)
+            except FileNotFoundError:
+                pass  # a concurrent waiter already reclaimed it
 
     def __enter__(self):
         deadline = time.monotonic() + self.timeout_seconds
@@ -86,6 +109,7 @@ class InventoryLock:
                 self._acquired = True
                 return self
             except FileExistsError:
+                self._reclaim_if_stale()
                 if time.monotonic() >= deadline:
                     raise TimeoutError(
                         f"could not acquire inventory lock at {self.lock_path} "

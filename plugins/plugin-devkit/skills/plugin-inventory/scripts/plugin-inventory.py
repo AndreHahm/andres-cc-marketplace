@@ -331,11 +331,11 @@ def cmd_bootstrap(args):
 
 
 def cmd_plan(args):
-    inventory = (
-        json_store.read_json(args.inventory_path) if os.path.exists(args.inventory_path) else None
-    )
-    if inventory is None:
+    if not os.path.exists(args.inventory_path):
         raise SystemExit(f"no inventory at {args.inventory_path} -- run bootstrap first")
+    inventory = reconcile.validate_or_exit(
+        json_store.read_json, args.inventory_path, context="plan"
+    )
     discovered = discover_components(args.plugin_dir)
     plan = build_plan(inventory, discovered)
     print(
@@ -404,12 +404,27 @@ def cmd_import_grading(args):
 def cmd_check(args):
     if not os.path.exists(args.inventory_path):
         raise SystemExit(f"no inventory at {args.inventory_path} -- run bootstrap first")
-    inventory = json_store.read_json(args.inventory_path)
+    inventory = reconcile.validate_or_exit(
+        json_store.read_json, args.inventory_path, context="check"
+    )
     reconcile.validate_or_exit(validate_inventory, inventory, context="check")
     discovered = discover_components(args.plugin_dir)
     plan = build_plan(inventory, discovered)
     drift = [op for op in plan if op["operation"] != "no-op"]
     print(json.dumps({"valid": True, "drift_count": len(drift), "drift": drift}, indent=2))
+
+
+def _load_replacement_history(path):
+    """Read and structurally validate a repair-history replacement file:
+    must be a JSON array of periods, never a bare object or scalar."""
+    with open(path, encoding="utf-8") as f:
+        replacement = json.load(f)
+    if not isinstance(replacement, list):
+        raise ValueError(
+            f"replacement history at {path!r} must be a JSON array of periods, "
+            f"got {type(replacement).__name__}"
+        )
+    return replacement
 
 
 def cmd_repair_history(args):
@@ -429,14 +444,17 @@ def cmd_repair_history(args):
         args.inventory_path, args.plugin_dir, INVENTORY_FILENAME
     )
     with json_store.InventoryLock(args.inventory_path):
-        inventory = json_store.read_json(args.inventory_path)
+        inventory = reconcile.validate_or_exit(
+            json_store.read_json, args.inventory_path, context="repair-history"
+        )
         component = next((c for c in inventory["components"] if c["id"] == args.component_id), None)
         if component is None:
             raise SystemExit(f"no component with id {args.component_id!r} in this inventory")
         if args.history_field not in ("status_history", "naming_history"):
             raise SystemExit("history_field must be 'status_history' or 'naming_history'")
-        with open(args.replacement_history_path, encoding="utf-8") as f:
-            replacement = json.load(f)
+        replacement = reconcile.validate_or_exit(
+            _load_replacement_history, args.replacement_history_path, context="repair-history"
+        )
         reconcile.validate_or_exit(
             models.validate_history_periods,
             replacement,

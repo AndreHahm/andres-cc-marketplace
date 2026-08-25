@@ -6,6 +6,7 @@ non-overlap checking). Contains no file I/O and no grading logic -- see
 json_store.py and grading.py for those.
 """
 
+import datetime
 import secrets
 
 STATUS_VALUES = {"planned", "active", "deprecated", "superseded", "retired"}
@@ -129,7 +130,18 @@ def _is_real_date(value):
 
 
 def _looks_like_date(value):
+    """A real calendar date in strict YYYY-MM-DD form -- not just a
+    10-character digit-dash shape. '2026-99-99' and '2026-02-31' both match
+    the shape but aren't real dates; constructing a `datetime.date` from the
+    parsed components is what actually rejects them."""
     if not isinstance(value, str) or len(value) != 10:
         return False
     parts = value.split("-")
-    return len(parts) == 3 and all(part.isdigit() for part in parts)
+    if len(parts) != 3 or not all(part.isdigit() for part in parts):
+        return False
+    year, month, day = (int(part) for part in parts)
+    try:
+        datetime.date(year, month, day)
+    except ValueError:
+        return False
+    return True

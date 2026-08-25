@@ -88,7 +88,14 @@ never caps `plugin_final_score`.
 - **Zero scorable components:** if no component in the plugin has a security-scorable dimension,
   `plugin_security_score` is `null` (see `output-schema.md`'s rollup output and `notes.security_score_unavailable_reason`)
   rather than a fabricated score.
+- **All-or-nothing, never partial:** when `component_security_scores` is non-empty, it must have exactly
+  one entry per `component_scores` key — `compute_score.py --rollup` raises rather than silently
+  computing the mean/Gate P4 over an incomplete subset, since a missing entry could hide an omitted
+  component's low security score from the rollup entirely.
 - **Valid range:** `[0, 10]`, rounded to 1 decimal, same as every other score in this system.
+- **Tie-break:** when multiple components tie for the lowest security score, `weakest_security_name`
+  breaks the tie by component name (alphabetical), not by JSON key/dict-iteration order — the gate's
+  `reason` text is deterministic regardless of input key order.
 
 ## Why These Defaults
 

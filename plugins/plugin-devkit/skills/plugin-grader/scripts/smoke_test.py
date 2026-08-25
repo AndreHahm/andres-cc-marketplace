@@ -58,6 +58,17 @@ def check_bash_grants():
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
+            # Compound shell syntax (&&, ||, ;, a pipe, backticks, $(...), or a
+            # trailing line-continuation) hides a second command this check's own
+            # first-two-tokens extraction would never see or validate against the
+            # granted-prefix allowlist -- reject it outright rather than silently
+            # checking only the first command and letting an ungranted one slip
+            # through unexamined.
+            if re.search(r"&&|\|\||[;|`]|\$\(|\\\s*$", line):
+                return False, (
+                    "fenced bash blocks must use one simple command per line "
+                    f"(compound shell syntax found: {line!r})"
+                )
             tokens = line.split()
             invoked.add(" ".join(tokens[:2]) if len(tokens) > 1 else tokens[0])
     uncovered = [cmd for cmd in invoked if not any(cmd.startswith(p) for p in granted_prefixes)]
