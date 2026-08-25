@@ -55,6 +55,19 @@ Workflow only checks the with_skill configuration); these three scenarios requir
 own documented marker/batch mechanics to answer correctly at all, so a baseline delta would likely be
 large, but that hasn't been measured.
 
+**Iteration 4 (2026-08-25, Quick Workflow, with_skill only):** eval 21, written for the `gh api -f`/`-F`
+mechanics warning added to `references/github-api-mechanics.md` (a standalone mechanical check, not one
+of `references/testing-scenarios.md`'s round-budget/dedup scenarios) — 3/3 assertions passed
+(`evals/handling-review-findings/workspace/iteration-4/`). No baseline comparison was run, same reason
+as Iteration 3.
+
+**Iteration 5 (2026-08-25, Quick Workflow, with_skill only):** eval 22, verifying Workflow step 8's
+extraction into `references/next-round-trigger.md` (a verbatim content move, done to bring `SKILL.md`
+back under R13's 500-line hard stop) didn't lose behavior — specifically that the extracted file is
+actually read and its triggered-cycle-count procedure (8a) still computes correctly — 3/3 assertions
+passed (`evals/handling-review-findings/workspace/iteration-5/`). No baseline comparison was run, same
+reason as Iteration 3.
+
 ## Security review passes
 
 The `guard-raw-pr-review.sh` hook extension this skill required historically (two new `gh api` guard

@@ -117,7 +117,7 @@ Emit the inventory before proceeding:
 | # | Component | Category | Evidence |
 ```
 
-Confirm before proceeding — ask with `AskUserQuestion`: "Found N components. Proceed with full analysis?" — options "Proceed" / "Cancel".
+Confirm before proceeding — ask with `AskUserQuestion`: "Found N components. Proceed with full analysis?" — options "Proceed" / "Cancel". On "Cancel", stop here: do not run Phase 3-6, and do not persist a report. State the inventory that was found so the user can re-scope if they intended a narrower or wider range, then end the run.
 
 ## Phase 3: SWOT Analysis
 

@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Never runs the git ls-remote/gh api -X DELETE fallback when isCrossRepository is true", "passed": true, "evidence": "\"No, neither git ls-remote --heads origin <headRefName> nor gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch> is ever run in this scenario.\""},
+    {"text": "Reports that the branch lives in the contributor's fork and isn't this skill's to delete", "passed": true, "evidence": "\"skipped the remote-branch-deletion fallback entirely and reported that the branch lives in the contributor's fork and isn't this skill's to delete\""},
+    {"text": "Does not attempt to compute or guess the fork's own owner/repo to retarget the deletion -- simply skips it", "passed": true, "evidence": "No mention of computing/guessing a fork owner/repo anywhere in the output; the answer simply skips the fallback and reports."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

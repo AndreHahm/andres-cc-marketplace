@@ -118,6 +118,22 @@ def check_step7_remote_delete_fallback():
     )
 
 
+def check_step7_skips_delete_fallback_for_fork_prs():
+    step1 = _get_step_text(1)
+    step7 = _get_step_text(7)
+    if step1 is None or step7 is None:
+        return False, "step 1 or step 7 ('## Instructions') not found"
+    if "isCrossRepository" not in step1:
+        return False, "step 1 doesn't resolve isCrossRepository via gh pr view"
+    if "isCrossRepository" not in step7:
+        return (
+            False,
+            "step 7's remote-branch-deletion fallback doesn't gate on isCrossRepository "
+            "-- a fork PR's branch could be misread as living in this repo",
+        )
+    return True, "step 7's remote-branch-deletion fallback is gated on isCrossRepository"
+
+
 def check_headrefname_validated_before_first_use():
     text = SKILL_MD.read_text(encoding="utf-8")
     start = text.find("\n## Instructions\n")
@@ -160,6 +176,7 @@ CHECKS = [
     check_bash_grants,
     check_step_sequence,
     check_step7_remote_delete_fallback,
+    check_step7_skips_delete_fallback_for_fork_prs,
     check_headrefname_validated_before_first_use,
     check_step5_worktree_note,
 ]
