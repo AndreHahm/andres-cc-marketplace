@@ -64,7 +64,7 @@ Downstream's Phase 8 hand-off in Step 4 above already re-runs each originating c
 
 ## Step 6: Document
 
-See `SKILL.md`'s "The Document Step" section — identical procedure for all 4 workflows. Run it now, after Step 4's fix commit(s) and Step 5's results are surfaced. This is the ownership Step 4 declared to downstream — downstream's own Phase 9 was skipped precisely so this step is the one place Documentation actually runs.
+**Entry:** if Step 4's Fix bundle was non-empty, run this step normally — see `SKILL.md`'s "The Document Step" section (identical procedure for all 4 workflows), after Step 4's fix commit(s) and Step 5's results are surfaced. This is the ownership Step 4 declared to downstream — downstream's own Phase 9 was skipped precisely so this step is the one place Documentation actually runs. **If Step 4's Fix bundle was empty** (every candidate was excluded or redirected), skip this step — there is nothing this run changed for `plugin-documentation` to reconcile against, and the branch-scope-check waiver in `SKILL.md`'s Pre-Flight Checks section only holds when Step 4 actually hands off to downstream.
 
 ## Step 7: Handover (Optional)
 

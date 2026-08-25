@@ -36,7 +36,7 @@ Turns an accepted concept into a concrete build list: which components, how many
 
 ## When NOT to Use
 
-- No concept yet — run `plugin-ideation` first
+- No concept yet — run `plugin-ideation` (rough idea) or `plugin-conception` (unsure whether this is genuinely new work) first
 - A single, already-well-understood component — skip straight to the matching Design skill; planning overhead isn't worth it for one obvious skill
 - Reviewing or scoring an *existing* plugin — use `plugin-grader` instead
 - Actually designing a component's procedure/frontmatter/body — that's `skill-development`/`agent-development`/`command-development`/`hook-development`/`rule-development`'s job, not this skill's
@@ -69,6 +69,7 @@ For each distinct capability the concept implies, decide the component type usin
 | Isolated, autonomous decision-making with restricted tools, invoked by another component | Agent |
 | Simple, single-file user-invoked action, no supporting content needed | Command (legacy format — prefer a Skill unless the plugin already uses `commands/`) |
 | Event-driven automation triggered by tool use or session lifecycle | Hook |
+| A behavioral guideline that should apply automatically across sessions, not invoked on demand | Rule |
 
 List each planned component: name candidate, type, one-line purpose, and rough trigger phrases.
 
@@ -98,9 +99,13 @@ Cluster the planned components into small functional groups (2-5 components each
 
 ## Suggested Next Step
 
-Ask with `AskUserQuestion`: "Proceed to Design for the first functional group, or hand off to `plugin-lifecycle-upstream` to run Design + Build for the whole plan?" — options "Design the first group now" / "Hand off to plugin-lifecycle-upstream" / "Stop here". If the user picks the orchestrator, invoke `plugin-lifecycle-upstream` (via `Skill`) with the written plan path (cycle prevented by `plugin-lifecycle-upstream`'s own Auto-Detection Logic, which skips re-running Phases 1-3 when a Plan path is already given — see that skill's `SKILL.md` for the guard). Never invoke it without asking first.
+**Standalone invocation:** ask with `AskUserQuestion`: "Proceed to Design for the first functional group, or hand off to `plugin-lifecycle-upstream` to run Design + Build for the whole plan?" — options "Design the first group now" / "Hand off to plugin-lifecycle-upstream" / "Stop here". If the user picks the orchestrator, invoke `plugin-lifecycle-upstream` (via `Skill`) with the written plan path. Never invoke it without asking first.
+
+**Nested invocation:** when this skill runs as `plugin-lifecycle-upstream`'s own Phase 3 (Plan) dispatch, skip this offer entirely — the run is already inside that orchestrator, and offering to hand back to it would either re-enter a pipeline already in progress or duplicate a decision the orchestrator's own Gate 2→Phase 3 approval already made. Report the written plan path and stop; the calling orchestrator's own Phase 4 (Design) picks up from there.
 
 ## Testing & Validation
+
+**Eval evidence:** `evals/plugin-planning/evals.json` — 5 scenarios (Quick Workflow, `workspace/iteration-1`), 2/5 eval-covered (scenarios 2 and 3); the remaining scenarios below are design-review-verified only.
 
 1. **Concept Card input** — confirm Step 1 reads the full card, not just the name/overlap section
 2. **Direct-description input (ideation skipped)** — confirm the written plan notes ideation was skipped
@@ -121,6 +126,7 @@ Ask with `AskUserQuestion`: "Proceed to Design for the first functional group, o
 |---|---|
 | `references/plan-template.md` | The component-inventory + depth-plan document template used in Step 5 |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run after any SKILL.md edit |
+| `evals/plugin-planning/` | Persisted `skill-tester` Quick Workflow eval suite (5 scenarios, 2/5 covered) |
 | `plugin-ideation` skill | Prior step — produces the Concept Card this skill consumes |
 | `plugin-conception` skill | Alternate prior step — produces the Conception Brief this skill consumes directly for Enhance/Consolidate/Reposition outcomes |
 | `plugin-lifecycle-upstream` skill | Next step — orchestrates Design + Build across the planned components |

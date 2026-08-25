@@ -4,9 +4,10 @@ referenced-file existence, Bash-scope grant consistency, and phase/step/service-
 sequencing across workflows/*.md — this last check exists because a phase-insertion
 edit (e.g. adding a new step between two existing ones) is exactly the kind of
 change that silently leaves a stale "Step N" cross-reference elsewhere."""
+
+import pathlib
 import re
 import sys
-import pathlib
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
@@ -32,7 +33,10 @@ def check_referenced_files():
     # `scripts/test-agent-trigger.sh` match here is a cross-plugin reference, not a path
     # relative to this skill — already covered by check_bash_grants' full-path check instead.
     text = SKILL_MD.read_text(encoding="utf-8")
-    pattern = r"`(references/[\w.-]+\.md|workflows/[\w.-]+\.md|scripts/(?!test-agent-trigger\.sh|test-hook\.sh)[\w./-]+)`"
+    pattern = (
+        r"`(references/[\w.-]+\.md|workflows/[\w.-]+\.md"
+        r"|scripts/(?!test-agent-trigger\.sh|test-hook\.sh)[\w./-]+)`"
+    )
     missing = []
     for match in re.finditer(pattern, text):
         path = SKILL_DIR / match.group(1)
@@ -57,8 +61,20 @@ def check_bash_grants():
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     if not fm_line_match:
         return True, "no allowed-tools line found (skip)"
-    granted_cmds = re.findall(r"Bash\(([\w.*/-]+?)(?::|\))", fm_line_match.group(1))
-    granted_cmds = [c.lstrip("*/") for c in granted_cmds]
+    value = fm_line_match.group(1).strip()
+    if value in (">-", ">", "|", "|-", "|+", ">+"):
+        # YAML block scalar: the real value is on subsequent, more-indented lines.
+        block_lines = []
+        for line in frontmatter[fm_line_match.end() :].splitlines():
+            if line.strip() == "":
+                continue
+            if line[:1] in (" ", "\t"):
+                block_lines.append(line)
+            else:
+                break
+        value = " ".join(block_lines)
+    granted_cmds = re.findall(r"Bash\(([\w.*/ -]+?)(?::|\))", value)
+    granted_cmds = [c.removeprefix("*/") for c in granted_cmds]
 
     body = fm_text[header_end:]
     for wf in sorted((SKILL_DIR / "workflows").glob("*.md")):
@@ -66,7 +82,9 @@ def check_bash_grants():
 
     unused = [cmd for cmd in granted_cmds if not re.search(rf"\b{re.escape(cmd)}\b", body)]
     if unused:
-        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(sorted(set(unused)))
+        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(
+            sorted(set(unused))
+        )
     return True, "every granted Bash command is invoked somewhere in the body"
 
 
@@ -79,7 +97,9 @@ def check_phase_sequence():
     problems = []
     for wf in sorted(workflows_dir.glob("*.md")):
         text = wf.read_text(encoding="utf-8")
-        numbers = [int(n) for n in re.findall(r"^##+ (?:Phase|Step|Service) (\d+):", text, re.MULTILINE)]
+        numbers = [
+            int(n) for n in re.findall(r"^##+ (?:Phase|Step|Service) (\d+):", text, re.MULTILINE)
+        ]
         if not numbers:
             continue
         expected = list(range(numbers[0], numbers[0] + len(numbers)))

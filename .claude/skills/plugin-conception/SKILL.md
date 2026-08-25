@@ -211,10 +211,9 @@ proceeds — this skill never auto-applies findings or silently turns evidence i
 
 1. Get a timestamp: `date -u +%Y-%m-%dT%H-%M-%SZ`
 2. Write to `.claude/output/plugin-conception/<concept-slug>-<timestamp>.md` per
-   `references/conception-brief-template.md` — for Create, the light variant (Metadata, Executive
-   Concept, Evidence and Assumptions, Classification, Marketplace Integration, Decision and Handoff, plus
-   Risks and Mitigations only if a relevant risk survived Step 3) as its own blockquote instructs; for
-   everything else, all 12 sections in full
+   `references/conception-brief-template.md` — for Create, the light variant its own blockquote
+   instructs (the section list lives there, not restated here, to avoid drift); for everything else, all
+   12 sections in full
 3. Present the artifact link first, then the summary:
 
 ```
@@ -236,11 +235,12 @@ silently.
 Phase 1 (Conceive), or `plugin-lifecycle-maintenance`'s `improve-a-plugin`/`enhance-a-plugin` Conceive step —
 the brief-content approval above (approve/revise/merge/defer/reject) still runs, but the hand-off
 **invocation** does not: this step ends at "write the brief and report its classification." The calling
-orchestrator owns deciding where each classified candidate goes next and asking about it, since it may be
-routing several candidates from one run and needs a single consolidated decision rather than one
-`AskUserQuestion` per candidate from this skill plus another from the orchestrator. Never ask twice for the
-same decision — see `plugin-lifecycle-upstream`'s Gate 1 and `plugin-lifecycle-maintenance`'s
-`improve-a-plugin`/`enhance-a-plugin` Step 4 for how each caller owns this instead.
+orchestrator owns deciding where each classified candidate goes next, since it may be routing several
+candidates from one run — that decision may be a single consolidated `AskUserQuestion` (as
+`plugin-lifecycle-upstream`'s Gate 1 does) or a deterministic routing rule stated plainly to the user with
+no further ask (as `plugin-lifecycle-maintenance`'s `improve-a-plugin`/`enhance-a-plugin` Step 4 does,
+routing by classification alone). Either way, never ask twice for the same decision — see those two
+callers for how each owns this instead.
 
 ## Resume Behavior
 
@@ -261,9 +261,11 @@ rationale — never silently drop a concept without stating why.
 
 ## Testing & Validation
 
-1. **From-scratch Create** — a rough idea with no session evidence; confirm the light brief (Metadata,
-   Executive Concept, Evidence and Assumptions, Classification, Marketplace Integration, Decision and
-   Handoff only) is produced and handed to `plugin-ideation`, never a padded-out full brief
+**Eval evidence:** `evals/plugin-conception/evals.json` — 8 scenarios (Quick Workflow, `workspace/iteration-1`), 7/8 eval-covered (scenario 1's eval is invalidated by a scripted-premise flaw unrelated to this skill's behavior — see its own `grading.json`); the remaining scenarios below are design-review-verified.
+
+1. **From-scratch Create** — a rough idea with no session evidence; confirm the light brief (per
+   `references/conception-brief-template.md`'s own light-variant section list) is produced and handed to
+   `plugin-ideation`, never a padded-out full brief
 2. **Session-evidence Enhance** — evidence pointing at friction with an existing component; confirm the
    full brief is produced (all 12 sections) with a populated baseline contract
 3. **Full overlap** — an idea that duplicates an existing component; confirm the classification shifts to
@@ -296,7 +298,8 @@ rationale — never silently drop a concept without stating why.
 - [ ] **Standalone invocation:** the hand-off target is always invoked via `AskUserQuestion` confirmation
       first — never invoked silently. **Nested invocation** (inside `plugin-lifecycle-upstream`'s Phase 1
       or `plugin-lifecycle-maintenance`'s Conceive step): no hand-off is invoked from here at all — only
-      the brief-content approval fires; the calling orchestrator owns the hand-off ask
+      the brief-content approval fires; the calling orchestrator owns the hand-off routing decision (a
+      consolidated ask, or a plainly-stated deterministic rule)
 - [ ] The Conception Brief path is always under `.claude/output/plugin-conception/`
 - [ ] A clean stop (Retain/Reject/Defer/full overlap/stale evidence) always states its rationale — never a
       silent drop
@@ -306,6 +309,7 @@ rationale — never silently drop a concept without stating why.
 | Resource | Type | Purpose |
 |---|---|---|
 | `scripts/smoke_test.py` | In this skill | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run after any SKILL.md edit |
+| `evals/plugin-conception/` | Repo root | Persisted `skill-tester` Quick Workflow eval suite (8 scenarios, 7/8 covered) |
 | `references/conception-brief-template.md` | In this skill | Light and full Conception Brief templates used in Step 7 |
 | `references/evidence-routing.md` | In this skill | Entry Route B's evidence sources and the 6-step evidence-handling procedure |
 | `plugin-ideation` skill | Sibling skill | Create-classification hand-off target — owns the interview, deep overlap search, and naming |

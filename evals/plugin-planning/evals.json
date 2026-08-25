@@ -1,11 +1,11 @@
 {
   "skill_name": "plugin-planning",
-  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-planning",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-planning/SKILL.md",
   "description": "Turns an accepted Concept Card or Conception Brief into a component inventory and content-depth plan",
   "testing_validation_coverage": {
-    "declared_scenarios_total": 2,
+    "declared_scenarios_total": 5,
     "declared_scenarios_covered": 2,
-    "uncovered": []
+    "uncovered": ["1: Concept Card input", "4: Depth allocation", "5: Code-smell trigger"]
   },
   "evals": [
     {

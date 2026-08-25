@@ -1,11 +1,11 @@
 {
   "skill_name": "plugin-ideation",
-  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-ideation",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-ideation/SKILL.md",
   "description": "Brainstorms a new plugin/component from a rough idea, optionally seeded by a Create-classification Conception Brief",
   "testing_validation_coverage": {
-    "declared_scenarios_total": 2,
-    "declared_scenarios_covered": 2,
-    "uncovered": []
+    "declared_scenarios_total": 8,
+    "declared_scenarios_covered": 1,
+    "uncovered": ["1: detailed $ARGUMENTS given", "2: whole-plugin idea", "3: component idea inside existing plugin", "4: full overlap detected", "5: partial overlap detected", "6: name collision", "7: name candidates presented"]
   },
   "evals": [
     {

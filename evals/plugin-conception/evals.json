@@ -54,7 +54,7 @@
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 8,
-    "declared_scenarios_covered": 8,
-    "uncovered": []
+    "declared_scenarios_covered": 7,
+    "uncovered": ["Scenario 1 (from-scratch Create stays light) -- eval-1's scripted premise was factually wrong for this repo (dependency-updater already partially covers the domain); eval-1's assertions are invalidated, see its own grading.json"]
   }
 }

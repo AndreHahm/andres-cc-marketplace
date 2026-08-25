@@ -65,6 +65,8 @@ Before starting, check what already exists to avoid redundant work. Check for th
 - Just scaffolding files with a manifest already decided — use `plugin-development` directly, skipping Conceive/Ideate/Plan/Design
 - A bare, first-touch "help me build a plugin" with no other context — use `using-plugin-devkit` to confirm this is the right pipeline (vs. a single Design skill) first
 - Just want the Create/Enhance/Repair/Consolidate/Reposition/Retain/Reject-Defer classification itself, with no commitment yet to the rest of the pipeline — use `plugin-conception` directly instead; this pipeline's Phase 1 already dispatches there, but running the whole pipeline for a classification-only question is unneeded overhead
+- Just want to brainstorm the idea, check for overlap, and get name candidates — no commitment yet to Plan/Design/Build — use `plugin-ideation` directly instead; this pipeline's Phase 2 already dispatches there, but running the whole pipeline for a brainstorming-only question is unneeded overhead
+- Just want the component inventory and depth plan itself, with no commitment yet to Design/Build — use `plugin-planning` directly instead; this pipeline's Phase 3 already dispatches there, but running the whole pipeline for a planning-only question is unneeded overhead
 
 ## The Seven Phases
 
@@ -120,6 +122,10 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 
 ## Testing & Validation
 
+**Eval evidence:** `evals/plugin-lifecycle-upstream/evals.json` — 20 scenarios (Quick Workflow,
+`workspace/iteration-1`), 2/20 eval-covered (scenarios 1a and 1b, Gate 1's Create/non-Create branches);
+the remaining scenarios below are design-review-verified only.
+
 1. **Cold start** — a rough idea with no existing artifacts; confirm all 7 phases run in order with a gate between each
 1a. **Conceive, Create classification** — Phase 1 classifies the idea as Create; confirm the pipeline proceeds to Phase 2 with the light Conception Brief as `plugin-ideation`'s input
 1b. **Conceive, non-Create classification** — Phase 1 classifies the idea as Enhance/Repair/Consolidate/Reposition/Retain/Reject-Defer; confirm the pipeline stops at Gate 1, states `plugin-conception`'s own hand-off target plainly, and never proceeds into Phase 2
@@ -166,6 +172,7 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 |---|---|
 | `workflows/design-a-plugin.md` | Full 7-phase procedure with gate criteria per phase |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, phase-header sequencing, SKILL.md-prose phase-range consistency) — re-run after any SKILL.md/`workflows/*.md` edit |
+| `evals/plugin-lifecycle-upstream/` | Persisted `skill-tester` Quick Workflow eval suite (20 scenarios, 2/20 covered) |
 | `plugin-rulebook/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-downstream` and `plugin-lifecycle-maintenance` |
 | `plugin-rulebook/references/open-item-discipline.md` | Phase-completion check (every gate) and Pre-Commit Disclosure check (before Commit), shared with `plugin-lifecycle-downstream` and `plugin-lifecycle-maintenance` |
 | `git-kit:starting-work` | Branch-scope check's "create a new branch" option |

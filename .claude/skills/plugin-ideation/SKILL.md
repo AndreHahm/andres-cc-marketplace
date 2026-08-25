@@ -113,9 +113,13 @@ If the estimate lands in **Large** and the idea spans genuinely unrelated domain
 
 ## Suggested Next Step
 
-If the Concept Card's overlap classification is **None** or **Partial**, ask with `AskUserQuestion`: "Proceed to `plugin-planning` to turn this concept into a component inventory?" — options "Yes — run plugin-planning" / "No — stop here". If yes, invoke the `plugin-planning` skill (via `Skill`) with the written Concept Card path. Never invoke it without asking first.
+**Standalone invocation:** if the Concept Card's overlap classification is **None** or **Partial**, ask with `AskUserQuestion`: "Proceed to `plugin-planning` to turn this concept into a component inventory?" — options "Yes — run plugin-planning" / "No — stop here". If yes, invoke the `plugin-planning` skill (via `Skill`) with the written Concept Card path. Never invoke it without asking first.
+
+**Nested invocation:** when this skill runs as `plugin-lifecycle-upstream`'s own Phase 2 (Ideate) dispatch, skip this offer entirely — the orchestrator's own Gate 2 already owns deciding whether to proceed into Phase 3 (Plan), and asking here too would duplicate that decision. Report the written Concept Card path and stop.
 
 ## Testing & Validation
+
+**Eval evidence:** `evals/plugin-ideation/evals.json` — 8 scenarios (Quick Workflow, `workspace/iteration-1`), 1/8 eval-covered (scenario 8, Conception Brief seed); the remaining scenarios below are design-review-verified only.
 
 1. **Detailed `$ARGUMENTS` given** — confirm Step 2 still runs at least one real interview round via `AskUserQuestion` rather than skipping straight to Step 3 because the description "already answers it"
 2. **Whole-plugin idea** — confirm the skill asks scope first, then produces a Concept Card with all required sections filled (no placeholder text left in)
@@ -135,7 +139,7 @@ If the Concept Card's overlap classification is **None** or **Partial**, ask wit
 - [ ] Full overlap always stops the flow and asks the user, never silently proceeds
 - [ ] The Concept Card is written (Step 6) only after Steps 2-4 are settled with the user — never drafted as a fait accompli and shown for the first time at the final gate
 - [ ] The Concept Card path is always under `.claude/output/plugin-ideation/`
-- [ ] The Step 6 handoff offer uses `AskUserQuestion`, never auto-invoked without asking
+- [ ] The Suggested Next Step handoff offer uses `AskUserQuestion` in standalone invocation, never auto-invoked without asking — and is skipped entirely (not asked at all) when nested inside `plugin-lifecycle-upstream`'s Phase 2
 
 ## Reference Guide
 
@@ -143,6 +147,7 @@ If the Concept Card's overlap classification is **None** or **Partial**, ask wit
 |---|---|
 | `references/concept-card-template.md` | The two Concept Card templates (whole-plugin, component) used in Step 6 |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run after any SKILL.md edit |
+| `evals/plugin-ideation/` | Persisted `skill-tester` Quick Workflow eval suite (8 scenarios, 1/8 covered) |
 | `plugin-planning` skill | Next step — turns an accepted Concept Card into a component inventory and content-depth plan |
 | `plugin-comparison` skill | Reused installed-plugin resolution pattern (Step 3) |
 | `plugin-rulebook` R4 | Naming pattern validated in Step 4 |

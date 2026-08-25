@@ -47,8 +47,20 @@ def check_bash_grants():
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     if not fm_line_match:
         return True, "no allowed-tools line found (skip)"
-    granted_cmds = re.findall(r"Bash\(([\w.*/-]+?)(?::|\))", fm_line_match.group(1))
-    granted_cmds = [c.lstrip("*/") for c in granted_cmds]
+    value = fm_line_match.group(1).strip()
+    if value in (">-", ">", "|", "|-", "|+", ">+"):
+        # YAML block scalar: the real value is on subsequent, more-indented lines.
+        block_lines = []
+        for line in frontmatter[fm_line_match.end() :].splitlines():
+            if line.strip() == "":
+                continue
+            if line[:1] in (" ", "\t"):
+                block_lines.append(line)
+            else:
+                break
+        value = " ".join(block_lines)
+    granted_cmds = re.findall(r"Bash\(([\w.*/ -]+?)(?::|\))", value)
+    granted_cmds = [c.removeprefix("*/") for c in granted_cmds]
 
     body = fm_text[header_end:]
     workflows_dir = SKILL_DIR / "workflows"

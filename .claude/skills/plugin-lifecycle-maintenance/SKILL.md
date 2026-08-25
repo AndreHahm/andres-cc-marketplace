@@ -14,7 +14,7 @@ description: >-
   steps. Not for a single, already-known fix — edit directly or use the matching Design
   skill.
 argument-hint: "[workflow: improve|enhance|self-upstream|self-service] [target]"
-allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git:*) Bash(gh pr view:*) Bash(date:*) Bash(*/agent-cost-tracker.py:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) TaskCreate TaskUpdate
+allowed-tools: Read Glob Grep Skill Agent Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git diff:*) Bash(gh pr view:*) Bash(date:*) Bash(*/agent-cost-tracker.py:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) TaskCreate TaskUpdate
 ---
 
 # Plugin Lifecycle: Maintenance
@@ -37,11 +37,11 @@ Guides an already-shipped plugin through four maintenance workflows — each one
 
 Two checks, shared with `plugin-lifecycle-upstream` and `plugin-lifecycle-downstream` — see `plugin-rulebook/references/branch-and-pr-preflight.md` for the exact procedure behind both:
 
-- **Open-PR check** — runs once, centrally, in Quick Start step 1 above, before any of the 4 workflows starts — not duplicated inside each workflow file.
+- **Open-PR check** — runs once, centrally, in Quick Start step 1 above, before any of the 4 workflows starts — not duplicated inside each workflow file. Uses the scoped `Bash(gh pr view:*)` tool per that shared procedure.
 - **Branch-scope check** — runs once per workflow, right before that workflow's own first actual write, since each workflow's write point differs:
   - `improve-a-plugin` / `enhance-a-plugin`: no separate check needed here — both hand off entirely to `plugin-lifecycle-downstream`'s Phase 8 (Consolidated Fix) at their own Step 4 (after the new Step 3 Conceive step, which never writes to the target plugin), and Phase 8 now runs this exact check itself (see `plugin-lifecycle-downstream/SKILL.md`'s own "Mutation and Confirmation", which fires before Phase 8's first write even under External Entry). Adding a second check here would just ask the same question twice.
   - `self-upstream-plugin-devkit`: runs before Bulk mode's Step 6 (`/implement-dev-rules`) and before Single-Rule mode's Step 3 (`/update-dev-rule`) — see that workflow file.
-  - `self-service-plugin-devkit`: runs before Service 6's Step 5 (apply approved candidates) and before Service 7's own commit — see that workflow file.
+  - `self-service-plugin-devkit`: runs before Service 6's Step 5 (apply approved candidates) and, for Service 7, before `plugin-documentation` is invoked (its first actual write) — not deferred until the commit step. See that workflow file's own Step 1 and Quality Gate 10.
 
 ## Open-Item Discipline
 
@@ -90,7 +90,7 @@ Use `TaskCreate` at the start of whichever workflow runs, one task per major ste
 
 ## Testing & Validation
 
-This is a **manual-review checklist**, not a claim that every item below has eval coverage. Current eval evidence (`evals/plugin-lifecycle-maintenance/`, `skill-tester` Quick Workflow, 9 evals across 3 iterations, 25/25 assertions passing) covers trigger-phrase accuracy and scenarios 1, 2, 4, 5, 6, and 7 for the first 3 workflows (scenario 6's eval-7 record predates the Document step's `plugin-documentation`-delegation rewrite — eval-9 re-verifies it against the current architecture) — scenario 3 (bulk mode) and the 13 quality gates below have not yet been eval-tested; treat them as design-review-verified only until eval coverage is extended. **The `self-service-plugin-devkit` workflow (4th) has zero eval coverage as of this writing** — its own Build/Test pass verified only link resolution and trigger-phrase non-collision (see `workflows/self-service-plugin-devkit.md`'s own Testing & Validation section), not evals; the new "run a self-check on plugin-devkit" trigger phrase is likewise untested by the trigger-accuracy evals above. **The new Step 3 (Conceive) insertion in `improve-a-plugin`/`enhance-a-plugin` (and the resulting Step 4-7 renumbering) is design-review-verified only, not yet eval-tested** — the existing 9-eval/25-assertion evidence above predates this insertion and does not cover scenario 12a or the renumbered steps; treat those as needing eval coverage before relying on the same eval-based confidence the first 3 workflows otherwise have.
+This is a **manual-review checklist**, not a claim that every item below has eval coverage. Current eval evidence (`evals/plugin-lifecycle-maintenance/`, `skill-tester` Quick Workflow, 11 evals across 4 iterations, 30/30 assertions passing) covers trigger-phrase accuracy and scenarios 1, 2, 4, 5, 6, and 7 for the first 3 workflows (scenario 6's eval-7 record predates the Document step's `plugin-documentation`-delegation rewrite — eval-9 re-verifies it against the current architecture; scenario 2's eval-4 record likewise predates `plugin-lifecycle-downstream`'s 12-phase redesign and still asserts the superseded "external Phase 3 entry" wording rather than the current "Phase 8 (Consolidated Fix)" — treat scenario 2 as needing a re-run against the current architecture, same caveat as scenario 6) — scenario 3 (bulk mode) and the 13 quality gates below have not yet been eval-tested; treat them as design-review-verified only until eval coverage is extended. **The `self-service-plugin-devkit` workflow (4th) has zero eval coverage as of this writing** — its own Build/Test pass verified only link resolution and trigger-phrase non-collision (see `workflows/self-service-plugin-devkit.md`'s own Testing & Validation section), not evals; the new "run a self-check on plugin-devkit" trigger phrase is likewise untested by the trigger-accuracy evals above. **The new Step 3 (Conceive) insertion in `improve-a-plugin`/`enhance-a-plugin` (and the resulting Step 4-7 renumbering) is eval-tested** — evals 10-11 (iteration-4, 5/5 assertions) directly cover scenario 12a's substance (one `plugin-conception` invocation per approved candidate, narrow-repair bypass, new-component routing to `plugin-planning`); the renumbered steps themselves otherwise rely on the same design-review verification as the rest of this checklist.
 
 1. **improve-a-plugin, findings exist** — confirm `analyzing-sessions` runs, the human is asked which suggestions to act on via `AskUserQuestion`, and the hand-off to `plugin-lifecycle-downstream`'s Fix phase happens rather than a reimplemented apply step
 2. **enhance-a-plugin, findings exist** — same shape, confirm `plugin-comparison` is the finding source and the same Fix-phase hand-off happens
@@ -142,10 +142,9 @@ This is a **manual-review checklist**, not a claim that every item below has eva
 | `plugin-lifecycle-downstream` skill | Reused Phase 8 (Consolidated Fix — apply/re-verify/commit, folding in what the old pipeline ran as separate Test/Self-Review phases) for `improve-a-plugin`/`enhance-a-plugin`; also `self-validation`'s Phase 1 (Scoping) through Phase 5 (Audit) dispatch |
 | `plugin-grader/references/rubric.md` | Type-Matched Reviewer Table — `self-improvement`'s Self-Review step (Service 6, step 7, direct dispatch); `improve-a-plugin`/`enhance-a-plugin` get equivalent coverage indirectly, folded into `plugin-lifecycle-downstream`'s own Phase 8 re-verification rather than a separate reviewer dispatch from this skill |
 | `plugin-grader` skill | `self-grading`'s standalone dispatch target |
-| `plugin-documentation` skill | `self-documentation`'s dispatch target |
 | `skill-tester` skill | `self-evaluation`'s dispatch target |
 | `plugin-rulebook/scripts/agent-cost-tracker.py` | Cost estimates cited in `self-review`/`self-evaluation`'s scoped-vs-full gate |
-| `plugin-documentation` skill | Document step, all 4 workflows — authors doc updates and runs its own `human-doc-reviewer` QA internally |
+| `plugin-documentation` skill | Document step, all 4 workflows — authors doc updates and runs its own `human-doc-reviewer` QA internally; also `self-documentation`'s dispatch target |
 | `skill-maintenance` skill | Lighter-weight alternative for a single, already-known change — not this skill's job |
 | `/report-dev-rules`, `/verify-dev-rules`, `/plan-dev-rules`, `/implement-dev-rules` | `self-upstream-plugin-devkit` bulk mode, in this order |
 | `/find-dev-rule`, `/update-dev-rule` | `self-upstream-plugin-devkit` single-rule mode |
