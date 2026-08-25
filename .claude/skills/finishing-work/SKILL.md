@@ -40,11 +40,17 @@ branch", "get back to a clean main".
    `gh repo view --json nameWithOwner --jq .nameWithOwner` (the current repository) — on either
    mismatch, stop and ask via `AskUserQuestion` whether to proceed anyway rather than silently
    continuing on an unrelated PR's merge state. **Validate `headRefName` immediately, before it is used
-   anywhere else in this skill**: it must match `^[A-Za-z0-9._/-]+$` — if it doesn't, stop and report
+   anywhere else in this skill**: it must match `^[A-Za-z0-9._/@+=-]+$` — if it doesn't, stop and report
    rather than proceeding (git ref names can otherwise contain shell metacharacters, which could reach a
    shell context unsafely the first time `headRefName` is interpolated into any `Bash` command, including
-   the read-only `git ls-remote` check in step 1.5). This is a one-time gate at the source, not
-   re-validated at each later use site.
+   the read-only `git ls-remote` check in step 1.5). This allowlist is deliberately narrower than
+   `git check-ref-format`'s own rules -- empirically verified: `git check-ref-format` accepts `;`, `&`,
+   `|`, `$`, backticks, parens, and other shell metacharacters as valid ref-name characters, so
+   validating against Git's own ref syntax alone would not exclude them -- but wider than plain
+   `[A-Za-z0-9._/-]`, which rejected some genuinely valid and shell-safe branch names (`feature+api`,
+   `user@topic`, `release=next`); `@`, `+`, and `=` are both Git-valid and carry no special meaning to
+   the shell, so they're safe to admit alongside the original set. This is a one-time gate at the
+   source, not re-validated at each later use site.
 1.5. **Ensure the remote branch was actually deleted** (only when the intent was to delete it): read
    `merge_auto_delete_branch` (default `true`) the same way `commit`/`merge-pr` do —
    `.claude/git-kit.local.json` if it exists and sets the field, else the git-tracked
@@ -136,7 +142,7 @@ branch", "get back to a clean main".
       never "fixed" when the setting says not to delete it
 - [ ] Step 1.5 never assumes the remote branch is gone — always checks with `git ls-remote --heads origin`
       rather than trusting `gh pr merge --delete-branch`'s exit code or the PR's `MERGED` state alone
-- [ ] `headRefName` is always validated against `^[A-Za-z0-9._/-]+$` at step 1, before its first use
+- [ ] `headRefName` is always validated against `^[A-Za-z0-9._/@+=-]+$` at step 1, before its first use
       anywhere in this skill (including step 1.5's `git ls-remote`/`gh api -X DELETE` calls) — the
       whole skill stops with a report (never proceeds) on a name that fails this check
 

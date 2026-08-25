@@ -190,7 +190,7 @@ def check_headrefname_validated_before_first_use():
         return False, "'## Instructions' section not found"
     end = text.find("\n## ", start + 1)
     section = text[start : end if end != -1 else len(text)]
-    validation_pos = section.find(r"^[A-Za-z0-9._/-]+$")
+    validation_pos = section.find(r"^[A-Za-z0-9._/@+=-]+$")
     if validation_pos == -1:
         return False, "headRefName regex validation string not found anywhere in Instructions"
     first_use_pos = section.find("git ls-remote --heads origin")

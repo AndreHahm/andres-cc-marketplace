@@ -1,0 +1,9 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {"text": "States gh pr view --json state,mergeCommit is checked regardless of the merge command's exit code", "type": "functionality", "target": "outputs/"},
+    {"text": "States git ls-remote --heads origin <headRefName> always runs when merge_auto_delete_branch is true and isCrossRepository is false, even after a clean exit-0 merge", "type": "functionality", "target": "outputs/"},
+    {"text": "On non-empty ls-remote output, states it completes deletion via gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>", "type": "functionality", "target": "outputs/"}
+  ]
+}
