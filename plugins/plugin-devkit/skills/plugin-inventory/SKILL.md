@@ -28,7 +28,7 @@ inventory. See `../marketplace-inventory` for the root-scope sibling.
 2. **Discover** — `python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py discover <plugin_dir>` (filesystem + manifest)
 3. **Build a plan** — `python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py plan <plugin_dir> <inventory_path>` (or `bootstrap` if no inventory exists yet)
 4. **Human decisions** — present ambiguous/approval-required operations via `AskUserQuestion`; lifecycle, functional_role, domain, and compatibility fields always need a human, never inferred silently
-5. **Apply** — `python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py apply <inventory_path> <approved_plan.json> <expected_hash>`
+5. **Apply** — `python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py apply <plugin_dir> <inventory_path> <approved_plan.json> <expected_hash>`
 6. **Confirm the written path** to the user
 
 ## When to Use
@@ -135,7 +135,7 @@ once Apply succeeds. This is the `<approved_plan.json>` the Apply step's command
 ### Apply
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py apply <inventory_path> <approved_plan.json> <expected_hash>
+python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py apply <plugin_dir> <inventory_path> <approved_plan.json> <expected_hash>
 ```
 
 `expected_hash` must be the exact value `plan` returned in this same pass — never reused from an
@@ -151,7 +151,7 @@ the same plan/apply boundary as any other reconciliation operation (this is itse
 atomic write, not a separate unguarded path):
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py import-grading <inventory_path> <report_path> <target> <target_type>
+python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py import-grading <plugin_dir> <inventory_path> <report_path> <target> <target_type>
 ```
 
 The script validates the report's target/type match, rejects malformed/unsupported reports (see
@@ -165,7 +165,7 @@ or reinterpret the score — copy `final_score`/`dimensions.safety_risk_handling
 The only mode allowed to alter an existing history entry.
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py repair-history <inventory_path> <component_id> <status_history|naming_history> <replacement_history.json> --confirm <component_id>
+python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py repair-history <plugin_dir> <inventory_path> <component_id> <status_history|naming_history> <replacement_history.json> --confirm <component_id>
 ```
 
 Show the user the exact destructive rewrite being proposed (the full old array vs. the full new array)
@@ -220,15 +220,15 @@ until a future mode gives it a writer.
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
 - **Atomic write failure**: `json_store.atomic_write_json` never leaves a partial canonical file — the
   temp file is removed and the original is untouched on any exception.
-- **Wrong-shape `inventory_path`**: every write-capable subcommand (`bootstrap`/`apply`/
-  `import-grading`/`repair-history`) calls `reconcile.require_inventory_path_shape` before touching the
-  file — `inventory_path` must resolve to `.../.claude-plugin/<filename>` or the command fails closed
-  with `SystemExit`, before any read or write. This is a *shape* check, not a same-plugin-as-discovery
-  check: those three subcommands take no `plugin_dir` argument at all, so there's no "this plugin's own
-  directory" to compare against from the CLI alone — it stops an arbitrary unrelated file from being
-  targeted, but does not by itself stop a call from targeting a *different* real plugin's own valid
-  `plugin-inventory.json`. Full same-plugin enforcement would need `plugin_dir` threaded through every
-  write-capable subcommand, which none of `apply`/`import-grading`/`repair-history` currently accept.
+- **Out-of-scope `inventory_path`**: every write-capable subcommand (`bootstrap`/`apply`/
+  `import-grading`/`repair-history`) takes `plugin_dir` and calls
+  `reconcile.require_inventory_path_under_scope_dir` before touching the file —
+  `inventory_path` must resolve (after symlink resolution) to exactly
+  `<plugin_dir>/.claude-plugin/plugin-inventory.json` or the command fails closed with `SystemExit`,
+  before any read or write. This is full same-plugin-as-discovery enforcement, not just a filename/
+  parent-dir shape match: a call can no longer target a *different* real plugin's own valid
+  `plugin-inventory.json` by supplying its path directly, since that path resolves outside the
+  `plugin_dir` this specific invocation names.
 
 ## Testing & Validation
 

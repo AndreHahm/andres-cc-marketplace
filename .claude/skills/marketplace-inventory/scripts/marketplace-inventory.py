@@ -6,9 +6,15 @@ Subcommands:
   discover        <repo_root>
   bootstrap       <repo_root> <inventory_path>
   plan            <repo_root> <inventory_path>
-  apply           <inventory_path> <approved_plan.json> <expected_hash>
-  import-grading  <inventory_path> <report_path> <target> <target_type>
+  apply           <repo_root> <inventory_path> <approved_plan.json> <expected_hash>
+  import-grading  <repo_root> <inventory_path> <report_path> <target> <target_type>
   check           <repo_root> <inventory_path>
+
+Every write-capable subcommand takes `repo_root` so it can enforce that
+`inventory_path` resolves to exactly `<repo_root>/.claude-plugin/
+marketplace-inventory.json` -- this script never writes a different repo's
+own inventory file, mechanically, not just by prose convention (see
+`inventory_common.reconcile.require_inventory_path_under_scope_dir`).
 
 This script owns marketplace-membership reconciliation and rollup fields
 (score/security_score sourced from plugin-grader reports, referential
@@ -221,7 +227,9 @@ def cmd_discover(args):
 
 
 def cmd_bootstrap(args):
-    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
+    reconcile.require_inventory_path_under_scope_dir(
+        args.inventory_path, args.repo_root, INVENTORY_FILENAME
+    )
     with json_store.InventoryLock(args.inventory_path):
         if os.path.exists(args.inventory_path):
             raise SystemExit(f"refusing to bootstrap: {args.inventory_path} already exists")
@@ -259,7 +267,9 @@ def cmd_plan(args):
 
 
 def cmd_apply(args):
-    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
+    reconcile.require_inventory_path_under_scope_dir(
+        args.inventory_path, args.repo_root, INVENTORY_FILENAME
+    )
     applied = reconcile.cmd_apply_from_plan(
         args.inventory_path,
         args.approved_plan_path,
@@ -271,7 +281,9 @@ def cmd_apply(args):
 
 
 def cmd_import_grading(args):
-    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
+    reconcile.require_inventory_path_under_scope_dir(
+        args.inventory_path, args.repo_root, INVENTORY_FILENAME
+    )
     if args.target_type != "plugin":
         raise SystemExit(
             f"marketplace-inventory only imports whole-plugin reports (target_type='plugin'); "
@@ -343,12 +355,14 @@ def main():
     p.set_defaults(func=cmd_plan)
 
     p = sub.add_parser("apply")
+    p.add_argument("repo_root")
     p.add_argument("inventory_path")
     p.add_argument("approved_plan_path")
     p.add_argument("expected_hash")
     p.set_defaults(func=cmd_apply)
 
     p = sub.add_parser("import-grading")
+    p.add_argument("repo_root")
     p.add_argument("inventory_path")
     p.add_argument("report_path")
     p.add_argument("target")

@@ -38,7 +38,7 @@ only by the `plugin-inventory` skill, never directly by this one.
 2. **Discover** — `python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py discover <repo_root>` (reads `marketplace.json`)
 3. **Build a plan** — `python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py plan <repo_root> <inventory_path>` (or `bootstrap` if no inventory exists yet)
 4. **Human decisions** — present `add`/`update`/`conflict` operations via `AskUserQuestion`
-5. **Apply** — `python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py apply <inventory_path> <approved_plan.json> <expected_hash>`
+5. **Apply** — `python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py apply <repo_root> <inventory_path> <approved_plan.json> <expected_hash>`
 6. **Offer repair** — if `missing_plugin_inventories` is non-empty, ask before invoking `plugin-inventory` for any of them
 7. **Confirm the written path** to the user
 
@@ -115,7 +115,7 @@ it once Apply succeeds. This is the `<approved_plan.json>` the Apply step's comm
 ### Apply
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py apply <inventory_path> <approved_plan.json> <expected_hash>
+python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py apply <repo_root> <inventory_path> <approved_plan.json> <expected_hash>
 ```
 
 `expected_hash` must be the value this same pass's `plan` call returned — never reused from an earlier
@@ -125,7 +125,7 @@ outright; regenerate the plan rather than retrying with the old hash.
 ### Import Grading
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py import-grading <inventory_path> <report_path> <target> <target_type>
+python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py import-grading <repo_root> <inventory_path> <report_path> <target> <target_type>
 ```
 
 `target_type` is always `plugin` for this inventory's own records — the script itself rejects any other
@@ -168,10 +168,11 @@ generic JSON Schema validator against it (no such dependency is available in thi
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
 - **Stale plugin inventory during repair**: skip that plugin's update and report the required
   `plugin-inventory` run — never patch around a stale per-plugin file from this script.
-- **Wrong-shape `inventory_path`**: every write-capable subcommand (`bootstrap`/`apply`/
-  `import-grading`) calls `reconcile.require_inventory_path_shape` before touching the file —
-  `inventory_path` must resolve to `.../.claude-plugin/marketplace-inventory.json` or the command fails
-  closed with `SystemExit`, before any read or write.
+- **Out-of-scope `inventory_path`**: every write-capable subcommand (`bootstrap`/`apply`/
+  `import-grading`) takes `repo_root` and calls `reconcile.require_inventory_path_under_scope_dir`
+  before touching the file — `inventory_path` must resolve (after symlink resolution) to exactly
+  `<repo_root>/.claude-plugin/marketplace-inventory.json` or the command fails closed with
+  `SystemExit`, before any read or write.
 
 ## Testing & Validation
 

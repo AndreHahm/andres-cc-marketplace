@@ -108,8 +108,13 @@ def _build_fixture_repo(tmpdir, plugin_names):
     return repo_root
 
 
-def _fresh_inventory_path(tmpdir):
-    path = pathlib.Path(tmpdir) / ".claude-plugin" / "marketplace-inventory.json"
+def _fresh_inventory_path(repo_root):
+    """inventory_path must live at exactly <repo_root>/.claude-plugin/
+    marketplace-inventory.json -- the script's own write-boundary guard
+    (require_inventory_path_under_scope_dir) refuses any other location,
+    now that every write-capable subcommand takes repo_root and enforces
+    real containment, not just a filename/parent-dir shape match."""
+    path = pathlib.Path(repo_root) / ".claude-plugin" / "marketplace-inventory.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -128,7 +133,7 @@ def check_conflict_missing_active_plugin():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_root = _build_fixture_repo(tmpdir, ["plugin-a", "plugin-b"])
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(repo_root)
         bootstrap = _run("bootstrap", repo_root, inventory_path)
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -158,7 +163,7 @@ def check_plugin_id_mismatch_conflict():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(repo_root)
         bootstrap = _run("bootstrap", repo_root, inventory_path)
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -194,7 +199,7 @@ def check_import_grading_rollup_only():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(repo_root)
         bootstrap = _run("bootstrap", repo_root, inventory_path)
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -213,7 +218,9 @@ def check_import_grading_rollup_only():
             ),
             encoding="utf-8",
         )
-        result = _run("import-grading", inventory_path, report_path, "plugin-a", "plugin")
+        result = _run(
+            "import-grading", repo_root, inventory_path, report_path, "plugin-a", "plugin"
+        )
         if result.returncode != 0:
             return False, f"import-grading failed: {result.stderr.strip()}"
         parsed = json.loads(result.stdout)
@@ -229,7 +236,7 @@ def check_import_grading_wrong_target_type_rejected():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(repo_root)
         bootstrap = _run("bootstrap", repo_root, inventory_path)
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -237,7 +244,7 @@ def check_import_grading_wrong_target_type_rejected():
         report_path.write_text(
             json.dumps({"target": "plugin-a", "target_type": "skill"}), encoding="utf-8"
         )
-        result = _run("import-grading", inventory_path, report_path, "plugin-a", "skill")
+        result = _run("import-grading", repo_root, inventory_path, report_path, "plugin-a", "skill")
         if result.returncode == 0:
             return False, "import-grading accepted target_type='skill' -- should have been rejected"
         return True, "non-'plugin' target_type correctly rejected before any write"
@@ -250,13 +257,13 @@ def check_stale_hash_rejection():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(repo_root)
         bootstrap = _run("bootstrap", repo_root, inventory_path)
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
         plan_path = pathlib.Path(tmpdir) / "empty_plan.json"
         plan_path.write_text("[]", encoding="utf-8")
-        apply = _run("apply", inventory_path, plan_path, "0" * 64)
+        apply = _run("apply", repo_root, inventory_path, plan_path, "0" * 64)
         if apply.returncode == 0:
             return False, "apply with a wrong expected_hash succeeded -- should have been rejected"
         if "stale plan" not in apply.stderr:
@@ -271,7 +278,7 @@ def check_status_transition():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(repo_root)
         bootstrap = _run("bootstrap", repo_root, inventory_path)
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -293,7 +300,7 @@ def check_status_transition():
             ),
             encoding="utf-8",
         )
-        apply = _run("apply", inventory_path, plan_path, expected_hash)
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
         if apply.returncode != 0:
             return False, f"apply failed: {apply.stderr.strip()}"
         plugin = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]
@@ -313,7 +320,7 @@ def check_enum_rejection():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(repo_root)
         bootstrap = _run("bootstrap", repo_root, inventory_path)
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -334,7 +341,7 @@ def check_enum_rejection():
             ),
             encoding="utf-8",
         )
-        apply = _run("apply", inventory_path, plan_path, expected_hash)
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
         if apply.returncode == 0:
             return False, (
                 "apply accepted an invalid functional_role enum value -- should have been rejected"
@@ -343,30 +350,44 @@ def check_enum_rejection():
 
 
 def check_cli_bootstrap_check_roundtrip():
-    """Live functional check: bootstrap a fresh marketplace inventory from
-    this repo's own root and confirm check reports zero drift immediately
-    after -- Testing & Validation scenario 2."""
+    """Live functional check: bootstrap a fresh marketplace inventory
+    against a real copy of this repo's own marketplace.json, then confirm
+    check reports zero drift immediately after -- Testing & Validation
+    scenario 2.
+
+    Builds a lightweight real-manifest fixture rather than copying the
+    whole repo (93MB, far too large to copy per test run): copies the real
+    .claude-plugin/marketplace.json verbatim into a fresh tempdir-rooted
+    repo, then creates an empty directory for each plugin it declares --
+    discover_plugins only reads the manifest, and read_plugin_inventory only
+    checks for a plugin-inventory.json inside each source directory (whose
+    absence is correctly reported as missing, not an error), so this
+    preserves testing against the real plugin list/names without needing
+    each plugin's actual file content. inventory_path must resolve to
+    exactly <repo_root>/.claude-plugin/marketplace-inventory.json to satisfy
+    require_inventory_path_under_scope_dir, so repo_root itself must be a
+    real, writable directory this test controls, not the actual tracked
+    repo root."""
     import tempfile
 
-    repo_root = _find_repo_root()
+    real_repo_root = _find_repo_root()
+    real_manifest = json.loads(
+        (real_repo_root / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8")
+    )
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Must live under a ".claude-plugin" directory -- the script's own
-        # write-boundary shape guard (require_inventory_path_shape) refuses
-        # any other location.
-        inventory_path = pathlib.Path(tmpdir) / ".claude-plugin" / "marketplace-inventory.json"
-        inventory_path.parent.mkdir(parents=True, exist_ok=True)
-        bootstrap = subprocess.run(
-            [sys.executable, str(SCRIPT), "bootstrap", str(repo_root), str(inventory_path)],
-            capture_output=True,
-            text=True,
-        )
+        repo_root = pathlib.Path(tmpdir) / "repo"
+        manifest_dir = repo_root / ".claude-plugin"
+        manifest_dir.mkdir(parents=True)
+        (manifest_dir / "marketplace.json").write_text(json.dumps(real_manifest), encoding="utf-8")
+        for entry in real_manifest.get("plugins", []):
+            source = entry.get("source")
+            if source:
+                (repo_root / source).mkdir(parents=True, exist_ok=True)
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
-        check = subprocess.run(
-            [sys.executable, str(SCRIPT), "check", str(repo_root), str(inventory_path)],
-            capture_output=True,
-            text=True,
-        )
+        check = _run("check", repo_root, inventory_path)
         if check.returncode != 0:
             return False, f"check failed: {check.stderr.strip()}"
         result = json.loads(check.stdout)
