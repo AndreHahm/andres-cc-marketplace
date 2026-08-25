@@ -291,8 +291,14 @@ def cmd_bootstrap(args):
         existing_ids = set()
         for op in add_ops:
             apply_add(inventory, op, existing_ids)
-        validate_inventory(inventory)
-        json_store.atomic_write_json(args.inventory_path, inventory, validator=validate_inventory)
+        reconcile.validate_or_exit(validate_inventory, inventory, context="bootstrap")
+        reconcile.validate_or_exit(
+            json_store.atomic_write_json,
+            args.inventory_path,
+            inventory,
+            validator=validate_inventory,
+            context="bootstrap",
+        )
     print(json.dumps({"bootstrapped": len(add_ops), "path": args.inventory_path}, indent=2))
 
 
@@ -403,7 +409,12 @@ def cmd_repair_history(args):
             raise SystemExit("history_field must be 'status_history' or 'naming_history'")
         with open(args.replacement_history_path, encoding="utf-8") as f:
             replacement = json.load(f)
-        models.validate_history_periods(replacement, f"{args.component_id}.{args.history_field}")
+        reconcile.validate_or_exit(
+            models.validate_history_periods,
+            replacement,
+            f"{args.component_id}.{args.history_field}",
+            context="repair-history",
+        )
         value_key = "status" if args.history_field == "status_history" else "name"
         open_value = models.open_period_value(replacement, value_key)
         current_value = (
@@ -417,7 +428,13 @@ def cmd_repair_history(args):
             )
         component[args.history_field] = replacement
         inventory["updated_on"] = reconcile.today()
-        json_store.atomic_write_json(args.inventory_path, inventory, validator=validate_inventory)
+        reconcile.validate_or_exit(
+            json_store.atomic_write_json,
+            args.inventory_path,
+            inventory,
+            validator=validate_inventory,
+            context="repair-history",
+        )
     print(json.dumps({"repaired": args.component_id, "field": args.history_field}, indent=2))
 
 

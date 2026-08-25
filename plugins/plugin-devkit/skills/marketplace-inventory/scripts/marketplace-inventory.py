@@ -243,8 +243,14 @@ def cmd_bootstrap(args):
         for op in plan:
             if op["operation"] == "add":
                 apply_add(inventory, op, existing_ids)
-        validate_inventory(inventory)
-        json_store.atomic_write_json(args.inventory_path, inventory, validator=validate_inventory)
+        reconcile.validate_or_exit(validate_inventory, inventory, context="bootstrap")
+        reconcile.validate_or_exit(
+            json_store.atomic_write_json,
+            args.inventory_path,
+            inventory,
+            validator=validate_inventory,
+            context="bootstrap",
+        )
     print(json.dumps({"bootstrapped": len(discovered), "path": args.inventory_path}, indent=2))
 
 
