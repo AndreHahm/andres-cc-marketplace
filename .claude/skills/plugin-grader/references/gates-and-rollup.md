@@ -43,7 +43,8 @@ Grading a whole plugin does **not** mean re-deriving a different weighted formul
    {
      "component_scores": {"<name>": <final_score>, ...},
      "activation_critical": <bool>,
-     "consistency_critical": <bool>
+     "consistency_critical": <bool>,
+     "component_security_scores": {"<name>": <dimensions.safety_risk_handling.score>, ...}
    }
    ```
 4. The script computes:
@@ -55,9 +56,36 @@ Grading a whole plugin does **not** mean re-deriving a different weighted formul
 | P1 | `activation-reviewer` found >=1 Critical (exact-phrase collision) | 6.0 |
 | P2 | `consistency-reviewer` found >=1 Critical (hard behavioral contradiction or broken cross-component contract) | 6.0 |
 | P3 | Any single component's `final_score` < 3.0 | 7.0 |
+| P4 | Any single component's `dimensions.safety_risk_handling.score` < 4.0 | 4.0 (applies to `plugin_security_score` only, not `plugin_final_score`) |
 
-   - `plugin_final_score` = `min(plugin_score_raw, min(triggered caps))`, same shape as component-level gating.
+   - `plugin_final_score` = `min(plugin_score_raw, min(triggered caps of P1-P3))`, same shape as component-level gating.
 5. **Always report `weakest_component` and `strongest_component` alongside the mean** — a mean alone can hide one severely broken component inside an otherwise-healthy plugin. Gate P3 exists specifically to make that case visible in the score itself, not just in a footnote.
+
+## Whole-Plugin Security Rollup
+
+`plugin_security_score` is a second, independent rollup computed alongside `plugin_final_score` in the
+same `--rollup` invocation — it is **not** part of the `plugin_final_score` calculation, and Gate P4
+never caps `plugin_final_score`.
+
+- **Computation:** simple unweighted mean of every graded component's `dimensions.safety_risk_handling.score`
+  — the exact analog of how `plugin_score_raw` is the unweighted mean of `final_score`. There is no
+  independent whole-plugin-scope security evidence to aggregate differently: `security-reviewer` (the
+  primary evidence source for `safety_risk_handling`) only ever runs in Component Mode, never dispatched
+  once across a whole plugin the way `activation-reviewer`/`consistency-reviewer` are (see
+  `plugin-auditor/references/dispatch-table.md`'s Plugin Mode "run once across the whole set" list, which
+  does not include `security-reviewer`) — component-level scores are the only signal that exists.
+- **Gate P4:** any single component's `dimensions.safety_risk_handling.score` < 4.0 caps
+  `plugin_security_score` at 4.0 — the same reasoning Gate C already uses at component level (a Critical
+  security finding is a live risk the plugin actively carries, not just a quality gap), applied here so a
+  mean alone can't hide one severely-insecure component inside an otherwise-healthy plugin's average,
+  exactly as Gate P3 already exists to prevent for `final_score`.
+- **N/A behavior:** a component whose `safety_risk_handling` is `is_na: true` still contributes its
+  (already-resolved) score of 10 to the mean — no special-casing beyond what already exists for the
+  underlying dimension at component level.
+- **Zero scorable components:** if no component in the plugin has a security-scorable dimension,
+  `plugin_security_score` is `null` (see `output-schema.md`'s rollup output and `notes.security_score_unavailable_reason`)
+  rather than a fabricated score.
+- **Valid range:** `[0, 10]`, rounded to 1 decimal, same as every other score in this system.
 
 ## Why These Defaults
 

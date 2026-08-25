@@ -16,18 +16,45 @@
       "prompt": "Do NOT dispatch any Agent() calls for this task -- reasoning-only. Per plugin-grader's references/output-schema.md 'notes.backend_mix' section, determine what claude_only/mixed/codex_reviewers values would be correct for this scenario: a plugin-auditor dispatch ran with the Codex backend enabled; codex_reviewers ended up being ['skill-reviewer', 'scripts-reviewer'] (both reviewer types that actually ran through Codex this run), but skill-reviewer's Codex dispatch returned zero findings for this clean target. State the correct claude_only and mixed values and explain why deriving them from findings[].backend instead of the dispatch record would give the WRONG answer here.",
       "expected_output": "claude_only: false, mixed: true -- because codex_reviewers is non-empty (2 reviewer types genuinely ran through Codex) even though skill-reviewer's Codex-backed dispatch happened to return zero findings. Explains that deriving claude_only from findings[].backend would incorrectly report claude_only: true for skill-reviewer's contribution (since no finding exists to carry backend: codex), which would misrepresent that repo content was genuinely sent to Codex for that reviewer.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Clean whole-plugin security rollup",
+      "prompt": "You already have final component-mode scoring results for a 2-skill plugin called 'demo-plugin': skill-a has final_score 9.5 and dimensions.safety_risk_handling.score 10.0; skill-b has final_score 9.0 and dimensions.safety_risk_handling.score 10.0. Neither activation_critical nor consistency_critical apply. Using scripts/compute_score.py --rollup (build the correct rollup input JSON per references/output-schema.md, including component_security_scores), compute the whole-plugin rollup. Report plugin_score_raw, plugin_final_score, plugin_security_score, and any gates_applied/plugin_security_gates_applied.",
+      "expected_output": "Builds a rollup input JSON with component_scores AND component_security_scores populated from the given data, runs scripts/compute_score.py --rollup against it, and reports plugin_security_score as the mean of the two safety_risk_handling scores (10.0) with plugin_security_gates_applied empty (no gate fires since both scores are >= 4.0), alongside the existing plugin_score_raw/plugin_final_score fields.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "Gate P4 fires on a Critical security finding",
+      "prompt": "Same 2-skill 'demo-plugin' as before, but this time skill-b's dimensions.safety_risk_handling.score is 2.0 (a Critical security-reviewer finding: an unscoped Bash(*) grant) and its weighted_total is 8.5 (skill-a is unchanged: final_score 9.5, safety_risk_handling.score 10.0). Determine skill-b's own component-level final_score first (apply the correct hard gate from references/gates-and-rollup.md), then compute the whole-plugin rollup using scripts/compute_score.py --rollup, including component_security_scores. Report plugin_final_score, plugin_security_score, and every gate that fired at either level.",
+      "expected_output": "Recognizes that skill-b's safety_risk_handling score of 2.0 triggers component-level Gate C (cap 4.0), so skill-b's own final_score is 4.0 (not 8.5). Then builds the rollup input using component_scores {skill-a: 9.5, skill-b: 4.0} and component_security_scores {skill-a: 10.0, skill-b: 2.0}, runs scripts/compute_score.py --rollup, and reports plugin_security_score capped at 4.0 by the new Gate P4 (with a plugin_security_gates_applied entry naming P4_security_risk) while plugin_final_score (6.75 raw, 6.8 rounded) is unaffected by Gate P4 -- correctly keeping the two rollups independent.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "Zero security-scorable components -> null, not fabricated",
+      "prompt": "A plugin called 'legacy-plugin' has 2 components, both of a type plugin-grader cannot grade at all (e.g. mcp-server entries with no safety_risk_handling dimension available). Component-mode quality scores ARE available (final_score 8.0 and 7.5) but neither component has a dimensions.safety_risk_handling.score to report. Compute the whole-plugin rollup and state what plugin_security_score should be and why, per references/output-schema.md and references/gates-and-rollup.md.",
+      "expected_output": "Omits component_security_scores (or passes {}) in the rollup input since no component has a security-scorable dimension, confirms scripts/compute_score.py --rollup returns plugin_security_score: null with plugin_security_gates_applied: [], and states that the final written report must populate notes.security_score_unavailable_reason (e.g. 'No gradeable component types present in this plugin.') rather than fabricating a score -- while plugin_score_raw/plugin_final_score still compute normally from the two available final_scores.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 8,
-    "declared_scenarios_covered": 0,
+    "declared_scenarios_total": 13,
+    "declared_scenarios_covered": 5,
     "uncovered": [
-      "Standalone mode live dispatch",
-      "Evidence-only mode live scoring",
-      "N/A dimension handling",
-      "Plugin rollup with a broken component",
-      "Fast mode live dispatch",
-      "Evidence-only refusal on missing evidence"
+      "1. Single skill, clean",
+      "2a. Safety gate",
+      "3. Gate stacking",
+      "4. N/A dimension",
+      "5. Plugin rollup with one broken component",
+      "6. Fast mode",
+      "7. Self-check (smoke_test.py)",
+      "8. Evidence-only mode, missing evidence -> refusal",
+      "8a. Evidence-only mode, stale evidence -> qualified score",
+      "8b. Evidence-only mode, complete and fresh -> identical scoring",
+      "11. All components N/A -> plugin_security_score 10.0",
+      "13. Schema-version field presence"
     ]
   }
 }

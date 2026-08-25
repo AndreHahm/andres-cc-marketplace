@@ -1,5 +1,6 @@
 {
   "mode": "standalone",
+  "grader_schema_version": "1.1.0",
   "target": "example-skill",
   "target_type": "skill",
   "graded_at": "2026-07-11T14:32:00Z",

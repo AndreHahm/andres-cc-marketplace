@@ -9,6 +9,7 @@ finding counts into dimension scores via the generic formula, applies the
 fixed 12-dimension weights, and applies hard gates. See
 references/output-schema.md for the exact input/output shapes.
 """
+
 import json
 import sys
 
@@ -53,7 +54,9 @@ def score_dimension(dim_input):
             raise ValueError(f"dimension 'score' {score} is out of the valid [0, 10] range")
         return score
     if "counts" not in dim_input:
-        raise ValueError("dimension input has neither 'score' nor 'counts' -- exactly one is required")
+        raise ValueError(
+            "dimension input has neither 'score' nor 'counts' -- exactly one is required"
+        )
     counts = dim_input["counts"]
     if not isinstance(counts, dict):
         raise ValueError(f"counts must be a mapping, got {type(counts).__name__}")
@@ -90,35 +93,46 @@ def compute_component(data):
     if scores["rule_compliance"] < 5:
         cap = 6.0
         caps.append(cap)
-        gates_applied.append({
-            "gate": "A_rule_compliance",
-            "reason": f"Rule Compliance scored {scores['rule_compliance']} (< 5)",
-            "cap": cap,
-        })
+        gates_applied.append(
+            {
+                "gate": "A_rule_compliance",
+                "reason": f"Rule Compliance scored {scores['rule_compliance']} (< 5)",
+                "cap": cap,
+            }
+        )
     if scores["completeness"] < 4:
         cap = 5.0
         caps.append(cap)
-        gates_applied.append({
-            "gate": "B_completeness",
-            "reason": f"Completeness scored {scores['completeness']} (< 4)",
-            "cap": cap,
-        })
+        gates_applied.append(
+            {
+                "gate": "B_completeness",
+                "reason": f"Completeness scored {scores['completeness']} (< 4)",
+                "cap": cap,
+            }
+        )
     if scores["safety_risk_handling"] < 4:
         cap = 4.0
         caps.append(cap)
-        gates_applied.append({
-            "gate": "C_safety_risk_handling",
-            "reason": f"Safety/Risk Handling scored {scores['safety_risk_handling']} (< 4) -- a Critical security finding",
-            "cap": cap,
-        })
+        gates_applied.append(
+            {
+                "gate": "C_safety_risk_handling",
+                "reason": (
+                    f"Safety/Risk Handling scored {scores['safety_risk_handling']} "
+                    "(< 4) -- a Critical security finding"
+                ),
+                "cap": cap,
+            }
+        )
     if scores["testing"] == 0:
         cap = 8.0
         caps.append(cap)
-        gates_applied.append({
-            "gate": "D_testing",
-            "reason": "Testing scored 0. Missing verification.",
-            "cap": cap,
-        })
+        gates_applied.append(
+            {
+                "gate": "D_testing",
+                "reason": "Testing scored 0. Missing verification.",
+                "cap": cap,
+            }
+        )
 
     final_score = min(weighted_total, min(caps)) if caps else weighted_total
 
@@ -147,42 +161,85 @@ def compute_rollup(data):
     if data.get("activation_critical"):
         cap = 6.0
         caps.append(cap)
-        gates_applied.append({
-            "gate": "P1_activation_collision",
-            "reason": "activation-reviewer found a Critical exact-phrase collision",
-            "cap": cap,
-        })
+        gates_applied.append(
+            {
+                "gate": "P1_activation_collision",
+                "reason": "activation-reviewer found a Critical exact-phrase collision",
+                "cap": cap,
+            }
+        )
     if data.get("consistency_critical"):
         cap = 6.0
         caps.append(cap)
-        gates_applied.append({
-            "gate": "P2_consistency_contradiction",
-            "reason": "consistency-reviewer found a Critical cross-component contradiction",
-            "cap": cap,
-        })
+        gates_applied.append(
+            {
+                "gate": "P2_consistency_contradiction",
+                "reason": "consistency-reviewer found a Critical cross-component contradiction",
+                "cap": cap,
+            }
+        )
     if component_scores[weakest_name] < 3:
         cap = 7.0
         caps.append(cap)
-        gates_applied.append({
-            "gate": "P3_broken_component",
-            "reason": f"'{weakest_name}' scored {component_scores[weakest_name]} (< 3)",
-            "cap": cap,
-        })
+        gates_applied.append(
+            {
+                "gate": "P3_broken_component",
+                "reason": f"'{weakest_name}' scored {component_scores[weakest_name]} (< 3)",
+                "cap": cap,
+            }
+        )
 
     plugin_final = min(raw, min(caps)) if caps else raw
 
-    return {
+    result = {
         "plugin_score_raw": round(raw, 2),
         "weakest_component": {"name": weakest_name, "final_score": component_scores[weakest_name]},
-        "strongest_component": {"name": strongest_name, "final_score": component_scores[strongest_name]},
+        "strongest_component": {
+            "name": strongest_name,
+            "final_score": component_scores[strongest_name],
+        },
         "plugin_gates_applied": gates_applied,
         "plugin_final_score": round(plugin_final, 1),
         "component_count": len(names),
     }
 
+    # plugin_security_score is a second, independent rollup -- Gate P4 caps it alone
+    # and never affects plugin_final_score above. See gates-and-rollup.md's Whole-
+    # Plugin Security Rollup section.
+    component_security_scores = data.get("component_security_scores") or {}
+    security_gates_applied = []
+    if component_security_scores:
+        security_values = list(component_security_scores.values())
+        security_raw = sum(security_values) / len(security_values)
+        weakest_security_name = min(
+            component_security_scores, key=lambda k: component_security_scores[k]
+        )
+        security_caps = []
+        if component_security_scores[weakest_security_name] < 4:
+            cap = 4.0
+            security_caps.append(cap)
+            security_gates_applied.append(
+                {
+                    "gate": "P4_security_risk",
+                    "reason": (
+                        f"'{weakest_security_name}' scored "
+                        f"{component_security_scores[weakest_security_name]} "
+                        "safety_risk_handling (< 4)"
+                    ),
+                    "cap": cap,
+                }
+            )
+        plugin_security = min(security_raw, min(security_caps)) if security_caps else security_raw
+        result["plugin_security_score"] = round(plugin_security, 1)
+    else:
+        result["plugin_security_score"] = None
+    result["plugin_security_gates_applied"] = security_gates_applied
+
+    return result
+
 
 def main():
-    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding="utf-8")
 
     args = sys.argv[1:]
     rollup_mode = "--rollup" in args

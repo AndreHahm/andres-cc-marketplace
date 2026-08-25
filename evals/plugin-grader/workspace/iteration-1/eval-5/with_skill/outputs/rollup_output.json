@@ -1,0 +1,16 @@
+{
+  "plugin_score_raw": 7.75,
+  "weakest_component": {
+    "name": "mcp-server-b",
+    "final_score": 7.5
+  },
+  "strongest_component": {
+    "name": "mcp-server-a",
+    "final_score": 8.0
+  },
+  "plugin_gates_applied": [],
+  "plugin_final_score": 7.8,
+  "component_count": 2,
+  "plugin_security_score": null,
+  "plugin_security_gates_applied": []
+}

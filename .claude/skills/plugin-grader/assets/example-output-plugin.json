@@ -1,0 +1,81 @@
+{
+  "mode": "standalone",
+  "grader_schema_version": "1.1.0",
+  "target": "example-plugin",
+  "target_type": "plugin",
+  "graded_at": "2026-08-25T14:32:00Z",
+  "components": {
+    "skill-a": {
+      "grader_schema_version": "1.1.0",
+      "target": "skill-a",
+      "target_type": "skill",
+      "graded_at": "2026-08-25T14:30:00Z",
+      "weighted_total": 9.5,
+      "gates_applied": [],
+      "final_score": 9.5,
+      "dimensions": {
+        "safety_risk_handling": {
+          "score": 10.0, "weight": 0.05, "is_na": false,
+          "source": "plugin-rulebook R6/R9",
+          "findings_summary": "Tool scoping is least-privilege; no hardcoded credentials."
+        }
+      }
+    },
+    "skill-b": {
+      "grader_schema_version": "1.1.0",
+      "target": "skill-b",
+      "target_type": "skill",
+      "graded_at": "2026-08-25T14:31:00Z",
+      "weighted_total": 8.5,
+      "gates_applied": [
+        {
+          "gate": "C_safety_risk_handling",
+          "reason": "Safety/Risk Handling scored 2.0 (< 4) -- a Critical security finding",
+          "cap": 4.0
+        }
+      ],
+      "final_score": 4.0,
+      "dimensions": {
+        "safety_risk_handling": {
+          "score": 2.0, "weight": 0.05, "is_na": false,
+          "source": "security-reviewer",
+          "findings_summary": "1 Critical: Bash(*) grant with no destructive-action guard."
+        }
+      }
+    }
+  },
+  "plugin_score_raw": 6.75,
+  "weakest_component": {"name": "skill-b", "final_score": 4.0},
+  "strongest_component": {"name": "skill-a", "final_score": 9.5},
+  "plugin_gates_applied": [],
+  "plugin_final_score": 6.8,
+  "plugin_security_score": 4.0,
+  "plugin_security_gates_applied": [
+    {
+      "gate": "P4_security_risk",
+      "reason": "'skill-b' scored 2.0 safety_risk_handling (< 4)",
+      "cap": 4.0
+    }
+  ],
+  "swot": {
+    "strengths": ["skill-a scores 9.5 with no gates -- the plugin's strongest component."],
+    "weaknesses": ["skill-b carries a Critical safety_risk_handling finding (2.0/10), triggering both its own component-level Gate C (final_score capped at 4.0) and the plugin-level Gate P4 (plugin_security_score capped at 4.0)."],
+    "opportunities": ["Fixing skill-b's Bash(*) grant (see security-reviewer's finding) lifts both Gate C and Gate P4, raising skill-b's own final_score and the plugin's security rollup together."],
+    "threats": ["plugin_security_score depends on every component actually having a security-reviewer pass -- a component type plugin-grader can't grade would silently narrow this mean."]
+  },
+  "prioritized_next_steps": [
+    {
+      "rank": 1,
+      "action": "Scope skill-b's Bash(*) grant to specific subcommands per security-reviewer's finding",
+      "dimension": "safety_risk_handling",
+      "points_gain_estimate": 0.4,
+      "lifts_gate": "C_safety_risk_handling"
+    }
+  ],
+  "reasoning_summary": "Plugin-mode rollup: plugin_score_raw is 6.75 (dragged down by skill-b's own Gate C cap), and plugin_security_score is separately capped at 4.0 by Gate P4 -- both driven by the same underlying skill-b finding, but computed as two independent rollups (Gate P4 never caps plugin_final_score, and Gate C never caps plugin_security_score directly).",
+  "notes": {
+    "inspection_limits": null,
+    "na_dimensions": [],
+    "backend_mix": {"claude_only": false, "mixed": true, "codex_reviewers": ["security-reviewer"]}
+  }
+}

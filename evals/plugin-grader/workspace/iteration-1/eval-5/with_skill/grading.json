@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Recognizes component_security_scores should be omitted/empty since no component has a security-scorable dimension", "passed": true, "evidence": "Agent report: \"component_security_scores omitted entirely since neither component type has a safety_risk_handling dimension\""},
+    {"text": "States plugin_security_score is null (not a fabricated number)", "passed": true, "evidence": "rollup_output.json / agent report: \"Result: plugin_security_score is null, with plugin_security_gates_applied: []\""},
+    {"text": "States the written report must populate notes.security_score_unavailable_reason to explain the null value", "passed": true, "evidence": "eval3_writeup.md gives the exact suggested notes.security_score_unavailable_reason text"},
+    {"text": "Still computes plugin_score_raw/plugin_final_score normally from the available quality final_scores", "passed": true, "evidence": "Agent report: \"plugin_score_raw = 7.75 -> plugin_final_score = 7.8 (no gates fired)\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
