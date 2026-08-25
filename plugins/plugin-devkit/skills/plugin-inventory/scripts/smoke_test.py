@@ -99,8 +99,13 @@ def _write_skill(skills_dir, name):
     )
 
 
-def _fresh_inventory_path(tmpdir):
-    path = pathlib.Path(tmpdir) / ".claude-plugin" / "plugin-inventory.json"
+def _fresh_inventory_path(plugin_dir):
+    """inventory_path must live at exactly <plugin_dir>/.claude-plugin/
+    plugin-inventory.json -- the script's own write-boundary guard
+    (require_inventory_path_under_scope_dir) refuses any other location,
+    now that every write-capable subcommand takes plugin_dir and enforces
+    real containment, not just a filename/parent-dir shape match."""
+    path = pathlib.Path(plugin_dir) / ".claude-plugin" / "plugin-inventory.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -144,7 +149,7 @@ def check_plan_apply_add_operation():
         plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
         skills_dir = plugin_dir / "skills"
         _write_skill(skills_dir, "skill-a")
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(plugin_dir)
         bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -162,7 +167,7 @@ def check_plan_apply_add_operation():
 
         plan_path = pathlib.Path(tmpdir) / "approved_plan.json"
         plan_path.write_text(json.dumps(add_ops), encoding="utf-8")
-        apply = _run("apply", inventory_path, plan_path, plan_data["expected_hash"])
+        apply = _run("apply", plugin_dir, inventory_path, plan_path, plan_data["expected_hash"])
         if apply.returncode != 0:
             return False, f"apply failed: {apply.stderr.strip()}"
         inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
@@ -180,7 +185,7 @@ def check_stale_hash_rejection():
     with tempfile.TemporaryDirectory() as tmpdir:
         plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
         _write_skill(plugin_dir / "skills", "skill-a")
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(plugin_dir)
         bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -188,6 +193,7 @@ def check_stale_hash_rejection():
         plan_path.write_text("[]", encoding="utf-8")
         apply = _run(
             "apply",
+            plugin_dir,
             inventory_path,
             plan_path,
             "0000000000000000000000000000000000000000000000000000000000000000",
@@ -208,7 +214,7 @@ def check_import_grading_dedup():
     with tempfile.TemporaryDirectory() as tmpdir:
         plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
         _write_skill(plugin_dir / "skills", "skill-a")
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(plugin_dir)
         bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -227,12 +233,12 @@ def check_import_grading_dedup():
             ),
             encoding="utf-8",
         )
-        first = _run("import-grading", inventory_path, report_path, "skill-a", "skill")
+        first = _run("import-grading", plugin_dir, inventory_path, report_path, "skill-a", "skill")
         if first.returncode != 0:
             return False, f"first import-grading failed: {first.stderr.strip()}"
         if not json.loads(first.stdout)["quality_score_appended"]:
             return False, "first import-grading should have appended a new scoring event"
-        second = _run("import-grading", inventory_path, report_path, "skill-a", "skill")
+        second = _run("import-grading", plugin_dir, inventory_path, report_path, "skill-a", "skill")
         if second.returncode != 0:
             return False, f"second import-grading failed: {second.stderr.strip()}"
         if json.loads(second.stdout)["quality_score_appended"]:
@@ -252,7 +258,7 @@ def check_conflict_missing_active_component():
         skills_dir = plugin_dir / "skills"
         _write_skill(skills_dir, "skill-a")
         _write_skill(skills_dir, "skill-b")
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(plugin_dir)
         bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -278,7 +284,7 @@ def check_repair_history_structural_rejection():
     with tempfile.TemporaryDirectory() as tmpdir:
         plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
         _write_skill(plugin_dir / "skills", "skill-a")
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(plugin_dir)
         bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -307,6 +313,7 @@ def check_repair_history_structural_rejection():
         )
         repair = _run(
             "repair-history",
+            plugin_dir,
             inventory_path,
             component_id,
             "status_history",
@@ -328,7 +335,7 @@ def check_enum_rejection():
     with tempfile.TemporaryDirectory() as tmpdir:
         plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
         _write_skill(plugin_dir / "skills", "skill-a")
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(plugin_dir)
         bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -350,7 +357,7 @@ def check_enum_rejection():
             ),
             encoding="utf-8",
         )
-        apply = _run("apply", inventory_path, plan_path, expected_hash)
+        apply = _run("apply", plugin_dir, inventory_path, plan_path, expected_hash)
         if apply.returncode == 0:
             return False, (
                 "apply accepted an invalid functional_role enum value -- should have been rejected"
@@ -367,7 +374,7 @@ def check_history_invariants():
     with tempfile.TemporaryDirectory() as tmpdir:
         plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
         _write_skill(plugin_dir / "skills", "skill-a")
-        inventory_path = _fresh_inventory_path(tmpdir)
+        inventory_path = _fresh_inventory_path(plugin_dir)
         bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
@@ -388,33 +395,33 @@ def check_history_invariants():
 
 def check_cli_bootstrap_check_roundtrip():
     """A live functional check, not just structural: bootstrap a fresh
-    inventory from this repo's own plugin-devkit plugin, run check
-    immediately after, and confirm zero drift -- the same round-trip
-    Testing & Validation scenario 2 describes."""
+    inventory from a real copy of this repo's own plugin-devkit plugin, run
+    check immediately after, and confirm zero drift -- the same round-trip
+    Testing & Validation scenario 2 describes.
+
+    Copies the real plugin_dir into the tempdir first (rather than
+    discovering from the real path while writing to an unrelated scratch
+    location) so inventory_path can satisfy the script's own
+    require_inventory_path_under_scope_dir guard -- every write-capable
+    subcommand now requires inventory_path to resolve to exactly
+    <plugin_dir>/.claude-plugin/plugin-inventory.json, which means
+    plugin_dir itself must be a real, writable directory this test controls,
+    not the actual tracked repo. The copy preserves testing against real
+    component data; only the write target moves."""
+    import shutil
     import tempfile
 
-    repo_root = _find_repo_root()
-    plugin_dir = repo_root / "plugins" / "plugin-devkit"
-    if not plugin_dir.is_dir():
-        return False, f"resolved plugin_dir does not exist: {plugin_dir}"
+    real_plugin_dir = _find_repo_root() / "plugins" / "plugin-devkit"
+    if not real_plugin_dir.is_dir():
+        return False, f"resolved plugin_dir does not exist: {real_plugin_dir}"
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Must live under a ".claude-plugin" directory -- the script's own
-        # write-boundary shape guard (require_inventory_path_shape) refuses
-        # any other location.
-        inventory_path = pathlib.Path(tmpdir) / ".claude-plugin" / "plugin-inventory.json"
-        inventory_path.parent.mkdir(parents=True, exist_ok=True)
-        bootstrap = subprocess.run(
-            [
-                sys.executable,
-                str(SCRIPT),
-                "bootstrap",
-                str(plugin_dir),
-                str(inventory_path),
-                "plugin_deadbeef",
-                "plugin-devkit",
-            ],
-            capture_output=True,
-            text=True,
+        plugin_dir = pathlib.Path(tmpdir) / "plugin-devkit"
+        shutil.copytree(
+            real_plugin_dir, plugin_dir, ignore=shutil.ignore_patterns("__pycache__", "*.pyc")
+        )
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run(
+            "bootstrap", plugin_dir, inventory_path, "plugin_deadbeef", "plugin-devkit"
         )
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"

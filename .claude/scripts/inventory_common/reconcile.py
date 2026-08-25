@@ -27,38 +27,32 @@ def today():
     return datetime.datetime.now(datetime.UTC).date().isoformat()
 
 
-def require_inventory_path_shape(inventory_path, expected_filename):
-    """Structural write-boundary guard for every write-capable subcommand
-    (bootstrap/apply/import-grading/repair-history in both scripts):
-    `inventory_path` must end in `.../.claude-plugin/<expected_filename>` --
-    refuses any other shape before a single byte is written.
+def require_inventory_path_under_scope_dir(inventory_path, scope_dir, expected_filename):
+    """Full write-boundary guard for every write-capable subcommand
+    (bootstrap/apply/import-grading/repair-history in plugin-inventory.py;
+    bootstrap/apply/import-grading in marketplace-inventory.py): resolves
+    both `inventory_path` and `scope_dir` to real, symlink-resolved absolute
+    paths and requires `inventory_path` to equal exactly
+    `<realpath(scope_dir)>/.claude-plugin/<expected_filename>` -- refuses
+    anything else before a single byte is written. `scope_dir` is the
+    plugin's own root directory for plugin-inventory.py, or the repo root
+    for marketplace-inventory.py.
 
-    This is deliberately a *shape* check, not a same-plugin-as-discovery
-    check -- `apply`/`import-grading`/`repair-history` take no `plugin_dir`
-    argument at all, so there is no "this plugin's own directory" to compare
-    against from the CLI args alone. A stricter exact-match-to-plugin_dir
-    check was considered and rejected for `bootstrap` too: it would require
-    `inventory_path` to live under the same `plugin_dir` discovery reads
-    from, which directly conflicts with this script's own persisted smoke
-    test intentionally discovering real components from the real
-    plugin-devkit tree while writing only to a disposable scratch location
-    (never mutating the real repo's own inventory file). This shape check
-    still closes the original finding's core concern -- an arbitrary
-    unrelated file can no longer be targeted -- without forcing that
-    legitimate test pattern to discover from a synthetic fixture instead of
-    real data. Writing to a *different* real plugin's own valid inventory
-    file is not fully prevented by this check alone; that residual gap is
-    disclosed in SKILL.md's Failure Handling section, not silently assumed
-    closed.
+    Every write-capable subcommand in both scripts takes `scope_dir` as a
+    required argument specifically so this check can enforce real
+    same-plugin-as-discovery containment, not just a filename/parent-dir
+    shape match -- a caller can no longer target a *different* real
+    plugin's (or, for marketplace-inventory, a different repo's) own valid
+    inventory file by supplying its path directly, since that path would
+    resolve outside the `scope_dir` this specific invocation names.
     """
-    path = os.path.normpath(inventory_path)
-    parent = os.path.basename(os.path.dirname(path))
-    filename = os.path.basename(path)
-    if filename != expected_filename or parent != ".claude-plugin":
+    expected = os.path.realpath(os.path.join(scope_dir, ".claude-plugin", expected_filename))
+    actual = os.path.realpath(inventory_path)
+    if actual != expected:
         raise SystemExit(
-            f"inventory_path {inventory_path!r} does not have the required shape "
-            f".../.claude-plugin/{expected_filename} -- refusing to write to a path "
-            "that doesn't look like a real inventory file location"
+            f"inventory_path {inventory_path!r} does not resolve to {expected!r} "
+            f"(the expected .claude-plugin/{expected_filename} under {scope_dir!r}) -- "
+            "refusing to write outside this invocation's own declared scope"
         )
 
 

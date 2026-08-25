@@ -6,11 +6,17 @@ Subcommands:
   discover        <plugin_dir>
   bootstrap       <plugin_dir> <inventory_path> <plugin_id> <plugin_name>
   plan            <plugin_dir> <inventory_path>
-  apply           <inventory_path> <approved_plan.json> <expected_hash>
-  import-grading  <inventory_path> <report_path> <target> <target_type>
+  apply           <plugin_dir> <inventory_path> <approved_plan.json> <expected_hash>
+  import-grading  <plugin_dir> <inventory_path> <report_path> <target> <target_type>
   check           <inventory_path> <plugin_dir>
-  repair-history  <inventory_path> <component_id> <history_field> \
+  repair-history  <plugin_dir> <inventory_path> <component_id> <history_field> \
                   <replacement_history.json> --confirm <component_id>
+
+Every write-capable subcommand takes `plugin_dir` so it can enforce that
+`inventory_path` resolves to exactly `<plugin_dir>/.claude-plugin/
+plugin-inventory.json` -- this script never writes a different plugin's own
+inventory file, mechanically, not just by prose convention (see
+`inventory_common.reconcile.require_inventory_path_under_scope_dir`).
 
 This script owns discovery, reconciliation-plan construction, and atomic
 apply -- it never decides lifecycle status, functional_role, domain, or
@@ -272,7 +278,9 @@ def cmd_discover(args):
 
 
 def cmd_bootstrap(args):
-    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
+    reconcile.require_inventory_path_under_scope_dir(
+        args.inventory_path, args.plugin_dir, INVENTORY_FILENAME
+    )
     with json_store.InventoryLock(args.inventory_path):
         if os.path.exists(args.inventory_path):
             raise SystemExit(f"refusing to bootstrap: {args.inventory_path} already exists")
@@ -305,7 +313,9 @@ def cmd_plan(args):
 
 
 def cmd_apply(args):
-    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
+    reconcile.require_inventory_path_under_scope_dir(
+        args.inventory_path, args.plugin_dir, INVENTORY_FILENAME
+    )
     applied = reconcile.cmd_apply_from_plan(
         args.inventory_path,
         args.approved_plan_path,
@@ -317,7 +327,9 @@ def cmd_apply(args):
 
 
 def cmd_import_grading(args):
-    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
+    reconcile.require_inventory_path_under_scope_dir(
+        args.inventory_path, args.plugin_dir, INVENTORY_FILENAME
+    )
     if args.target_type == "plugin":
         raise SystemExit(
             "target_type 'plugin' is not valid here -- a whole-plugin report belongs in "
@@ -379,7 +391,9 @@ def cmd_repair_history(args):
             "component_id being repaired -- this is the destructive-rewrite gate; "
             "show the user the full before/after diff and get explicit approval first"
         )
-    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
+    reconcile.require_inventory_path_under_scope_dir(
+        args.inventory_path, args.plugin_dir, INVENTORY_FILENAME
+    )
     with json_store.InventoryLock(args.inventory_path):
         inventory = json_store.read_json(args.inventory_path)
         component = next((c for c in inventory["components"] if c["id"] == args.component_id), None)
@@ -428,12 +442,14 @@ def main():
     p.set_defaults(func=cmd_plan)
 
     p = sub.add_parser("apply")
+    p.add_argument("plugin_dir")
     p.add_argument("inventory_path")
     p.add_argument("approved_plan_path")
     p.add_argument("expected_hash")
     p.set_defaults(func=cmd_apply)
 
     p = sub.add_parser("import-grading")
+    p.add_argument("plugin_dir")
     p.add_argument("inventory_path")
     p.add_argument("report_path")
     p.add_argument("target")
@@ -446,6 +462,7 @@ def main():
     p.set_defaults(func=cmd_check)
 
     p = sub.add_parser("repair-history")
+    p.add_argument("plugin_dir")
     p.add_argument("inventory_path")
     p.add_argument("component_id")
     p.add_argument("history_field")
