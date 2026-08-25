@@ -5,9 +5,10 @@ remote-branch-deletion verification fallback, and step 5's unconditional
 worktree branch-delete note -- structural checks only, since this is a
 conversational, AskUserQuestion-driven skill with no executable logic of its
 own to simulate."""
+
+import pathlib
 import re
 import sys
-import pathlib
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
@@ -52,7 +53,9 @@ def check_bash_grants():
     body = fm_text[header_end:]
     unused = [cmd for cmd in granted_cmds if not re.search(re.escape(cmd.split(" ")[0]), body)]
     if unused:
-        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(sorted(set(unused)))
+        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(
+            sorted(set(unused))
+        )
     return True, "every granted Bash command is invoked somewhere in the body"
 
 
@@ -65,7 +68,7 @@ def check_step_sequence():
     if start == -1:
         return True, "no '## Instructions' section found (skip)"
     end = text.find("\n## ", start + 1)
-    section = text[start:end if end != -1 else len(text)]
+    section = text[start : end if end != -1 else len(text)]
     numbers = [int(n) for n in re.findall(r"^(\d+)\. \*\*", section, re.MULTILINE)]
     if not numbers:
         return True, "no numbered steps found (skip)"
@@ -85,9 +88,9 @@ def _get_step_text(number):
     step_start = re.search(rf"^{number}\. \*\*", section, re.MULTILINE)
     if not step_start:
         return None
-    next_step = re.search(r"^\d+\. \*\*", section[step_start.end():], re.MULTILINE)
+    next_step = re.search(r"^\d+\. \*\*\b", section[step_start.end() :], re.MULTILINE)
     step_end = step_start.end() + next_step.start() if next_step else len(section)
-    return section[step_start.start():step_end]
+    return section[step_start.start() : step_end]
 
 
 def check_step7_remote_delete_fallback():
@@ -95,12 +98,24 @@ def check_step7_remote_delete_fallback():
     if step7 is None:
         return False, "step 7 ('## Instructions') not found"
     if "git ls-remote --heads origin" not in step7:
-        return False, "step 7 doesn't verify remote branch deletion with git ls-remote --heads origin"
+        return (
+            False,
+            "step 7 doesn't verify remote branch deletion with git ls-remote --heads origin",
+        )
     if "gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>" not in step7:
-        return False, "step 7's ls-remote fallback doesn't complete deletion via the documented gh api -X DELETE path"
+        return (
+            False,
+            "step 7's ls-remote fallback doesn't complete deletion via the documented gh api path",
+        )
     if "finishing-work" not in step7 or "1.5" not in step7:
-        return False, "step 7 doesn't cite finishing-work step 1.5 as the origin of this fallback (R20)"
-    return True, "step 7 verifies remote branch deletion and falls back to gh api -X DELETE, citing finishing-work step 1.5"
+        return (
+            False,
+            "step 7 doesn't cite finishing-work step 1.5 as the origin of this fallback (R20)",
+        )
+    return (
+        True,
+        "step 7 verifies remote branch deletion, falls back to gh api DELETE (finishing-work 1.5)",
+    )
 
 
 def check_step5_worktree_note():
@@ -110,7 +125,10 @@ def check_step5_worktree_note():
     if "already used by worktree" not in step5:
         return False, "step 5 doesn't note the possible worktree branch-delete git error"
     if "merge_auto_delete_branch" in step5:
-        return False, "step 5's worktree note appears to be conditioned on merge_auto_delete_branch, which isn't read until step 6"
+        return (
+            False,
+            "step 5's worktree note looks gated on merge_auto_delete_branch (unread until step 6)",
+        )
     return True, "step 5's worktree branch-delete note is present and unconditional"
 
 
