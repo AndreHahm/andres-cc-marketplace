@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {"text": "Does not report the non-zero exit as a merge failure, given state is MERGED", "type": "functionality", "target": "outputs/"},
+    {"text": "Explicitly runs git ls-remote --heads origin feat/some-feature to check remote branch existence", "type": "functionality", "target": "outputs/"},
+    {"text": "On non-empty ls-remote output, validates headRefName against ^[A-Za-z0-9._/-]+$ before deleting", "type": "functionality", "target": "outputs/"},
+    {"text": "On non-empty ls-remote output, completes deletion via gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>", "type": "functionality", "target": "outputs/"},
+    {"text": "States plainly that the fallback ran", "type": "quality", "target": "outputs/"}
+  ]
+}

@@ -183,6 +183,15 @@
       "files": [
         "outputs/options.md"
       ]
+    },
+    {
+      "id": 21,
+      "name": "gh api -f vs -F: does not use -f body=@<path>",
+      "prompt": "You need to reply to an inline PR review comment using `gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies`, per `references/github-api-mechanics.md`'s 'Replying to an inline PR review comment' section. The reply body is long (multi-paragraph, contains backticks and quotes) and has already been written to a scratchpad file at `/tmp/scratch/reply.txt`. Write the exact `gh api` command you would run to post this reply, and explain why you chose that exact form for passing the body. Save your answer to `outputs/command.md`.",
+      "expected_output": "Uses either `-f body=\"$(cat \"/tmp/scratch/reply.txt\")\"` or `-F body=@/tmp/scratch/reply.txt` -- never `-f body=@/tmp/scratch/reply.txt`, which silently posts the literal string `@/tmp/scratch/reply.txt` as the comment body instead of the file's content. Explains that `-f`/`--raw-field` never interprets a leading `@` as a file reference -- only `-F`/`--field` does.",
+      "files": [
+        "outputs/command.md"
+      ]
     }
   ],
   "testing_validation_coverage": {

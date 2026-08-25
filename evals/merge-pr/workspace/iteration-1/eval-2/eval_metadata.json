@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {"text": "Notes possible local git error like fatal: '<default>' is already used by worktree ... even though merge succeeds", "type": "presence", "target": "outputs/"},
+    {"text": "States this is expected/handled automatically", "type": "quality", "target": "outputs/"},
+    {"text": "States the note is unconditional, not gated on merge_auto_delete_branch", "type": "functionality", "target": "outputs/"}
+  ]
+}

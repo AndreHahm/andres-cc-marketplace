@@ -16,6 +16,13 @@
       "prompt": "As part of a retrospective, you find this excerpt from a persisted build-handoff-writer report's Open Items section: 'Open Item: the foo-validator skill has no smoke test yet.' On checking the actual current state directly, you find that plugins/example-plugin/skills/foo-validator/scripts/smoke_test.py already exists (added 2 days after the handoff report was written). Following your own Verify Open Items procedure, what do you record about this item, and what does this say about the component (build-handoff-writer) that produced the stale artifact?",
       "expected_output": "Correctly identifies the item as resolved/stale rather than relaying it forward as still-open, records the discrepancy as a Weakness against build-handoff-writer (the artifact's producer) rather than as a note about the artifact file itself, and does not silently drop the discrepancy.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Phase 2 component-inventory confirmation uses AskUserQuestion, not plain text",
+      "prompt": "You are mid-retrospective, following your own Phase 2 procedure. You have just finished emitting the Session Inventory table (5 components found: 2 skills, 1 sub-agent, 1 command, 1 rule). Per your own SKILL.md instructions, what do you do right now, before proceeding to Phase 3's SWOT analysis? Describe the exact next action you take, concretely enough to tell whether it is a tool call or plain narrative text.",
+      "expected_output": "States it calls AskUserQuestion (not that it prints/asks the question as plain text) with the question 'Found N components. Proceed with full analysis?' and options 'Proceed' / 'Cancel', and that it waits for the user's answer before proceeding to Phase 3.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

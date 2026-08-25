@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/analyzing-sessions/SKILL.md",
+  "assertions": [
+    {"text": "States the next action is a tool call to AskUserQuestion, not a plain-text/printed question", "type": "functionality", "target": "outputs/"},
+    {"text": "Names the question text 'Found N components. Proceed with full analysis?'", "type": "presence", "target": "outputs/"},
+    {"text": "Names both options 'Proceed' and 'Cancel'", "type": "presence", "target": "outputs/"},
+    {"text": "States it waits for the user's answer before proceeding to Phase 3", "type": "functionality", "target": "outputs/"}
+  ]
+}

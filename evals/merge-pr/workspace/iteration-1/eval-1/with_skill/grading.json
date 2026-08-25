@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does not report the non-zero exit as a merge failure, given state is MERGED", "passed": true, "evidence": "\"Report: 'Merge succeeded (rebase method)...'\" -- never described as a failure."},
+    {"text": "Explicitly runs git ls-remote --heads origin feat/some-feature to check remote branch existence", "passed": true, "evidence": "\"Run: git ls-remote --heads origin feat/some-feature\""},
+    {"text": "On non-empty ls-remote output, validates headRefName against ^[A-Za-z0-9._/-]+$ before deleting", "passed": true, "evidence": "\"Step 3: Validate headRefName Against Safe Pattern ... Check: Does feat/some-feature match ^[A-Za-z0-9._/-]+$?\""},
+    {"text": "On non-empty ls-remote output, completes deletion via gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>", "passed": true, "evidence": "\"Step 4: Delete Remote Branch via API Fallback -- Run: gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/feat/some-feature\""},
+    {"text": "States plainly that the fallback ran", "passed": true, "evidence": "\"Report: 'Merge succeeded (rebase method). Local --delete-branch failed due to worktree conflict ... Completed deletion via API fallback.'\""}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

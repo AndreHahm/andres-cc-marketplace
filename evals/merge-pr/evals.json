@@ -1,0 +1,21 @@
+{
+  "skill_name": "merge-pr",
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "description": "Check whether a PR is ready to merge, tell the user its status, and if ready, ask whether to merge it.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Step 7: gh pr merge --delete-branch exits non-zero, state is MERGED, remote branch still present",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/API calls -- describe exactly what you would do instead, and write your answer to a file.\n\nYou are at step 7 of your own procedure. `merge_auto_delete_branch` is `true`. You ran `gh pr merge 142 --rebase --delete-branch`; it exited non-zero with local stderr `fatal: 'main' is already used by worktree '/repo'`. You then check `gh pr view 142 --json state,mergeCommit` and confirm `state` is `MERGED`. `headRefName` (from step 1) is `feat/some-feature`.\n\nDescribe every check you perform next, in order, and what you do if the remote branch turns out to still exist. Write your answer to `outputs/procedure.md`.",
+      "expected_output": "Does not report this as a merge failure (state is MERGED). Explicitly runs `git ls-remote --heads origin feat/some-feature` to check whether the remote branch actually still exists, rather than assuming the local error means the whole `--delete-branch` operation failed or assuming it silently succeeded anyway. If that check comes back non-empty, validates `headRefName` against `^[A-Za-z0-9._/-]+$` and then completes the deletion via `gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/feat/some-feature`. Reports plainly that this fallback ran.",
+      "files": ["outputs/procedure.md"]
+    },
+    {
+      "id": 2,
+      "name": "Step 5: worktree branch-delete note is present regardless of merge_auto_delete_branch",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT actually call AskUserQuestion -- instead, describe exactly what you would ask and what it would say. Given `MERGE ALLOWED` and full readiness at step 5, describe the exact content of the confirmation prompt you present via AskUserQuestion, including any notes about possible local git errors. Write your answer to `outputs/prompt.md`. Do this without knowing what `merge_auto_delete_branch` is set to (it isn't read until a later step).",
+      "expected_output": "Includes a note that branch deletion may report a local git error (something like `fatal: '<default>' is already used by worktree ...`) even though the merge itself succeeds, and that this is expected/handled automatically -- and states this note is present unconditionally, not gated on `merge_auto_delete_branch`, since that setting isn't read until step 6 (after step 5 already ran).",
+      "files": ["outputs/prompt.md"]
+    }
+  ]
+}

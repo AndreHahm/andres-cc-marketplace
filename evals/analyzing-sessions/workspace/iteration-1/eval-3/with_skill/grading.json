@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States the next action is a tool call to AskUserQuestion, not a plain-text/printed question", "passed": true, "evidence": "\"Tool Call: `AskUserQuestion`** (not narrative text, an actual tool invocation)\""},
+    {"text": "Names the question text 'Found N components. Proceed with full analysis?'", "passed": true, "evidence": "question: \"Found 5 components. Proceed with full analysis?\""},
+    {"text": "Names both options 'Proceed' and 'Cancel'", "passed": true, "evidence": "options: [\"Proceed\", \"Cancel\"]"},
+    {"text": "States it waits for the user's answer before proceeding to Phase 3", "passed": true, "evidence": "\"If 'Proceed' → Move to Phase 3: SWOT Analysis / If 'Cancel' → Stop analysis; do not proceed to Phase 3\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

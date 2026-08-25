@@ -28,7 +28,7 @@ This skill is a standalone fork of `plugin-devkit`'s `analyzing-sessions` skill,
 ## Quick Start
 
 1. Choose scope — "This conversation" for the current session, or provide a start date for a date range.
-2. Confirm the Phase 2 component inventory before the analysis runs — output artifacts in scope are read in full, not just listed.
+2. Confirm the Phase 2 component inventory via `AskUserQuestion` before the analysis runs — output artifacts in scope are read in full, not just listed.
 3. Skim SWOT + critique output in P1 → P3 priority order.
 4. Act on the **Top 5 Actions** from Phase 6, then check the persisted report path.
 
@@ -117,7 +117,7 @@ Emit the inventory before proceeding:
 | # | Component | Category | Evidence |
 ```
 
-Confirm: "Found N components. Proceed with full analysis?"
+Confirm before proceeding — ask with `AskUserQuestion`: "Found N components. Proceed with full analysis?" — options "Proceed" / "Cancel".
 
 ## Phase 3: SWOT Analysis
 

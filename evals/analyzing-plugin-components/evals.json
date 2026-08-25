@@ -1,0 +1,14 @@
+{
+  "skill_name": "analyzing-plugin-components",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-plugin-components/SKILL.md",
+  "description": "Analyzes Claude Code sessions from a user-defined start date through today, producing SWOT analyses, self-critiques, and improvement suggestions.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Phase 2 component-inventory confirmation uses AskUserQuestion, not plain text",
+      "prompt": "You are mid-retrospective, following your own Phase 2 procedure. You have just finished emitting the Session Inventory table (5 components found: 2 skills, 1 sub-agent, 1 command, 1 rule). Per your own SKILL.md instructions, what do you do right now, before proceeding to Phase 3's SWOT analysis? Describe the exact next action you take, concretely enough to tell whether it is a tool call or plain narrative text.",
+      "expected_output": "States it calls AskUserQuestion (not that it prints/asks the question as plain text) with the question 'Found N components. Proceed with full analysis?' and options 'Proceed' / 'Cancel', and that it waits for the user's answer before proceeding to Phase 3.",
+      "files": []
+    }
+  ]
+}
