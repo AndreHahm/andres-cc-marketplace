@@ -15,7 +15,7 @@ description: >-
   `plugin-inventory`'s job instead, and this skill never edits that file
   directly; it only invokes `plugin-inventory` after explicit approval.
 argument-hint: "[mode: build|check|plan|apply|import-grading|repair-plugins]"
-allowed-tools: Read Glob Grep AskUserQuestion Write Skill Bash(python scripts/marketplace-inventory.py:*)
+allowed-tools: Read Glob Grep AskUserQuestion Write Skill Bash(python scripts/marketplace-inventory.py:*) Bash(python scripts/smoke_test.py:*)
 ---
 
 # Marketplace Inventory

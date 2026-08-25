@@ -5,18 +5,12 @@ Written alongside the Markdown plan at the same base path with a `.json` extensi
 (e.g. `plugin-inventory`) reads directly, instead of parsing the Markdown plan's prose. The Markdown
 stays the user-facing artifact; this JSON is the machine contract.
 
-**R18 exception (recorded):** the example below is a complete, coherent document skeleton meant to be
-read as a whole; splitting it would break the worked example it's illustrating.
-
 ```json
 {
   "schema_version": "1.0.0",
   "plan_id": "<slug>-<timestamp>",
   "generated_at": "2026-08-25T14:30:00Z",
-  "concept_source": {
-    "type": "concept_card",
-    "path": ".claude/output/plugin-ideation/<slug>-<timestamp>.md"
-  },
+  "concept_source": {"type": "concept_card", "path": ".claude/output/plugin-ideation/<slug>-<timestamp>.md"},
   "ideation_skipped": false,
   "planned_components": [
     {
