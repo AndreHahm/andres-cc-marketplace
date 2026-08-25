@@ -54,8 +54,7 @@ Run `plugin-planning` against this Concept Card to produce a component inventory
 
 ## Overlap Check
 **Classification:** None | Partial | Full
-<if Partial: name the adjacent component and the boundary this component must respect —
-this becomes the basis for a "When NOT to Use" exclusion during Design>
+<if Partial: name the adjacent component and the boundary this component must respect — this becomes the basis for a "When NOT to Use" exclusion during Design>
 
 ## Name Candidates
 1. `<name-candidate-1>` — <one-line rationale>

@@ -3,16 +3,14 @@ name: plugin-lifecycle-upstream
 description: >-
   Orchestrates the full upstream plugin-creation lifecycle — Conceive, Ideate, Plan, Design, Build,
   Self-Review, and Test — as one guided, gated pipeline, dispatching to plugin-conception,
-  plugin-ideation, plugin-planning, the matching Design skill per component (skill-development,
-  agent-development, command-development, hook-development, rule-development),
-  plugin-development for scaffolding, type-matched *-reviewer agents for Self-Review, and
-  skill-tester/agent-development's trigger-test script for a quick post-Build check. Use when the user names this pipeline directly ("build a plugin from
-  scratch", "run the full plugin creation pipeline", "start the upstream workflow") or
-  resumes from an existing Conception Brief/Concept Card/Plan — a bare "help me build a plugin" goes
-  through `using-plugin-devkit` first instead. Commits the build, writes a handoff
-  report, and hands off to plugin-lifecycle-downstream for QA once Test completes. For a
-  single already-designed component, use the matching Design skill directly instead of
-  this pipeline.
+  plugin-ideation, plugin-planning, a matching Design skill per component, plugin-development for
+  scaffolding, type-matched *-reviewer agents for Self-Review, and skill-tester/agent-development's
+  trigger-test script for a quick post-Build check. Use when the user names this pipeline directly
+  ("build a plugin from scratch", "run the full plugin creation pipeline", "start the upstream
+  workflow") or resumes from an existing Conception Brief/Concept Card/Plan — a bare "help me build
+  a plugin" goes through `using-plugin-devkit` first instead. Commits the build, writes a handoff
+  report, and hands off to plugin-lifecycle-downstream for QA once Test completes. For a single
+  already-designed component, use the matching Design skill directly instead of this pipeline.
 argument-hint: "[rough idea, or path to an existing Conception Brief/Concept Card/Plan]"
 allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(git branch:*) Bash(gh pr view:*) Bash(date:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) TaskCreate TaskUpdate
 ---
