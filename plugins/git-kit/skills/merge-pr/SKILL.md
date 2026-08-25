@@ -3,7 +3,7 @@ name: merge-pr
 description: >-
   Check whether the current branch's (or a given) pull request is ready to merge — not draft, all required status checks passing, no outstanding change-request reviews — report readiness clearly, and if ready, ask before merging. Verifies the current user actually has merge rights (repo owner, CODEOWNERS match, or collaborator permission) before executing. Use when checking if a PR is ready to merge, merging a PR, or asked "can I merge this" / "is this ready". Not `handling-review-findings`'s job of triaging which individual findings get fixed, filed, or declined.
 argument-hint: (optional) PR number or URL, and/or --bypass-codex-review "<reason>" — defaults to the current branch's PR if omitted
-allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh pr merge:*), Bash(gh api user --jq:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(gh repo view:*), Bash(git ls-remote --heads origin:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, Skill(git-kit:manage-codeowners), Skill(git-kit:finishing-work)
+allowed-tools: Bash(gh pr view:*), Bash(gh pr checks:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh pr merge:*), Bash(gh api user --jq:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh api repos/*/labels/*:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(gh repo view:*), Bash(git ls-remote --heads origin:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Write, AskUserQuestion, Skill(git-kit:manage-codeowners), Skill(git-kit:finishing-work)
 ---
 
 # Merge PR
