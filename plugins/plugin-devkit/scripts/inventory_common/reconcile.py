@@ -56,6 +56,19 @@ def require_inventory_path_under_scope_dir(inventory_path, scope_dir, expected_f
         )
 
 
+def validate_or_exit(fn, *args, context, **kwargs):
+    """Run `fn(*args, **kwargs)`, converting any `ValueError` it raises into
+    a clean `SystemExit` prefixed with `context`. Every validator in this
+    system (`validate_inventory`, `validate_history_periods`, etc.) raises a
+    bare `ValueError` on a semantic violation -- every CLI subcommand here
+    wants that surfaced as a clean rejection message like every other
+    rejection path in these scripts, not an uncaught Python traceback."""
+    try:
+        return fn(*args, **kwargs)
+    except ValueError as exc:
+        raise SystemExit(f"{context}: {exc}") from exc
+
+
 def apply_update(inventory, operation, collection_key):
     """Apply an `update` operation (a single field change) to the record
     with matching `id` in `inventory[collection_key]`."""
@@ -178,7 +191,13 @@ def cmd_apply_from_plan(
         with open(approved_plan_path, encoding="utf-8") as f:
             approved_operations = json.load(f)
         updated = apply_plan_fn(inventory, approved_operations)
-        json_store.atomic_write_json(inventory_path, updated, validator=validator)
+        validate_or_exit(
+            json_store.atomic_write_json,
+            inventory_path,
+            updated,
+            validator=validator,
+            context="apply",
+        )
     return len(approved_operations)
 
 
@@ -218,5 +237,11 @@ def cmd_import_grading_for_record(
             )
 
         inventory["updated_on"] = today()
-        json_store.atomic_write_json(inventory_path, inventory, validator=validator)
+        validate_or_exit(
+            json_store.atomic_write_json,
+            inventory_path,
+            inventory,
+            validator=validator,
+            context="import-grading",
+        )
     return record, appended, security_appended
