@@ -149,7 +149,18 @@ def build_plan(inventory, discovered):
     surfaced as `conflict` entries here, resolved later via an approved
     `status-transition` operation (see apply_status_transition), never
     auto-applied by this function."""
-    existing_by_key = {(c["name"], c["type"]): c for c in inventory.get("components", [])}
+    # A duplicate (name, type) key can occur across a retired/deprecated
+    # record and the active record that superseded it (validate_records only
+    # forbids two *active* records sharing a key, never a historical one
+    # sharing a key with the current active record). Always prefer the
+    # active record on such a collision -- keeping whichever record happened
+    # to come last in array order would let a retired duplicate shadow the
+    # active one and misclassify a genuine no-op/update as a conflict.
+    existing_by_key = {}
+    for c in inventory.get("components", []):
+        key = (c["name"], c["type"])
+        if key not in existing_by_key or c.get("status") == "active":
+            existing_by_key[key] = c
     discovered_keys = {(c["name"], c["type"]) for c in discovered}
     plan = []
 
