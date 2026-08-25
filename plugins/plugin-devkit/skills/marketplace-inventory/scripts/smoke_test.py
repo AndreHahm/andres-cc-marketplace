@@ -763,6 +763,132 @@ def check_import_grading_rejects_non_string_graded_at():
         return True, "import-grading correctly rejected a non-string graded_at before any write"
 
 
+def check_import_grading_rejects_offset_graded_at():
+    """Scenario 19 (Import grading rejects a non-UTC-offset graded_at): a
+    report with a syntactically valid but non-'Z' ISO timestamp must be
+    rejected on the first import -- the fix for a round-3 finding that a
+    bare non-empty-string check let two differently-offset (but both
+    individually valid) timestamps through, which then sort in the wrong
+    chronological order under history.py's raw lexicographic sort/max."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        report_path = pathlib.Path(tmpdir) / "report.json"
+        report_path.write_text(
+            json.dumps(
+                {
+                    "target": "plugin-a",
+                    "target_type": "plugin",
+                    "graded_at": "2026-08-21T01:00:00+10:00",
+                    "plugin_final_score": 8.0,
+                    "plugin_gates_applied": [],
+                    "grader_schema_version": "1.1.0",
+                }
+            ),
+            encoding="utf-8",
+        )
+        result = _run(
+            "import-grading", repo_root, inventory_path, report_path, "plugin-a", "plugin"
+        )
+        if result.returncode == 0:
+            return (
+                False,
+                "import-grading accepted a non-'Z' graded_at offset -- should have been rejected",
+            )
+        if "Traceback" in result.stderr:
+            return (
+                False,
+                f"import-grading crashed with an uncaught traceback: {result.stderr.strip()}",
+            )
+        return True, "import-grading correctly rejected a non-UTC-offset graded_at"
+
+
+def check_reconciliation_prefers_active_on_duplicate_key():
+    """Scenario 20 (Reconciliation prefers the active record on a duplicate
+    name): when a retired record shares a name with the active record that
+    superseded it, and the retired one comes later in array order, a
+    discovered candidate matching the active record must resolve to a
+    clean no-op -- not a spurious conflict against the shadowed-by-array-
+    order retired record. Fix for a round-3 finding that existing_by_name's
+    dict comprehension kept whichever record came last on a duplicate
+    name."""
+    import copy
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+        active = inventory["plugins"][0]
+        retired = copy.deepcopy(active)
+        retired["id"] = active["id"] + "-old"
+        retired["status"] = "retired"
+        retired["status_history"] = [
+            {
+                "status": "retired",
+                "valid_from": active["status_history"][0]["valid_from"],
+                "valid_to": None,
+                "reason": "fixture retired duplicate",
+                "evidence": [],
+            }
+        ]
+        retired["naming_history"] = copy.deepcopy(active["naming_history"])
+        # Appended after the active record -- array order is what exposes the bug.
+        inventory["plugins"].append(retired)
+        inventory_path.write_text(json.dumps(inventory), encoding="utf-8")
+
+        check = _run("check", repo_root, inventory_path)
+        if check.returncode != 0:
+            return False, f"check failed unexpectedly: {check.stderr.strip()}"
+        result = json.loads(check.stdout)
+        if result["drift_count"] != 0:
+            return (
+                False,
+                f"expected 0 drift (clean no-op against the active record), "
+                f"got drift_count={result['drift_count']}: {result['drift']}",
+            )
+        return (
+            True,
+            "reconciliation correctly resolved against the active record, not the retired one",
+        )
+
+
+def check_check_rejects_malformed_compatibility():
+    """Scenario 21 (Check rejects a malformed compatibility shape): a
+    plugin record whose compatibility field is a list instead of a dict
+    must make check exit non-zero with a clean rejection message, never an
+    uncaught Python traceback -- the fix for a round-3 finding that
+    validate_records' compatibility.values() call raised an AttributeError
+    that validate_or_exit's (ValueError, KeyError, OSError) tuple didn't
+    catch."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+        inventory["plugins"][0]["compatibility"] = ["not", "a", "dict"]
+        inventory_path.write_text(json.dumps(inventory), encoding="utf-8")
+
+        check = _run("check", repo_root, inventory_path)
+        if check.returncode == 0:
+            return False, "check accepted a list-shaped compatibility field -- should be rejected"
+        if "Traceback" in check.stderr:
+            return False, f"check crashed with an uncaught traceback: {check.stderr.strip()}"
+        return True, "check correctly rejected a malformed compatibility shape with a clean message"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -783,6 +909,9 @@ CHECKS = [
     check_status_transition_rename,
     check_import_grading_ambiguous_target_rejected,
     check_import_grading_rejects_non_string_graded_at,
+    check_import_grading_rejects_offset_graded_at,
+    check_reconciliation_prefers_active_on_duplicate_key,
+    check_check_rejects_malformed_compatibility,
 ]
 
 

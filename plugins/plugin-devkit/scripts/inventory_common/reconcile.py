@@ -57,26 +57,32 @@ def require_inventory_path_under_scope_dir(inventory_path, scope_dir, expected_f
 
 
 def validate_or_exit(fn, *args, context, **kwargs):
-    """Run `fn(*args, **kwargs)`, converting any `ValueError`, `KeyError`, or
-    `OSError` it raises into a clean `SystemExit` prefixed with `context`.
-    Every validator in this system (`validate_inventory`,
-    `validate_history_periods`, etc.) raises a bare `ValueError` on a
-    semantic violation -- every CLI subcommand here wants that surfaced as a
-    clean rejection message like every other rejection path in these
-    scripts, not an uncaught Python traceback. `KeyError` is caught too:
-    `validate_records` indexes several required record fields directly
-    (`record["status"]`, `record["name"]`, etc.) rather than via `.get()`,
-    so a record missing one of those keys entirely -- a hand-corrupted
-    inventory file, not a normal enum/shape violation -- would otherwise
-    still leak an uncaught traceback. `OSError` is caught for the same
-    reason at every read call site this wraps (`json_store.read_json`, an
-    approved-plan file open): a missing, unreadable, or truncated file
-    raises `OSError`/`json.JSONDecodeError` (a `ValueError` subclass) before
-    any validator ever runs, and that path deserves the same clean
-    rejection as a validator failure, not a raw traceback."""
+    """Run `fn(*args, **kwargs)`, converting any `ValueError`, `KeyError`,
+    `AttributeError`, `TypeError`, or `OSError` it raises into a clean
+    `SystemExit` prefixed with `context`. Every validator in this system
+    (`validate_inventory`, `validate_history_periods`, etc.) raises a bare
+    `ValueError` on a semantic violation -- every CLI subcommand here wants
+    that surfaced as a clean rejection message like every other rejection
+    path in these scripts, not an uncaught Python traceback. `KeyError` is
+    caught too: `validate_records` indexes several required record fields
+    directly (`record["status"]`, `record["name"]`, etc.) rather than via
+    `.get()`, so a record missing one of those keys entirely -- a
+    hand-corrupted inventory file, not a normal enum/shape violation --
+    would otherwise still leak an uncaught traceback. `AttributeError` and
+    `TypeError` are caught for the same hand-corrupted-shape reason:
+    `validate_records`' `compatibility.values()` call (and `models`'
+    `.get()`-based history-period field accesses) assume a dict/list shape
+    that a malformed record can violate -- e.g. `compatibility` supplied as
+    a list raises `AttributeError` from `.values()`, not `ValueError`.
+    `OSError` is caught for the same reason at every read call site this
+    wraps (`json_store.read_json`, an approved-plan file open): a missing,
+    unreadable, or truncated file raises `OSError`/`json.JSONDecodeError`
+    (a `ValueError` subclass) before any validator ever runs, and that path
+    deserves the same clean rejection as a validator failure, not a raw
+    traceback."""
     try:
         return fn(*args, **kwargs)
-    except (ValueError, KeyError, OSError) as exc:
+    except (ValueError, KeyError, AttributeError, TypeError, OSError) as exc:
         raise SystemExit(f"{context}: {exc}") from exc
 
 

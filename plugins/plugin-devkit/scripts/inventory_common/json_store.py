@@ -14,8 +14,14 @@ definition site.
 import hashlib
 import json
 import os
+import sys
 import tempfile
 import time
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
 
 
 def canonical_bytes(obj):
@@ -63,72 +69,74 @@ def atomic_write_json(path, obj, validator=None):
 
 
 class InventoryLock:
-    """A minimal, repository-local exclusive lock via an atomically-created
-    lockfile (`O_CREAT | O_EXCL`). Not a distributed lock -- this system's
-    actual requirement is "one writer at a time on one machine, reject a
-    concurrent/stale apply rather than merge it," which this satisfies
-    without an external dependency.
+    """A minimal, repository-local exclusive lock via an OS-level advisory
+    lock (`fcntl.flock` on POSIX, `msvcrt.locking` on Windows) held on a
+    sibling lockfile for the full duration of ownership. Not a distributed
+    lock -- this system's actual requirement is "one writer at a time on
+    one machine, reject a concurrent/stale apply rather than merge it,"
+    which this satisfies without an external dependency.
 
-    A lock older than `stale_after_seconds` is treated as abandoned (its
-    writer was killed, crashed, or lost the host after creating the
-    lockfile but before `__exit__` could remove it) and reclaimed before
-    the next retry -- an age heuristic, not a real PID-liveness check
-    (which has no portable, dependency-free implementation across POSIX
-    and Windows), but enough to recover from a routine interrupted
-    invocation without a human having to manually find and delete the
-    stray file. The default (10 minutes) is deliberately far longer than
-    any of this module's own operations should ever take, to avoid
-    reclaiming a lock a slow-but-still-alive writer genuinely still holds.
+    Unlike a bare `O_CREAT | O_EXCL` lockfile (this class's earlier
+    design), an advisory lock is released by the kernel the instant the
+    holding process's file descriptor closes -- on a clean `__exit__`, but
+    just as reliably on a crash or `kill -9`, with no age heuristic and no
+    check-then-act window for a second waiter to race against. This is
+    exactly the "real PID-liveness check" a prior version of this
+    docstring said had no portable, dependency-free implementation --
+    `fcntl`/`msvcrt` are both stdlib and provide it directly.
+
+    The lockfile itself is never removed (deliberately -- see `__exit__`):
+    removing it while another process might already hold an open file
+    descriptor on the same inode reintroduces the classic flock-plus-unlink
+    race, where a fresh `open()` after removal creates a new inode and two
+    processes end up holding locks on two different files. Leaving the
+    lockfile in place means every acquirer always locks the same, stable
+    inode.
     """
 
-    def __init__(self, path, timeout_seconds=30, poll_interval=0.2, stale_after_seconds=600):
+    def __init__(self, path, timeout_seconds=30, poll_interval=0.2):
         self.lock_path = path + ".lock"
         self.timeout_seconds = timeout_seconds
         self.poll_interval = poll_interval
-        self.stale_after_seconds = stale_after_seconds
-        self._acquired = False
+        self._fd = None
 
-    def _reclaim_if_stale(self):
+    def _try_lock(self, fd):
+        if sys.platform == "win32":
+            try:
+                msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+            except OSError:
+                return False
+            return True
         try:
-            mtime = os.path.getmtime(self.lock_path)
-        except FileNotFoundError:
-            return  # already gone -- released by its owner, or reclaimed by another waiter
-        if time.time() - mtime <= self.stale_after_seconds:
-            return
-        # Two waiters can both observe the same stale lock and both decide to
-        # reclaim it. Re-check the mtime is still the exact value just judged
-        # stale immediately before removing -- if a successor waiter already
-        # reclaimed and re-acquired in between, its lock's mtime will differ
-        # (it's newer), and this bails out instead of deleting that live lock
-        # out from under it. Narrows the race to the tiny window between this
-        # second stat and the remove call, rather than the whole stale-check
-        # interval.
-        try:
-            if os.path.getmtime(self.lock_path) != mtime:
-                return
-            os.remove(self.lock_path)
-        except FileNotFoundError:
-            pass  # a concurrent waiter already reclaimed it
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return False
+        return True
 
     def __enter__(self):
         deadline = time.monotonic() + self.timeout_seconds
+        fd = os.open(self.lock_path, os.O_CREAT | os.O_RDWR)
         while True:
-            try:
-                fd = os.open(self.lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            if self._try_lock(fd):
+                os.ftruncate(fd, 0)
                 os.write(fd, str(os.getpid()).encode("utf-8"))
-                os.close(fd)
-                self._acquired = True
+                self._fd = fd
                 return self
-            except FileExistsError:
-                self._reclaim_if_stale()
-                if time.monotonic() >= deadline:
-                    raise TimeoutError(
-                        f"could not acquire inventory lock at {self.lock_path} "
-                        f"within {self.timeout_seconds}s"
-                    ) from None
-                time.sleep(self.poll_interval)
+            if time.monotonic() >= deadline:
+                os.close(fd)
+                raise TimeoutError(
+                    f"could not acquire inventory lock at {self.lock_path} "
+                    f"within {self.timeout_seconds}s"
+                )
+            time.sleep(self.poll_interval)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._acquired and os.path.exists(self.lock_path):
-            os.remove(self.lock_path)
+        if self._fd is not None:
+            if sys.platform == "win32":
+                os.lseek(self._fd, 0, os.SEEK_SET)
+                msvcrt.locking(self._fd, msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(self._fd, fcntl.LOCK_UN)
+            os.close(self._fd)
+            self._fd = None
         return False

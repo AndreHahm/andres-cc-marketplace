@@ -104,7 +104,17 @@ def build_plan(inventory, discovered, repo_root):
     reconciliation. Also reports missing/stale per-plugin inventories --
     referential-integrity findings, not reconciliation operations this
     script applies itself."""
-    existing_by_name = {p["name"]: p for p in inventory.get("plugins", [])}
+    # A duplicate name can occur across a retired/deprecated record and the
+    # active record that superseded it (validate_records only forbids two
+    # *active* records sharing a name, never a historical one sharing a name
+    # with the current active record). Always prefer the active record on
+    # such a collision -- keeping whichever record happened to come last in
+    # array order would let a retired duplicate shadow the active one and
+    # misclassify a genuine no-op/update as a conflict.
+    existing_by_name = {}
+    for p in inventory.get("plugins", []):
+        if p["name"] not in existing_by_name or p.get("status") == "active":
+            existing_by_name[p["name"]] = p
     discovered_names = {c["name"] for c in discovered}
     plan = []
     missing_plugin_inventories = []

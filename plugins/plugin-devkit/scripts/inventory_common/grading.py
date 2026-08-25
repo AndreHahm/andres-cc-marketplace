@@ -48,7 +48,8 @@ def load_and_validate_report(report_path, expected_target, expected_target_type)
     for field in ("target", "target_type", "graded_at"):
         if field not in report:
             raise GradingReportError(f"report {report_path} is missing required field {field!r}")
-    if not isinstance(report["graded_at"], str) or not report["graded_at"]:
+    graded_at = report["graded_at"]
+    if not isinstance(graded_at, str) or not graded_at:
         # The schema declares graded_at as a plain string (no further format
         # constraint) -- but scoring_history/security_scoring_history sort
         # and max() over this field, so a non-string value (int, list, etc.)
@@ -58,8 +59,30 @@ def load_and_validate_report(report_path, expected_target, expected_target_type)
         # history.
         raise GradingReportError(
             f"report {report_path}'s graded_at must be a non-empty string, "
-            f"got {type(report['graded_at']).__name__} ({report['graded_at']!r})"
+            f"got {type(graded_at).__name__} ({graded_at!r})"
         )
+    # history.py's sort()/max() compare graded_at values lexicographically as
+    # raw strings, never parsing them -- a syntactically-valid-but-garbage
+    # string ("not-a-time") would pass the check above, and two differently
+    # offset-but-real ISO timestamps ("...+10:00" vs "...Z") can sort in the
+    # wrong chronological order even though both are individually valid,
+    # since lexicographic order only matches chronological order when every
+    # value shares the same UTC offset. plugin-grader itself only ever emits
+    # a "Z"-suffixed (UTC) timestamp (see its output-schema.md/example-output
+    # files), so requiring that here rejects both failure modes at once
+    # without inventing a new convention.
+    if not graded_at.endswith("Z"):
+        raise GradingReportError(
+            f"report {report_path}'s graded_at must be a UTC ISO-8601 timestamp "
+            f"ending in 'Z' (the only format plugin-grader emits), got {graded_at!r}"
+        )
+    try:
+        datetime.datetime.fromisoformat(graded_at[:-1] + "+00:00")
+    except ValueError as exc:
+        raise GradingReportError(
+            f"report {report_path}'s graded_at is not a valid ISO-8601 timestamp: "
+            f"{graded_at!r} ({exc})"
+        ) from exc
 
     if report["target"] != expected_target:
         raise GradingReportError(
