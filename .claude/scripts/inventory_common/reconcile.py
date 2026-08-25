@@ -214,7 +214,7 @@ def cmd_apply_from_plan(
             )
         with open(approved_plan_path, encoding="utf-8") as f:
             approved_operations = json.load(f)
-        updated = apply_plan_fn(inventory, approved_operations)
+        updated = validate_or_exit(apply_plan_fn, inventory, approved_operations, context="apply")
         validate_or_exit(
             json_store.atomic_write_json,
             inventory_path,
@@ -238,22 +238,46 @@ def cmd_import_grading_for_record(
         record = lookup_fn(inventory)
         if record is None:
             raise SystemExit(f"no record matching target {target!r} (type {target_type!r})")
-        report = grading.load_and_validate_report(report_path, target, target_type)
+        report = validate_or_exit(
+            grading.load_and_validate_report,
+            report_path,
+            target,
+            target_type,
+            context="import-grading",
+        )
 
-        scoring_event = grading.build_scoring_event(report, report_path, target, target_type)
-        new_scoring_history, appended = history.append_scoring_event(
-            record["scoring_history"], scoring_event
+        scoring_event = validate_or_exit(
+            grading.build_scoring_event,
+            report,
+            report_path,
+            target,
+            target_type,
+            context="import-grading",
+        )
+        new_scoring_history, appended = validate_or_exit(
+            history.append_scoring_event,
+            record["scoring_history"],
+            scoring_event,
+            context="import-grading",
         )
         record["scoring_history"] = new_scoring_history
         record["score"] = history.current_score_from_history(new_scoring_history)
 
-        security_event = grading.build_security_scoring_event(
-            report, report_path, target, target_type
+        security_event = validate_or_exit(
+            grading.build_security_scoring_event,
+            report,
+            report_path,
+            target,
+            target_type,
+            context="import-grading",
         )
         security_appended = False
         if security_event is not None:
-            new_security_history, security_appended = history.append_security_scoring_event(
-                record["security_scoring_history"], security_event
+            new_security_history, security_appended = validate_or_exit(
+                history.append_security_scoring_event,
+                record["security_scoring_history"],
+                security_event,
+                context="import-grading",
             )
             record["security_scoring_history"] = new_security_history
             record["security_score"] = history.current_security_score_from_history(
