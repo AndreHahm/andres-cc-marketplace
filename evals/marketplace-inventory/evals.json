@@ -20,15 +20,8 @@
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 11,
-    "declared_scenarios_covered": 4,
-    "uncovered": [
-      "4. Conflict, missing active plugin",
-      "5. plugin_id mismatch conflict",
-      "6. Import grading, rollup-only",
-      "8. Stale hash rejection",
-      "9. Status transition",
-      "10. Enum rejection",
-      "11. Self-check (smoke_test.py)"
-    ]
+    "declared_scenarios_covered": 11,
+    "uncovered": [],
+    "coverage_note": "Scenarios 4, 5, 6, 7, 8, 9, 10 (previously 4/5/6/8/9/10 uncovered; 7 already covered but re-verified anyway) are now covered not by a skill-tester eval here, but by 7 new, live-executed checks added to scripts/smoke_test.py on 2026-08-25 (check_conflict_missing_active_plugin, check_plugin_id_mismatch_conflict, check_import_grading_rollup_only, check_import_grading_wrong_target_type_rejected, check_stale_hash_rejection, check_status_transition, check_enum_rejection) -- each runs against a small synthetic fixture marketplace repo and asserts real script behavior, per require-tests-for-behavior-changes.md's 'deterministic scripts/code: direct execution against fixtures' mechanism. All 12 checks in smoke_test.py pass as of this commit. Scenario 11 (Self-check) is satisfied definitionally -- smoke_test.py running and reporting its own pass/fail status is the self-check. Scenarios 1, 2, 3 remain covered by evals 1-4 above, unchanged."
   }
 }

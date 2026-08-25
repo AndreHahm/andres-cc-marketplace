@@ -90,6 +90,258 @@ def _find_repo_root():
     )
 
 
+def _build_fixture_repo(tmpdir, plugin_names):
+    """Build a small synthetic marketplace repo root: its own
+    .claude-plugin/marketplace.json listing `plugin_names`, each with a
+    real (empty) source directory -- enough for discover_plugins/build_plan
+    to operate on without touching this repo's own real marketplace.json."""
+    repo_root = pathlib.Path(tmpdir) / "fixture_repo"
+    manifest_dir = repo_root / ".claude-plugin"
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+    manifest = {
+        "name": "fixture-marketplace",
+        "plugins": [{"name": name, "source": f"./{name}"} for name in plugin_names],
+    }
+    (manifest_dir / "marketplace.json").write_text(json.dumps(manifest), encoding="utf-8")
+    for name in plugin_names:
+        (repo_root / name).mkdir(parents=True, exist_ok=True)
+    return repo_root
+
+
+def _fresh_inventory_path(tmpdir):
+    path = pathlib.Path(tmpdir) / ".claude-plugin" / "marketplace-inventory.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _run(*args):
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), *[str(a) for a in args]], capture_output=True, text=True
+    )
+
+
+def check_conflict_missing_active_plugin():
+    """Scenario 4 (Conflict, missing active plugin): remove a plugin from
+    the fixture marketplace.json while its inventory record stays active;
+    confirm plan emits a conflict, never a silent retirement."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a", "plugin-b"])
+        inventory_path = _fresh_inventory_path(tmpdir)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+
+        manifest_path = repo_root / ".claude-plugin" / "marketplace.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["plugins"] = [p for p in manifest["plugins"] if p["name"] != "plugin-b"]
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        plan = _run("plan", repo_root, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
+        operations = json.loads(plan.stdout)["operations"]
+        conflicts = [
+            op for op in operations if op["operation"] == "conflict" and op["name"] == "plugin-b"
+        ]
+        if not conflicts:
+            return False, f"expected a conflict entry for plugin-b, got: {operations}"
+        return True, "missing active plugin correctly surfaced as a conflict, not auto-retired"
+
+
+def check_plugin_id_mismatch_conflict():
+    """Scenario 5 (plugin_id mismatch conflict): a plugin-inventory.json
+    whose plugin_id disagrees with the marketplace record's own id must
+    surface as a conflict."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(tmpdir)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+
+        plugin_inventory_dir = repo_root / "plugin-a" / ".claude-plugin"
+        plugin_inventory_dir.mkdir(parents=True, exist_ok=True)
+        (plugin_inventory_dir / "plugin-inventory.json").write_text(
+            json.dumps({"plugin_id": "totally_different_id", "components": []}),
+            encoding="utf-8",
+        )
+
+        plan = _run("plan", repo_root, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
+        operations = json.loads(plan.stdout)["operations"]
+        conflicts = [
+            op
+            for op in operations
+            if op["operation"] == "conflict"
+            and op["name"] == "plugin-a"
+            and "plugin_id" in op["reason"]
+        ]
+        if not conflicts:
+            return False, f"expected a plugin_id-mismatch conflict for plugin-a, got: {operations}"
+        return True, "plugin_id mismatch correctly surfaced as a conflict"
+
+
+def check_import_grading_rollup_only():
+    """Scenario 6 (Import grading, rollup-only): importing a whole-plugin
+    report sets score/security_score from plugin_final_score/
+    plugin_security_score exactly, never recomputed from components."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(tmpdir)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        report_path = pathlib.Path(tmpdir) / "report.json"
+        report_path.write_text(
+            json.dumps(
+                {
+                    "target": "plugin-a",
+                    "target_type": "plugin",
+                    "graded_at": "2026-08-25T10:00:00Z",
+                    "plugin_final_score": 8.5,
+                    "plugin_gates_applied": [],
+                    "plugin_security_score": 9.0,
+                    "grader_schema_version": "1.1.0",
+                }
+            ),
+            encoding="utf-8",
+        )
+        result = _run("import-grading", inventory_path, report_path, "plugin-a", "plugin")
+        if result.returncode != 0:
+            return False, f"import-grading failed: {result.stderr.strip()}"
+        parsed = json.loads(result.stdout)
+        if parsed["current_score"] != 8.5 or parsed["current_security_score"] != 9.0:
+            return False, f"expected score 8.5/security 9.0 copied exactly, got: {parsed}"
+        return True, "whole-plugin report's scores imported exactly, never recomputed"
+
+
+def check_import_grading_wrong_target_type_rejected():
+    """Scenario 7 (Import grading, wrong target_type rejected): a
+    component-level target_type must be rejected before any write."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(tmpdir)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        report_path = pathlib.Path(tmpdir) / "report.json"
+        report_path.write_text(
+            json.dumps({"target": "plugin-a", "target_type": "skill"}), encoding="utf-8"
+        )
+        result = _run("import-grading", inventory_path, report_path, "plugin-a", "skill")
+        if result.returncode == 0:
+            return False, "import-grading accepted target_type='skill' -- should have been rejected"
+        return True, "non-'plugin' target_type correctly rejected before any write"
+
+
+def check_stale_hash_rejection():
+    """Scenario 8 (Stale hash rejection): apply with a mismatched hash must
+    exit non-zero with no write."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(tmpdir)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plan_path = pathlib.Path(tmpdir) / "empty_plan.json"
+        plan_path.write_text("[]", encoding="utf-8")
+        apply = _run("apply", inventory_path, plan_path, "0" * 64)
+        if apply.returncode == 0:
+            return False, "apply with a wrong expected_hash succeeded -- should have been rejected"
+        if "stale plan" not in apply.stderr:
+            return False, f"expected a 'stale plan' rejection message, got: {apply.stderr.strip()}"
+        return True, "apply correctly rejected a stale/wrong expected_hash"
+
+
+def check_status_transition():
+    """Scenario 9 (Status transition): resolving a conflict as retired
+    closes the previously-open status period and opens a new one."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(tmpdir)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "transition_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "status-transition",
+                        "id": plugin_id,
+                        "new_status": "retired",
+                        "reason": "fixture retirement",
+                        "evidence": [],
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return False, f"apply failed: {apply.stderr.strip()}"
+        plugin = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]
+        if plugin["status"] != "retired":
+            return False, f"expected status 'retired', got {plugin['status']!r}"
+        open_periods = [p for p in plugin["status_history"] if p["valid_to"] is None]
+        if len(open_periods) != 1 or open_periods[0]["status"] != "retired":
+            return False, f"expected exactly one open 'retired' period, got: {open_periods}"
+        return True, "status-transition correctly closed the old period and opened the new one"
+
+
+def check_enum_rejection():
+    """Scenario 10 (Enum rejection): setting a plugin's functional_role to
+    a value outside the controlled vocabulary must be rejected before any
+    write."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(tmpdir)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        plan = _run("plan", repo_root, inventory_path)
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "bad_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "update",
+                        "id": plugin_id,
+                        "field": "functional_role",
+                        "new_value": "not_a_real_functional_role",
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", inventory_path, plan_path, expected_hash)
+        if apply.returncode == 0:
+            return False, (
+                "apply accepted an invalid functional_role enum value -- should have been rejected"
+            )
+        return True, "apply correctly rejected an invalid functional_role enum value"
+
+
 def check_cli_bootstrap_check_roundtrip():
     """Live functional check: bootstrap a fresh marketplace inventory from
     this repo's own root and confirm check reports zero drift immediately
@@ -165,6 +417,13 @@ CHECKS = [
     check_frontmatter,
     check_referenced_files,
     check_bash_grants,
+    check_conflict_missing_active_plugin,
+    check_plugin_id_mismatch_conflict,
+    check_import_grading_rollup_only,
+    check_import_grading_wrong_target_type_rejected,
+    check_stale_hash_rejection,
+    check_status_transition,
+    check_enum_rejection,
     check_cli_bootstrap_check_roundtrip,
     check_schema_conformance,
 ]

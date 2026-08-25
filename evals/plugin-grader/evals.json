@@ -37,24 +37,96 @@
       "prompt": "A plugin called 'legacy-plugin' has 2 components, both of a type plugin-grader cannot grade at all (e.g. mcp-server entries with no safety_risk_handling dimension available). Component-mode quality scores ARE available (final_score 8.0 and 7.5) but neither component has a dimensions.safety_risk_handling.score to report. Compute the whole-plugin rollup and state what plugin_security_score should be and why, per references/output-schema.md and references/gates-and-rollup.md.",
       "expected_output": "Omits component_security_scores (or passes {}) in the rollup input since no component has a security-scorable dimension, confirms scripts/compute_score.py --rollup returns plugin_security_score: null with plugin_security_gates_applied: [], and states that the final written report must populate notes.security_score_unavailable_reason (e.g. 'No gradeable component types present in this plugin.') rather than fabricating a score -- while plugin_score_raw/plugin_final_score still compute normally from the two available final_scores.",
       "files": []
+    },
+    {
+      "id": 6,
+      "name": "Single skill, clean -- perfect score, no gates",
+      "prompt": "Run scripts/compute_score.py with a component input where every one of the 12 dimensions is clean: the 8 reviewer-backed dimensions (structure_architecture, content_quality, rule_compliance, completeness, maintainability, uniqueness, safety_risk_handling) all have counts {critical:0, major:0, minor:0}, robustness is {score:10, is_na:true} (no scripts/), and simplicity/testing/efficiency/actionability all score 10. Report the exact weighted_total, gates_applied, and final_score.",
+      "expected_output": "Every dimension_score is 10.0 (robustness via its is_na default, the rest via the generic formula's zero-finding branch), weighted_total is 10.0, gates_applied is an empty list, and final_score is 10.0 -- confirmed by actually running scripts/compute_score.py, not hand-computed.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "Safety gate fires even when every other dimension is perfect",
+      "prompt": "Run scripts/compute_score.py with the same clean input as the single-skill-clean scenario, except safety_risk_handling now has counts {critical:1, major:0, minor:0} (representing a Critical security-reviewer finding, e.g. an unscoped Bash(*) grant). Report the dimension_scores, which gate(s) fired, and final_score, and confirm the cap held even though every other dimension still scores 10.",
+      "expected_output": "safety_risk_handling scores 2 (critical>=1 branch: 4 - min(4, 2*1) = 2), which triggers Gate C_safety_risk_handling (cap 4.0). weighted_total would be 9.6 (11 dimensions at 10.0, one at 2.0, weighted), but final_score is capped to 4.0 by Gate C -- confirming a single Critical safety finding overrides an otherwise-perfect weighted average, per gates-and-rollup.md's stated Gate ordering (C is the lowest cap).",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "Gate stacking -- lower cap wins, not the first one found",
+      "prompt": "Run scripts/compute_score.py with rule_compliance counts {critical:1, major:0, minor:0} (triggering Gate A, cap 6.0) AND maintainability counts {critical:0, major:3, minor:0} -- every other dimension clean. Report every gate that fires, the exact score each dimension gets, and the final_score. Then explain, per gates-and-rollup.md and rubric.md's own generic formula, why maintainability's score with 3 Major findings is 4.0 and NOT 0 despite rubric.md's dimension table describing a '3+ Major' band informally as 'pervasive drift' -- there is no hard gate for maintainability at all, only the 8-dimension reviewer-backed generic formula, which floors at 4.0 for any Major-only count (no matter how high) and only reaches 0 via a Critical count.",
+      "expected_output": "Only Gate A_rule_compliance fires (cap 6.0) -- maintainability's score of 4.0 (7 - min(3, 1.5*3) = 4.0) does NOT trigger any gate, since maintainability has no dedicated hard gate in compute_score.py (only rule_compliance/completeness/safety_risk_handling/testing do, per the actual A/B/C/D gate definitions). final_score is 6.0 (the single active cap), confirmed by running the script. Correctly identifies that a 3-Major maintainability score floors at 4.0 via the generic formula's Major branch (7 - min(3, 1.5*major)), never reaching 0 unless the finding count included a Critical instead -- this is a real inconsistency between rubric.md's informal 'pervasive drift' band description and compute_score.py's actual behavior, which rubric.md was corrected to state accurately as part of this eval's own creation.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "N/A dimension counted, not excluded, from the weighted sum",
+      "prompt": "Run scripts/compute_score.py with every reviewer-backed dimension at 1 Minor finding each, robustness explicitly {score:10, is_na:true} (target has no scripts/), and simplicity/testing/efficiency/actionability all at 10. Report the weighted_total and confirm robustness's 10% weight is still applied in the sum rather than the weights being renormalized across the remaining 11 dimensions.",
+      "expected_output": "Each Minor-only reviewer-backed dimension scores 9.5 (10 - min(3, 0.5*1)); robustness scores 10.0 (is_na default); the other four custom-band dimensions score 10.0. weighted_total is 9.7, confirmed by running the script -- demonstrating robustness's 10% weight is included in the sum at its is_na default value (10.0), never excluded or used to renormalize the other 11 weights, per rubric.md's N/A Handling section.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "name": "Plugin rollup with one broken component -- Gate P3 fires despite an acceptable mean",
+      "prompt": "You have final component-mode scores for a 3-skill plugin: skill-a final_score 9.0, skill-b final_score 8.5, skill-c final_score 2.0 (a severely broken component). Build the rollup input per output-schema.md and run scripts/compute_score.py --rollup. Report plugin_score_raw, which gate fired, weakest_component, and plugin_final_score -- and confirm the mean alone would have looked acceptable without the gate.",
+      "expected_output": "plugin_score_raw is the unweighted mean (6.5), which on its own looks like a borderline-acceptable plugin score. But skill-c's final_score of 2.0 is below 3, triggering Gate P3_broken_component (cap 7.0), and weakest_component correctly reports {name: skill-c, final_score: 2.0} -- confirming the gate surfaces a severely broken single component that a bare average would understate, exactly as gates-and-rollup.md's Whole-Plugin Rollup section documents.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "name": "Fast mode -- reduced fidelity, never silently equivalent",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls for this task -- reasoning-only, per SKILL.md's Fast mode documentation (Step 3). A user asks for a 'quick grade' of a skill. Per SKILL.md, which three reviewers does plugin-auditor skip in Fast mode, what do robustness/maintainability/safety_risk_handling derive from instead of their normal signal sources, and what must the written report's notes field state to avoid presenting this as equivalent to a full grade?",
+      "expected_output": "Fast mode skips scripts-reviewer, consistency-reviewer, and security-reviewer. robustness defaults to is_na:true (score 10) regardless of whether scripts/ actually exists; maintainability derives from skilldir-reviewer's duplication axis alone (no consistency-reviewer cross-check); safety_risk_handling derives from plugin-rulebook-checker's R6/R9 findings alone (no security-reviewer's deeper permission/injection/PII analysis). The written report's notes.inspection_limits must state this reduced fidelity explicitly -- a Fast-mode score must never be silently presented as equivalent to a full grade.",
+      "files": []
+    },
+    {
+      "id": 12,
+      "name": "Self-check -- scripts/smoke_test.py passes",
+      "prompt": "Run plugins/plugin-devkit/skills/plugin-grader/scripts/smoke_test.py directly and report its exact output.",
+      "expected_output": "All checks report PASS: check_frontmatter, check_referenced_files, check_bash_grants -- exit code 0. This is plugin-grader's own persisted smoke test, re-run after any SKILL.md edit per the Reference Guide.",
+      "files": []
+    },
+    {
+      "id": 13,
+      "name": "Evidence-only mode, missing evidence -> refusal",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. plugin-lifecycle-downstream's Phase 11 supplies a scope manifest naming 3 components (skill-a, skill-b, skill-c) but the supplied plugin-auditor evidence bundle only contains a report for skill-a and skill-b -- skill-c has no report at all. Per SKILL.md's evidence-only mode (Step 3) and output-schema.md's refusal shape, what should happen, and what must NOT happen?",
+      "expected_output": "Scoring must be refused for the incomplete scope, stating exactly which component (skill-c) has no corresponding evidence -- per output-schema.md's refusal shape. No plugin-auditor, reviewer-agent, or test dispatch of any kind may be attempted to fill the gap (evidence-only mode dispatches nothing, ever). The refusal is not a silent skip or a score computed only for the 2 covered components presented as if it were a complete plugin grade.",
+      "files": []
+    },
+    {
+      "id": 14,
+      "name": "Evidence-only mode, stale evidence -> qualified score, not refused",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. Same scenario as the missing-evidence case, but this time every named component DOES have a report, except the supplied evidence bundle's current_commit field doesn't match the scope manifest's own current_commit (the evidence is one commit stale). Per SKILL.md's evidence-only mode, is this refused outright, silently ignored, or something else?",
+      "expected_output": "Neither refused outright nor silently ignored -- a qualified score is returned, with notes.inspection_limits stating the staleness explicitly (which commit the evidence covers vs. the scope manifest's current commit). This is the documented middle path between 'good enough to score cleanly' and 'so broken it must refuse' -- staleness is disclosed, not hidden and not treated as disqualifying on its own.",
+      "files": []
+    },
+    {
+      "id": 15,
+      "name": "Evidence-only mode, complete and fresh -> same scoring as standalone",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. A component was already graded via standalone mode (plugin-auditor dispatched fresh, findings scored) producing final_score 8.8 with gates_applied: []. Now the exact same findings are supplied to evidence-only mode instead (as a complete, fresh evidence bundle with matching baseline/current commit). Per SKILL.md and gates-and-rollup.md, should the two modes' scores differ, and why or why not?",
+      "expected_output": "The two runs must produce the identical final_score (8.8) and gates_applied ([]) -- the dispatch mechanism (fresh plugin-auditor call vs. pre-supplied evidence) differs, but Step 4's scoring math (scripts/compute_score.py, the same dimension-mapping rubric) is identical regardless of mode. Evidence-only mode is a different evidence-gathering path into the same deterministic scoring function, never a different scoring function.",
+      "files": []
+    },
+    {
+      "id": 16,
+      "name": "All components N/A for security -> plugin_security_score 10.0, not fabricated",
+      "prompt": "You have final component-mode scores for a 2-skill plugin where both components' safety_risk_handling dimension is is_na:true (score 10.0 each, e.g. neither has any Bash/tool-scoping surface to assess). Build the rollup input including component_security_scores {skill-a: 10.0, skill-b: 10.0} and run scripts/compute_score.py --rollup. Report plugin_security_score and confirm it's a real computed mean, not a hardcoded default.",
+      "expected_output": "plugin_security_score is 10.0 -- the genuine unweighted mean of two real 10.0 values (each itself the is_na default from component-level scoring), not a special-cased plugin-level default. plugin_security_gates_applied is empty (no gate fires, since 10.0 is nowhere near the Gate P4 threshold of <4). Confirmed by actually running scripts/compute_score.py --rollup.",
+      "files": []
+    },
+    {
+      "id": 17,
+      "name": "grader_schema_version field presence and absence",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. Per SKILL.md Step 6 and output-schema.md's Schema Versioning section, what value does grader_schema_version carry in a freshly-generated report (either mode), and how does a consumer distinguish a genuinely pre-1.1.0 report from one where this field was simply forgotten?",
+      "expected_output": "Every freshly-generated report (standalone or evidence-only) always carries grader_schema_version: \"1.1.0\" -- there is no other value a current run can produce. A report written before this field existed has no grader_schema_version key at all; that absence (not a stale/older value like \"1.0.0\", since no version ever shipped under that name) is the only signal a consumer reads as 'pre-1.1.0, predates the security-score prerequisite.'",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 17,
-    "declared_scenarios_covered": 5,
-    "uncovered": [
-      "1. Single skill, clean",
-      "2a. Safety gate",
-      "3. Gate stacking",
-      "4. N/A dimension",
-      "5. Plugin rollup with one broken component",
-      "6. Fast mode",
-      "7. Self-check (smoke_test.py)",
-      "8. Evidence-only mode, missing evidence -> refusal",
-      "8a. Evidence-only mode, stale evidence -> qualified score",
-      "8b. Evidence-only mode, complete and fresh -> identical scoring",
-      "11. All components N/A -> plugin_security_score 10.0",
-      "13. Schema-version field presence"
-    ]
+    "declared_scenarios_covered": 17,
+    "uncovered": [],
+    "coverage_note": "Evals 6-17 (scenarios 1, 2a, 3, 4, 5, 6, 7, 8/8a/8b, 11, 13) added 2026-08-25 to close the previously-declared gap. The deterministic ones (scenario 1->id6, 2a->id7, 3->id8, 4->id9, 5->id10, 11->id16) were verified by actually running scripts/compute_score.py against the exact input during authoring, not just written from expectation -- including a real defect this verification surfaced and fixed: rubric.md's maintainability row claimed '3+ Major -> score 0', which compute_score.py's generic formula cannot actually produce (it floors at 4.0 for any Major-only count); rubric.md was corrected in the same pass. The reasoning-only evals (scenario 6/Fast mode->id11, 7/self-check->id12, 8/8a/8b evidence-only mode->ids13-15, 13/schema-version->id17) are written against SKILL.md's current documented behavior but have NOT yet been executed through skill-tester's real with_skill/baseline agent dispatch -- unlike evals 1-5 and the deterministic additions above, these have no grading.json run record yet. Run skill-tester's Quick Workflow against them before treating their coverage as fully evidenced, not just declared."
   }
 }
