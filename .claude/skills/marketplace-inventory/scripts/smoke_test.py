@@ -491,6 +491,8 @@ def check_apply_update_rejects_history_field():
         apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
         if apply.returncode == 0:
             return False, "apply accepted an update to status_history -- should have been rejected"
+        if "Traceback" in apply.stderr:
+            return False, f"apply crashed with an uncaught traceback: {apply.stderr.strip()}"
         after = inventory_path.read_text(encoding="utf-8")
         if before != after:
             return False, "inventory file was modified despite the rejected update"
@@ -531,6 +533,11 @@ def check_import_grading_score_range_rejection():
             return (
                 False,
                 "import-grading accepted an out-of-range score (999) -- should be rejected",
+            )
+        if "Traceback" in result.stderr:
+            return (
+                False,
+                f"import-grading crashed with an uncaught traceback: {result.stderr.strip()}",
             )
         plugin = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]
         if plugin["score"] is not None:
