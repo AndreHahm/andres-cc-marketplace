@@ -9,6 +9,7 @@ only, since this is a conversational, gh-CLI-orchestration skill with no
 executable logic of its own to simulate. Adapted from codex-review-recovery's
 own smoke_test.py (same shape and check set)."""
 
+import json
 import pathlib
 import re
 import sys
@@ -140,8 +141,6 @@ def check_evals_json_exists():
     evals_path = repo_root / "evals" / "handling-review-findings" / "evals.json"
     if not evals_path.is_file():
         return False, f"evals.json not found at {evals_path}"
-    import json
-
     try:
         data = json.loads(evals_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:

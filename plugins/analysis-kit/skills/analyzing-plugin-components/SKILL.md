@@ -245,7 +245,7 @@ After Phase 6, verify these gates before presenting output as final:
 
 | File | Purpose | When to read |
 |---|---|---|
-| `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
+| `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing, Phase 2 confirmation gate's AskUserQuestion wording) | Before committing a change to this SKILL.md |
 | `../../references/date-range-scope-convention.md` | Shared Phase 1 scope-resolution procedure this skill's own Phase 1 restates by reference | Phase 1 |
 | `references/swot-framework.md` | Quadrant prompts and category-specific patterns | Phase 3 |
 | `references/critique-reflection-framework.md` | Question sets per category; rationalizations to reject | Phase 4 |
