@@ -220,6 +220,15 @@ until a future mode gives it a writer.
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
 - **Atomic write failure**: `json_store.atomic_write_json` never leaves a partial canonical file — the
   temp file is removed and the original is untouched on any exception.
+- **Wrong-shape `inventory_path`**: every write-capable subcommand (`bootstrap`/`apply`/
+  `import-grading`/`repair-history`) calls `reconcile.require_inventory_path_shape` before touching the
+  file — `inventory_path` must resolve to `.../.claude-plugin/<filename>` or the command fails closed
+  with `SystemExit`, before any read or write. This is a *shape* check, not a same-plugin-as-discovery
+  check: those three subcommands take no `plugin_dir` argument at all, so there's no "this plugin's own
+  directory" to compare against from the CLI alone — it stops an arbitrary unrelated file from being
+  targeted, but does not by itself stop a call from targeting a *different* real plugin's own valid
+  `plugin-inventory.json`. Full same-plugin enforcement would need `plugin_dir` threaded through every
+  write-capable subcommand, which none of `apply`/`import-grading`/`repair-history` currently accept.
 
 ## Testing & Validation
 

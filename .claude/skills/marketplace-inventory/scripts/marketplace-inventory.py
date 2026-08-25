@@ -20,24 +20,19 @@ plugins need it.
 """
 
 import argparse
-import datetime
 import json
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "scripts"))
 from inventory_common import (  # noqa: E402  # ty: ignore[unresolved-import]
-    grading,
-    history,
     json_store,
     models,
+    reconcile,
 )
 
 SCHEMA_VERSION = "1.0.0"
-
-
-def _today():
-    return datetime.datetime.now(datetime.UTC).date().isoformat()
+INVENTORY_FILENAME = "marketplace-inventory.json"
 
 
 def discover_plugins(repo_root):
@@ -80,7 +75,7 @@ def empty_inventory(marketplace_name):
     return {
         "schema_version": SCHEMA_VERSION,
         "marketplace_name": marketplace_name,
-        "updated_on": _today(),
+        "updated_on": reconcile.today(),
         "plugins": [],
     }
 
@@ -162,7 +157,7 @@ def apply_add(inventory, operation, existing_ids):
     truthiness alone isn't safe to rely on for every caller."""
     new_id = models.generate_id("plugin", existing_ids)
     existing_ids.add(new_id)
-    today = _today()
+    today = reconcile.today()
     status = operation.get("status", "active" if operation["source"] else "planned")
     models.validate_status(status)
     record = {
@@ -206,92 +201,19 @@ def apply_add(inventory, operation, existing_ids):
     inventory["plugins"].append(record)
 
 
-def apply_update(inventory, operation):
-    for plugin in inventory["plugins"]:
-        if plugin["id"] == operation["id"]:
-            plugin[operation["field"]] = operation["new_value"]
-            return
-    raise ValueError(f"apply_update: no plugin with id {operation['id']!r}")
-
-
-def apply_status_transition(inventory, operation):
-    """Apply a human-approved `status-transition` operation -- the actual
-    resolution to a `conflict` (deprecate/supersede/retire decision), using
-    `history.close_and_append_status_period` so the status change and its
-    history entry are never out of sync."""
-    for plugin in inventory["plugins"]:
-        if plugin["id"] == operation["id"]:
-            plugin["status_history"] = history.close_and_append_status_period(
-                plugin["status_history"],
-                new_status=operation["new_status"],
-                valid_from=operation.get("valid_from", _today()),
-                reason=operation["reason"],
-                evidence=operation.get("evidence", []),
-                closed_valid_to=operation.get("closed_valid_to"),
-            )
-            plugin["status"] = operation["new_status"]
-            if operation.get("superseded_by_id"):
-                plugin.setdefault("provenance", {})["superseded_by_id"] = operation[
-                    "superseded_by_id"
-                ]
-            return
-    raise ValueError(f"apply_status_transition: no plugin with id {operation['id']!r}")
-
-
 def apply_plan(inventory, approved_operations):
-    existing_ids = {p["id"] for p in inventory.get("plugins", [])}
-    for operation in approved_operations:
-        op = operation["operation"]
-        if op == "add":
-            apply_add(inventory, operation, existing_ids)
-        elif op == "update":
-            apply_update(inventory, operation)
-        elif op == "status-transition":
-            apply_status_transition(inventory, operation)
-        elif op == "no-op":
-            continue
-        else:
-            raise ValueError(f"apply_plan: unsupported operation {op!r} in an approved plan")
-    inventory["updated_on"] = _today()
-    return inventory
+    """Delegates the per-operation-type logic to the shared
+    `inventory_common.reconcile` module -- only `apply_add` (the
+    plugin-record shape) is this script's own."""
+    return reconcile.apply_plan(inventory, approved_operations, apply_add, "plugins")
 
 
 def validate_inventory(inventory):
-    seen_ids = set()
-    seen_active_names = set()
-    for plugin in inventory.get("plugins", []):
-        if plugin["id"] in seen_ids:
-            raise ValueError(f"duplicate plugin id {plugin['id']!r}")
-        seen_ids.add(plugin["id"])
-        models.validate_status(plugin["status"])
-        if plugin.get("functional_role") is not None:
-            models.validate_functional_role(plugin["functional_role"])
-        for compat_entry in plugin.get("compatibility", {}).values():
-            models.validate_compatibility_level(compat_entry["level"])
-        models.validate_history_periods(plugin["status_history"], f"{plugin['id']}.status_history")
-        models.validate_history_periods(plugin["naming_history"], f"{plugin['id']}.naming_history")
-        if models.open_period_value(plugin["status_history"], "status") != plugin["status"]:
-            raise ValueError(
-                f"{plugin['id']}: status_history's open period must equal current status"
-            )
-        if models.open_period_value(plugin["naming_history"], "name") != plugin["name"]:
-            raise ValueError(
-                f"{plugin['id']}: naming_history's open period must equal current name"
-            )
-        if plugin["status"] == "active":
-            if plugin["name"] in seen_active_names:
-                raise ValueError(f"duplicate active plugin name {plugin['name']!r}")
-            seen_active_names.add(plugin["name"])
-        current_score = history.current_score_from_history(plugin["scoring_history"])
-        if plugin.get("score") != current_score:
-            raise ValueError(f"{plugin['id']}: score must equal newest scoring_history entry")
-        current_security = history.current_security_score_from_history(
-            plugin["security_scoring_history"]
-        )
-        if plugin.get("security_score") != current_security:
-            raise ValueError(
-                f"{plugin['id']}: security_score must equal newest security_scoring_history entry"
-            )
+    """Delegates to the shared `inventory_common.reconcile.validate_records`,
+    using this inventory's own bare-`name` active-record uniqueness key
+    (unlike plugin-inventory's `(name, type)` pair -- a plugin has no
+    `type` field)."""
+    reconcile.validate_records(inventory.get("plugins", []), uniqueness_key=lambda p: p["name"])
 
 
 def cmd_discover(args):
@@ -299,6 +221,7 @@ def cmd_discover(args):
 
 
 def cmd_bootstrap(args):
+    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
     with json_store.InventoryLock(args.inventory_path):
         if os.path.exists(args.inventory_path):
             raise SystemExit(f"refusing to bootstrap: {args.inventory_path} already exists")
@@ -336,59 +259,37 @@ def cmd_plan(args):
 
 
 def cmd_apply(args):
-    with json_store.InventoryLock(args.inventory_path):
-        inventory = json_store.read_json(args.inventory_path)
-        current_hash = json_store.compute_hash(inventory)
-        if current_hash != args.expected_hash:
-            raise SystemExit(
-                f"stale plan: inventory hash is {current_hash} but plan expected "
-                f"{args.expected_hash} -- re-read the inventory and regenerate the plan"
-            )
-        with open(args.approved_plan_path, encoding="utf-8") as f:
-            approved_operations = json.load(f)
-        updated = apply_plan(inventory, approved_operations)
-        json_store.atomic_write_json(args.inventory_path, updated, validator=validate_inventory)
-    print(json.dumps({"applied": len(approved_operations), "path": args.inventory_path}, indent=2))
+    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
+    applied = reconcile.cmd_apply_from_plan(
+        args.inventory_path,
+        args.approved_plan_path,
+        args.expected_hash,
+        apply_plan,
+        validate_inventory,
+    )
+    print(json.dumps({"applied": applied, "path": args.inventory_path}, indent=2))
 
 
 def cmd_import_grading(args):
+    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
     if args.target_type != "plugin":
         raise SystemExit(
             f"marketplace-inventory only imports whole-plugin reports (target_type='plugin'); "
             f"got target_type={args.target_type!r} -- a component-level report belongs in "
             f"plugin-inventory's own import-grading instead"
         )
-    with json_store.InventoryLock(args.inventory_path):
-        inventory = json_store.read_json(args.inventory_path)
-        plugin = next((p for p in inventory["plugins"] if p["name"] == args.target), None)
-        if plugin is None:
-            raise SystemExit(f"no plugin named {args.target!r} in this inventory")
-        report = grading.load_and_validate_report(args.report_path, args.target, args.target_type)
 
-        scoring_event = grading.build_scoring_event(
-            report, args.report_path, args.target, args.target_type
-        )
-        new_scoring_history, appended = history.append_scoring_event(
-            plugin["scoring_history"], scoring_event
-        )
-        plugin["scoring_history"] = new_scoring_history
-        plugin["score"] = history.current_score_from_history(new_scoring_history)
+    def lookup(inventory):
+        return next((p for p in inventory["plugins"] if p["name"] == args.target), None)
 
-        security_event = grading.build_security_scoring_event(
-            report, args.report_path, args.target, args.target_type
-        )
-        security_appended = False
-        if security_event is not None:
-            new_security_history, security_appended = history.append_security_scoring_event(
-                plugin["security_scoring_history"], security_event
-            )
-            plugin["security_scoring_history"] = new_security_history
-            plugin["security_score"] = history.current_security_score_from_history(
-                new_security_history
-            )
-
-        inventory["updated_on"] = _today()
-        json_store.atomic_write_json(args.inventory_path, inventory, validator=validate_inventory)
+    plugin, appended, security_appended = reconcile.cmd_import_grading_for_record(
+        args.inventory_path,
+        args.report_path,
+        args.target,
+        args.target_type,
+        lookup,
+        validate_inventory,
+    )
     print(
         json.dumps(
             {

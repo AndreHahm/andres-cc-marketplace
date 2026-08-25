@@ -20,20 +20,19 @@ SKILL.md for the full workflow this script is one piece of.
 """
 
 import argparse
-import datetime
 import json
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "scripts"))
 from inventory_common import (  # noqa: E402  # ty: ignore[unresolved-import]
-    grading,
-    history,
     json_store,
     models,
+    reconcile,
 )
 
 SCHEMA_VERSION = "1.0.0"
+INVENTORY_FILENAME = "plugin-inventory.json"
 
 # Logical component types this script has a real filesystem-convention
 # detector for. Of the remaining logical types, only mcp-server/lsp-server
@@ -41,10 +40,6 @@ SCHEMA_VERSION = "1.0.0"
 # discover_manifest_declared); rule/output-style/theme/monitor/custom have
 # no detector of any kind and must be added manually via a plan operation.
 CONVENTION_DETECTED_TYPES = ("skill", "agent", "command", "hook")
-
-
-def _today():
-    return datetime.datetime.now(datetime.UTC).date().isoformat()
 
 
 def discover_filesystem_components(plugin_dir):
@@ -123,7 +118,7 @@ def empty_inventory(plugin_id, plugin_name):
         "schema_version": SCHEMA_VERSION,
         "plugin_id": plugin_id,
         "plugin_name": plugin_name,
-        "updated_on": _today(),
+        "updated_on": reconcile.today(),
         "components": [],
         "extensions": {},
     }
@@ -204,7 +199,7 @@ def apply_add(inventory, operation, plugin_id_scope_ids):
     path) to "planned"."""
     new_id = models.generate_id("component", plugin_id_scope_ids)
     plugin_id_scope_ids.add(new_id)
-    today = _today()
+    today = reconcile.today()
     status = operation.get("status", "active")
     models.validate_status(status)
     record = {
@@ -250,105 +245,26 @@ def apply_add(inventory, operation, plugin_id_scope_ids):
     inventory["components"].append(record)
 
 
-def apply_update(inventory, operation):
-    for component in inventory["components"]:
-        if component["id"] == operation["id"]:
-            component[operation["field"]] = operation["new_value"]
-            return
-    raise ValueError(f"apply_update: no component with id {operation['id']!r}")
-
-
-def apply_status_transition(inventory, operation):
-    """Apply a human-approved `status-transition` operation -- the actual
-    resolution to a `conflict` (rename/supersede/retire/restore decision),
-    using `history.close_and_append_status_period` so the status change and
-    its history entry are never out of sync (a bare `update` on `status`
-    alone would leave `status_history` stale and fail validation)."""
-    for component in inventory["components"]:
-        if component["id"] == operation["id"]:
-            component["status_history"] = history.close_and_append_status_period(
-                component["status_history"],
-                new_status=operation["new_status"],
-                valid_from=operation.get("valid_from", _today()),
-                reason=operation["reason"],
-                evidence=operation.get("evidence", []),
-                closed_valid_to=operation.get("closed_valid_to"),
-            )
-            component["status"] = operation["new_status"]
-            if operation.get("superseded_by_id"):
-                component.setdefault("provenance", {})["superseded_by_id"] = operation[
-                    "superseded_by_id"
-                ]
-            return
-    raise ValueError(f"apply_status_transition: no component with id {operation['id']!r}")
-
-
 def apply_plan(inventory, approved_operations):
     """Apply only the operations present in `approved_operations` (already
     filtered/approved by a human via the calling skill). A `conflict` entry
     itself is never applied directly -- an approved plan instead contains
     the human's actual resolution as a `status-transition` operation (or an
-    `update`/`add`/`no-op`), never the bare `conflict` shape."""
-    existing_ids = {c["id"] for c in inventory.get("components", [])}
-    for operation in approved_operations:
-        op = operation["operation"]
-        if op == "add":
-            apply_add(inventory, operation, existing_ids)
-        elif op == "update":
-            apply_update(inventory, operation)
-        elif op == "status-transition":
-            apply_status_transition(inventory, operation)
-        elif op == "no-op":
-            continue
-        else:
-            raise ValueError(f"apply_plan: unsupported operation {op!r} in an approved plan")
-    inventory["updated_on"] = _today()
-    return inventory
+    `update`/`add`/`no-op`), never the bare `conflict` shape. Delegates the
+    per-operation-type logic to the shared `inventory_common.reconcile`
+    module -- only `apply_add` (the component-record shape) is this script's
+    own."""
+    return reconcile.apply_plan(inventory, approved_operations, apply_add, "components")
 
 
 def validate_inventory(inventory):
-    """Cross-record invariants JSON Schema alone can't express."""
-    seen_ids = set()
-    seen_active_name_type = set()
-    for component in inventory.get("components", []):
-        if component["id"] in seen_ids:
-            raise ValueError(f"duplicate component id {component['id']!r}")
-        seen_ids.add(component["id"])
-        models.validate_status(component["status"])
-        if component.get("functional_role") is not None:
-            models.validate_functional_role(component["functional_role"])
-        for compat_entry in component.get("compatibility", {}).values():
-            models.validate_compatibility_level(compat_entry["level"])
-        models.validate_history_periods(
-            component["status_history"], f"{component['id']}.status_history"
-        )
-        models.validate_history_periods(
-            component["naming_history"], f"{component['id']}.naming_history"
-        )
-        if models.open_period_value(component["status_history"], "status") != component["status"]:
-            raise ValueError(
-                f"{component['id']}: status_history's open period must equal current status"
-            )
-        if models.open_period_value(component["naming_history"], "name") != component["name"]:
-            raise ValueError(
-                f"{component['id']}: naming_history's open period must equal current name"
-            )
-        if component["status"] == "active":
-            key = (component["name"], component["type"])
-            if key in seen_active_name_type:
-                raise ValueError(f"duplicate active name+type {key!r}")
-            seen_active_name_type.add(key)
-        current_score = history.current_score_from_history(component["scoring_history"])
-        if component.get("score") != current_score:
-            raise ValueError(f"{component['id']}: score must equal newest scoring_history entry")
-        current_security = history.current_security_score_from_history(
-            component["security_scoring_history"]
-        )
-        if component.get("security_score") != current_security:
-            raise ValueError(
-                f"{component['id']}: security_score must equal newest "
-                "security_scoring_history entry"
-            )
+    """Cross-record invariants JSON Schema alone can't express. Delegates to
+    the shared `inventory_common.reconcile.validate_records`, using this
+    inventory's own `(name, type)` active-record uniqueness key."""
+    reconcile.validate_records(
+        inventory.get("components", []),
+        uniqueness_key=lambda c: (c["name"], c["type"]),
+    )
 
 
 def cmd_discover(args):
@@ -356,6 +272,7 @@ def cmd_discover(args):
 
 
 def cmd_bootstrap(args):
+    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
     with json_store.InventoryLock(args.inventory_path):
         if os.path.exists(args.inventory_path):
             raise SystemExit(f"refusing to bootstrap: {args.inventory_path} already exists")
@@ -388,30 +305,27 @@ def cmd_plan(args):
 
 
 def cmd_apply(args):
-    with json_store.InventoryLock(args.inventory_path):
-        inventory = json_store.read_json(args.inventory_path)
-        current_hash = json_store.compute_hash(inventory)
-        if current_hash != args.expected_hash:
-            raise SystemExit(
-                f"stale plan: inventory hash is {current_hash} but plan expected "
-                f"{args.expected_hash} -- re-read the inventory and regenerate the plan"
-            )
-        with open(args.approved_plan_path, encoding="utf-8") as f:
-            approved_operations = json.load(f)
-        updated = apply_plan(inventory, approved_operations)
-        json_store.atomic_write_json(args.inventory_path, updated, validator=validate_inventory)
-    print(json.dumps({"applied": len(approved_operations), "path": args.inventory_path}, indent=2))
+    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
+    applied = reconcile.cmd_apply_from_plan(
+        args.inventory_path,
+        args.approved_plan_path,
+        args.expected_hash,
+        apply_plan,
+        validate_inventory,
+    )
+    print(json.dumps({"applied": applied, "path": args.inventory_path}, indent=2))
 
 
 def cmd_import_grading(args):
+    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
     if args.target_type == "plugin":
         raise SystemExit(
             "target_type 'plugin' is not valid here -- a whole-plugin report belongs in "
             "marketplace-inventory's own inventory, not a single component's record"
         )
-    with json_store.InventoryLock(args.inventory_path):
-        inventory = json_store.read_json(args.inventory_path)
-        component = next(
+
+    def lookup(inventory):
+        return next(
             (
                 c
                 for c in inventory["components"]
@@ -419,36 +333,15 @@ def cmd_import_grading(args):
             ),
             None,
         )
-        if component is None:
-            raise SystemExit(
-                f"no component named {args.target!r} of type {args.target_type!r} in this inventory"
-            )
-        report = grading.load_and_validate_report(args.report_path, args.target, args.target_type)
 
-        scoring_event = grading.build_scoring_event(
-            report, args.report_path, args.target, args.target_type
-        )
-        new_scoring_history, appended = history.append_scoring_event(
-            component["scoring_history"], scoring_event
-        )
-        component["scoring_history"] = new_scoring_history
-        component["score"] = history.current_score_from_history(new_scoring_history)
-
-        security_event = grading.build_security_scoring_event(
-            report, args.report_path, args.target, args.target_type
-        )
-        security_appended = False
-        if security_event is not None:
-            new_security_history, security_appended = history.append_security_scoring_event(
-                component["security_scoring_history"], security_event
-            )
-            component["security_scoring_history"] = new_security_history
-            component["security_score"] = history.current_security_score_from_history(
-                new_security_history
-            )
-
-        inventory["updated_on"] = _today()
-        json_store.atomic_write_json(args.inventory_path, inventory, validator=validate_inventory)
+    component, appended, security_appended = reconcile.cmd_import_grading_for_record(
+        args.inventory_path,
+        args.report_path,
+        args.target,
+        args.target_type,
+        lookup,
+        validate_inventory,
+    )
     print(
         json.dumps(
             {
@@ -486,6 +379,7 @@ def cmd_repair_history(args):
             "component_id being repaired -- this is the destructive-rewrite gate; "
             "show the user the full before/after diff and get explicit approval first"
         )
+    reconcile.require_inventory_path_shape(args.inventory_path, INVENTORY_FILENAME)
     with json_store.InventoryLock(args.inventory_path):
         inventory = json_store.read_json(args.inventory_path)
         component = next((c for c in inventory["components"] if c["id"] == args.component_id), None)
@@ -508,7 +402,7 @@ def cmd_repair_history(args):
                 "update one or the other first"
             )
         component[args.history_field] = replacement
-        inventory["updated_on"] = _today()
+        inventory["updated_on"] = reconcile.today()
         json_store.atomic_write_json(args.inventory_path, inventory, validator=validate_inventory)
     print(json.dumps({"repaired": args.component_id, "field": args.history_field}, indent=2))
 
