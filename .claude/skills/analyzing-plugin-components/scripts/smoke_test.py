@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Persisted smoke test for analyzing-plugin-components: frontmatter validity,
 referenced-script existence, Reference-Guide file existence, Bash-scope grant
-usage, and Phase-header sequencing -- structural checks only, since this is a
+usage, Phase-header sequencing, and the Phase 2 confirmation gate's
+AskUserQuestion wording -- structural checks only, since this is a
 conversational, AskUserQuestion-driven skill with no executable logic of its
 own to simulate (it shells out to shared analysis-kit scripts, which own
 their own correctness)."""
@@ -122,12 +123,31 @@ def check_phase_sequence():
     return True, "Phase headers sequential"
 
 
+def check_phase2_confirmation_uses_askuserquestion():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    start = text.find("\n## Phase 2:")
+    if start == -1:
+        return False, "no '## Phase 2:' section found"
+    end = text.find("\n## ", start + 1)
+    section = text[start : end if end != -1 else len(text)]
+    if "Confirm" not in section:
+        return False, "Phase 2 section has no confirmation step at all"
+    if "AskUserQuestion" not in section:
+        return False, "Phase 2's confirmation step doesn't mention AskUserQuestion -- may have regressed to plain narrative text"
+    if "Found N components. Proceed with full analysis?" not in section:
+        return False, "Phase 2's confirmation question text is missing or was reworded"
+    if '"Proceed"' not in section or '"Cancel"' not in section:
+        return False, "Phase 2's confirmation options are missing or were reworded (expected \"Proceed\" / \"Cancel\")"
+    return True, "Phase 2 confirmation is an AskUserQuestion call with the expected question and options"
+
+
 CHECKS = [
     check_frontmatter,
     check_bash_grants,
     check_referenced_scripts_exist,
     check_reference_guide_files_exist,
     check_phase_sequence,
+    check_phase2_confirmation_uses_askuserquestion,
 ]
 
 
