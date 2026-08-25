@@ -24,7 +24,7 @@ Turns an accepted concept into a concrete build list: which components, how many
 2. **Decide component types** — skills vs. agents vs. commands vs. hooks, and how many of each (Step 2)
 3. **Allocate content depth** — Minimal / Standard / Rich per planned skill (Step 3)
 4. **Map to functional groups** — cluster related components so Design work stays coherent (Step 4)
-5. **Write the plan** — `.claude/output/plugin-planning/<slug>-<timestamp>.md` (Step 5)
+5. **Write the plan** — Markdown at `.claude/output/plugin-planning/<slug>-<timestamp>.md` plus a JSON companion at the same base path (Step 5)
 
 ## When to Use
 
@@ -78,12 +78,13 @@ Cluster the planned components into small functional groups (2-5 components each
 ## Step 5: Write the Plan
 
 1. Get a timestamp: `date -u +%Y-%m-%dT%H-%M-%SZ`
-2. Write to `.claude/output/plugin-planning/<slug>-<timestamp>.md` per `references/plan-template.md`
-3. Confirm the written path to the user
+2. Write the Markdown plan to `.claude/output/plugin-planning/<slug>-<timestamp>.md` per `references/plan-template.md`
+3. Write a structured JSON companion at the same base path with a `.json` extension (`.claude/output/plugin-planning/<slug>-<timestamp>.json`) per `references/plan-json-schema.md` — the machine-readable contract other tooling (e.g. `plugin-inventory`) reads directly instead of parsing this skill's Markdown prose. It is a candidate list only; approval for importing any planned component happens entirely inside the consuming tool's own plan/apply gate, not here.
+4. Confirm both written paths to the user
 
 ## Suggested Next Step
 
-Ask with `AskUserQuestion`: "Proceed to Design for the first functional group, or hand off to `plugin-lifecycle-upstream` to run Design + Build for the whole plan?" — options "Design the first group now" / "Hand off to plugin-lifecycle-upstream" / "Stop here". If the user picks the orchestrator, invoke `plugin-lifecycle-upstream` (via `Skill`) with the written plan path (cycle prevented by `plugin-lifecycle-upstream`'s own Auto-Detection Logic, which skips re-running Phases 1-2 when a Plan path is already given — see that skill's `SKILL.md` for the guard). Never invoke it without asking first.
+Ask with `AskUserQuestion`: "Proceed to Design for the first functional group, or hand off to `plugin-lifecycle-upstream` to run Design + Build for the whole plan?" — options "Design the first group now" / "Hand off to plugin-lifecycle-upstream" / "Stop here". If the user picks the orchestrator, invoke `plugin-lifecycle-upstream` (via `Skill`) with the written **Markdown** plan path — the JSON companion is a separate machine contract for tooling like `plugin-inventory`, not an input this hand-off needs (cycle prevented by `plugin-lifecycle-upstream`'s own Auto-Detection Logic, which skips re-running Phases 1-2 when a Plan path is already given — see that skill's `SKILL.md` for the guard). Never invoke it without asking first.
 
 ## Testing & Validation
 
@@ -91,6 +92,10 @@ Ask with `AskUserQuestion`: "Proceed to Design for the first functional group, o
 2. **Direct-description input (ideation skipped)** — confirm the written plan notes ideation was skipped
 3. **Depth allocation** — construct a concept implying 3 skills of obviously different complexity; confirm each gets a distinct, justified tier, not a uniform default
 4. **Code-smell trigger** — construct a concept implying 6 agents; confirm the flow stops and asks about splitting rather than silently proceeding
+5. **JSON written alongside Markdown** — run Step 5; confirm both files exist at the same base path with `.md`/`.json` extensions and corresponding data (structured vs. prose representations of the same plan, not byte-identical)
+6. **Ideation-skipped case** — direct-description input; confirm `ideation_skipped: true` and `concept_source: null` in the JSON, matching the existing Markdown note
+7. **Depth tier round-trips** — confirm each planned skill's JSON `depth_tier` matches its Markdown-stated tier case-insensitively (JSON uses lowercase `minimal`/`standard`/`rich`; Markdown uses `Minimal`/`Standard`/`Rich`, per Step 3's table — the two are the same value, not a mismatch)
+8. **plugin-inventory import** — once `plugin-inventory` exists, a Build run against a plan containing 3 planned components; confirm 3 `status: "planned"` records are created with `path: null`, `name` equal to the JSON's `name_candidate` (per `plan-json-schema.md`'s Consumption Contract), and matching `type` (this scenario is owned by `plugin-inventory`'s own test suite, not runnable from this skill alone until that skill is built)
 
 **Quality gates:**
 - [ ] Every planned skill gets an explicit depth tier with a one-clause reason — never left unstated
@@ -98,12 +103,16 @@ Ask with `AskUserQuestion`: "Proceed to Design for the first functional group, o
 - [ ] The written plan path is always under `.claude/output/plugin-planning/`
 - [ ] The Step 5 handoff offer uses `AskUserQuestion`, never auto-invoked without asking
 - [ ] Depth-tier vocabulary matches `skill-workflow.md`'s 80% Rule terms — never introduces a new parallel rubric
+- [ ] The JSON companion is always written alongside the Markdown plan, at the same base path, with `type` restricted to `skill`/`agent`/`command`/`hook`
+- [ ] `concept_source` is always correctly typed `object | null`, and is never non-null when `ideation_skipped` is `true` (or vice versa)
+- [ ] No `id` field is ever minted in the JSON companion — stable-ID assignment stays the consuming inventory tool's responsibility
 
 ## Reference Guide
 
 | Resource | Purpose |
 |---|---|
 | `references/plan-template.md` | The component-inventory + depth-plan document template used in Step 5 |
+| `references/plan-json-schema.md` | The structured JSON companion's schema, field rules, and consumption contract, also written in Step 5 |
 | `plugin-ideation` skill | Prior step — produces the Concept Card this skill consumes |
 | `plugin-lifecycle-upstream` skill | Next step — orchestrates Design + Build across the planned components |
 | `skill-development/references/skill-workflow.md` | The authoritative 80% Rule this skill's depth tiers are built on |
