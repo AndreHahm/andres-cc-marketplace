@@ -9,7 +9,8 @@ Subcommands:
   apply           <inventory_path> <approved_plan.json> <expected_hash>
   import-grading  <inventory_path> <report_path> <target> <target_type>
   check           <inventory_path> <plugin_dir>
-  repair-history  <inventory_path> <component_id> <history_field> <replacement_history.json>
+  repair-history  <inventory_path> <component_id> <history_field> \
+                  <replacement_history.json> --confirm <component_id>
 
 This script owns discovery, reconciliation-plan construction, and atomic
 apply -- it never decides lifecycle status, functional_role, domain, or
@@ -35,9 +36,10 @@ from inventory_common import (  # noqa: E402  # ty: ignore[unresolved-import]
 SCHEMA_VERSION = "1.0.0"
 
 # Logical component types this script has a real filesystem-convention
-# detector for. The remaining logical types in the concept's vocabulary
-# (mcp-server, lsp-server, output-style, theme, monitor, custom) are only
-# detected when manifest-declared -- see discover_manifest_declared.
+# detector for. Of the remaining logical types, only mcp-server/lsp-server
+# have any detector at all (manifest-declared -- see
+# discover_manifest_declared); rule/output-style/theme/monitor/custom have
+# no detector of any kind and must be added manually via a plan operation.
 CONVENTION_DETECTED_TYPES = ("skill", "agent", "command", "hook")
 
 
@@ -78,7 +80,12 @@ def discover_filesystem_components(plugin_dir):
     if os.path.isfile(hooks_json):
         with open(hooks_json, encoding="utf-8") as f:
             hooks_config = json.load(f)
-        for event_name, matchers in sorted(hooks_config.items()):
+        # Real hooks.json files nest events one level down under a "hooks"
+        # key (alongside a sibling "description" string) -- fall back to the
+        # top level only if that key is absent, so a bare {event: [...]}
+        # shape still works too.
+        events = hooks_config.get("hooks", hooks_config)
+        for event_name, matchers in sorted(events.items()):
             if not isinstance(matchers, list):
                 continue
             for i in range(len(matchers)):
@@ -126,9 +133,10 @@ def build_plan(inventory, discovered):
     """Compare discovered candidates against the canonical inventory's
     current active components and produce a deterministic plan: add /
     update (path change) / no-op per candidate. Missing-active-component
-    and rename detection need human identity confirmation per the
-    concept's rename-matching hierarchy and are surfaced as `conflict`
-    entries here rather than guessed at heuristically."""
+    and rename detection both need human identity confirmation, not a
+    heuristic guess -- so both are surfaced as `conflict` entries here,
+    resolved later via an approved `status-transition` operation (see
+    apply_status_transition), never auto-applied by this function."""
     existing_by_key = {(c["name"], c["type"]): c for c in inventory.get("components", [])}
     discovered_keys = {(c["name"], c["type"]) for c in discovered}
     plan = []
@@ -396,11 +404,25 @@ def cmd_apply(args):
 
 
 def cmd_import_grading(args):
+    if args.target_type == "plugin":
+        raise SystemExit(
+            "target_type 'plugin' is not valid here -- a whole-plugin report belongs in "
+            "marketplace-inventory's own inventory, not a single component's record"
+        )
     with json_store.InventoryLock(args.inventory_path):
         inventory = json_store.read_json(args.inventory_path)
-        component = next((c for c in inventory["components"] if c["name"] == args.target), None)
+        component = next(
+            (
+                c
+                for c in inventory["components"]
+                if c["name"] == args.target and c["type"] == args.target_type
+            ),
+            None,
+        )
         if component is None:
-            raise SystemExit(f"no component named {args.target!r} in this inventory")
+            raise SystemExit(
+                f"no component named {args.target!r} of type {args.target_type!r} in this inventory"
+            )
         report = grading.load_and_validate_report(args.report_path, args.target, args.target_type)
 
         scoring_event = grading.build_scoring_event(
@@ -454,8 +476,16 @@ def cmd_check(args):
 def cmd_repair_history(args):
     """The only mode allowed to rewrite existing history entries. The
     calling skill must show the user the exact before/after diff and get
-    explicit approval before invoking this -- this function itself performs
-    no additional confirmation, per SKILL.md's Repair History mode."""
+    explicit approval before invoking this -- `--confirm <component_id>`
+    (repeating the same id being repaired) is this function's own
+    mechanical gate, so an invocation missing it fails closed instead of
+    relying solely on the calling skill having actually shown that diff."""
+    if args.confirm != args.component_id:
+        raise SystemExit(
+            "repair-history requires --confirm <component_id> to exactly match the "
+            "component_id being repaired -- this is the destructive-rewrite gate; "
+            "show the user the full before/after diff and get explicit approval first"
+        )
     with json_store.InventoryLock(args.inventory_path):
         inventory = json_store.read_json(args.inventory_path)
         component = next((c for c in inventory["components"] if c["id"] == args.component_id), None)
@@ -526,6 +556,13 @@ def main():
     p.add_argument("component_id")
     p.add_argument("history_field")
     p.add_argument("replacement_history_path")
+    p.add_argument(
+        "--confirm",
+        required=True,
+        help="must exactly equal component_id -- the mechanical confirmation gate for this "
+        "destructive mode; the calling skill should only pass this after showing the user "
+        "the full before/after diff and getting explicit approval",
+    )
     p.set_defaults(func=cmd_repair_history)
 
     args = parser.parse_args()

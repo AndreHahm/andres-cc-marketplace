@@ -61,15 +61,19 @@ def discover_plugins(repo_root):
 def read_plugin_inventory(repo_root, source):
     """Read a plugin's own plugin-inventory.json if it exists, resolving
     `source` (a marketplace-relative path like './plugins/plugin-devkit')
-    against `repo_root`. Returns None if missing -- this is reported as a
-    stale/missing plugin inventory, never synthesized."""
+    against `repo_root`. Returns None if missing OR unparseable -- either
+    way it's reported as a stale/missing plugin inventory, never
+    synthesized and never allowed to abort the whole run."""
     if not source:
         return None
     plugin_dir = os.path.normpath(os.path.join(repo_root, source))
     inventory_path = os.path.join(plugin_dir, ".claude-plugin", "plugin-inventory.json")
     if not os.path.isfile(inventory_path):
         return None
-    return json_store.read_json(inventory_path)
+    try:
+        return json_store.read_json(inventory_path)
+    except (OSError, ValueError):
+        return None
 
 
 def empty_inventory(marketplace_name):
@@ -151,22 +155,32 @@ def build_plan(inventory, discovered, repo_root):
 
 
 def apply_add(inventory, operation, existing_ids):
+    """`operation["status"]` defaults to derived-from-`source`-truthiness
+    ("active" when a real marketplace.json source exists, "planned"
+    otherwise), but an explicit `operation["status"]` always wins -- this
+    mirrors plugin-inventory.py's own `apply_add`, which documents why
+    truthiness alone isn't safe to rely on for every caller."""
     new_id = models.generate_id("plugin", existing_ids)
     existing_ids.add(new_id)
     today = _today()
+    status = operation.get("status", "active" if operation["source"] else "planned")
+    models.validate_status(status)
     record = {
         "id": new_id,
         "name": operation["name"],
         "source": operation["source"],
-        "status": "active" if operation["source"] else "planned",
+        "status": status,
         "status_history": [
             {
-                "status": "active" if operation["source"] else "planned",
+                "status": status,
                 "valid_from": today,
                 "valid_to": None,
-                "reason": "Discovered by marketplace-inventory Build/Plan."
-                if operation["source"]
-                else "Planned plugin, not yet materialized.",
+                "reason": operation.get(
+                    "status_reason",
+                    "Discovered by marketplace-inventory Build/Plan."
+                    if status == "active"
+                    else "Planned plugin, not yet materialized.",
+                ),
                 "evidence": operation.get("evidence", []),
             }
         ],

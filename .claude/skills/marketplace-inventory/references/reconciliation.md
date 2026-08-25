@@ -50,8 +50,8 @@ detects and reports the mismatch.
 `import-grading`, from a completed whole-plugin `plugin-grader` report (`plugin_final_score`/
 `plugin_security_score`) — never derived from that plugin's own component-level scores. Deriving a
 plugin-level score from its components would duplicate `plugin-grader`'s own whole-plugin rollup
-math (a violation of "plugin-grader is the sole quality- and security-scoring authority" — see the
-concept's own Decisions list). If a whole-plugin report simply hasn't been imported yet, `score`/
+math (a violation of "plugin-grader is the sole quality- and security-scoring authority" — see
+`inventory_common/grading.py`'s own module docstring). If a whole-plugin report simply hasn't been imported yet, `score`/
 `security_score` stay `null`; this script never fabricates a substitute. `import-grading` itself
 rejects any `target_type` other than `plugin` outright — a component-level report never reaches this
 inventory's `score`/`security_score` fields even by mistake.
