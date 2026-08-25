@@ -41,18 +41,38 @@ def check_referenced_files():
 
 
 def check_bash_grants():
+    # Real invocation instructions in this body live as a literal command line inside a
+    # fenced ```bash block -- not as a bare `Bash(...)` mention, which never actually
+    # appears verbatim in the body and made the previous version of this check a silent
+    # no-op (referenced was always empty regardless of what the body actually invoked).
     text = SKILL_MD.read_text(encoding="utf-8")
     header_end = text.find("\n---\n", 4) + 5
     frontmatter, body = text[:header_end], text[header_end:]
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    granted = set(re.findall(r"Bash\([^)]*\)", fm_line_match.group(1))) if fm_line_match else set()
-    referenced = set(re.findall(r"`(Bash\([^)]*\))", body))
-    missing = referenced - granted
-    if missing:
-        return False, "body invokes Bash scope(s) missing from allowed-tools: " + ", ".join(
-            sorted(missing)
+    granted_prefixes = (
+        [
+            g.rsplit(":", 1)[0].strip()
+            for g in re.findall(r"Bash\(([^)]*)\)", fm_line_match.group(1))
+        ]
+        if fm_line_match
+        else []
+    )
+    invoked = set()
+    for block in re.findall(r"```bash\n(.*?)```", body, re.DOTALL):
+        for line in block.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            tokens = line.split()
+            invoked.add(" ".join(tokens[:2]) if len(tokens) > 1 else tokens[0])
+    uncovered = [cmd for cmd in invoked if not any(cmd.startswith(p) for p in granted_prefixes)]
+    if uncovered:
+        return False, "body invokes command(s) not covered by any granted Bash scope: " + ", ".join(
+            sorted(uncovered)
         )
-    return True, "every Bash invocation in the body is granted"
+    if not invoked:
+        return True, "no shell commands found in fenced bash blocks (nothing to check)"
+    return True, f"every invoked command ({len(invoked)}) is covered by a granted Bash scope"
 
 
 def _find_repo_root():
@@ -102,11 +122,47 @@ def check_cli_bootstrap_check_roundtrip():
         return True, f"bootstrap+check round-trip clean ({result['drift_count']} drift)"
 
 
+def check_schema_conformance():
+    """Structural, dependency-free comparison (no jsonschema library needed):
+    confirm the schema's declared `plugin` required-key set matches exactly
+    what `apply_add()` in the script actually writes into a new record, so
+    the two can't silently drift apart with nothing catching it."""
+    schema_path = SKILL_DIR / "assets" / "marketplace-inventory.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    schema_keys = set(schema.get("definitions", {}).get("plugin", {}).get("required", []))
+    if not schema_keys:
+        return False, "schema has no definitions.plugin.required to compare against"
+    script_text = SCRIPT.read_text(encoding="utf-8")
+    match = re.search(r"def apply_add\(.*?\n    record = \{(.*?)\n    \}", script_text, re.DOTALL)
+    if not match:
+        return False, "could not locate apply_add()'s record literal in the script"
+    # Only top-level keys (exactly 8-space indented) count -- a nested dict
+    # (e.g. status_history's own "status"/"reason" keys) is indented deeper
+    # and must not be confused with the record's own top-level fields.
+    written_keys = set(re.findall(r'^ {8}"([\w]+)":', match.group(1), re.MULTILINE))
+    missing = schema_keys - written_keys
+    extra = written_keys - schema_keys
+    if missing or extra:
+        parts = []
+        if missing:
+            parts.append(
+                "schema requires but apply_add never writes: " + ", ".join(sorted(missing))
+            )
+        if extra:
+            parts.append("apply_add writes but schema doesn't require: " + ", ".join(sorted(extra)))
+        return False, "; ".join(parts)
+    return (
+        True,
+        f"schema's {len(schema_keys)} required plugin keys match apply_add()'s record exactly",
+    )
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
     check_bash_grants,
     check_cli_bootstrap_check_roundtrip,
+    check_schema_conformance,
 ]
 
 

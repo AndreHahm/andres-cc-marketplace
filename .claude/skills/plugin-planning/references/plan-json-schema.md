@@ -5,6 +5,10 @@ Written alongside the Markdown plan at the same base path with a `.json` extensi
 (e.g. `plugin-inventory`) reads directly, instead of parsing the Markdown plan's prose. The Markdown
 stays the user-facing artifact; this JSON is the machine contract.
 
+**R18 exception (recorded):** the JSON block below is a complete, coherent schema example whose value
+depends on showing the whole shape — including the two-entry `planned_components` array and its
+`functional_groups` cross-link — at once; splitting it would break the worked example it's illustrating.
+
 ```json
 {
   "schema_version": "1.0.0",

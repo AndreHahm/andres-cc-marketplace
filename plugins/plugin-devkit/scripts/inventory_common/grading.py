@@ -63,17 +63,22 @@ def extract_quality_score(report):
 def extract_security_score(report):
     """Return `(security_score, source_field, is_na, grader_schema_version)`.
 
-    Component-mode: `dimensions.safety_risk_handling.score`/`is_na`
-    (`GradingReportError` if the dimension is entirely absent -- an
-    unsupported target type stays `score: null` at the caller's own
-    discretion, this function only reflects what the report actually says).
-    Plugin-mode: an explicit `plugin_security_score`, distinguishing two
-    `None` cases the caller must not conflate --
-    `grader_schema_version` absent entirely means the report predates the
-    security-score prerequisite (a different case from the field being
-    present-and-`null` with a stated `notes.security_score_unavailable_reason`,
-    which this function surfaces as `security_score: None` with a real
-    `grader_schema_version`, letting the caller tell the two apart).
+    Both modes treat "no security dimension in this report" the same way -- a graceful
+    `security_score: None`, never an exception that would also abort the caller's
+    unrelated quality-score import (`build_scoring_event`/`extract_quality_score` are
+    entirely independent of this function and never see its result).
+
+    Component-mode: `dimensions.safety_risk_handling.score`/`is_na` when the dimension is
+    present; `None` when it's entirely absent (an unsupported target type, or a report
+    that predates this dimension) -- this is not distinguished from plugin-mode's
+    pre-prerequisite case below, since both mean the same thing to a caller: nothing to
+    import, quality import unaffected.
+    Plugin-mode: an explicit `plugin_security_score`, distinguishing two `None` cases the
+    caller must not conflate -- `grader_schema_version` absent entirely means the report
+    predates the security-score prerequisite (a different case from the field being
+    present-and-`null` with a stated `notes.security_score_unavailable_reason`, which this
+    function surfaces as `security_score: None` with a real `grader_schema_version`,
+    letting the caller tell the two apart).
     """
     grader_schema_version = report.get("grader_schema_version")
     if report["target_type"] == "plugin":
@@ -89,7 +94,7 @@ def extract_security_score(report):
     dimensions = report.get("dimensions", {})
     safety = dimensions.get("safety_risk_handling")
     if safety is None:
-        raise GradingReportError("component-mode report has no dimensions.safety_risk_handling")
+        return None, "dimensions.safety_risk_handling.score", None, grader_schema_version
     return (
         safety.get("score"),
         "dimensions.safety_risk_handling.score",
@@ -106,8 +111,22 @@ def build_scoring_event(report, report_path, target, target_type):
     """Build a `scoring_history`-shaped event dict, ready for
     `history.append_scoring_event`. Raises `GradingReportError` if the
     report has no usable quality score.
+
+    `report_path` typically points into a gitignored `.claude/output/` report and is a
+    best-effort provenance breadcrumb, not a durable reference -- it can become
+    unresolvable at any time without that being a breaking change. `report_sha256` is
+    the durable identity a consumer should actually trust.
     """
     score, grader_schema_version = extract_quality_score(report)
+    gates_applied = report.get(
+        "plugin_gates_applied" if target_type == "plugin" else "gates_applied", []
+    )
+    if not isinstance(gates_applied, list) or not all(
+        isinstance(g, dict) and isinstance(g.get("gate"), str) for g in gates_applied
+    ):
+        raise GradingReportError(
+            "report's gates_applied is not a list of {'gate': <str>, ...} objects"
+        )
     return {
         "score": score,
         "graded_at": report["graded_at"],
@@ -117,9 +136,7 @@ def build_scoring_event(report, report_path, target, target_type):
         "report_path": report_path,
         "report_sha256": compute_hash(report),
         "grader_schema_version": grader_schema_version,
-        "gates_applied": report.get(
-            "plugin_gates_applied" if target_type == "plugin" else "gates_applied", []
-        ),
+        "gates_applied": gates_applied,
     }
 
 

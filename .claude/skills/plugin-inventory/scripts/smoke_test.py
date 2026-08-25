@@ -41,18 +41,38 @@ def check_referenced_files():
 
 
 def check_bash_grants():
+    # Real invocation instructions in this body live as a literal command line inside a
+    # fenced ```bash block -- not as a bare `Bash(...)` mention, which never actually
+    # appears verbatim in the body and made the previous version of this check a silent
+    # no-op (referenced was always empty regardless of what the body actually invoked).
     text = SKILL_MD.read_text(encoding="utf-8")
     header_end = text.find("\n---\n", 4) + 5
     frontmatter, body = text[:header_end], text[header_end:]
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    granted = set(re.findall(r"Bash\([^)]*\)", fm_line_match.group(1))) if fm_line_match else set()
-    referenced = set(re.findall(r"`(Bash\([^)]*\))", body))
-    missing = referenced - granted
-    if missing:
-        return False, "body invokes Bash scope(s) missing from allowed-tools: " + ", ".join(
-            sorted(missing)
+    granted_prefixes = (
+        [
+            g.rsplit(":", 1)[0].strip()
+            for g in re.findall(r"Bash\(([^)]*)\)", fm_line_match.group(1))
+        ]
+        if fm_line_match
+        else []
+    )
+    invoked = set()
+    for block in re.findall(r"```bash\n(.*?)```", body, re.DOTALL):
+        for line in block.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            tokens = line.split()
+            invoked.add(" ".join(tokens[:2]) if len(tokens) > 1 else tokens[0])
+    uncovered = [cmd for cmd in invoked if not any(cmd.startswith(p) for p in granted_prefixes)]
+    if uncovered:
+        return False, "body invokes command(s) not covered by any granted Bash scope: " + ", ".join(
+            sorted(uncovered)
         )
-    return True, "every Bash invocation in the body is granted"
+    if not invoked:
+        return True, "no shell commands found in fenced bash blocks (nothing to check)"
+    return True, f"every invoked command ({len(invoked)}) is covered by a granted Bash scope"
 
 
 def _find_repo_root():

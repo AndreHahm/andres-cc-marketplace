@@ -43,10 +43,9 @@ A skill's `references/`, `scripts/`, `assets/`, `examples/`, and `templates/` su
 themselves inventoried as separate component records — detecting one `SKILL.md` per skill directory,
 not walking every file inside it, is what keeps this distinction correct. Today, `apply_add()` writes
 only `details: {"schema": "<type>"}` for a newly-discovered component; it does **not** yet populate a
-per-subdirectory summary (`details.entrypoint`, `details.activation`, etc.) the way the concept's
-Type-Specific Details section eventually envisions — that richer summarization is unbuilt, not
-silently working. A reader relying on `details` for anything beyond the type discriminator should
-verify against the actual written record rather than assume it's populated.
+per-subdirectory summary (`details.entrypoint`, `details.activation`, etc.) — that richer summarization
+is unbuilt, not silently working. A reader relying on `details` for anything beyond the type
+discriminator should verify against the actual written record rather than assume it's populated.
 
 ## Determinism
 

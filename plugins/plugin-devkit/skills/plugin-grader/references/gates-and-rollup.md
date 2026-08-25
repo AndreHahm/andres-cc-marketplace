@@ -2,7 +2,10 @@
 
 ## Order of Operations (Component Mode)
 
-1. Score all 12 dimensions per `rubric.md`.
+1. Score all 12 dimensions: 8 (structure_architecture, content_quality, rule_compliance, completeness,
+   maintainability, robustness, uniqueness, safety_risk_handling) from reviewer Critical/Major/Minor
+   counts via the generic finding-count formula, and 4 (simplicity, testing, efficiency, actionability)
+   scored directly against custom bands — see `rubric.md` for the full weight table and band definitions.
 2. Apply the Content Quality contradiction cap *before* the weighted sum: if the target contains
    self-contradicting guidance (one section states a rule, another violates it), set
    `dimensions.content_quality.contradiction_found: true` in the script input — this caps Content
