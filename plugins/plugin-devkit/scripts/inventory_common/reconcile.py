@@ -113,7 +113,19 @@ def apply_status_transition(inventory, operation, collection_key):
     resolution to a `conflict` (rename/supersede/retire/restore decision),
     using `history.close_and_append_status_period` so the status change and
     its history entry are never out of sync (a bare `update` on `status`
-    alone would leave `status_history` stale and fail validation)."""
+    alone would leave `status_history` stale and fail validation).
+
+    An optional `new_name` field additionally renames the record via
+    `history.close_and_append_naming_period`, atomically alongside the
+    status change -- this is the only path that can actually change a
+    record's `name`: `apply_update`'s allowlist deliberately excludes `name`
+    for the same reason it excludes `status` (leaving `naming_history`
+    stale), and `repair-history` refuses a replacement whose open period
+    doesn't match the record's *current* name, so it can't be used to
+    rename either. A pure rename with no real status change still requires
+    `new_status` to be supplied equal to the record's current status --
+    every `status-transition` operation shares this one shape regardless of
+    which of the four resolutions it's applying."""
     for record in inventory[collection_key]:
         if record["id"] == operation["id"]:
             record["status_history"] = history.close_and_append_status_period(
@@ -125,6 +137,16 @@ def apply_status_transition(inventory, operation, collection_key):
                 closed_valid_to=operation.get("closed_valid_to"),
             )
             record["status"] = operation["new_status"]
+            if operation.get("new_name"):
+                record["naming_history"] = history.close_and_append_naming_period(
+                    record["naming_history"],
+                    new_name=operation["new_name"],
+                    valid_from=operation.get("valid_from", today()),
+                    reason=operation.get("rename_reason", operation["reason"]),
+                    evidence=operation.get("evidence", []),
+                    closed_valid_to=operation.get("closed_valid_to"),
+                )
+                record["name"] = operation["new_name"]
             if operation.get("superseded_by_id"):
                 record.setdefault("provenance", {})["superseded_by_id"] = operation[
                     "superseded_by_id"

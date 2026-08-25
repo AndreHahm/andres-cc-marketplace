@@ -105,7 +105,11 @@ Returns `{"expected_hash": "...", "operations": [...], "missing_plugin_inventori
 `conflict` (a missing-active-plugin, or a `plugin_id` mismatch) is never applied as-is — once the human
 picks a resolution, construct a `status-transition` operation in its place: `{"operation":
 "status-transition", "id": "<plugin_id>", "new_status": "<superseded|retired|active>", "reason": "...",
-"evidence": [...], "superseded_by_id": "<id, only for supersede>"}` — `apply` uses
+"evidence": [...], "superseded_by_id": "<id, only for supersede>", "new_name": "<new name, only for
+rename>"}` — a rename with no accompanying status change still requires `new_status` equal to the
+record's current status; `new_name` is what actually changes `name` and appends a `naming_history`
+period atomically alongside it (via `history.close_and_append_naming_period`) — neither `update` (whose
+allowlist excludes `name`) nor a bare status change alone can rename a record. `apply` uses
 `history.close_and_append_status_period` for this operation type so the status change and its history
 entry never go out of sync. Write the user-approved subset of operations — each keeping its own
 operation shape (`add`/`update`/`status-transition`/`no-op`) — to a scratch JSON file **in the session's
@@ -171,12 +175,16 @@ generic JSON Schema validator against it (no such dependency is available in thi
   restricted to `active`): a plugin's own `plugin-inventory.json` disagrees with this record's `id` —
   needs a human decision about which is correct, never silently trusted.
 - **Invalid plugin-grader report**: `import-grading` raises `GradingReportError` (including a
-  `plugin_final_score`/`plugin_security_score` that isn't a real number in `[0, 10]`) — reject the
-  import, current scores/histories stay unchanged.
+  `plugin_final_score`/`plugin_security_score` that isn't a real number in `[0, 10]`, or a `graded_at`
+  that isn't a non-empty string) — reject the import, current scores/histories stay unchanged.
+- **Ambiguous name-based grading target**: `import-grading` looks up its target by bare `name` — if a
+  retired and an active plugin happen to share the same `name`, the lookup refuses to guess and exits
+  before any write, rather than silently updating whichever record happens to come first in array order.
 - **Out-of-allowlist `update` field**: `apply` only permits an `update` operation to set
-  `source`/`functional_role`/`domains`/`compatibility`/`created_on` — `id`, `status`, and every history/
-  scoring field are refused with `SystemExit` before any write. `status` only ever changes via
-  `status-transition`; history/scoring fields are append-only.
+  `source`/`functional_role`/`domains`/`compatibility`/`created_on` — `id`, `status`, `name`, and every
+  history/scoring field are refused with `SystemExit` before any write. `status` only ever changes via
+  `status-transition`; `name` only ever changes via `status-transition`'s own `new_name` field (see Plan
+  mode above); history/scoring fields are append-only.
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
 - **Stale plugin inventory during repair**: skip that plugin's update and report the required
   `plugin-inventory` run — never patch around a stale per-plugin file from this script.
@@ -222,6 +230,15 @@ generic JSON Schema validator against it (no such dependency is available in thi
 15. **Import grading rejects an out-of-range/non-numeric score** — construct a plugin-grader report with
     `plugin_final_score` set to `999`, a negative number, or a boolean; confirm `import-grading` rejects
     it before any write, current scores/history unchanged
+16. **Status transition with rename** — apply a `status-transition` operation carrying `new_name`;
+    confirm both `name` and `naming_history` update atomically (the previously-open period closes, a new
+    one opens with the new name)
+17. **Import grading rejects an ambiguous name-based target** — construct an inventory where a retired
+    and an active plugin share the same `name`; confirm `import-grading` refuses to guess rather than
+    silently updating whichever one happens to come first in array order
+18. **Import grading rejects a non-string `graded_at`** — construct a plugin-grader report with
+    `graded_at` set to an integer; confirm `import-grading` rejects it on the first import, before it
+    could otherwise crash a later import with a type-mismatch error
 
 **Quality gates:**
 - [ ] `scripts/marketplace-inventory.py` is always invoked for discovery, plan construction, and apply

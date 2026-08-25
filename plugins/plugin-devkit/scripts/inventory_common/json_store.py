@@ -90,14 +90,25 @@ class InventoryLock:
 
     def _reclaim_if_stale(self):
         try:
-            age = time.time() - os.path.getmtime(self.lock_path)
+            mtime = os.path.getmtime(self.lock_path)
         except FileNotFoundError:
             return  # already gone -- released by its owner, or reclaimed by another waiter
-        if age > self.stale_after_seconds:
-            try:
-                os.remove(self.lock_path)
-            except FileNotFoundError:
-                pass  # a concurrent waiter already reclaimed it
+        if time.time() - mtime <= self.stale_after_seconds:
+            return
+        # Two waiters can both observe the same stale lock and both decide to
+        # reclaim it. Re-check the mtime is still the exact value just judged
+        # stale immediately before removing -- if a successor waiter already
+        # reclaimed and re-acquired in between, its lock's mtime will differ
+        # (it's newer), and this bails out instead of deleting that live lock
+        # out from under it. Narrows the race to the tiny window between this
+        # second stat and the remove call, rather than the whole stale-check
+        # interval.
+        try:
+            if os.path.getmtime(self.lock_path) != mtime:
+                return
+            os.remove(self.lock_path)
+        except FileNotFoundError:
+            pass  # a concurrent waiter already reclaimed it
 
     def __enter__(self):
         deadline = time.monotonic() + self.timeout_seconds

@@ -92,6 +92,10 @@ never caps `plugin_final_score`.
   one entry per `component_scores` key — `compute_score.py --rollup` raises rather than silently
   computing the mean/Gate P4 over an incomplete subset, since a missing entry could hide an omitted
   component's low security score from the rollup entirely.
+- **Every value is validated, not just the key set:** each `component_security_scores` entry must be a
+  real number (not a `bool` -- `isinstance(True, int)` is `True` in Python, so booleans are explicitly
+  excluded) in `[0, 10]` — `compute_score.py --rollup` raises otherwise, rather than silently letting an
+  out-of-range or malformed value (e.g. `999`, a boolean) contribute to the mean or Gate P4's comparison.
 - **Valid range:** `[0, 10]`, rounded to 1 decimal, same as every other score in this system.
 - **Tie-break:** when multiple components tie for the lowest security score, `weakest_security_name`
   breaks the tie by component name (alphabetical), not by JSON key/dict-iteration order — the gate's

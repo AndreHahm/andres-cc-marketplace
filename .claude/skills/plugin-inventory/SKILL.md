@@ -124,7 +124,12 @@ included in an apply. A `conflict` entry (an active record whose discovered path
 applied as-is and never auto-resolved — instead, once the human picks a resolution (rename, supersede,
 retire, or restore), construct a `status-transition` operation in its place: `{"operation":
 "status-transition", "id": "<component_id>", "new_status": "<superseded|retired|active>", "reason":
-"...", "evidence": [...], "superseded_by_id": "<id, only for supersede>"}` — `apply` uses
+"...", "evidence": [...], "superseded_by_id": "<id, only for supersede>", "new_name": "<new name, only
+for rename>"}` — a rename with no accompanying status change still requires `new_status` equal to the
+record's current status; `new_name` is what actually changes `name` and appends a
+`naming_history` period atomically alongside it (via `history.close_and_append_naming_period`) — neither
+`update` (whose allowlist excludes `name`) nor `repair-history` (which refuses a replacement whose open
+period doesn't match the *current* name) can rename a record. `apply` uses
 `history.close_and_append_status_period` for this operation type, so the status change and its history
 entry never go out of sync (a bare `update` on `status` alone would leave `status_history` stale and
 fail validation). Write the user-approved subset of operations — each keeping its own operation shape
@@ -224,11 +229,18 @@ until a future mode gives it a writer.
   `no-op` that would leave the record's lifecycle status silently out of sync with reality.
 - **Invalid plugin-grader report**: `import-grading` raises `GradingReportError` (target/type mismatch,
   malformed JSON, missing required field, or a `final_score`/security score that isn't a real number in
-  `[0, 10]`) — reject the import, current scores/histories stay unchanged.
+  `[0, 10]`, or a `graded_at` that isn't a non-empty string) — reject the import, current
+  scores/histories stay unchanged.
+- **Ambiguous name-based grading target**: `import-grading` looks up its target by `(name, type)` — if a
+  retired and an active component happen to share the same `(name, type)` (reachable via
+  `plugin-planning`'s own hand-built `add` operations, which bypass `build_plan`'s conflict detection),
+  the lookup refuses to guess and exits before any write, rather than silently updating whichever record
+  happens to come first in array order.
 - **Out-of-allowlist `update` field**: `apply` only permits an `update` operation to set
-  `path`/`functional_role`/`domain`/`compatibility`/`created_on` — `id`, `status`, and every history/
-  scoring field are refused with `SystemExit` before any write. `status` only ever changes via
-  `status-transition`; history/scoring fields are append-only, editable only through Repair History's own
+  `path`/`functional_role`/`domain`/`compatibility`/`created_on` — `id`, `status`, `name`, and every
+  history/scoring field are refused with `SystemExit` before any write. `status` only ever changes via
+  `status-transition`; `name` only ever changes via `status-transition`'s own `new_name` field (see Plan
+  mode above); history/scoring fields are append-only, editable only through Repair History's own
   `--confirm` gate.
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
 - **Atomic write failure**: `json_store.atomic_write_json` never leaves a partial canonical file — the
@@ -285,6 +297,15 @@ until a future mode gives it a writer.
 15. **Import grading rejects an out-of-range/non-numeric score** — construct a plugin-grader report with
     `final_score` set to `999`, a negative number, or a boolean; confirm `import-grading` rejects it
     before any write, current scores/history unchanged
+16. **Status transition with rename** — apply a `status-transition` operation carrying `new_name`;
+    confirm both `name` and `naming_history` update atomically (the previously-open period closes, a new
+    one opens with the new name)
+17. **Import grading rejects an ambiguous name-based target** — construct an inventory where a retired
+    and an active component share the same `(name, type)`; confirm `import-grading` refuses to guess
+    rather than silently updating whichever one happens to come first in array order
+18. **Import grading rejects a non-string `graded_at`** — construct a plugin-grader report with
+    `graded_at` set to an integer; confirm `import-grading` rejects it on the first import, before it
+    could otherwise crash a later import with a type-mismatch error
 
 **Quality gates:**
 - [ ] `scripts/plugin-inventory.py` is always invoked for discovery, plan construction, and apply — the
