@@ -141,7 +141,7 @@ def check_headrefname_validated_before_first_use():
         return False, "'## Instructions' section not found"
     end = text.find("\n## ", start + 1)
     section = text[start : end if end != -1 else len(text)]
-    validation_pos = section.find(r"^[A-Za-z0-9._/-]+$")
+    validation_pos = section.find(r"^[A-Za-z0-9._/@+=-]+$")
     if validation_pos == -1:
         return False, "headRefName regex validation string not found anywhere in Instructions"
     first_use_pos = section.find("git ls-remote --heads origin")
@@ -154,6 +154,33 @@ def check_headrefname_validated_before_first_use():
             "the source (step 1) before any use, not just before the later DELETE call",
         )
     return True, "headRefName is validated before its first shell interpolation (git ls-remote)"
+
+
+def check_step7_verification_not_gated_on_exit_code():
+    step7 = _get_step_text(7)
+    if step7 is None:
+        return False, "step 7 ('## Instructions') not found"
+    verify_pos = step7.find("git ls-remote --heads origin")
+    if verify_pos == -1:
+        return (
+            False,
+            "step 7 doesn't verify remote branch deletion with git ls-remote --heads origin",
+        )
+    exit_code_pos = step7.find("Regardless of this command's exit code")
+    if exit_code_pos == -1:
+        return (
+            False,
+            "step 7 doesn't state its state check runs regardless of the merge command's exit "
+            "code -- a prior version of this text nested the whole verification inside the "
+            "non-zero-exit case, silently skipping it on a normal (exit 0) merge",
+        )
+    if exit_code_pos > verify_pos:
+        return (
+            False,
+            "step 7's 'regardless of exit code' framing appears AFTER the git ls-remote check "
+            "-- it must precede it so the verification isn't read as conditional on a prior branch",
+        )
+    return True, "step 7's remote-branch-deletion verification is explicitly exit-code-independent"
 
 
 def check_step5_worktree_note():
@@ -177,6 +204,7 @@ CHECKS = [
     check_step_sequence,
     check_step7_remote_delete_fallback,
     check_step7_skips_delete_fallback_for_fork_prs,
+    check_step7_verification_not_gated_on_exit_code,
     check_headrefname_validated_before_first_use,
     check_step5_worktree_note,
 ]
