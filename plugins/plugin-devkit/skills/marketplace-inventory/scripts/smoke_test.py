@@ -98,7 +98,11 @@ def check_cli_bootstrap_check_roundtrip():
 
     repo_root = _find_repo_root()
     with tempfile.TemporaryDirectory() as tmpdir:
-        inventory_path = pathlib.Path(tmpdir) / "marketplace-inventory.json"
+        # Must live under a ".claude-plugin" directory -- the script's own
+        # write-boundary shape guard (require_inventory_path_shape) refuses
+        # any other location.
+        inventory_path = pathlib.Path(tmpdir) / ".claude-plugin" / "marketplace-inventory.json"
+        inventory_path.parent.mkdir(parents=True, exist_ok=True)
         bootstrap = subprocess.run(
             [sys.executable, str(SCRIPT), "bootstrap", str(repo_root), str(inventory_path)],
             capture_output=True,

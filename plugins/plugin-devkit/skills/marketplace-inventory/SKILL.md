@@ -168,6 +168,10 @@ generic JSON Schema validator against it (no such dependency is available in thi
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
 - **Stale plugin inventory during repair**: skip that plugin's update and report the required
   `plugin-inventory` run — never patch around a stale per-plugin file from this script.
+- **Wrong-shape `inventory_path`**: every write-capable subcommand (`bootstrap`/`apply`/
+  `import-grading`) calls `reconcile.require_inventory_path_shape` before touching the file —
+  `inventory_path` must resolve to `.../.claude-plugin/marketplace-inventory.json` or the command fails
+  closed with `SystemExit`, before any read or write.
 
 ## Testing & Validation
 

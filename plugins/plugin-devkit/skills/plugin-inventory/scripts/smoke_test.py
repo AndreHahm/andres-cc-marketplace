@@ -102,7 +102,11 @@ def check_cli_bootstrap_check_roundtrip():
     if not plugin_dir.is_dir():
         return False, f"resolved plugin_dir does not exist: {plugin_dir}"
     with tempfile.TemporaryDirectory() as tmpdir:
-        inventory_path = pathlib.Path(tmpdir) / "plugin-inventory.json"
+        # Must live under a ".claude-plugin" directory -- the script's own
+        # write-boundary shape guard (require_inventory_path_shape) refuses
+        # any other location.
+        inventory_path = pathlib.Path(tmpdir) / ".claude-plugin" / "plugin-inventory.json"
+        inventory_path.parent.mkdir(parents=True, exist_ok=True)
         bootstrap = subprocess.run(
             [
                 sys.executable,
