@@ -4,7 +4,7 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-devkit` ships **37 skills**, **24 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
+`plugin-devkit` ships **38 skills**, **24 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
@@ -12,7 +12,7 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 | **Plugin structure & governance** | `plugin-development`, `plugin-rulebook`, `plugin-auditor`, `upstream-sources-registry`, `plugin-settings`, `plugin-evaluation`, `marketplace-development`, `plugin-documentation` |
 | **Skill quality & lifecycle** | `component-prototyping`, `skill-refiner-interactive`, `skill-improver-loop`, `skill-tester`, `reviewing-evals`, `skill-security`, `skill-stocktake`, `skill-maintenance` |
 | **Plugin lifecycle** | `using-plugin-devkit`, `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance` |
-| **Planning & analysis** | `plugin-ideation`, `plugin-planning`, `plugin-comparison`, `plugin-grader`, `analyzing-sessions`, `verify-agent-citations` |
+| **Planning & analysis** | `plugin-conception`, `plugin-ideation`, `plugin-planning`, `plugin-comparison`, `plugin-grader`, `analyzing-sessions`, `verify-agent-citations` |
 | **`.claude/rules/` pipeline** | `rule-development`, `rules-extract`, `rules-merge`, `rules-apply`, `rules-review` |
 
 Each skill follows progressive disclosure: a lean `SKILL.md`, detailed `references/`, working `examples/`, and utility `scripts/` where relevant.
@@ -72,7 +72,7 @@ cc --plugin-dir /path/to/plugin-devkit
 | Skill | Use when |
 |---|---|
 | `using-plugin-devkit` | Not already knowing which of the three pipelines below fits — a guided front door that picks the entry point, confirms before dispatch, and names the lighter single-skill alternative when a full pipeline is overkill |
-| `plugin-lifecycle-upstream` | Creating a new plugin/component end-to-end — Ideate, Plan, Design, Build, Self-Review, Test, Commit, Document, Handoff |
+| `plugin-lifecycle-upstream` | Creating a new plugin/component end-to-end — Conceive, Ideate, Plan, Design, Build, Self-Review, Test, Commit, Document, Handoff |
 | `plugin-lifecycle-downstream` | QA-ing an existing plugin — a twelve-phase evidence-producing pipeline: Scoping, Validate, Audit, optional Deep Test, Consolidated Fix, Documentation, Final Verification, and evidence-only Grading, with fix/re-check loops and an external-entry point built in |
 | `plugin-lifecycle-maintenance` | Evolving an already-built plugin — retro-driven improvement, comparison-driven enhancement, keeping plugin-devkit's own rules current against official docs, or plugin-devkit's own on-demand self-service checks against itself |
 
@@ -80,6 +80,7 @@ cc --plugin-dir /path/to/plugin-devkit
 
 | Skill | Use when |
 |---|---|
+| `plugin-conception` | Classifying a rough idea or session evidence (Create/Enhance/Repair/Consolidate/Reposition/Retain/Reject-Defer) before plugin-ideation's interview or plugin-planning/Fix begins |
 | `plugin-ideation` | Brainstorming a new plugin or component from a rough idea into a Concept Card |
 | `plugin-planning` | Turning an accepted concept into a concrete component inventory and build plan |
 | `plugin-comparison` | Comparing a plugin/component in this repo against another internal, installed, local, or GitHub-hosted target |
