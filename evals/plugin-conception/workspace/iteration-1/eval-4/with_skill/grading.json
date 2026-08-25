@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Explicitly rechecks plugin-bar's current state rather than trusting the report as-is", "passed": true, "evidence": "'Searched the repo ... plus a full-text case-insensitive grep across the whole repository ... No such plugin exists anywhere.'"},
+    {"text": "If the finding is stale/resolved, states this and discards the evidence rather than promoting it", "passed": true, "evidence": "Graded on semantic equivalence per skill-evaluation-protocol.md, not literal wording: the target doesn't exist at all (non-actionable, a stricter case than stale-but-real), so the skill correctly discarded the evidence with a stated reason (Reject/Defer) and explicitly refused to fabricate a plausible real substitute target -- same underlying behavior (verify, don't promote unverifiable evidence, state why) the assertion tests."},
+    {"text": "Does not write a Conception Brief for evidence found stale/already-resolved", "passed": true, "evidence": "'No Conception Brief is written, and no hand-off occurs; this is a clean stop with stated rationale.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

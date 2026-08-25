@@ -1,0 +1,24 @@
+{
+  "skill_name": "plugin-ideation",
+  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-ideation",
+  "description": "Brainstorms a new plugin/component from a rough idea, optionally seeded by a Create-classification Conception Brief",
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  },
+  "evals": [
+    {
+      "id": "eval-1-seeded-create-brief",
+      "name": "Step 2: Conception Brief seed, Create classification",
+      "prompt": "plugin-ideation's $ARGUMENTS resolves to a file under .claude/output/plugin-conception/ with Metadata table's Concept type = Create. What does Step 2 do with this file -- does it skip the interview since the brief already has a problem statement?",
+      "expected_output": "Step 2 reads the brief in full, confirms Concept type is Create, then still runs at least one real interview round via AskUserQuestion treating the brief's Executive Concept as a starting point/reflection, never as already-confirmed -- it does not skip straight to Step 3"
+    },
+    {
+      "id": "eval-2-seeded-non-create-brief",
+      "name": "Step 2: Conception Brief seed, wrong (non-Create) classification",
+      "prompt": "plugin-ideation's $ARGUMENTS resolves to a file under .claude/output/plugin-conception/ but its Metadata table's Concept type = Enhance, not Create. What should Step 2 do?",
+      "expected_output": "Step 2 does not silently proceed to interview against this brief -- plugin-conception itself routes non-Create classifications to plugin-planning/Fix, never to plugin-ideation, so a non-Create brief reaching here means it was passed in by mistake; Step 2 should tell the user and ask how to proceed rather than treating it as a valid seed"
+    }
+  ]
+}

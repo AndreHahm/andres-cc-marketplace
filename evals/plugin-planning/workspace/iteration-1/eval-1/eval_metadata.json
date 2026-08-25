@@ -1,0 +1,8 @@
+{
+  "eval_id": "eval-1-conception-brief-input",
+  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-planning",
+  "assertions": [
+    {"text": "Identifies the Conception Brief branch as the applicable one (not Concept Card or 'neither found')", "type": "functionality", "target": "Step 1 branch selection"},
+    {"text": "States the overlap re-check stays shallow (repository-metadata depth), not the exhaustive plugin-ideation-style search", "type": "presence", "target": "Overlap-check depth"}
+  ]
+}

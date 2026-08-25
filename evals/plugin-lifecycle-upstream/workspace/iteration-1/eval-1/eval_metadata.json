@@ -1,0 +1,8 @@
+{
+  "eval_id": "eval-1-gate1-create",
+  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-lifecycle-upstream",
+  "assertions": [
+    {"text": "States Gate 1 allows proceeding for a Create classification", "type": "functionality", "target": "Gate 1 behavior"},
+    {"text": "States Phase 2 (Ideate) runs next, seeded by the Conception Brief", "type": "presence", "target": "Next phase"}
+  ]
+}

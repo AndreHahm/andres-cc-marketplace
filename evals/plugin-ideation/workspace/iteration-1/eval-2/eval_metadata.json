@@ -1,0 +1,8 @@
+{
+  "eval_id": "eval-2-seeded-non-create-brief",
+  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-ideation",
+  "assertions": [
+    {"text": "Detects the Concept type mismatch (Enhance, not Create)", "type": "functionality", "target": "Step 2 safety check"},
+    {"text": "Tells the user and asks how to proceed rather than silently interviewing against the mismatched brief", "type": "functionality", "target": "Mismatch handling"}
+  ]
+}

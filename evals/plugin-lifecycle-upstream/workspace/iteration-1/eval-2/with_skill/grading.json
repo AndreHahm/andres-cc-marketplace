@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-2-gate1-non-create",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States Gate 1 stops the run for a non-Create classification", "passed": true, "evidence": "'For anything else -- including Enhance -- the pipeline is creation-only and stops right there.'"},
+    {"text": "Does not proceed into Ideate/Plan/Design/Build", "passed": true, "evidence": "'The pipeline does not proceed to Phase 2 (Ideate) -- Enhance is never forced through Ideate/Plan/Design/Build.'"},
+    {"text": "Names the correct hand-off target (plugin-planning), not plugin-lifecycle-upstream itself", "passed": true, "evidence": "'It states plugin-conception's own hand-off target plainly -- one of: plugin-planning directly, plugin-lifecycle-downstream's Phase 8 Consolidated Fix, or a clean stop with rationale.' Correctly named plugin-planning as one of the contingent targets, never plugin-lifecycle-upstream itself."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

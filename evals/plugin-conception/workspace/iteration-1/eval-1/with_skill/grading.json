@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Classifies the idea as Create", "passed": false, "evidence": "INVALIDATED SCENARIO: this eval's own scripted premise ('no existing plugin does anything like this') was factually false against the real repo -- plugins/git-kit/skills/dependency-updater/SKILL.md already implements a near-identical pattern for Python/npm/Rust/Go, just missing a Docker ecosystem. Per Step 1's 'never trust an unverified absence claim' rule, the skill correctly verified this and found real Partial overlap, then correctly reclassified Create -> Enhance per Step 3's own table. Marked failed only against the literal scripted assertion; the underlying principle (verify before trusting, reclassify on real overlap) is the same one eval-3 validates and passes."},
+    {"text": "States Step 3's overlap check ran at repository-metadata depth only and found none", "passed": false, "evidence": "Found real Partial overlap (dependency-updater), not none -- correct given actual repo state, invalidating this literal assertion rather than the skill."},
+    {"text": "Skips Steps 4-6 since Create skips them", "passed": false, "evidence": "Ran Steps 4-6 in full because the corrected classification was Enhance, not Create -- correct behavior given the corrected classification."},
+    {"text": "Produces a LIGHT brief", "passed": false, "evidence": "Produced the full 12-section brief, correct for an Enhance classification, not a defect."},
+    {"text": "Names plugin-ideation as the hand-off target", "passed": false, "evidence": "Named plugin-lifecycle-downstream Phase 8 (Fix) as the hand-off target, correct for a no-new-component Enhance outcome per Step 7's table."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 0, "pass_rate": 0.0},
+  "note": "Eval invalidated by a factually incorrect scripted premise, not a skill defect -- excluded from the aggregate pass-rate headline; see Phase 7 report for the semantic re-grading against the underlying principle (which passes)."
+}

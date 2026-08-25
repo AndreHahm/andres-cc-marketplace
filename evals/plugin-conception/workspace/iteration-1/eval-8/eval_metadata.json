@@ -1,0 +1,9 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-conception/SKILL.md",
+  "assertions": [
+    {"text": "Classification remains Create despite the volume/richness of session evidence", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Brief produced is still the LIGHT variant, not padded out because of the rich evidence", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Scope and Boundaries, Existing-Component Baseline, Implementation Plan, and the eventual-implementation-success half of Acceptance Criteria are marked not applicable", "type": "structure", "target": "outputs/ directory"}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Classifies the finding as Enhance", "passed": true, "evidence": "Classified as Enhance: 'plugin-foo already exists and functions; adding a missing, already-expected Testing & Validation section is preserving-and-improving behavior, not restoring a broken contract.'"},
+    {"text": "Produces the FULL Conception Brief (not the light Create variant)", "passed": true, "evidence": "Full 12-section brief written to .claude/output/plugin-conception/plugin-foo-testing-validation-section-*.md."},
+    {"text": "Includes a populated baseline contract with observed deficiency, evidence, and proposed delta", "passed": true, "evidence": "'a populated Existing-Component Baseline with behavior-to-preserve, verified deficiency tied to evidence ID E1, proposed delta, affected surfaces, and rollback conditions.'"},
+    {"text": "Does not skip Steps 4-6 the way a Create classification would", "passed": true, "evidence": "'Steps 4-6 were run in full ... Create's shortcuts were not taken.'"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

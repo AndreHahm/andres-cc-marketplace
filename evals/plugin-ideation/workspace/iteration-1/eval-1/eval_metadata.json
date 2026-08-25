@@ -1,0 +1,8 @@
+{
+  "eval_id": "eval-1-seeded-create-brief",
+  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-ideation",
+  "assertions": [
+    {"text": "Confirms Concept type = Create before treating the brief as a seed", "type": "functionality", "target": "Step 2 safety check"},
+    {"text": "Still runs at least one real interview round via AskUserQuestion, does not skip straight to Step 3", "type": "functionality", "target": "Interview discipline"}
+  ]
+}

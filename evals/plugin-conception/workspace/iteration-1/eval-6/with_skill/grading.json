@@ -1,0 +1,10 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Classifies as Consolidate", "passed": true, "evidence": "'Classification: Consolidate -- matches Step 2's table row exactly.'"},
+    {"text": "Produces the FULL Conception Brief (all 12 sections)", "passed": true, "evidence": "'I wrote the full 12-section brief (not the light 6-section Create variant), including a Workflow section (justified -- the concept genuinely coordinates 3+ gates).'"},
+    {"text": "Names plugin-planning plus consistency/activation review as the destination, not plugin-ideation and not a direct Fix hand-off", "passed": true, "evidence": "'Merge -> plugin-planning (new/restructured component); Boundary-clarify -> directly to plugin-lifecycle-downstream's Phase 8' -- correctly named plugin-planning as the merge-path target per Step 2's table, with the contingency correctly tied to an open Planning-level decision rather than guessed."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

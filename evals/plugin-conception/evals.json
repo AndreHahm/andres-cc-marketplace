@@ -1,0 +1,60 @@
+{
+  "skill_name": "plugin-conception",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-conception/SKILL.md",
+  "description": "Turns a rough idea or recent-session evidence into a decision-ready classification (Create/Enhance/Repair/Consolidate/Reposition/Retain/Reject-Defer) before plugin-ideation or plugin-planning/Fix begins.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "From-scratch Create stays light",
+      "prompt": "I have a rough idea: a Claude Code skill that scans a repo's Dockerfiles for outdated base-image pins and suggests version bumps. No existing plugin in this marketplace does anything like this. Classify this idea.",
+      "expected_output": "Classifies as Create (Step 2). Runs Step 3's shallow, repository-metadata-only overlap check and finds none. Skips Steps 4-6 entirely (Create skips them per SKILL.md lines 175, 189, 200-204). Writes a LIGHT Conception Brief (Metadata, Executive Concept, Evidence and Assumptions, Classification, Marketplace Integration, Decision and Handoff only -- Scope and Boundaries / Existing-Component Baseline / Implementation Plan marked not applicable). Hand-off target named as plugin-ideation. Decision made via AskUserQuestion before any hand-off."
+    },
+    {
+      "id": 2,
+      "name": "Session-evidence Enhance gets full brief",
+      "prompt": "Recent session evidence (a completeness-reviewer finding) shows that plugin-foo's SKILL.md has no documented Testing & Validation section, which causes reviewers to repeatedly flag it as unfinished. Classify this and produce the appropriate brief.",
+      "expected_output": "Classifies as Enhance (preserving plugin-foo, adding missing behavior). Produces the FULL Conception Brief (all 12 sections, per Step 4's Enhance/Repair/Consolidate/Reposition branch), including a populated baseline contract (behavior that must remain unchanged, observed deficiency and evidence, proposed delta, affected callers/docs/tests). Does not skip Steps 4-6 the way a Create would."
+    },
+    {
+      "id": 3,
+      "name": "Full overlap shifts classification and stops",
+      "prompt": "I want to build a new skill that reviews a Claude Code skill's SKILL.md for quality and adherence to best practices. Classify this idea.",
+      "expected_output": "Step 3's shallow overlap check finds that skill-reviewer already does exactly this. Per the Step 3 table (Full overlap -> classification shifts to Retain or Enhance; a Create outcome is very unlikely to survive), the classification shifts away from Create. The skill states this plainly and does not proceed toward treating it as a new Create -- it names skill-reviewer as the existing component and asks whether the user wants to extend that instead."
+    },
+    {
+      "id": 4,
+      "name": "Stale evidence is caught and discarded",
+      "prompt": "A session-analysis report from several weeks ago says plugin-bar's commit step never runs a sensitive-file scan. Before acting on this, verify it's still true, then classify.",
+      "expected_output": "Per Step 1 ('Never rely on an unverified claim that a capability is absent or broken -- check the current repository state instead of trusting a stale report') and evidence-routing.md's Step 2 (recheck currency), the skill checks plugin-bar's actual current commit step first. If the sensitive-file scan already exists (i.e. the finding is stale/resolved), the evidence is discarded with a stated reason (stale/resolved), not promoted into a classification or a Conception Brief."
+    },
+    {
+      "id": 5,
+      "name": "Narrow-repair bypass skips the full brief",
+      "prompt": "An already-accepted plugin-rulebook-checker finding says skill-baz's allowed-tools grants Bash(git:*) but the SKILL.md body never uses any git command -- the fix is just narrowing the grant to the specific subcommands actually used. Classify and hand off.",
+      "expected_output": "Classifies as Repair. Recognizes this as a narrow, already-known fix with an already-accepted finding, and takes the Step 2 bypass ('Bypass for narrow repairs') -- records the classification and evidence, then hands off directly to Fix WITHOUT producing the full brief (Steps 4-5 are skipped for this bypass path, not just for Create)."
+    },
+    {
+      "id": 6,
+      "name": "Consolidate produces full brief with the right destination",
+      "prompt": "Step 3's overlap check finds that two existing skills in this plugin, skill-x and skill-y, have near-identical descriptions and overlapping activation triggers -- they should probably be merged or given clearer boundaries. Classify this and describe the hand-off.",
+      "expected_output": "Classifies as Consolidate. Produces the FULL Conception Brief (all 12 sections). Per the Step 2 table and Step 7's hand-off table, names plugin-planning plus consistency/activation review as the destination (not plugin-ideation, not a direct Fix hand-off)."
+    },
+    {
+      "id": 7,
+      "name": "Retain/no-work outcome is a clean stop",
+      "prompt": "A user suggests plugin-devkit should add a feature to auto-generate a plugin's README on every commit. On investigation, plugin-documentation's existing delta-check flow already covers this adequately when invoked. Classify this.",
+      "expected_output": "Classifies as Retain (current behavior is adequate; no implementation is justified). The skill stops cleanly with a stated rationale (per the Stop Conditions section: 'A clean stop is a valid result and must include its rationale -- never silently drop a concept without stating why'). No Conception Brief is written for a Retain outcome, and no downstream hand-off happens."
+    },
+    {
+      "id": 8,
+      "name": "Create brief stays light even with rich session evidence",
+      "prompt": "Extensive session evidence -- three separate retrospective reports, several user corrections, and a detailed friction log -- all point toward needing a genuinely new capability with no existing adjacent component (confirmed by Step 3's shallow check). Classify this and write the brief.",
+      "expected_output": "Despite the volume and richness of the supporting evidence, the classification is still Create, and the brief produced is still the LIGHT variant -- Scope and Boundaries, Existing-Component Baseline, Implementation Plan, and the eventual-implementation-success half of Acceptance Criteria are all marked not applicable, rather than being padded out with content plugin-ideation/plugin-planning would produce later. Evidence richness does not change brief depth; only classification does."
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 8,
+    "declared_scenarios_covered": 8,
+    "uncovered": []
+  }
+}

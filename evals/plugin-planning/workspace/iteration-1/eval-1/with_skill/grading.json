@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-1-conception-brief-input",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The Conception Brief branch applies (not the Concept Card branch or the 'neither found' branch)", "passed": true, "evidence": "'Step 1's second branch -- Conception Brief found under .claude/output/plugin-conception/ -- since the file lives at exactly that path and is titled a Conception Brief with Concept type: Enhance.'"},
+    {"text": "Reads the brief's existing baseline contract, implementation plan, and marketplace integration sections directly rather than re-deriving them", "passed": true, "evidence": "'Treat the Brief's own Existing-Component Baseline section as already supplying the compatibility contract a Concept Card wouldn't have.'"},
+    {"text": "Runs only a shallow (repository-metadata depth) overlap re-check, not the exhaustive per-component search", "passed": true, "evidence": "'Flag that the Brief's Marketplace Integration -> Overlap check is repository-metadata-depth only ... not the exhaustive per-component/name-collision search a Concept Card's ideation pass would have run -- don't reuse it as if it were equivalent-strength evidence.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "note": "The agent also surfaced that this particular test brief implies zero new components, so per plugin-conception's own Step 7 table it should route straight to Fix, not through plugin-planning at all -- a mismatch in this eval's chosen test fixture, not a plugin-planning defect. Handled correctly by the agent via disclosure rather than forcing a mechanical component inventory."
+}

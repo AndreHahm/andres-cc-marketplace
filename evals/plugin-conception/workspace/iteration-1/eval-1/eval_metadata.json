@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-conception/SKILL.md",
+  "assertions": [
+    {"text": "Classifies the idea as Create", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "States Step 3's overlap check ran at repository-metadata depth only and found none", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Skips Steps 4-6 (no implementation plan, no baseline contract, no workflow section) since Create skips them", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Produces a LIGHT brief -- explicitly marks Scope and Boundaries, Existing-Component Baseline, and Implementation Plan as not applicable rather than omitting them silently or padding them out", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Names plugin-ideation as the hand-off target for a Create outcome", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

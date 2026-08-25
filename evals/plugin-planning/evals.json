@@ -1,0 +1,24 @@
+{
+  "skill_name": "plugin-planning",
+  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-planning",
+  "description": "Turns an accepted Concept Card or Conception Brief into a component inventory and content-depth plan",
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  },
+  "evals": [
+    {
+      "id": "eval-1-conception-brief-input",
+      "name": "Step 1: Conception Brief branch",
+      "prompt": "plugin-planning's Step 1 is given $ARGUMENTS pointing at a file under .claude/output/plugin-conception/ -- a Conception Brief with Concept type = Enhance, targeting an existing skill. Which of Step 1's 3 branches applies, and what should plugin-planning do differently than if it had received a plain Concept Card?",
+      "expected_output": "The Conception Brief branch applies (not the Concept Card branch or the 'neither found' branch); plugin-planning reads the brief's existing baseline contract, implementation plan, and marketplace integration sections directly rather than re-deriving them, and runs only a shallow (repository-metadata depth) overlap re-check, not the exhaustive per-component search"
+    },
+    {
+      "id": "eval-2-neither-found",
+      "name": "Step 1: Neither Concept Card nor Conception Brief found",
+      "prompt": "plugin-planning is invoked with $ARGUMENTS that doesn't resolve to any file under .claude/output/plugin-ideation/ or .claude/output/plugin-conception/ -- just a bare description like 'plan out a caching layer for skill X'. Which Step 1 branch applies and what happens next?",
+      "expected_output": "The 'neither found' branch applies; plugin-planning should not silently fabricate a Concept Card or Conception Brief -- it should either ask the user to run plugin-ideation/plugin-conception first, or explicitly state it's proceeding from the bare description with reduced upstream grounding"
+    }
+  ]
+}

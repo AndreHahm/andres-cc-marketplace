@@ -1,0 +1,8 @@
+{
+  "eval_id": "eval-2-neither-found",
+  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-planning",
+  "assertions": [
+    {"text": "Identifies the 'neither found' branch as applicable", "type": "functionality", "target": "Step 1 branch selection"},
+    {"text": "Does not fabricate a Concept Card or Conception Brief that doesn't exist", "type": "quality", "target": "Fabrication check"}
+  ]
+}

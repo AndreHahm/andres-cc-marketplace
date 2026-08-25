@@ -1,0 +1,24 @@
+{
+  "skill_name": "plugin-lifecycle-upstream",
+  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-lifecycle-upstream",
+  "description": "Seven-phase gated plugin creation pipeline (Conceive->Ideate->Plan->Design->Build->Self-Review->Test)",
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  },
+  "evals": [
+    {
+      "id": "eval-1-gate1-create",
+      "name": "Gate 1: Create classification proceeds to Ideate",
+      "prompt": "plugin-lifecycle-upstream's Phase 1 (Conceive) just ran and produced a Conception Brief with Concept type = Create. What does Gate 1 do, and what phase runs next?",
+      "expected_output": "Gate 1 allows the run to proceed since the classification is Create; Phase 2 (Ideate) runs next, seeded by the Conception Brief"
+    },
+    {
+      "id": "eval-2-gate1-non-create",
+      "name": "Gate 1: Non-Create classification stops the pipeline",
+      "prompt": "plugin-lifecycle-upstream's Phase 1 (Conceive) just ran and produced a Conception Brief with Concept type = Enhance (an existing component should be modified, not a new one created). What does Gate 1 do?",
+      "expected_output": "Gate 1 stops the run -- it does not proceed into Ideate/Plan/Design/Build for a non-Create classification; it states the correct hand-off target (plugin-planning per plugin-conception's own Step 7 table) rather than silently continuing the upstream pipeline"
+    }
+  ]
+}

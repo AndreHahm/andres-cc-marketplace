@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-conception/SKILL.md",
+  "assertions": [
+    {"text": "Identifies that skill-reviewer already covers this exact capability", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "States the classification shifts away from Create due to full overlap, per Step 3's overlap table", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Stops and asks whether to extend the existing component, rather than proceeding to define a new Create concept", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

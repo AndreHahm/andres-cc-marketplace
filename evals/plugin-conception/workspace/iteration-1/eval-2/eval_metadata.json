@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-conception/SKILL.md",
+  "assertions": [
+    {"text": "Classifies the finding as Enhance", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Produces the FULL Conception Brief (not the light Create variant)", "type": "structure", "target": "outputs/ directory"},
+    {"text": "Includes a populated baseline contract with observed deficiency, evidence, and proposed delta", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Does not skip Steps 4-6 the way a Create classification would", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

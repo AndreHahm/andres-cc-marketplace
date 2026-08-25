@@ -1,0 +1,10 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-conception/SKILL.md",
+  "assertions": [
+    {"text": "Classifies as Repair", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Explicitly takes the narrow-repair bypass since the fix is already known and the finding already accepted", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Does NOT produce the full brief (Steps 4-5 skipped) for this bypass path", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Hands off directly to Fix", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}
