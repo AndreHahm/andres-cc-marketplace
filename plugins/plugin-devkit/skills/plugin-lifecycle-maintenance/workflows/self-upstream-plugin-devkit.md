@@ -43,4 +43,4 @@ Neither `/implement-dev-rules` nor `/update-dev-rule` commits on its own. After 
 
 ## Handover (Optional)
 
-Same pattern as `improve-a-plugin.md` Step 5 — ask before a final downstream QA pass, only if this workflow (core change or Document) changed anything.
+Same pattern as `improve-a-plugin.md` Step 7 — ask before a final downstream QA pass, only if this workflow (core change or Document) changed anything.

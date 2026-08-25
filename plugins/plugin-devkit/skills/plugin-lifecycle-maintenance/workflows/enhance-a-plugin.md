@@ -28,19 +28,33 @@ For anything worth a full WHAT/WHY/HOW plan before deciding further, invoke `enh
 
 ## Step 3: Conceive
 
-Invoke `plugin-conception` (via `Skill`) against the human-approved deltas from Step 2 — same placement as `improve-a-plugin.md` Step 3 (immediately after the pick, before Step 4's hand-off), with the approved deltas passed as Entry Route B evidence (source: `plugin-comparison`) instead of session-analysis suggestions.
+Invoke `plugin-conception` (via `Skill`) **once per approved delta from Step 2**, never once for the whole batch — same placement and one-candidate-per-invocation contract as `improve-a-plugin.md` Step 3 (immediately after the pick, before Step 4's routing), with each approved delta passed as Entry Route B evidence (source: `plugin-comparison`) instead of session-analysis suggestions.
 
-Same bypass and full-brief behavior as `improve-a-plugin.md` Step 3: a narrow, already-known Repair with an already-accepted finding takes the bypass path straight to Step 4; every other classification gets the full Conception Brief first.
+Same bypass and full-brief behavior as `improve-a-plugin.md` Step 3: a narrow, already-known Repair with an already-accepted finding takes the bypass path; every other classification gets the full Conception Brief first. `plugin-conception`'s own Step 7 brief-content approval still runs per candidate, but its hand-off invocation does not — this workflow owns routing (Step 4 below), same as `improve-a-plugin.md` Step 3.
 
-**Exit criteria:** Each approved delta has either a recorded bypass or a written Conception Brief at `.claude/output/plugin-conception/<concept-slug>-<timestamp>.md`.
+Present each written brief's artifact link as it's produced:
 
-## Step 4: Hand Off to Fix
+```
+📄 Conception Brief written: `.claude/output/plugin-conception/<concept-slug>-<timestamp>.md`
+```
 
-Reformat the approved deltas (via their Conception Brief, where Step 3 produced one, or directly for a bypassed narrow repair) into the shared Finding schema (`plugin-rulebook/references/evidence-schema.md`) — same reshaping as `improve-a-plugin.md` Step 4, with `source: plugin-comparison` and `id: plugin-comparison:<local-id>`.
+**Exit criteria:** Every approved delta has either a recorded bypass or a written Conception Brief, each carrying its own classification.
 
-Invoke `plugin-lifecycle-downstream` (via `Skill`) targeting the plugin being enhanced, using its documented external Phase 8 (Consolidated Fix) entry (see `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md` Phase 8's Entry condition) with this findings bundle plus a minimal scope manifest, same reasoning as `improve-a-plugin.md` Step 4 — skip Phases 1-7, and declare in the input contract that this workflow owns Phase 9 (Documentation), same as `improve-a-plugin.md` Step 4. Do not reimplement apply → re-verify → commit here — nor its Open-PR/Branch-scope pre-flight checks, which downstream's own Phase 8 already runs via its Mutation-and-Confirmation preflight.
+## Step 4: Route by Classification, Then Hand Off to Fix
 
-**Exit criteria:** Downstream's Phase 8 reports all approved deltas applied and independently re-verified (fully or partially), with its own commit(s) already made.
+Same routing rule as `improve-a-plugin.md` Step 4 — do not send the whole batch to Fix unconditionally:
+
+- **Repair (bypassed or full-brief), or Enhance/Consolidate/Reposition with no new components implied** → include in this step's Fix bundle, below.
+- **Enhance/Consolidate/Reposition implying a new or restructured component** → this workflow has no Design/Build capability, matching `plugin-conception`'s own Step 7 table, which routes this case to `plugin-planning`. Present the written Conception Brief and state plainly that this delta needs `plugin-planning` instead, using the brief directly as its Step 1 input. Exclude from the Fix bundle.
+- **Retain / Reject / Defer** → not actionable work. Exclude from the Fix bundle; report the classification and rationale.
+
+For every candidate landing in the Fix bundle, reformat it (via its Conception Brief, where Step 3 produced one, or directly for a bypassed narrow repair) into the shared Finding schema (`plugin-rulebook/references/evidence-schema.md`) — same reshaping as `improve-a-plugin.md` Step 4, with `source: plugin-comparison` and `id: plugin-comparison:<local-id>`.
+
+If the Fix bundle is empty, state this plainly and skip the `plugin-lifecycle-downstream` invocation below.
+
+Otherwise, invoke `plugin-lifecycle-downstream` (via `Skill`) targeting the plugin being enhanced, using its documented external Phase 8 (Consolidated Fix) entry (see `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md` Phase 8's Entry condition) with this findings bundle plus a minimal scope manifest, same reasoning as `improve-a-plugin.md` Step 4 — skip Phases 1-7, and declare in the input contract that this workflow owns Phase 9 (Documentation), same as `improve-a-plugin.md` Step 4. Do not reimplement apply → re-verify → commit here — nor its Open-PR/Branch-scope pre-flight checks, which downstream's own Phase 8 already runs via its Mutation-and-Confirmation preflight.
+
+**Exit criteria:** Every candidate has an explicit disposition (bundled-and-applied, redirected to `plugin-planning`, or excluded as Retain/Reject/Defer). For any bundled candidates, downstream's Phase 8 reports all approved deltas applied and independently re-verified (fully or partially), with its own commit(s) already made.
 
 ## Step 5: Test and Self-Review
 

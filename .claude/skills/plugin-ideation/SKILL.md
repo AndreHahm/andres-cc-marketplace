@@ -43,7 +43,7 @@ Brainstorms and refines a rough idea into a validated concept through an actual 
 - Reviewing or scoring an *existing* plugin's quality — use `plugin-grader` instead
 - Comparing two already-identified plugins/components side-by-side — use `plugin-comparison` instead
 - Scaffolding plugin files — use `plugin-development`; ideation produces a concept, not files
-- Wanting the full guided Ideate→Plan→Design→Build pipeline rather than just this step — use `plugin-lifecycle-upstream` instead (it dispatches here automatically)
+- Wanting the full guided Conceive→Ideate→Plan→Design→Build pipeline rather than just this step — use `plugin-lifecycle-upstream` instead (it dispatches here automatically)
 
 ## Step 1: Determine Scope
 
@@ -142,6 +142,7 @@ If the Concept Card's overlap classification is **None** or **Partial**, ask wit
 | Resource | Purpose |
 |---|---|
 | `references/concept-card-template.md` | The two Concept Card templates (whole-plugin, component) used in Step 6 |
+| `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run after any SKILL.md edit |
 | `plugin-planning` skill | Next step — turns an accepted Concept Card into a component inventory and content-depth plan |
 | `plugin-comparison` skill | Reused installed-plugin resolution pattern (Step 3) |
 | `plugin-rulebook` R4 | Naming pattern validated in Step 4 |

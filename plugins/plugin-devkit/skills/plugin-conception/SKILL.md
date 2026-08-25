@@ -59,6 +59,14 @@ questions `plugin-ideation` will ask again immediately after a Create handoff.
   else), never this skill's
 - Scaffolding components, editing production plugins, or running QA fixes — this skill produces a brief,
   never files
+- Already committed to running the full guided pipeline (Conceive→Ideate→Plan→Design→Build), not just the
+  classification step — use `plugin-lifecycle-upstream` instead; it dispatches here automatically as
+  Phase 1, so invoking this skill directly is for when the classification decision itself is the goal
+- Already committed to acting on retro/comparison findings against an already-shipped plugin, with
+  apply/test/commit follow-through — use `plugin-lifecycle-maintenance`'s `improve-a-plugin`/
+  `enhance-a-plugin` workflows instead; they dispatch here automatically after the human finding-selection
+  pick, so invoking this skill directly is for classifying a rough idea or evidence source before any
+  pipeline commitment exists
 
 ## Entry Route A: Start From Scratch
 
@@ -83,9 +91,14 @@ asked for.
 Use when repeated friction, failures, gaps, or opportunities have been observed in one or more recent
 sessions — session-analysis reports, build handoff reports, validation/grading/comparison/security/
 completeness/consistency findings, user corrections, or durable planning artifacts. If `$ARGUMENTS` names
-one of these sources directly (a report path, a findings bundle, an approved suggestion list from an
-upstream workflow's own human-decision gate), treat it as the evidence source for Step 1 below rather than
-re-deriving it. Session evidence is a **seed, not the scope** of the concept. See `references/evidence-routing.md` for the full 6-step
+one of these sources directly (a report path, or one entry from a findings bundle or approved suggestion
+list an upstream workflow's own human-decision gate already produced), treat it as the evidence source for
+Step 1 below rather than re-deriving it. **This skill classifies and briefs exactly one candidate per
+invocation** — when a caller's own gate approved several candidates at once (e.g.
+`plugin-lifecycle-maintenance`'s multiSelect finding-selection pick), it invokes this skill once per
+candidate, never once with the whole list; this skill's own Step 1 never fans a single invocation out into
+multiple classifications or multiple briefs. Session evidence is a **seed, not the scope** of the concept.
+See `references/evidence-routing.md` for the full 6-step
 evidence-handling procedure (identify source, recheck currency, separate symptoms from underlying need,
 merge duplicates, discard stale/non-actionable, obtain explicit approval before promoting to a planned
 change) and the evidence-source list. If evidence is insufficient, fall back to Entry Route A's focused
@@ -212,12 +225,22 @@ Hand-off target follows the classification:
 
 - **Create →** `plugin-ideation`, with the light brief as its input.
 - **Enhance / Consolidate / Reposition →** `plugin-planning` if new or restructured components are
-  implied, otherwise directly to `plugin-lifecycle-maintenance`'s Fix phase (Phase 8, Consolidated Fix, in
-  `plugin-lifecycle-downstream`).
-- **Repair (full-brief path) →** directly to Fix.
+  implied, otherwise directly to `plugin-lifecycle-downstream`'s Phase 8 (Consolidated Fix).
+- **Repair (full-brief path) →** directly to `plugin-lifecycle-downstream`'s Phase 8 (Consolidated Fix).
 - **Retain / Reject / Defer →** stop; no downstream hand-off.
 
-Ask via `AskUserQuestion` before invoking the hand-off target — never invoke it silently.
+**Standalone invocation:** ask via `AskUserQuestion` before invoking the hand-off target — never invoke it
+silently.
+
+**Nested invocation:** when this skill runs as a step inside another orchestrator — `plugin-lifecycle-upstream`'s
+Phase 1 (Conceive), or `plugin-lifecycle-maintenance`'s `improve-a-plugin`/`enhance-a-plugin` Conceive step —
+the brief-content approval above (approve/revise/merge/defer/reject) still runs, but the hand-off
+**invocation** does not: this step ends at "write the brief and report its classification." The calling
+orchestrator owns deciding where each classified candidate goes next and asking about it, since it may be
+routing several candidates from one run and needs a single consolidated decision rather than one
+`AskUserQuestion` per candidate from this skill plus another from the orchestrator. Never ask twice for the
+same decision — see `plugin-lifecycle-upstream`'s Gate 1 and `plugin-lifecycle-maintenance`'s
+`improve-a-plugin`/`enhance-a-plugin` Step 4 for how each caller owns this instead.
 
 ## Resume Behavior
 
@@ -270,8 +293,10 @@ rationale — never silently drop a concept without stating why.
       copied forward from a source artifact unverified
 - [ ] Step 7's decision is always made via `AskUserQuestion` — this skill never auto-applies a finding or
       silently promotes evidence into a planned change
-- [ ] The hand-off target is always invoked via `AskUserQuestion` confirmation first — never invoked
-      silently
+- [ ] **Standalone invocation:** the hand-off target is always invoked via `AskUserQuestion` confirmation
+      first — never invoked silently. **Nested invocation** (inside `plugin-lifecycle-upstream`'s Phase 1
+      or `plugin-lifecycle-maintenance`'s Conceive step): no hand-off is invoked from here at all — only
+      the brief-content approval fires; the calling orchestrator owns the hand-off ask
 - [ ] The Conception Brief path is always under `.claude/output/plugin-conception/`
 - [ ] A clean stop (Retain/Reject/Defer/full overlap/stale evidence) always states its rationale — never a
       silent drop
@@ -280,6 +305,7 @@ rationale — never silently drop a concept without stating why.
 
 | Resource | Type | Purpose |
 |---|---|---|
+| `scripts/smoke_test.py` | In this skill | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run after any SKILL.md edit |
 | `references/conception-brief-template.md` | In this skill | Light and full Conception Brief templates used in Step 7 |
 | `references/evidence-routing.md` | In this skill | Entry Route B's evidence sources and the 6-step evidence-handling procedure |
 | `plugin-ideation` skill | Sibling skill | Create-classification hand-off target — owns the interview, deep overlap search, and naming |

@@ -30,14 +30,14 @@ You receive, as prompt context, two kinds of input — do not treat them the sam
 
 **Read from disk** (file paths — `Read` these in full before writing anything):
 - The Concept Card path (`.claude/output/plugin-ideation/`)
-- The Plan path (`.claude/output/plugin-planning/`), if Phase 2 ran
+- The Plan path (`.claude/output/plugin-planning/`), if Phase 3 ran
 - If this is an **update** to an existing report (not a new one): the existing report's own path — read it before changing anything
 
 **Provided inline in the dispatch prompt** (no file exists for these — take them as given, do not go looking for a file that isn't there):
 - A summary of each Design-phase gate outcome (approved as-is, or revised — and if revised, what changed and why)
 - The Build summary from `plugin-development` (files created, directory tree)
 - The commit list for this build (SHA, one-line message, files touched per commit) — gathered by the calling orchestrator via `git log`/`git show`, not by you; you have no `Bash` access and are not expected to verify it independently
-- Quick-test results, if Phase 6 (Test) ran (per-component pass/fail/skipped, with skip reason for untested types), and Self-Review findings if Phase 5 ran
+- Quick-test results, if Phase 7 (Test) ran (per-component pass/fail/skipped, with skip reason for untested types), and Self-Review findings if Phase 6 ran
 - On an **update** call only: downstream QA results (score, gates, weakest component from `plugin-grader`'s report — either standalone or evidence-only mode, including a qualified/refused score) and any new commits made during a Fix phase. For a `plugin-lifecycle-downstream` twelve-phase run specifically, also supplied inline: the scope manifest reference, versioned artifact/report-revision links, the final verification result, accepted-risk findings (with rationale), deferred/unresolved findings, and which phases were skipped or stopped (with reason) — same discipline as every other inline item: take it as given, don't go looking for a file
 
 ## Load Context
@@ -93,7 +93,7 @@ Before writing anything, `Read` every **file-based** item listed above in full �
 
 ## When to invoke
 
-- `plugin-lifecycle-upstream` dispatches this agent automatically after the Commit step that follows Phase 6 (Test), before offering the downstream-QA handoff — this is the **create** call
+- `plugin-lifecycle-upstream` dispatches this agent automatically after the Commit step that follows Phase 7 (Test), before offering the downstream-QA handoff — this is the **create** call
 - `plugin-lifecycle-downstream` dispatches this agent again after Phase 2 (Audit+Report), and again after Phase 5 (Self-Review) — once Phases 3-5 have run, or Phase 3 ran but applied nothing — to fold downstream results and any new commits into the *same* report — this is the **update** call
 - A user directly asks "summarize what we just built" or "write a handoff report for this plugin/component"
 - A user resuming a prior session asks "what did we build last time and what's left open"

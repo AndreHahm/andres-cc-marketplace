@@ -37,26 +37,31 @@ def check_referenced_files():
 
 
 def check_bash_grants():
+    # This skill's prose never uses the "scoped `Bash(...)`" phrasing (it cites the date
+    # command in plain shorthand instead), so the meaningful check here is: does each
+    # granted Bash(<cmd>:*) scope's base <cmd> word actually appear somewhere in the body?
+    # An unused grant is an R6 least-privilege smell even without exact-string phrasing.
     fm_text = SKILL_MD.read_text(encoding="utf-8")
     header_end = fm_text.find("\n---\n", 4) + 5
     frontmatter = fm_text[:header_end]
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    granted = set(re.findall(r"Bash\([^)]*\)", fm_line_match.group(1))) if fm_line_match else set()
+    if not fm_line_match:
+        return True, "no allowed-tools line found (skip)"
+    granted_cmds = re.findall(r"Bash\(([\w.*/-]+?)(?::|\))", fm_line_match.group(1))
+    granted_cmds = [c.lstrip("*/") for c in granted_cmds]
 
-    referenced = set(re.findall(r"scoped `(Bash\([^)]*\))", fm_text[header_end:]))
+    body = fm_text[header_end:]
     workflows_dir = SKILL_DIR / "workflows"
     if workflows_dir.exists():
         for wf in sorted(workflows_dir.glob("*.md")):
-            referenced |= set(
-                re.findall(r"scoped `(Bash\([^)]*\))", wf.read_text(encoding="utf-8"))
-            )
+            body += "\n" + wf.read_text(encoding="utf-8")
 
-    missing = referenced - granted
-    if missing:
-        return False, "body invokes Bash scope(s) missing from allowed-tools: " + ", ".join(
-            sorted(missing)
+    unused = [cmd for cmd in granted_cmds if not re.search(rf"\b{re.escape(cmd)}\b", body)]
+    if unused:
+        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(
+            sorted(set(unused))
         )
-    return True, "every scoped Bash invocation is granted"
+    return True, "every granted Bash command is invoked somewhere in the body"
 
 
 CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants]

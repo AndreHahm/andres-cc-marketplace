@@ -40,7 +40,7 @@ Turns an accepted concept into a concrete build list: which components, how many
 - A single, already-well-understood component — skip straight to the matching Design skill; planning overhead isn't worth it for one obvious skill
 - Reviewing or scoring an *existing* plugin — use `plugin-grader` instead
 - Actually designing a component's procedure/frontmatter/body — that's `skill-development`/`agent-development`/`command-development`/`hook-development`/`rule-development`'s job, not this skill's
-- Wanting the full guided Ideate→Plan→Design→Build pipeline rather than just this step — use `plugin-lifecycle-upstream` instead (it dispatches here automatically)
+- Wanting the full guided Conceive→Ideate→Plan→Design→Build pipeline rather than just this step — use `plugin-lifecycle-upstream` instead (it dispatches here automatically)
 
 ## Step 1: Load the Concept
 
@@ -50,8 +50,11 @@ Take `$ARGUMENTS` as a Concept Card path, a Conception Brief path, or a direct d
 - **Conception Brief found** under `.claude/output/plugin-conception/` instead (an
   Enhance/Consolidate/Reposition-classification brief reached without ever touching `plugin-ideation`) →
   `Read` it in full; note in the plan that this concept came directly from `plugin-conception`, not
-  `plugin-ideation` — its own Marketplace Integration and Existing-Component Baseline sections already
-  cover the overlap check and compatibility contract `plugin-ideation` would otherwise have produced.
+  `plugin-ideation` — its own Existing-Component Baseline section covers the compatibility contract
+  `plugin-ideation` would otherwise have produced. Its Marketplace Integration section's overlap check
+  stays shallow (repository-metadata depth only, per `plugin-conception`'s own Step 3) — **not** the
+  exhaustive per-component/name-collision search `plugin-ideation` runs; note in the plan that this
+  narrower overlap check is what's actually behind this concept, not a full ideation-depth search.
 - **Neither found** → treat `$ARGUMENTS` as the problem statement directly (both `plugin-conception` and
   `plugin-ideation` were skipped); note in the plan that ideation was skipped, so a reader knows the
   overlap check wasn't run.
@@ -117,6 +120,7 @@ Ask with `AskUserQuestion`: "Proceed to Design for the first functional group, o
 | Resource | Purpose |
 |---|---|
 | `references/plan-template.md` | The component-inventory + depth-plan document template used in Step 5 |
+| `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run after any SKILL.md edit |
 | `plugin-ideation` skill | Prior step — produces the Concept Card this skill consumes |
 | `plugin-conception` skill | Alternate prior step — produces the Conception Brief this skill consumes directly for Enhance/Consolidate/Reposition outcomes |
 | `plugin-lifecycle-upstream` skill | Next step — orchestrates Design + Build across the planned components |

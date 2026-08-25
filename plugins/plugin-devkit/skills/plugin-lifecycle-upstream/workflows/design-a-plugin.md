@@ -25,7 +25,7 @@ Before Phase 1's own Actions — the very first thing this procedure does: run t
 Present the brief's classification and rationale.
 
 - **If the classification is Create:** ask via `AskUserQuestion`: proceed to Ideate / revise the concept / stop. Do not proceed until approved. On approval, the light brief becomes Phase 2's input.
-- **If the classification is anything else** (Enhance, Repair, Consolidate, Reposition, Retain, Reject/Defer): this pipeline is creation-only and stops here — state `plugin-conception`'s own hand-off target plainly (`plugin-planning` directly, `plugin-lifecycle-maintenance`'s Fix phase, or a clean stop with rationale) and point the user there. Do not proceed to Phase 2.
+- **If the classification is anything else** (Enhance, Repair, Consolidate, Reposition, Retain, Reject/Defer): this pipeline is creation-only and stops here — state `plugin-conception`'s own hand-off target plainly (`plugin-planning` directly, `plugin-lifecycle-downstream`'s Phase 8 Consolidated Fix, or a clean stop with rationale) and point the user there. Do not proceed to Phase 2.
 
 ## Phase 2: Ideate
 

@@ -212,7 +212,7 @@ plugin).
    `skill-development`/`agent-development`/etc.), same as every other lifecycle
    workflow's Fix step — never a direct `Edit` from this workflow itself.
 6. **Test:** for each component step 5 touched, run the same bounded smoke check
-   `plugin-lifecycle-upstream`'s own Phase 6 (Test) uses — reusing its per-type tools
+   `plugin-lifecycle-upstream`'s own Phase 7 (Test) uses — reusing its per-type tools
    (`skill-tester`, `agent-development/scripts/test-agent-trigger.sh`,
    `hook-development/scripts/test-hook.sh`, a manual command trial for a command) rather
    than a third copy of the same logic. For more than a small handful of touched
@@ -229,7 +229,7 @@ plugin).
    is a `Skill(plugin-rulebook)` compliance re-check, not a `plugin-grader` re-score, and
    this step doesn't produce one either.
 8. Re-validate (`Skill(plugin-rulebook)` at minimum) and commit, same discipline as
-   `improve-a-plugin.md` Step 3. Before committing, run the Pre-Commit Disclosure check
+   `improve-a-plugin.md` Step 4. Before committing, run the Pre-Commit Disclosure check
    from `plugin-rulebook/references/open-item-discipline.md` — state any open item
    surfaced in steps 1-7 (including an unresolved Self-Review finding from step 7)
    alongside the file list and commit message, not folded silently into the commit.

@@ -28,8 +28,8 @@ becomes approved work without an explicit human decision.
    (stale / resolved / duplicate / non-actionable / out of scope) rather than silently dropping it —
    a decision to discard is itself a recorded decision.
 6. **Obtain explicit approval before promoting evidence into a planned change.** Evidence is data, not a
-   mandate — the human always decides which candidate concept(s) actually get promoted into a Conception
-   Brief.
+   mandate — the human always decides whether the candidate concept actually gets promoted into a
+   Conception Brief.
 
 ## Fallback
 
@@ -43,12 +43,16 @@ classify as Enhance, Repair, or Consolidate rather than Create.
 Never promote a candidate concept automatically, regardless of how strong the evidence looks.
 
 When this skill is invoked directly (not via `plugin-lifecycle-maintenance`'s workflows), this is the
-only selection gate that runs: present the candidate(s) via `AskUserQuestion` and record the decision
+only selection gate that runs: present the candidate via `AskUserQuestion` and record the decision
 (Promote / Revise / Merge / Defer / Reject / Retain), the decision owner, and the rationale.
 
 When this skill is invoked as the Conceive step inside `plugin-lifecycle-maintenance`'s
 `improve-a-plugin`/`enhance-a-plugin` workflows, the human has already picked which finding(s) to act on
 at that workflow's own `AskUserQuestion` gate before Conceive ever runs — this section's gate is not a
-second, redundant ask on the same already-approved evidence. It still applies to any *new* candidate this
-skill's own Step 1 (normalize) surfaces while processing that evidence — e.g. if separating symptoms from
-underlying need reveals two distinct concepts where the upstream pick only named one.
+second, redundant ask on the same already-approved evidence. **This skill still produces exactly one
+classification and one candidate concept per invocation, matching its own one-candidate-per-invocation
+contract (SKILL.md, Entry Route B)** — if separating symptoms from underlying need in Step 1 (normalize)
+surfaces a second, genuinely distinct concept hidden inside the same evidence item, do not fold it into
+this invocation's own brief: classify and brief the primary concept the caller actually asked about, and
+report the second one back to the caller as a separately-discovered candidate for its own future
+invocation, not as an additional output of this run.
