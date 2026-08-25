@@ -48,6 +48,18 @@ def load_and_validate_report(report_path, expected_target, expected_target_type)
     for field in ("target", "target_type", "graded_at"):
         if field not in report:
             raise GradingReportError(f"report {report_path} is missing required field {field!r}")
+    if not isinstance(report["graded_at"], str) or not report["graded_at"]:
+        # The schema declares graded_at as a plain string (no further format
+        # constraint) -- but scoring_history/security_scoring_history sort
+        # and max() over this field, so a non-string value (int, list, etc.)
+        # would silently pass this presence check, get appended on the first
+        # import, and then crash with an uncaught TypeError comparing mixed
+        # types the moment a second, normally-shaped import touches the same
+        # history.
+        raise GradingReportError(
+            f"report {report_path}'s graded_at must be a non-empty string, "
+            f"got {type(report['graded_at']).__name__} ({report['graded_at']!r})"
+        )
 
     if report["target"] != expected_target:
         raise GradingReportError(

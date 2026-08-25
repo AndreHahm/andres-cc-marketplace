@@ -371,14 +371,23 @@ def cmd_import_grading(args):
         )
 
     def lookup(inventory):
-        return next(
-            (
-                c
-                for c in inventory["components"]
-                if c["name"] == args.target and c["type"] == args.target_type
-            ),
-            None,
-        )
+        # A retired/deprecated/superseded record and an active one may
+        # legitimately share the same (name, type) -- validate_records only
+        # enforces uniqueness among active records. Picking the first array
+        # match (as a bare next(...) would) can silently import a report
+        # against the wrong one; reject the ambiguity outright instead.
+        matches = [
+            c
+            for c in inventory["components"]
+            if c["name"] == args.target and c["type"] == args.target_type
+        ]
+        if len(matches) > 1:
+            raise SystemExit(
+                f"ambiguous target: {len(matches)} records match name={args.target!r} "
+                f"type={args.target_type!r} (ids: {[c['id'] for c in matches]!r}) -- "
+                "resolve the naming conflict (retire/rename one) before importing a report by name"
+            )
+        return matches[0] if matches else None
 
     component, appended, security_appended = reconcile.cmd_import_grading_for_record(
         args.inventory_path,

@@ -144,6 +144,22 @@ def compute_component(data):
     }
 
 
+def _validate_security_score(value, component_name):
+    """Reject a non-numeric or out-of-[0, 10]-range security score before it
+    contributes to the Gate P4 rollup. `bool` is explicitly excluded since
+    `isinstance(True, int)` is `True` in Python and would otherwise silently
+    pass as a valid score."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(
+            f"component_security_scores[{component_name!r}] must be a number, "
+            f"got {type(value).__name__} ({value!r})"
+        )
+    if not (0 <= value <= 10):
+        raise ValueError(
+            f"component_security_scores[{component_name!r}] must be within [0, 10], got {value!r}"
+        )
+
+
 def compute_rollup(data):
     component_scores = data["component_scores"]
     if not component_scores:
@@ -218,6 +234,8 @@ def compute_rollup(data):
                 f"compute Gate P4 over an incomplete subset): missing={sorted(missing)}, "
                 f"extra={sorted(extra)}"
             )
+        for name, value in component_security_scores.items():
+            _validate_security_score(value, name)
         security_values = list(component_security_scores.values())
         security_raw = sum(security_values) / len(security_values)
         weakest_security_name = min(

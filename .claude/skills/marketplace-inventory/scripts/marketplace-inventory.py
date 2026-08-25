@@ -351,7 +351,19 @@ def cmd_import_grading(args):
         )
 
     def lookup(inventory):
-        return next((p for p in inventory["plugins"] if p["name"] == args.target), None)
+        # A retired/deprecated/superseded record and an active one may
+        # legitimately share the same name -- validate_records only enforces
+        # uniqueness among active records. Picking the first array match (as
+        # a bare next(...) would) can silently import a report against the
+        # wrong one; reject the ambiguity outright instead.
+        matches = [p for p in inventory["plugins"] if p["name"] == args.target]
+        if len(matches) > 1:
+            raise SystemExit(
+                f"ambiguous target: {len(matches)} records match name={args.target!r} "
+                f"(ids: {[p['id'] for p in matches]!r}) -- resolve the naming conflict "
+                "(retire/rename one) before importing a report by name"
+            )
+        return matches[0] if matches else None
 
     plugin, appended, security_appended = reconcile.cmd_import_grading_for_record(
         args.inventory_path,

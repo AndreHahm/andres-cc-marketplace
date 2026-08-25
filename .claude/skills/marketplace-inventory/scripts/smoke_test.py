@@ -586,6 +586,183 @@ def check_schema_conformance():
     )
 
 
+def check_status_transition_rename():
+    """Scenario 16 (Status transition with rename): a status-transition
+    operation carrying new_name must atomically update both name and
+    naming_history -- the fix for a cross-model-review finding that no
+    operation could actually rename a record (history.
+    close_and_append_naming_period existed but was never called)."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        plan = _run("plan", repo_root, inventory_path)
+        if plan.returncode != 0:
+            return False, f"plan failed: {plan.stderr.strip()}"
+        expected_hash = json.loads(plan.stdout)["expected_hash"]
+        plan_path = pathlib.Path(tmpdir) / "rename_plan.json"
+        plan_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "operation": "status-transition",
+                        "id": plugin_id,
+                        "new_status": "active",
+                        "new_name": "plugin-a-renamed",
+                        "reason": "plugin was renamed",
+                        "evidence": [],
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        apply = _run("apply", repo_root, inventory_path, plan_path, expected_hash)
+        if apply.returncode != 0:
+            return False, f"apply failed: {apply.stderr.strip()}"
+        plugin = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]
+        if plugin["name"] != "plugin-a-renamed":
+            return False, f"expected name 'plugin-a-renamed', got {plugin['name']!r}"
+        open_periods = [p for p in plugin["naming_history"] if p["valid_to"] is None]
+        if len(open_periods) != 1 or open_periods[0]["name"] != "plugin-a-renamed":
+            return (
+                False,
+                f"expected exactly one open 'plugin-a-renamed' naming period, got: {open_periods}",
+            )
+        return (
+            True,
+            "status-transition with new_name correctly renamed both name and naming_history",
+        )
+
+
+def check_import_grading_ambiguous_target_rejected():
+    """Scenario 17 (Import grading, ambiguous target rejected): a retired
+    and an active plugin record sharing the same name must make
+    import-grading refuse to guess, rather than silently updating whichever
+    one a bare next(...) happens to find first -- the fix for a
+    cross-model-review finding that this could silently import a report
+    against the wrong (retired) record."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+        original = dict(inventory["plugins"][0])
+        inventory["plugins"][0]["status"] = "retired"
+        inventory["plugins"][0]["status_history"][0]["valid_to"] = "2026-08-20"
+        inventory["plugins"][0]["status_history"].append(
+            {
+                "status": "retired",
+                "valid_from": "2026-08-20",
+                "valid_to": None,
+                "reason": "fixture retirement",
+                "evidence": [],
+            }
+        )
+        new_record = dict(original)
+        new_record["id"] = "plugin_newactive"
+        new_record["status"] = "active"
+        new_record["status_history"] = [
+            {
+                "status": "active",
+                "valid_from": "2026-08-25",
+                "valid_to": None,
+                "reason": "fixture: re-materialized as a new active record",
+                "evidence": [],
+            }
+        ]
+        new_record["naming_history"] = [dict(new_record["naming_history"][0])]
+        new_record["naming_history"][0]["valid_to"] = None
+        new_record["score"] = None
+        inventory["plugins"].append(new_record)
+        inventory_path.write_text(json.dumps(inventory), encoding="utf-8")
+
+        report_path = pathlib.Path(tmpdir) / "report.json"
+        report_path.write_text(
+            json.dumps(
+                {
+                    "target": "plugin-a",
+                    "target_type": "plugin",
+                    "graded_at": "2026-08-25T10:00:00Z",
+                    "plugin_final_score": 9.9,
+                    "plugin_gates_applied": [],
+                    "grader_schema_version": "1.1.0",
+                }
+            ),
+            encoding="utf-8",
+        )
+        result = _run(
+            "import-grading", repo_root, inventory_path, report_path, "plugin-a", "plugin"
+        )
+        if result.returncode == 0:
+            return False, "import-grading accepted an ambiguous target -- should have been rejected"
+        if "Traceback" in result.stderr:
+            return (
+                False,
+                f"import-grading crashed with an uncaught traceback: {result.stderr.strip()}",
+            )
+        after = json.loads(inventory_path.read_text(encoding="utf-8"))
+        for p in after["plugins"]:
+            if p["score"] is not None:
+                return False, f"a record's score was modified despite the ambiguity rejection: {p}"
+        return (
+            True,
+            "import-grading correctly rejected an ambiguous name-based target before any write",
+        )
+
+
+def check_import_grading_rejects_non_string_graded_at():
+    """Scenario 18 (Import grading rejects a non-string graded_at): a
+    report with graded_at as an integer must be rejected on the first
+    import -- the fix for a cross-model-review finding that a presence-only
+    check let a malformed graded_at through, crashing a *later* import with
+    an uncaught TypeError when history sorted/maxed over mixed types."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        report_path = pathlib.Path(tmpdir) / "report.json"
+        report_path.write_text(
+            json.dumps(
+                {
+                    "target": "plugin-a",
+                    "target_type": "plugin",
+                    "graded_at": 12345,
+                    "plugin_final_score": 8.0,
+                    "plugin_gates_applied": [],
+                    "grader_schema_version": "1.1.0",
+                }
+            ),
+            encoding="utf-8",
+        )
+        result = _run(
+            "import-grading", repo_root, inventory_path, report_path, "plugin-a", "plugin"
+        )
+        if result.returncode == 0:
+            return (
+                False,
+                "import-grading accepted a non-string graded_at -- should have been rejected",
+            )
+        if "Traceback" in result.stderr:
+            return (
+                False,
+                f"import-grading crashed with an uncaught traceback: {result.stderr.strip()}",
+            )
+        return True, "import-grading correctly rejected a non-string graded_at before any write"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -603,6 +780,9 @@ CHECKS = [
     check_check_clean_rejection_on_invalid_inventory,
     check_apply_update_rejects_history_field,
     check_import_grading_score_range_rejection,
+    check_status_transition_rename,
+    check_import_grading_ambiguous_target_rejected,
+    check_import_grading_rejects_non_string_graded_at,
 ]
 
 
