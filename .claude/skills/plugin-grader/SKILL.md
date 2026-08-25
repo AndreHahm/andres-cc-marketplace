@@ -16,7 +16,7 @@ description: >-
   `plugin-lifecycle-downstream`'s Grading phase scores pre-gathered evidence
   instead, with no dispatch of its own.
 argument-hint: "[target]"
-allowed-tools: Read Grep Glob Agent Skill Write Bash(python scripts/compute_score.py:*) Bash(date:*)
+allowed-tools: Read Grep Glob Agent Skill Write Bash(python scripts/compute_score.py:*) Bash(python scripts/smoke_test.py:*) Bash(date:*)
 ---
 
 # Plugin Grader

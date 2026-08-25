@@ -12,7 +12,7 @@ description: >-
   reports for scores and accepted plugin-planning output for planned
   components — it never grades, plans, or scores anything itself.
 argument-hint: "[plugin path] [mode: build|check|plan|apply|import-grading|repair-history]"
-allowed-tools: Read Glob Grep AskUserQuestion Write Bash(python scripts/plugin-inventory.py:*)
+allowed-tools: Read Glob Grep AskUserQuestion Write Bash(python scripts/plugin-inventory.py:*) Bash(python scripts/smoke_test.py:*)
 ---
 
 # Plugin Inventory
