@@ -20,8 +20,8 @@ gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies -f
 ```
 
 The shorter, more-intuitive-looking `repos/{owner}/{repo}/pulls/comments/{comment_id}/replies` (no
-`pull_number` segment) 404s — this exact pitfall is already documented in
-`.claude/rules/verify-tool-behavior-before-instructing.md`'s PR #51 row. Always include `pull_number`.
+`pull_number` segment) 404s — live-verified against this repository's own use of this endpoint. Always
+include `pull_number`.
 
 For a long or multi-line reply body, write it to a scratchpad file first rather than inline shell
 quoting — avoids shell-escaping failures on backtick- or quote-heavy finding text:
@@ -43,7 +43,11 @@ There is no REST endpoint for this at all. It requires GitHub's GraphQL API — 
 query on the PR to obtain the thread's opaque node `id`, then the `resolveReviewThread` mutation keyed
 by that `id`. Both calls go through `gh api graphql -f query=...`. `gh api` has no `-R`/`--repo` flag
 (SKILL.md's Workflow step 1) — if `$ARGUMENTS` named a PR outside the current checkout's repository,
-scope both calls with `GH_REPO="<owner>/<repo>" gh api graphql ...` instead.
+scope the `reviewThreads` query with explicit `owner`/`name` GraphQL variables (`-F owner=... -F
+name=...`, exactly as the query below already does) rather than an env-var-prefixed (`GH_REPO=...`)
+invocation, whose interaction with this skill's own `Bash(gh api graphql:*)` grant has not been
+verified. The `resolveReviewThread` mutation needs no repo scoping at all — it's keyed entirely by the
+thread's global node `id` resolved from that query.
 
 The complete, executable `reviewThreads` query — a bare `reviewThreads(...) { ... }` fragment with no
 `query`/variable declaration or `repository(owner:...) { pullRequest(number:...) { ... } }` wrapper is
