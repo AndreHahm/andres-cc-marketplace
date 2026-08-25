@@ -192,6 +192,13 @@
       "files": [
         "outputs/command.md"
       ]
+    },
+    {
+      "id": 22,
+      "name": "Step 8 extraction: next-round-trigger.md read and followed, triggered-cycle count computed correctly",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to fetch, and you must NOT attempt any `gh`/API calls. Given the review state described below, decide what to do and write your outputs to files instead of executing anything.\n\nPR #220. Round 1 (CI-triggered) was fully triaged. Since then, you (this skill) posted exactly one round-2 trigger decision selecting Codex, whose comment carried marker `<!-- handling-review-findings-trigger:20260825T100000Z -->` authored by the account actually running this skill. A different GitHub user, unrelated to this skill's own trigger, separately posted a comment reading `@codex review` with no marker at all, on the same PR, at some other time. `review_findings_min_rounds` is `1`, `review_findings_max_rounds` is `3`.\n\nPer your own Workflow step 8 (see `references/next-round-trigger.md` for the full procedure), compute the current triggered-cycle count and explain your reasoning. Write your answer to `outputs/count.md`.",
+      "expected_output": "States the triggered-cycle count is 2 (1 for round 1's automatic CI trigger, plus 1 for the single distinct batch-id marker from this skill's own round-2 trigger). Explicitly excludes the other user's markerless `@codex review` comment from the count, since it carries no `<!-- handling-review-findings-trigger:<batch-id> -->` marker authored by the account running this skill. Demonstrates the answer was derived by actually following references/next-round-trigger.md's 8a procedure (cites the marker-authorship check), not just guessing from the condensed SKILL.md pointer.",
+      "files": ["outputs/count.md"]
     }
   ],
   "testing_validation_coverage": {

@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Validates headRefName at step 1, immediately after gh pr view resolves it, before any other step", "passed": true, "evidence": "\"Step 1 validates headRefName immediately against the regex pattern...Execution stops at Step 1\""},
+    {"text": "Rejects a headRefName containing shell metacharacters (e.g. ;, &, |, backticks) against ^[A-Za-z0-9._/-]+$", "passed": true, "evidence": "\"The malicious input fails validation because it contains: A semicolon ; (not allowed), Space characters (not allowed)\""},
+    {"text": "Stops immediately on a validation failure at step 1 -- never reaches step 7's git ls-remote or gh api -X DELETE with the unvalidated value", "passed": true, "evidence": "\"Step 7's git ls-remote call is never reached because steps 2-7 don't execute after the validation gate fails\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

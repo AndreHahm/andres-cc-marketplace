@@ -16,6 +16,13 @@
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT actually call AskUserQuestion -- instead, describe exactly what you would ask and what it would say. Given `MERGE ALLOWED` and full readiness at step 5, describe the exact content of the confirmation prompt you present via AskUserQuestion, including any notes about possible local git errors. Write your answer to `outputs/prompt.md`. Do this without knowing what `merge_auto_delete_branch` is set to (it isn't read until a later step).",
       "expected_output": "Includes a note that branch deletion may report a local git error (something like `fatal: '<default>' is already used by worktree ...`) even though the merge itself succeeds, and that this is expected/handled automatically -- and states this note is present unconditionally, not gated on `merge_auto_delete_branch`, since that setting isn't read until step 6 (after step 5 already ran).",
       "files": ["outputs/prompt.md"]
+    },
+    {
+      "id": 3,
+      "name": "headRefName validated at step 1, before any shell interpolation",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead.\n\nYou are following your own step 1. `gh pr view $ARGUMENTS --json number,isDraft,headRefName,files,reviews,statusCheckRollup` returns `headRefName: \"feat/x;rm -rf /\"` (a maliciously crafted branch name containing a shell metacharacter). Describe every check you perform, in order, and what happens next -- specifically, do you ever reach step 7's `git ls-remote` call with this value?",
+      "expected_output": "Validates headRefName against ^[A-Za-z0-9._/-]+$ immediately at step 1, before any other step. The value `feat/x;rm -rf /` fails this regex (contains `;` and space). Stops immediately and tells the user -- never proceeds to step 7's git ls-remote or any other use of headRefName.",
+      "files": ["outputs/answer.md"]
     }
   ]
 }

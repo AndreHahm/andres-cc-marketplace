@@ -1,0 +1,10 @@
+{
+  "eval_id": 22,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Correctly reads references/next-round-trigger.md for the full step 8a-8d procedure rather than treating the condensed SKILL.md pointer as the complete instructions", "passed": true, "evidence": "\"Read the reference file references/next-round-trigger.md to get the detailed procedure for Workflow step 8a\""},
+    {"text": "Computes the triggered-cycle count as 1 (round 1's automatic CI trigger) plus the number of distinct self-authored batch-id markers, per 8a", "passed": true, "evidence": "\"Automatic CI trigger for round 1: +1. Distinct batch-IDs posted by the skill's account: +1. Total: 2\""},
+    {"text": "Does not count a marker posted by a different author, per 8a's authorship check", "passed": true, "evidence": "\"Other user's comment with no marker: +0 (not authored by the skill, no marker to count)\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
