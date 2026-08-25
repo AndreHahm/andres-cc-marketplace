@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-inventory/SKILL.md",
+  "assertions": [
+    {"text": "States (or observes) that import-grading rejects a target_type other than 'plugin' outright", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Explains that a component-level report belongs in plugin-inventory's own import-grading instead", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Explains score/security_score must only come from a whole-plugin report, never derived from a single component", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

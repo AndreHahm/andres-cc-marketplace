@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-inventory/SKILL.md",
+  "assertions": [
+    {"text": "Writes the scratch inventory to a path outside the real .claude-plugin/ directory, never touching the real repo's marketplace-inventory.json", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Actually invokes scripts/marketplace-inventory.py bootstrap and check rather than fabricating a result", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Correctly reports missing_plugin_inventories as non-empty since no plugin-inventory.json files exist yet", "type": "quality", "target": "outputs/ directory"},
+    {"text": "States it would ask before invoking plugin-inventory, naming Skill(plugin-inventory) with plugin_dir + mode args, never batch-applying", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

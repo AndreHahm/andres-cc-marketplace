@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Correctly identifies the scenario as a 'conflict' operation (missing active component)", "passed": true, "evidence": "conflict-resolution.md shows the exact conflict entry shape and cites build_plan()'s real reason string"},
+    {"text": "States the conflict is never applied as its own shape and never auto-resolved", "passed": true, "evidence": "Quotes SKILL.md verbatim: \"never applied as-is and never auto-resolved\""},
+    {"text": "Constructs a status-transition operation with the correct shape (operation, id, new_status, reason, evidence)", "passed": true, "evidence": "JSON operation shown matches apply_status_transition()'s real field reads exactly"},
+    {"text": "Names the correct apply command and explains history.close_and_append_status_period keeps status and status_history in sync", "passed": true, "evidence": "Correct apply command shown with expected_hash freshness caveat; explains the bare-update-would-desync-status_history reasoning correctly"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
