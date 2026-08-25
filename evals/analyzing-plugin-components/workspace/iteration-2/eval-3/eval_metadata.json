@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-plugin-components/SKILL.md",
+  "assertions": [
+    {"text": "Correctly validates a 40-char uppercase hex SHA as passing the regex", "type": "functionality", "target": "outputs/"},
+    {"text": "Correctly validates a 64-char lowercase hex SHA (SHA-256 length) as passing the regex", "type": "functionality", "target": "outputs/"},
+    {"text": "States it would proceed to Bash(git log)/Bash(git show) for both, since format validation passed", "type": "functionality", "target": "outputs/"}
+  ]
+}

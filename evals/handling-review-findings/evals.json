@@ -369,8 +369,8 @@
       },
       {
         "gate": "The triggered-cycle count Workflow step 8 compares against min_rounds/max_rounds is derived from re-fetched trigger-comment history, never from the fix-driven-push round definition",
-        "covered_by": [],
-        "note": "NOT exercised -- no eval constructs a no-fix review cycle against the budget check; a real gap"
+        "covered_by": [22],
+        "note": "eval 22 exercises marker-history-based counting (round 1 + one distinct batch-id marker, excluding a markerless comment) after the step 8 extraction into references/next-round-trigger.md -- the no-fix-cycle variant specifically (a review that comes back clean, no fix-driven push) remains a separate, still-uncovered scenario, see testing_validation_coverage.uncovered"
       },
       {
         "gate": "A comment matching a configured trigger string but carrying no handling-review-findings-trigger marker (a codex-review-recovery retry, a coincidentally identical human comment) is never counted toward the triggered-cycle count",
@@ -412,7 +412,7 @@
       }
     ],
     "gates_total": 30,
-    "gates_fully_covered": 18,
+    "gates_fully_covered": 19,
     "uncovered_gates": [
       "State is always re-fetched immediately before a side-effecting action, never reused",
       "The gh-pr-review marker is written immediately before the specific gh api/gh pr comment call it authorizes, never earlier, and never reused across reviewers",
@@ -421,7 +421,6 @@
       "Selecting \"No further round for now\" in Question 1 always overrides any other selection and skips Question 2's answer entirely",
       "Before posting any trigger comment, the PR's state/isDraft/headRefOid are re-fetched fresh and headRefOid is compared against local HEAD",
       "A reviewer whose name field fails the identifier pattern is excluded from the trigger-ask before its trigger string is checked at all",
-      "The triggered-cycle count Workflow step 8 compares against min_rounds/max_rounds is derived from re-fetched trigger-comment history, never from the fix-driven-push round definition",
       "8c resolves the tracked-ness gate once and applies it to a reviewer's enabled field exactly as it does to trigger-comment text -- a tracked local file's enabled:false is never honored",
       "A finding produced by the review that the max_rounds-th triggered batch itself triggered is fixed normally, never routed to the Issue/generate-issues path merely because 8a's count already reads max_rounds when classified",
       "When 8c leaves exactly one validated reviewer, Question 1 includes the stop option regardless of min_rounds status, but below the floor selecting it reports the unmet floor and stops rather than silently ending the run",
