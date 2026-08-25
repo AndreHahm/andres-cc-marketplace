@@ -40,6 +40,14 @@ from inventory_common import (  # noqa: E402  # ty: ignore[unresolved-import]
 SCHEMA_VERSION = "1.0.0"
 INVENTORY_FILENAME = "marketplace-inventory.json"
 
+# Fields a human-approved 'update' operation may actually set on a plugin
+# record. 'id'/'name' are structural identity, never updated in place;
+# 'status' only ever changes via 'status-transition' (which keeps
+# status_history in sync); every history/scoring field is append-only,
+# editable only through history.append_* -- this script has no
+# repair-history mode at all, so none of those belong here either way.
+ALLOWED_UPDATE_FIELDS = {"source", "functional_role", "domains", "compatibility", "created_on"}
+
 
 def discover_plugins(repo_root):
     """Read .claude-plugin/marketplace.json for current installable plugin
@@ -88,9 +96,14 @@ def empty_inventory(marketplace_name):
 
 def build_plan(inventory, discovered, repo_root):
     """Compare discovered marketplace plugins against the canonical
-    inventory's current active plugin records. Also reports missing/stale
-    per-plugin inventories -- referential-integrity findings, not
-    reconciliation operations this script applies itself."""
+    inventory's current active plugin records. A discovered candidate
+    matching an existing *non-active* record (planned/retired/deprecated/
+    superseded) is surfaced as a `conflict`, never a silent no-op -- e.g. a
+    planned plugin that has now actually appeared in the marketplace
+    manifest needs a human status-transition decision, not an automatic
+    reconciliation. Also reports missing/stale per-plugin inventories --
+    referential-integrity findings, not reconciliation operations this
+    script applies itself."""
     existing_by_name = {p["name"]: p for p in inventory.get("plugins", [])}
     discovered_names = {c["name"] for c in discovered}
     plan = []
@@ -108,21 +121,36 @@ def build_plan(inventory, discovered, repo_root):
                     "requires_approval": True,
                 }
             )
-        elif existing.get("status") == "active" and existing.get("source") != candidate["source"]:
+        elif existing.get("status") == "active":
+            if existing.get("source") != candidate["source"]:
+                plan.append(
+                    {
+                        "operation": "update",
+                        "id": existing["id"],
+                        "name": candidate["name"],
+                        "field": "source",
+                        "old_value": existing.get("source"),
+                        "new_value": candidate["source"],
+                        "evidence": [".claude-plugin/marketplace.json"],
+                        "requires_approval": True,
+                    }
+                )
+            else:
+                plan.append({"operation": "no-op", "name": candidate["name"]})
+        else:
             plan.append(
                 {
-                    "operation": "update",
+                    "operation": "conflict",
                     "id": existing["id"],
                     "name": candidate["name"],
-                    "field": "source",
-                    "old_value": existing.get("source"),
-                    "new_value": candidate["source"],
-                    "evidence": [".claude-plugin/marketplace.json"],
+                    "reason": f"a discovered candidate matches an existing {existing['status']!r} "
+                    "record -- requires a status-transition decision (e.g. activate a planned "
+                    "plugin now that it's in the marketplace manifest, restore a retired/"
+                    "deprecated/superseded one) before this can be reconciled, never an "
+                    "automatic no-op",
                     "requires_approval": True,
                 }
             )
-        else:
-            plan.append({"operation": "no-op", "name": candidate["name"]})
 
         plugin_inventory = read_plugin_inventory(repo_root, candidate["source"])
         if plugin_inventory is None:
@@ -211,7 +239,9 @@ def apply_plan(inventory, approved_operations):
     """Delegates the per-operation-type logic to the shared
     `inventory_common.reconcile` module -- only `apply_add` (the
     plugin-record shape) is this script's own."""
-    return reconcile.apply_plan(inventory, approved_operations, apply_add, "plugins")
+    return reconcile.apply_plan(
+        inventory, approved_operations, apply_add, "plugins", ALLOWED_UPDATE_FIELDS
+    )
 
 
 def validate_inventory(inventory):
@@ -325,7 +355,7 @@ def cmd_check(args):
     if not os.path.exists(args.inventory_path):
         raise SystemExit(f"no inventory at {args.inventory_path} -- run bootstrap first")
     inventory = json_store.read_json(args.inventory_path)
-    validate_inventory(inventory)
+    reconcile.validate_or_exit(validate_inventory, inventory, context="check")
     discovered = discover_plugins(args.repo_root)
     plan, missing_plugin_inventories = build_plan(inventory, discovered, args.repo_root)
     drift = [op for op in plan if op["operation"] != "no-op"]

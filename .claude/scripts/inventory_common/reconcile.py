@@ -57,21 +57,44 @@ def require_inventory_path_under_scope_dir(inventory_path, scope_dir, expected_f
 
 
 def validate_or_exit(fn, *args, context, **kwargs):
-    """Run `fn(*args, **kwargs)`, converting any `ValueError` it raises into
-    a clean `SystemExit` prefixed with `context`. Every validator in this
-    system (`validate_inventory`, `validate_history_periods`, etc.) raises a
-    bare `ValueError` on a semantic violation -- every CLI subcommand here
-    wants that surfaced as a clean rejection message like every other
-    rejection path in these scripts, not an uncaught Python traceback."""
+    """Run `fn(*args, **kwargs)`, converting any `ValueError` or `KeyError`
+    it raises into a clean `SystemExit` prefixed with `context`. Every
+    validator in this system (`validate_inventory`, `validate_history_periods`,
+    etc.) raises a bare `ValueError` on a semantic violation -- every CLI
+    subcommand here wants that surfaced as a clean rejection message like
+    every other rejection path in these scripts, not an uncaught Python
+    traceback. `KeyError` is caught too: `validate_records` indexes several
+    required record fields directly (`record["status"]`, `record["name"]`,
+    etc.) rather than via `.get()`, so a record missing one of those keys
+    entirely -- a hand-corrupted inventory file, not a normal enum/shape
+    violation -- would otherwise still leak an uncaught traceback."""
     try:
         return fn(*args, **kwargs)
-    except ValueError as exc:
+    except (ValueError, KeyError) as exc:
         raise SystemExit(f"{context}: {exc}") from exc
 
 
-def apply_update(inventory, operation, collection_key):
+def apply_update(inventory, operation, collection_key, allowed_fields):
     """Apply an `update` operation (a single field change) to the record
-    with matching `id` in `inventory[collection_key]`."""
+    with matching `id` in `inventory[collection_key]`. `allowed_fields` is
+    the caller's own allowlist of fields a human is actually permitted to
+    set this way (a component's `path`/`functional_role`/etc., or a
+    plugin's `source`/`functional_role`/etc.) -- `id`, `status`, and every
+    history/scoring field are never in it: `status` only ever changes via
+    `apply_status_transition` (which keeps `status_history` in sync), and
+    the history/scoring fields are append-only, mutable only through
+    `history.append_*`/`repair-history`'s own explicit-confirmation gate.
+    Without this allowlist, an `update` operation naming `status_history`
+    or `naming_history` directly could silently overwrite append-only
+    audit history through the ordinary apply path, bypassing
+    `repair-history`'s `--confirm` gate entirely."""
+    if operation["field"] not in allowed_fields:
+        raise ValueError(
+            f"apply_update: field {operation['field']!r} is not updatable via 'update' "
+            f"(allowed: {sorted(allowed_fields)}) -- a status change goes through "
+            "'status-transition', and history/scoring fields are append-only, editable only "
+            "through repair-history's own explicit-confirmation gate"
+        )
     for record in inventory[collection_key]:
         if record["id"] == operation["id"]:
             record[operation["field"]] = operation["new_value"]
@@ -104,21 +127,22 @@ def apply_status_transition(inventory, operation, collection_key):
     raise ValueError(f"apply_status_transition: no record with id {operation['id']!r}")
 
 
-def apply_plan(inventory, approved_operations, apply_add_fn, collection_key):
+def apply_plan(inventory, approved_operations, apply_add_fn, collection_key, allowed_update_fields):
     """Apply only the operations present in `approved_operations` (already
     filtered/approved by a human via the calling skill). A `conflict` entry
     itself is never applied directly -- an approved plan instead contains
     the human's actual resolution as a `status-transition` operation (or an
     `update`/`add`/`no-op`), never the bare `conflict` shape. `apply_add_fn`
     is the caller's own record-shape-specific constructor (component vs.
-    plugin), called as `apply_add_fn(inventory, operation, existing_ids)`."""
+    plugin), called as `apply_add_fn(inventory, operation, existing_ids)`.
+    `allowed_update_fields` is passed straight through to `apply_update`."""
     existing_ids = {r["id"] for r in inventory.get(collection_key, [])}
     for operation in approved_operations:
         op = operation["operation"]
         if op == "add":
             apply_add_fn(inventory, operation, existing_ids)
         elif op == "update":
-            apply_update(inventory, operation, collection_key)
+            apply_update(inventory, operation, collection_key, allowed_update_fields)
         elif op == "status-transition":
             apply_status_transition(inventory, operation, collection_key)
         elif op == "no-op":

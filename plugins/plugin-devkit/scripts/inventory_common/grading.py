@@ -17,6 +17,23 @@ class GradingReportError(ValueError):
     """
 
 
+def _validate_score(value, field_label):
+    """Reject a non-numeric or out-of-[0, 10]-range score before it's
+    imported. Every schema in this system declares scores as numbers in
+    [0, 10], but nothing loads that schema at runtime to enforce it (see
+    plugin-inventory/marketplace-inventory SKILL.md's Output Format
+    section) -- this is the one place a malformed or adversarial report's
+    score actually gets checked before it reaches the canonical inventory.
+    `bool` is explicitly excluded since `isinstance(True, int)` is `True`
+    in Python and would otherwise silently pass as a valid score."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise GradingReportError(
+            f"{field_label} must be a number, got {type(value).__name__} ({value!r})"
+        )
+    if not (0 <= value <= 10):
+        raise GradingReportError(f"{field_label} must be within [0, 10], got {value!r}")
+
+
 def load_and_validate_report(report_path, expected_target, expected_target_type):
     """Read a plugin-grader report and verify target/type/shape.
 
@@ -54,10 +71,14 @@ def extract_quality_score(report):
     if report["target_type"] == "plugin":
         if "plugin_final_score" not in report:
             raise GradingReportError("plugin-mode report has no plugin_final_score")
-        return report["plugin_final_score"], report.get("grader_schema_version")
+        score = report["plugin_final_score"]
+        _validate_score(score, "plugin_final_score")
+        return score, report.get("grader_schema_version")
     if "final_score" not in report:
         raise GradingReportError("component-mode report has no final_score")
-    return report["final_score"], report.get("grader_schema_version")
+    score = report["final_score"]
+    _validate_score(score, "final_score")
+    return score, report.get("grader_schema_version")
 
 
 def extract_security_score(report):
@@ -84,8 +105,11 @@ def extract_security_score(report):
     if report["target_type"] == "plugin":
         if grader_schema_version is None:
             return None, "plugin_security_score", None, None
+        plugin_security_score = report.get("plugin_security_score")
+        if plugin_security_score is not None:
+            _validate_score(plugin_security_score, "plugin_security_score")
         return (
-            report.get("plugin_security_score"),
+            plugin_security_score,
             "plugin_security_score",
             None,
             grader_schema_version,
@@ -95,8 +119,11 @@ def extract_security_score(report):
     safety = dimensions.get("safety_risk_handling")
     if safety is None:
         return None, "dimensions.safety_risk_handling.score", None, grader_schema_version
+    safety_score = safety.get("score")
+    if safety_score is not None:
+        _validate_score(safety_score, "dimensions.safety_risk_handling.score")
     return (
-        safety.get("score"),
+        safety_score,
         "dimensions.safety_risk_handling.score",
         safety.get("is_na", False),
         grader_schema_version,
