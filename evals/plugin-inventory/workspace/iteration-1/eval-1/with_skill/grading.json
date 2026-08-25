@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Writes the scratch inventory to a path outside the real plugin's .claude-plugin/ directory, never touching the real repo's inventory files", "passed": true, "evidence": "JSON written to evals/.../eval-1/with_skill/outputs/plugin-devkit-inventory.json; real plugins/plugin-devkit/.claude-plugin/ was never touched"},
+    {"text": "Actually invokes scripts/plugin-inventory.py bootstrap rather than fabricating a result", "passed": true, "evidence": "Agent report shows the exact command run and its real {\"bootstrapped\": 82, ...} output; verified real JSON file has 82 components"},
+    {"text": "Correctly states functional_role/domain/created_on/compatibility start null and need a follow-up classification pass", "passed": true, "evidence": "Report explicitly lists all 4 fields as null/empty on all 82 records, verified directly in the JSON (sample record confirms)"},
+    {"text": "Correctly states the classification pass happens after the initial write, not before it", "passed": true, "evidence": "Report: \"This is a follow-up pass after the initial write, not a gate blocking it\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

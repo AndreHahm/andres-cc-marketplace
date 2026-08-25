@@ -1,0 +1,34 @@
+{
+  "skill_name": "marketplace-inventory",
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-inventory/SKILL.md",
+  "description": "Builds and maintains the permanent, Git-tracked root JSON inventory for the whole marketplace.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Build mode bootstraps and reports missing plugin inventories",
+      "prompt": "Build the marketplace inventory for this repo, writing the inventory to a scratch path you choose under the session's scratchpad directory (not the repo's own real .claude-plugin/marketplace-inventory.json -- do not touch the real repo). After bootstrapping, run check on the result and report: how many plugins were found, and what missing_plugin_inventories says. What would you offer to do next per this skill's own Repair Plugins documentation, and what exact Skill() invocation would you use?",
+      "expected_output": "Runs `python scripts/marketplace-inventory.py bootstrap . <scratch_inventory_path>` (not against the real marketplace-inventory.json), then `check` on it, reports the plugin count and missing_plugin_inventories list (likely all plugins, since none have plugin-inventory.json files yet), and correctly states it would ask the user before invoking plugin-inventory for any of them -- naming the invocation as `Skill(plugin-inventory)` with args like '<plugin_dir> build', never batch-applying across multiple plugins in one call.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "import-grading rejects a component-level report",
+      "prompt": "Attempt to import a plugin-grader report into the marketplace inventory using import-grading, but the report you have is component-mode (target_type: 'skill', not 'plugin') for a skill within plugin-devkit. What happens when you try this, and why does this skill's own documentation say this should be rejected rather than imported?",
+      "expected_output": "Correctly states (and if actually attempting the command, observes) that scripts/marketplace-inventory.py import-grading rejects target_type values other than 'plugin' outright, explaining that a component-level report belongs in plugin-inventory's own import-grading instead, and that marketplace-inventory's score/security_score fields must only ever come from a whole-plugin plugin_final_score/plugin_security_score, never derived from or confused with a single component's score.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 11,
+    "declared_scenarios_covered": 4,
+    "uncovered": [
+      "4. Conflict, missing active plugin",
+      "5. plugin_id mismatch conflict",
+      "6. Import grading, rollup-only",
+      "8. Stale hash rejection",
+      "9. Status transition",
+      "10. Enum rejection",
+      "11. Self-check (smoke_test.py)"
+    ]
+  }
+}

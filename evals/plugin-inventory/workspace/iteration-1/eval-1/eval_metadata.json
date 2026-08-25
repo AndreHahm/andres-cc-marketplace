@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-inventory/SKILL.md",
+  "assertions": [
+    {"text": "Writes the scratch inventory to a path outside the real plugin's .claude-plugin/ directory, never touching the real repo's inventory files", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Actually invokes scripts/plugin-inventory.py bootstrap rather than fabricating a result", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Correctly states functional_role/domain/created_on/compatibility start null and need a follow-up classification pass", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Correctly states the classification pass happens after the initial write, not before it", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

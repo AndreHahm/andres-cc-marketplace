@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "marketplace-inventory.schema.json",
+  "title": "Marketplace Inventory",
+  "description": "Canonical schema for .claude-plugin/marketplace-inventory.json.",
+  "type": "object",
+  "required": ["schema_version", "marketplace_name", "updated_on", "plugins"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string" },
+    "marketplace_name": { "type": "string" },
+    "updated_on": { "type": "string", "format": "date" },
+    "plugins": { "type": "array", "items": { "$ref": "#/definitions/plugin" } }
+  },
+  "definitions": {
+    "status": {
+      "type": "string",
+      "enum": ["planned", "active", "deprecated", "superseded", "retired"]
+    },
+    "functionalRole": {
+      "type": "string",
+      "enum": ["workflow", "reviewer", "validator", "reference", "integration", "infrastructure", "mixed"]
+    },
+    "validToField": {
+      "description": "null means currently open (exactly one period per history array); the literal string 'unknown' means a closed period with an unrecorded end date; any other value must be a real ISO date.",
+      "anyOf": [
+        { "type": "null" },
+        { "const": "unknown" },
+        { "type": "string", "format": "date" }
+      ]
+    },
+    "historyPeriodBase": {
+      "type": "object",
+      "required": ["valid_from", "valid_to", "reason", "evidence"],
+      "properties": {
+        "valid_from": { "anyOf": [{ "type": "null" }, { "type": "string", "format": "date" }] },
+        "valid_to": { "$ref": "#/definitions/validToField" },
+        "reason": { "type": "string" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "statusHistoryPeriod": {
+      "allOf": [
+        { "$ref": "#/definitions/historyPeriodBase" },
+        { "type": "object", "required": ["status"], "properties": { "status": { "$ref": "#/definitions/status" } } }
+      ]
+    },
+    "namingHistoryPeriod": {
+      "allOf": [
+        { "$ref": "#/definitions/historyPeriodBase" },
+        { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" } } }
+      ]
+    },
+    "scoringHistoryEvent": {
+      "type": "object",
+      "required": [
+        "score", "graded_at", "imported_on", "target", "target_type",
+        "report_path", "report_sha256", "grader_schema_version", "gates_applied"
+      ],
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 10 },
+        "graded_at": { "type": "string" },
+        "imported_on": { "type": "string", "format": "date" },
+        "target": { "type": "string" },
+        "target_type": { "type": "string" },
+        "report_path": { "type": "string" },
+        "report_sha256": { "type": "string" },
+        "grader_schema_version": { "anyOf": [{ "type": "null" }, { "type": "string" }] },
+        "gates_applied": { "type": "array" }
+      }
+    },
+    "securityScoringHistoryEvent": {
+      "type": "object",
+      "required": [
+        "security_score", "graded_at", "imported_on", "target", "target_type",
+        "report_path", "report_sha256", "grader_schema_version", "source_field", "is_na"
+      ],
+      "properties": {
+        "security_score": { "anyOf": [{ "type": "null" }, { "type": "number", "minimum": 0, "maximum": 10 }] },
+        "graded_at": { "type": "string" },
+        "imported_on": { "type": "string", "format": "date" },
+        "target": { "type": "string" },
+        "target_type": { "type": "string" },
+        "report_path": { "type": "string" },
+        "report_sha256": { "type": "string" },
+        "grader_schema_version": { "anyOf": [{ "type": "null" }, { "type": "string" }] },
+        "source_field": { "type": "string" },
+        "is_na": { "anyOf": [{ "type": "null" }, { "type": "boolean" }] }
+      }
+    },
+    "compatibilityEntry": {
+      "type": "object",
+      "required": ["level", "verified_on", "evidence", "notes"],
+      "properties": {
+        "level": { "type": "string", "enum": ["native", "compatible", "partial", "incompatible", "unknown"] },
+        "verified_on": { "anyOf": [{ "type": "null" }, { "type": "string", "format": "date" }] },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "notes": { "anyOf": [{ "type": "null" }, { "type": "string" }] }
+      }
+    },
+    "plugin": {
+      "type": "object",
+      "required": [
+        "id", "name", "source", "status", "status_history", "functional_role", "domains",
+        "score", "security_score", "created_on", "compatibility",
+        "naming_history", "scoring_history", "security_scoring_history", "provenance"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^plugin_[0-9a-f]{8}$" },
+        "name": { "type": "string" },
+        "source": { "anyOf": [{ "type": "null" }, { "type": "string" }] },
+        "status": { "$ref": "#/definitions/status" },
+        "status_history": { "type": "array", "items": { "$ref": "#/definitions/statusHistoryPeriod" }, "minItems": 1 },
+        "functional_role": { "anyOf": [{ "type": "null" }, { "$ref": "#/definitions/functionalRole" }] },
+        "domains": { "type": "array", "items": { "type": "string" } },
+        "score": { "anyOf": [{ "type": "null" }, { "type": "number", "minimum": 0, "maximum": 10 }] },
+        "security_score": { "anyOf": [{ "type": "null" }, { "type": "number", "minimum": 0, "maximum": 10 }] },
+        "created_on": { "anyOf": [{ "type": "null" }, { "type": "string", "format": "date" }] },
+        "compatibility": { "type": "object", "additionalProperties": { "$ref": "#/definitions/compatibilityEntry" } },
+        "naming_history": { "type": "array", "items": { "$ref": "#/definitions/namingHistoryPeriod" }, "minItems": 1 },
+        "scoring_history": { "type": "array", "items": { "$ref": "#/definitions/scoringHistoryEvent" } },
+        "security_scoring_history": { "type": "array", "items": { "$ref": "#/definitions/securityScoringHistoryEvent" } },
+        "provenance": { "type": "object" }
+      }
+    }
+  }
+}

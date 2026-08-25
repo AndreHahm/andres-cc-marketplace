@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Writes the scratch inventory to a path outside the real .claude-plugin/ directory, never touching the real repo's marketplace-inventory.json", "passed": true, "evidence": "JSON copied to evals/.../eval-1/with_skill/outputs/marketplace-inventory.json from a scratchpad build location; real .claude-plugin/marketplace-inventory.json never touched"},
+    {"text": "Actually invokes scripts/marketplace-inventory.py bootstrap and check rather than fabricating a result", "passed": true, "evidence": "Agent report shows real commands run and real JSON output; verified plugins list [analysis-kit, codex-kit, git-kit, plugin-devkit] directly in the saved file"},
+    {"text": "Correctly reports missing_plugin_inventories as non-empty since no plugin-inventory.json files exist yet", "passed": true, "evidence": "check output: missing_plugin_inventories lists all 4 plugins"},
+    {"text": "States it would ask before invoking plugin-inventory, naming Skill(plugin-inventory) with plugin_dir + mode args, never batch-applying", "passed": true, "evidence": "Report: \"Skill(plugin-inventory) with args '<plugin_dir> build'\", repeated separately per plugin, explicitly \"never one call covering multiple plugins\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

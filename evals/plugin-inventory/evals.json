@@ -1,0 +1,36 @@
+{
+  "skill_name": "plugin-inventory",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-inventory/SKILL.md",
+  "description": "Builds and maintains the permanent, Git-tracked JSON inventory for exactly one plugin.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Build mode bootstraps and surfaces classification follow-up",
+      "prompt": "Build the plugin inventory for the plugin at plugins/plugin-devkit (this repo's own plugin), writing the inventory to a scratch path you choose under the session's scratchpad directory (not the plugin's own real .claude-plugin/ directory -- do not touch the real repo). Use plugin_id 'plugin_test1234'. After bootstrapping, report: how many components were found, and what you would ask the user about next per this skill's own Build mode documentation.",
+      "expected_output": "Runs `python scripts/plugin-inventory.py bootstrap <plugin_dir> <scratch_inventory_path> plugin_test1234 plugin-devkit` (not against the real plugin-inventory.json), reports the bootstrapped component count, and correctly states that functional_role/domain/created_on/compatibility all start null and need a follow-up classification pass presented to the user via AskUserQuestion before Build is considered fully done -- but recognizes this classification pass happens AFTER the initial write already succeeded, not before it (per the skill's own corrected Build-mode wording), and does not claim the write itself required approval first.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Conflict resolution via status-transition, not the bare conflict shape",
+      "prompt": "You have an existing plugin-inventory.json (construct one, or use the one from Eval 1) where one component's status_history shows it as 'active' but its discovered filesystem path no longer exists (simulate this by editing your bootstrapped inventory to remove one component's underlying skill directory reference, or by manually describing this scenario if simpler). Per this skill's own documentation, how would you resolve this conflict, and what exact operation would you construct to apply the resolution (e.g. retiring the component)? Show the actual JSON operation shape you'd write to the approved-plan file and the apply command you'd run.",
+      "expected_output": "Correctly identifies this as a 'conflict' operation from `plan` (missing active component), states it is never applied as the bare conflict shape and never auto-resolved, and constructs a 'status-transition' operation instead: `{\"operation\": \"status-transition\", \"id\": \"<component_id>\", \"new_status\": \"retired\", \"reason\": \"...\", \"evidence\": [...]}`. Correctly names `python scripts/plugin-inventory.py apply <inventory_path> <approved_plan.json> <expected_hash>` as the command, and explains that this operation type uses history.close_and_append_status_period internally so the status and its history entry stay in sync.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 11,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "1. Discovery, live",
+      "3. Plan/Apply, add operation",
+      "4. Stale hash rejection",
+      "5. Import grading, dedup",
+      "6. Conflict, missing active component",
+      "7. History invariants",
+      "9. Repair history, structurally invalid replacement rejected",
+      "10. Enum rejection",
+      "11. Self-check (smoke_test.py)"
+    ]
+  }
+}
