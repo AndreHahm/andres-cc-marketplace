@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Notes possible local git error like fatal: '<default>' is already used by worktree ... even though merge succeeds", "passed": true, "evidence": "\"Note: Branch deletion may report a local git error (fatal: '<default>' is already used by worktree ...) even though the merge itself succeeds.\""},
+    {"text": "States this is expected/handled automatically", "passed": true, "evidence": "\"This is expected in a worktree-based workflow and is handled automatically.\""},
+    {"text": "States the note is unconditional, not gated on merge_auto_delete_branch", "passed": true, "evidence": "\"Local Git Error Warning (UNCONDITIONAL) -- This note ALWAYS appears in step 5, regardless of merge_auto_delete_branch setting ... The merge_auto_delete_branch setting is not read until step 6.\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

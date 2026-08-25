@@ -1,0 +1,10 @@
+{
+  "eval_id": 21,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does not use `-f body=@<path>` (the broken form that posts the literal string '@<path>' instead of the file's content)", "passed": true, "evidence": "Final command is `-f body=\"$(cat /tmp/scratch/reply.txt)\"` -- explicitly explains why `-f body=@<path>` would be wrong."},
+    {"text": "Uses either the `-f body=\"$(cat <path>)\"` form or the `-F body=@<path>` form", "passed": true, "evidence": "`-f body=\"$(cat /tmp/scratch/reply.txt)\"` used."},
+    {"text": "Explains why the `-f body=@<path>` form would be wrong (references -f/--raw-field never interpreting a leading @)", "passed": true, "evidence": "\"The reference explicitly warns that -f/--raw-field never interprets a leading @: -f body=@<path> silently posts the literal string @<path> as the comment body -- no error, no file read.\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

@@ -31,6 +31,12 @@ gh api repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies \
   -f body="$(cat "<scratchpad-path>/reply.txt")" --silent
 ```
 
+**`-f`/`--raw-field` never interprets a leading `@`.** Only `-F`/`--field` reads `@<path>` as a file
+reference (`gh api --help`: `-F, --field key=value` — "use `@<path>` or `@-` to read value from file or
+stdin"; `-f, --raw-field key=value` carries no such behavior). `-f body=@<path>` silently posts the
+literal string `@<path>` as the comment body — no error, no file read. Use the `$(cat ...)` form above
+with `-f`, or switch to `-F body=@<path>` — never `-f body=@<path>`.
+
 ## Resolving a review thread
 
 There is no REST endpoint for this at all. It requires GitHub's GraphQL API — first a `reviewThreads`

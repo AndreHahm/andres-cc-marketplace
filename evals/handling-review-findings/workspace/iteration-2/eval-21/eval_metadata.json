@@ -1,0 +1,9 @@
+{
+  "eval_id": 21,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/references/github-api-mechanics.md",
+  "assertions": [
+    {"text": "Does not use `-f body=@<path>` (the broken form that posts the literal string '@<path>' instead of the file's content)", "type": "functionality", "target": "outputs/"},
+    {"text": "Uses either the `-f body=\"$(cat <path>)\"` form or the `-F body=@<path>` form", "type": "functionality", "target": "outputs/"},
+    {"text": "Explains why the `-f body=@<path>` form would be wrong (references -f/--raw-field never interpreting a leading @)", "type": "quality", "target": "outputs/"}
+  ]
+}
