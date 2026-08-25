@@ -1,0 +1,22 @@
+{
+  "plugin_score_raw": 6.75,
+  "weakest_component": {
+    "name": "skill-b",
+    "final_score": 4.0
+  },
+  "strongest_component": {
+    "name": "skill-a",
+    "final_score": 9.5
+  },
+  "plugin_gates_applied": [],
+  "plugin_final_score": 6.8,
+  "component_count": 2,
+  "plugin_security_score": 4.0,
+  "plugin_security_gates_applied": [
+    {
+      "gate": "P4_security_risk",
+      "reason": "'skill-b' scored 2.0 safety_risk_handling (< 4)",
+      "cap": 4.0
+    }
+  ]
+}

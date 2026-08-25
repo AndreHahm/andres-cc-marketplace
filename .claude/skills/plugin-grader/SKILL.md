@@ -132,7 +132,7 @@ python scripts/compute_score.py <input.json>
 
 **Never hand-compute the weighted sum or gate application** — the script is the source of truth for this arithmetic (see `references/gates-and-rollup.md` for why: gate stacking and boundary precision are exactly the class of error this plugin has hit before).
 
-For plugin mode, after every component has a `final_score`, build the rollup input and run:
+For plugin mode, after every component has a `final_score` (and, where scorable, a `dimensions.safety_risk_handling.score`), build the rollup input — including `component_security_scores` when at least one component has a security-scorable dimension — and run:
 
 ```bash
 python scripts/compute_score.py --rollup <rollup_input.json>
@@ -145,7 +145,7 @@ Per `references/swot-and-next-steps.md` — every SWOT entry must trace to a spe
 ### 6. Write the Report
 
 1. Get a timestamp: `date -u +%Y-%m-%dT%H-%M-%SZ`
-2. Write to `.claude/output/plugin-grader/<target>-<timestamp>.json` per `references/output-schema.md`'s Final Report JSON shape — this always includes `mode` (`"standalone"` or `"evidence_only"`), and includes `notes.backend_mix` whenever `references/output-schema.md`'s presence rule for that field is met (standalone: the resolver ran this pass; evidence-only: the supplied bundle's own dispatch records show it ran)
+2. Write to `.claude/output/plugin-grader/<target>-<timestamp>.json` per `references/output-schema.md`'s Final Report JSON shape — this always includes `mode` (`"standalone"` or `"evidence_only"`) and `grader_schema_version` (`"1.1.0"`), includes `notes.backend_mix` whenever `references/output-schema.md`'s presence rule for that field is met (standalone: the resolver ran this pass; evidence-only: the supplied bundle's own dispatch records show it ran), and — plugin mode only — includes `plugin_security_score`/`plugin_security_gates_applied` (or an explicit `null` with `notes.security_score_unavailable_reason`)
 3. Confirm the written path to the user
 
 ### 7. Present a Narrative Summary
@@ -174,6 +174,11 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 8. **Evidence-only mode, missing evidence → refusal** (new, M3) — invoke evidence-only mode with a scope manifest naming a component that has no corresponding report in the supplied evidence bundle; confirm scoring is refused (not silently skipped or scored as if clean) per `references/output-schema.md`'s refusal shape, and confirm no `plugin-auditor`/reviewer/test dispatch was attempted
 8a. **Evidence-only mode, stale evidence → qualified score** — supply evidence whose `current_commit` doesn't match the scope manifest's; confirm the score is returned qualified, with `notes.inspection_limits` stating the staleness, not refused outright and not silently ignored
 8b. **Evidence-only mode, complete and fresh → identical scoring** — supply a complete, fresh evidence bundle for a target already graded via standalone mode in scenario 1; confirm the two runs produce the same `final_score`/`gates_applied` (the dispatch mechanism differs, the scoring doesn't)
+9. **Plugin security rollup, clean** — every component scores `safety_risk_handling: 10`; confirm `plugin_security_score` is `10.0` with no gate
+10. **Gate P4 fires** — one component scores `safety_risk_handling: 2.0`; confirm `plugin_security_score` is capped at `4.0` even though the mean of all components would be higher, and confirm `plugin_final_score` is unaffected (Gate P4 never caps it)
+11. **All components N/A** — every component's `safety_risk_handling` is `is_na: true`; confirm `plugin_security_score` is `10.0` (matching the existing N/A-defaults-to-10 rule), not `null`
+12. **Zero scorable components** — a plugin made entirely of ungraded types; confirm `plugin_security_score` is `null` with a stated reason in `notes.security_score_unavailable_reason`, not a fabricated value
+13. **Schema-version field presence** — confirm a freshly-generated report (either mode) always carries `grader_schema_version: "1.1.0"`, and that a pre-existing report with no `grader_schema_version` key at all is distinguishable by that field's absence alone
 
 **Quality gates:**
 - [ ] `scripts/compute_score.py` is always invoked for the weighted sum and gate math — never hand-computed
@@ -189,6 +194,9 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 - [ ] Standalone mode and evidence-only mode never get confused for one another — the input shape alone (a bare target vs. a scope manifest + evidence bundle) determines which mode runs, no separate flag required
 - [ ] The written report always carries `mode`, in both standalone and evidence-only paths
 - [ ] `notes.backend_mix.claude_only`/`.mixed` are always derived from the dispatch record (`codex_reviewers`), never from `findings[].backend` — a Codex-backed reviewer with zero findings must not read as `claude_only: true`
+- [ ] Every report (component or plugin mode) always carries `grader_schema_version`
+- [ ] `plugin_security_score` is always the unweighted mean of component `safety_risk_handling.score`, gated by Gate P4, and never influences `plugin_final_score`
+- [ ] A `null` `plugin_security_score` always carries `notes.security_score_unavailable_reason`
 
 ## Reference Guide
 
@@ -200,7 +208,8 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 | `references/swot-and-next-steps.md` | Score-driven SWOT derivation and prioritized-next-steps ranking |
 | `scripts/compute_score.py` | Deterministic weighted-sum and gate-application script — the only source of truth for this arithmetic |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run before packaging or after any SKILL.md edit |
-| `assets/example-output.json` | A complete worked example of the final report JSON |
+| `assets/example-output.json` | A complete worked example of the final report JSON (component mode) |
+| `assets/example-output-plugin.json` | A complete worked example of the final report JSON (plugin mode), including `grader_schema_version`/`plugin_security_score`/`plugin_security_gates_applied` |
 | `plugin-auditor` skill | Step 3 — dispatched for fresh evidence in standalone mode, or supplies pre-gathered evidence consumed in evidence-only mode |
 | `plugin-rulebook-checker` agent | Rule Compliance dimension's signal source, via `plugin-auditor`'s own dispatch |
 | `enhancement-suggestor` agent | Turns the written report's `prioritized_next_steps` into a full WHAT/WHY/HOW plan (Step 8) |

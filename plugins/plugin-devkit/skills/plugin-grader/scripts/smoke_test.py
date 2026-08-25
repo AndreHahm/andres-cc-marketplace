@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Persisted smoke test for plugin-grader: frontmatter validity, referenced-file
 existence, and Bash-scope grant consistency between the body and allowed-tools."""
+
+import pathlib
 import re
 import sys
-import pathlib
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
@@ -25,7 +26,7 @@ def check_frontmatter():
 def check_referenced_files():
     text = SKILL_MD.read_text(encoding="utf-8")
     missing = []
-    for match in re.finditer(r"`(references/[\w.-]+\.md|scripts/[\w./-]+)`", text):
+    for match in re.finditer(r"`(references/[\w.-]+\.md|scripts/[\w./-]+|assets/[\w.-]+)`", text):
         path = SKILL_DIR / match.group(1)
         if not path.exists():
             missing.append(match.group(1))
@@ -47,7 +48,9 @@ def check_bash_grants():
     referenced = set(re.findall(r"scoped `(Bash\([^)]*\))", body))
     missing = referenced - granted
     if missing:
-        return False, "body invokes Bash scope(s) missing from allowed-tools: " + ", ".join(sorted(missing))
+        return False, "body invokes Bash scope(s) missing from allowed-tools: " + ", ".join(
+            sorted(missing)
+        )
     return True, "every scoped Bash invocation in the body is granted"
 
 

@@ -1,0 +1,16 @@
+{
+  "plugin_score_raw": 9.25,
+  "weakest_component": {
+    "name": "skill-b",
+    "final_score": 9.0
+  },
+  "strongest_component": {
+    "name": "skill-a",
+    "final_score": 9.5
+  },
+  "plugin_gates_applied": [],
+  "plugin_final_score": 9.2,
+  "component_count": 2,
+  "plugin_security_score": 10.0,
+  "plugin_security_gates_applied": []
+}

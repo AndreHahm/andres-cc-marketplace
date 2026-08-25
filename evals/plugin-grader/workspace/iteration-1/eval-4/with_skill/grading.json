@@ -1,0 +1,11 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Correctly identifies that skill-b's safety_risk_handling score of 2.0 triggers component-level Gate C, capping skill-b's own final_score at 4.0 (not 8.5)", "passed": true, "evidence": "skill-b-output.json: gates_applied contains C_safety_risk_handling, final_score: 4.0 (weighted_total was 8.5)"},
+    {"text": "Uses the corrected final_score (4.0), not the raw weighted_total (8.5), as skill-b's component_scores entry in the rollup input", "passed": true, "evidence": "rollup-input.json: component_scores {\"skill-a\": 9.5, \"skill-b\": 4.0}"},
+    {"text": "Reports plugin_security_score capped at 4.0 with a plugin_security_gates_applied entry naming Gate P4", "passed": true, "evidence": "rollup-output.json: plugin_security_score: 4.0, plugin_security_gates_applied: [{\"gate\": \"P4_security_risk\", ...}]"},
+    {"text": "Reports plugin_final_score as unaffected by Gate P4 (still derived only from plugin_score_raw and Gates P1-P3)", "passed": true, "evidence": "Agent report: \"No plugin-level gate on final_score fired... plugin_final_score is the uncapped raw mean\" (6.8, from mean of 9.5 and 4.0)"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

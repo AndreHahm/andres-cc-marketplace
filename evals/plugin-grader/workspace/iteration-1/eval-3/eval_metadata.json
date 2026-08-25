@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-grader/SKILL.md",
+  "assertions": [
+    {"text": "Builds a rollup input JSON including a component_security_scores key populated from the given safety_risk_handling scores", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Actually invokes scripts/compute_score.py --rollup against the constructed input rather than hand-computing the result", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Reports plugin_security_score as 10.0 with an empty plugin_security_gates_applied", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Reports plugin_score_raw and plugin_final_score alongside the security fields, not instead of them", "type": "presence", "target": "outputs/ directory"}
+  ]
+}

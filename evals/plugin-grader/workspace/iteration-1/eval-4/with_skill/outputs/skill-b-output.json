@@ -1,0 +1,25 @@
+{
+  "dimension_scores": {
+    "structure_architecture": 8.84,
+    "content_quality": 8.84,
+    "rule_compliance": 8.84,
+    "completeness": 8.84,
+    "maintainability": 8.84,
+    "robustness": 8.84,
+    "simplicity": 8.84,
+    "testing": 8.84,
+    "uniqueness": 8.84,
+    "safety_risk_handling": 2.0,
+    "efficiency": 8.84,
+    "actionability": 8.84
+  },
+  "weighted_total": 8.5,
+  "gates_applied": [
+    {
+      "gate": "C_safety_risk_handling",
+      "reason": "Safety/Risk Handling scored 2.0 (< 4) -- a Critical security finding",
+      "cap": 4.0
+    }
+  ],
+  "final_score": 4.0
+}
