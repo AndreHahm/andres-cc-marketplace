@@ -1,0 +1,32 @@
+{
+  "skill_name": "plugin-planning",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-planning/SKILL.md",
+  "description": "Turns an accepted plugin concept into a concrete component inventory and depth plan.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "JSON companion written alongside Markdown plan",
+      "prompt": "Plan a small plugin-devkit addition from this direct description (no Concept Card exists): 'Add two new skills, plugin-inventory and marketplace-inventory, that build and maintain Git-tracked JSON inventories for a plugin and the whole marketplace respectively. Both are Rich-tier skills needing scripts and reference docs, and belong in the same functional group since they share the same domain.' Produce the plan per this skill's Step 5.",
+      "expected_output": "Writes both a Markdown plan (.claude/output/plugin-planning/<slug>-<timestamp>.md) and a JSON companion at the same base path with a .json extension, per references/plan-json-schema.md. The JSON's planned_components array has 2 entries (plugin-inventory, marketplace-inventory), both type 'skill' with depth_tier 'rich' (lowercase), both functional_group matching a single functional_groups entry listing both component_names. ideation_skipped is true and concept_source is null, matching a note in the Markdown plan that ideation was skipped.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Ideation-skipped case, concept_source null pairing",
+      "prompt": "A user asks to plan a single simple component directly: 'I need one skill that validates YAML frontmatter in markdown files against a schema.' No Concept Card exists. Produce the plan per this skill's Step 5, then explicitly state what concept_source and ideation_skipped are set to in the JSON companion and why.",
+      "expected_output": "Correctly identifies ideation was skipped (no Concept Card path was given/found), sets ideation_skipped: true and concept_source: null in the written JSON companion (never a non-null concept_source paired with ideation_skipped: true), and states this explicitly rather than leaving it ambiguous. Both the Markdown and JSON files are written.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 8,
+    "declared_scenarios_covered": 3,
+    "uncovered": [
+      "1. Concept Card input",
+      "3. Depth allocation",
+      "4. Code-smell trigger",
+      "7. Depth tier round-trips",
+      "8. plugin-inventory import"
+    ]
+  }
+}

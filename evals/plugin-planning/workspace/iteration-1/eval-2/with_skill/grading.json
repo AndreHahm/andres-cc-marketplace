@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Explicitly states ideation was skipped since no Concept Card path was given or found", "passed": true, "evidence": "Agent report: \"ideation_skipped: true -- no plugin-ideation Concept Card was read; the request was treated as a direct description per Step 1\""},
+    {"text": "Sets ideation_skipped: true and concept_source: null in the written JSON companion", "passed": true, "evidence": "frontmatter-schema-validation-2026-08-25T11-16-06Z.json: \"concept_source\": null, \"ideation_skipped\": true -- verified directly from the written JSON file"},
+    {"text": "Never pairs a non-null concept_source with ideation_skipped: true", "passed": true, "evidence": "concept_source is null exactly when ideation_skipped is true, consistent with plan-json-schema.md's field rule"},
+    {"text": "Both the Markdown plan and its JSON companion are written", "passed": true, "evidence": "frontmatter-schema-validation-2026-08-25T11-16-06Z.md and .json both exist at .claude/output/plugin-planning/"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
