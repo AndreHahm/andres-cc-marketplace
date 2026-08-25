@@ -466,21 +466,24 @@ before each one.
 - "review this diff before I open the PR" → `cross-model-review`
 - "is this PR ready to merge" → `merge-pr`
 
-**Test suite:** `evals/handling-review-findings/evals.json` defines 20 scenarios and carries its own
+**Test suite:** `evals/handling-review-findings/evals.json` defines 21 scenarios and carries its own
 `testing_validation_coverage`/`quality_gates_coverage` fields for the gate-level mapping (12 gates still
 without eval coverage, listed there) — see `references/testing-scenarios.md` for the scenario list and
-quality-gates checklist text those fields map against.
+quality-gates checklist text those fields map against. Eval 21 (the `gh api -f`/`-F` mechanics warning in
+`references/github-api-mechanics.md`) isn't one of `testing-scenarios.md`'s round-budget/dedup scenarios
+and doesn't count against `testing_validation_coverage`'s declared totals — it's a standalone mechanical
+check, tracked separately in `workspace/iteration-4/`.
 
 **Structural smoke test:** `scripts/smoke_test.py` — re-run after any `SKILL.md` edit; checks
 frontmatter validity, referenced-file existence, `Bash` grant usage, Workflow step-header sequencing,
 and `evals.json` presence.
 
-**Last dated run record:** 2026-08-22 — 100% with_skill pass rate across all 20 evals (iteration 2's 17
+**Last dated run record:** 2026-08-25 — 100% with_skill pass rate across all 21 evals (iteration 2's 17
 scenarios at 100% vs. 86.6% baseline; iteration 3's 3 newest scenarios, evals 18-20, at 100%,
-with_skill-only). Full run history, the security-review passes, and the specific findings from three
-rounds of live GitHub review on PR #101 (each with its own root cause and fix) live in
-`references/development-history.md` — read it for the "why does the design look like this" story;
-nothing in it is needed to execute a live triage run.
+with_skill-only; iteration 4's eval 21 at 100%, with_skill-only). Full run history, the security-review
+passes, and the specific findings from three rounds of live GitHub review on PR #101 (each with its own
+root cause and fix) live in `references/development-history.md` — read it for the "why does the design
+look like this" story; nothing in it is needed to execute a live triage run.
 
 **Concrete scenarios, the full quality-gates checklist, and the round-cap/dedup edge cases** live in
 `references/testing-scenarios.md` — kept out of the main procedure a reader follows on every triage
@@ -495,4 +498,4 @@ pass, matching `cross-model-review`'s own `references/testing-scenarios.md` prec
 | `references/github-api-mechanics.md` | Exact reply/resolve/trigger-post command shapes, the GraphQL thread-node bridge, batch resolution, issue traceability payload |
 | `references/testing-scenarios.md` | Scenario list and quality-gates checklist |
 | `scripts/smoke_test.py` | This skill's own persisted structural smoke test — re-run after any `SKILL.md` edit |
-| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 20 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate |
+| `evals/handling-review-findings/evals.json` | `skill-tester` test suite — 21 scenarios; iteration 2 (17 scenarios): 100% with_skill pass rate; iteration 3 (evals 18-20, Quick Workflow): 100% with_skill pass rate; iteration 4 (eval 21, Quick Workflow): 100% with_skill pass rate |
