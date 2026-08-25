@@ -40,7 +40,7 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 13,
+    "declared_scenarios_total": 17,
     "declared_scenarios_covered": 5,
     "uncovered": [
       "1. Single skill, clean",
