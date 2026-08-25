@@ -39,7 +39,12 @@ branch", "get back to a clean main".
    from the branch just captured, or the returned `url`'s `<owner>/<repo>` segment differs from
    `gh repo view --json nameWithOwner --jq .nameWithOwner` (the current repository) — on either
    mismatch, stop and ask via `AskUserQuestion` whether to proceed anyway rather than silently
-   continuing on an unrelated PR's merge state.
+   continuing on an unrelated PR's merge state. **Validate `headRefName` immediately, before it is used
+   anywhere else in this skill**: it must match `^[A-Za-z0-9._/-]+$` — if it doesn't, stop and report
+   rather than proceeding (git ref names can otherwise contain shell metacharacters, which could reach a
+   shell context unsafely the first time `headRefName` is interpolated into any `Bash` command, including
+   the read-only `git ls-remote` check in step 1.5). This is a one-time gate at the source, not
+   re-validated at each later use site.
 1.5. **Ensure the remote branch was actually deleted** (only when the intent was to delete it): read
    `merge_auto_delete_branch` (default `true`) the same way `commit`/`merge-pr` do —
    `.claude/git-kit.local.json` if it exists and sets the field, else the git-tracked
@@ -53,9 +58,7 @@ branch", "get back to a clean main".
    its own worktree, since the primary checkout almost always has the default branch checked out. When
    that local checkout fails, `gh` silently skips the remote deletion too (confirmed live, 2026-08-16,
    against this repository's real PR #41: the remote branch was still present days after the merge). Finish
-   the job it should have done: validate `headRefName` against `^[A-Za-z0-9._/-]+$` (git ref names can
-   otherwise contain shell metacharacters — same check `merge-pr`'s own manual-delete path applies before
-   this exact command) — stop and report if it doesn't match, don't proceed. Otherwise delete it directly:
+   the job it should have done — delete it directly (`headRefName` already validated at step 1):
    `gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<headRefName>` (owner/repo from step 1's
    `nameWithOwner` check). Report plainly that this fallback ran and why — never a silent extra deletion.
 2. **Return to main**: resolve the actual default branch rather than assuming `main` —
@@ -133,8 +136,9 @@ branch", "get back to a clean main".
       never "fixed" when the setting says not to delete it
 - [ ] Step 1.5 never assumes the remote branch is gone — always checks with `git ls-remote --heads origin`
       rather than trusting `gh pr merge --delete-branch`'s exit code or the PR's `MERGED` state alone
-- [ ] Step 1.5 always validates `headRefName` against `^[A-Za-z0-9._/-]+$` before the `gh api -X DELETE`
-      call, and skips with a report (never proceeds) on a name that fails this check
+- [ ] `headRefName` is always validated against `^[A-Za-z0-9._/-]+$` at step 1, before its first use
+      anywhere in this skill (including step 1.5's `git ls-remote`/`gh api -X DELETE` calls) — the
+      whole skill stops with a report (never proceeds) on a name that fails this check
 
 **Step 1.5 — verified live, 2026-08-16, against this repository's real stale remote branch:** PR #41's
 `feat/plugin-auditor-codex-integration` remote branch was confirmed still present on `origin` (via

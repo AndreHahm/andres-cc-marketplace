@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Persisted smoke test for handling-review-findings: frontmatter validity,
-referenced-file existence, Bash-scope grant usage, step-header sequencing
-(the "## Workflow" section), evals.json presence, and the gh api -f/-F
-warning in references/github-api-mechanics.md (6 checks total) --
-structural checks only, since this is a conversational, gh-CLI-orchestration
-skill with no executable logic of its own to simulate. Adapted from
-codex-review-recovery's own smoke_test.py (same shape and check set)."""
+referenced-file existence, Bash-scope grant usage (searching SKILL.md's own
+body plus every references/*.md file, since some grants are only used inside
+an extracted reference), step-header sequencing (the "## Workflow" section),
+evals.json presence, and the gh api -f/-F warning in
+references/github-api-mechanics.md (6 checks total) -- structural checks
+only, since this is a conversational, gh-CLI-orchestration skill with no
+executable logic of its own to simulate. Adapted from codex-review-recovery's
+own smoke_test.py (same shape and check set)."""
 
 import pathlib
 import re
@@ -66,6 +68,12 @@ def check_bash_grants():
     granted_cmds = [c.lstrip("*/") for c in granted_cmds]
 
     body = fm_text[header_end:]
+    # A grant used only inside an extracted references/*.md file (progressive disclosure)
+    # must still count as "used" -- search those too, not just SKILL.md's own body.
+    references_dir = SKILL_DIR / "references"
+    if references_dir.is_dir():
+        for ref_file in sorted(references_dir.glob("*.md")):
+            body += "\n" + ref_file.read_text(encoding="utf-8")
 
     # Match the full multi-word grant (e.g. "gh pr checks"), not just its first token --
     # a first-token-only match (e.g. bare "gh") would false-positive against any
@@ -151,7 +159,10 @@ def check_github_api_mechanics_fF_warning():
     if "-f" not in text or "-F" not in text:
         return False, "github-api-mechanics.md doesn't mention both -f and -F flags"
     if "@" not in text:
-        return False, "github-api-mechanics.md doesn't mention the @<path> file-reference syntax at all"
+        return (
+            False,
+            "github-api-mechanics.md doesn't mention the @<path> file-reference syntax at all",
+        )
     if "never interprets a leading" not in text and "never interpret a leading" not in text:
         return False, "github-api-mechanics.md is missing the -f/-F @-path warning callout"
     return True, "references/github-api-mechanics.md carries the -f/-F @-path warning"

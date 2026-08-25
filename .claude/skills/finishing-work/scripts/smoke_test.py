@@ -183,7 +183,35 @@ def _find_repo_root(start: pathlib.Path) -> pathlib.Path | None:
     return None
 
 
-CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants, check_step_sequence]
+def check_headrefname_validated_before_first_use():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    start = text.find("\n## Instructions\n")
+    if start == -1:
+        return False, "'## Instructions' section not found"
+    end = text.find("\n## ", start + 1)
+    section = text[start : end if end != -1 else len(text)]
+    validation_pos = section.find(r"^[A-Za-z0-9._/-]+$")
+    if validation_pos == -1:
+        return False, "headRefName regex validation string not found anywhere in Instructions"
+    first_use_pos = section.find("git ls-remote --heads origin")
+    if first_use_pos == -1:
+        return False, "git ls-remote --heads origin not found anywhere in Instructions"
+    if validation_pos > first_use_pos:
+        return (
+            False,
+            "headRefName validation appears AFTER its first use (git ls-remote) -- validate at "
+            "the source (step 1) before any use, not just before the later DELETE call",
+        )
+    return True, "headRefName is validated before its first shell interpolation (git ls-remote)"
+
+
+CHECKS = [
+    check_frontmatter,
+    check_referenced_files,
+    check_bash_grants,
+    check_step_sequence,
+    check_headrefname_validated_before_first_use,
+]
 
 
 def main():

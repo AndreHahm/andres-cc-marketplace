@@ -1,0 +1,9 @@
+{
+  "eval_id": 22,
+  "skill_path": "plugins/git-kit/skills/handling-review-findings/SKILL.md",
+  "assertions": [
+    {"text": "Correctly reads references/next-round-trigger.md for the full step 8a-8d procedure rather than treating the condensed SKILL.md pointer as the complete instructions", "type": "functionality", "target": "outputs/"},
+    {"text": "Computes the triggered-cycle count as 1 (round 1's automatic CI trigger) plus the number of distinct self-authored batch-id markers, per 8a", "type": "functionality", "target": "outputs/"},
+    {"text": "Does not count a marker posted by a different author, per 8a's authorship check", "type": "functionality", "target": "outputs/"}
+  ]
+}
