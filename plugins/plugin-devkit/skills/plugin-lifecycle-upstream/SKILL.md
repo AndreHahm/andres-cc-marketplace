@@ -47,7 +47,8 @@ Before starting, check what already exists to avoid redundant work. Check for th
 | Condition | Action |
 |---|---|
 | No Conception Brief, Concept Card, or Plan found, and `$ARGUMENTS` is a rough idea | Run the full pipeline from Phase 1 (Conceive) |
-| An approved Conception Brief is given or found in `.claude/output/plugin-conception/` (and no Concept Card/Plan supersedes it) | Skip Phase 1 (Conceive); confirm the brief with the user, then start at Phase 2 (Ideate) |
+| An approved Conception Brief is given or found in `.claude/output/plugin-conception/`, **its classification is Create**, and no Concept Card/Plan supersedes it | Skip Phase 1 (Conceive); confirm the brief with the user, then start at Phase 2 (Ideate) |
+| An approved Conception Brief is given or found, but its classification is anything other than Create | Do not auto-resume into Phase 2 — this pipeline is creation-only (see Gate 1 in `design-a-plugin.md`). Read the brief's classification and state its own hand-off target plainly (`plugin-planning` directly, `plugin-lifecycle-downstream`'s Phase 8, or a clean stop), same as a fresh Phase 1 run would at Gate 1 |
 | A Concept Card path is given or found in `.claude/output/plugin-ideation/` | Skip Phases 1-2 (Conceive, Ideate); confirm the card with the user, then start at Phase 3 (Plan) — a legacy Concept Card is still valid as-is even with no Conception Brief behind it |
 | A Plan path is given or found in `.claude/output/plugin-planning/` | Skip Phases 1-3 (Conceive, Ideate, Plan); confirm the plan with the user, then start at Phase 4 (Design) |
 | Some components already exist on disk matching the plan | Use `AskUserQuestion` — question: "Some components already exist on disk. What should this pass do?", options: "Design the remaining components only" / "Re-design everything" |

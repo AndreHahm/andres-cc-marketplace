@@ -29,6 +29,7 @@ Produce one self-contained report combining a narrative description of what was 
 You receive, as prompt context, two kinds of input — do not treat them the same way:
 
 **Read from disk** (file paths — `Read` these in full before writing anything):
+- The Conception Brief path (`.claude/output/plugin-conception/`), if Phase 1 ran
 - The Concept Card path (`.claude/output/plugin-ideation/`)
 - The Plan path (`.claude/output/plugin-planning/`), if Phase 3 ran
 - If this is an **update** to an existing report (not a new one): the existing report's own path — read it before changing anything
@@ -42,12 +43,12 @@ You receive, as prompt context, two kinds of input — do not treat them the sam
 
 ## Load Context
 
-Before writing anything, `Read` every **file-based** item listed above in full — Concept Card, Plan, and (on an update) the existing report. Do not summarize from the prompt context alone if the underlying file is available. The inline-provided items (gate summaries, Build summary, commits, test results, downstream QA results) have no file to read — take them as given from the prompt.
+Before writing anything, `Read` every **file-based** item listed above in full — Conception Brief (if present), Concept Card, Plan, and (on an update) the existing report. Do not summarize from the prompt context alone if the underlying file is available. The inline-provided items (gate summaries, Build summary, commits, test results, downstream QA results) have no file to read — take them as given from the prompt.
 
 ## Process
 
-1. **Read all file-based artifacts** — Concept Card, Plan (if present), and the existing report (if updating)
-2. **Reconstruct the narrative** — what problem this solves, what was built, how the pieces relate to each other, how a reader would actually invoke or use the result
+1. **Read all file-based artifacts** — Conception Brief (if present), Concept Card, Plan (if present), and the existing report (if updating)
+2. **Reconstruct the narrative** — what problem this solves, what was built, how the pieces relate to each other, how a reader would actually invoke or use the result. If a Conception Brief was read, fold in its classification and rationale (why this was judged Create vs. an alternative, and any evidence it cited) as part of the problem statement — do not let it sit unread once fetched
 3. **Extract open items** — walk the gate outcomes for any revision, deferred decision, or flagged-but-unresolved item; do not invent open items that weren't actually raised during the run
 4. **Assemble the report** per Output Format below and return it as text. **On an update**, preserve `What Was Built` and `How to Use It` from the existing report unless the inline context says something changed; merge new commits into `Commits` (append, don't replace); add or resolve entries in `Open Items`; add/refresh the `Downstream QA` section
 5. **Self-critique** — before writing: does every planned component from the Plan appear in the narrative? Does every gate revision appear in Open Items? Does every commit in the inline list appear in `Commits`? Is any claim in the report NOT traceable to one of the read artifacts or the inline-provided items? Before flagging any length-based discrepancy in Open Items (a SHA that "looks" the wrong length, a file count that seems off) — recount it directly against the data already in the dispatch prompt rather than trusting a first-pass read; a miscount asserted as fact reads as a real data-quality problem to whoever reads the report next. Fix before writing, not after
@@ -63,7 +64,7 @@ Before writing anything, `Read` every **file-based** item listed above in full �
 
 **Generated:** <UTC timestamp of creation>
 **Last updated:** <UTC timestamp — omit this line on first creation>
-**Pipeline artifacts:** <Concept Card path>, <Plan path if present>
+**Pipeline artifacts:** <Conception Brief path if present>, <Concept Card path>, <Plan path if present>
 
 ## What Was Built
 <narrative — problem, components, how they relate>

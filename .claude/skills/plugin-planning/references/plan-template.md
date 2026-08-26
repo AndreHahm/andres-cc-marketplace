@@ -30,9 +30,11 @@ Written to `.claude/output/plugin-planning/<slug>-<timestamp>.md`.
 - `<component-2>`
 
 ## Code-Smell Check
-<state explicitly: "No code smells flagged" OR name the flagged smell and the user's decision (split into two plugins / proceed anyway with reasoning)>
+<state explicitly: "No code smells flagged" OR name the flagged smell and the
+user's decision (split into two plugins / proceed anyway with reasoning)>
 
 ## Next Step
-Design each functional group with the matching Design skill (`skill-development`, `agent-development`, `command-development`, `hook-development`, `rule-development`),
+Design each functional group with the matching Design skill (`skill-development`,
+`agent-development`, `command-development`, `hook-development`, `rule-development`),
 or hand off to `plugin-lifecycle-upstream` to run Design + Build for the whole plan.
 ```

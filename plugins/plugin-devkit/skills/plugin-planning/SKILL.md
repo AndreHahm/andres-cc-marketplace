@@ -47,14 +47,20 @@ Turns an accepted concept into a concrete build list: which components, how many
 Take `$ARGUMENTS` as a Concept Card path, a Conception Brief path, or a direct description:
 
 - **Concept Card found** under `.claude/output/plugin-ideation/` → `Read` it in full.
-- **Conception Brief found** under `.claude/output/plugin-conception/` instead (an
-  Enhance/Consolidate/Reposition-classification brief reached without ever touching `plugin-ideation`) →
-  `Read` it in full; note in the plan that this concept came directly from `plugin-conception`, not
-  `plugin-ideation` — its own Existing-Component Baseline section covers the compatibility contract
-  `plugin-ideation` would otherwise have produced. Its Marketplace Integration section's overlap check
-  stays shallow (repository-metadata depth only, per `plugin-conception`'s own Step 3) — **not** the
-  exhaustive per-component/name-collision search `plugin-ideation` runs; note in the plan that this
-  narrower overlap check is what's actually behind this concept, not a full ideation-depth search.
+- **Conception Brief found** under `.claude/output/plugin-conception/` instead → `Read` it in full and
+  check its own stated classification **before** treating it as planning input. Only Enhance, Consolidate,
+  or Reposition are valid here — this skill has no Ideate/Design/Build capability of its own (a Create
+  brief belongs in `plugin-ideation` instead) and no Fix capability (a Repair/Retain/Reject/Defer brief
+  belongs directly with `plugin-lifecycle-downstream`'s Phase 8 or a clean stop instead, per
+  `plugin-conception`'s own Step 7 hand-off table). If the classification isn't one of the three valid
+  ones, stop and tell the user this brief needs a different destination — do not silently proceed to plan
+  around it. Once confirmed valid: note in the plan that this concept came directly from
+  `plugin-conception`, not `plugin-ideation` — its own Existing-Component Baseline section covers the
+  compatibility contract `plugin-ideation` would otherwise have produced. Its Marketplace Integration
+  section's overlap check stays shallow (repository-metadata depth only, per `plugin-conception`'s own
+  Step 3) — **not** the exhaustive per-component/name-collision search `plugin-ideation` runs; note in the
+  plan that this narrower overlap check is what's actually behind this concept, not a full ideation-depth
+  search.
 - **Neither found** → treat `$ARGUMENTS` as the problem statement directly (both `plugin-conception` and
   `plugin-ideation` were skipped); note in the plan that ideation was skipped, so a reader knows the
   overlap check wasn't run.

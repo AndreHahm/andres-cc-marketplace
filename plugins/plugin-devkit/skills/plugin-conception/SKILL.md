@@ -170,6 +170,11 @@ plugin uses `<domain>-kit` or `<domain>-devkit`, exactly one hyphen immediately 
 Create outcomes, this skill never proposes a name — that's `plugin-ideation` Step 4's job. For every other
 outcome, record the existing plugin's placement, not a new name.
 
+**If the classification settled here is Retain, Reject, or Defer:** stop now, per Stop Conditions below —
+do not proceed to Steps 4-7, and do not write a Conception Brief file. State the classification and
+rationale directly in the response instead. This is the only path that produces "no brief written" — see
+the Testing & Validation section's Retain scenario.
+
 ## Step 4: Define the Concept — Full Depth Only for Non-Create
 
 **Create:** skip this step entirely. Step 1's problem frame plus the classification and Step 3's shallow
@@ -205,15 +210,22 @@ instead.
 
 ## Step 7: Decide and Hand Off
 
+**Entry:** the classification is Create, Enhance, Repair (full-brief path), Consolidate, or Reposition — a
+Retain/Reject/Defer classification already stopped before reaching this step (see the gate at the end of
+Step 3).
+
 Present the completed brief via `AskUserQuestion`: approve and proceed / revise / merge with an existing
-concept / defer with a revisit condition / reject or retain the current state. Only an approved concept
-proceeds — this skill never auto-applies findings or silently turns evidence into a feature.
+concept / defer with a revisit condition / reject or retain the current state instead. This last pair of
+options is the user overriding an already-written brief post-hoc (e.g. approving the classification but
+deciding on reflection the change isn't worth doing) — a different case from the classification-level
+Retain/Reject/Defer stop above, which never reaches this step at all. Only an approved concept proceeds —
+this skill never auto-applies findings or silently turns evidence into a feature.
 
 1. Get a timestamp: `date -u +%Y-%m-%dT%H-%M-%SZ`
 2. Write to `.claude/output/plugin-conception/<concept-slug>-<timestamp>.md` per
    `references/conception-brief-template.md` — for Create, the light variant its own blockquote
-   instructs (the section list lives there, not restated here, to avoid drift); for everything else, all
-   12 sections in full
+   instructs (the section list lives there, not restated here, to avoid drift); for Enhance/Repair
+   (full-brief)/Consolidate/Reposition, all 12 sections in full
 3. Present the artifact link first, then the summary:
 
 ```
@@ -303,6 +315,8 @@ rationale — never silently drop a concept without stating why.
 - [ ] The Conception Brief path is always under `.claude/output/plugin-conception/`
 - [ ] A clean stop (Retain/Reject/Defer/full overlap/stale evidence) always states its rationale — never a
       silent drop
+- [ ] A classification-level Retain/Reject/Defer outcome always stops at the end of Step 3, before Steps
+      4-7 run — no Conception Brief file is ever written for it
 
 ## Reference Guide
 

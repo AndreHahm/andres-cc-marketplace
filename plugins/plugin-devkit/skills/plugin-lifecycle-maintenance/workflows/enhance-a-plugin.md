@@ -46,6 +46,7 @@ Same routing rule as `improve-a-plugin.md` Step 4 — do not send the whole batc
 
 - **Repair (bypassed or full-brief), or Enhance/Consolidate/Reposition with no new components implied** → include in this step's Fix bundle, below.
 - **Enhance/Consolidate/Reposition implying a new or restructured component** → this workflow has no Design/Build capability, matching `plugin-conception`'s own Step 7 table, which routes this case to `plugin-planning`. Present the written Conception Brief and state plainly that this delta needs `plugin-planning` instead, using the brief directly as its Step 1 input. Exclude from the Fix bundle.
+- **Create** → a comparison delta can genuinely reclassify as Create (see `plugin-conception`'s own Step 2). This workflow has no Ideate/Design/Build capability either, matching `plugin-conception`'s own Step 7 table, which routes a Create classification to `plugin-ideation`. Present the written Conception Brief and state plainly that this delta needs `plugin-ideation` (and, from there, the rest of `plugin-lifecycle-upstream`) instead, using the brief directly as its input. Exclude from the Fix bundle — never force a Create candidate into Fix.
 - **Retain / Reject / Defer** → not actionable work. Exclude from the Fix bundle; report the classification and rationale.
 
 For every candidate landing in the Fix bundle, reformat it (via its Conception Brief, where Step 3 produced one, or directly for a bypassed narrow repair) into the shared Finding schema (`plugin-rulebook/references/evidence-schema.md`) — same reshaping as `improve-a-plugin.md` Step 4, with `source: plugin-comparison` and `id: plugin-comparison:<local-id>`.
@@ -54,7 +55,7 @@ If the Fix bundle is empty, state this plainly and skip the `plugin-lifecycle-do
 
 Otherwise, invoke `plugin-lifecycle-downstream` (via `Skill`) targeting the plugin being enhanced, using its documented external Phase 8 (Consolidated Fix) entry (see `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md` Phase 8's Entry condition) with this findings bundle plus a minimal scope manifest, same reasoning as `improve-a-plugin.md` Step 4 — skip Phases 1-7, and declare in the input contract that this workflow owns Phase 9 (Documentation), same as `improve-a-plugin.md` Step 4. Do not reimplement apply → re-verify → commit here — nor its Open-PR/Branch-scope pre-flight checks, which downstream's own Phase 8 already runs via its Mutation-and-Confirmation preflight.
 
-**Exit criteria:** Every candidate has an explicit disposition (bundled-and-applied, redirected to `plugin-planning`, or excluded as Retain/Reject/Defer). For any bundled candidates, downstream's Phase 8 reports all approved deltas applied and independently re-verified (fully or partially), with its own commit(s) already made.
+**Exit criteria:** Every candidate has an explicit disposition (bundled-and-applied, redirected to `plugin-planning`, redirected to `plugin-ideation`, or excluded as Retain/Reject/Defer). For any bundled candidates, downstream's Phase 8 reports all approved deltas applied and independently re-verified (fully or partially), with its own commit(s) already made.
 
 ## Step 5: Test and Self-Review
 
