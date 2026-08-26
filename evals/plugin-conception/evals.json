@@ -50,11 +50,18 @@
       "name": "Create brief stays light even with rich session evidence",
       "prompt": "Extensive session evidence -- three separate retrospective reports, several user corrections, and a detailed friction log -- all point toward needing a genuinely new capability with no existing adjacent component (confirmed by Step 3's shallow check). Classify this and write the brief.",
       "expected_output": "Despite the volume and richness of the supporting evidence, the classification is still Create, and the brief produced is still the LIGHT variant -- Scope and Boundaries, Existing-Component Baseline, Implementation Plan, and the eventual-implementation-success half of Acceptance Criteria are all marked not applicable, rather than being padded out with content plugin-ideation/plugin-planning would produce later. Evidence richness does not change brief depth; only classification does."
+    },
+    {
+      "id": 9,
+      "name": "Standalone Phase 8 hand-off states the findings-bundle gap and stops",
+      "prompt": "Session evidence shows friction with an existing skill (skill-tester's Quick Workflow silently producing false-pass results on a mid-run crash), classified as Enhance with no new/restructured components implied, invoked standalone (not nested inside plugin-lifecycle-upstream/plugin-lifecycle-maintenance). Step 7's hand-off table therefore points at plugin-lifecycle-downstream's Phase 8. After the brief is approved via AskUserQuestion, what does the skill do regarding the Phase 8 hand-off?",
+      "expected_output": "The skill does not attempt to invoke plugin-lifecycle-downstream directly with the Conception Brief's path -- Phase 8's external-entry contract only accepts a schema-validated findings bundle (Finding/Report-Revision shape with a baseline_commit), which a Conception Brief does not satisfy, and this skill has no Bash(git log:*) grant to produce one. In a standalone run there is no orchestrator present to perform that conversion, so the skill states the classification and the findings-bundle-conversion prerequisite, then stops -- it never attempts the direct invocation."
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 8,
     "declared_scenarios_covered": 7,
-    "uncovered": ["Scenario 1 (from-scratch Create stays light) -- eval-1's scripted premise was factually wrong for this repo (dependency-updater already partially covers the domain); eval-1's assertions are invalidated, see its own grading.json"]
+    "uncovered": ["Scenario 1 (from-scratch Create stays light) -- eval-1's scripted premise was factually wrong for this repo (dependency-updater already partially covers the domain); eval-1's assertions are invalidated, see its own grading.json"],
+    "coverage_note": "Eval 9 is outside the original 8-scenario Testing & Validation list -- it was added to verify a specific fix (the Step 7 standalone-invocation carve-out for Phase 8's findings-bundle requirement, a Critical finding from a plugin-auditor scoped review of PR #142), not to close a declared-scenario gap. 3/3 assertions passed against the current SKILL.md text -- see workspace/iteration-1/eval-9/with_skill/grading.json."
   }
 }

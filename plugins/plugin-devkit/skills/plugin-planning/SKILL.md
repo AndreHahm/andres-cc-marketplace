@@ -119,7 +119,7 @@ Cluster the planned components into small functional groups (2-5 components each
 
 ## Testing & Validation
 
-**Eval evidence:** `evals/plugin-planning/evals.json` — 9 scenarios (Quick Workflow, `workspace/iteration-1`), 9/9 eval-covered (4 with a real `skill-tester` run record under `workspace/iteration-1/eval-1` through `eval-4`; scenarios 5-9 below are design-review-verified only — see the evals file's own `testing_validation_coverage.coverage_note`).
+**Eval evidence:** `evals/plugin-planning/evals.json` — 9 scenarios (Quick Workflow, `workspace/iteration-1`), 9/9 eval-covered (scenarios 2, 3, 6, and 7 each have a real `skill-tester` run record under `workspace/iteration-1/eval-1` through `eval-4` respectively; scenarios 1, 4, 5, 8, and 9 below are design-review-verified only — see the evals file's own `testing_validation_coverage.coverage_note`).
 
 1. **Concept Card input** — confirm Step 1 reads the full card, not just the name/overlap section
 2. **Direct-description input (ideation skipped)** — confirm the written plan notes ideation was skipped

@@ -320,6 +320,6 @@ components.]
 |---|---|
 | Downstream route | plugin-ideation (Create) / plugin-planning (Enhance, Consolidate, Reposition needing new components) / Fix — Phase 8 Consolidated Fix (Repair, or Enhance/Consolidate/Reposition with no new components) / Stop |
 | Receiving component | [Skill or workflow] |
-| Primary artifact | [This Conception Brief path] |
+| Primary artifact | [This Conception Brief path — for plugin-ideation/plugin-planning routes only. For a Phase 8 route, Phase 8 requires a findings-bundle conversion of this brief, not the brief path itself; see SKILL.md Step 7] |
 | Supporting artifacts | [Paths or None] |
 | Resume instruction | [Where and how the next session resumes] |

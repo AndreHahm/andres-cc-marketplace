@@ -13,7 +13,7 @@ description: >-
   qualifying before ideation or planning/Fix runs. Not a replacement for plugin-ideation's
   interview or plugin-planning's component inventory — this is the qualifier that precedes both.
 argument-hint: "[rough idea, problem statement, or session-evidence source]"
-allowed-tools: Read Glob Grep Write Bash(date:*) Skill
+allowed-tools: Read Glob Grep AskUserQuestion Write Bash(date:*) Skill
 ---
 
 # Plugin Conception
@@ -240,8 +240,19 @@ Hand-off target follows the classification:
 - **Repair (full-brief path) →** directly to `plugin-lifecycle-downstream`'s Phase 8 (Consolidated Fix).
 - **Retain / Reject / Defer →** stop; no downstream hand-off.
 
-**Standalone invocation:** ask via `AskUserQuestion` before invoking the hand-off target — never invoke it
-silently.
+**Phase 8 needs a findings bundle, not a brief — this skill never invokes it directly.**
+`plugin-lifecycle-downstream`'s Phase 8 external-entry contract accepts only a schema-validated findings
+bundle (`plugin-rulebook/references/evidence-schema.md`'s Finding/Report-Revision shape, with a
+`baseline_commit` and scope manifest) and refuses anything else — a Conception Brief path does not
+satisfy it, and this skill has no `Bash(git log:*)` grant to produce `baseline_commit` even if it tried.
+Where Phase 8 is named as the destination above, the reformatting-and-invoking step belongs to whichever
+orchestrator called this skill (e.g. `plugin-lifecycle-maintenance`'s `improve-a-plugin`/`enhance-a-plugin`
+Step 4 already does this conversion) — never to this skill itself.
+
+**Standalone invocation:** for a `plugin-ideation`/`plugin-planning` hand-off, ask via `AskUserQuestion`
+before invoking the target — never invoke it silently. For a Phase 8 destination, there is no orchestrator
+present to do the conversion: state the classification and that a findings-bundle conversion is needed
+before Phase 8 can be reached, and stop — never attempt to invoke `plugin-lifecycle-downstream` directly.
 
 **Nested invocation:** when this skill runs as a step inside another orchestrator — `plugin-lifecycle-upstream`'s
 Phase 1 (Conceive), or `plugin-lifecycle-maintenance`'s `improve-a-plugin`/`enhance-a-plugin` Conceive step —
