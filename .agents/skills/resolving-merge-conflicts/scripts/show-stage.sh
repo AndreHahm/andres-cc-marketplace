@@ -25,4 +25,4 @@ if [[ -z "$file" ]]; then
     exit 1
 fi
 
-git show "${stage}:${file}"
+git show ":${stage}:${file}"

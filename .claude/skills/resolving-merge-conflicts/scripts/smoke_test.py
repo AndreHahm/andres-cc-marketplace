@@ -3,7 +3,7 @@
 referenced-file existence, Bash-scope grant usage, and step-header sequencing
 (4 checks total) -- structural checks only, since this is a conversational,
 plan-then-execute skill with no executable logic of its own to simulate beyond
-its two shell scripts (checked separately, not by this test).
+its three shell scripts (checked separately, not by this test).
 Adapted from codex-review-recovery's own smoke_test.py (same shape), minus its
 evals.json check -- no skill-tester eval has been run for this skill yet."""
 
@@ -121,8 +121,16 @@ def check_step_sequence():
     # Scoped to the "## Workflow" section's "### Step N" headers only -- other numbered
     # lists elsewhere in the file (e.g. resolution sub-steps, Decision Tracking's example)
     # legitimately restart their own numbering, which a whole-file scan would wrongly flag.
+    # The comment always said this; an earlier version of the code below didn't actually slice
+    # to the section first, so it was a dormant bug (harmless only because no other section in
+    # this particular file happens to use a "### Step N:"-shaped heading).
     text = SKILL_MD.read_text(encoding="utf-8")
-    numbers = [int(n) for n in re.findall(r"^### Step (\d+):", text, re.MULTILINE)]
+    start = text.find("\n## Workflow\n")
+    if start == -1:
+        return True, "no '## Workflow' section found (skip)"
+    end = text.find("\n## ", start + 1)
+    section = text[start : end if end != -1 else len(text)]
+    numbers = [int(n) for n in re.findall(r"^### Step (\d+):", section, re.MULTILINE)]
     if not numbers:
         return True, "no '### Step N' headers found (skip)"
     expected = list(range(numbers[0], numbers[0] + len(numbers)))

@@ -9,7 +9,7 @@ description: >-
   outside an active rebase. Not for conflicts hit mid-`git rebase` -- those have their own safety
   rails, ambiguity-clarification loop, and conflict-content-as-data warning in git-rebase-sync; use
   that skill instead. Hands off to `commit` to finalize -- never runs `git commit` directly.
-allowed-tools: Bash(git status:*), Bash(git diff --cached), Bash(git log -n 5 --oneline --:*), Bash(git add --:*), Bash(git checkout --ours:*), Bash(git checkout --theirs:*), Bash(git submodule status:*), Bash(git merge -Xignore-space-change --no-commit:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/handle-deleted-modified.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/validate-conflicts.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/show-stage.sh:*), AskUserQuestion, Read, Edit, Grep, Skill(git-kit:commit)
+allowed-tools: Bash(git status:*), Bash(git diff --cached), Bash(git log -n 5 --oneline --:*), Bash(git add --:*), Bash(git checkout --ours:*), Bash(git checkout --theirs:*), Bash(git submodule status:*), Bash(git merge -Xignore-space-change --no-commit:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/handle-deleted-modified.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/validate-conflicts.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh:*), AskUserQuestion, Read, Edit, Grep, Skill(git-kit:commit)
 ---
 
 # Git Conflict Resolution
@@ -122,8 +122,8 @@ middle of a long function, for example), inspect each side's full version direct
 "ours," stage 3 is "theirs," for a regular content conflict:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/show-stage.sh" 2 <file>
-"${CLAUDE_PLUGIN_ROOT}/scripts/show-stage.sh" 3 <file>
+"${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh" 2 <file>
+"${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/show-stage.sh" 3 <file>
 ```
 
 ### Step 2: Create Merge Resolution Plan
@@ -143,7 +143,7 @@ Based on the assessment, create a structured plan before resolving any conflicts
 If there are delete-related conflicts (status: DU, UD, or DD):
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/handle-deleted-modified.sh"
+"${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/handle-deleted-modified.sh"
 ```
 
 This script will:
@@ -154,12 +154,19 @@ This script will:
 - Resolve `DU`/`UD` by accepting/reverting the deletion, and `DD` by confirming the mutual deletion
 
 This script does **not** handle `AA` (both added), `AU`, or `UA` statuses -- those aren't deletion
-conflicts. Resolve them using the "Both Added" pattern in the Troubleshooting section below.
+conflicts. `AA` (both sides independently added the same path) is a genuine symmetric case; the "Both
+Added" pattern in the Troubleshooting section below applies directly. `AU`/`UA` are less symmetric --
+they commonly arise from a rename on one side colliding with unrelated content on the other, so one
+side may not have comparable "added" content at all. Before assuming "Both Added" symmetry applies,
+check what actually exists at each stage (`show-stage.sh` above, or `git status` for the exact
+per-side description) rather than assuming both sides added equivalent content.
 
 Review the backup directory and analysis files to understand where changes should be applied.
 
-**Backup retention**: `.git/conflict-backups/<timestamp>/` accumulates indefinitely -- nothing in this
-skill or `git clean` removes it (`git clean` never reaches inside `.git/`). It also contains full file
+**Backup retention**: `conflict-backups/<timestamp>/` inside the git directory (resolved via `git
+rev-parse --git-path conflict-backups` -- normally `.git/conflict-backups/`, but the per-worktree
+private git dir in a linked worktree) accumulates indefinitely -- nothing in this skill or `git clean`
+removes it (`git clean` never reaches inside the git directory). It also contains full file
 contents from the incoming branch, which may include secrets or sensitive data committed there. Mention
 this to the user once resolution is complete, and suggest deleting old backup directories once their
 content has been reviewed and no longer needs to be preserved.
@@ -300,7 +307,7 @@ Read `references/patterns.md` section "Code Logic Conflicts" for detailed exampl
 After completing all resolution phases in your plan, validate that all conflicts are resolved:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/validate-conflicts.sh"
+"${CLAUDE_PLUGIN_ROOT}/skills/resolving-merge-conflicts/scripts/validate-conflicts.sh"
 ```
 
 This script checks for:
@@ -308,7 +315,8 @@ This script checks for:
 - Remaining conflict markers (<<<<<<<, =======, >>>>>>>)
 - Unmerged paths in git status
 - Deleted-modified conflicts
-- Merge state files
+- Whether a merge or cherry-pick is still in progress (informational only -- this is expected and
+  not a failure at this point in the workflow; it doesn't affect the pass/fail result)
 
 ### Step 6: Compile and Test
 
@@ -360,19 +368,12 @@ Cargo.lock, kept current branch's percentage-based tax calculation per user choi
 
 ## Decision Tracking
 
-When you ask the user to choose between options, track their decision and apply similar reasoning to subsequent conflicts:
-
-**Example scenario:**
-
-1. First conflict: User chooses Option 1 (prefer current branch's validation logic)
-2. Second similar conflict: Apply the same reasoning (prefer current branch's validation approach)
-3. Mention: "Resolving by keeping current branch's approach (consistent with your earlier choice)"
-
-**Key principles:**
+When you ask the user to choose between options, track their decision and apply similar reasoning to
+subsequent conflicts within the same session:
 
 - Remember user preferences within the same conflict resolution session
-- Apply consistent patterns when conflicts are similar
-- Mention the consistency: "Following the same pattern as before..."
+- Apply consistent patterns when conflicts are similar (e.g. "Resolving by keeping current branch's
+  approach, consistent with your earlier choice")
 - Ask again if a new conflict is sufficiently different from previous ones
 
 ## Common Patterns Reference
