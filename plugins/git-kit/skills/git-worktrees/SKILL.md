@@ -23,6 +23,13 @@ Neither supersedes the other; they're two different use cases (manual vs. sessio
 
 - **Starting a brand-new piece of work** (syncing main, validating a branch name, choosing worktree vs.
   plain branch before the first commit) — that's `starting-work`'s job.
+- **Resolving the actual content of a merge/cherry-pick conflict** — `references/merge-worktree.md`'s
+  Strategy D covers running `git merge --no-commit`/handling a full branch merge between worktrees, but
+  its own conflict-resolution step is just "resolve conflicts if any," with no per-type strategy. Once a
+  conflict needs that (imports/tests/config merging, generated-file regeneration, deleted-modified
+  backups, or the ambiguity-clarification loop), hand off to `resolving-merge-conflicts` for the actual
+  resolution — this skill still owns everything else about the worktree merge (strategy selection,
+  staging, cleanup).
 
 ## Core Concepts
 

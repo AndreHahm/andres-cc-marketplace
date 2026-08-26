@@ -1,7 +1,11 @@
 ---
 name: git-rebase-sync
 description: >-
-  Sync a feature branch onto the latest origin base branch via git rebase, with safety rails, deliberate conflict resolution, and safe force-with-lease pushing.
+  Sync a feature branch onto the latest origin base branch via git rebase, including resolving
+  conflicts encountered mid-rebase, with safety rails and safe force-with-lease pushing. Use when a
+  rebase is in progress (`git status` or `.git/rebase-merge`/`.git/rebase-apply` shows one). Not for a
+  conflict from `git merge`, `git cherry-pick`, or an already-conflicted working tree with no rebase in
+  progress -- use `resolving-merge-conflicts` instead.
 argument-hint: (optional) explicit base branch to rebase onto — defaults to the GitHub default branch if omitted
 allowed-tools: Bash(git branch:*), Bash(git fetch:*), Bash(git status:*), Bash(git tag:*), Bash(git rev-list:*), Bash(git rebase --continue:*), Bash(git rebase --abort:*), Bash(git rebase --rebase-merges:*), Bash(git rebase origin/:*), Bash(git add:*), Bash(git diff:*), Bash(git show:*), Bash(git push --force-with-lease:*), Bash(git log:*), Bash(gh repo view:*)
 ---
@@ -9,6 +13,13 @@ allowed-tools: Bash(git branch:*), Bash(git fetch:*), Bash(git status:*), Bash(g
 # git-rebase-sync
 
 Use this skill when you need to sync a feature branch onto the latest `origin/{base_branch}` via **git rebase**, including **conflict resolution** with explicit clarification questions when intent is ambiguous.
+
+**Not for conflicts outside an active rebase** — a conflict from `git merge`, `git cherry-pick`, or an
+already-conflicted working tree with no rebase in progress belongs to `resolving-merge-conflicts`
+instead, which owns a plan-first, per-file resolution strategy (imports/tests/config merging, generated
+file regeneration, deleted-modified backups) that this skill's conflict-handling loop doesn't provide.
+The distinguishing check: is `git status` (or `.git/rebase-merge`/`.git/rebase-apply`) showing a rebase
+in progress? If yes, stay here; if no, defer to that skill.
 
 **Arguments:** $ARGUMENTS — optionally, an explicit base branch to rebase onto (e.g. passed through from `/sync-branch <target>`). When given, use it directly as `{base_branch}` in Step 1 instead of querying GitHub's default branch.
 
@@ -121,6 +132,7 @@ Helpful commands during conflicts:
 - "find the commit that broke this" → `git-bisect`
 - "merge this PR" → `merge-pr`
 - "clean up my old branches and worktrees" → `git-cleanup`
+- "I have a merge conflict after a cherry-pick, no rebase running" → `resolving-merge-conflicts`
 
 **Quality gates:**
 - [ ] Never creates or switches to a different feature branch than the current one, unless explicitly asked
