@@ -91,18 +91,22 @@ check_deleted_modified() {
     return 0
 }
 
-# Function to check merge state
-check_merge_state() {
-    if git rev-parse MERGE_HEAD > /dev/null 2>&1; then
-        echo -e "${YELLOW}⚠ Repository is still in merge state${NC}"
-        echo "  Ask the resolving-merge-conflicts skill to hand off to its commit step once"
-        echo "  resolved -- there is no 'git merge --continue'; a plain commit finalizes a merge"
-        return 1
-    fi
-
-    if [[ -f .git/MERGE_HEAD ]]; then
-        echo -e "${YELLOW}⚠ MERGE_HEAD file exists${NC}"
-        return 1
+# Function to report an in-progress operation (merge or cherry-pick) -- informational only,
+# never a failure. MERGE_HEAD/CHERRY_PICK_HEAD legitimately persist until the finalizing commit
+# is made, which happens in a later step (Step 7) than this validation script runs (Step 5) --
+# treating their mere presence as a failure would make this check permanently unable to pass for
+# a real in-progress merge/cherry-pick, even once every conflict is fully resolved and staged.
+# The genuine "not actually resolved" case is already caught separately by check_unmerged_paths
+# above. (Also drops the earlier redundant `[[ -f .git/MERGE_HEAD ]]` check, which duplicated
+# `git rev-parse MERGE_HEAD` via a hardcoded `.git/` path that breaks the same way BACKUP_DIR
+# used to in a linked worktree.)
+check_operation_state() {
+    if git rev-parse --verify -q CHERRY_PICK_HEAD > /dev/null 2>&1; then
+        echo -e "${YELLOW}ℹ Cherry-pick in progress${NC} -- once resolved, run 'git cherry-pick --continue'"
+    elif git rev-parse --verify -q MERGE_HEAD > /dev/null 2>&1; then
+        echo -e "${YELLOW}ℹ Merge in progress${NC} -- once resolved, ask the resolving-merge-conflicts"
+        echo "  skill to hand off to its commit step (there is no 'git merge --continue'; a plain"
+        echo "  commit finalizes a merge)"
     fi
 
     return 0
@@ -126,9 +130,8 @@ if ! check_deleted_modified; then
     all_clear=false
 fi
 
-if ! check_merge_state; then
-    all_clear=false
-fi
+# Informational only -- never affects all_clear (see the function's own comment above).
+check_operation_state
 
 echo ""
 if [[ "$all_clear" == true ]]; then
