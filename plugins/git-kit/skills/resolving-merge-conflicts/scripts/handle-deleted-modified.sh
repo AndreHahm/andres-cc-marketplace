@@ -14,13 +14,17 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-BACKUP_DIR=".git/conflict-backups/$(date +%Y%m%d-%H%M%S)"
-
 # Check if we're in a git repository
 if ! git rev-parse --git-dir > /dev/null 2>&1; then
     echo -e "${RED}Error: Not a git repository${NC}" >&2
     exit 1
 fi
+
+# Resolved via `git rev-parse --git-path` rather than a hardcoded `.git/...` prefix -- in a
+# linked worktree, `.git` is a plain file (containing a `gitdir: <real path>` pointer), not a
+# directory, so `mkdir -p ".git/conflict-backups/..."` would fail with "not a directory".
+# `--git-path` resolves through that indirection correctly regardless of worktree.
+BACKUP_DIR="$(git rev-parse --git-path conflict-backups)/$(date +%Y%m%d-%H%M%S)"
 
 # The git-show ref for the branch that modified the file (DU: theirs is stage 3, UD: ours
 # is stage 2). Not called for DD -- both sides deleted it, so there is nothing to preserve.
@@ -95,6 +99,12 @@ for entry in "${matched_entries[@]}"; do
         # Try to find similar files (potential relocation targets)
         filename=$(basename "$file")
         base_name="${filename%.*}"
+        # For a pure dotfile (".gitignore", ".env"), the only "." is the leading one, so `%.*`
+        # strips the entire name and leaves base_name empty -- an empty pattern below would then
+        # match every tracked file via grep. Fall back to the full filename in that case.
+        if [[ -z "$base_name" ]]; then
+            base_name="$filename"
+        fi
 
         echo -e "  ${BLUE}Searching for potential relocation targets...${NC}"
 
