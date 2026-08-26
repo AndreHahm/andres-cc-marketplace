@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Builds a rollup input JSON including a component_security_scores key populated from the given safety_risk_handling scores", "passed": true, "evidence": "rollup_input.json: {\"component_scores\": {\"skill-a\": 9.5, \"skill-b\": 9.0}, ..., \"component_security_scores\": {\"skill-a\": 10.0, \"skill-b\": 10.0}}"},
+    {"text": "Actually invokes scripts/compute_score.py --rollup against the constructed input rather than hand-computing the result", "passed": true, "evidence": "Agent report: \"Command run: python scripts/compute_score.py --rollup <input.json>\" with rollup_output.json saved as the script's raw output"},
+    {"text": "Reports plugin_security_score as 10.0 with an empty plugin_security_gates_applied", "passed": true, "evidence": "rollup_output.json: \"plugin_security_score\": 10.0, \"plugin_security_gates_applied\": []"},
+    {"text": "Reports plugin_score_raw and plugin_final_score alongside the security fields, not instead of them", "passed": true, "evidence": "rollup_output.json: \"plugin_score_raw\": 9.25, \"plugin_final_score\": 9.2, present alongside the security fields"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

@@ -1,0 +1,12 @@
+{
+  "component_scores": {
+    "skill-a": 9.5,
+    "skill-b": 9.0
+  },
+  "activation_critical": false,
+  "consistency_critical": false,
+  "component_security_scores": {
+    "skill-a": 10.0,
+    "skill-b": 10.0
+  }
+}

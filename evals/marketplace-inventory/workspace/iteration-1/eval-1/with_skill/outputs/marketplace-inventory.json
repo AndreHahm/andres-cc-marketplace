@@ -1,0 +1,155 @@
+{
+  "marketplace_name": "andres-cc-marketplace",
+  "plugins": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "domains": [],
+      "functional_role": null,
+      "id": "plugin_e83786b3",
+      "name": "analysis-kit",
+      "naming_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "name": "analysis-kit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-25",
+          "valid_to": null
+        }
+      ],
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "source": "./plugins/analysis-kit",
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "reason": "Discovered by marketplace-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-25",
+          "valid_to": null
+        }
+      ]
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "domains": [],
+      "functional_role": null,
+      "id": "plugin_d096fc9d",
+      "name": "codex-kit",
+      "naming_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "name": "codex-kit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-25",
+          "valid_to": null
+        }
+      ],
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "source": "./plugins/codex-kit",
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "reason": "Discovered by marketplace-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-25",
+          "valid_to": null
+        }
+      ]
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "domains": [],
+      "functional_role": null,
+      "id": "plugin_9e6e53ce",
+      "name": "git-kit",
+      "naming_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "name": "git-kit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-25",
+          "valid_to": null
+        }
+      ],
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "source": "./plugins/git-kit",
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "reason": "Discovered by marketplace-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-25",
+          "valid_to": null
+        }
+      ]
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "domains": [],
+      "functional_role": null,
+      "id": "plugin_7dde6ca8",
+      "name": "plugin-devkit",
+      "naming_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "name": "plugin-devkit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-25",
+          "valid_to": null
+        }
+      ],
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "source": "./plugins/plugin-devkit",
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "reason": "Discovered by marketplace-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-25",
+          "valid_to": null
+        }
+      ]
+    }
+  ],
+  "schema_version": "1.0.0",
+  "updated_on": "2026-08-25"
+}

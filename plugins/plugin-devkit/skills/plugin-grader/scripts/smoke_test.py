@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Persisted smoke test for plugin-grader: frontmatter validity, referenced-file
 existence, and Bash-scope grant consistency between the body and allowed-tools."""
+
+import pathlib
 import re
 import sys
-import pathlib
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
@@ -25,7 +26,7 @@ def check_frontmatter():
 def check_referenced_files():
     text = SKILL_MD.read_text(encoding="utf-8")
     missing = []
-    for match in re.finditer(r"`(references/[\w.-]+\.md|scripts/[\w./-]+)`", text):
+    for match in re.finditer(r"`(references/[\w.-]+\.md|scripts/[\w./-]+|assets/[\w.-]+)`", text):
         path = SKILL_DIR / match.group(1)
         if not path.exists():
             missing.append(match.group(1))
@@ -35,20 +36,49 @@ def check_referenced_files():
 
 
 def check_bash_grants():
-    # Only "scoped `Bash(...)`" counts as a real invocation instruction — this codebase's
-    # consistent phrasing for "run this via the scoped Bash(...) tool". A bare `Bash(...)`
-    # mention elsewhere (e.g. an illustrative example of a bad grant in a test scenario)
-    # is not an instruction to invoke it and must not be flagged as an unmet grant.
+    # Real invocation instructions in this body live as a literal command line inside a
+    # fenced ```bash block (e.g. "python scripts/compute_score.py <input.json>") -- not as
+    # a bare `Bash(...)` mention, which never actually appears verbatim in the body and
+    # made the previous version of this check a silent no-op (referenced was always empty).
     text = SKILL_MD.read_text(encoding="utf-8")
     header_end = text.find("\n---\n", 4) + 5
     frontmatter, body = text[:header_end], text[header_end:]
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    granted = set(re.findall(r"Bash\([^)]*\)", fm_line_match.group(1))) if fm_line_match else set()
-    referenced = set(re.findall(r"scoped `(Bash\([^)]*\))", body))
-    missing = referenced - granted
-    if missing:
-        return False, "body invokes Bash scope(s) missing from allowed-tools: " + ", ".join(sorted(missing))
-    return True, "every scoped Bash invocation in the body is granted"
+    granted_prefixes = (
+        [
+            g.rsplit(":", 1)[0].strip()
+            for g in re.findall(r"Bash\(([^)]*)\)", fm_line_match.group(1))
+        ]
+        if fm_line_match
+        else []
+    )
+    invoked = set()
+    for block in re.findall(r"```bash\n(.*?)```", body, re.DOTALL):
+        for line in block.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            # Compound shell syntax (&&, ||, ;, a pipe, backticks, $(...), or a
+            # trailing line-continuation) hides a second command this check's own
+            # first-two-tokens extraction would never see or validate against the
+            # granted-prefix allowlist -- reject it outright rather than silently
+            # checking only the first command and letting an ungranted one slip
+            # through unexamined.
+            if re.search(r"&&|\|\||[;|`]|\$\(|\\\s*$", line):
+                return False, (
+                    "fenced bash blocks must use one simple command per line "
+                    f"(compound shell syntax found: {line!r})"
+                )
+            tokens = line.split()
+            invoked.add(" ".join(tokens[:2]) if len(tokens) > 1 else tokens[0])
+    uncovered = [cmd for cmd in invoked if not any(cmd.startswith(p) for p in granted_prefixes)]
+    if uncovered:
+        return False, "body invokes command(s) not covered by any granted Bash scope: " + ", ".join(
+            sorted(uncovered)
+        )
+    if not invoked:
+        return True, "no shell commands found in fenced bash blocks (nothing to check)"
+    return True, f"every invoked command ({len(invoked)}) is covered by a granted Bash scope"
 
 
 CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants]

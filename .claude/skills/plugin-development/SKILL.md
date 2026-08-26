@@ -44,6 +44,11 @@ Ask the user what they want to do using AskUserQuestion — see `references/rout
 - Debugging plugin runtime behavior or writing plugin application code
 - Structured plugin manifest/wiring validation report → use `plugin-validator` instead
 - A rough idea with no name/scope decided yet, wanting guided help figuring that out — use `plugin-lifecycle-upstream` instead (or `plugin-ideation` alone for just the concept step)
+- Deciding which components (and how many, at what content depth) a plugin whose name/purpose is already
+  decided should have — use `plugin-planning` instead; this skill's own New Plugin Creation Interview only
+  toggles coarse manifest categories (skills/agents/hooks/MCP yes-no), it never produces a scoped
+  component inventory or depth plan. If the user has, or should have, an accepted Concept Card and hasn't
+  yet decided component types/counts/depth, route to `plugin-planning` first
 
 ## Slash Commands Deprecated
 

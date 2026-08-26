@@ -1,0 +1,10 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-grader/SKILL.md",
+  "assertions": [
+    {"text": "Recognizes component_security_scores should be omitted/empty since no component has a security-scorable dimension", "type": "quality", "target": "outputs/ directory"},
+    {"text": "States plugin_security_score is null (not a fabricated number)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "States the written report must populate notes.security_score_unavailable_reason to explain the null value", "type": "presence", "target": "outputs/ directory"},
+    {"text": "Still computes plugin_score_raw/plugin_final_score normally from the available quality final_scores", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

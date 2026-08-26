@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "plan_id": "frontmatter-schema-validation-2026-08-25T11-16-06Z",
+  "generated_at": "2026-08-25T11:16:06Z",
+  "concept_source": null,
+  "ideation_skipped": true,
+  "planned_components": [
+    {
+      "name_candidate": "frontmatter-schema-validation",
+      "type": "skill",
+      "purpose": "Validates YAML frontmatter blocks in markdown files against a schema, reporting field-level errors.",
+      "trigger_phrases": ["validate frontmatter", "check YAML frontmatter against schema", "does this file's frontmatter match the schema"],
+      "depth_tier": "rich",
+      "functional_group": "Frontmatter Validation"
+    }
+  ],
+  "functional_groups": [
+    {"name": "Frontmatter Validation", "component_names": ["frontmatter-schema-validation"]}
+  ]
+}

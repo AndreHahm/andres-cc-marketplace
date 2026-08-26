@@ -1,5 +1,5 @@
 {
-  "eval_id": "eval-1-conception-brief-input",
+  "eval_id": 1,
   "configuration": "with_skill",
   "assertions_evaluated": [
     {"text": "The Conception Brief branch applies (not the Concept Card branch or the 'neither found' branch)", "passed": true, "evidence": "'Step 1's second branch -- Conception Brief found under .claude/output/plugin-conception/ -- since the file lives at exactly that path and is titled a Conception Brief with Concept type: Enhance.'"},

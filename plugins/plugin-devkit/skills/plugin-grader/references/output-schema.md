@@ -44,9 +44,20 @@ Each of the 12 keys under `dimensions` takes **either** `counts` (Critical/Major
 {
   "component_scores": {"<name>": <final_score>, "...": "..."},
   "activation_critical": false,
-  "consistency_critical": false
+  "consistency_critical": false,
+  "component_security_scores": {"<name>": <dimensions.safety_risk_handling.score>, "...": "..."}
 }
 ```
+
+`component_security_scores` is optional. Omit it, or pass `{}`, when every component is gradeable for
+quality (so `component_scores` is still populated) but none has a `safety_risk_handling` dimension to
+report — the script then reports `plugin_security_score: null` rather than fabricating a mean from
+nothing. (This is distinct from a plugin with zero gradeable components at all: `compute_score.py
+--rollup` raises on an empty `component_scores`, since there is nothing to roll up for quality either —
+that's a refusal, not a `null` security score.) When
+present, its values are each component's already-resolved `dimensions.safety_risk_handling.score`
+(including the N/A-defaults-to-10 value for an `is_na: true` component — resolved by the caller before
+this input is built, exactly like `component_scores` already works for `final_score`).
 
 Output:
 
@@ -57,15 +68,43 @@ Output:
   "strongest_component": {"name": "skill-c", "final_score": 9.1},
   "plugin_gates_applied": [],
   "plugin_final_score": 7.1,
-  "component_count": 5
+  "component_count": 5,
+  "plugin_security_score": 8.5,
+  "plugin_security_gates_applied": []
 }
 ```
 
-With no gates applied, `plugin_final_score` always equals `plugin_score_raw` exactly (`plugin_final = min(raw, min(caps)) if caps else raw` in `compute_score.py` -- an empty `caps` list means `plugin_final_score` is never anything other than `plugin_score_raw` unchanged). See the Component Mode output example above for what a *capped* result looks like: a non-empty `gates_applied` paired with a `final_score` lower than `weighted_total`.
+With no gates applied, `plugin_final_score` and `plugin_score_raw` are **not** guaranteed to be
+identical, even though both derive from the same unrounded mean and no cap fired — `compute_score.py`
+rounds each independently to different precision (`plugin_score_raw` to 2 decimals, `plugin_final_score`
+to 1). A raw mean like `6.75` with an empty `caps` list reports as `plugin_score_raw: 6.75` but
+`plugin_final_score: 6.8` — a rounding-precision difference, not a gate cap — and
+`assets/example-output-plugin.json` is a live worked example of exactly this. See the Component Mode
+output example above for what a *capped* result looks like instead: a non-empty `gates_applied` paired
+with a `final_score` meaningfully lower than `weighted_total`, not just a rounding-step difference.
 
 `plugin_score_raw` is a simple unweighted mean of every component's `final_score`. See
 `gates-and-rollup.md`'s Whole-Plugin Rollup section for the P1/P2/P3 gate conditions/caps and where
 `activation_critical`/`consistency_critical` come from.
+
+`plugin_security_score` is the same shape of computation applied to `component_security_scores` instead:
+a simple unweighted mean, capped to 4.0 by Gate P4 when the weakest component's security score is below
+4 (see `gates-and-rollup.md`'s Whole-Plugin Security Rollup section for the full condition). It is
+`null`, with
+`plugin_security_gates_applied: []`, exactly when `component_security_scores` was omitted or empty —
+never derived from `component_scores` or any other field. The report-writing step (not this script)
+is responsible for adding `notes.security_score_unavailable_reason` when this happens; the script
+itself only ever reports the numeric result or `null`.
+
+## Schema Versioning
+
+Every report (component mode and plugin mode alike) carries a top-level `grader_schema_version` field,
+introduced from scratch as of `"1.1.0"` — no report ever literally stored `"1.0.0"` as a value; a
+report written before this field existed simply has no `grader_schema_version` key at all, and that
+**absence** (not a stale value) is what a consumer reads as "pre-1.1.0." Versioning policy going
+forward: bump the minor segment for any additive, backward-compatible change (a new optional key, a
+new `notes` sub-field); bump the major segment only for a change that alters the meaning of an
+existing field or removes one.
 
 ## Final Report JSON (Written to `.claude/output/plugin-grader/`)
 
@@ -77,6 +116,7 @@ Top-level fields (each `dimensions` entry is shown separately below, since its o
 
 ```json
 {
+  "grader_schema_version": "1.1.0",
   "target": "skill-tester",
   "target_type": "skill",
   "graded_at": "2026-07-11T14:32:00Z",
@@ -131,11 +171,22 @@ comparable when their backend mix differs.
   "weakest_component": {"name": "skill-b", "final_score": 4.2},
   "strongest_component": {"name": "skill-c", "final_score": 9.1},
   "plugin_gates_applied": [],
-  "plugin_final_score": 6.8
+  "plugin_final_score": 6.8,
+  "plugin_security_score": 8.5,
+  "plugin_security_gates_applied": []
 }
 ```
 
-See `assets/example-output.json` for a complete worked example.
+`plugin_security_score` is `null`, with `plugin_security_gates_applied: []`, when the plugin has zero
+components with a security-scorable dimension — in that case `notes.security_score_unavailable_reason`
+(a string, e.g. `"No gradeable component types present in this plugin."`) must be populated so the gap
+is explicit rather than silently absent. This mirrors `component_scores`'/`plugin_score_raw`'s existing
+exclusion of ungradeable component types from the mean — not new behavior, the same exclusion extended
+to this field.
+
+See `assets/example-output.json` for a complete component-mode worked example, and
+`assets/example-output-plugin.json` for a complete plugin-mode worked example (including the two new
+security fields and `grader_schema_version`).
 
 ## Evidence-Only Mode: Additional Fields and Refusal Shape
 

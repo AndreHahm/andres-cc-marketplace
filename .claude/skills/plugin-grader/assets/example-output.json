@@ -1,5 +1,6 @@
 {
   "mode": "standalone",
+  "grader_schema_version": "1.1.0",
   "target": "example-skill",
   "target_type": "skill",
   "graded_at": "2026-07-11T14:32:00Z",
@@ -35,9 +36,9 @@
       "findings_summary": "N/A — no scripts/ directory present."
     },
     "simplicity": {
-      "score": 8.0, "weight": 0.05, "is_na": false,
+      "score": 10.0, "weight": 0.05, "is_na": false,
       "source": "plugin-rulebook R13",
-      "findings_summary": "SKILL.md is 210 lines (Soft Warning tier), justified by content volume."
+      "findings_summary": "SKILL.md is 210 lines (Weak Warning tier, no orphaned files)."
     },
     "testing": {
       "score": 4.0, "weight": 0.05, "is_na": false,
@@ -65,9 +66,9 @@
       "findings_summary": "Concrete, imperative Quick Start; no vagueness findings."
     }
   },
-  "weighted_total": 8.8,
+  "weighted_total": 8.9,
   "gates_applied": [],
-  "final_score": 8.8,
+  "final_score": 8.9,
   "swot": {
     "strengths": [
       "Rule Compliance (10/10) — all 23 enabled rules PASS.",
@@ -102,7 +103,7 @@
       "lifts_gate": null
     }
   ],
-  "reasoning_summary": "Strong compliance, completeness, and maintainability; the score is held to 8.8 primarily by one Major content-quality contradiction and the absence of automated test coverage. No hard gates triggered.",
+  "reasoning_summary": "Strong compliance, completeness, and maintainability; the score is held to 8.9 primarily by one Major content-quality contradiction and the absence of automated test coverage. No hard gates triggered.",
   "notes": {
     "inspection_limits": "scripts-reviewer was not dispatched (no scripts/ present).",
     "na_dimensions": ["robustness"],

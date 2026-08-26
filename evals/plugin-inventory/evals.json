@@ -1,0 +1,27 @@
+{
+  "skill_name": "plugin-inventory",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-inventory/SKILL.md",
+  "description": "Builds and maintains the permanent, Git-tracked JSON inventory for exactly one plugin.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Build mode bootstraps and surfaces classification follow-up",
+      "prompt": "Build the plugin inventory for the plugin at plugins/plugin-devkit (this repo's own plugin), writing the inventory to a scratch path you choose under the session's scratchpad directory (not the plugin's own real .claude-plugin/ directory -- do not touch the real repo). Use plugin_id 'plugin_test1234'. After bootstrapping, report: how many components were found, and what you would ask the user about next per this skill's own Build mode documentation.",
+      "expected_output": "Runs `python scripts/plugin-inventory.py bootstrap <plugin_dir> <scratch_inventory_path> plugin_test1234 plugin-devkit` (not against the real plugin-inventory.json), reports the bootstrapped component count, and correctly states that functional_role/domain/created_on/compatibility all start null and need a follow-up classification pass presented to the user via AskUserQuestion before Build is considered fully done -- but recognizes this classification pass happens AFTER the initial write already succeeded, not before it (per the skill's own corrected Build-mode wording), and does not claim the write itself required approval first.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Conflict resolution via status-transition, not the bare conflict shape",
+      "prompt": "You have an existing plugin-inventory.json (construct one, or use the one from Eval 1) where one component's status_history shows it as 'active' but its discovered filesystem path no longer exists (simulate this by editing your bootstrapped inventory to remove one component's underlying skill directory reference, or by manually describing this scenario if simpler). Per this skill's own documentation, how would you resolve this conflict, and what exact operation would you construct to apply the resolution (e.g. retiring the component)? Show the actual JSON operation shape you'd write to the approved-plan file and the apply command you'd run.",
+      "expected_output": "Correctly identifies this as a 'conflict' operation from `plan` (missing active component), states it is never applied as the bare conflict shape and never auto-resolved, and constructs a 'status-transition' operation instead: `{\"operation\": \"status-transition\", \"id\": \"<component_id>\", \"new_status\": \"retired\", \"reason\": \"...\", \"evidence\": [...]}`. Correctly names `python scripts/plugin-inventory.py apply <inventory_path> <approved_plan.json> <expected_hash>` as the command, and explains that this operation type uses history.close_and_append_status_period internally so the status and its history entry stay in sync.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 11,
+    "declared_scenarios_covered": 11,
+    "uncovered": [],
+    "coverage_note": "Scenarios 1, 3, 4, 5, 6, 7, 9, 10 (previously uncovered) are now covered not by a skill-tester eval here, but by 8 new, live-executed checks added to scripts/smoke_test.py on 2026-08-25 (check_discovery_accuracy, check_plan_apply_add_operation, check_stale_hash_rejection, check_import_grading_dedup, check_conflict_missing_active_component, check_history_invariants, check_repair_history_structural_rejection, check_enum_rejection) -- each runs against a small synthetic fixture plugin and asserts real script behavior, per require-tests-for-behavior-changes.md's 'deterministic scripts/code: direct execution against fixtures' mechanism, which fits these scenarios better than an agent-judgment eval prompt would. All 11 checks in smoke_test.py pass as of this commit. Scenario 11 (Self-check) is satisfied definitionally -- smoke_test.py running and reporting its own pass/fail status is the self-check. Scenarios 2 and 8 remain covered by evals 1-2 above, unchanged."
+  }
+}

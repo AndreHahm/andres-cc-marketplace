@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "plan_id": "inventory-skills-2026-08-25T11-15-51Z",
+  "generated_at": "2026-08-25T11:15:51Z",
+  "concept_source": null,
+  "ideation_skipped": true,
+  "planned_components": [
+    {
+      "name_candidate": "plugin-inventory",
+      "type": "skill",
+      "purpose": "Builds and maintains a Git-tracked JSON inventory of a single plugin's components.",
+      "trigger_phrases": ["build the plugin inventory", "update this plugin's component database", "inventory this plugin"],
+      "depth_tier": "rich",
+      "functional_group": "Inventory Maintenance"
+    },
+    {
+      "name_candidate": "marketplace-inventory",
+      "type": "skill",
+      "purpose": "Builds and maintains a Git-tracked JSON inventory of the whole marketplace, aggregating across plugins.",
+      "trigger_phrases": ["build the marketplace inventory", "inventory the whole marketplace", "update the marketplace component database"],
+      "depth_tier": "rich",
+      "functional_group": "Inventory Maintenance"
+    }
+  ],
+  "functional_groups": [
+    {"name": "Inventory Maintenance", "component_names": ["plugin-inventory", "marketplace-inventory"]}
+  ]
+}

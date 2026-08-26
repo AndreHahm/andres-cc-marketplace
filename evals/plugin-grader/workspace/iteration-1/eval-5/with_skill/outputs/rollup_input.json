@@ -1,0 +1,8 @@
+{
+  "component_scores": {
+    "mcp-server-a": 8.0,
+    "mcp-server-b": 7.5
+  },
+  "activation_critical": false,
+  "consistency_critical": false
+}

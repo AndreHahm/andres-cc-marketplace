@@ -4,12 +4,12 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-devkit` ships **38 skills**, **24 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
+`plugin-devkit` ships **40 skills**, **24 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
 | **Component authoring** | `agent-development`, `command-development`, `hook-development`, `skill-development`, `workflow-skill-development`, `mcp-integration` |
-| **Plugin structure & governance** | `plugin-development`, `plugin-rulebook`, `plugin-auditor`, `upstream-sources-registry`, `plugin-settings`, `plugin-evaluation`, `marketplace-development`, `plugin-documentation` |
+| **Plugin structure & governance** | `plugin-development`, `plugin-rulebook`, `plugin-auditor`, `upstream-sources-registry`, `plugin-settings`, `plugin-evaluation`, `marketplace-development`, `plugin-documentation`, `plugin-inventory`, `marketplace-inventory` |
 | **Skill quality & lifecycle** | `component-prototyping`, `skill-refiner-interactive`, `skill-improver-loop`, `skill-tester`, `reviewing-evals`, `skill-security`, `skill-stocktake`, `skill-maintenance` |
 | **Plugin lifecycle** | `using-plugin-devkit`, `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance` |
 | **Planning & analysis** | `plugin-conception`, `plugin-ideation`, `plugin-planning`, `plugin-comparison`, `plugin-grader`, `analyzing-sessions`, `verify-agent-citations` |
@@ -53,6 +53,8 @@ cc --plugin-dir /path/to/plugin-devkit
 | `plugin-evaluation` | Designing a rubric or LLM-judge methodology to evaluate agents/commands |
 | `marketplace-development` | Converting a skills-only repo (no `plugin.json`) into a publishable marketplace |
 | `plugin-documentation` | Authoring or updating a plugin's human-facing docs (README, CONTRIBUTING, CHANGELOG, and more) from its actual current state, then invoking `human-doc-reviewer` for QA |
+| `plugin-inventory` | Building and maintaining the permanent, Git-tracked JSON inventory for exactly one plugin — components, lifecycle status, and append-only naming/status/quality/security-scoring histories |
+| `marketplace-inventory` | Building and maintaining the permanent, Git-tracked root JSON inventory for the whole marketplace — plugin membership, lifecycle status, and rollups, reading each plugin's own inventory for referential integrity |
 
 ### Skill Quality & Lifecycle
 

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States (or observes) that import-grading rejects a target_type other than 'plugin' outright", "passed": true, "evidence": "Live-reproduced: exit code 1, exact rejection message, confirmed before InventoryLock is even acquired"},
+    {"text": "Explains that a component-level report belongs in plugin-inventory's own import-grading instead", "passed": true, "evidence": "Confirmed asymmetry: plugin-inventory's cmd_import_grading has no such guard, is the intended destination"},
+    {"text": "Explains score/security_score must only come from a whole-plugin report, never derived from a single component", "passed": true, "evidence": "Cites reconciliation.md's Rollup Fields Are Import-Only section correctly, and confirms plugin-devkit's record was unchanged after the rejected attempt"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

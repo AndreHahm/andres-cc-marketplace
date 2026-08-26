@@ -1,0 +1,226 @@
+"""Reads and validates a completed plugin-grader JSON report for import into
+an inventory's `scoring_history`/`security_scoring_history`. Contains no
+grading formula, security rollup, or score transformation of its own --
+plugin-grader is the sole quality- and security-scoring authority; this
+module only verifies target identity, schema shape, and required fields,
+then copies the resulting value unchanged.
+"""
+
+import datetime
+
+from .json_store import compute_hash, read_json  # ty: ignore[unresolved-import]
+
+
+class GradingReportError(ValueError):
+    """Raised when a plugin-grader report can't be used for import: malformed,
+    unsupported target type, target/type mismatch, or a required field absent.
+    """
+
+
+def _validate_score(value, field_label):
+    """Reject a non-numeric or out-of-[0, 10]-range score before it's
+    imported. Every schema in this system declares scores as numbers in
+    [0, 10], but nothing loads that schema at runtime to enforce it (see
+    plugin-inventory/marketplace-inventory SKILL.md's Output Format
+    section) -- this is the one place a malformed or adversarial report's
+    score actually gets checked before it reaches the canonical inventory.
+    `bool` is explicitly excluded since `isinstance(True, int)` is `True`
+    in Python and would otherwise silently pass as a valid score."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise GradingReportError(
+            f"{field_label} must be a number, got {type(value).__name__} ({value!r})"
+        )
+    if not (0 <= value <= 10):
+        raise GradingReportError(f"{field_label} must be within [0, 10], got {value!r}")
+
+
+def load_and_validate_report(report_path, expected_target, expected_target_type):
+    """Read a plugin-grader report and verify target/type/shape.
+
+    Returns the parsed report dict. Raises `GradingReportError` on any
+    mismatch or malformed JSON -- never silently substitutes a default.
+    """
+    try:
+        report = read_json(report_path)
+    except (OSError, ValueError) as exc:
+        raise GradingReportError(f"could not read/parse report at {report_path}: {exc}") from exc
+
+    for field in ("target", "target_type", "graded_at"):
+        if field not in report:
+            raise GradingReportError(f"report {report_path} is missing required field {field!r}")
+    graded_at = report["graded_at"]
+    if not isinstance(graded_at, str) or not graded_at:
+        # The schema declares graded_at as a plain string (no further format
+        # constraint) -- but scoring_history/security_scoring_history sort
+        # and max() over this field, so a non-string value (int, list, etc.)
+        # would silently pass this presence check, get appended on the first
+        # import, and then crash with an uncaught TypeError comparing mixed
+        # types the moment a second, normally-shaped import touches the same
+        # history.
+        raise GradingReportError(
+            f"report {report_path}'s graded_at must be a non-empty string, "
+            f"got {type(graded_at).__name__} ({graded_at!r})"
+        )
+    # history.py's sort()/max() compare graded_at values lexicographically as
+    # raw strings, never parsing them -- a syntactically-valid-but-garbage
+    # string ("not-a-time") would pass the check above, and two differently
+    # offset-but-real ISO timestamps ("...+10:00" vs "...Z") can sort in the
+    # wrong chronological order even though both are individually valid,
+    # since lexicographic order only matches chronological order when every
+    # value shares the same UTC offset. plugin-grader itself only ever emits
+    # a "Z"-suffixed (UTC) timestamp (see its output-schema.md/example-output
+    # files), so requiring that here rejects both failure modes at once
+    # without inventing a new convention.
+    if not graded_at.endswith("Z"):
+        raise GradingReportError(
+            f"report {report_path}'s graded_at must be a UTC ISO-8601 timestamp "
+            f"ending in 'Z' (the only format plugin-grader emits), got {graded_at!r}"
+        )
+    try:
+        datetime.datetime.fromisoformat(graded_at[:-1] + "+00:00")
+    except ValueError as exc:
+        raise GradingReportError(
+            f"report {report_path}'s graded_at is not a valid ISO-8601 timestamp: "
+            f"{graded_at!r} ({exc})"
+        ) from exc
+
+    if report["target"] != expected_target:
+        raise GradingReportError(
+            f"report target {report['target']!r} does not match expected {expected_target!r}"
+        )
+    if report["target_type"] != expected_target_type:
+        raise GradingReportError(
+            f"report target_type {report['target_type']!r} does not match "
+            f"expected {expected_target_type!r}"
+        )
+    return report
+
+
+def extract_quality_score(report):
+    """Return `(score, grader_schema_version)` for import into
+    `scoring_history`. Component-mode -> `final_score`; plugin-mode ->
+    `plugin_final_score`. `weighted_total`/`plugin_score_raw` are never
+    substituted -- this raises if the authoritative field is absent rather
+    than falling back to a pre-gate value.
+    """
+    if report["target_type"] == "plugin":
+        if "plugin_final_score" not in report:
+            raise GradingReportError("plugin-mode report has no plugin_final_score")
+        score = report["plugin_final_score"]
+        _validate_score(score, "plugin_final_score")
+        return score, report.get("grader_schema_version")
+    if "final_score" not in report:
+        raise GradingReportError("component-mode report has no final_score")
+    score = report["final_score"]
+    _validate_score(score, "final_score")
+    return score, report.get("grader_schema_version")
+
+
+def extract_security_score(report):
+    """Return `(security_score, source_field, is_na, grader_schema_version)`.
+
+    Both modes treat "no security dimension in this report" the same way -- a graceful
+    `security_score: None`, never an exception that would also abort the caller's
+    unrelated quality-score import (`build_scoring_event`/`extract_quality_score` are
+    entirely independent of this function and never see its result).
+
+    Component-mode: `dimensions.safety_risk_handling.score`/`is_na` when the dimension is
+    present; `None` when it's entirely absent (an unsupported target type, or a report
+    that predates this dimension) -- this is not distinguished from plugin-mode's
+    pre-prerequisite case below, since both mean the same thing to a caller: nothing to
+    import, quality import unaffected.
+    Plugin-mode: an explicit `plugin_security_score`, distinguishing two `None` cases the
+    caller must not conflate -- `grader_schema_version` absent entirely means the report
+    predates the security-score prerequisite (a different case from the field being
+    present-and-`null` with a stated `notes.security_score_unavailable_reason`, which this
+    function surfaces as `security_score: None` with a real `grader_schema_version`,
+    letting the caller tell the two apart).
+    """
+    grader_schema_version = report.get("grader_schema_version")
+    if report["target_type"] == "plugin":
+        if grader_schema_version is None:
+            return None, "plugin_security_score", None, None
+        plugin_security_score = report.get("plugin_security_score")
+        if plugin_security_score is not None:
+            _validate_score(plugin_security_score, "plugin_security_score")
+        return (
+            plugin_security_score,
+            "plugin_security_score",
+            None,
+            grader_schema_version,
+        )
+
+    dimensions = report.get("dimensions", {})
+    safety = dimensions.get("safety_risk_handling")
+    if safety is None:
+        return None, "dimensions.safety_risk_handling.score", None, grader_schema_version
+    safety_score = safety.get("score")
+    if safety_score is not None:
+        _validate_score(safety_score, "dimensions.safety_risk_handling.score")
+    return (
+        safety_score,
+        "dimensions.safety_risk_handling.score",
+        safety.get("is_na", False),
+        grader_schema_version,
+    )
+
+
+def _imported_on_today():
+    return datetime.datetime.now(datetime.UTC).date().isoformat()
+
+
+def build_scoring_event(report, report_path, target, target_type):
+    """Build a `scoring_history`-shaped event dict, ready for
+    `history.append_scoring_event`. Raises `GradingReportError` if the
+    report has no usable quality score.
+
+    `report_path` typically points into a gitignored `.claude/output/` report and is a
+    best-effort provenance breadcrumb, not a durable reference -- it can become
+    unresolvable at any time without that being a breaking change. `report_sha256` is
+    the durable identity a consumer should actually trust.
+    """
+    score, grader_schema_version = extract_quality_score(report)
+    gates_applied = report.get(
+        "plugin_gates_applied" if target_type == "plugin" else "gates_applied", []
+    )
+    if not isinstance(gates_applied, list) or not all(
+        isinstance(g, dict) and isinstance(g.get("gate"), str) for g in gates_applied
+    ):
+        raise GradingReportError(
+            "report's gates_applied is not a list of {'gate': <str>, ...} objects"
+        )
+    return {
+        "score": score,
+        "graded_at": report["graded_at"],
+        "imported_on": _imported_on_today(),
+        "target": target,
+        "target_type": target_type,
+        "report_path": report_path,
+        "report_sha256": compute_hash(report),
+        "grader_schema_version": grader_schema_version,
+        "gates_applied": gates_applied,
+    }
+
+
+def build_security_scoring_event(report, report_path, target, target_type):
+    """Build a `security_scoring_history`-shaped event dict. Returns `None`
+    when there is nothing to append -- a `None` security score with no
+    `grader_schema_version` at all (pre-prerequisite report) never appends a
+    history event, matching the invariant that a `null` score is not a
+    score-bearing event.
+    """
+    security_score, source_field, is_na, grader_schema_version = extract_security_score(report)
+    if security_score is None:
+        return None
+    return {
+        "security_score": security_score,
+        "graded_at": report["graded_at"],
+        "imported_on": _imported_on_today(),
+        "target": target,
+        "target_type": target_type,
+        "report_path": report_path,
+        "report_sha256": compute_hash(report),
+        "grader_schema_version": grader_schema_version,
+        "source_field": source_field,
+        "is_na": is_na,
+    }
