@@ -29,9 +29,13 @@ Produce one self-contained report combining a narrative description of what was 
 You receive, as prompt context, two kinds of input — do not treat them the same way:
 
 **Read from disk** (file paths — `Read` these in full before writing anything):
-- The Conception Brief path (`.claude/output/plugin-conception/`), if Phase 1 ran
+- The Conception Brief path (`.claude/output/plugin-conception/`), if one exists for this build — whether
+  Phase 1 ran fresh, or an existing Brief was consumed to resume directly at Phase 2 (per
+  `plugin-lifecycle-upstream`'s own Auto-Detection Logic, which skips Phase 1 for an approved Create
+  brief without Phase 1 itself ever running)
 - The Concept Card path (`.claude/output/plugin-ideation/`)
-- The Plan path (`.claude/output/plugin-planning/`), if Phase 3 ran
+- The Plan path (`.claude/output/plugin-planning/`), if one exists for this build — whether Phase 3 ran
+  fresh, or an existing Plan was consumed to resume directly at Phase 4, same reasoning as the Brief above
 - If this is an **update** to an existing report (not a new one): the existing report's own path — read it before changing anything
 
 **Provided inline in the dispatch prompt** (no file exists for these — take them as given, do not go looking for a file that isn't there):

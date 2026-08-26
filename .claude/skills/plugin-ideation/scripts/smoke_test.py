@@ -18,7 +18,9 @@ def check_frontmatter():
     if end == -1:
         return False, "frontmatter block is never closed"
     fm = text[4:end]
-    if "name:" not in fm or "description:" not in fm:
+    if not re.search(r"^name:", fm, re.MULTILINE) or not re.search(
+        r"^description:", fm, re.MULTILINE
+    ):
         return False, "missing required frontmatter field ('name' or 'description')"
     return True, "frontmatter present and closed"
 
@@ -68,7 +70,12 @@ def check_bash_grants():
         for wf in sorted(workflows_dir.glob("*.md")):
             body += "\n" + wf.read_text(encoding="utf-8")
 
-    unused = [cmd for cmd in granted_cmds if not re.search(rf"\b{re.escape(cmd)}\b", body)]
+    # Require the command to appear as the start of a backtick-wrapped inline code span
+    # (e.g. `date -u ...`) -- the actual documented-invocation convention this skill's body
+    # uses -- not just anywhere as a bare word, which would pass on an unrelated prose
+    # mention of the same word (e.g. a grant for `Bash(date:*)` "passing" because the body
+    # merely discusses timestamps).
+    unused = [cmd for cmd in granted_cmds if not re.search(rf"`{re.escape(cmd)}\b", body)]
     if unused:
         return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(
             sorted(set(unused))

@@ -58,7 +58,11 @@ Take `$ARGUMENTS` as a Concept Card path, a Conception Brief path, or a direct d
   `plugin-conception`'s own Step 7 hand-off table). If the classification isn't one of the three valid
   ones, stop and tell the user this brief needs a different destination — do not silently proceed to plan
   around it. Once confirmed valid: note in the plan that this concept came directly from
-  `plugin-conception`, not `plugin-ideation` — its own Existing-Component Baseline section covers the
+  `plugin-conception`, not `plugin-ideation`, and set the JSON companion's `concept_source` to the
+  `conception_brief` variant with `classification` set to the brief's own confirmed value (per
+  `references/plan-json-schema.md`'s Field Rules) — this concept was never validated as Create at
+  `plugin-lifecycle-upstream`'s Gate 1, and that field is what lets a later Design/Build resume from
+  this plan check that before proceeding. Its own Existing-Component Baseline section covers the
   compatibility contract `plugin-ideation` would otherwise have produced. Its Marketplace Integration
   section's overlap check stays shallow (repository-metadata depth only, per `plugin-conception`'s own
   Step 3) — **not** the exhaustive per-component/name-collision search `plugin-ideation` runs; note in the
@@ -137,7 +141,7 @@ Cluster the planned components into small functional groups (2-5 components each
 - [ ] The written plan path is always under `.claude/output/plugin-planning/`
 - [ ] The Step 5 handoff offer uses `AskUserQuestion`, never auto-invoked without asking
 - [ ] Depth-tier vocabulary matches `skill-workflow.md`'s 80% Rule terms — never introduces a new parallel rubric
-- [ ] The JSON companion is always written alongside the Markdown plan, at the same base path, with `type` restricted to `skill`/`agent`/`command`/`hook`
+- [ ] The JSON companion is always written alongside the Markdown plan, at the same base path, with `type` restricted to `skill`/`agent`/`command`/`hook`/`rule`
 - [ ] `concept_source` is always correctly typed `object | null`, and is never non-null when `ideation_skipped` is `true` (or vice versa)
 - [ ] No `id` field is ever minted in the JSON companion — stable-ID assignment stays the consuming inventory tool's responsibility
 
