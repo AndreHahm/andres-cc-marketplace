@@ -20,28 +20,34 @@ fi
 check_conflict_markers() {
     local files_with_markers=()
     local unmerged
-    unmerged=$(git diff -z --name-only --diff-filter=U 2>/dev/null || true)
+    unmerged=$(git diff --name-only --diff-filter=U 2>/dev/null || true)
 
     # If no unmerged paths remain, still scan every tracked file -- a resolved file can
     # be staged/committed with markers left inside it, and diff --diff-filter=U exits 0
     # with empty output in that case, not a failure that would trigger a fallback.
-    # NUL-delimited throughout (`-z`, `-d ''`) rather than line-based: a path can legally
-    # contain a newline, and a plain (non `-z`) listing C-quotes special characters -- either
-    # way a line-based split can silently skip a file, which is exactly the failure mode this
-    # check exists to catch. Same rationale as handle-deleted-modified.sh's own NUL-delimited
-    # porcelain parsing.
-    local files_to_check
-    if [[ -n "$unmerged" ]]; then
-        files_to_check="$unmerged"
-    else
-        files_to_check=$(git ls-files -z)
-    fi
-
+    #
+    # NUL-delimited (`-z`, `-d ''`), fed straight from process substitution into the read
+    # loop -- never captured into a plain variable first. Bash cannot store a NUL byte in a
+    # variable: command substitution silently strips every embedded NUL (verified: `x=$(printf
+    # 'a\0b\0c')` warns "command substitution: ignored null byte in input" and yields "abc",
+    # no separator left behind). An earlier version of this function did exactly that
+    # (`files_to_check=$(git ls-files -z)` then `read <<< "$files_to_check"`), which silently
+    # collapsed every multi-file listing into one unsplittable blob -- the `-z` fix for
+    # special-character filenames was real, but round-tripping its output through a variable
+    # defeated it for the far more common 2+-file case. `$unmerged` above is only ever used for
+    # the plain non-empty check (safe without `-z`, since quoting doesn't affect emptiness);
+    # the actual NUL-delimited enumeration below is generated fresh and never stored.
     while IFS= read -r -d '' file; do
         if [[ -f "$file" ]] && grep -l '^<<<<<<<\|^=======\|^>>>>>>>' "$file" > /dev/null 2>&1; then
             files_with_markers+=("$file")
         fi
-    done <<< "$files_to_check"
+    done < <(
+        if [[ -n "$unmerged" ]]; then
+            git diff -z --name-only --diff-filter=U 2>/dev/null
+        else
+            git ls-files -z
+        fi
+    )
 
     if [[ ${#files_with_markers[@]} -gt 0 ]]; then
         echo -e "${RED}✗ Found conflict markers in the following files:${NC}"
