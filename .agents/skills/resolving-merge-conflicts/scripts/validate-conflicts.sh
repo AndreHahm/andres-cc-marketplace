@@ -44,7 +44,10 @@ check_conflict_markers() {
     # the plain non-empty check (safe without `-z`, since quoting doesn't affect emptiness);
     # the actual NUL-delimited enumeration below is generated fresh and never stored.
     while IFS= read -r -d '' file; do
-        if [[ -f "$file" ]] && grep -l '^<<<<<<<\|^=======\|^>>>>>>>' "$file" > /dev/null 2>&1; then
+        # `--` before "$file": a conflicted path can legally start with "-" (e.g. "-a"), which
+        # grep would otherwise parse as an option, silently reading stdin instead of the file
+        # and reporting no match even when the file genuinely still has a leftover marker.
+        if [[ -f "$file" ]] && grep -l -- '^<<<<<<<\|^=======\|^>>>>>>>' "$file" > /dev/null 2>&1; then
             files_with_markers+=("$file")
         fi
     done < <(
