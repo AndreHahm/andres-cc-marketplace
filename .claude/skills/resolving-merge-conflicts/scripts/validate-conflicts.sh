@@ -22,9 +22,15 @@ check_conflict_markers() {
     local unmerged
     unmerged=$(git diff --name-only --diff-filter=U 2>/dev/null || true)
 
-    # If no unmerged paths remain, still scan every tracked file -- a resolved file can
-    # be staged/committed with markers left inside it, and diff --diff-filter=U exits 0
-    # with empty output in that case, not a failure that would trigger a fallback.
+    # If no unmerged paths remain, scan the *staged* files instead -- a resolved file can be
+    # staged with markers left inside it, and diff --diff-filter=U exits 0 with empty output in
+    # that case, not a failure that would trigger a fallback. Deliberately NOT `git ls-files`
+    # (every tracked file in the repo): a real-world audit of this exact repo found 20+ tracked
+    # files containing legitimate lines starting with these exact marker strings as
+    # illustrative content -- including this skill's own references/patterns.md, which
+    # documents conflict markers as worked examples. Scanning the whole repo made the success
+    # path permanently unreachable here; scanning only what this resolution actually staged
+    # matches the original intent without false-positiving on unrelated pre-existing content.
     #
     # NUL-delimited (`-z`, `-d ''`), fed straight from process substitution into the read
     # loop -- never captured into a plain variable first. Bash cannot store a NUL byte in a
@@ -45,7 +51,7 @@ check_conflict_markers() {
         if [[ -n "$unmerged" ]]; then
             git diff -z --name-only --diff-filter=U 2>/dev/null
         else
-            git ls-files -z
+            git diff --cached -z --name-only 2>/dev/null
         fi
     )
 
