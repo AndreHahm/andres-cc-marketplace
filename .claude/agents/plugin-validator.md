@@ -6,7 +6,7 @@ description: >-
   'verify plugin is correct', 'validate plugin.json', 'check plugin files',
   or mentions plugin validation. Trigger proactively after the user creates
   or modifies plugin components. For creating or restructuring a plugin
-  from scratch, use plugin-development instead; for R1-R27 naming/language/
+  from scratch, use plugin-development instead; for R1-R32 naming/language/
   formatting/tool-scoping rules, use plugin-rulebook. For a combined
   Validate->Audit->Report pipeline across a whole plugin rather than
   structural validation alone, use plugin-lifecycle-downstream instead.

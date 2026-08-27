@@ -30,6 +30,23 @@ Flag a scoped-Bash entry found in an agent's `tools` field as REQUIRED — repla
 | `Bash(git:*)` `Bash(mkdir:*)` `Bash(node:*)` `Bash(python:*)` | PASS — named tool, scoped |
 | `Bash(git:* mkdir:*)` | PASS — multiple named tools, each explicit |
 
+## R6 — Format and Tool-Completeness Detail
+
+**Format:** `allowed-tools` may be space-separated (preferred internal style), comma-separated, or a
+YAML list.
+
+**Preferred:** `allowed-tools: Read Edit Write Glob`
+**Also valid:** `allowed-tools: Read,Edit,Write,Glob` (comma-separated), or a YAML list
+**Wrong:** `allowed-tools: Bash(*)` (overly broad) or bare `allowed-tools: Bash` (no scope argument at
+all — equally unrestricted)
+
+**Tool completeness:** Every tool invoked in the command or skill body must be declared in
+`allowed-tools`. Scan the body for tool name references (`Bash`, `Write`, `Edit`, `Glob`, `Grep`, `Read`,
+`WebFetch`, `WebSearch`, etc.) — any tool called but absent from `allowed-tools` is a REQUIRED violation.
+
+**Violation:** Body instructs Claude to run a shell command (Bash) but `Bash(...)` is absent from
+`allowed-tools`.
+
 ## R6 — Mechanical Assist for the Tool-Completeness Sub-Check
 
 Narrative "scan the body" review missed the tool-completeness violation four independent times in one

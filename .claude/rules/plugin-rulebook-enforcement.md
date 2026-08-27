@@ -21,7 +21,7 @@ Run the `plugin-rulebook` skill **before finalizing** any operation that creates
 
 When the active `plugin-rulebook` (as configured in `.claude/skills/plugin-rulebook/assets/settings.json`) conflicts with any other project rule, CLAUDE.md instruction, or inline user preference, **the rulebook wins for plugin component decisions**. The priority stack is:
 
-1. Active rulebook rules (R1–R27, enabled in `settings.json`) — highest authority for component structure, naming, and formatting decisions
+1. Active rulebook rules (R1–R32, enabled in `settings.json`) — highest authority for component structure, naming, and formatting decisions. R28-R32 (added 2026-08-27) are the testing-mandate and data-only-boundary-disclosure rules — see `plugin-rulebook/SKILL.md`'s own Active Rules section for their detail.
 2. CLAUDE.md project instructions
 3. Inline user preferences for the current session
 
@@ -45,7 +45,7 @@ Exception: a user may explicitly override a specific rulebook rule in the curren
 
 ## Duplicate Fact Sweep Trigger (R20)
 
-**Trigger:** any change to a canonical value in `plugin-rulebook`'s `assets/settings.json` — an R13/R18/R21/R22 threshold, an enum list (e.g. `agent.color.valid_values`), or a forbidden-field list.
+**Trigger:** any change to a canonical value in `plugin-rulebook`'s `assets/settings.json` — an R13/R18/R21/R22 threshold, an enum list (e.g. `agent.color.valid_values`), or a forbidden-field list. This also covers `inventory_common/models.py`'s `FUNCTIONAL_ROLE_VALUES`/`COMPATIBILITY_LEVEL_VALUES` (and any future inventory enum defined there) — a canonical Python-defined value list hand-duplicated in two independent JSON Schema files, `marketplace-inventory/assets/marketplace-inventory.schema.json` and `plugin-inventory/assets/plugin-inventory.schema.json` (each `$ref` only resolves within its own file, so each schema necessarily carries its own full copy). Called out specifically because a generic "grep the plugin tree" sweep might not think to look inside an `assets/*.schema.json` file — sweep both explicitly whenever either constant changes.
 
 **Procedure:** this is not a separate blocking gate — it's an explicit line item on the same "before finalizing" check in the Compliance Procedure above:
 1. Grep the plugin tree for the previous value before finalizing.

@@ -21,7 +21,7 @@ You are a dependency-graph reviewer for Claude Code plugins. Unlike a single-com
 
 **Note on tool scope:** this agent has no `Bash` access and cannot execute anything — every finding here is a static analysis of components' own text (`Skill(...)`/`Agent(...)` call strings and prose dispatch references), not runtime verification. Label anything that would require actual invocation to confirm as `⚠️ Unverified` rather than asserting it.
 
-**Note on `plugin-rulebook` dependency:** unlike most `*-reviewer` siblings, this agent intentionally does not load `plugin-rulebook` — dependency-graph analysis (cycles, bidirectional edges, tool-scope-broken calls) is outside R1-R27's scope and has no rulebook rule to cross-check against.
+**Note on `plugin-rulebook` dependency:** unlike most `*-reviewer` siblings, this agent intentionally does not load `plugin-rulebook` — dependency-graph analysis (cycles, bidirectional edges, tool-scope-broken calls) is outside R1-R32's scope and has no rulebook rule to cross-check against.
 
 ## Invocation Modes
 

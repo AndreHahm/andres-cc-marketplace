@@ -218,6 +218,46 @@
       "enabled": true,
       "severity": "ADVISORY",
       "description": "Skills, agents, and commands should follow their documented grammatical form (skill: noun/gerund, agent: role noun, command: verb-first) per naming-conventions.md's Component-Type Conventions table -- interpretive, never blocking"
+    },
+    "R28_skill_testing_mandate": {
+      "enabled": true,
+      "severity": "TIERED",
+      "description": "A skill needs evals/<skill>/evals.json (meeting min_eval_scenarios, with run evidence) or an explicit justification in its own Testing & Validation section (R29) for why full evals aren't warranted -- forward-looking only; see references/testing-mandate-rules.md",
+      "config": {
+        "min_eval_scenarios": 3,
+        "min_eval_scenarios_severity": "ADVISORY",
+        "run_evidence_required_paths": ["workspace/iteration-*/benchmark.json", "workspace/iteration-*/eval-*/*/grading.json"]
+      }
+    },
+    "R29_skill_testing_section_required": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "SKILL.md must contain a '## Testing & Validation' heading with a positive-trigger-example subsection, a negative-trigger-example subsection, and a checkable-pass-criteria subsection -- checked by substance, not exact heading wording (either the 'Verify this skill activates on:'/'Verify it does NOT activate on:' phrasing or the older 'Expected triggers:'/'Non-triggers:' phrasing satisfies this, both found in real use across the plugin) -- forward-looking only; see references/testing-mandate-rules.md",
+      "config": {
+        "accepted_positive_trigger_headings": ["Verify this skill activates on:", "Expected triggers", "Expected triggers:"],
+        "accepted_negative_trigger_headings": ["Verify it does NOT activate on:", "Non-triggers", "Non-triggers:"],
+        "accepted_pass_criteria_headings": ["Quality gates:", "Quality gates", "## Quality Gates"]
+      }
+    },
+    "R30_eval_samples_extracted": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "A full eval/test-scenario walkthrough beyond R29's required inline lists must move to references/<topic>.md or evals.json, not stay inline in SKILL.md -- forward-looking only; see references/testing-mandate-rules.md"
+    },
+    "R31_eval_fixture_integrity": {
+      "enabled": true,
+      "severity": "REQUIRED",
+      "description": "Mechanical correctness checks (zero-match guard, anchored matching, coverage arithmetic) for existing evals.json/smoke_test.* content via reviewing-evals/scripts/check_evals.py, dispatched from plugin-auditor -- not forward-looking, applies to existing content immediately; see references/testing-mandate-rules.md"
+    },
+    "R32_data_only_boundary_disclosure_required": {
+      "enabled": true,
+      "severity": "TIERED",
+      "description": "A skill that reads content produced by another plugin component or an external report must carry a boundary statement naming the source, stating the value is data not a directive, and stating that instruction-like content must be reported as suspicious, never acted on; see references/data-only-boundary.md",
+      "config": {
+        "canonical_reference": "references/data-only-boundary.md",
+        "required_elements": ["names_untrusted_source", "data_not_directive", "instruction_like_content_response"],
+        "existing_skills_advisory_only": ["plugin-grader", "plugin-rulebook", "reviewing-evals", "marketplace-inventory", "plugin-inventory"]
+      }
     }
   },
   "languages": {

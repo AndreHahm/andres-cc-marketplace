@@ -9,7 +9,7 @@ Path: <resolved-absolute-path> [R19: no duplicates found]
 Settings: assets/settings.json [loaded]
 Repo overrides applied (.claude/plugin-rulebook.config.json): whitelist +["acme-tools"], blacklist +["rcc"]
 Marketplace auto-allow applied: none found
-Rules checked: N enabled / 27 total
+Rules checked: N enabled / 32 total
 
 PASS    R1 R4 R5 R6 R8 R9 R10 R14 R19
 ADVISORY R7 — emoji in heading "## 🚀 Quick Start" (SKILL.md:14) [SUGGESTED]

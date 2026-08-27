@@ -9,7 +9,7 @@ description: >-
   directory structure, component organization, auto-discovery, and manifest
   configuration. Component-specific work delegates to hook-development,
   agent-development, and skill-development skills. For a component's own
-  R1-R27 naming/language/formatting/tool-scoping compliance, use plugin-rulebook
+  R1-R32 naming/language/formatting/tool-scoping compliance, use plugin-rulebook
   instead. For validating structural correctness of an existing plugin, use
   plugin-validator instead. For marketplace publishing of a skills repo, use
   marketplace-development instead. For an undecided idea with no name or
@@ -33,7 +33,7 @@ Ask the user what they want to do using AskUserQuestion — see `references/rout
 - Building a plugin from scratch (manifest, directory structure, components)
 - Adding one already-designed component (skill/agent/command/hook) to a plugin that already exists — not a whole new plugin or project conversion
 - Converting an existing project into a Claude Code plugin
-- Improving (restructuring, migrating components, fixing organization) an existing plugin's structure. For a structured manifest/directory/component-wiring validation report, use the `plugin-validator` agent instead; for R1–R27 naming/language/formatting/tool-scoping compliance, use `plugin-rulebook`.
+- Improving (restructuring, migrating components, fixing organization) an existing plugin's structure. For a structured manifest/directory/component-wiring validation report, use the `plugin-validator` agent instead; for R1–R32 naming/language/formatting/tool-scoping compliance, use `plugin-rulebook`.
 - Publishing a plugin with `plugin.json` to a marketplace
 - Packaging standalone `.claude/skills/` directories into distributable plugin format
 
