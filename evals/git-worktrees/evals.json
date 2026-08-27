@@ -7,7 +7,7 @@
       "id": 1,
       "name": "Cherry-pick by PR number resolves the commit list from GitHub's own record",
       "prompt": "This is a simulated exercise: there is no real GitHub repo/PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead, and write your answer to a file.\n\nA user asks: \"cherry-pick the feature login-retry-backoff shipped with PR #57\". Describe, step by step, how you determine which commit(s) to cherry-pick. Do you ever type out or recall a commit SHA list from memory, or from a local branch you assume matches? Write your answer to `outputs/answer.md`.",
-      "expected_output": "Resolves the commit list directly from GitHub's own record for PR #57 -- `gh pr view 57 --json commits` or `gh api repos/{owner}/{repo}/pulls/57/commits` -- never a hand-typed or remembered list, and never reconstructed from a local branch assumed to match. Shows the resolved list back to the user for confirmation before any `git cherry-pick` runs.",
+      "expected_output": "Resolves the commit list directly from GitHub's own record for PR #57 via the paginated, SHA-scoped REST call `gh api repos/{owner}/{repo}/pulls/57/commits --paginate --jq '.[].sha'` -- never a hand-typed or remembered list, never reconstructed from a local branch assumed to match, and never an unpaginated call or one that pulls the full commit object (author/committer email, message bodies) when only the SHA is needed. Shows the resolved list back to the user for confirmation before any `git cherry-pick` runs.",
       "files": ["outputs/answer.md"]
     },
     {

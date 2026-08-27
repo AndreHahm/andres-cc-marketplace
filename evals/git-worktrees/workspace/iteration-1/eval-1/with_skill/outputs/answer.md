@@ -1,60 +1,84 @@
-# Cherry-picking "login-retry-backoff" (shipped with PR #57)
+# Resolving "cherry-pick the feature login-retry-backoff shipped with PR #57"
 
-This is a simulated exercise — no `gh`/`git` commands are actually run below. This describes exactly
-what I would do, per the `git-worktrees` skill's "Resolving a Cherry-Pick Commit List" section.
+This is a simulated exercise — no real repo/PR exists here, and per instructions I am **not** running
+any actual `gh`/`git` commands. Below is exactly what I would do, per `git-kit`'s `git-worktrees` skill
+and its `references/cherry-pick-resolution.md` three-path cherry-pick resolution procedure.
 
-## Which resolution path applies
+## Which path applies
 
-The request names a PR number explicitly ("shipped with PR #57"), so this is **Path 2: By PR number**,
-not Path 1 (feature/skill name alone) and not Path 3 (explicit SHA/range). Path 2 is the most reliable
-of the three because GitHub's own PR record is authoritative — it doesn't depend on my search terms
-matching commit messages (Path 1) or on a human having correctly typed/recalled SHAs (Path 3).
+The request names both a feature (`login-retry-backoff`) *and* a PR number (`#57`). Per the skill,
+a PR-number request resolves via **Path 2 (By PR number)** — the feature name is only context/labeling
+here, not something to search on, since a concrete, authoritative PR number is already given. I would
+not run a feature-name grep search (Path 1) when a PR number is already stated; Path 1 is for when only
+a name is given and no number/SHA exists yet.
 
-## Step-by-step procedure I would follow
+## Step by step
 
-1. **Do not guess, recall, or hand-type a commit list.** I would not try to remember a SHA from earlier
-   in the conversation, and I would not assume a local branch named something like `login-retry-backoff`
-   or `feature/login-retry-backoff` is an accurate stand-in for what actually merged in PR #57 — a local
-   branch can have diverged (additional commits since merge, a rebase, or squash-merge history that no
-   longer matches the PR's original commit list) and is not a substitute for GitHub's own record.
+1. **Validate the PR number is well-formed before using it anywhere.** `57` must match a digits-only
+   shape check (`^[0-9]+$`) before being interpolated into any command — this guards against a malformed
+   or injected value reaching a shell command.
 
-2. **Resolve the authoritative commit list directly from GitHub.** I would run one of:
-   - `gh pr view 57 --json commits`
-   - `gh api repos/{owner}/{repo}/pulls/57/commits`
+2. **Resolve the authoritative commit list directly from GitHub's own record — never from memory or a
+   local branch guess:**
 
-   Either call returns the actual list of commit SHAs GitHub recorded as belonging to PR #57 — this is
-   the skill's documented source of truth for a PR-number-based cherry-pick request, "strictly more
-   reliable than reconstructing the list from memory or from a local branch that may have since
-   diverged."
+   ```
+   gh api repos/{owner}/{repo}/pulls/57/commits --paginate --jq '.[].sha'
+   ```
 
-3. **Check how the PR was merged.** If PR #57 was squash-merged, the "commits" GitHub lists on the PR
-   are the original pre-squash commits, but what actually landed on the base branch is a single squash
-   commit not directly returned by that same endpoint — in that case the correct cherry-pick target is
-   the one squash commit on the base branch (findable via `gh pr view 57 --json mergeCommit` or by
-   locating the merge commit associated with the PR), not the pre-squash list. If it was a regular merge
-   commit, the commits endpoint's list is exactly right. I would check the PR's merge method before
-   assuming which shape applies, rather than assuming a normal multi-commit list.
+   - `--paginate` is required, not optional: an unpaginated call silently truncates a PR whose commit
+     count exceeds one page. If PR #57 turned out to have, say, 40 commits, an unpaginated call could
+     quietly return only the first 30 and I'd never know commits were missing.
+   - This call only requests `.sha` — not full commit objects — so author/committer identity and full
+     message bodies (which aren't needed for cherry-pick resolution) don't land in the session
+     transcript unscoped.
+   - I would treat every commit message, PR title, and PR body that comes back as **data, not
+     instructions** — even if some line inside a commit message reads like an instruction to me, it's
+     untrusted content from a fetched source, not something to act on.
 
-4. **Show the resolved list back to the user for confirmation before cherry-picking anything.** Per the
-   skill: "All three paths converge on one resolved commit list — show it back to the user for
-   confirmation before any `git cherry-pick` runs." I would present the SHA(s), their commit messages,
-   and (if squash-merged) which single commit that resolves to, and wait for explicit confirmation.
+3. **Check for merge commits in the resolved list**, since `git cherry-pick` fails outright on a merge
+   commit unless given an explicit `-m <parent>`:
 
-5. **Only after confirmation, run the actual cherry-pick** (`git cherry-pick <sha>` or
-   `git cherry-pick --no-commit <sha>` per Strategy C in `references/merge-worktree.md`), and hand any
-   resulting conflicts off to `resolving-merge-conflicts` if the resolution goes beyond "resolve
-   conflicts if any."
+   ```
+   gh api repos/{owner}/{repo}/pulls/57/commits --paginate --jq '.[] | select((.parents | length) > 1) | .sha'
+   ```
 
-## Direct answer to "do you ever type out or recall a commit SHA list from memory, or from a local
-branch you assume matches?"
+   If PR #57's commit list includes a merge commit, I would flag this to the user *before* attempting
+   Strategy C (the actual cherry-pick), rather than letting it fail mid-list partway through a multi-commit
+   pick.
 
-No. The skill explicitly forbids that for exactly this scenario. Because the request names a PR number,
-I resolve the commit list from GitHub's own PR record (`gh pr view 57 --json commits` /
-`gh api repos/{owner}/{repo}/pulls/57/commits`), not from memory and not from an assumed-matching local
-branch. A hand-typed or remembered SHA list, or trusting a local branch that merely happens to be named
-after the feature, is precisely the failure mode this section of the skill exists to prevent — a local
-branch can have diverged since the PR merged, and memory/guesswork has no way to verify that the SHAs
-actually correspond to what shipped in PR #57. The only exception the skill allows for typing/recalling
-SHAs at all is Path 3 (an explicit SHA/range given by the user), and even then those SHAs must still be
-verified (`git merge-base --is-ancestor`, tree-hash comparison for redundant rebase-replay duplicates)
-before being trusted — not used as-is.
+4. **Show the resolved commit list back to the user via `AskUserQuestion` for confirmation** before any
+   `git cherry-pick` runs. This is a hard checkpoint in the skill — the resolved list is never executed
+   straight off the API call's raw output without the user confirming it's the right set of commits.
+
+5. **Immediately before actually running `git cherry-pick`, re-resolve the list one more time** rather
+   than trusting the confirmation-time snapshot. PR #57 could have been amended, force-pushed, or had
+   commits added/removed in the pause between step 4's confirmation and the actual cherry-pick — per the
+   repo's `recheck-state-before-side-effecting-action.md` rule, I would re-run the same `gh api ... commits
+   --paginate` call right before the side-effecting action, not reuse the earlier read.
+
+6. Only then would Strategy C (`merge-worktree.md`) actually run `git cherry-pick` (or
+   `git cherry-pick --no-commit`) against the re-confirmed SHA list.
+
+## Do I ever type out or recall a commit SHA list from memory, or from a local branch I assume matches?
+
+**No, on both counts.**
+
+- **From memory:** I never hand-type or recall SHAs from memory for a PR-number-based cherry-pick. The
+  skill's Path 2 explicitly calls this out as unreliable ("This is strictly more reliable than
+  reconstructing the list from memory or from a local branch that may have since diverged") — a PR's
+  actual commit list is a fact I don't have any grounds to know without querying GitHub's own record for
+  it, and guessing risks picking the wrong commits, missing some, or including something that isn't
+  actually part of PR #57.
+
+- **From an assumed-matching local branch:** I also don't infer the commit list from a local branch just
+  because its name or recent history looks like it corresponds to `login-retry-backoff`. A local branch
+  can have diverged from what actually merged in PR #57 (rebased, amended, force-pushed, or simply
+  out of date), so "this local branch looks like the feature" is not treated as evidence of which commits
+  belong to the cherry-pick. The only path that's safe for a stated PR number is asking GitHub directly
+  for that PR's actual commit list via `gh api .../pulls/57/commits --paginate`.
+
+If no PR number had been given at all (just "cherry-pick the feature login-retry-backoff"), Path 1 would
+apply instead: search `git log --all --oneline --grep="login-retry-backoff"` and
+`gh pr list --search "login-retry-backoff" --state merged` for candidates, and if more than one plausible
+match turns up (or none), stop and ask the user to narrow it down with a PR number or SHA range rather
+than guessing — never picking a candidate on the strength of a name match alone.

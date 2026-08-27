@@ -2,9 +2,10 @@
   "eval_id": 1,
   "configuration": "with_skill",
   "assertions_evaluated": [
-    {"text": "Resolves the commit list via gh pr view --json commits or gh api repos/{owner}/{repo}/pulls/57/commits, not a hand-typed or remembered list", "passed": true, "evidence": "\"resolve the authoritative commit list via gh pr view 57 --json commits or gh api repos/{owner}/{repo}/pulls/57/commits -- never from memory or an assumed-matching local branch\""},
-    {"text": "Never reconstructs the list from a local branch assumed to match", "passed": true, "evidence": "\"Directly answered 'no' to whether a SHA list is ever typed/recalled from memory or a local branch assumed to match\""},
-    {"text": "Shows the resolved commit list back to the user for confirmation before any git cherry-pick runs", "passed": true, "evidence": "\"Show the resolved list back to the user for confirmation before any git cherry-pick runs (per the skill's explicit requirement)\""}
+    {"text": "Resolves the commit list via gh api repos/{owner}/{repo}/pulls/57/commits --paginate --jq '.[].sha', not a hand-typed or remembered list", "passed": true, "evidence": "\"gh api repos/{owner}/{repo}/pulls/57/commits --paginate --jq '.[].sha']\" -- quoted verbatim as step 2's command"},
+    {"text": "Uses --paginate (or otherwise avoids a truncation risk on a large PR) and scopes to the SHA only, not the full commit object", "passed": true, "evidence": "\"--paginate is required, not optional: an unpaginated call silently truncates a PR whose commit count exceeds one page... This call only requests .sha -- not full commit objects -- so author/committer identity and full message bodies... don't land in the session transcript unscoped.\""},
+    {"text": "Never reconstructs the list from a local branch assumed to match", "passed": true, "evidence": "\"I also don't infer the commit list from a local branch just because its name or recent history looks like it corresponds to login-retry-backoff... 'this local branch looks like the feature' is not treated as evidence\""},
+    {"text": "Shows the resolved commit list back to the user for confirmation before any git cherry-pick runs", "passed": true, "evidence": "\"Show the resolved commit list back to the user via AskUserQuestion for confirmation before any git cherry-pick runs. This is a hard checkpoint in the skill -- the resolved list is never executed straight off the API call's raw output without the user confirming\""}
   ],
-  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
 }

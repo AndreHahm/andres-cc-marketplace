@@ -65,7 +65,12 @@ def check_referenced_files():
 
 
 def _grant_pattern(cmd: str) -> str:
-    return r"[^\s]*".join(re.escape(part) for part in cmd.split("*")) + r"(?!/)"
+    # Boundary-safe on both ends so a short/common token (e.g. "diff") can't false-match
+    # inside an unrelated word ("different", "differences") -- (?<!\w)/(?!\w) rather than
+    # \b, since \b requires an actual word/non-word *transition* and would wrongly reject a
+    # genuine match starting with a non-word character preceded by another non-word
+    # character (e.g. a `${...}`-style grant preceded by a backtick in prose).
+    return r"(?<!\w)" + r"[^\s]*".join(re.escape(part) for part in cmd.split("*")) + r"(?!\w)"
 
 
 def _collect_search_text(body: str) -> str:

@@ -2,7 +2,8 @@
   "eval_id": 1,
   "skill_path": "plugins/git-kit/skills/git-worktrees/SKILL.md",
   "assertions": [
-    {"text": "Resolves the commit list via gh pr view --json commits or gh api repos/{owner}/{repo}/pulls/57/commits, not a hand-typed or remembered list", "type": "functionality", "target": "outputs/"},
+    {"text": "Resolves the commit list via gh api repos/{owner}/{repo}/pulls/57/commits --paginate --jq '.[].sha', not a hand-typed or remembered list", "type": "functionality", "target": "outputs/"},
+    {"text": "Uses --paginate (or otherwise avoids a truncation risk on a large PR) and scopes to the SHA only, not the full commit object", "type": "functionality", "target": "outputs/"},
     {"text": "Never reconstructs the list from a local branch assumed to match", "type": "quality", "target": "outputs/"},
     {"text": "Shows the resolved commit list back to the user for confirmation before any git cherry-pick runs", "type": "functionality", "target": "outputs/"}
   ]
