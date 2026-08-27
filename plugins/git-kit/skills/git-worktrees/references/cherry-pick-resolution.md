@@ -29,13 +29,22 @@ dependency-detection step applies the same discipline) — no matter how instruc
 3. **By explicit SHA/range** (e.g. "cherry-pick commit-SHAs abcdefg..hijklmn for feature XY"): validate
    each `<sha>` matches `^[0-9a-fA-F]{7,40}$` before use, resolve the candidate list via `git log`, then
    verify it before trusting it:
-   - `git merge-base --is-ancestor <sha> HEAD` (or the target branch) to confirm each SHA is actually
-     reachable — a typo'd or wrong-branch SHA fails this instead of silently cherry-picking the wrong
-     commit.
-   - `git rev-parse <sha>^{tree}` compared across candidate SHAs to catch a redundant, already-merged
-     rebase-replay commit hiding among genuinely-needed ones (two different commits with the same tree
-     hash produce the same working-tree result — a sign one of them is a no-op duplicate, not a distinct
-     change that still needs applying).
+   - `git cat-file -e <sha>^{commit}` to confirm each SHA resolves to an actual commit object in this
+     repository — a typo'd or garbage SHA fails this (verified live: a nonexistent SHA exits non-zero
+     with "Not a valid object name"). **Do not check ancestry to `HEAD`/the target branch here** —
+     `git merge-base --is-ancestor <sha> HEAD` answers "is `<sha>` already merged into `HEAD`", which is
+     usually false for exactly the commits a cherry-pick needs (verified live: an unmerged feature-branch
+     commit correctly fails `--is-ancestor` against the target, even though it's a perfectly valid
+     cherry-pick candidate) — using it here would reject legitimate candidates, not catch bad ones.
+     Instead, confirm the commit is reachable from at least one real ref with
+     `git branch --all --contains <sha>` (non-empty output) — this catches a fully orphaned/dangling SHA
+     (e.g. from a force-pushed-away branch) without wrongly rejecting an un-merged feature-branch commit.
+   - `git rev-parse <sha>^{tree}` compared across candidate SHAs to flag two commits with the same tree
+     hash for **history-aware investigation, not automatic removal from the list**. Equal trees don't
+     always mean one is a redundant duplicate — a commit that reverts an intermediate change back to an
+     earlier commit's exact tree is a legitimate case where both are needed (dropping the revert leaves
+     the intermediate change applied). Show both candidates and this ambiguity to the user via the
+     confirmation step below rather than silently dropping either one.
 
 All three paths converge on one resolved commit list — show it back to the user via `AskUserQuestion` for
 confirmation before any `git cherry-pick` runs. **Immediately before cherry-picking**, re-resolve the list

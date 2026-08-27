@@ -311,10 +311,49 @@ def check_step7_rejection_fallback():
         return False, "step 7(d) no longer states it never silently retries with a different flag"
     if "re-run the full step-2 readiness check" not in step7:
         return False, "step 7(d) no longer re-runs the full step-2 readiness check before retrying"
+    if (
+        "write the marker again" not in step7
+        or "gh-pr-merge merge-pr" not in step7.split("Rejection fallback")[1]
+    ):
+        return False, (
+            "step 7(d) no longer rewrites the git-kit marker before retrying -- the guard hook "
+            "consumes (b)'s marker on the first (failed) merge attempt, so a retry with no fresh "
+            "marker is silently blocked"
+        )
     return (
         True,
-        "step 7(d)'s rejection fallback documents asking before retry and "
-        "re-running the full step-2 check",
+        "step 7(d)'s rejection fallback documents asking before retry, re-running the full step-2 "
+        "check, and rewriting the marker before the retry itself",
+    )
+
+
+def check_step1_owner_repo_from_pr_url():
+    step1 = _get_step_text(1)
+    step2 = _get_step_text(2)
+    if step1 is None or step2 is None:
+        return False, "step 1 or step 2 ('## Instructions') not found"
+    if "url" not in step1 or "Derive `{owner}/{repo}`" not in step1:
+        return (
+            False,
+            "step 1 no longer derives {owner}/{repo} from the PR's own url field",
+        )
+    if "gh repo view --json owner,name" in step2:
+        return (
+            False,
+            "step 2's branch-protection call resolves {owner}/{repo} via a fresh gh repo view "
+            "again -- this defaults to the current checkout's own repo and is wrong whenever "
+            "$ARGUMENTS names a PR in a different repository",
+        )
+    if "resolved `url` field" not in step2:
+        return (
+            False,
+            "step 2's branch-protection call doesn't state it reuses step 1's resolved url-derived "
+            "{owner}/{repo}",
+        )
+    return (
+        True,
+        "step 1 derives {owner}/{repo} from the PR's own url field; step 2's branch-protection "
+        "call reuses that value instead of a fresh gh repo view",
     )
 
 
@@ -332,6 +371,7 @@ CHECKS = [
     check_step7_rebase_precheck,
     check_step7_squash_disclosure,
     check_step7_rejection_fallback,
+    check_step1_owner_repo_from_pr_url,
 ]
 
 

@@ -2,9 +2,9 @@
   "eval_id": 3,
   "skill_path": "plugins/git-kit/skills/git-worktrees/SKILL.md",
   "assertions": [
-    {"text": "Verifies each candidate SHA is reachable via git merge-base --is-ancestor before trusting it", "type": "functionality", "target": "outputs/"},
+    {"text": "Verifies each candidate SHA via git cat-file -e <sha>^{commit} (object exists) and git branch --all --contains <sha> (reachable from some ref), not git merge-base --is-ancestor against HEAD/target", "type": "functionality", "target": "outputs/"},
     {"text": "Compares tree hashes across candidates via git rev-parse <sha>^{tree}", "type": "functionality", "target": "outputs/"},
-    {"text": "Concludes one of the tree-hash-matching commits is a redundant, already-merged rebase-replay duplicate, not a distinct change", "type": "quality", "target": "outputs/"},
-    {"text": "Flags the duplicate to the user as part of the resolved list shown for confirmation, rather than silently cherry-picking all three commits", "type": "functionality", "target": "outputs/"}
+    {"text": "Treats the tree-hash match as a signal for history-aware investigation, not a firm conclusion that one commit is a safe-to-drop duplicate -- considers the legitimate-revert case", "type": "quality", "target": "outputs/"},
+    {"text": "Flags the ambiguity to the user as part of the resolved list shown for confirmation, rather than silently cherry-picking all three commits or silently dropping one", "type": "functionality", "target": "outputs/"}
   ]
 }
