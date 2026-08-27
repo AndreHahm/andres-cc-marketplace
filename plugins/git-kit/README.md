@@ -11,7 +11,7 @@ Git and GitHub workflow toolkit: commit and PR creation, GitHub CLI operations, 
 
 ## Overview
 
-`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, plan-first merge conflict resolution, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, recovering a stuck Codex-review check, cross-vendor (Claude + Codex) adversarial pre-PR review, and triaging/resolving PR review findings — deciding which reviewer(s)/mode to trigger next and posting that trigger comment itself — across a configurable round budget. Five `PreToolUse` hooks hard-block raw commands that bypass these skills, a `Stop` hook guards exiting a dirty session-locked worktree, and the plugin ships five behavioral rules (including two on worktree/lifecycle-routing conventions) — see Hooks and Rules below.
+`git-kit` provides skills and commands that automate and standardize Git and GitHub workflows: consistent commit messages, proper PR formatting, GitHub CLI/API operations, git worktree management, git notes, bisect automation, branch lifecycle setup (syncing main and creating a properly named branch/worktree) and post-merge local sync, branch/worktree cleanup, safe rebase syncing, plan-first merge conflict resolution, commit-shaping/splitting guidance, structured PR review summaries, PR issue-linking and reviewer orchestration, issue drafting, dependency updates, gated PR merging, CODEOWNERS management, recovering a stuck Codex-review check, cross-vendor (Claude + Codex) adversarial pre-PR review, and triaging/resolving PR review findings — deciding which reviewer(s)/mode to trigger next and posting that trigger comment itself — across a configurable round budget. Five `PreToolUse` hooks hard-block raw commands that bypass these skills, a `Stop` hook guards exiting a dirty session-locked worktree, and the plugin ships three behavioral rules — see Hooks and Rules below.
 
 Several skills (`create-pr`, `gh-operations`, `codex-review-recovery`, `handling-review-findings`) require GitHub CLI (`gh`) for full functionality.
 `cross-model-review` optionally uses the `codex-kit` plugin for its second, independent reviewer; it
@@ -183,17 +183,21 @@ report had stated the closure explicitly until now:
 
 ## Rules
 
-`git-kit` ships three behavioral rules (`rules/`, auto-loaded each session):
+`git-kit` ships four behavioral rules (`rules/`, auto-loaded each session):
 
 - **`route-through-git-kit-lifecycle-skills`** — documents the full lifecycle chain (`starting-work` → `commit` → `create-pr`/`collaborating-on-a-pr` → `merge-pr` → `finishing-work`) for discoverability. The `PreToolUse` hard-block hooks above already enforce most of this mechanically; this rule is the human-readable statement of the same chain, not a second enforcement mechanism.
 - **`starting-work-before-first-change`** — always invoke `starting-work` before the first shippable edit of a new piece of work, especially right after returning to `main`/`master` post-merge; a rule with no independent trigger of its own is easy to route around in the moment.
+- **`orphaned-worktree-git-read-fallthrough`** — after a worktree is removed mid-session while the session's cwd is still pinned to it, git reads fall through to the primary checkout and look normal even though the session can't actually write there; cross-check with a plain filesystem listing, not git output, before trusting it.
 - **`require-gitignored-scratch-locations`** — never let temporary, cache, or scratch content land in a shippable location; route it to a gitignored directory instead, and watch for a CLI tool's or script's own default that silently resolves to the repo root or a plugin directory.
 
-Two topics that used to be standalone always-loaded rules are now folded into the skill that actually
-governs them, since their trigger conditions coincide exactly with that skill's own dispatch (2026-08-27
+One topic that used to be a standalone always-loaded rule is now folded into the skill that actually
+governs it, since its trigger condition coincides exactly with that skill's own dispatch (2026-08-27
 lazy-loading migration): the one-worktree-per-topic convention lives in `starting-work`'s own "Worktree
-Topic Scope" section, and the orphaned-worktree git-read-fallthrough caution lives in `git-cleanup`'s
-Phase 5 (Execute).
+Topic Scope" section. A second rule (`orphaned-worktree-git-read-fallthrough`, above) was initially
+folded into `git-cleanup` the same way but reverted after review found it can't reach two of the three
+removal paths it documents (a manual `git worktree remove` has no governing skill to fold into, and
+`git-cleanup` itself refuses to run from inside the worktree it would be removing) — it stays a
+standalone, always-loaded rule.
 
 ## Conventions
 

@@ -274,19 +274,6 @@ fails specifically because the worktree is still locked (the unlock step above w
 added after Phase 4's check), report this distinctly from a generic removal failure — say plainly that it's
 locked and by which reason, rather than surfacing git's raw error text unexplained.
 
-**Caution — orphaned session after removing the session's own worktree:** if the worktree just removed
-above is the one this session's current working directory is pointed at, git commands issued afterward
-(`git status`, `git log`, `git branch -vv`, `git rev-parse --show-toplevel`) will still succeed and report
-the **primary checkout's** real state — Git's own upward directory search finds no `.git` in the now-empty
-former worktree path and walks up to the primary checkout's `.git`, so every read looks like "this session
-is now effectively on `main`," but it's a read-path accident, not a permission grant. Don't trust those git
-reads alone before writing anywhere afterward: cross-check with a plain filesystem listing (`ls -la` /
-`Get-ChildItem`, not git-mediated) — a genuinely orphaned worktree path shows as empty or containing only a
-stray `.claude/` folder. If confirmed, the session needs to be restarted rooted at the primary checkout
-path — `Write`/`Edit` calls will continue to be correctly rejected by the worktree-isolation guard (which
-matches on the literal bound path, not on where git's fallthrough search lands) regardless of how normal
-the git reads look.
-
 **Stale remote branches (Phase 3.5):** no marker write needed — `gh api -X DELETE repos/*/git/refs/heads/*`
 isn't guarded by any PreToolUse hook (unlike `git branch -D` against a protected name), the same reason
 `merge-pr`'s own manual-delete-branch path calls it directly. Before each call, validate the branch name
