@@ -322,11 +322,16 @@ commits.
 
 **Inventory Sync (Phase 12):** if this run's Fix phases changed the target plugin's component list (add,
 remove, split, or merge — e.g. `rule-reviewer`'s `split_rule`/`move_to_skill` structured-output
-actions), run that plugin's own `plugin-inventory check` per
-`.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`. If `check` reports drift,
-propose the corresponding operations for approval and fold the resulting inventory commit into Phase
-12's own commit record. If the run never changed the plugin's component list, state in the handoff
-report that no inventory sync was needed rather than silently omitting the check.
+actions), branch per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`: a
+target plugin that has never been inventoried at all (no live `marketplace-inventory` record and no
+`plugin-inventory.json` yet) → run `marketplace-inventory` then `plugin-inventory` to bootstrap both —
+each requires its own explicit `AskUserQuestion` approval **before** that write, since `bootstrap` writes
+immediately once invoked with no further tool-level plan/apply step of its own (see the rule's "No
+silent writes" bullet); a target plugin that already has a `plugin_id` → run that plugin's own
+`plugin-inventory check` only. If `check` reports drift, propose the corresponding operations for
+approval and fold the resulting inventory commit into Phase 12's own commit record. If the run never
+changed the plugin's component list, state in the handoff report that no inventory sync was needed
+rather than silently omitting the check.
 
 **Manifest description check (Phase 12):** if this run's Fix phases changed the plugin's component
 count, run the manifest description check per `plugin-lifecycle-upstream`'s `## Document` section (same
@@ -379,6 +384,9 @@ Stopped and skipped phases must be recorded explicitly.
 - "just a compliance check on one component" → the `plugin-rulebook-checker` agent directly
 - "grade this plugin" with no separate Validate/Audit step wanted → `plugin-grader` directly
 - "audit this plugin" as a bare first-touch request with no other context → `using-plugin-devkit` first, to confirm full-pipeline depth is wanted
+
+**Last dated run record:** 2026-08-27 — `scripts/smoke_test.py` (5/5 checks passing) and
+`evals/plugin-lifecycle-downstream/` (1 eval scenario, 3/3 assertions, 100% with_skill pass rate).
 
 The 13 required workflow scenarios (scoped/full manifests, Prepare declined/approved,
 validation/audit success/repair/bounded-failure, Deep Test skip/Scoped/Full, external
