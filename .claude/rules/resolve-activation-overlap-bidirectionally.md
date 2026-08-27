@@ -1,3 +1,11 @@
+---
+paths:
+  - "plugins/*/skills/**/SKILL.md"
+  - "plugins/*/agents/*.md"
+  - ".claude/skills/**/SKILL.md"
+  - ".claude/agents/*.md"
+---
+
 # Resolve Activation Overlap Bidirectionally
 
 ## When this applies

@@ -117,10 +117,10 @@ explicitly: `cd` into the reported worktree path before any further command in t
 relative to that new location (not the primary checkout) for every subsequent `Edit`/`Write`/`Bash` call
 and for `commit`/`create-pr`/`merge-pr` below, since each of those is itself just a dispatch that
 operates on wherever the session's cwd currently is. Skipping the `cd` is the same "orphaned worktree"
-mistake this repo's own `orphaned-worktree-git-read-fallthrough.md` rule already documents (git reads can
-silently fall through to the primary checkout and look correct while writes land in the wrong place) —
-applying just as directly to writes landing in the *wrong* checkout as it does to reads from a *removed*
-one.
+mistake documented in `git-cleanup`'s own Phase 5 caution note (formerly the standalone
+`orphaned-worktree-git-read-fallthrough.md` rule, folded in 2026-08-27): git reads can silently fall
+through to the primary checkout and look correct while writes land in the wrong place — applying just as
+directly to writes landing in the *wrong* checkout as it does to reads from a *removed* one.
 
 The file(s) to edit were already resolved and containment-checked at Step 3b above, and their path(s)
 were shown to the human as part of the "Fix directly now, here" option they approved — do not re-resolve

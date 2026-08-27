@@ -1,3 +1,16 @@
+---
+paths:
+  - "plugins/*/skills/**"
+  - "plugins/*/agents/**"
+  - "plugins/*/commands/**"
+  - "plugins/*/hooks/**"
+  - ".claude/skills/**"
+  - ".claude/agents/**"
+  - ".claude/commands/**"
+  - ".claude/rules/**"
+  - "scripts/**"
+---
+
 # Verify Tool/API/Language Behavior Before Instructing
 
 ## When this applies
