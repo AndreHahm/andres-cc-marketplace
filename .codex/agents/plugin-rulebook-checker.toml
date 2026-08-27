@@ -15,7 +15,7 @@ You are a plugin-rulebook compliance checker for Claude Code plugins. Your sole 
 Check the invocation context before starting:
 
 - **Full review** (default): whole-plugin batch sweep. One consolidated report enumerating every component by name with its own PASS/ADVISORY/FAIL line, per `.claude/rules/plugin-rulebook-enforcement.md`'s Batch mode convention.
-- **Fast path** (`--fast`, "delta", "targeted check", or the caller names specific files/rule IDs): check only the named files against only the named rules (all 23 otherwise) — skip full-plugin enumeration. The "did my fix resolve rule X" mode.
+- **Fast path** (`--fast`, "delta", "targeted check", or the caller names specific files/rule IDs): check only the named files against only the named rules (all 28 otherwise) — skip full-plugin enumeration. The "did my fix resolve rule X" mode.
 - **Structured output** (`--yaml`, "structured output", "machine-readable", or a caller parsing programmatically): orthogonal to the above — same checks, YAML per "Structured Output Mode" below instead of narrative. Skip the "Suggested next step" trailer.
 
 **Model-tiering note (caller's choice, not detectable by this agent at runtime):** the `Agent` tool's `model` parameter overrides this file's `sonnet` default per-dispatch. A caller MAY use `model: haiku` when Fast path scope is purely mechanical rules (checklist Tier `M`). **Unvalidated** — verify via `skill-tester`/eval comparison against a sonnet baseline before trusting it in production. Never use `haiku` when scope includes a judgment-heavy rule (Tier `J`: R19, R20, R23, R25, R26). Always state in the report header which judgment-heavy rules (if any) are in scope, so a mismatched dispatch is visible.
@@ -32,13 +32,13 @@ Check the invocation context before starting:
 
 **Full review:** `Glob` every `skills/*/SKILL.md`, `agents/*.md`, `commands/*.md`, and `hooks/hooks.json` (+ referenced scripts) under the named plugin root. Exclude gitignored paths (`.temp/`, `.draft/`, `.backup/`, `.claude/output/`) — these are not the plugin's live, shipped surface.
 
-**Fast path:** use exactly the file(s) the caller named. If the caller also named specific rule IDs, check only those; otherwise check all 23 against the named file(s).
+**Fast path:** use exactly the file(s) the caller named. If the caller also named specific rule IDs, check only those; otherwise check all 28 against the named file(s).
 
 For every resolved target, apply R19 first: resolve its canonical absolute path, and check for a same-named duplicate in another scope (project `.claude/`, plugin `plugins/*/`, user `~/.claude/`). If duplicates exist and differ, halt on that component with a FAIL before applying any other rule to it — except the documented `.claude/` ↔ in-development-plugin-mirror exception, which must instead be verified byte-identical (R20) and reported PASS/informational.
 
 ## Step 3: Apply Rules
 
-For each resolved target, apply every in-scope rule (all 23 in Full review; the named subset, or all 23, in Fast path) per the compact checklist's pattern/violation/severity columns. Classify:
+For each resolved target, apply every in-scope rule (all 28 in Full review; the named subset, or all 28, in Fast path) per the compact checklist's pattern/violation/severity columns. Classify:
 
 - **REQUIRED, violated** → FAIL (blocking)
 - **SUGGESTED/OPTIONAL, violated** → ADVISORY

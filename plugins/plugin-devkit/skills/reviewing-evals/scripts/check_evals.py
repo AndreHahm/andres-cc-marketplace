@@ -604,6 +604,22 @@ def check_zero_match_and_anchoring(
                 "Verify manually."
             )
             continue
+
+        arg_text = _extract_call_arg_text(source, m.end())
+        call_args = _split_top_level_args(arg_text)
+        haystack_arg = call_args[0] if call_args else arg_text
+        if "skill" not in haystack_arg.lower():
+            findings.append(
+                f"SKIP (haystack unclear): re.search(r'{pattern}') is applied to "
+                f"'{haystack_arg[:60]}', not confirmed as SKILL.md content -- this tool "
+                "doesn't execute the target script, so evaluating anchoring against SKILL.md "
+                "semantics would risk a false FAIL on a pattern intentionally designed for a "
+                "different haystack (e.g. a shell-metacharacter detector applied to an "
+                "extracted command line, where '&&'/'|'/';' must match anywhere by design, "
+                "not a SKILL.md trigger-phrase assertion). Verify manually."
+            )
+            continue
+
         branches = _split_top_level_alternation(pattern)
         weak_branches = []
         unresolved_branches = []

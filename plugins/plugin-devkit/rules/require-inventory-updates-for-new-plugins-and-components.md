@@ -15,10 +15,21 @@ merge).
   minted `plugin_id`, again through its own Plan/Apply approval gate. `marketplace-inventory` must run
   *before* `plugin-inventory` for a new plugin — `plugin-inventory`'s own Build mode refuses to invent a
   `plugin_id` and requires one already assigned by `marketplace-inventory`.
-- **New component in an existing plugin, before finalizing:** run that plugin's own `plugin-inventory`
-  (`check`/`plan`/`apply`) so the new component is proposed as an `add` operation and approved — no
-  `marketplace-inventory` step needed, since it never tracks component-level records; it only reads
-  `plugin-inventory.json` for rollups and referential integrity, never edits it directly.
+- **New component in an existing plugin that already has a `plugin_id`** (a live `marketplace-inventory`
+  record already exists for it, or its own `plugin-inventory.json` already carries one), before
+  finalizing: run that plugin's own `plugin-inventory` (`check`/`plan`/`apply`) so the new component is
+  proposed as an `add` operation and approved — no `marketplace-inventory` step needed here, since it
+  never tracks component-level records; it only reads `plugin-inventory.json` for rollups and
+  referential integrity, never edits it directly.
+- **New component in an existing plugin that has never been inventoried at all** (no live
+  `marketplace-inventory` record and no `plugin-inventory.json` exist for it yet — the actual current
+  state of every plugin in this repo as of this rule's own writing): treat it the same as the new-plugin
+  case above. `plugin-inventory`'s Build/bootstrap mode refuses to invent a `plugin_id` and requires one
+  already minted by `marketplace-inventory`, and `check`/`plan` have no existing inventory to run
+  against — run `marketplace-inventory` first (it discovers the plugin from `marketplace.json` and mints
+  its `plugin_id`, even though the plugin itself isn't new), then `plugin-inventory` to bootstrap its
+  component list, each through its own approval gate. Skipping straight to `plugin-inventory` here
+  blocks the lifecycle after the build commit with no path forward.
 - **A run changed an existing plugin's component list** (add, remove, split, or merge — not just a new
   component from scratch): run that plugin's own `plugin-inventory check`, propose the resulting
   operations, and get them approved the same way.
@@ -33,8 +44,9 @@ merge).
 ## Lifecycle wiring
 
 - **`plugin-lifecycle-upstream`:** an Inventory Sync step, after the Commit step and before the Document
-  step. Branches on what Build actually produced: a brand-new plugin → run `marketplace-inventory` then
-  `plugin-inventory` as above; a new component in an existing plugin → run that plugin's own
+  step. Branches on what Build actually produced: a brand-new plugin, or a new component in an existing
+  plugin that has never been inventoried at all → run `marketplace-inventory` then `plugin-inventory` as
+  above; a new component in an existing plugin that already has a `plugin_id` → run that plugin's own
   `plugin-inventory` only. Commit the result as its own commit, separate from the build commit and from
   any doc-fix commit the Document step produces.
 - **`plugin-lifecycle-downstream`:** wired into Phase 12 (Handoff Finalization), alongside the Manifest
