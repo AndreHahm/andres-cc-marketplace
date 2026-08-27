@@ -223,17 +223,23 @@ def check_step7_rebase_precheck():
         return False, "step 7 ('## Instructions') not found"
     if "Rebase-compatibility pre-check" not in step7:
         return False, "step 7 no longer documents the rebase-compatibility pre-check"
-    if "parents | length" not in step7:
-        return False, "step 7's pre-check no longer counts merge commits via parent count"
+    # Bound to sub-step (a)'s own text only -- up to the next lettered sub-step ("   b. **") --
+    # so a regression that drops (a)'s own AskUserQuestion gate can't be masked by (c)/(d) still
+    # mentioning AskUserQuestion later in step 7.
     precheck_pos = step7.find("Rebase-compatibility pre-check")
-    if "AskUserQuestion" not in step7[precheck_pos:]:
+    next_substep = re.search(r"^   [a-e]\. \*\*", step7[precheck_pos:], re.MULTILINE)
+    substep_end = precheck_pos + next_substep.start() if next_substep else len(step7)
+    substep_a = step7[precheck_pos:substep_end]
+    if "parents | length" not in substep_a:
+        return False, "step 7(a) no longer counts merge commits via parent count"
+    if "AskUserQuestion" not in substep_a:
         return (
             False,
-            "step 7's rebase pre-check no longer asks via AskUserQuestion before proceeding",
+            "step 7(a) no longer asks via AskUserQuestion before proceeding",
         )
     return (
         True,
-        "step 7 documents the rebase-compatibility pre-check with a merge-commit "
+        "step 7(a) documents the rebase-compatibility pre-check with a merge-commit "
         "count and an AskUserQuestion gate",
     )
 
