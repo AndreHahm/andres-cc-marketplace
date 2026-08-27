@@ -7,7 +7,7 @@ description: >-
   against git-kit's <type>/<description> convention and offers a worktree as an alternative to a plain
   branch checkout.
 argument-hint: (optional) branch type and description, e.g. "feature add-user-auth"
-allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Glob, Write
+allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Glob, Write, AskUserQuestion
 ---
 
 # Starting Work

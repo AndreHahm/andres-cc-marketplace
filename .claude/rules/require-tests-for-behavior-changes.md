@@ -3,9 +3,12 @@ paths:
   - "plugins/*/skills/**"
   - "plugins/*/agents/**"
   - "plugins/*/commands/**"
+  - "plugins/*/hooks/**"
   - ".claude/skills/**"
   - ".claude/agents/**"
   - ".claude/commands/**"
+  - ".claude/hooks/**"
+  - "scripts/**"
 ---
 
 # Component Testing
