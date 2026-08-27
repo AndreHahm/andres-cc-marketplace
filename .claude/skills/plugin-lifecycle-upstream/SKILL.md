@@ -110,7 +110,7 @@ After Phase 7 (Test)'s gate is approved, stage and commit the built files per th
 
 ## Inventory Sync
 
-After the Commit step and before Document, sync `marketplace-inventory`/`plugin-inventory` per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`: a brand-new plugin → run `marketplace-inventory` (mints the `plugin_id`) then `plugin-inventory`, each through its own Plan → `AskUserQuestion` approval → Apply gate; a new component in an existing plugin → run that plugin's own `plugin-inventory` only. Commit the result as its own commit, separate from the build commit and from any doc-fix commit the Document step below produces.
+After the Commit step and before Document, sync `marketplace-inventory`/`plugin-inventory` per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`: a brand-new plugin, or a new component in an existing plugin that has never been inventoried at all (no live `marketplace-inventory` record and no `plugin-inventory.json` yet — the actual current state of every plugin in this repo) → run `marketplace-inventory` (mints/confirms the `plugin_id`) then `plugin-inventory`, each through its own Plan → `AskUserQuestion` approval → Apply gate; a new component in an existing plugin that already has a `plugin_id` → run that plugin's own `plugin-inventory` only. Commit the result as its own commit, separate from the build commit and from any doc-fix commit the Document step below produces.
 
 ## Document
 
