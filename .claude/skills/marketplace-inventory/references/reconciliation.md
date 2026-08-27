@@ -13,18 +13,23 @@ Same deterministic vocabulary as `plugin-inventory`, at plugin scope:
 |---|---|
 | `add` | A plugin in `marketplace.json` with no matching canonical record yet |
 | `update` | An existing active record whose `source` path changed |
-| `conflict` | Either **any** canonical record (regardless of status) whose `plugin-inventory.json` disagrees on `plugin_id`, or an *active* record missing from the current manifest entirely |
-| `no-op` | An active record whose `source` matches, or any non-active existing record with no `plugin_id` mismatch — source is only actually compared for active records (see below) |
+| `conflict` | Any canonical record (regardless of status) whose `plugin-inventory.json` disagrees on `plugin_id`; an *active* record missing from the current manifest entirely; **or a discovered candidate matching an existing *non-active* record (planned/deprecated/superseded/retired) — always a `conflict`, requiring a status-transition decision, never automatic** |
+| `no-op` | An *active* record whose `source` matches — the only case that resolves to `no-op` |
 
 Every `add`/`update`/`conflict` carries `requires_approval: true` — this script never applies one on
 its own; the calling skill collects human decisions first, exactly like `plugin-inventory`. A `conflict`
 is never applied as its own shape — its resolution becomes a `status-transition` operation instead (see
 `SKILL.md`'s Plan mode section).
 
-**`no-op` does not mean "identical in every field"** — a non-active existing record (planned/deprecated/
-superseded/retired) is classified `no-op` whenever it isn't flagged as a `plugin_id`-mismatch conflict,
-*without* comparing its `source` against the candidate at all; only an *active* record's `source` is
-actually checked against the candidate before being called a match.
+**A non-active record match is never a `no-op`.** When a discovered candidate matches an existing
+non-active record (planned/deprecated/superseded/retired), `build_plan()` unconditionally surfaces a
+`conflict` — regardless of `plugin_id` status — requiring a human status-transition decision, the same
+guarantee `SKILL.md`'s own Failure Handling section states ("Non-active record reappears... is surfaced
+as a `conflict`... never a silent `no-op`", also `scripts/smoke_test.py`'s `check_non_active_reappearance_conflict`,
+scenario 12). This was the fix for a cross-model-review finding that an earlier version of `build_plan()`'s
+discovery loop only ever compared against `active` records, silently no-op'ing a planned/retired/
+deprecated/superseded record's reappearance — that gap is closed, and this file previously still
+documented the pre-fix behavior.
 
 ## Missing Plugin Inventories
 
@@ -60,9 +65,13 @@ inventory's `score`/`security_score` fields even by mistake.
 `plugin-grader`'s `plugin_security_score` field entirely (detected by that field's own absence, not a
 stored value), `import-grading` appends the quality `scoring_history` event normally but silently
 appends **no** security event at all — `security_score_appended: false` in the script's own JSON output
-is the only signal of this. This is distinct from a post-prerequisite report whose `plugin_security_score`
-is explicitly `null` (zero-scorable-components case) — see `plugin-grader/references/output-schema.md`'s
-Schema Versioning section for the full two-case distinction this mirrors.
+is the only signal of this. This mirrors `plugin-grader`'s own two-case distinction for a missing
+security score: a report written before `plugin_security_score` existed has no `grader_schema_version`
+key at all (field-absence signals "pre-prerequisite," never a stale stored value), which is a different
+case from a *post*-prerequisite report that carries the field but sets it explicitly to `null` (the
+zero-scorable-components case, where `plugin-grader` did run the newer scoring logic and legitimately
+found nothing to score) — this script's `security_score_appended: false` handles only the first case;
+an explicit `null` in a schema-versioned report is a valid, importable value, not treated as absence.
 
 ## Repair Plugins (Marketplace-Wide)
 

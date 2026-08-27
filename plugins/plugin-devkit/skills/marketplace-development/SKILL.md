@@ -50,6 +50,11 @@ can install skills via `claude plugin marketplace add` and get auto-updates.
 
 - For plugins with an existing `plugin.json` — use `plugin-development` instead
 - For local-only skills not intended for distribution
+- **Recording a plugin's lifecycle status, history, or grading rollups** (e.g. "update the
+  marketplace database", "check all plugin inventories for drift", "import the latest plugin
+  grades") — use `marketplace-inventory` instead; this skill only ever writes
+  `.claude-plugin/marketplace.json` (the installable catalog), never
+  `marketplace-inventory.json` (the historical status/rollup database).
 
 ---
 
