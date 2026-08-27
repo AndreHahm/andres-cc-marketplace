@@ -357,6 +357,28 @@ def check_step1_owner_repo_from_pr_url():
     )
 
 
+def check_step2_refetch_on_rerun():
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "When this step is being re-run" not in step2:
+        return (
+            False,
+            "step 2 no longer documents that a re-run (from step 4(e)/7(d)) must re-fetch fresh "
+            "PR data instead of reclassifying step 1's original, now-stale fetch",
+        )
+    if "gh pr view $ARGUMENTS --json isDraft,reviews,statusCheckRollup" not in step2:
+        return (
+            False,
+            "step 2's re-run path no longer names the exact re-fetch command",
+        )
+    return (
+        True,
+        "step 2 documents re-fetching fresh PR data before reclassifying on a re-run "
+        "(step 4(e)/7(d))",
+    )
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -372,6 +394,7 @@ CHECKS = [
     check_step7_squash_disclosure,
     check_step7_rejection_fallback,
     check_step1_owner_repo_from_pr_url,
+    check_step2_refetch_on_rerun,
 ]
 
 
