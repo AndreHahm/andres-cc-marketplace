@@ -35,6 +35,39 @@ The four remaining dimensions (Simplicity, Testing, Efficiency, Actionability) d
 
 Weight sum check: 15+15+12+12+10+10+5+5+5+5+3+3 = 100.
 
+## `testing` Dimension vs. R28-R31: Two Overlapping, Independently-Gated Signals
+
+`plugin-rulebook`'s R28 (Skill Testing Mandate), R29 (Skill Testing Section Required), and R31 (Eval
+Fixture Integrity) — added 2026-08-27 — score real evals/Testing & Validation content into the
+`rule_compliance` dimension (3) via `plugin-rulebook-checker`'s own REQUIRED/ADVISORY findings, the same
+path every other rulebook rule already uses. This was not a coincidence to reconcile after the fact:
+`rule_compliance`'s existing Gate A (score < 5.0 → cap 6.0) already fires automatically the moment any
+of R28/R29/R31 REQUIRED-FAILs, since a REQUIRED finding maps to Critical, which floors `rule_compliance`
+in `[0, 2]` — well under the Gate A threshold. No rubric change was needed for R28/R29/R31 to start
+affecting a graded score; they plug into the mechanism that already existed for every other REQUIRED
+rule.
+
+**This does not replace the `testing` dimension (8) above — the two intentionally coexist, scoring
+related but distinct things:**
+- `testing` (dimension 8, its own Static heuristic, Gate D) measures whether real run *evidence* exists
+  (`evals/`+`evals.json`+a completed `benchmark.json`) — a softer signal, capped at 8.0 (non-blocking)
+  when it scores 0.0, predating R28-R31 and left as-is by that addition (`plugin-grader/references/
+  rubric.md`/`gates-and-rollup.md` are not named in the R28-R32 concept's own implementation checklist).
+- R28/R29/R31 (via `rule_compliance`, dimension 3, Gate A) measure whether the *rule-level structural
+  requirements* are met — a skill has evals.json meeting the minimum scenario count **or** an explicit
+  justification (R28), the Testing & Validation section itself has the required subsections (R29), and
+  existing eval/smoke-test content is mechanically correct, not vacuous (R31) — a stricter signal,
+  capped at 6.0 (blocking-adjacent) when it fires.
+- **Both gates can fire on the same component simultaneously** — a skill with genuinely zero evals AND
+  no justification note will floor both `testing` (Gate D, cap 8.0) and `rule_compliance` (Gate A, cap
+  6.0) at once; per `gates-and-rollup.md` step 5, `final_score` takes the minimum of all triggered caps,
+  so Gate A's 6.0 wins over Gate D's 8.0 in that case — the newer, rule-level signal is the one that
+  actually determines the visible cap when both apply.
+- A skill can also fail only one: e.g. `evals/`+`evals.json` exist with a completed `benchmark.json`
+  (satisfies R28's PASS path and `testing`'s 10-band) but the SKILL.md's own Testing & Validation section
+  is missing a required subsection (R29 REQUIRED-FAILs `rule_compliance` regardless) — only Gate A fires
+  there, `testing` stays ungated.
+
 ## skilldir-reviewer Axis Split: Content Quality vs. Maintainability
 
 `skilldir-reviewer` reports findings across four axes (Step 4 Stale Content, Step 5 Duplicated Content, Step 6 Broken/Inconsistent Examples, Step 7 Rulebook Violations/Broken Links). Its Step 4 and Step 6 axes feed `content_quality`; its Step 5 axis feeds `maintainability` instead. Do not assign a Step 5 (Duplicated Content) finding to `content_quality`, and do not assign a Step 4 or Step 6 finding to `maintainability` — each finding has exactly one home dimension. (Its Step 7 axis feeds `rule_compliance` via the same rulebook violations it flags, not either of these two.)
