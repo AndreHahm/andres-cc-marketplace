@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Verifies each candidate SHA is reachable via git merge-base --is-ancestor before trusting it", "passed": true, "evidence": "\"Reachability check per candidate SHA -- git merge-base --is-ancestor <sha> HEAD for abc1234, bcd2345, and def5678 individually\""},
+    {"text": "Compares tree hashes across candidates via git rev-parse <sha>^{tree}", "passed": true, "evidence": "\"Tree-hash comparison across all three -- git rev-parse <sha>^{tree} for each\""},
+    {"text": "Concludes one of the tree-hash-matching commits is a redundant, already-merged rebase-replay duplicate, not a distinct change", "passed": true, "evidence": "Nuanced pass, not a flat match: the agent declined to flatly assert 'one is a duplicate' and instead treated the tree-hash match as ambiguous between a redundant duplicate and a legitimate revert, requiring further diagnosis (diff/metadata checks) before concluding either way -- more cautious than the assertion's literal wording, but it achieves the same underlying goal (never silently treat two tree-hash-matching commits as both independently needed) and explicitly says 'a tree-hash match... is only proof that they produce identical working-tree content -- it does not by itself say which one is redundant.' Graded as satisfying the assertion's intent per skill-evaluation-protocol.md's semantic-equivalence standard, not exact-text matching."},
+    {"text": "Flags the duplicate to the user as part of the resolved list shown for confirmation, rather than silently cherry-picking all three commits", "passed": true, "evidence": "\"present the resolved list back to the user with the anomaly called out explicitly, and withhold any git cherry-pick (on any of the three SHAs) until the user confirms which commits actually belong in the final list\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Resolves the commit list via gh pr view --json commits or gh api repos/{owner}/{repo}/pulls/57/commits, not a hand-typed or remembered list", "passed": true, "evidence": "\"resolve the authoritative commit list via gh pr view 57 --json commits or gh api repos/{owner}/{repo}/pulls/57/commits -- never from memory or an assumed-matching local branch\""},
+    {"text": "Never reconstructs the list from a local branch assumed to match", "passed": true, "evidence": "\"Directly answered 'no' to whether a SHA list is ever typed/recalled from memory or a local branch assumed to match\""},
+    {"text": "Shows the resolved commit list back to the user for confirmation before any git cherry-pick runs", "passed": true, "evidence": "\"Show the resolved list back to the user for confirmation before any git cherry-pick runs (per the skill's explicit requirement)\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

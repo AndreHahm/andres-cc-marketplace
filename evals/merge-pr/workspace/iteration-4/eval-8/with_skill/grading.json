@@ -1,0 +1,11 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs the merge-commit count check (gh api repos/{owner}/{repo}/pulls/<number>/commits, counting entries with more than one parent) before ever calling gh pr merge --rebase", "passed": true, "evidence": "\"...applied step 7(a)'s rebase-compatibility pre-check to the given scenario... the merge-commit-count query returned exactly one SHA (count = 1, non-zero)\""},
+    {"text": "Since the count is non-zero, asks via AskUserQuestion for an alternate strategy (Merge or Squash) instead of attempting --rebase", "passed": true, "evidence": "\"Ask via AskUserQuestion which alternate strategy to use: 'Merge (keeps the merge commit)' or 'Squash (see the tradeoff below).'\""},
+    {"text": "States why: GitHub's rebase-and-merge rejects a branch containing an existing merge commit", "passed": true, "evidence": "\"...that gh pr merge --rebase would be rejected by GitHub ('This branch can't be rebased') -- a verified, live-reproduced fact, not something to test by trying it.\""},
+    {"text": "Does not wait for a live gh pr merge --rebase rejection before asking", "passed": true, "evidence": "\"gh pr merge --rebase is never invoked in this branch -- the pre-check catches it proactively in 7(a)...\""}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
