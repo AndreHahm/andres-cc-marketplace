@@ -471,9 +471,10 @@ routing, new-branch routing, commit routing, read-only comparison) have no eval 
       remembered list, and never an unpaginated call that could silently truncate a large PR
 - [ ] A PR-number cherry-pick request always flags any resolved commit with more than one parent before
       Strategy C runs — `git cherry-pick` fails outright on a merge commit with no `-m <parent>`
-- [ ] A SHA/range cherry-pick request always verifies each candidate with
-      `git merge-base --is-ancestor` before it's added to the resolved list — an unreachable or
-      wrong-branch SHA is never silently included
+- [ ] A SHA/range cherry-pick request always verifies each candidate with `git cat-file -e <sha>^{commit}`
+      (object exists) and `git branch --all --contains <sha>` (reachable from some ref) before it's added
+      to the resolved list — never `git merge-base --is-ancestor` against `HEAD`/the target, which would
+      wrongly reject a legitimate, not-yet-merged feature-branch commit
 - [ ] `<N>` and `<sha>` are always shape-validated (digits-only; `^[0-9a-fA-F]{7,40}$`) before being
       interpolated into any command
 - [ ] The resolved commit list is always re-resolved immediately before the side-effecting

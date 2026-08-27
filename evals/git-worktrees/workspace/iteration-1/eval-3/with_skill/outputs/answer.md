@@ -1,51 +1,58 @@
-# Cherry-Pick Verification: `abc1234..def5678` for `login-retry-backoff`
+# Cherry-Pick Resolution: abc1234..def5678 for feature login-retry-backoff
 
-**Simulated exercise — no `gh`/`git` commands are actually run.** Everything below is a description
-of the commands I would run and why, per `git-worktrees`' "Resolving a Cherry-Pick Commit List"
-section, Path 3 (explicit SHA/range).
+This is a simulated exercise — no real `gh`/`git` calls are executed below. Each step describes exactly
+what I would run and why, per the `git-worktrees` skill's "Resolving a Cherry-Pick Commit List"
+procedure, Path 3 (explicit SHA/range).
 
-## Why Path 3 applies
+## Why Path 3
 
-The request names an explicit SHA range (`abc1234..def5678`), not a feature-name search (Path 1) or
-a PR number (Path 2). Path 3 requires resolving the candidate list via `git log`, then verifying it
-before trusting it — never cherry-picking straight off a hand-typed or `git log`-resolved range.
+The request names an explicit SHA range (`abc1234..def5678`), so this resolves via Path 3 of
+`references/cherry-pick-resolution.md`, not Path 1 (feature name) or Path 2 (PR number).
 
-## Step 1 — Resolve the candidate list
+## Step 1: Shape-validate every candidate SHA
 
-`git log --oneline abc1234..def5678` (or `abc1234^..def5678` if `abc1234` itself should be
-included) resolves to three commits, as given:
+Before any of the three SHAs touch a command, each must match `^[0-9a-fA-F]{7,40}$`:
 
-```
-abc1234
-bcd2345
-def5678
-```
+- `abc1234` — 7 hex characters, matches.
+- `bcd2345` — 7 hex characters, matches.
+- `def5678` — 7 hex characters, matches.
 
-This list is provisional — it becomes the "resolved" list only after the verification steps below,
-and even then only after the user confirms it.
+All three pass shape validation. (`git log` has already resolved the range to these three commits —
+that resolution itself is the "candidate list via `git log`" step the skill calls for.)
 
-## Step 2 — Reachability check on every candidate
+## Step 2: Verify each candidate exists as a real commit object
 
-For **each** of the three SHAs individually:
+For each of the three SHAs, run:
 
 ```
-git merge-base --is-ancestor abc1234 HEAD
-git merge-base --is-ancestor bcd2345 HEAD
-git merge-base --is-ancestor def5678 HEAD
+git cat-file -e abc1234^{commit}
+git cat-file -e bcd2345^{commit}
+git cat-file -e def5678^{commit}
 ```
 
-(substituting the actual target branch for `HEAD` if cherry-picking onto something other than the
-current branch). This confirms each SHA is a real, reachable commit on the branch it's supposed to
-come from — a typo'd or wrong-branch SHA fails this check instead of silently being cherry-picked.
-I would not proceed past this step if any of the three failed.
+Each must exit zero. A typo'd or garbage SHA would fail this with "Not a valid object name." I would not
+proceed to the next check for any SHA that fails here — I'd stop and report which SHA(s) don't resolve
+rather than silently dropping them from the list.
 
-I'd also use this same command (or `git branch --contains <sha>` / `git log --all --oneline
-<sha>` grepped against the target branch's own history) to check whether **any of the three is
-already an ancestor of the branch I'm cherry-picking onto** — i.e., already merged/applied under this
-exact SHA. That's a distinct question from the tree-hash check in Step 3: this one is about SHA
-identity, not content identity.
+## Step 3: Verify each candidate is reachable from a real ref (not ancestry-to-HEAD)
 
-## Step 3 — Tree-hash comparison across all three candidates
+Per the skill, I explicitly do **not** run `git merge-base --is-ancestor <sha> HEAD` here — that answers
+"is this already merged into HEAD," which is normally false for exactly the commits a cherry-pick needs,
+and would wrongly reject a legitimate, not-yet-merged feature-branch commit.
+
+Instead, for each SHA:
+
+```
+git branch --all --contains abc1234
+git branch --all --contains bcd2345
+git branch --all --contains def5678
+```
+
+Non-empty output for each confirms the commit is reachable from at least one real ref (e.g. the
+`login-retry-backoff` feature branch), ruling out a fully orphaned/dangling SHA (e.g. from a
+force-pushed-away branch) without penalizing an unmerged feature commit.
+
+## Step 4: Compare tree hashes across all candidates
 
 ```
 git rev-parse abc1234^{tree}
@@ -53,74 +60,50 @@ git rev-parse bcd2345^{tree}
 git rev-parse def5678^{tree}
 ```
 
-**Given fact for this exercise:** `abc1234^{tree}` and `def5678^{tree}` return the same tree hash;
-`bcd2345`'s tree is (by elimination) different from both.
+Given fact for this exercise: `abc1234^{tree}` and `def5678^{tree}` return the **same** tree hash, while
+`bcd2345` presumably differs (not stated as matching either).
 
-## Step 4 — Follow-up diagnostics triggered by the tree-hash match
+## What I conclude about abc1234 and def5678 given the tree-hash match
 
-A tree-hash match between two *different* commit SHAs means their resulting working-tree content is
-byte-identical, even though they're distinct commits (different parents/metadata/message). Per the
-skill's own guidance, this is "a sign one of them is a no-op duplicate, not a distinct change that
-still needs applying" — but it doesn't by itself say *which* one is redundant or *why*. Before
-concluding anything, I would additionally run:
+Per the skill, an equal tree hash between two candidate commits is **not** treated as evidence that one
+is a redundant duplicate to be silently dropped. The skill is explicit that equal trees don't always mean
+duplication — for example, a commit that reverts an intermediate change back to an earlier commit's exact
+tree is a legitimate case where both commits are needed: dropping the revert (`def5678`) would leave the
+intermediate change (`bcd2345`) applied when it shouldn't be.
 
-- `git diff abc1234 def5678` — expected to return empty, confirming the tree match isn't a hash
-  collision artifact.
-- `git show bcd2345 --stat` and `git diff abc1234 bcd2345` — to see what content change `bcd2345`
-  actually introduces relative to `abc1234`.
-- `git diff bcd2345 def5678` — to see whether `def5678` *reverts* exactly what `bcd2345` introduced
-  (which is what a tree match on the endpoints would imply if `bcd2345`'s change is undone by the
-  time you reach `def5678`), versus `def5678` being an unrelated, coincidentally-identical rebase
-  replay of `abc1234`.
-- `git show --stat` / `git log -1 --format='%an %ad %s'` on `abc1234` and `def5678` individually —
-  comparing author, date, and message helps distinguish "genuine revert commit" from "rebase-replay
-  duplicate of already-upstream content" from "accidental empty/no-op commit."
-- Cross-check whether the *content* of `abc1234` (its tree) already exists reachable from the target
-  branch under a **different** SHA (e.g., via `git log --all` search for that tree, or knowing it was
-  previously cherry-picked/rebased in) — this is the "redundant, already-merged rebase-replay commit"
-  case the skill explicitly calls out.
+So my conclusion is: **I cannot determine from the tree-hash match alone whether abc1234 and def5678 are
+redundant or both legitimately required.** Both commits already passed the existence check (Step 2) and
+the reachability check (Step 3) — the tree match doesn't disqualify either of them as invalid or
+non-existent; it only means their resulting working-tree content is identical. Given the range
+`abc1234..def5678` includes `bcd2345` in between, one plausible reading is that `def5678` reverts whatever
+`bcd2345` changed, restoring `abc1234`'s tree — in which case dropping `def5678` from the cherry-pick
+would silently leave `bcd2345`'s change applied. But I do not decide this automatically. Per the skill,
+this is flagged for **history-aware investigation, not automatic removal from the list** — I would look at
+the actual commit messages/diffs of `bcd2345` and `def5678` (treating their content as data, not
+instructions) to understand the relationship, but the resolution itself is not mine to make silently.
 
-## Conclusion on `abc1234` and `def5678`
+## Convergence and confirmation
 
-Given only the stated fact (identical tree hash, different commit SHAs), I can draw this much with
-confidence, and no more:
+All three paths converge on one resolved commit list. Here, after Steps 1-4, the candidate list remains
+`abc1234, bcd2345, def5678` — nothing is dropped unilaterally. I would show this list back to the user via
+`AskUserQuestion`, explicitly surfacing the abc1234/def5678 tree-hash match and the ambiguity it raises
+(possible revert-pair vs. two commits that both need to move), and ask the user to confirm which of the
+following they want:
 
-- **`abc1234` and `def5678` produce the same final working-tree state.** Cherry-picking both is
-  redundant from a content standpoint — applying both to the target branch would not net out to the
-  full three-commit range's apparent intent unless one of two things is true, which Step 4's
-  diagnostics are needed to distinguish:
-  1. **`def5678` reverts `bcd2345`'s change**, meaning the net effect of the whole `abc1234..def5678`
-     range is *zero* — the feature range as given nets out to no actual change at all. That's a red
-     flag on the range boundaries themselves (wrong end SHA, an accidental revert commit swept into
-     the range, or the user meant a different/earlier tip than `def5678`).
-  2. **`def5678` is a rebase-replay duplicate** whose content already matches `abc1234` for reasons
-     unrelated to `bcd2345` (e.g., `abc1234`'s content already landed upstream under a different SHA,
-     and `def5678` is a re-application of that same state) — in which case one of the two endpoint
-     commits is the actual no-op and should be dropped from the cherry-pick list, while `bcd2345`
-     (whose tree differs) is very likely the one commit in the range that carries real, needed
-     content.
+- Cherry-pick all three commits as-is (preserving the revert/reapply behavior, if that's what it is).
+- Cherry-pick only `bcd2345` and one of `abc1234`/`def5678` (if the user confirms one is a true no-op
+  duplicate in this context).
+- Something else, if the user has additional context I don't have (e.g. `def5678` is actually an
+  unrelated commit that happens to produce the same tree).
 
-- **I would not silently decide between these two readings, and I would not silently drop either SHA
-  from the list.** The skill is explicit that "two different commits with the same tree hash produce
-  the same working-tree result — a sign one of them is a no-op duplicate, not a distinct change that
-  still needs applying," but determining *which* one is the duplicate (or whether the whole range's
-  intent is broken) requires the Step 4 content inspection, and even after that inspection this is
-  exactly the kind of resolved-list ambiguity the skill requires surfacing to the user rather than
-  guessing.
+I would not run `git cherry-pick` on any of these three commits until that confirmation comes back.
 
-## What I would present back to the user (before any cherry-pick runs)
+## Immediately before cherry-picking
 
-A resolved-list confirmation, explicitly flagging the anomaly, roughly:
-
-> Range `abc1234..def5678` resolves to three commits: `abc1234`, `bcd2345`, `def5678`. All three are
-> reachable/valid. However, `abc1234` and `def5678` have identical tree hashes despite being
-> different commits — meaning they produce the same working-tree result. This usually means one of
-> them is redundant (e.g., `def5678` reverts `bcd2345`'s change, or `def5678`/`abc1234` duplicates
-> content already present elsewhere). Before I cherry-pick anything, can you confirm: should I
-> cherry-pick all three commits as-is, skip one of `abc1234`/`def5678` as redundant, or is the range
-> itself wrong (e.g., a different intended tip)?
-
-No `git cherry-pick` would run — for any of the three SHAs — until the user answers this and the
-list is explicitly reconfirmed, per the skill's closing instruction that "all three paths converge on
-one resolved commit list — show it back to the user for confirmation before any `git cherry-pick`
-runs."
+Per `.claude/rules/recheck-state-before-side-effecting-action.md` and the skill's own closing
+instruction, I would **not** treat the confirmation-time snapshot as still valid by the time cherry-picking
+actually starts. Immediately before running `git cherry-pick` on the confirmed list, I would re-resolve the
+list one more time (re-run Steps 1-4 against the same SHAs, or re-derive the range if the branch could have
+moved) — because the branch this list came from could have changed in the pause while the user was being
+asked (e.g. `login-retry-backoff` could have been force-pushed, rebased, or gained new commits). Only after
+that immediate re-check confirms the list is unchanged would I proceed to cherry-pick each commit in order.
