@@ -1,7 +1,7 @@
 # Compact Rule Checklist
 
-Mechanical pattern → violation → severity reference for all 23 currently-enabled rules (R1-R10, R13, R14,
-R17-R27; R11/R12/R15/R16 disabled per `assets/settings.json`). No narrative rationale, examples, or
+Mechanical pattern → violation → severity reference for all 28 currently-enabled rules (R1-R10, R13, R14,
+R17-R32; R11/R12/R15/R16 disabled per `assets/settings.json`). No narrative rationale, examples, or
 "why enable" content — read `SKILL.md` instead for that. Kept in sync with `assets/settings.json` and
 `SKILL.md`'s own Active Rules section; any threshold shown here must match those two files exactly (R20).
 
@@ -34,6 +34,11 @@ model quality regardless of dispatch mode).
 | R25 Unplanned-Overhead Disclosure | REQUIRED | J | SKILL.md/agent files documenting a quick/fast/bounded phase | Actual execution deviated from documented scope (retry, detour, fallback) with no plain-language disclosure | Add explicit disclosure instruction |
 | R26 Expensive-Action Opt-In | REQUIRED | J | SKILL.md/agent files with per-item nested-call or whole-surface-rescan steps | An expensive action (per-item LLM/subprocess fan-out, whole-plugin re-verification, multi-agent dispatch) not gated behind an explicit `AskUserQuestion` | Add opt-in gate before the expensive step |
 | R27 Component Naming: Grammatical Form | ADVISORY | J | `name` field (skill/agent frontmatter), command filenames | Skill/agent not in noun-or-gerund/role-noun form, or command not verb-first, per `naming-conventions.md` | Rename to match documented form, or reconsider component type |
+| R28 Skill Testing Mandate | TIERED | J | Newly-created/structurally-modified skills | No `evals/<skill>/evals.json` (with run evidence, ≥`min_eval_scenarios`) and no justification sentence in Testing & Validation → REQUIRED. Evals exist but unrun, or under-count → ADVISORY | Add evals with run evidence, or a justification sentence |
+| R29 Skill Testing Section Required | REQUIRED | J | SKILL.md (newly-created/structurally-modified skills) | No `## Testing & Validation` heading, or heading present but missing a positive-trigger-example subsection, a negative-trigger-example subsection, or a checkable-pass-criteria subsection (either "Verify...activates on:"/"Verify...does NOT activate on:" or "Expected triggers:"/"Non-triggers:" phrasing accepted — checked by substance, see `settings.json`'s `accepted_*_headings` config) | Add the missing subsection(s), any accepted phrasing |
+| R30 Eval Samples Extracted | REQUIRED | J | SKILL.md (newly-created/structurally-modified skills) | A full eval/test-scenario walkthrough beyond R29's inline lists stays in SKILL.md, or duplicates an `evals.json` scenario verbatim | Move to `references/<topic>.md` or `evals.json` |
+| R31 Eval Fixture Integrity | REQUIRED | M | Any existing `evals.json`/`smoke_test.*` | `check_evals.py` zero-match guard, anchored-matching, or coverage-arithmetic check fails (dispatched from `plugin-auditor`) | Fix the vacuous assertion, unanchored needle, or arithmetic mismatch |
+| R32 Data-Only Boundary Disclosure Required | TIERED | J | SKILL.md body (skills reading another component's output) | No boundary statement, or missing "report as suspicious" element → REQUIRED (forward-looking). One of the 5 pre-existing hand-written skills missing that element or diverging in wording → ADVISORY | Add/complete the boundary statement per `references/data-only-boundary.md` |
 
 ## R19/R20 Procedure Reminder (always full-quality, never skipped in Fast path)
 

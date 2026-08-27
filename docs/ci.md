@@ -85,7 +85,7 @@ a plugin-root `LICENSE`/`NOTICE`/`KNOWN_ISSUES.md` (genuinely inert text) qualif
 `README.md`/`CONTRIBUTING.md`/`CHANGELOG.md`/`INSTALLATION.md` do **not** bypass — a security review found
 these can carry real signal (a README's install step piping a script to a shell, a CHANGELOG newly
 documenting a dependency) that `dependency-reviewer`/`security-reviewer` should still see, even though
-`plugin-rulebook-checker`'s own R1-R27 rules never had an opinion on them. The exclusion also only ever
+`plugin-rulebook-checker`'s own R1-R32 rules never had an opinion on them. The exclusion also only ever
 applies to a basename sitting directly at a plugin's own root or the repo root — a same-named file nested
 inside a component directory (e.g. `plugins/<name>/commands/README.md`, a real, Claude-Code-loadable
 command file) is never excluded, so a component change can't be smuggled past every reviewer by naming it

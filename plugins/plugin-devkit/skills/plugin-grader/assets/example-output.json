@@ -18,7 +18,7 @@
     "rule_compliance": {
       "score": 10.0, "weight": 0.12, "is_na": false,
       "source": "plugin-rulebook-checker",
-      "findings_summary": "All 23 enabled rules PASS."
+      "findings_summary": "All 28 enabled rules PASS."
     },
     "completeness": {
       "score": 10.0, "weight": 0.12, "is_na": false,
@@ -71,7 +71,7 @@
   "final_score": 8.9,
   "swot": {
     "strengths": [
-      "Rule Compliance (10/10) — all 23 enabled rules PASS.",
+      "Rule Compliance (10/10) — all 28 enabled rules PASS.",
       "Completeness (10/10) — no open items or stale claims.",
       "Maintainability (10/10) — no duplicated content within the skill's own files."
     ],

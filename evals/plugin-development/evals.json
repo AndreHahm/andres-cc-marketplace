@@ -6,8 +6,8 @@
     {
       "id": 1,
       "name": "Activation routing among plugin-development / plugin-rulebook / plugin-validator",
-      "prompt": "Reasoning-only: read plugin-development/SKILL.md, plugin-rulebook/SKILL.md, and plugin-validator.md's frontmatter descriptions. For each of 3 requests (scaffold a new plugin; check R1-R27 naming/tool-scoping; validate manifest/directory wiring), say which component's description signals it should handle that request, quoting the exact phrase.",
-      "expected_output": "1: plugin-development (decided name/purpose scaffolding phrase). 2: plugin-rulebook (naming conventions and R1-R27 formatting compliance phrase). 3: plugin-validator (validates overall plugin structure, manifest, and component wiring phrase).",
+      "prompt": "Reasoning-only: read plugin-development/SKILL.md, plugin-rulebook/SKILL.md, and plugin-validator.md's frontmatter descriptions. For each of 3 requests (scaffold a new plugin; check R1-R32 naming/tool-scoping; validate manifest/directory wiring), say which component's description signals it should handle that request, quoting the exact phrase.",
+      "expected_output": "1: plugin-development (decided name/purpose scaffolding phrase). 2: plugin-rulebook (naming conventions and R1-R32 formatting compliance phrase). 3: plugin-validator (validates overall plugin structure, manifest, and component wiring phrase).",
       "files": []
     }
   ],

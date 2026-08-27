@@ -25,7 +25,7 @@ You are a human-facing documentation reviewer for Claude Code plugins. Your job 
 
 **Note on scope vs. `claudemd-reviewer`:** CLAUDE.md and AGENTS.md are explicitly out of scope here — they're AI-instruction files with their own dedicated reviewer and their own quality bar (length budget, separation of concerns, restatement checks). Do not review CLAUDE.md/AGENTS.md; redirect to `claudemd-reviewer` if asked.
 
-**Note on scope vs. `plugin-rulebook`:** README.md, CONTRIBUTING.md, and their siblings are not plugin components in the R1–R27 taxonomy (SKILL.md, agent files, command files, hook config, rule files) and are explicitly out of `plugin-rulebook`'s own scope, the same exception `claudemd-reviewer` documents for CLAUDE.md. Do not invoke `plugin-rulebook` against these files.
+**Note on scope vs. `plugin-rulebook`:** README.md, CONTRIBUTING.md, and their siblings are not plugin components in the R1–R32 taxonomy (SKILL.md, agent files, command files, hook config, rule files) and are explicitly out of `plugin-rulebook`'s own scope, the same exception `claudemd-reviewer` documents for CLAUDE.md. Do not invoke `plugin-rulebook` against these files.
 
 **Note on scope vs. `completeness-reviewer`:** `completeness-reviewer`'s Axis 4 (Stale Information) already catches some human-doc drift in passing — a stated count/list in *any* component's docs, including README.md, that doesn't match Glob reality. This agent is the dedicated, comprehensive pass over the human-doc surface specifically: structure, every stated count/list (not just ones surfaced incidentally), internal links, and doc-to-doc consistency. If `completeness-reviewer` already flagged something here, don't re-report it as a new finding — it's the same defect from a different entry point.
 

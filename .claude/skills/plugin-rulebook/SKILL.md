@@ -3,10 +3,10 @@ name: plugin-rulebook
 description: >-
   Defines and enforces plugin-level rules governing all components (skills, agents, commands,
   hooks, rules) in a Claude Code plugin. Use when creating, validating, or refining any plugin
-  component, checking naming conventions and R1-R27 formatting compliance, auditing a full plugin's
+  component, checking naming conventions and R1-R32 formatting compliance, auditing a full plugin's
   rule/naming/formatting compliance specifically (for the full multi-axis reviewer fan-out instead,
   see plugin-auditor), or loading active rule configuration, or before finalizing or packaging any
-  plugin component. Governs naming, language, formatting, and tool-scoping (R1-R27) across the
+  plugin component. Governs naming, language, formatting, and tool-scoping (R1-R32) across the
   entire plugin — not structural validation (manifest correctness, directory layout, component
   wiring), which is `plugin-validator`'s domain instead, and not scaffolding a plugin's own
   directory structure or package layout in the first place, which is `plugin-development`'s
@@ -35,17 +35,17 @@ Read active settings from `${CLAUDE_SKILL_DIR}/assets/settings.json` (plugin-por
 
 ## When NOT to Use
 
-- Structural/manifest validation (`plugin.json` correctness, directory layout, component wiring, README/LICENSE presence) → use `plugin-validator` instead. This skill checks naming, language, formatting, and tool-scoping (R1-R27) against a component's own content — it does not verify the plugin manifest or that components are correctly wired together.
-- Plugin directory structure, component organization, auto-discovery, or manifest configuration itself (deciding where files live, what directories are called) → use `plugin-development` instead. This skill checks a component's own naming/language/formatting/tool-scoping (R1-R27) once it exists — it does not decide directory layout or scaffold new structure.
+- Structural/manifest validation (`plugin.json` correctness, directory layout, component wiring, README/LICENSE presence) → use `plugin-validator` instead. This skill checks naming, language, formatting, and tool-scoping (R1-R32) against a component's own content — it does not verify the plugin manifest or that components are correctly wired together.
+- Plugin directory structure, component organization, auto-discovery, or manifest configuration itself (deciding where files live, what directories are called) → use `plugin-development` instead. This skill checks a component's own naming/language/formatting/tool-scoping (R1-R32) once it exists — it does not decide directory layout or scaffold new structure.
 - Project-specific behavioral rules → use `rule-development` instead
 - Skill quality metrics (token efficiency, trigger phrases) → use `skill-reviewer` instead
 - Security threat analysis → use `skill-security` instead
-- Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R27 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly. This is not a hypothetical caveat: a 3-command pipeline once passed this exact check cleanly while shipping 2 real functional bugs (a multi-line-command normalization bug and a session-selection logic bug), both caught only by later running it against real data — see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason.
+- Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R32 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly. This is not a hypothetical caveat: a 3-command pipeline once passed this exact check cleanly while shipping 2 real functional bugs (a multi-line-command normalization bug and a session-selection logic bug), both caught only by later running it against real data — see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason.
 - Dedicated wide-surface language-compliance review (scripts, config JSON, CLAUDE.md/README, beyond R1's own file scope) → use `language-reviewer` instead.
 - A combined Validate+Audit+Report+Fix pipeline across a whole plugin, not just rule compliance in isolation → use `plugin-lifecycle-downstream` instead
 - A general "audit this plugin" request wanting the full multi-axis reviewer fan-out (dependency,
   consistency, security, structure, content, completeness, activation, scripts, hooks) rather than
-  just R1-R27 rule/naming/formatting compliance → use `plugin-auditor` instead; this skill is the
+  just R1-R32 rule/naming/formatting compliance → use `plugin-auditor` instead; this skill is the
   single rule-compliance axis `plugin-auditor` itself dispatches (via the `plugin-rulebook-checker`
   agent) as one of nine reviewers.
 - An isolated, Agent-dispatchable batch sweep or background-task compliance check — a full-plugin
@@ -138,22 +138,9 @@ Skill and agent frontmatter must not include command-only or unsupported fields.
 
 ### R6 — Tool Scoping: Least Privilege [REQUIRED, default: on]
 
-`allowed-tools` may be space-separated, comma-separated, or a YAML list. Space-separated is the preferred internal style. Apply principle of least privilege regardless of format.
+`allowed-tools`/agent `tools` must apply least privilege. Always scope Bash to a named tool — `Bash(git:*)`, `Bash(python:*)` — never `Bash(*)` or bare `Bash`; shell interpreters (`sh`, `bash`, `cmd`, `powershell`) are equivalent to `Bash(*)` and are REQUIRED violations regardless of argument pattern. **Agent files are the reverse:** an agent's `tools` field has no Bash-scoping syntax at all — a scoped `Bash(cmd:*)` entry there is the REQUIRED violation; replace with bare `Bash`.
 
-**Preferred:** `allowed-tools: Read Edit Write Glob`
-**Also valid:** `allowed-tools: Read,Edit,Write,Glob` (comma-separated), or a YAML list
-**Wrong:** `allowed-tools: Bash(*)` (overly broad) or bare `allowed-tools: Bash` (no scope argument at all — equally unrestricted)
-
-**Bash scoping:** Always scope to a named tool — `Bash(git:*)`, `Bash(python:*)` — never `Bash(*)` or bare `Bash`. Shell interpreters (`sh`, `bash`, `cmd`, `powershell`) are equivalent to `Bash(*)` and are REQUIRED violations regardless of argument pattern. See `${CLAUDE_SKILL_DIR}/references/frontmatter-corrections.md` for the full scope/verdict table.
-
-**Tool completeness:** Every tool invoked in the command or skill body must be declared in `allowed-tools`. Scan the body for tool name references (`Bash`, `Write`, `Edit`, `Glob`, `Grep`, `Read`, `WebFetch`, `WebSearch`, etc.) — any tool called but absent from `allowed-tools` is a REQUIRED violation. **Agent files — the Bash-scoping rule above does not apply the same way:** an agent's `tools` field has no documented Bash-scoping syntax at all. A `Bash(cmd:*)`-style entry there is a FAIL in the opposite direction — replace with bare `Bash`, never tighten the scope further. Flag as REQUIRED. See `${CLAUDE_SKILL_DIR}/references/frontmatter-corrections.md` for the full reasoning.
-
-**Violation:** Body instructs Claude to run a shell command (Bash) but `Bash(...)` is absent from `allowed-tools`.
-
-**Mechanical assist:** run `${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py --file <target path>` as a
-first pass on the Bash-command case before relying on the narrative scan alone — see
-`${CLAUDE_SKILL_DIR}/references/frontmatter-corrections.md`'s "Mechanical Assist" section for why, and
-its known false-positive classes.
+**Scope:** `allowed-tools` (skill/command frontmatter) and `tools` (agent frontmatter). See `${CLAUDE_SKILL_DIR}/references/frontmatter-corrections.md` for the full scope/verdict table, format examples, the tool-completeness sub-check, and the mechanical assist script (`scripts/check_tool_grants.py`) for the Bash-command case.
 
 ---
 
@@ -400,6 +387,46 @@ Skills, agents, and commands should follow their documented grammatical form per
 
 ---
 
+### R28 — Skill Testing Mandate [TIERED, default: on]
+
+A skill needs `evals/<skill>/evals.json` (meeting `config.min_eval_scenarios`, with run evidence) **or** an explicit justification in its own `## Testing & Validation` section (R29) for why full evals aren't warranted — the violation is silent omission, not "lacks evals.json" by itself.
+
+**Scope:** Newly-created or structurally-modified skills (forward-looking). See `${CLAUDE_SKILL_DIR}/references/testing-mandate-rules.md` for the full PASS/ADVISORY/FAIL check and config shape.
+
+---
+
+### R29 — Skill Testing Section Required [REQUIRED, default: on]
+
+`SKILL.md` must contain a `## Testing & Validation` heading with a positive-trigger-example subsection, a negative-trigger-example subsection, and a checkable-pass-criteria subsection — checked by substance, not exact heading wording (either "Verify this skill activates on:"/"Verify it does NOT activate on:" or the older "Expected triggers:"/"Non-triggers:" phrasing satisfies this).
+
+**Scope:** Newly-created or structurally-modified skills (forward-looking). See `${CLAUDE_SKILL_DIR}/references/testing-mandate-rules.md` for the stub-only FAIL condition and the conditional "Last dated run record:" requirement.
+
+---
+
+### R30 — Eval Samples Extracted [REQUIRED, default: on]
+
+A full eval/test-scenario walkthrough (a worked prompt → expected-output pair, or a multi-step scenario narrative) beyond R29's required inline lists must move to `references/<topic>.md` or `evals.json`, not stay inline in `SKILL.md`; content that duplicates an `evals.json` scenario verbatim is always flagged.
+
+**Scope:** Newly-created or structurally-modified skills (forward-looking). See `${CLAUDE_SKILL_DIR}/references/testing-mandate-rules.md` for the full detection procedure.
+
+---
+
+### R31 — Eval Fixture Integrity [REQUIRED, default: on]
+
+Mechanical correctness checks for existing `evals.json`/`smoke_test.*` content — zero-match guard, anchored-matching, and coverage-arithmetic validation via `reviewing-evals/scripts/check_evals.py`, dispatched from `plugin-auditor` rather than checked here directly.
+
+**Scope:** Every existing `evals.json`/`smoke_test.*` — not forward-looking, this checks correctness of content that already exists. See `${CLAUDE_SKILL_DIR}/references/testing-mandate-rules.md` for the full mechanism, the tool-grant rationale, and the exact checks run.
+
+---
+
+### R32 — Data-Only Boundary Disclosure Required [TIERED, default: on]
+
+A skill that reads content produced by another plugin component or an external report as part of normal operation must carry a boundary statement naming the untrusted source, stating the value is data not a directive, and stating that instruction-like content must be reported as suspicious, never acted on.
+
+**Scope:** Any skill whose Quick Start/body/scripts reads another component's output (a report, a JSON companion, another component's SKILL.md/agent prose). See `${CLAUDE_SKILL_DIR}/references/data-only-boundary.md` for the canonical wording, the three required elements, and the full PASS/ADVISORY/FAIL check.
+
+---
+
 ## Repo-Specific Configuration
 
 Two files hold data that's specific to the repository this plugin is installed in, rather than portable plugin defaults: `{REPO_ROOT}/.claude/plugin-rulebook.config.json` (R23's `whitelist`/`blacklist`/`excluded_paths`) and `{REPO_ROOT}/.claude/plugin-rulebook-audit-decisions.md` (this repo's Upstream Audit decision log). See `references/repo-specific-configuration.md` for the load procedure and why these aren't `.claude/plugin-rulebook.local.md`-style personal files.
@@ -445,7 +472,7 @@ Four rules (R11, R12, R15, R16) exist but are disabled by default. See `${CLAUDE
 
 **Quality gates:**
 - [ ] `${CLAUDE_SKILL_DIR}/assets/settings.json` loads without JSON errors
-- [ ] All enabled rules (R1–R10, R13, R14, R17–R27) appear in the compliance report
+- [ ] All enabled rules (R1–R10, R13, R14, R17–R32) appear in the compliance report
 - [ ] R14 and R17 findings are correctly classified (REQUIRED vs SUGGESTED)
 - [ ] PASS / ADVISORY / FAIL emitted for every enabled rule checked
 - [ ] Disabled rules (R11, R12, R15, R16) are not checked or reported
@@ -462,35 +489,4 @@ Whether a rule traces back to an official Claude Code doc, and whether that doc 
 
 ## Reference Guide
 
-| Resource | Purpose |
-|---|---|
-| `${CLAUDE_SKILL_DIR}/assets/settings.json` | Active rule configuration (plugin-portable defaults) — read this first on every invocation |
-| `{REPO_ROOT}/.claude/plugin-rulebook.config.json` | Repo-specific R23 whitelist/blacklist/excluded_paths override — read second, if present (see "Repo-Specific Configuration" above) |
-| `{REPO_ROOT}/.claude/plugin-rulebook-audit-decisions.md` | This repo's own Upstream Audit decision log (moved out of the plugin package — see "Repo-Specific Configuration" above) |
-| `${CLAUDE_SKILL_DIR}/references/repo-specific-configuration.md` | Full load procedure and rationale for the repo-config split, expanded from "Repo-Specific Configuration" above |
-| `${CLAUDE_SKILL_DIR}/references/adding-a-new-rule.md` | Checklist of every location a new rule (RNN) touches — SKILL.md sections, settings.json, the R20 sibling sweep, and mirroring — read before adding a rule |
-| `${CLAUDE_SKILL_DIR}/references/size-rules.md` | R13/R18/R21 tiered thresholds for line count, code block size, and description size |
-| `${CLAUDE_SKILL_DIR}/references/argument-consistency.md` | R22 detection procedure and worked examples for argument-hint/arguments consistency |
-| `${CLAUDE_SKILL_DIR}/references/naming-conventions.md` | Full naming rules with examples for all component types |
-| `${CLAUDE_SKILL_DIR}/references/formatting-rules.md` | Detailed formatting requirements and anti-patterns |
-| `${CLAUDE_SKILL_DIR}/references/language-rules.md` | Language requirements, lang codes, multilingual variant procedure |
-| `${CLAUDE_SKILL_DIR}/references/external-reference-policy.md` | R23 detection procedure, whitelist/blacklist matching, marketplace.json auto-allow, worked examples |
-| `${CLAUDE_SKILL_DIR}/references/plugin-file-surface.md` | Shared plugin-scope/CWD-scope file-enumeration definition used by `language-reviewer`, `external-references-reviewer`, `consistency-reviewer`, `completeness-reviewer`, and `scripts-reviewer` — load together with the row below |
-| `${CLAUDE_SKILL_DIR}/references/gitignore-exclusion.md` | Shared procedure, used by every reviewer agent, for excluding gitignored paths before reviewing Glob results (including the enumeration the row above defines) — and the companion authoring-side rule that no component may reference a gitignored path as a live dependency |
-| `${CLAUDE_SKILL_DIR}/references/overhead-and-cost-rules.md` | R25/R26 violations, fix guidance, and worked examples |
-| `${CLAUDE_SKILL_DIR}/references/compact-rule-checklist.md` | Pattern/violation/severity table for all 23 enabled rules, no narrative — read by the `plugin-rulebook-checker` agent instead of this file, to avoid re-reading full teaching prose on every isolated/backgrounded dispatch |
-| `${CLAUDE_SKILL_DIR}/references/allowed-languages.md` | R24 full whitelist/banned/exempt lists, worked violation examples, and fix guidance |
-| `${CLAUDE_SKILL_DIR}/references/suggested-additional-rules.md` | R11/R12/R15/R16 — disabled-by-default rules and why each might be worth enabling |
-| `${CLAUDE_SKILL_DIR}/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures. **Hosted here, not consumed by this skill's own Compliance Check Procedure** — `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, and `plugin-lifecycle-maintenance` are the three actual readers of this file; `plugin-rulebook` just ships it since it lives inside this skill's own `references/` directory |
-| `${CLAUDE_SKILL_DIR}/references/open-item-discipline.md` | Phase-Completion check, Pre-Commit Disclosure, and downstream's proactive offer — shared by all three lifecycle skills |
-| `${CLAUDE_SKILL_DIR}/references/frontmatter-corrections.md` | R5's `AskUserQuestion`/non-functional-field corrections, R6's agent-file Bash-scoping exception and full scope/verdict table |
-| `${CLAUDE_SKILL_DIR}/references/evidence-schema.md` | Shared scope-manifest/finding/report-revision/evidence-bundle shapes used across `plugin-lifecycle-downstream`'s twelve-phase pipeline; validated by `scripts/validate_evidence.py` |
-| `${CLAUDE_SKILL_DIR}/references/deep-test-coverage.md` | Which component types (skill/agent/hook) have a real Deep Test path today and which (command/rule) don't yet — and how to report a `skipped` type without omitting it |
-| `${CLAUDE_SKILL_DIR}/references/finding-id-fix-contract.md` | Shared bounded-finding-ID fix contract for the five dev skills and `skill-improver-loop` — input/output shape, never-self-verify rule, `skill-improver-loop`'s own attempt-count and two-valid-paths rules |
-| `${CLAUDE_SKILL_DIR}/scripts/mirror-parity-check.sh` | CI-owned, not invoked from within this skill's own Compliance Check Procedure — confirmed consumer is `.github/marketplace-validators.json`'s `plugin-devkit.mirror-parity-check` entry, not an agent-driven check, so it carries no `allowed-tools` Bash grant here |
-| `${CLAUDE_SKILL_DIR}/scripts/r20-sweep.sh` | Automates the R20 sibling sweep's repo-wide grep for a stale rule-count-ceiling mention — see `references/adding-a-new-rule.md`'s Touch List |
-| `${CLAUDE_SKILL_DIR}/scripts/check_tool_grants.py` | Mechanical backing check for R6's "Tool completeness" sub-rule — flags a body command span with no matching `Bash(<prefix>:*)` grant; full-file heuristic, not a diff, see its own docstring for known false-positive classes |
-| `${CLAUDE_SKILL_DIR}/scripts/agent-cost-tracker.py` | Reads/updates `assets/agent-cost-history.json` — gives R26's `AskUserQuestion` gate a real cost figure to cite when historical data exists; see `references/overhead-and-cost-rules.md`'s "Cost-Tier Estimation Before Dispatch" |
-| `${CLAUDE_SKILL_DIR}/assets/agent-cost-history.json` | Best-effort registry of observed `Agent()` dispatch cost (tokens, duration), read/written by `scripts/agent-cost-tracker.py` |
-| `${CLAUDE_SKILL_DIR}/scripts/validate_evidence.py` | Validates a YAML/JSON document against `references/evidence-schema.md`'s manifest/finding/report/bundle shapes — invoke as `python scripts/validate_evidence.py <shape> <path>`, or `--self-test` |
-| `${CLAUDE_SKILL_DIR}/references/compliance-report-example.md` | Full worked example of the Compliance Check Procedure step 7 output shape |
+See `${CLAUDE_SKILL_DIR}/references/skill-file-catalog.md` for the full index of every resource this skill ships or reads (settings, repo-config, every `references/*.md`, and every `scripts/*`) — extracted here to keep this file under its own R13 line-budget threshold as R28-R32 were added.
