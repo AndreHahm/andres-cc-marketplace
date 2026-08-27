@@ -68,8 +68,8 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 17,
-    "declared_scenarios_covered": 7,
+    "declared_scenarios_total": 20,
+    "declared_scenarios_covered": 8,
     "uncovered": [
       "Step 8 always uses AskUserQuestion -- never auto-invokes finishing-work unconditionally",
       "Step 8 only runs after step 7's merge actually succeeded",
@@ -77,11 +77,13 @@
       "The step-2 bypass exception only ever applies when Publish Codex policy result is the sole failing required check",
       "Step 3 (merge-rights) always runs before step 4's attestation, unconditionally",
       "The attestation comment body is always built via jq -n --arg, never by interpolating the reason text directly",
+      "$ARGUMENTS's PR-reference portion is always validated at step 1, before its first use in any gh command",
+      "Step 7(d)'s rejection fallback never retries gh pr merge with a different flag without asking and re-running the full step-2 check",
       "Step 4(d) always polls for the re-triggered check's terminal state",
       "Step 4(e) always reruns the full step-2 readiness check, not just the Codex check",
       "Step 5's explicit merge confirmation always runs, bypass or not",
       "An empty or missing --bypass-codex-review reason is always treated as if the flag were never passed"
     ],
-    "note": "Eval 1 covers 'Step 7 never assumes the remote branch is gone...'. Eval 2 covers 'Step 5's worktree branch-delete note is always present...'. Eval 3 covers 'headRefName is always validated...at step 1'. Eval 4 covers 'Step 7's remote-branch-deletion fallback...never runs when isCrossRepository is true'. Evals 5 and 6 (added for a round-2 Codex finding on PR #137) deepen coverage of eval 1's and eval 3's gates respectively rather than mapping to new declared checklist items -- not counted separately against declared_scenarios_total. Eval 7 (added this session) covers 'Step 2's four-state classification never collapses missing into pending or failing'. Eval 8 covers 'Step 7(a)'s rebase-compatibility pre-check always runs before the first gh pr merge --rebase attempt'. Eval 9 covers 'Step 7(c)'s squash-tradeoff disclosure always fires...regardless of whether squash was the configured default, chosen preemptively, or chosen reactively'. The remaining 10 gates (mostly the bypass-attestation flow, steps 3-4 and 8, and step 7(d)'s rejection-fallback re-check) have no eval coverage yet."
+    "note": "Eval 1 covers 'Step 7 never assumes the remote branch is gone...'. Eval 2 covers 'Step 5's worktree branch-delete note is always present...'. Eval 3 covers 'headRefName is always validated...at step 1'. Eval 4 covers 'Step 7's remote-branch-deletion fallback...never runs when isCrossRepository is true'. Evals 5 and 6 (added for a round-2 Codex finding on PR #137) deepen coverage of eval 1's and eval 3's gates respectively rather than mapping to new declared checklist items -- not counted separately against declared_scenarios_total. Eval 7 (added this session) covers both 'Step 2's four-state classification never collapses missing into pending or failing' and 'Step 2 always resolves the required-check list from the branch-protection REST endpoint' (the same query resolves both). Eval 8 covers 'Step 7(a)'s rebase-compatibility pre-check always runs before the first gh pr merge --rebase attempt'. Eval 9 covers 'Step 7(c)'s squash-tradeoff disclosure always fires...regardless of whether squash was the configured default, chosen preemptively, or chosen reactively'. Two gates were added this session by a post-audit security fix ($ARGUMENTS validation at step 1; step 7(d)'s rejection-fallback re-check) and have no eval coverage yet, alongside the remaining 10 gates (mostly the bypass-attestation flow and steps 3-4/8) -- 12 gates total with no eval coverage yet."
   }
 }

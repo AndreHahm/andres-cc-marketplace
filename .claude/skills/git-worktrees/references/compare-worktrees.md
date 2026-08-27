@@ -36,9 +36,11 @@ CRITICAL: Perform the following steps exactly as described:
    diff <worktree1>/<path> <worktree2>/<path>
    # Or for unified diff format:
    diff -u <worktree1>/<path> <worktree2>/<path>
-   # Or a visual diff with the user's preferred tool:
-   code --diff <worktree1>/<path> <worktree2>/<path>
    ```
+
+   A visual diff tool (e.g. `code --diff <worktree1>/<path> <worktree2>/<path>`) is a reasonable
+   suggestion to make to the user, but isn't something this skill's own `allowed-tools` grants or runs
+   directly — its scope is the read-only `diff`/`git diff` comparison above, not launching an editor.
 
    **For directories between worktrees:**
 
@@ -120,22 +122,11 @@ Worktree Comparison Summary
 From: /home/user/project (main)
 To:   /home/user/project-feature (feature-x)
 
-Files only in main:
-  - src/deprecated.js
+Files only in main:      - src/deprecated.js
+Files only in feature-x: + src/new-feature.js, src/new-feature.test.js
+Files that differ:       ~ src/app.js, src/utils/helpers.js, package.json
 
-Files only in feature-x:
-  + src/new-feature.js
-  + src/new-feature.test.js
-
-Files that differ:
-  ~ src/app.js
-  ~ src/utils/helpers.js
-  ~ package.json
-
-Statistics:
-  3 files changed
-  2 files added
-  1 file removed
+Statistics: 3 files changed, 2 files added, 1 file removed
 ```
 
 ## Common Workflows

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Persisted smoke test for merge-pr: frontmatter validity, referenced-file
 existence, Bash-scope grant usage, step-header sequencing, step 7's
-remote-branch-deletion verification fallback, and step 5's unconditional
-worktree branch-delete note -- structural checks only, since this is a
-conversational, AskUserQuestion-driven skill with no executable logic of its
-own to simulate."""
+remote-branch-deletion verification fallback, step 5's unconditional
+worktree branch-delete note, step 2's four-state CI classification, and
+step 7(a)/(c)/(d)'s rebase pre-check / squash disclosure / rejection
+fallback -- structural checks only, since this is a conversational,
+AskUserQuestion-driven skill with no executable logic of its own to
+simulate."""
 
 import pathlib
 import re
@@ -47,7 +49,7 @@ def check_bash_grants():
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     if not fm_line_match:
         return True, "no allowed-tools line found (skip)"
-    granted_cmds = re.findall(r"Bash\(([\w.*/${}-]+?)(?::|\))", fm_line_match.group(1))
+    granted_cmds = re.findall(r"Bash\(([\w.*/${} -]+?)(?::|\))", fm_line_match.group(1))
     granted_cmds = [c.lstrip("*/") for c in granted_cmds]
 
     body = fm_text[header_end:]
@@ -197,6 +199,86 @@ def check_step5_worktree_note():
     return True, "step 5's worktree branch-delete note is present and unconditional"
 
 
+def check_step2_four_state_classification():
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    for state in ("**passing**", "**failing**", "**pending**", "**missing**"):
+        if state not in step2:
+            return (
+                False,
+                f"step 2 no longer documents the {state.strip('*')!r} classification state",
+            )
+    if "not the same as **pending**" not in step2:
+        return False, "step 2 no longer explicitly distinguishes missing from pending"
+    return (
+        True,
+        "step 2 documents all four classification states and distinguishes missing from pending",
+    )
+
+
+def check_step7_rebase_precheck():
+    step7 = _get_step_text(7)
+    if step7 is None:
+        return False, "step 7 ('## Instructions') not found"
+    if "Rebase-compatibility pre-check" not in step7:
+        return False, "step 7 no longer documents the rebase-compatibility pre-check"
+    if "parents | length" not in step7:
+        return False, "step 7's pre-check no longer counts merge commits via parent count"
+    precheck_pos = step7.find("Rebase-compatibility pre-check")
+    if "AskUserQuestion" not in step7[precheck_pos:]:
+        return (
+            False,
+            "step 7's rebase pre-check no longer asks via AskUserQuestion before proceeding",
+        )
+    return (
+        True,
+        "step 7 documents the rebase-compatibility pre-check with a merge-commit "
+        "count and an AskUserQuestion gate",
+    )
+
+
+def check_step7_squash_disclosure():
+    step7 = _get_step_text(7)
+    if step7 is None:
+        return False, "step 7 ('## Instructions') not found"
+    if "Squash tradeoff, named explicitly" not in step7:
+        return False, "step 7 no longer documents the squash-tradeoff disclosure"
+    if "apply (c)'s disclosure before running this command" not in step7:
+        return (
+            False,
+            "step 7(b) no longer forward-references (c)'s disclosure for the "
+            "already-configured-SQUASH path",
+        )
+    if "was already `SQUASH`" not in step7:
+        return (
+            False,
+            "step 7(c) no longer states the disclosure fires even when SQUASH "
+            "was already configured",
+        )
+    return (
+        True,
+        "step 7(c)'s squash-tradeoff disclosure is documented and forward-referenced from 7(b)",
+    )
+
+
+def check_step7_rejection_fallback():
+    step7 = _get_step_text(7)
+    if step7 is None:
+        return False, "step 7 ('## Instructions') not found"
+    if "Rejection fallback" not in step7:
+        return False, "step 7 no longer documents the rejection fallback"
+    if "never silently retry with a different flag" not in step7:
+        return False, "step 7(d) no longer states it never silently retries with a different flag"
+    if "re-run the full step-2 readiness check" not in step7:
+        return False, "step 7(d) no longer re-runs the full step-2 readiness check before retrying"
+    return (
+        True,
+        "step 7(d)'s rejection fallback documents asking before retry and "
+        "re-running the full step-2 check",
+    )
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -207,6 +289,10 @@ CHECKS = [
     check_step7_verification_not_gated_on_exit_code,
     check_headrefname_validated_before_first_use,
     check_step5_worktree_note,
+    check_step2_four_state_classification,
+    check_step7_rebase_precheck,
+    check_step7_squash_disclosure,
+    check_step7_rejection_fallback,
 ]
 
 

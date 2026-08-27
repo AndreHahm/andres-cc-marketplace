@@ -1,8 +1,8 @@
 ---
 name: git-worktrees
 description: >-
-  Use when working on multiple branches simultaneously, context switching without stashing, reviewing PRs while developing, testing in isolation, or comparing implementations across branches - provides git worktree commands and workflow patterns for parallel development with multiple working directories. For creating the first worktree/branch to begin a new piece of work (main-sync, branch-naming validation, worktree-vs-branch choice), see `starting-work` instead — this skill is reference material for ongoing multi-worktree management, not the entry point for starting new work.
-allowed-tools: Bash(git worktree:*), Bash(git status:*), Bash(git diff:*), Bash(git checkout:*), Bash(git cherry-pick:*), Bash(git merge:*), Bash(git merge-base:*), Bash(git reset:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git restore:*), Bash(git stash:*), Bash(git branch:*), Bash(git add:*), Bash(diff:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh api repos/*/pulls/*/commits:*), Bash(npm install:*), Bash(yarn install:*), Bash(pnpm install:*), Bash(bun install:*), AskUserQuestion
+  Use when working on multiple branches simultaneously, context switching without stashing, reviewing PRs while developing, testing in isolation, comparing implementations across branches, or resolving which commits actually belong to a cherry-pick request (by feature/PR name, PR number, or SHA range) before running `git cherry-pick` - provides git worktree commands and workflow patterns for parallel development with multiple working directories, including verifying and confirming a cherry-pick's commit list. For creating the first worktree/branch to begin a new piece of work (main-sync, branch-naming validation, worktree-vs-branch choice), see `starting-work` instead — this skill is reference material for ongoing multi-worktree management, not the entry point for starting new work.
+allowed-tools: Bash(git worktree:*), Bash(git status:*), Bash(git diff:*), Bash(git checkout:*), Bash(git cherry-pick:*), Bash(git merge:*), Bash(git merge-base:*), Bash(git reset HEAD:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git restore:*), Bash(git stash:*), Bash(git branch -d:*), Bash(git add:*), Bash(diff:*), Bash(gh pr list:*), Bash(gh api repos/*/pulls/*/commits:*), Bash(npm install:*), Bash(yarn install:*), Bash(pnpm install:*), Bash(bun install:*), AskUserQuestion
 ---
 
 # Git Worktrees
@@ -18,6 +18,25 @@ Git worktrees enable checking out multiple branches simultaneously in separate d
 `starting-work`'s *automated* flow uses a different default, `.claude/worktrees/<description>` (or
 `.codex/worktrees/` for a Codex CLI session), locked to the creating session — see that skill for why.
 Neither supersedes the other; they're two different use cases (manual vs. session-lifecycle-managed).
+
+**Hand-offs to `starting-work`/`commit`/`resolving-merge-conflicts` are prose-only, deliberately** —
+unlike `git-cleanup` (excluded via `disable-model-invocation: true`), those three are ordinary,
+dispatchable skills, and this plugin's convention elsewhere pairs a real hand-off with a matching
+`Skill(git-kit:<name>)` grant. This skill stays prose-only instead: each hand-off happens mid-workflow at
+a point this skill's own guided/manual flow doesn't always reach identically (a full merge, a partial
+patch application, an experiment the user may discard), so the calling agent — not this skill — is better
+placed to decide whether and when to actually dispatch the next skill, rather than this skill always
+auto-continuing into it.
+
+## When to Use
+
+- Working on multiple branches simultaneously, or switching context without stashing.
+- Reviewing a PR in its own worktree without disturbing current work, or comparing implementations
+  across branches side by side.
+- Testing or building in isolation while development continues elsewhere.
+- Resolving which commits actually belong to a cherry-pick request — by feature/skill name, PR number,
+  or explicit SHA range — before running `git cherry-pick` (see "Resolving a Cherry-Pick Commit List"
+  below).
 
 ## When NOT to Use
 
@@ -213,14 +232,15 @@ git worktree remove ../project-v2
 
 ### Pattern 4: Long-Running Tasks
 
-To run tests/builds in isolation while continuing development:
+To run tests/builds in isolation while continuing development: create the worktree, then run the
+project's own test/build command in it. That command (e.g. `npm test`, `pytest`, `make build`) is
+illustrative here, not something this skill's own `allowed-tools` grants — its scope is worktree
+management, not running a project's test suite, so it isn't declared here even for a project that happens
+to use `npm`.
 
 ```bash
 # Create worktree for CI-like testing
 git worktree add ../project-test main
-
-# Start long-running tests in background
-cd ../project-test && npm test &
 
 # Continue development in main worktree
 cd ../project
@@ -255,7 +275,7 @@ diff ../project/src/module.js ../project-feature-2/src/module.js
 cd ../project
 git checkout feature-1 -- src/moduleA.js src/utils.js
 git checkout feature-2 -- src/moduleB.js
-git cherry-pick abc1234  # from feature-1, if cherry-picking instead
+git cherry-pick --no-commit abc1234  # from feature-1, if cherry-picking instead
 # Then use the `commit` skill to commit the combined result -- raw `git commit` is guarded.
 
 # Clean up
@@ -270,35 +290,11 @@ See `references/compare-worktrees.md` for file-level comparison and `references/
 ## Resolving a Cherry-Pick Commit List
 
 Before `references/merge-worktree.md`'s Strategy C (cherry-picking a specific commit) runs, resolve
-*which* commits actually belong to the request. A real cherry-pick request rarely arrives as a
-pre-verified, trustworthy commit list — it names a feature, a PR, or a SHA range, and any of those can be
-incomplete, stale, or include commits that don't actually need to move. Never execute `git cherry-pick`
-straight off a guess or a hand-typed list; resolve one of the three paths below first, then confirm the
-resolved list with the user before cherry-picking anything.
-
-1. **By feature/skill name alone** (e.g. "cherry-pick the feature XY"): search
-   `git log --all --oneline --grep="<feature>"` and `gh pr list --search "<feature>" --state merged` for
-   candidates. More than one plausible match, or none at all — stop and ask the user to narrow it down (a
-   PR number or SHA range) rather than guessing which one they mean.
-2. **By PR number** (e.g. "cherry-pick the feature XY shipped with PR #N"): resolve the authoritative
-   commit list directly from GitHub's own record — `gh pr view <N> --json commits` (or
-   `gh api repos/{owner}/{repo}/pulls/{n}/commits`) — never a hand-typed or remembered list. This is
-   strictly more reliable than reconstructing the list from memory or from a local branch that may have
-   since diverged.
-3. **By explicit SHA/range** (e.g. "cherry-pick commit-SHAs abcdefg..hijklmn for feature XY"): resolve the
-   candidate list via `git log`, then verify it before trusting it:
-   - `git merge-base --is-ancestor <sha> HEAD` (or the target branch) to confirm each SHA is actually
-     reachable — a typo'd or wrong-branch SHA fails this instead of silently cherry-picking the wrong
-     commit.
-   - `git rev-parse <sha>^{tree}` compared across candidate SHAs to catch a redundant, already-merged
-     rebase-replay commit hiding among genuinely-needed ones (two different commits with the same tree
-     hash produce the same working-tree result — a sign one of them is a no-op duplicate, not a distinct
-     change that still needs applying).
-
-All three paths converge on one resolved commit list — show it back to the user for confirmation before
-any `git cherry-pick` runs. Never cherry-pick straight off path 1's raw search results or an unverified
-path-3 list; a confirmed, correct list is a precondition Strategy C's actual execution assumes, not
-something it re-derives on its own.
+*which* commits actually belong to the request — a feature name, a PR number, or a SHA range each need
+their own resolution-and-verification path before any `git cherry-pick` runs, converging on one
+user-confirmed list. See `references/cherry-pick-resolution.md` for the full three-path procedure
+(including pagination, commit-list scoping, merge-commit detection, and shape validation for `<N>`/`<sha>`)
+— never execute `git cherry-pick` straight off a guess or a hand-typed list.
 
 ## Directory Structure Conventions
 
@@ -444,6 +440,16 @@ When removing worktrees:
 - "start a new branch for the auth refactor" → `starting-work`
 - "sync my current branch with main" → `/sync-branch`
 - "I just merged, clean this up" → `finishing-work`
+- "resolve the conflicts from this worktree merge" → `resolving-merge-conflicts`
+
+**Structural check:** `scripts/smoke_test.py` — verifies frontmatter, referenced-file existence,
+`allowed-tools` grant usage, and step-header sequencing (including the "Resolving a Cherry-Pick Commit
+List" section's own numbered list). Re-run after any `SKILL.md` edit.
+
+**Eval evidence:** `evals/git-worktrees/` (iteration-1) — 3/3 scenarios passed, covering all three
+cherry-pick resolution paths (feature-name ambiguity, PR-number resolution, SHA-range duplicate
+detection). The six pre-existing quality gates below (install confirmation, strategy choice, cleanup
+routing, new-branch routing, commit routing, read-only comparison) have no eval coverage yet.
 
 **Quality gates:**
 - [ ] Creating a worktree never runs the detected install command without an `AskUserQuestion`
@@ -453,18 +459,26 @@ When removing worktrees:
 - [ ] Cleanup always uses plain `git worktree remove`, never `rm -rf` — a forced removal (discarding
       uncommitted changes) always routes through `git-cleanup`, never a raw `--force`/`-f` from this skill
 - [ ] New-branch worktree creation always routes through `starting-work`, never a raw `git worktree add -b`
-- [ ] Combining/merging changes into a final commit always routes through the `commit` skill, never a raw
-      `git commit` from this skill
+- [ ] New content assembled in the working tree is always committed via the `commit` skill, never a raw
+      `git commit` from this skill — replaying an already-committed change via `git cherry-pick`/`git merge`
+      (their default, auto-committing form) is exempt, since it introduces no unscanned content
 - [ ] Comparisons stay read-only — `diff`/`git diff` only, no file writes
 - [ ] A feature-name/PR-number/SHA-range cherry-pick request always resolves to one verified commit
       list, shown back to the user for confirmation, before any `git cherry-pick` runs — never executed
       straight off path 1's raw search results or an unverified path-3 SHA list
-- [ ] A PR-number cherry-pick request always resolves its commit list from GitHub's own record
-      (`gh pr view --json commits` / `gh api repos/{owner}/{repo}/pulls/{n}/commits`), never a
-      hand-typed or remembered list
+- [ ] A PR-number cherry-pick request always resolves its commit list from GitHub's own record via
+      `gh api repos/{owner}/{repo}/pulls/{n}/commits --paginate --jq '.[].sha'` — never a hand-typed or
+      remembered list, and never an unpaginated call that could silently truncate a large PR
+- [ ] A PR-number cherry-pick request always flags any resolved commit with more than one parent before
+      Strategy C runs — `git cherry-pick` fails outright on a merge commit with no `-m <parent>`
 - [ ] A SHA/range cherry-pick request always verifies each candidate with
       `git merge-base --is-ancestor` before it's added to the resolved list — an unreachable or
       wrong-branch SHA is never silently included
+- [ ] `<N>` and `<sha>` are always shape-validated (digits-only; `^[0-9a-fA-F]{7,40}$`) before being
+      interpolated into any command
+- [ ] The resolved commit list is always re-resolved immediately before the side-effecting
+      `git cherry-pick` runs, not just at confirmation time — per
+      `.claude/rules/recheck-state-before-side-effecting-action.md`
 
 ## Related Workflows
 
@@ -472,4 +486,7 @@ Detailed step-by-step procedures for specific worktree operations are in `refere
 
 - `references/create-worktree.md` — create and set up a worktree, with automatic dependency detection and confirmed (not automatic) installation
 - `references/compare-worktrees.md` — compare files/directories between worktrees or branches
-- `references/merge-worktree.md` — merge or selectively cherry-pick changes from a worktree into the current branch (Strategy C's actual execution; see "Resolving a Cherry-Pick Commit List" above for determining *which* commits first)
+- `references/cherry-pick-resolution.md` — the full three-path procedure for resolving *which* commits
+  belong to a cherry-pick request (feature name, PR number, or SHA range) before Strategy C runs
+- `references/merge-worktree.md` — merge or selectively cherry-pick changes from a worktree into the current branch (Strategy C's actual execution; see `references/cherry-pick-resolution.md` above for determining *which* commits first)
+- `scripts/smoke_test.py` — persisted structural smoke test; re-run after any `SKILL.md` edit
