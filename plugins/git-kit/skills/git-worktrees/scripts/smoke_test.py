@@ -188,7 +188,47 @@ def _find_repo_root(start: pathlib.Path) -> pathlib.Path | None:
     return None
 
 
-CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants, check_step_sequence]
+def check_cherry_pick_resolution_fixes():
+    ref = SKILL_DIR / "references" / "cherry-pick-resolution.md"
+    if not ref.is_file():
+        return False, "references/cherry-pick-resolution.md not found"
+    text = ref.read_text(encoding="utf-8")
+    if "lists a maximum of 250 commits" not in text.lower():
+        return (
+            False,
+            "Path 2 no longer documents the 250-commit hard cap on the pulls/commits endpoint",
+        )
+    if "compare/<baseRefOid>...<headRefOid>" not in text:
+        return False, "Path 2 no longer documents the compare-endpoint fallback beyond 250 commits"
+    if "git fetch origin pull/<N>/head" not in text:
+        return (
+            False,
+            "Path 2 no longer documents fetching a PR's commits before handing them to Strategy C",
+        )
+    if "stop and show the new list via a fresh" not in text:
+        return False, "the re-resolve step no longer reconfirms with the user when the list changed"
+
+    fm_text = SKILL_MD.read_text(encoding="utf-8")
+    if "git cat-file -e" not in fm_text or "git branch --all --contains" not in fm_text:
+        return (
+            False,
+            "SKILL.md's allowed-tools no longer grants git cat-file -e / "
+            "git branch --all --contains",
+        )
+    return (
+        True,
+        "cherry-pick-resolution.md's 250-commit cap, fetch-before-pick, and reconfirm-on-change "
+        "fixes are present, and their commands are granted",
+    )
+
+
+CHECKS = [
+    check_frontmatter,
+    check_referenced_files,
+    check_bash_grants,
+    check_step_sequence,
+    check_cherry_pick_resolution_fixes,
+]
 
 
 def main():
