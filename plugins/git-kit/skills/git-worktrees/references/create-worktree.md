@@ -161,10 +161,7 @@ Never use `rm -rf` to delete worktrees - always use `git worktree remove` (or `g
 
 ## Troubleshooting
 
-**"Branch is already checked out"**
-
-- Run `git worktree list` to see where the branch is checked out
-- Either work in that worktree or remove it first
+**"Branch is already checked out"** — see `SKILL.md`'s Common Issues and Solutions section.
 
 **"Cannot create worktree - path already exists"**
 
