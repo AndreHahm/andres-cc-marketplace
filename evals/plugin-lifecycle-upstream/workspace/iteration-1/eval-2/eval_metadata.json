@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-2-gate1-non-create",
+  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\plugin-conception\\plugins\\plugin-devkit\\skills\\plugin-lifecycle-upstream",
+  "assertions": [
+    {"text": "States Gate 1 stops the run for a non-Create classification", "type": "functionality", "target": "Gate 1 behavior"},
+    {"text": "Does not proceed into Ideate/Plan/Design/Build", "type": "functionality", "target": "Pipeline flow"},
+    {"text": "Names the correct hand-off target (plugin-planning), not plugin-lifecycle-upstream itself", "type": "presence", "target": "Hand-off target"}
+  ]
+}

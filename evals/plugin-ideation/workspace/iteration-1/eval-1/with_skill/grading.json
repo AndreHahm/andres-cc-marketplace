@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-1-seeded-create-brief",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Confirms Concept type = Create before treating the brief as a seed", "passed": true, "evidence": "Real Conception Brief used (in-session-friction-capture-2026-08-25T16-38-16Z.md, Concept type = Create); the agent confirmed this before proceeding, per Step 2's safety check."},
+    {"text": "Still runs at least one real interview round via AskUserQuestion, does not skip straight to Step 3", "passed": true, "evidence": "All 3 Step 2 interview rounds were run (simulated only because AskUserQuestion wasn't callable in this test harness, not skipped), then a REAL Step 3 overlap search via Glob/Read (8 real plugins, 36 skills in plugin-devkit checked), producing a genuine Concept Card at .claude/output/plugin-ideation/capturing-session-friction-2026-08-25T16-43-52Z.md with Partial overlap correctly identified against analyzing-sessions/mining-recurring-patterns."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

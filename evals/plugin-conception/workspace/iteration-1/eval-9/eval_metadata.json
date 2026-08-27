@@ -1,0 +1,9 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-conception/SKILL.md",
+  "assertions": [
+    {"text": "Does not claim to invoke plugin-lifecycle-downstream's Phase 8 directly with the Conception Brief's own path, in a standalone run", "type": "functionality", "target": "Step 7 hand-off, Phase 8 destination"},
+    {"text": "States that Phase 8 requires a findings-bundle (Finding/Report-Revision schema per plugin-rulebook/references/evidence-schema.md, with a baseline_commit), not the brief itself", "type": "presence", "target": "Step 7 hand-off, Phase 8 destination"},
+    {"text": "States it stops rather than attempting the invocation, since no orchestrator is present in a standalone run to perform the findings-bundle conversion", "type": "functionality", "target": "Step 7 hand-off, standalone invocation"}
+  ]
+}

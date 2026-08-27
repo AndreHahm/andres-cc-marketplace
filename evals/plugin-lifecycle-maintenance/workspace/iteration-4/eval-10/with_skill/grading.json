@@ -1,0 +1,9 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States plugin-conception is invoked exactly once per approved suggestion (3 times for 3 suggestions), never once for the whole batch", "passed": true, "evidence": "'Step 3 invokes plugin-conception exactly 3 times (once per approved suggestion, never once for the whole batch). Each call passes that single suggestion as Entry Route B evidence.'"},
+    {"text": "States a narrow, already-known Repair with an already-accepted finding takes plugin-conception's own bypass path, skipping the full brief", "passed": true, "evidence": "'That candidate takes plugin-conception's own bypass path (\"Bypass for narrow repairs\", its Step 2) and skips producing the full Conception Brief -- no baseline contract/implementation plan/risks doc, no artifact line for it.'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

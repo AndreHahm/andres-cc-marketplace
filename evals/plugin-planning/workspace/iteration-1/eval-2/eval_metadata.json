@@ -2,9 +2,7 @@
   "eval_id": 2,
   "skill_path": "plugins/plugin-devkit/skills/plugin-planning/SKILL.md",
   "assertions": [
-    {"text": "Explicitly states ideation was skipped since no Concept Card path was given or found", "type": "quality", "target": "outputs/ directory"},
-    {"text": "Sets ideation_skipped: true and concept_source: null in the written JSON companion", "type": "functionality", "target": "outputs/ directory"},
-    {"text": "Never pairs a non-null concept_source with ideation_skipped: true", "type": "functionality", "target": "outputs/ directory"},
-    {"text": "Both the Markdown plan and its JSON companion are written", "type": "presence", "target": "outputs/ directory"}
+    {"text": "Identifies the 'neither found' branch as applicable", "type": "functionality", "target": "Step 1 branch selection"},
+    {"text": "Does not fabricate a Concept Card or Conception Brief that doesn't exist", "type": "quality", "target": "Fabrication check"}
   ]
 }

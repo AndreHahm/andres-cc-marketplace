@@ -1,0 +1,10 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Classification remains Create despite the volume/richness of session evidence", "passed": true, "evidence": "'Classification: Create.' Step 3 found genuine Partial overlap (analyzing-sessions, mining-recurring-patterns) but Create still held since neither owns a live-capture trigger point -- correctly reconsidered rather than rubber-stamped, per Step 3's own instruction."},
+    {"text": "Brief produced is still the LIGHT variant, not padded because of the rich evidence", "passed": true, "evidence": "'Since Steps 4-6 are skipped for Create, I wrote the light brief variant.'"},
+    {"text": "Scope and Boundaries, Existing-Component Baseline, Implementation Plan, and the eventual-implementation-success half of Acceptance Criteria are marked not applicable", "passed": true, "evidence": "'Scope/Baseline/Implementation Plan/Workflow all explicitly marked Not applicable per the template.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

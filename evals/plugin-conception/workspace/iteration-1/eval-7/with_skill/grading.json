@@ -1,0 +1,11 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Classifies as Retain", "passed": true, "evidence": "'Classification: Retain -- current behavior is adequate; no implementation is justified.'"},
+    {"text": "Stops cleanly with a stated rationale rather than silently dropping the concept", "passed": true, "evidence": "Cited plugin-documentation's existing delta-check mode, its README-currency trigger, and its Gotchas warning against blind full-rewrite triggers as the stated rationale."},
+    {"text": "No Conception Brief is written for this Retain outcome", "passed": true, "evidence": "'No Conception Brief is written for a Retain outcome (per the skill's own Testing & Validation scenario 7).'"},
+    {"text": "No downstream hand-off is proposed", "passed": true, "evidence": "'there is no downstream hand-off.' A narrower residual (standalone-commit doc-currency gap) was explicitly flagged as a separate, not-yet-classified candidate rather than folded into this hand-off."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

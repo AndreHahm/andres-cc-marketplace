@@ -1,0 +1,11 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does not claim to invoke plugin-lifecycle-downstream's Phase 8 directly with the Conception Brief's own path, in a standalone run", "passed": true, "evidence": "'the skill does not attempt to invoke plugin-lifecycle-downstream directly, and does not invoke it at all in this run' -- explicit, unambiguous."},
+    {"text": "States that Phase 8 requires a findings-bundle (Finding/Report-Revision schema per plugin-rulebook/references/evidence-schema.md, with a baseline_commit), not the brief itself", "passed": true, "evidence": "Quotes the exact SKILL.md passage verbatim: 'Phase 8 external-entry contract accepts only a schema-validated findings bundle (plugin-rulebook/references/evidence-schema.md's Finding/Report-Revision shape, with a baseline_commit and scope manifest) and refuses anything else -- a Conception Brief path does not satisfy it'."},
+    {"text": "States it stops rather than attempting the invocation, since no orchestrator is present in a standalone run to perform the findings-bundle conversion", "passed": true, "evidence": "'since this is a standalone invocation with no orchestrator present to perform the brief-to-findings-bundle conversion, the skill: ... Stops there -- it does not invoke plugin-lifecycle-downstream, does not attempt any reformatting of the brief into a findings bundle itself'."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "note": "Real-time verification eval for the fix to item 1 (Phase 8 hand-off schema mismatch, Critical finding from the plugin-auditor scoped review of PR #142). Dispatched via direct (non-fork) Agent() against the actual current SKILL.md content post-fix. Confirms the standalone-invocation carve-out added to Step 7 correctly prevents a direct, doomed-to-be-refused invocation of plugin-lifecycle-downstream's Phase 8."
+}

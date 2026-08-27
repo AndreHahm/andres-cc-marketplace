@@ -1,0 +1,9 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-conception/SKILL.md",
+  "assertions": [
+    {"text": "Explicitly rechecks plugin-bar's current state rather than trusting the report as-is", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "If the finding is stale/resolved, states this and discards the evidence rather than promoting it", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Does not write a Conception Brief for evidence found stale/already-resolved", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

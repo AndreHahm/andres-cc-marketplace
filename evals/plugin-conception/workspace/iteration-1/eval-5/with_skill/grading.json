@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Classifies as Repair", "passed": true, "evidence": "'Classification: Repair -- narrow-repair bypass applies.'"},
+    {"text": "Explicitly takes the narrow-repair bypass since the fix is already known and the finding already accepted", "passed": true, "evidence": "'Both narrow-repair bypass conditions are met: the fix is already known and narrowly scoped ... and the finding is already accepted.'"},
+    {"text": "Does NOT produce the full brief (Steps 4-5 skipped) for this bypass path", "passed": true, "evidence": "'No Conception Brief file was written ... the evidence/classification/rationale record itself is the artifact.'"},
+    {"text": "Hands off directly to Fix", "passed": true, "evidence": "'Recommended target is plugin-lifecycle-downstream's Phase 8 (Consolidated Fix), per the classification table's Repair routing.'"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

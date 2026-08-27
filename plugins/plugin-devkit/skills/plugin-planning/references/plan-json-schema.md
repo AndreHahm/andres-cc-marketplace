@@ -46,21 +46,30 @@ from the same `date -u` instant Step 5 generates, just formatted differently for
 
 ## Field Rules
 
-- **`type` is restricted to exactly the four types Step 2's decision matrix actually chooses among:
-  `"skill"`, `"agent"`, `"command"`, `"hook"`.** Step 2 has no path that decides a planned capability
-  should be an `mcp-server`/`rule`/`theme`/etc. — this JSON's `type` enum reflects only what this skill
-  can actually produce today. Extending Step 2's decision matrix to propose other component types is a
-  separate, later change to this skill, not something this schema pre-declares.
+- **`type` is restricted to exactly the five types Step 2's decision matrix actually chooses among:
+  `"skill"`, `"agent"`, `"command"`, `"hook"`, `"rule"`.** This JSON's `type` enum reflects only what
+  this skill can actually produce today. Extending Step 2's decision matrix to propose other component
+  types (`mcp-server`/`theme`/etc.) is a separate, later change to this skill, not something this
+  schema pre-declares. A planned Rule has no `depth_tier` (only skills get one, per the `depth_tier`
+  rule below) and no `functional_group` requirement beyond the same clustering every other component
+  type gets.
 - **`depth_tier`** (`"minimal"` / `"standard"` / `"rich"`, always lowercase in this JSON — the Markdown
   plan's own Content Depth Allocation table uses the capitalized `Minimal`/`Standard`/`Rich` form per
   Step 3; the two are the same value in different casings, not a mismatch) is included for completeness
   but is **not** consumed by `plugin-inventory` — it's Design-phase guidance, not an inventory field.
   Included only so the JSON is a complete, useful record of the plan on its own. Agents, commands, and
   hooks omit this field (only skills get a depth tier, per Step 3).
-- **`concept_source` is `object | null`**, and is `null` exactly when `ideation_skipped` is `true` (no
-  Concept Card was read) — a populated `{"type": "concept_card", "path": "..."}` object otherwise. The
-  two fields are not independent: a non-null `concept_source` paired with `ideation_skipped: true` (or
-  vice versa) is invalid.
+- **`concept_source` is `object | null`**, and is `null` exactly when `ideation_skipped` is `true` and
+  no Conception Brief was read either (a bare direct-description input) — a populated object otherwise,
+  one of two shapes: `{"type": "concept_card", "path": "..."}` (read via `plugin-ideation`'s normal
+  Create pipeline — `ideation_skipped` is `false`) or `{"type": "conception_brief", "path": "...",
+  "classification": "Enhance" | "Consolidate" | "Reposition"}` (read directly from `plugin-conception`,
+  bypassing `plugin-ideation` entirely — `ideation_skipped` is **also `false`** here, since real
+  grounding did occur, just not via the interview; `ideation_skipped: true` means no grounding
+  artifact was read at all, not "ideation specifically wasn't the source"). The `classification` field
+  on the `conception_brief` variant only exists because this concept was never validated as Create at
+  `plugin-lifecycle-upstream`'s own Gate 1 — `plugin-lifecycle-upstream`'s Auto-Detection Logic reads it
+  before silently resuming a build from this plan (see that skill's own Auto-Detection Logic table).
 - **No `id` field is minted here.** Stable-ID assignment for an eventual inventory record is
   `plugin-inventory`'s own responsibility at bootstrap/import time — this schema doesn't invent one
   ahead of time for a component that doesn't exist yet.

@@ -1,0 +1,9 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-conception/SKILL.md",
+  "assertions": [
+    {"text": "Classifies as Consolidate", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Produces the FULL Conception Brief (all 12 sections)", "type": "structure", "target": "outputs/ directory"},
+    {"text": "Names plugin-planning plus consistency/activation review as the destination, not plugin-ideation and not a direct Fix hand-off", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

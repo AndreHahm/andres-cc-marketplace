@@ -1,0 +1,9 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "assertions": [
+    {"text": "States the new-component-implying candidate is excluded from the Fix bundle", "type": "functionality", "target": "improve-a-plugin.md Step 4"},
+    {"text": "Names plugin-planning as the redirect target, never plugin-lifecycle-upstream", "type": "functionality", "target": "improve-a-plugin.md Step 4"},
+    {"text": "States the already-written Conception Brief is reused directly as plugin-planning's own Step 1 input, not wasted", "type": "functionality", "target": "improve-a-plugin.md Step 4"}
+  ]
+}

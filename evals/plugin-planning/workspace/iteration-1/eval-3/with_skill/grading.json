@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Both a .md and a .json file are written at the same base path under .claude/output/plugin-planning/", "passed": true, "evidence": "inventory-skills-2026-08-25T11-15-51Z.md and inventory-skills-2026-08-25T11-15-51Z.json both exist at .claude/output/plugin-planning/"},
+    {"text": "The JSON's planned_components has exactly 2 entries (plugin-inventory, marketplace-inventory), both type 'skill' with depth_tier 'rich' (lowercase)", "passed": true, "evidence": "planned_components[0].name_candidate=\"plugin-inventory\", type=\"skill\", depth_tier=\"rich\"; planned_components[1].name_candidate=\"marketplace-inventory\", type=\"skill\", depth_tier=\"rich\" -- verified directly from the written JSON file"},
+    {"text": "The JSON's functional_groups has one entry grouping both component_names together", "passed": true, "evidence": "functional_groups: [{\"name\": \"Inventory Maintenance\", \"component_names\": [\"plugin-inventory\", \"marketplace-inventory\"]}]"},
+    {"text": "ideation_skipped is true and concept_source is null, consistent with each other", "passed": true, "evidence": "\"concept_source\": null, \"ideation_skipped\": true -- verified directly from the written JSON file"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

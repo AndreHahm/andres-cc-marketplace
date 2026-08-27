@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-1-gate1-create",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States Gate 1 allows proceeding for a Create classification", "passed": true, "evidence": "'Create (this case) -> asks via AskUserQuestion: proceed to Ideate / revise the concept / stop. Doesn't advance until approved; on approval, the brief becomes Phase 2's input.'"},
+    {"text": "States Phase 2 (Ideate) runs next, seeded by the Conception Brief", "passed": true, "evidence": "'Next phase: since the classification is Create, Phase 2 (Ideate) runs next -- it invokes plugin-ideation with the Conception Brief as input and produces a Concept Card.'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

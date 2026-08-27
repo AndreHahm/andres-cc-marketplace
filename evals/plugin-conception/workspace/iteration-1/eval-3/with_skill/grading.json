@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Identifies that skill-reviewer already covers this exact capability", "passed": true, "evidence": "'plugins/plugin-devkit/agents/skill-reviewer.md ... its description is a near word-for-word match to the submitted idea.'"},
+    {"text": "States the classification shifts away from Create due to full overlap, per Step 3's overlap table", "passed": true, "evidence": "Result: Retain (Full overlap) -- 'Followed the skill's own steps (Route A normalize -> tentative Create -> Step 3 real overlap check -> revised classification).'"},
+    {"text": "Stops and asks whether to extend the existing component, rather than proceeding to define a new Create concept", "passed": true, "evidence": "'no Conception Brief file was written and no downstream hand-off invoked -- a clean stop with stated rationale.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

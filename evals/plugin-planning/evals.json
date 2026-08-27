@@ -1,62 +1,74 @@
 {
   "skill_name": "plugin-planning",
   "skill_path": "plugins/plugin-devkit/skills/plugin-planning/SKILL.md",
-  "description": "Turns an accepted plugin concept into a concrete component inventory and depth plan.",
+  "description": "Turns an accepted Concept Card or Conception Brief into a component inventory and content-depth plan, writing both a Markdown plan and a structured JSON companion",
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 9,
+    "declared_scenarios_covered": 9,
+    "uncovered": [],
+    "coverage_note": "Evals 1-2 (scenarios 3, 2) and evals 3-4 (scenarios 6, 7) each have a real skill-tester with_skill run record (grading.json) under workspace/iteration-1/eval-1 through eval-4. Evals 5-9 (scenarios 1, 4, 5, 8, 9) are written against SKILL.md's current documented behavior but have not yet been executed through skill-tester's real with_skill/baseline agent dispatch -- no grading.json run record exists for them yet. Eval 9 (scenario 9, plugin-inventory import) was separately verified end-to-end via a real script execution during its own authoring on origin/main -- bootstrapping a fixture plugin-inventory.json and applying a 3-operation add plan via scripts/plugin-inventory.py apply produced 3 records with status 'planned' and path None -- confirming the documented contract holds in the actual current code, not just in prose."
+  },
   "evals": [
     {
       "id": 1,
+      "name": "Step 1: Conception Brief branch",
+      "prompt": "plugin-planning's Step 1 is given $ARGUMENTS pointing at a file under .claude/output/plugin-conception/ -- a Conception Brief with Concept type = Enhance, targeting an existing skill. Which of Step 1's 3 branches applies, and what should plugin-planning do differently than if it had received a plain Concept Card?",
+      "expected_output": "The Conception Brief branch applies (not the Concept Card branch or the 'neither found' branch); plugin-planning reads the brief's existing baseline contract, implementation plan, and marketplace integration sections directly rather than re-deriving them, and runs only a shallow (repository-metadata depth) overlap re-check, not the exhaustive per-component search"
+    },
+    {
+      "id": 2,
+      "name": "Step 1: Neither Concept Card nor Conception Brief found",
+      "prompt": "plugin-planning is invoked with $ARGUMENTS that doesn't resolve to any file under .claude/output/plugin-ideation/ or .claude/output/plugin-conception/ -- just a bare description like 'plan out a caching layer for skill X'. Which Step 1 branch applies and what happens next?",
+      "expected_output": "The 'neither found' branch applies; plugin-planning should not silently fabricate a Concept Card or Conception Brief -- it should either ask the user to run plugin-ideation/plugin-conception first, or explicitly state it's proceeding from the bare description with reduced upstream grounding"
+    },
+    {
+      "id": 3,
       "name": "JSON companion written alongside Markdown plan",
       "prompt": "Plan a small plugin-devkit addition from this direct description (no Concept Card exists): 'Add two new skills, plugin-inventory and marketplace-inventory, that build and maintain Git-tracked JSON inventories for a plugin and the whole marketplace respectively. Both are Rich-tier skills needing scripts and reference docs, and belong in the same functional group since they share the same domain.' Produce the plan per this skill's Step 5.",
       "expected_output": "Writes both a Markdown plan (.claude/output/plugin-planning/<slug>-<timestamp>.md) and a JSON companion at the same base path with a .json extension, per references/plan-json-schema.md. The JSON's planned_components array has 2 entries (plugin-inventory, marketplace-inventory), both type 'skill' with depth_tier 'rich' (lowercase), both functional_group matching a single functional_groups entry listing both component_names. ideation_skipped is true and concept_source is null, matching a note in the Markdown plan that ideation was skipped.",
       "files": []
     },
     {
-      "id": 2,
+      "id": 4,
       "name": "Ideation-skipped case, concept_source null pairing",
       "prompt": "A user asks to plan a single simple component directly: 'I need one skill that validates YAML frontmatter in markdown files against a schema.' No Concept Card exists. Produce the plan per this skill's Step 5, then explicitly state what concept_source and ideation_skipped are set to in the JSON companion and why.",
       "expected_output": "Correctly identifies ideation was skipped (no Concept Card path was given/found), sets ideation_skipped: true and concept_source: null in the written JSON companion (never a non-null concept_source paired with ideation_skipped: true), and states this explicitly rather than leaving it ambiguous. Both the Markdown and JSON files are written.",
       "files": []
     },
     {
-      "id": 3,
+      "id": 5,
       "name": "Concept Card input read in full, not just name/overlap section",
       "prompt": "A Concept Card exists at .claude/output/plugin-ideation/test-widget-2026-08-25T10-00-00Z.md (construct one first if it doesn't already exist, with a name/purpose section AND a separate, detailed 'Problem Statement' section several paragraphs long describing three distinct sub-capabilities the plugin needs). Plan this concept per Step 1-2. Report specifically what you read from the Problem Statement section (not just the name), and how it shaped your component list.",
       "expected_output": "Confirms Step 1 read the Concept Card in full (quotes or paraphrases specific detail from the Problem Statement section, not just the card's name/title), and Step 2's component list traces each proposed component back to a specific sub-capability named in that Problem Statement -- demonstrating the card was treated as data describing a problem to classify, not skimmed for just the name.",
       "files": []
     },
     {
-      "id": 4,
+      "id": 6,
       "name": "Depth allocation -- distinct, justified tiers, not a uniform default",
       "prompt": "Plan a concept implying 3 skills of obviously different complexity: (a) a one-paragraph procedural skill with no supporting content needed, (b) a skill needing a references/ directory for edge-case documentation, and (c) a skill needing scripts/, assets/, and multiple worked examples. Per Step 3, assign each a depth tier and justify it against the 80% Rule.",
       "expected_output": "Assigns three genuinely different tiers -- Minimal for (a), Standard for (b), Rich for (c) -- each justified against the 80% Rule's specific case (core content fits under ~300 lines / some content is genuinely supplementary / needs executable utilities or worked examples beyond prose). Does not default all three to the same tier.",
       "files": []
     },
     {
-      "id": 5,
+      "id": 7,
       "name": "Code-smell trigger -- 6 agents stops the flow and asks",
       "prompt": "Plan a concept whose natural component breakdown implies 6 distinct autonomous agents (describe 6 clearly separate, restricted-tool, invoked-by-another-component capabilities). Per Step 2's code-smell check, what should happen before proceeding to Step 3?",
       "expected_output": "The flow stops and asks via AskUserQuestion with the exact question 'This plan is large — should the concept be split into two plugins?' and options 'Split into two' / 'Keep as one' -- it does not silently proceed to depth allocation with all 6 agents in one plan.",
       "files": []
     },
     {
-      "id": 6,
+      "id": 8,
       "name": "Depth tier round-trips -- JSON lowercase matches Markdown capitalized, same value",
       "prompt": "Plan a concept with exactly one Rich-tier skill. After Step 5 writes both files, confirm the JSON companion's depth_tier value and the Markdown plan's stated tier for that same skill are the same value in different casing, not a mismatch.",
       "expected_output": "The JSON companion's planned_components entry has depth_tier: 'rich' (lowercase), and the Markdown plan's Content Depth Allocation table states 'Rich' (capitalized) for the same skill -- confirmed as the same value in different casing per Step 3's table and plan-json-schema.md's Field Rules, not two different tiers.",
       "files": []
     },
     {
-      "id": 7,
+      "id": 9,
       "name": "plugin-inventory import -- 3 planned components created with path: null",
       "prompt": "Plan a concept with exactly 3 planned components: a skill 'planned-skill-a', an agent 'planned-agent-b', and a command 'planned-command-c'. After Step 5 writes the JSON companion, describe exactly how plugin-inventory's Build workflow would import these 3 entries: what add operation would be constructed for each, and what the resulting inventory records look like.",
       "expected_output": "For each of the 3 planned_components entries, plugin-inventory constructs an add operation with name = name_candidate, type from the JSON, path: null, and status: 'planned' with a status_reason naming the source plan (per plugin-inventory/SKILL.md's Integration section) -- never defaulting to status: 'active'. This was verified end-to-end via a real script run during this eval's own authoring: bootstrapping a fixture plugin-inventory.json, then applying exactly this 3-operation add plan via scripts/plugin-inventory.py apply, produced 3 records with status 'planned' and path None, matching name_candidate/type exactly -- confirming the documented contract holds in the actual current code, not just in prose.",
       "files": []
     }
-  ],
-  "testing_validation_coverage": {
-    "declared_scenarios_total": 8,
-    "declared_scenarios_covered": 8,
-    "uncovered": [],
-    "coverage_note": "Evals 3-7 added 2026-08-25 to close the previously-declared gap (scenarios 1, 3, 4, 7, 8 -> evals 3, 4, 5, 6, 7 respectively). Eval 7 (scenario 8, plugin-inventory import) was verified end-to-end via a real script execution during authoring -- not just written from expectation -- confirming the documented planned-status import contract holds in plugin-inventory's actual current code (this is the same contract fixed as Critical finding C2 during this repo's downstream QA pass). Evals 3-6 (scenarios 1, 3, 4, 7) are written against SKILL.md's current documented behavior but, like plugin-grader's reasoning-only additions, have NOT yet been executed through skill-tester's real with_skill/baseline agent dispatch -- no grading.json run record exists for them yet."
-  }
+  ]
 }

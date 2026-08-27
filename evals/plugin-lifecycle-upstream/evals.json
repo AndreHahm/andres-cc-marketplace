@@ -1,0 +1,24 @@
+{
+  "skill_name": "plugin-lifecycle-upstream",
+  "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-upstream/SKILL.md",
+  "description": "Seven-phase gated plugin creation pipeline (Conceive->Ideate->Plan->Design->Build->Self-Review->Test)",
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 20,
+    "declared_scenarios_covered": 2,
+    "uncovered": ["1: cold start", "2: resume from Plan", "2a: resume from Concept Card, no Brief", "2b: resume from Conception Brief", "3: partial build detected", "4: gate rejection", "4a: Self-Review findings surfaced", "4b: Self-Review clean result", "5: Test phase mixed component types", "5a: Test phase unplanned overhead", "6: commit and handoff", "7: Document step nothing to update", "8: Design produces no disk writes", "9: Open-PR check, PR exists", "10: Open-PR check, no PR", "11: Branch-scope check, unscoped branch", "12: Branch-scope check, already scoped", "13: Phase-completion check catches cancelled dispatch"]
+  },
+  "evals": [
+    {
+      "id": "eval-1-gate1-create",
+      "name": "Gate 1: Create classification proceeds to Ideate",
+      "prompt": "plugin-lifecycle-upstream's Phase 1 (Conceive) just ran and produced a Conception Brief with Concept type = Create. What does Gate 1 do, and what phase runs next?",
+      "expected_output": "Gate 1 allows the run to proceed since the classification is Create; Phase 2 (Ideate) runs next, seeded by the Conception Brief"
+    },
+    {
+      "id": "eval-2-gate1-non-create",
+      "name": "Gate 1: Non-Create classification stops the pipeline",
+      "prompt": "plugin-lifecycle-upstream's Phase 1 (Conceive) just ran and produced a Conception Brief with Concept type = Enhance (an existing component should be modified, not a new one created). What does Gate 1 do?",
+      "expected_output": "Gate 1 stops the run -- it does not proceed into Ideate/Plan/Design/Build for a non-Create classification; it states the correct hand-off target (plugin-planning per plugin-conception's own Step 7 table) rather than silently continuing the upstream pipeline"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States the new-component-implying candidate is excluded from the Fix bundle", "passed": true, "evidence": "'No -- this candidate does not go into the Fix bundle.'"},
+    {"text": "Names plugin-planning as the redirect target, never plugin-lifecycle-upstream", "passed": true, "evidence": "'Redirects the candidate to plugin-planning ... never to plugin-lifecycle-upstream, whose Gate 1 stops on any non-Create classification.'"},
+    {"text": "States the already-written Conception Brief is reused directly as plugin-planning's own Step 1 input, not wasted", "passed": true, "evidence": "'Reuses the brief as plugin-planning's own Step 1 input directly (\"not wasted work\").'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

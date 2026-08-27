@@ -1,0 +1,10 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-conception/SKILL.md",
+  "assertions": [
+    {"text": "Classifies as Retain", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Stops cleanly with a stated rationale rather than silently dropping the concept", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "No Conception Brief is written for this Retain outcome", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "No downstream hand-off is proposed", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

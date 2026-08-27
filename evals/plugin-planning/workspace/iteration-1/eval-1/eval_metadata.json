@@ -2,9 +2,7 @@
   "eval_id": 1,
   "skill_path": "plugins/plugin-devkit/skills/plugin-planning/SKILL.md",
   "assertions": [
-    {"text": "Both a .md and a .json file are written at the same base path under .claude/output/plugin-planning/", "type": "structure", "target": "outputs/ directory"},
-    {"text": "The JSON's planned_components has exactly 2 entries (plugin-inventory, marketplace-inventory), both type 'skill' with depth_tier 'rich' (lowercase)", "type": "functionality", "target": "outputs/ directory"},
-    {"text": "The JSON's functional_groups has one entry grouping both component_names together", "type": "structure", "target": "outputs/ directory"},
-    {"text": "ideation_skipped is true and concept_source is null, consistent with each other", "type": "functionality", "target": "outputs/ directory"}
+    {"text": "Identifies the Conception Brief branch as the applicable one (not Concept Card or 'neither found')", "type": "functionality", "target": "Step 1 branch selection"},
+    {"text": "States the overlap re-check stays shallow (repository-metadata depth), not the exhaustive plugin-ideation-style search", "type": "presence", "target": "Overlap-check depth"}
   ]
 }

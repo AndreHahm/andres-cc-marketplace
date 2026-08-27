@@ -1,0 +1,8 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-maintenance/SKILL.md",
+  "assertions": [
+    {"text": "States plugin-conception is invoked exactly once per approved suggestion (3 times for 3 suggestions), never once for the whole batch", "type": "functionality", "target": "improve-a-plugin.md Step 3"},
+    {"text": "States a narrow, already-known Repair with an already-accepted finding takes plugin-conception's own bypass path, skipping the full brief", "type": "functionality", "target": "improve-a-plugin.md Step 3"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-2-seeded-non-create-brief",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Detects the Concept type mismatch (Enhance, not Create)", "passed": true, "evidence": "'What the brief's Metadata table says: Concept type = Enhance, not Create.'"},
+    {"text": "Tells the user and asks how to proceed rather than silently interviewing against the mismatched brief", "passed": true, "evidence": "'I stopped at that precondition, explained the mismatch ... and posed the required question back to the user with three concrete options' -- did not run the interview/overlap/naming steps."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}
