@@ -12,9 +12,13 @@ Subcommands:
 
 Every write-capable subcommand takes `repo_root` so it can enforce that
 `inventory_path` resolves to exactly `<repo_root>/.claude-plugin/
-marketplace-inventory.json` -- this script never writes a different repo's
-own inventory file, mechanically, not just by prose convention (see
-`inventory_common.reconcile.require_inventory_path_under_scope_dir`).
+marketplace-inventory.json` -- mechanically, not just by prose convention
+(see `inventory_common.reconcile.require_inventory_path_under_scope_dir`).
+This constrains `inventory_path` relative to whatever `repo_root` the
+caller names on that invocation -- it is not a pin to any one specific
+repo; a caller passing a different `repo_root` writes that directory's
+own inventory file. The SKILL.md invoking this script is the one place
+that constrains `repo_root` itself to the current session's repository.
 
 This script owns marketplace-membership reconciliation and rollup fields
 (score/security_score sourced from plugin-grader reports, referential

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Persisted smoke test for marketplace-inventory: frontmatter validity, referenced-file
-existence, Bash-scope grant consistency, and the shared CLI script's own subcommands."""
+existence, Bash-scope grant consistency, and 19 behavioral scenario checks against the
+shared CLI script's own subcommands."""
 
 import json
 import pathlib
@@ -48,15 +49,17 @@ def check_bash_grants():
     text = SKILL_MD.read_text(encoding="utf-8")
     header_end = text.find("\n---\n", 4) + 5
     frontmatter, body = text[:header_end], text[header_end:]
-    fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    granted_prefixes = (
-        [
-            g.rsplit(":", 1)[0].strip()
-            for g in re.findall(r"Bash\(([^)]*)\)", fm_line_match.group(1))
-        ]
-        if fm_line_match
-        else []
-    )
+    # Block-scalar-aware: `allowed-tools:` may be a single-line scalar, or a YAML
+    # `>-`/`|`/`>` block scalar whose actual value continues on subsequent indented
+    # lines -- capture those continuation lines too, not just the first line, so a
+    # future reformat to block-scalar syntax (R8 is a plausible trigger once this line
+    # is long enough) doesn't silently collapse this check to an empty grant list.
+    fm_match = re.search(r"^allowed-tools:\s*(.*(?:\n[ \t]+.+)*)", frontmatter, re.MULTILINE)
+    allowed_tools_text = fm_match.group(1) if fm_match else ""
+    granted_prefixes = [
+        g.rsplit(":", 1)[0].strip()
+        for g in re.findall(r"Bash\(([^)]*)\)", allowed_tools_text)
+    ]
     invoked = set()
     for block in re.findall(r"```bash\n(.*?)```", body, re.DOTALL):
         for line in block.splitlines():
