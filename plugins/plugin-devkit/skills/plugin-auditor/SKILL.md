@@ -136,6 +136,10 @@ outside this run.
 
 ## Testing & Validation
 
+**Last dated run record:** 2026-08-27 — `scripts/smoke_test.py` (3/3 checks passing) and
+`evals/plugin-auditor/` (3 eval scenarios across 2 iterations, 18/18 assertions, 100% with_skill pass
+rate).
+
 1. **Component mode, clean target** — audit a skill with no findings from any dispatched
    reviewer; confirm the written report's `findings[]` is empty and every dispatched source is
    listed in `report_revisions`-equivalent provenance, not silently omitted.

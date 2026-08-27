@@ -110,7 +110,7 @@ After Phase 7 (Test)'s gate is approved, stage and commit the built files per th
 
 ## Inventory Sync
 
-After the Commit step and before Document, sync `marketplace-inventory`/`plugin-inventory` per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`: a brand-new plugin, or a new component in an existing plugin that has never been inventoried at all (no live `marketplace-inventory` record and no `plugin-inventory.json` yet — the actual current state of every plugin in this repo) → run `marketplace-inventory` (mints/confirms the `plugin_id`) then `plugin-inventory`, each through its own Plan → `AskUserQuestion` approval → Apply gate; a new component in an existing plugin that already has a `plugin_id` → run that plugin's own `plugin-inventory` only. Commit the result as its own commit, separate from the build commit and from any doc-fix commit the Document step below produces.
+After the Commit step and before Document, sync `marketplace-inventory`/`plugin-inventory` per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`: a brand-new plugin, or a new component in an existing plugin that has never been inventoried at all (no live `marketplace-inventory` record and no `plugin-inventory.json` yet — the actual current state of every plugin in this repo) → run `marketplace-inventory` (mints/confirms the `plugin_id`, through its own Plan → `AskUserQuestion` approval → Apply gate) then `plugin-inventory` to bootstrap the component list — `bootstrap` has no plan/apply step of its own, so get explicit `AskUserQuestion` approval *before* invoking it, not after (see the rule's "No silent writes" bullet); a new component in an existing plugin that already has a `plugin_id` → run that plugin's own `plugin-inventory` only. Commit the result as its own commit, separate from the build commit and from any doc-fix commit the Document step below produces.
 
 ## Document
 
@@ -133,6 +133,9 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 **Eval evidence:** `evals/plugin-lifecycle-upstream/evals.json` — 20 scenarios (Quick Workflow,
 `workspace/iteration-1`), 2/20 eval-covered (scenarios 1a and 1b, Gate 1's Create/non-Create branches);
 the remaining scenarios below are design-review-verified only.
+
+**Last dated run record:** 2026-08-27 — `scripts/smoke_test.py` (5/5 checks passing) and the eval
+evidence above (5/5 assertions across scenarios 1a/1b, 100% with_skill pass rate).
 
 1. **Cold start** — a rough idea with no existing artifacts; confirm all 7 phases run in order with a gate between each
 1a. **Conceive, Create classification** — Phase 1 classifies the idea as Create; confirm the pipeline proceeds to Phase 2 with the light Conception Brief as `plugin-ideation`'s input
