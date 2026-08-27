@@ -42,6 +42,7 @@ that a five-minute live check would have caught before the first push:
 | #52 | A shell variable set in one `Bash` tool call is visible to a later `Bash`/`Read`/`Write` call | Claude Code's `Bash` tool has no persistent shell state across calls — each call is a fresh subprocess |
 | #54 | `AskUserQuestion` only caps options-per-question | It **also** caps questions-per-call (4), independently — a second, uncovered dimension of the same tool's schema |
 | #55 | Hand-rolled regex can reliably extract Python call-site arguments | Only `ast.parse()` can — arbitrary legal Python source has an unbounded adversarial tail no regex will cover |
+| #142 | A branch containing a merge commit can still be rebase-and-merged via `gh pr merge --rebase` | GitHub's rebase-and-merge unconditionally rejects a branch containing an existing merge commit — confirmed via a live `"This branch can't be rebased"` GraphQL error, not a transient failure |
 
 Every one of these was independently confirmed real and fixed — this isn't about reviewers being
 noisy. Each round cost the same push→CI→review→pull-comments round-trip regardless of how small the

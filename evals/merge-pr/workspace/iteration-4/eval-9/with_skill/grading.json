@@ -1,0 +1,11 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States the tradeoff disclosure fires even though pr_merge_type was already SQUASH from the start, not just when squash is reached via the rebase pre-check or rejection fallback", "passed": true, "evidence": "\"Step 7(c)...still fires, unconditionally -- the skill is explicit that this must be stated 'whenever --squash is about to run -- whether pr_merge_type was already SQUASH, it was chosen preemptively in (a), or reactively in (d)...'\""},
+    {"text": "States how many commits will collapse into one (via gh pr view --json commits --jq '.commits | length')", "passed": true, "evidence": "\"...before merging I state: 12 commits will collapse into one...\""},
+    {"text": "States that individual fix-round/review-commit granularity is lost on the base branch", "passed": true, "evidence": "\"...and individual fix-round/review-commit granularity is lost on the base branch...\""},
+    {"text": "States this disclosure happens before the --squash merge command runs, not after", "passed": true, "evidence": "Disclosure listed as step 2 in the agent's ordered plan, with step 7(b)'s actual merge command listed afterward as step 3"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

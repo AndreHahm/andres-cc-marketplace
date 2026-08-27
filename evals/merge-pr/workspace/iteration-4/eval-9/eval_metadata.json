@@ -1,0 +1,10 @@
+{
+  "eval_id": 9,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {"text": "States the tradeoff disclosure fires even though pr_merge_type was already SQUASH from the start, not just when squash is reached via the rebase pre-check or rejection fallback", "type": "functionality", "target": "outputs/"},
+    {"text": "States how many commits will collapse into one (via gh pr view --json commits --jq '.commits | length')", "type": "functionality", "target": "outputs/"},
+    {"text": "States that individual fix-round/review-commit granularity is lost on the base branch", "type": "quality", "target": "outputs/"},
+    {"text": "States this disclosure happens before the --squash merge command runs, not after", "type": "functionality", "target": "outputs/"}
+  ]
+}

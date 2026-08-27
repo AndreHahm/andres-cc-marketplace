@@ -17,7 +17,7 @@ import sys
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
-SECTION_HEADERS = ["## Workflow Patterns"]
+SECTION_HEADERS = ["## Workflow Patterns", "## Resolving a Cherry-Pick Commit List"]
 
 
 def check_frontmatter():

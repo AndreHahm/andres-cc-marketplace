@@ -1,0 +1,34 @@
+{
+  "skill_name": "git-worktrees",
+  "skill_path": "plugins/git-kit/skills/git-worktrees/SKILL.md",
+  "description": "Git worktree commands and workflow patterns for parallel development with multiple working directories, including resolving a verified commit list before cherry-picking.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Cherry-pick by PR number resolves the commit list from GitHub's own record",
+      "prompt": "This is a simulated exercise: there is no real GitHub repo/PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead, and write your answer to a file.\n\nA user asks: \"cherry-pick the feature login-retry-backoff shipped with PR #57\". Describe, step by step, how you determine which commit(s) to cherry-pick. Do you ever type out or recall a commit SHA list from memory, or from a local branch you assume matches? Write your answer to `outputs/answer.md`.",
+      "expected_output": "Resolves the commit list directly from GitHub's own record for PR #57 -- `gh pr view 57 --json commits` or `gh api repos/{owner}/{repo}/pulls/57/commits` -- never a hand-typed or remembered list, and never reconstructed from a local branch assumed to match. Shows the resolved list back to the user for confirmation before any `git cherry-pick` runs.",
+      "files": ["outputs/answer.md"]
+    },
+    {
+      "id": 2,
+      "name": "Cherry-pick by feature name with ambiguous matches stops to ask, never guesses",
+      "prompt": "This is a simulated exercise: there is no real GitHub repo/PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead.\n\nA user asks: \"cherry-pick the feature 'retry logic'\". You search `git log --all --oneline --grep=\"retry logic\"` and `gh pr list --search \"retry logic\" --state merged`, and both searches return two different, unrelated merged PRs that each plausibly match (PR #40 'add retry logic to the HTTP client' and PR #61 'retry logic for the queue worker'). What do you do next? Do you pick one, cherry-pick from both, or something else?",
+      "expected_output": "Does not guess which PR the user means, and does not cherry-pick from both to be safe. Stops and asks the user to narrow the request -- e.g. by giving a PR number or a SHA range -- before resolving any commit list at all.",
+      "files": ["outputs/answer.md"]
+    },
+    {
+      "id": 3,
+      "name": "Cherry-pick by SHA range verifies reachability and catches a duplicate tree-hash commit",
+      "prompt": "This is a simulated exercise: there is no real GitHub repo/PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead.\n\nA user asks: \"cherry-pick commit-SHAs abc1234..def5678 for feature login-retry-backoff\". `git log` resolves this range to three commits: abc1234, bcd2345, def5678. You are told (as a given fact for this exercise) that `git rev-parse abc1234^{tree}` and `git rev-parse def5678^{tree}` return the *same* tree hash, even though they are different commit SHAs. Describe every verification step you perform on this candidate list before cherry-picking anything, and what you conclude about abc1234 and def5678 given that tree-hash match.",
+      "expected_output": "Verifies each candidate SHA is actually reachable via `git merge-base --is-ancestor <sha> HEAD` (or the target branch) before trusting it. Separately compares tree hashes across candidates via `git rev-parse <sha>^{tree}` and, given the reported match between abc1234 and def5678, concludes one of them is a redundant, already-merged rebase-replay duplicate that produces the same working-tree result as the other -- not a distinct change that still needs applying. Flags this to the user as part of the resolved list shown for confirmation, rather than silently cherry-picking all three commits including the redundant one.",
+      "files": ["outputs/answer.md"]
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": [],
+    "note": "Eval 1 covers the PR-number resolution path. Eval 2 covers the feature-name path's ambiguous-match stop-and-ask behavior. Eval 3 covers the SHA-range path's reachability and duplicate-tree-hash verification. All three map directly to the 'Resolving a Cherry-Pick Commit List' section added this session and its three corresponding quality-gate checkboxes in SKILL.md's own Testing & Validation section."
+  }
+}

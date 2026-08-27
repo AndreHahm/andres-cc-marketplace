@@ -1,0 +1,10 @@
+{
+  "eval_id": 8,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {"text": "Runs the merge-commit count check (gh api repos/{owner}/{repo}/pulls/<number>/commits, counting entries with more than one parent) before ever calling gh pr merge --rebase", "type": "functionality", "target": "outputs/"},
+    {"text": "Since the count is non-zero, asks via AskUserQuestion for an alternate strategy (Merge or Squash) instead of attempting --rebase", "type": "functionality", "target": "outputs/"},
+    {"text": "States why: GitHub's rebase-and-merge rejects a branch containing an existing merge commit", "type": "quality", "target": "outputs/"},
+    {"text": "Does not wait for a live gh pr merge --rebase rejection before asking", "type": "functionality", "target": "outputs/"}
+  ]
+}

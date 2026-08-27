@@ -11,7 +11,11 @@ CRITICAL: Perform the following steps exactly as described:
 2. **Parse the request**: Determine what merge operation the user wants:
    - **No specifics / "guide me"**: Guided interactive mode
    - **File/directory path**: Merge specific file(s) or directory from a worktree
-   - **Commit name**: Cherry-pick a specific commit
+   - **A single, already-known commit SHA**: Cherry-pick that specific commit (Strategy C below)
+   - **A feature name, a PR number, or a SHA range** (e.g. "cherry-pick the feature XY", "...shipped
+     with PR #N", "commit-SHAs abcdefg..hijklmn"): first resolve the actual commit list via
+     `SKILL.md`'s "Resolving a Cherry-Pick Commit List" section — never assume a single commit or a
+     hand-typed list is already correct — then apply Strategy C to each resolved commit
    - **Branch name**: Merge from that branch's worktree
    - **A named source worktree**: Use that worktree as the merge source
    - **"select changes"/"patch"**: Use interactive patch selection mode
@@ -36,6 +40,8 @@ CRITICAL: Perform the following steps exactly as described:
 
    **Strategy C: Cherry-Pick with Selective Staging** (for specific commits)
    - Best for: Applying a commit but excluding some changes
+   - Assumes the commit(s) to apply are already resolved and verified — for a feature/PR/SHA-range
+     request, run `SKILL.md`'s "Resolving a Cherry-Pick Commit List" section first
    - Commands: `git cherry-pick --no-commit <commit>` → review staged changes → `git reset HEAD -- <unwanted>` and `git checkout -- <unwanted>` to drop what you don't want → hand off to the `commit` skill (raw `git commit` is guarded)
 
    **Strategy D: Manual Merge with Conflicts** (for complex merges)

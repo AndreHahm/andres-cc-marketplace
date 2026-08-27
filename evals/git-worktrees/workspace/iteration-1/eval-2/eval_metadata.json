@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/git-worktrees/SKILL.md",
+  "assertions": [
+    {"text": "Does not guess which of the two matching PRs the user means", "type": "functionality", "target": "outputs/"},
+    {"text": "Does not cherry-pick from both PRs to be safe", "type": "functionality", "target": "outputs/"},
+    {"text": "Stops and asks the user to narrow the request (PR number or SHA range) before resolving any commit list", "type": "functionality", "target": "outputs/"}
+  ]
+}

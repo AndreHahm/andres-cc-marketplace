@@ -44,11 +44,32 @@
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead.\n\nYou are following your own step 1. `gh pr view $ARGUMENTS --json ...` returns three different PRs' `headRefName` values, one at a time: (a) `feature+api`, (b) `user@topic/release=next`, (c) `feat/x;rm -rf /`. For each, state whether it passes your headRefName validation regex, and if it doesn't, what happens next.",
       "expected_output": "States (a) feature+api passes validation. States (b) user@topic/release=next passes validation. States (c) feat/x;rm -rf / fails validation (contains ; and a space, neither in the allowlist) and the skill stops and tells the user rather than proceeding to any later use of headRefName. Does not reject (a) or (b) -- explicitly names @, +, and = as characters the current regex admits, distinct from the shell metacharacters (c) is rejected for.",
       "files": ["outputs/answer.md"]
+    },
+    {
+      "id": 7,
+      "name": "Step 2: four-state CI classification distinguishes missing from pending",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/API calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would conclude and do, and write your answer to a file.\n\nYou are at step 2. The base branch's required-check list (from the branchProtectionRule GraphQL query) is: `Hygiene (PR contract)`, `Python quality (ruff, ty, pytest)`, `Fork PR (unsupported)`, `Publish Codex policy result`. Step 1's `statusCheckRollup` (already fetched) contains exactly these three entries: a `CheckRun` named `Hygiene (PR contract)` with `status: COMPLETED, conclusion: SUCCESS`; a `CheckRun` named `Python quality (ruff, ty, pytest)` with `status: IN_PROGRESS`; a `CheckRun` named `Publish Codex policy result` with `status: COMPLETED, conclusion: SUCCESS`. Note that `Fork PR (unsupported)` has no matching entry in `statusCheckRollup` at all. Classify each of the 4 required contexts into exactly one state, and state whether this PR is ready to merge. Write your answer to `outputs/answer.md`.",
+      "expected_output": "Classifies Hygiene (PR contract) as passing, Python quality as pending, Publish Codex policy result as passing, and Fork PR (unsupported) as missing (not pending, not failing) -- explicitly noting missing means no run was ever recorded for the current head commit, which is distinct from pending (a run exists but hasn't finished). Concludes the PR is not ready to merge, since not every required context classifies as passing.",
+      "files": ["outputs/answer.md"]
+    },
+    {
+      "id": 8,
+      "name": "Step 7(a): rebase-compatibility pre-check fires before attempting --rebase",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 7. `pr_merge_type` (from step 6) is `REBASE`. You are given, as a fact for this exercise, that `gh api repos/{owner}/{repo}/pulls/<number>/commits --paginate --jq '.[] | select((.parents | length) > 1) | .sha'` would return exactly one SHA. Before you would ever call `gh pr merge <n> --rebase`, what do you do? Write your answer to `outputs/answer.md`.",
+      "expected_output": "States it runs the merge-commit count check first, given the pr_merge_type is REBASE, and finds the count is 1 (non-zero). Tells the user the branch contains 1 merge commit and that --rebase will be rejected by GitHub. Asks via AskUserQuestion which alternate strategy to use (Merge or Squash) before ever attempting gh pr merge --rebase -- does not wait for a live rejection from the --rebase call itself.",
+      "files": ["outputs/answer.md"]
+    },
+    {
+      "id": 9,
+      "name": "Step 7(c): squash tradeoff discloses even when SQUASH is the configured default from the start",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 7. `pr_merge_type` (from step 6) is `SQUASH` -- this was the configured setting from the start, not a strategy chosen via the rebase pre-check or a rejection fallback. You are given, as a fact for this exercise, that this PR has 12 commits. Before you run `gh pr merge <n> --squash`, what do you do? Write your answer to `outputs/answer.md`.",
+      "expected_output": "States that the squash-tradeoff disclosure still fires, even though SQUASH was already the configured pr_merge_type and no rebase pre-check or fallback was involved -- explicitly notes this isn't conditioned on having reached squash via a fallback path. States the number of commits that will collapse into one (12) and that individual fix-round/review-commit granularity will be lost on the base branch. States this disclosure happens before the --squash merge command runs.",
+      "files": ["outputs/answer.md"]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 14,
-    "declared_scenarios_covered": 4,
+    "declared_scenarios_total": 17,
+    "declared_scenarios_covered": 7,
     "uncovered": [
       "Step 8 always uses AskUserQuestion -- never auto-invokes finishing-work unconditionally",
       "Step 8 only runs after step 7's merge actually succeeded",
@@ -61,6 +82,6 @@
       "Step 5's explicit merge confirmation always runs, bypass or not",
       "An empty or missing --bypass-codex-review reason is always treated as if the flag were never passed"
     ],
-    "note": "Eval 1 covers 'Step 7 never assumes the remote branch is gone...'. Eval 2 covers 'Step 5's worktree branch-delete note is always present...'. Eval 3 covers 'headRefName is always validated...at step 1'. Eval 4 covers 'Step 7's remote-branch-deletion fallback...never runs when isCrossRepository is true'. Evals 5 and 6 (added for a round-2 Codex finding on PR #137) deepen coverage of eval 1's and eval 3's gates respectively rather than mapping to new declared checklist items -- not counted separately against declared_scenarios_total. The remaining 10 gates (mostly the bypass-attestation flow, steps 3-4 and 8) have no eval coverage yet."
+    "note": "Eval 1 covers 'Step 7 never assumes the remote branch is gone...'. Eval 2 covers 'Step 5's worktree branch-delete note is always present...'. Eval 3 covers 'headRefName is always validated...at step 1'. Eval 4 covers 'Step 7's remote-branch-deletion fallback...never runs when isCrossRepository is true'. Evals 5 and 6 (added for a round-2 Codex finding on PR #137) deepen coverage of eval 1's and eval 3's gates respectively rather than mapping to new declared checklist items -- not counted separately against declared_scenarios_total. Eval 7 (added this session) covers 'Step 2's four-state classification never collapses missing into pending or failing'. Eval 8 covers 'Step 7(a)'s rebase-compatibility pre-check always runs before the first gh pr merge --rebase attempt'. Eval 9 covers 'Step 7(c)'s squash-tradeoff disclosure always fires...regardless of whether squash was the configured default, chosen preemptively, or chosen reactively'. The remaining 10 gates (mostly the bypass-attestation flow, steps 3-4 and 8, and step 7(d)'s rejection-fallback re-check) have no eval coverage yet."
   }
 }
