@@ -1,3 +1,15 @@
+---
+paths:
+  - "plugins/*/skills/**"
+  - "plugins/*/agents/**"
+  - "plugins/*/commands/**"
+  - "plugins/*/hooks/**"
+  - ".claude/skills/**"
+  - ".claude/agents/**"
+  - ".claude/commands/**"
+  - ".claude/rules/**"
+---
+
 # Plugin Rulebook Enforcement
 
 ## Mandatory Compliance Triggers

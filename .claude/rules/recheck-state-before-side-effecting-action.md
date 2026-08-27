@@ -1,3 +1,12 @@
+---
+paths:
+  - "plugins/*/skills/**"
+  - "plugins/*/hooks/**"
+  - "scripts/**"
+  - ".claude/skills/**"
+  - ".claude/hooks/**"
+---
+
 # Re-Check State Before a Side-Effecting Action
 
 A skill, workflow, hook, or script that observes external async state it doesn't fully control (a

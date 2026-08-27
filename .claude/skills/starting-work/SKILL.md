@@ -111,6 +111,30 @@ branch off", "set up a worktree for this feature".
    this worktree is still in active use. Mention `git-worktrees` has further operations (compare, merge,
    cleanup) if multiple worktrees end up in play.
 
+## Worktree Topic Scope
+
+A worktree this skill creates is scoped to one topic. If a session's already-bound worktree was created
+for a different piece of work, don't start unrelated work in it — run this skill again for the new topic,
+which creates its own worktree. Symmetrically, don't keep working across worktrees for unrelated topics in
+the same session: finish the current topic (`finishing-work` / `/git-cleanup`) before starting the next
+one, rather than leaving multiple topics open at once.
+
+This is a convention for how these worktrees get used, not a mechanical lock — nothing enforces "topic"
+the way a file lock enforces exclusive access, since there's no way to check whether two pieces of work
+are actually the same topic from git state alone.
+
+**Why it matters:** a worktree that accumulates unrelated work becomes hard for `git-cleanup` to reason
+about — it can't tell whether *all* the work in it is done, just the piece currently top of mind, so a
+mixed-topic worktree is more likely to get force-deleted along with unrelated in-progress changes by
+mistake. One worktree per topic keeps `git-cleanup`'s merged/unmerged/dirty analysis meaningful: "this
+worktree's branch merged" reliably means "this worktree is done."
+
+The session-level half — don't leave one topic's worktree open while starting a second, unrelated one —
+matters because the Stop exit-guard (`guard-dirty-worktree-exit.sh`) only checks the worktree the
+session's current working directory is actually in when the turn ends, not every worktree the session has
+ever locked. Moving into a second worktree before finishing the first leaves the first one's dirty/unmerged
+state unchecked at Stop time, even though it's still locked and still at risk.
+
 ## Testing & Validation
 
 **Verify this skill activates on:**

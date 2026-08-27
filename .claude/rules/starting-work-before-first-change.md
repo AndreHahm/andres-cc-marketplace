@@ -25,9 +25,10 @@ commit-message confirmation was also hand-rolled via a bare `AskUserQuestion` in
 `Skill(git-kit:commit)`, bypassing that skill's own step-3 main-branch check — the exact safeguard that
 exists to catch this. The mistake was caught only by `starting-work`'s own incidental dirty-tree check
 (triggered by an unrelated stash) and the user's direct, explicit intervention — no agent or skill logic
-independently flagged it. `route-through-git-kit-lifecycle-skills.md` and
-`one-session-one-topic-one-worktree.md` both already named this exact scenario before this incident, and
-neither prevented it — a rule with no independent trigger of its own is easy to route around the moment a
+independently flagged it. `route-through-git-kit-lifecycle-skills.md` and `starting-work`'s own "Worktree Topic Scope" section
+(formerly the standalone `one-session-one-topic-one-worktree.md` rule, folded in 2026-08-27) both already
+named this exact scenario before this incident, and neither prevented it — a rule with no independent
+trigger of its own is easy to route around the moment a
 session is already "just continuing" from a prior task rather than consciously starting a new one. This
 rule exists to give that specific transition point (main → first edit) its own explicit, memorable
 checkpoint, rather than relying on the broader routing rule's coverage being noticed in the moment.

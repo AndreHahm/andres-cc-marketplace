@@ -1,3 +1,13 @@
+---
+paths:
+  - "plugins/*/skills/**"
+  - "plugins/*/agents/**"
+  - "plugins/*/commands/**"
+  - ".claude/skills/**"
+  - ".claude/agents/**"
+  - ".claude/commands/**"
+---
+
 # Component Testing
 
 ## What counts as a test
