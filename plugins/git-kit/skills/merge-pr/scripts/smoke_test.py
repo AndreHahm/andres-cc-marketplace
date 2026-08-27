@@ -42,6 +42,37 @@ def check_referenced_files():
     return True, "all referenced files exist"
 
 
+def _grant_pattern(cmd: str) -> str:
+    # Boundary-safe on both ends so a short/common token ("gh", "diff") can't false-match
+    # inside an unrelated word ("through", "different") -- (?<!\w)/(?!\w) rather than \b,
+    # since \b requires an actual word/non-word *transition* and would wrongly reject a
+    # genuine match starting with a non-word character preceded by another non-word
+    # character (e.g. `${CLAUDE_PLUGIN_ROOT}/...` preceded by a backtick in prose -- both
+    # non-word, so \b never fires there even though the match is real). Built from the full
+    # grant phrase, not just its first word, so distinct sibling commands sharing a first
+    # word (e.g. "gh pr view" vs "gh pr merge") aren't conflated -- and wildcard-aware
+    # (splits on "*" and rejoins with "[^\s]*") so a grant like
+    # "gh api repos/*/collaborators/*/permission" matches the real
+    # "gh api repos/{owner}/{repo}/collaborators/{username}/permission" invocation.
+    return r"(?<!\w)" + r"[^\s]*".join(re.escape(part) for part in cmd.split("*")) + r"(?!\w)"
+
+
+def _collect_search_text(body: str) -> str:
+    # Search body plus references/ and scripts/ -- a grant's only real invocation can live
+    # in a reference file (e.g. references/merge-rights-check.md), not SKILL.md's own body.
+    search_text = body
+    for sub in ("references", "scripts"):
+        d = SKILL_DIR / sub
+        if d.is_dir():
+            for f in sorted(d.rglob("*")):
+                if f.is_file():
+                    try:
+                        search_text += "\n" + f.read_text(encoding="utf-8", errors="ignore")
+                    except OSError:
+                        pass
+    return search_text
+
+
 def check_bash_grants():
     fm_text = SKILL_MD.read_text(encoding="utf-8")
     header_end = fm_text.find("\n---\n", 4) + 5
@@ -53,12 +84,14 @@ def check_bash_grants():
     granted_cmds = [c.lstrip("*/") for c in granted_cmds]
 
     body = fm_text[header_end:]
-    unused = [cmd for cmd in granted_cmds if not re.search(re.escape(cmd.split(" ")[0]), body)]
+    search_text = _collect_search_text(body)
+    unused = [cmd for cmd in granted_cmds if not re.search(_grant_pattern(cmd), search_text)]
     if unused:
-        return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(
-            sorted(set(unused))
+        return False, (
+            "Bash grant(s) never invoked anywhere in the skill's own body/references/scripts: "
+            + ", ".join(sorted(set(unused)))
         )
-    return True, "every granted Bash command is invoked somewhere in the body"
+    return True, "every granted Bash command is invoked somewhere in the skill's own files"
 
 
 def check_step_sequence():
