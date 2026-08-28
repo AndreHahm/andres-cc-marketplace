@@ -1,10 +1,3 @@
----
-paths:
-  - "plugins/*/rules/**"
-  - ".claude/rules/**"
-  - "scripts/marketplace_ci/rules/**"
----
-
 # Verify Rule Scope Before Lazy-Loading
 
 Before proposing to move an always-loaded rule to path-scoped (`paths:` frontmatter) or fold it into a
@@ -76,3 +69,8 @@ and `git-cleanup` itself refuses to run from inside the worktree it would remove
 of three paths, arguably not even that one cleanly. Both were pattern-matched against correctly-migrated
 rules rather than individually re-derived from their own scope text, and neither was caught by the first
 independent review pass — only a second reviewer caught each.
+
+This rule stays always-loaded (no `paths:`) for the same reason: its own scope covers folding into a
+skill's own body, which edits a *skill* file — a path a `paths:`-scoped version of this rule would never
+match, since path-scoping only fires on reading a matching file. Path-scoping itself, applied to the rule
+whose entire job is warning against unsafe path-scoping, would be exactly the anti-pattern above.

@@ -355,6 +355,12 @@ by exploring the filesystem directly — a real confound of testing a rule-autho
 same repo that already ships its outputs as real files, not evidence the skill provides no value for
 that scenario. The other 2 evals showed a clean delta (+71.4 and +50.0 points).
 
+This benchmark run predates three later commits (the expanded 8-pattern Security Self-Check and
+the `~/.claude/rules/` confirmation gate, the activation-overlap exclusions, and the deferred
+lazy-loading-checklist/plugin-rulebook fixes) that materially changed this file's own content — it
+is evidence for the skill's core rule-authoring workflow (the part exercised by evals 1 and 3), not
+for the security-gate/exclusion prose added afterward, which has no eval coverage of its own yet.
+
 ## Reference Guide
 
 | Resource | Purpose |
