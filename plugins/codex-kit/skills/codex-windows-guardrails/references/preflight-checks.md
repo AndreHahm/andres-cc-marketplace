@@ -107,9 +107,19 @@ of the following hold:
   files, never a whole-repo content scan. A file that fails to read is treated as NOT exempt (fails
   closed to the block below) rather than silently trusted.
 
-Confirmed live: `references/secrets-and-credentials.md` — a documentation file *about* secrets, not
-a credential — was permanently blocking this script's whole-repo scan (and therefore the entire
-Windows fallback dispatch path) before this exemption existed.
+Motivating case: `references/secrets-and-credentials.md` — a documentation file *about* secrets, not
+itself a credential — was permanently blocking this script's whole-repo scan (and therefore the
+entire Windows fallback dispatch path) before this exemption existed. **This exemption resolves that
+for a documentation file with no illustrative secret-shaped strings in its own content — it does
+not resolve it for the actual motivating file.** Confirmed live (2026-08-28, `cross-model-review`):
+`skill-development`'s own `secrets-and-credentials.md` (identical at three locations —
+`plugins/plugin-devkit/`, `.claude/`, and `.agents/`) still fails `secret_file_in_scope` today,
+because a doc that *teaches* what a secret looks like is exactly the kind of file most likely to
+contain realistic example values (e.g. `API_KEY=sk-abc123def456`, `SECRET_TOKEN=ghp_...`) for
+illustration — and those match the same `redactSecrets` patterns a real credential would. The
+exemption's path/extension gate passes; the content-scan correctly (by its own design) still blocks
+it, since it can't distinguish an illustrative example from a real secret. Not fixed in this pass —
+see "Known limitations" below.
 
 **Same limitation as the source list, outside the narrow exemption above**: filename-pattern-only. A
 credential-shaped string embedded in an otherwise-unflagged file's *content* is not caught by this
@@ -140,6 +150,17 @@ required to produce, every time.
   evade them on NTFS, depending on how `path.basename` and the filesystem resolve such names —
   unverified, would need live testing on NTFS to confirm either way. Not fixed here; flagged as a
   known gap rather than silently left unmentioned.
+- **The documentation-about-secrets exemption's content-scan can't tell an illustrative example
+  from a real secret.** Confirmed live (2026-08-28) against this exemption's own motivating file
+  (`skill-development`'s `secrets-and-credentials.md`, present at three identical locations): a
+  reference doc that teaches what a secret looks like, using realistic example values for
+  illustration, still fails `secret_file_in_scope` — the content-scan (see check 2 above) matches
+  those example values the same way it would match a real credential. The exemption resolves the
+  bare-filename false positive for a documentation file with no illustrative secret-shaped strings
+  in it; it does not resolve blocking for a doc that itself contains realistic-looking examples. Not
+  fixed in this pass — narrowing the content-scan to tolerate clearly-fenced/labeled example values
+  would itself be a new, fragile detection surface, so this is left as a known, disclosed gap rather
+  than patched speculatively.
 
 ## Why dangerous-command isn't a fourth pre-flight check
 
