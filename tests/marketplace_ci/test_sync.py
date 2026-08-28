@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ from scripts.marketplace_ci.sync import (
     apply_sync_plan,
     plan_hooks_merge,
     plan_plugin_sync,
+    stage_generated_destinations,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -113,6 +115,55 @@ def test_apply_hooks_merge_plan_writes_merged_document(repo, registry_for):
 
     on_disk = json.loads(dest.read_text(encoding="utf-8"))
     assert [e["matcher"] for e in on_disk["hooks"]["PreToolUse"]] == ["Bash", "^(Bash|PowerShell)$"]
+
+
+def test_stage_generated_destinations_stages_only_actions_with_staged_source(
+    git_repo, registry_for
+):
+    plan = plan_plugin_sync(
+        git_repo.root, registry_for("sample-kit"), previous=None, bootstrap=True
+    )
+    apply_sync_plan(plan)
+    subprocess.run(
+        ["git", "add", "-f", "--", "plugins/sample-kit/skills/demo/SKILL.md"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+    )
+    executable = tuple(a for a in plan.actions if a.operation in ("create", "update"))
+
+    staged = stage_generated_destinations(git_repo.root, executable)
+
+    dest = (git_repo.root / ".claude" / "skills" / "demo" / "SKILL.md").resolve()
+    assert dest in staged
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert ".claude/skills/demo/SKILL.md" in result.stdout.splitlines()
+
+
+def test_stage_generated_destinations_skips_actions_without_staged_source(git_repo, registry_for):
+    plan = plan_plugin_sync(
+        git_repo.root, registry_for("sample-kit"), previous=None, bootstrap=True
+    )
+    apply_sync_plan(plan)
+    executable = tuple(a for a in plan.actions if a.operation in ("create", "update"))
+
+    staged = stage_generated_destinations(git_repo.root, executable)
+
+    assert staged == ()
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert result.stdout == ""
 
 
 def test_bootstrap_flags_orphan_destination_with_no_source(repo, registry_for):

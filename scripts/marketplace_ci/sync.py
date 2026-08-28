@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from scripts.marketplace_ci.git_state import GitState
 from scripts.marketplace_ci.registry import Registry, RemovalSet
 
 COMPONENT_DIRS = ("skills", "agents", "commands", "hooks", "rules")
@@ -278,3 +280,38 @@ def apply_hooks_merge_plan(plan: HooksMergePlan) -> SyncResult:
         _atomic_write(action.destination, data)
         applied.append(action)
     return SyncResult(applied=tuple(applied))
+
+
+def stage_generated_destinations(repo: Path, actions: tuple[SyncAction, ...]) -> tuple[Path, ...]:
+    """Stage each applied create/update action's destination, but only when its own canonical
+    `source` is already staged in this commit -- leaving an unrelated repair (drift the sync
+    happened to also fix) untouched on disk, unstaged, matching the commit skill's existing
+    scope rule.
+
+    A canonical source or generated-destination path here is untrusted plugin content on a
+    fetched or contributed branch. Every path below reaches `git` as a single literal argv
+    element via `subprocess.run`'s list form -- never interpolated into a shell command string
+    -- so the shell never re-parses it and no quoting/injection concern applies regardless of
+    what characters the path contains.
+    """
+    staged = {
+        path
+        for change in GitState(repo=repo).staged_paths()
+        for path in (change.old_path, change.new_path)
+        if path is not None
+    }
+    repo_resolved = repo.resolve()
+    staged_destinations: list[Path] = []
+    for action in actions:
+        if action.operation not in ("create", "update") or action.source is None:
+            continue
+        rel_source = action.source.resolve().relative_to(repo_resolved).as_posix()
+        if rel_source not in staged:
+            continue
+        # -f: a generated destination under .claude/.codex/.agents is a deliberately tracked
+        # file regardless of what a machine-local global gitignore says about those directory
+        # names (some machines exclude them everywhere) -- same override the test suite's own
+        # GitRepoHelper.stage() already applies for the identical reason.
+        subprocess.run(["git", "add", "-f", "--", str(action.destination)], cwd=repo, check=True)
+        staged_destinations.append(action.destination)
+    return tuple(staged_destinations)
