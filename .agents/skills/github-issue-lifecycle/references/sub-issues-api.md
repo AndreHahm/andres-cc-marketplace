@@ -5,20 +5,11 @@ write sides.
 
 ## Availability
 
-Confirmed available on this repo via a live GraphQL query:
-
-```text
-{
-  repository(owner: "<owner>", name: "<repo>") {
-    issue(number: <n>) {
-      subIssuesSummary { total completed percentCompleted }
-    }
-  }
-}
-```
-
-Run via `gh api graphql -f query='...'`. Returns real data (not null/absent) on a real issue in this
-repo, confirming the feature is enabled.
+Confirmed available on this repo during this skill's Design phase via a one-time, design-time GraphQL
+query (a `subIssuesSummary` lookup) — this was a verification step taken while designing this skill,
+not a capability this skill exercises at runtime; this skill's own `allowed-tools` grants only the REST
+operations below, not `gh api graphql`. The GraphQL check returned real data (not null/absent) on a real
+issue in this repo, confirming the feature is enabled.
 
 ## Reading Sub-Issues (REST)
 
@@ -44,5 +35,5 @@ Two things a naive implementation gets wrong, both confirmed by a live probe aga
 ## No Native `gh issue` Subcommand
 
 `gh issue --help` has no sub-issue-specific subcommand — every sub-issues operation in this skill goes
-through `gh api` directly (GraphQL for reads, REST for the read/write operations above), not a
-higher-level `gh issue` wrapper.
+through `gh api`'s REST surface directly (the read/write operations above), not a higher-level `gh
+issue` wrapper.

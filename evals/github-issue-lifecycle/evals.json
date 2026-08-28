@@ -25,7 +25,7 @@
       "id": 3,
       "name": "Resolve is gated on the open-question check",
       "prompt": "An issue has an unresolved open question logged in an earlier comment, and the user asks to resolve it as fixed. What does github-issue-lifecycle do?",
-      "expected_output": "Workflow 3's Step 1 (open-question gate) blocks marking the issue Resolved while the logged open question remains unaddressed -- the flow does not proceed to Step 2's close/comment sequence until that gate passes, per SKILL.md's own quality gate ('Workflow 3 never marks an issue Resolved while an open question from #10 remains unaddressed')."
+      "expected_output": "Workflow 3's Step 1 (open-question gate) blocks marking the issue Resolved while the logged open question remains unaddressed -- the flow does not proceed to Step 2's close/comment sequence until that gate passes, per SKILL.md's own quality gate ('Workflow 3 never marks an issue Resolved while an open question logged in a prior comment remains unaddressed')."
     }
   ]
 }

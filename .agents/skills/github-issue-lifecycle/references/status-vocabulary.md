@@ -1,14 +1,17 @@
 # Status Vocabulary
 
-Reuses `handling-review-findings`'s FIXED / declined / filed status pattern for freestanding issues —
-an independent reuse of the same vocabulary and round model, not a runtime dependency (that skill's own
-SKILL.md explicitly scopes it to PR-review findings, excluding freestanding issues).
+Reuses `handling-review-findings`'s fixed/declined status pattern for freestanding issues — an
+independent reuse of the same vocabulary and round model, not a runtime dependency (that skill's own
+SKILL.md explicitly scopes it to PR-review findings, excluding freestanding issues). `filed` (that
+skill's third status, for a PR-review finding that becomes a tracked GitHub issue) has no analog here —
+a freestanding issue is already the tracked artifact, so this skill reuses only the two-value fixed/
+declined split, not the full three-value set.
 
 ## Mapping
 
 | This skill's status | `handling-review-findings` equivalent | Meaning |
 |---|---|---|
-| Resolved | FIXED | Something was actually fixed |
+| Resolved | fixed | Something was actually fixed |
 | Declined | declined | Closed with nothing fixed (won't-fix / duplicate / risk-accepted / stale / process-gap-not-defect) |
 
 The distinction matters because this repo's real issues otherwise blur it in prose ("deferred," "risk
