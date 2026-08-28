@@ -87,8 +87,34 @@ to match the actual access grant rather than the narrower review scope.
 Typed failure category: `secret_file_in_scope`. Detail: the matched file's repo-relative path and
 which pattern it matched — never the file's contents.
 
-**Same limitation as the source list**: filename-pattern-only. A credential-shaped string embedded
-in an otherwise-unflagged file's *content* is not caught by this check.
+**Documentation-about-secrets exemption (issue #78).** A match against one of the four *loose*
+bare-substring patterns (`*secret*`, `*credential*`, `*password*`, `*token*` — never the exact-
+filename/extension patterns like `id_rsa`/`.pem`/`.key`/`.env`) is exempted from blocking when ALL
+of the following hold:
+
+- The matched name is the file's **own basename** — not a symlink target's basename riding the
+  symlink's own path. `walkFiles` checks a file symlink under both its own name and its real
+  target's name (see check 2's symlink handling above); the exemption gates on which name actually
+  matched, so a symlink whose real target is credential-shaped (e.g. `id_rsa`) can never be waved
+  through just because the link itself sits at a documentation-shaped path.
+- The file's repo-relative path has a `references/` or `docs/` path segment (case-insensitive) and
+  ends in `.md`, `.mdx`, `.txt`, or `.rst`.
+- The file's **content** contains no secret-shaped string — checked with the same pattern set
+  `scripts/lib/codex-exec.mjs`'s `redactSecrets` already uses to redact CI-persisted failure
+  details (bearer tokens, `AKIA`-prefixed AWS keys, `TOKEN=`/`KEY=`/`SECRET=`-shaped assignment
+  lines, PEM blocks, etc.). This is a real, if narrow, exception to the "filename-pattern-only"
+  limitation below — but scoped to only the small, already-exempted-by-path-and-extension set of
+  files, never a whole-repo content scan. A file that fails to read is treated as NOT exempt (fails
+  closed to the block below) rather than silently trusted.
+
+Confirmed live: `references/secrets-and-credentials.md` — a documentation file *about* secrets, not
+a credential — was permanently blocking this script's whole-repo scan (and therefore the entire
+Windows fallback dispatch path) before this exemption existed.
+
+**Same limitation as the source list, outside the narrow exemption above**: filename-pattern-only. A
+credential-shaped string embedded in an otherwise-unflagged file's *content* is not caught by this
+check — the content scan described above only ever runs on the small set of files the path/extension
+exemption already carved out, not on every file under the repository root.
 
 ## 3. Instruction-Containment
 

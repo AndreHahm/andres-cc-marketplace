@@ -7,8 +7,14 @@
 // a secret file anywhere under the repository root regardless of the
 // declared target-paths scope (not just a caller-supplied filename argument
 // -- this is the case an earlier draft's git-ls-files-based check silently
-// missed, since a .env is normally gitignored, never tracked), and an
-// instruction file resolving inside a target path.
+// missed, since a .env is normally gitignored, never tracked), an
+// instruction file resolving inside a target path, and (issue #78) that a
+// documentation file merely ABOUT secrets/credentials under a references/ or
+// docs/ directory is exempted from the four loose keyword patterns while a
+// real secret-shaped filename, a non-documentation extension, a docs-shaped
+// file whose CONTENT is an actual credential, or a symlink whose doc-shaped
+// path wraps a credential-shaped target basename, all still block
+// (post-security-review fixes M4/M5).
 //
 // The platform check (refuses on any process.platform other than win32) has
 // no dedicated scenario below -- it can't be exercised without actually
@@ -159,6 +165,102 @@ console.log("\n=== Secret file under a DIRECTORY target, untracked (the real-wor
     JSON.stringify(result)
   );
   fs.rmSync(path.join(repoRoot, ".env"));
+}
+
+console.log("\n=== Documentation file ABOUT secrets, under references/, is exempted (issue #78) ===");
+{
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  fs.writeFileSync(path.join(refsDir, "secrets-and-credentials.md"), "# Secrets and Credentials\nHow to avoid hardcoding secrets.");
+  // In-target instruction file (same technique as the "untracked local
+  // override" scenario above): if the secret scan is skipped as intended,
+  // the run advances to the NEXT gate (instruction-containment) instead of
+  // stopping here -- proof of pass-through with no real Codex exec attempted.
+  const result = runDispatch(repoRoot, repoRoot, path.join(repoRoot, "target.md"));
+  check(
+    "not blocked by secret_file_in_scope -- a documentation file ABOUT secrets under references/ advances past the secret scan to the next gate",
+    result.ok === false && result.category === "instruction_containment_violation",
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
+}
+
+console.log("\n=== Security review fix (M5): a docs-shaped file whose CONTENT is an actual credential is still blocked ===");
+{
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  // Path/extension shape alone satisfies the exemption (references/ + .md),
+  // but the content contains a real AWS-access-key-shaped string -- the
+  // content scan (redactSecrets) must still catch this and block, not just
+  // the basename/path check.
+  fs.writeFileSync(path.join(refsDir, "secrets-and-credentials.md"), "# Notes\nAKIAIOSFODNN7EXAMPLE\n");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected with secret_file_in_scope -- the docs exemption only covers genuine prose, not a file whose content is an actual credential",
+    result.ok === false && result.category === "secret_file_in_scope" && /secrets-and-credentials\.md/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
+}
+
+console.log("\n=== Security review fix (M4): a symlink's doc-shaped path cannot exempt its credential-shaped TARGET basename ===");
+{
+  // The link itself lives at references/notes.md (path/extension-exempt
+  // shape); its real target is named id_rsa (a strict, never-exempted
+  // pattern). walkFiles checks a file symlink under BOTH names -- the
+  // exemption must gate on which name actually matched, not the link's own
+  // path, or a symlink could smuggle a credential-shaped target through
+  // wearing an innocuous references/*.md wrapper.
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  const targetDir = path.join(repoRoot, "key-storage");
+  fs.mkdirSync(targetDir, { recursive: true });
+  const realKeyFile = path.join(targetDir, "id_rsa");
+  fs.writeFileSync(realKeyFile, "not a real key");
+  const linkPath = path.join(refsDir, "notes.md");
+  try {
+    fs.symlinkSync(realKeyFile, linkPath, "file");
+  } catch (e) {
+    skipScenario("symlink doc-shaped-path/credential-shaped-target check", `cannot create a file symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
+  }
+  if (fs.existsSync(linkPath)) {
+    const result = runDispatch(repoRoot, repoRoot, instructionFile);
+    check(
+      "still rejected with secret_file_in_scope -- the link's references/*.md path never exempts the match that actually came from the target's id_rsa basename",
+      result.ok === false && result.category === "secret_file_in_scope",
+      JSON.stringify(result)
+    );
+  }
+  fs.rmSync(refsDir, { recursive: true, force: true });
+  fs.rmSync(targetDir, { recursive: true, force: true });
+}
+
+console.log("\n=== A REAL secret-shaped file under references/ is still blocked (exemption doesn't overreach) ===");
+{
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  fs.writeFileSync(path.join(refsDir, "id_rsa"), "not a real key");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected with secret_file_in_scope -- the docs exemption only applies to the four loose keyword patterns, never the exact-filename/extension patterns (id_rsa, .pem, .key, .env, ...)",
+    result.ok === false && result.category === "secret_file_in_scope" && /id_rsa/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
+}
+
+console.log("\n=== A secret-KEYWORD file under references/ with a non-documentation extension is still blocked ===");
+{
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  fs.writeFileSync(path.join(refsDir, "secrets.yaml"), "not real content");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected -- the docs exemption also requires a documentation extension (.md/.mdx/.txt/.rst); a .yaml file matching a loose keyword is not exempted",
+    result.ok === false && result.category === "secret_file_in_scope" && /secrets\.yaml/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
 }
 
 console.log("\n=== Secret file OUTSIDE the declared target-paths, still under repo root, is still caught ===");

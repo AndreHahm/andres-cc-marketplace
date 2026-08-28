@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 // config, out of scope for this fix batch) -- tracked as a known, dormant
 // limitation rather than patched per-copy, since any per-copy patch is
 // silently reverted by the next sync-plugin-mirrors run.
-import { runCodexExec, redactSecrets } from "../../../scripts/lib/codex-exec.mjs";
+import { runCodexExec, redactSecrets, FAILURE_CATEGORIES } from "../../../scripts/lib/codex-exec.mjs";
 
 // Deep-freezes an exported constant so an importer can read but never mutate
 // it in-process -- a mutation would otherwise affect every other importer
@@ -208,6 +208,46 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
     return false;
   }
   return fs.existsSync(absolute);
+}
+
+// Total-sandbox-failure detection (issue #78): codex-exec.mjs's own close
+// handler only classifies a typed failure when the OUTER `codex exec`
+// process itself exits non-zero -- but a Windows sandboxed run can exit 0
+// with a schema-valid envelope while Codex's own INNER tool call (e.g. a
+// `git diff` attempted inside its read-only sandbox) failed to even start a
+// process ("Windows error 1920"). Since commit 5bacd34 (2026-08-18) Codex
+// correctly reports that as an `inspection_limits` note instead of
+// fabricating findings, but that leaves this total-failure mode looking
+// identical to a genuine clean pass to anything that only checks
+// `result.ok`/`findings.length` -- the resolver's documented "on
+// isolation_profile_unavailable, fall back to Step 2" behavior
+// (SKILL.md's Codex dispatch resolver) never triggers. Reclassifying just
+// this narrow case (zero findings AND an inspection_limits note that itself
+// reports the sandbox couldn't start/use a process) back into the
+// resolver-visible isolation_profile_unavailable typed failure -- rather
+// than loosening what counts as a schema-valid envelope -- lets the
+// existing fallback logic handle it unchanged.
+// Security review, issue #78 fix (M2/M3): deliberately narrower than an
+// earlier draft, which also matched a bare "could not (inspect|access|read)
+// the workspace/target/requested" -- that alternative carried no
+// process-start or totality semantics, so it over-matched an ordinary
+// PARTIAL note (e.g. "could not read the requested file X (binary)"),
+// which this function must never reclassify. Every alternative below is
+// specifically about the sandbox failing to start/use a process at all --
+// broadened past the exact reported wording ("could not create a process")
+// to cover "couldn't"/"cannot"/"can't"/"unable to"/"failed to" and
+// "start", since this text is Codex's own free-form narration and won't
+// always match one exact phrasing; also matches error 1920 without
+// requiring the literal word "windows" first, and the actual Windows-
+// rendered text for that code ("cannot be accessed by the system").
+const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\s+(?:a\s+)?process|CreateProcessAsUserW|error\s*1920\b|cannot be accessed by the system/i;
+
+// Exported so a smoke test can exercise the detection directly, matching
+// the existing reuse pattern (locateInSemanticScope, semanticallyValidate).
+export function isTotalInspectionFailure(envelope) {
+  if (!envelope || !Array.isArray(envelope.findings) || envelope.findings.length > 0) return false;
+  if (!Array.isArray(envelope.inspection_limits) || envelope.inspection_limits.length === 0) return false;
+  return envelope.inspection_limits.some((note) => TOTAL_INSPECTION_FAILURE_PATTERN.test(String(note)));
 }
 
 export function semanticallyValidate(envelope, { targetPaths, dispatchId, reviewerType, repoRoot }) {
@@ -450,9 +490,29 @@ async function main() {
     process.exit(1);
   }
 
+  // semanticallyValidate runs FIRST, before isTotalInspectionFailure --
+  // security review, issue #78 fix (M1): isTotalInspectionFailure decides
+  // whether to escalate the resolver toward Step 2 (danger-full-access, no
+  // sandbox), and semanticallyValidate is the only check that confirms
+  // envelope.dispatch.id/reviewer actually match what THIS process sent.
+  // Checking totality first would let a forged/mismatched dispatch.id ride
+  // an unauthenticated envelope straight to isolation_profile_unavailable --
+  // the one category the resolver treats as a fallback trigger -- without
+  // ever being caught by the check that would have rejected it. Reordering
+  // costs nothing: with zero findings (the only case isTotalInspectionFailure
+  // can trigger on), semanticallyValidate's per-finding loop never runs.
   const semanticResult = semanticallyValidate(result.data, { targetPaths, dispatchId, reviewerType, repoRoot: cwd });
   if (!semanticResult.ok) {
     console.error(JSON.stringify(semanticResult));
+    process.exit(1);
+  }
+
+  if (isTotalInspectionFailure(result.data)) {
+    console.error(JSON.stringify({
+      ok: false,
+      category: FAILURE_CATEGORIES.ISOLATION_PROFILE_UNAVAILABLE,
+      detail: redactSecrets(`sandbox reported a total inspection failure with zero findings: ${result.data.inspection_limits.join("; ")}`).slice(0, 4000)
+    }));
     process.exit(1);
   }
 
