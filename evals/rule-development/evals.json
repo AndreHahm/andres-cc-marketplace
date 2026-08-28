@@ -1,0 +1,33 @@
+{
+  "skill_name": "rule-development",
+  "skill_path": "plugins/plugin-devkit/skills/rule-development/SKILL.md",
+  "description": "Creates and validates .claude/rules/ behavioral guardrail files using contrastive Incorrect/Correct examples",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Author a new global rule from a described mistake",
+      "prompt": "Claude keeps deleting a working-tree file's uncommitted changes by running `git checkout -- <path>` when the user only asked to 'discard my last edit', without ever running `git status` first to see what would actually be lost. Write a .claude/rules file for this.",
+      "expected_output": "A rule file following the Description-Incorrect-Correct template: imperative title, 1-2 sentence description stating WHAT and WHY, an Incorrect example showing the plausible `git checkout -- <path>` mistake without a prior `git status`, a Correct example showing the minimal fix (check status first, or stash/confirm before discarding), no procedural/numbered-step content, placed at `.claude/rules/<hyphenated-name>.md`, and a note that it was checked against existing rules for redundancy and run through `/rules-review`",
+      "files": [".claude/rules/*.md"]
+    },
+    {
+      "id": 2,
+      "name": "Decide path-scoping vs folding for an existing always-loaded rule",
+      "prompt": "We have an always-loaded rule `.claude/rules/require-tests-for-behavior-changes.md` that we want to lazy-load. Its 'When this applies' section says it applies to 'any change that alters what a component actually does when followed on some input' -- including newly-created skills/agents/commands/hooks. Should we path-scope it to `paths: [\"plugins/*/skills/**\", ...]`, or fold it into a specific skill instead? Walk through the decision.",
+      "expected_output": "Identifies that the rule's own scope includes a *create* operation (new skill/agent/command/hook), and per the lazy-loading checklist a path-scoped rule only loads on file *read* -- a brand-new file has nothing to read yet, so naive path-scoping is unsafe. Recommends keeping it always-loaded (or explicitly flags the read-vs-create gap as a risk to disclose) rather than silently proposing the unsafe path-scoped form. Does not recommend folding into a single skill without checking whether every trigger path (skill/agent/command/hook creation) is reachable from that one skill.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "Add a new pattern to an existing rule file without overwriting it",
+      "prompt": "The existing rule `.claude/rules/require-gitignored-scratch-locations.md` needs to also cover a new case we just found: a script hardcoding a `./tmp/` output directory relative to cwd instead of the scratchpad. Update the rule to add this without losing what's already there.",
+      "expected_output": "Reads the existing rule file first, appends the new case to the appropriate section rather than replacing existing Incorrect/Correct examples, re-runs the redundancy filter against other existing rules, re-runs the security self-check, and confirms with `/rules-review` that the updated rule still fires correctly -- treats existing content as authoritative rather than rewriting the whole file from scratch",
+      "files": [".claude/rules/require-gitignored-scratch-locations.md"]
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 4,
+    "declared_scenarios_covered": 4,
+    "uncovered": []
+  }
+}

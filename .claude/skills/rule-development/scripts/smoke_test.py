@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""Persisted smoke test for rule-development: frontmatter validity, referenced-file
+existence (references/ and examples/), Reference Guide table file existence, and
+Bash-scope grant usage consistency -- structural checks only, since this is a
+conversational, reference-driven skill with no executable logic of its own to
+simulate."""
+
+import pathlib
+import re
+import sys
+
+SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
+SKILL_MD = SKILL_DIR / "SKILL.md"
+
+
+def _frontmatter_and_body():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    header_end = text.find("\n---\n", 4) + 5
+    return text[:header_end], text[header_end:], text
+
+
+def check_frontmatter():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        return False, "SKILL.md does not start with a frontmatter block"
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return False, "frontmatter block is never closed"
+    fm = text[4:end]
+    if not re.search(r"^name:", fm, re.MULTILINE) or not re.search(
+        r"^description:", fm, re.MULTILINE
+    ):
+        return False, "missing required frontmatter field ('name' or 'description')"
+    return True, "frontmatter present and closed"
+
+
+def check_referenced_files():
+    # This skill's body cites both `references/foo.md` and `examples/foo.md` paths
+    # (the Reference Guide table's last row names both example files) -- both forms
+    # must be checked, or the example files silently go unverified.
+    _, body, _ = _frontmatter_and_body()
+    pattern = r"`((?:references|examples)/[\w.-]+\.md)`"
+    missing = []
+    for match in re.finditer(pattern, body):
+        path = SKILL_DIR / match.group(1)
+        if not path.exists():
+            missing.append(match.group(1))
+    if missing:
+        return False, "referenced file(s) do not exist: " + ", ".join(sorted(set(missing)))
+    return True, "all referenced files exist"
+
+
+def _granted_bash_tokens(frontmatter):
+    fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
+    if not fm_line_match:
+        return None
+    bash_blocks = re.findall(r"Bash\(([^)]+)\)", fm_line_match.group(1))
+    tokens = []
+    for block in bash_blocks:
+        for token in block.split():
+            tokens.append(token.split(":")[0])
+    return tokens
+
+
+def check_bash_grants():
+    frontmatter, body, _ = _frontmatter_and_body()
+    tokens = _granted_bash_tokens(frontmatter)
+    if tokens is None:
+        return True, "no allowed-tools line found (skip)"
+    if not tokens:
+        return True, "no Bash(...) grants found (skip)"
+    unused = [t for t in tokens if not re.search(re.escape(t.split("/")[-1]), body)]
+    if unused:
+        return False, "Bash grant(s) never referenced anywhere in the body: " + ", ".join(
+            sorted(set(unused))
+        )
+    return True, f"all {len(set(tokens))} distinct Bash grant(s) referenced in the body"
+
+
+def check_reference_guide_files_exist():
+    _, _, text = _frontmatter_and_body()
+    idx = text.find("## Reference Guide")
+    if idx == -1:
+        return True, "no '## Reference Guide' section found (skip)"
+    section = text[idx:]
+    backtick_targets = re.findall(r"`((?:references|examples|scripts)/[\w./-]+)`", section)
+    targets = set(backtick_targets)
+    if not targets:
+        return True, "no file paths found in '## Reference Guide' (skip)"
+    missing = [t for t in targets if not (SKILL_DIR / t).is_file()]
+    if missing:
+        return False, "'## Reference Guide' file(s) do not exist: " + ", ".join(sorted(missing))
+    return True, f"all {len(targets)} '## Reference Guide' file path(s) exist"
+
+
+CHECKS = [
+    check_frontmatter,
+    check_referenced_files,
+    check_bash_grants,
+    check_reference_guide_files_exist,
+]
+
+
+def main():
+    failed = False
+    for check in CHECKS:
+        ok, message = check()
+        print(("PASS  " if ok else "FAIL  ") + check.__name__ + ": " + message)
+        failed = failed or not ok
+    sys.exit(1 if failed else 0)
+
+
+if __name__ == "__main__":
+    main()

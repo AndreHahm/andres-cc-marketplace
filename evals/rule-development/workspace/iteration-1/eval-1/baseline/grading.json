@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Rule file follows the Description-Incorrect-Correct template (title, description, ## Incorrect, ## Correct)", "passed": false, "evidence": "File uses '## When this applies' / '## Rule' / '## Why' instead -- no '## Incorrect' or '## Correct' section at all"},
+    {"text": "Description states WHAT the rule enforces and WHY, in imperative language (MUST/NEVER, not 'try to' or 'consider')", "passed": true, "evidence": "'Never run a working-tree-destructive discard command... without first running git status'"},
+    {"text": "Incorrect example shows the plausible `git checkout -- <path>` mistake without a prior `git status`, not a contrived variant", "passed": false, "evidence": "No dedicated Incorrect example/section exists; the failure mode is only described narratively in the 'Why' paragraph"},
+    {"text": "Correct example is the minimal fix of the same scenario (checks status / confirms before discarding), not a rewritten unrelated scenario", "passed": false, "evidence": "No dedicated Correct example paired with a specific Incorrect one; 'Rule' section states policy bullets, not a contrastive worked example"},
+    {"text": "Rule body contains no numbered steps or multi-step procedural content", "passed": true, "evidence": "Body uses unordered bullets, not a numbered procedure"},
+    {"text": "Output states or shows evidence of checking existing rules for redundancy/overlap before finalizing", "passed": false, "evidence": "process-notes.md step 2 only says it 'skimmed the existing .claude/rules/*.md files already present in context' to match naming/structure conventions -- no overlap/redundancy check against existing rule content is mentioned"},
+    {"text": "Output states or shows evidence of validating with /rules-review (or explains why it wasn't run)", "passed": false, "evidence": "process-notes.md never mentions /rules-review or any validation step"}
+  ],
+  "summary": {"assertions_total": 7, "assertions_passed": 2, "pass_rate": 0.286}
+}

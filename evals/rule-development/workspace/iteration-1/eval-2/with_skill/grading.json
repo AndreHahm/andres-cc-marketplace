@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response reads/re-derives the rule's own 'When this applies' scope rather than assuming applicability from its title", "passed": true, "evidence": "Opens by reading the real file and quoting its 'When a test is required' scope statement verbatim"},
+    {"text": "Response identifies that the rule's scope includes a *create* operation (new skill/agent/command/hook)", "passed": true, "evidence": "'explicitly includes newly-created skills/agents/commands/hooks'"},
+    {"text": "Response states that a path-scoped rule loads on file *read*, not on create/write, and that this makes naive path-scoping unsafe for a create-covering rule", "passed": true, "evidence": "'a path-scoped rule loads on read, not on write -- a brand-new file has nothing to read before it exists'"},
+    {"text": "Response recommends keeping the rule always-loaded (or explicitly discloses the read-vs-create risk) rather than silently proposing the unsafe path-scoped form", "passed": true, "evidence": "Recommendation section: 'Keep require-tests-for-behavior-changes.md always-loaded... Revert the paths: frontmatter'"},
+    {"text": "If folding into a skill is considered at all, response checks whether every trigger path is reachable from that one skill before recommending it", "passed": true, "evidence": "'Checking the fold-into-a-skill alternative' section walks commit's own constraints, the two disclosed enforcement gaps, and concludes no single fold target covers all authoring-time consumers"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

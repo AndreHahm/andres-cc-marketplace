@@ -1,0 +1,36 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/rule-development/SKILL.md",
+  "assertions": [
+    {
+      "text": "Response reads the existing rule file before editing it",
+      "type": "functionality",
+      "target": "outputs/ (process trace)"
+    },
+    {
+      "text": "The new case is appended to the appropriate section rather than replacing existing Incorrect/Correct examples",
+      "type": "quality",
+      "target": "outputs/*.md diff or final content"
+    },
+    {
+      "text": "Existing content (the original scratch-file cases) is preserved, not rewritten or dropped",
+      "type": "presence",
+      "target": "outputs/*.md final content"
+    },
+    {
+      "text": "Response states or shows evidence of re-running the redundancy filter after the addition",
+      "type": "functionality",
+      "target": "outputs/ (process trace)"
+    },
+    {
+      "text": "Response states or shows evidence of re-running the security self-check on the updated file",
+      "type": "functionality",
+      "target": "outputs/ (process trace)"
+    },
+    {
+      "text": "Response states or shows evidence of re-confirming with /rules-review that the updated rule still fires correctly",
+      "type": "functionality",
+      "target": "outputs/ (validation step)"
+    }
+  ]
+}

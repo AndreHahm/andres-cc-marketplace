@@ -1,0 +1,41 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/rule-development/SKILL.md",
+  "assertions": [
+    {
+      "text": "Rule file follows the Description-Incorrect-Correct template (title, description, ## Incorrect, ## Correct)",
+      "type": "structure",
+      "target": "outputs/*.md"
+    },
+    {
+      "text": "Description states WHAT the rule enforces and WHY, in imperative language (MUST/NEVER, not 'try to' or 'consider')",
+      "type": "quality",
+      "target": "outputs/*.md description/opening paragraph"
+    },
+    {
+      "text": "Incorrect example shows the plausible `git checkout -- <path>` mistake without a prior `git status`, not a contrived variant",
+      "type": "quality",
+      "target": "outputs/*.md ## Incorrect section"
+    },
+    {
+      "text": "Correct example is the minimal fix of the same scenario (checks status / confirms before discarding), not a rewritten unrelated scenario",
+      "type": "quality",
+      "target": "outputs/*.md ## Correct section"
+    },
+    {
+      "text": "Rule body contains no numbered steps or multi-step procedural content",
+      "type": "structure",
+      "target": "outputs/*.md body"
+    },
+    {
+      "text": "Output states or shows evidence of checking existing rules for redundancy/overlap before finalizing",
+      "type": "functionality",
+      "target": "outputs/ (redundancy-check step)"
+    },
+    {
+      "text": "Output states or shows evidence of validating with /rules-review (or explains why it wasn't run)",
+      "type": "functionality",
+      "target": "outputs/ (validation step)"
+    }
+  ]
+}
