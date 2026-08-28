@@ -204,6 +204,65 @@ console.log("\n=== Security review fix (M5): a docs-shaped file whose CONTENT is
   fs.rmSync(refsDir, { recursive: true, force: true });
 }
 
+console.log("\n=== Cross-model-review fix (issue #78): a docs-shaped file with a CREDENTIAL-named assignment is still blocked ===");
+{
+  // Codex live finding: redactSecrets' generic assignment pattern only
+  // recognizes TOKEN/KEY/SECRET/PASSWORD/API in a variable name --
+  // "CREDENTIAL"/"AUTH" (a real evasion technique, confirmed used for
+  // legitimate teaching purposes in this repo's own secrets-and-
+  // credentials.md before this fix) aren't covered, so a real secret named
+  // that way, with a value not matching any of redactSecrets' own vendor-
+  // prefix patterns, would pass `redactSecrets(content) === content`
+  // undetected. The additional local pattern must catch what redactSecrets
+  // alone misses.
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  fs.writeFileSync(path.join(refsDir, "secrets-and-credentials.md"), "# Notes\nSERVICE_CREDENTIAL=opaque-value-no-vendor-prefix\n");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected with secret_file_in_scope -- a CREDENTIAL-named assignment line is caught even though redactSecrets alone would miss it",
+    result.ok === false && result.category === "secret_file_in_scope" && /secrets-and-credentials\.md/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
+}
+
+console.log("\n=== Cross-model-review fix (issue #78): an AUTH-named assignment is also caught, same reasoning ===");
+{
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  fs.writeFileSync(path.join(refsDir, "secrets-and-credentials.md"), "# Notes\nDB_AUTH_VALUE=opaque-value-no-vendor-prefix\n");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected with secret_file_in_scope -- an AUTH-named assignment line is also caught",
+    result.ok === false && result.category === "secret_file_in_scope" && /secrets-and-credentials\.md/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
+}
+
+console.log("\n=== Cross-model-review fix (issue #78): the new check doesn't over-block CREDENTIAL/AUTH mentioned outside assignment shape ===");
+{
+  // "credential"/"auth" appearing in prose, or as a function-call argument
+  // (not a `NAME = value` assignment), must still pass -- the new pattern
+  // is scoped to the same assignment SHAPE the pre-existing generic
+  // pattern already used, just with a wider trigger-word list, not a
+  // blanket "avoid these words" filter.
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(refsDir, "secrets-and-credentials.md"),
+    "# Notes\nThis document is about credentials and authentication.\ncredential = os.getenv(\"API_KEY\")\n"
+  );
+  const result = runDispatch(repoRoot, repoRoot, path.join(repoRoot, "target.md"));
+  check(
+    "not blocked -- prose mentioning \"credential\"/\"authentication\" and a non-assignment-shaped credential reference both pass",
+    result.ok === false && result.category === "instruction_containment_violation",
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
+}
+
 console.log("\n=== Security review fix (M4): a symlink's doc-shaped path cannot exempt its credential-shaped TARGET basename ===");
 {
   // The link itself lives at references/notes.md (path/extension-exempt

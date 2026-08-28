@@ -296,6 +296,25 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
 const DOCUMENTATION_DIR_SEGMENT = /(^|[\\/])(references|docs)([\\/]|$)/i;
 const DOCUMENTATION_EXTENSION = /\.(md|mdx|txt|rst)$/i;
 
+// Cross-model-review fix (Codex live finding, issue #78): `redactSecrets`
+// (scripts/lib/codex-exec.mjs) was designed for a DIFFERENT purpose --
+// redacting known-shape secrets from CI-persisted stderr text -- and its
+// generic assignment-line pattern only recognizes TOKEN/KEY/SECRET/
+// PASSWORD/API in a variable name. "CREDENTIAL" (and "AUTH", the same
+// evasion shape) aren't covered, so a real secret assigned to a
+// `*_CREDENTIAL`/`*_AUTH`-named variable, with a value that doesn't happen
+// to match one of `redactSecrets`' own vendor-specific prefix patterns
+// (AKIA/gh_/sk-/xox/AIza/JWT/PEM) either, would pass `redactSecrets(content)
+// === content` undetected -- confirmed live: this exact naming choice was
+// used (for legitimate teaching purposes) in this PR's own rewrite of
+// `secrets-and-credentials.md`, which is precisely the scenario Codex's
+// finding describes. Broadening `redactSecrets` itself is deliberately NOT
+// done here -- it's a shared function with its own, different caller
+// (CI-log redaction), and widening its trigger list changes that
+// caller's behavior too, an unrelated blast radius. This is a second,
+// LOCAL check scoped to only this content-scan gate.
+const ADDITIONAL_CREDENTIAL_ASSIGNMENT_PATTERN = /^\s*[A-Za-z_][A-Za-z0-9_]*(?:CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*=\s*.+$/im;
+
 function isDocumentationAboutSecrets(relativePath, matchedPattern) {
   // scripts-reviewer finding (M1, post-security-review): identify one of
   // the four loose patterns by REFERENCE against secret-filenames.mjs's own
@@ -380,7 +399,11 @@ function checkSecretFiles(targetPaths, repoRoot) {
             } catch {
               content = null;
             }
-            if (content !== null && redactSecrets(content) === content) {
+            if (
+              content !== null &&
+              redactSecrets(content) === content &&
+              !ADDITIONAL_CREDENTIAL_ASSIGNMENT_PATTERN.test(content)
+            ) {
               continue;
             }
           }
