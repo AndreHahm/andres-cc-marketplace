@@ -58,7 +58,20 @@ Exception: a user may explicitly override a specific rulebook rule in the curren
 
 **Exception — respect R19:** Do not flag the `.claude/` ↔ `plugins/plugin-devkit/` mirror duplication itself as stale-value drift (see R19's in-development-mirror exception in `plugin-rulebook/SKILL.md`) — that duplication is structurally expected, not a fact that has diverged, as long as both copies stay identical. R20 targets facts that have drifted *between independently-worded restatements* (e.g. three skills each hand-writing the same character limit), not the intentional mirror pattern itself.
 
+**Multi-mirror convention sweep:** this trigger also covers any skill governed by a mirroring convention beyond `settings.json` canonical values — most commonly the `plugins/<plugin>/` ↔ `.claude/` pair R19 already recognizes as an expected, in-development duplicate. Before finalizing a change to any file inside a mirrored skill, confirm the sibling mirror was swept in the same commit — not just the copy directly edited — and report the swept-or-checked mirror alongside the R20 PASS/FAIL line.
+
 **Keeping plugin development possible:** this trigger fires at "before finalizing," the same checkpoint as every other rule here — not on every intermediate edit. Editing a canonical value mid-task does not require an immediate repo-wide sweep; only the final state before reporting the work as done does. This matches the existing "intermediate edits within a single session do not each require a separate check" principle above.
+
+## Precision Self-Audit Trigger
+
+**Trigger:** the component under review is itself a rule or doc whose own subject matter is precision, verification, correctness-of-claims, or avoiding unverified/overstated claims (e.g. a rule instructing "verify X before asserting it") — not every rule, just this specific self-referential-risk class.
+
+**Procedure:** an explicit line item on the same "before finalizing" check in the Compliance Procedure above, not a separate blocking gate:
+1. Grep the component's own prose for absolute-sounding phrasing — "only X can", "always", "never", a specific unqualified number or count.
+2. Treat each match as a prompt to re-verify that specific claim against its real source, not as a blocking failure by itself — an accurate absolute claim is fine; an unverified one is the target.
+3. Report swept matches (or "none found") alongside the compliance report, the same way R20 reports swept occurrences.
+
+**Why:** absolute-sounding language is the natural way to state a rule crisply, which makes a rule/doc *about* precision or verification disproportionately likely to contain the exact defect it warns against. PR #68's review of `verify-tool-behavior-before-instructing.md` caught this twice, by two independent mechanisms, in the same file: a local `cross-model-review` pass caught an invented specific number ("found six review rounds apart") with no supporting evidence; a separate Codex PR review caught "Only `ast.parse()` can" overstating the claim — other real parsers (`libcst`, `parso`) can also do the job; the real point ("a real parser, not regex") didn't need the absolute framing.
 
 ## Backing Hooks for Destructive Actions
 
