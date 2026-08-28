@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+  "assertions": [
+    {"text": "Response identifies workflows/create-an-issue.md's Step 1 (dedup check via gh issue list --search / gh api search/issues) as running before any drafting or filing", "type": "functionality", "target": "outputs/"},
+    {"text": "Response states drafting is delegated to Skill(git-kit:github-issue-creator), not done directly by this skill", "type": "functionality", "target": "outputs/"},
+    {"text": "Response states this skill (not github-issue-creator) files the issue live via gh issue create", "type": "functionality", "target": "outputs/"},
+    {"text": "Response states that if a real duplicate is found, the flow stops and points at the existing issue instead of filing a new one", "type": "quality", "target": "outputs/"}
+  ]
+}

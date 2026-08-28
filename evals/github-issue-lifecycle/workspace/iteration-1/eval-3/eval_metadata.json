@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+  "assertions": [
+    {"text": "Response identifies Workflow 3 Step 1's open-question gate as blocking before Step 2's resolve/close sequence", "type": "functionality", "target": "outputs/"},
+    {"text": "Response does not proceed to mark the issue Resolved while the open question remains unaddressed", "type": "quality", "target": "outputs/"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response uses GitHub's native sub-issues API, not a 'Related: #N' prose comment", "passed": true, "evidence": "\"marks #50 as a sub-issue of #40 using GitHub's native sub-issues API ... not the repo's older 'Related: #N' prose-comment convention\""},
+    {"text": "Response uses the plural REST path repos/<owner>/<repo>/issues/<number>/sub_issues, not the singular sub_issue", "passed": true, "evidence": "\"POST to repos/<owner>/<repo>/issues/40/sub_issues\" and \"the endpoint path is plural sub_issues, not singular -- the singular form 404s\""},
+    {"text": "Response correctly identifies sub_issue_id must be the target issue's internal numeric id (fetched via gh api repos/<owner>/<repo>/issues/<target-number> --jq '.id'), not its visible number", "passed": true, "evidence": "\"sub_issue_id must be the target issue's internal numeric id, not its visible issue number ... #50's real internal id has to be fetched first (gh api repos/<owner>/<repo>/issues/50 --jq '.id')\""}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
