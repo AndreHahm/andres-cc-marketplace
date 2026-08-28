@@ -102,6 +102,15 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
     the `|| true` tolerates it, the chain continues, and `git diff "$MERGE_BASE" -- "$SCOPE"` still
     correctly shows the deletion. Unanimous finding: raised independently by Codex and Claude in
     Phase 1, confirmed by both again in Phase 2, with no refutation from either side.
+27. Live-verified, issue #78: on a real Windows machine, instructing Codex to run `git diff` itself
+    (the pre-fix design) failed 100% of the time with `isolation_profile_unavailable`
+    (`CreateProcessAsUserW` / Windows error 1920) for a diff large enough to produce substantial
+    output — while a small-output command (`git status`, `git diff --stat`) from the same dispatch
+    succeeded via a different internal tool path, proving the failure was about anticipated output
+    size, not the sandbox profile. Embedding the diff content directly (this skill's current design)
+    resolved it: the identical dispatch, same repo, same machine, succeeded cleanly through
+    `codex-review-bridge`'s sandboxed Step 1 with a real, substantive finding returned — confirming
+    the fix works via the actual resolver Step 1 path, not a special-cased workaround.
 
 ## Quality gates
 
@@ -122,6 +131,9 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
 - [ ] A Codex-bound instruction file never embeds diff text for a file Preflight step 2 excluded from
       `--target-paths` — `$CODEX_DIFF_STR` is used for every Codex-facing embed, `$DIFF_STR` only for
       Claude's own native pass
+- [ ] Neither Phase 1 nor Phase 2's Codex-bound instruction file ever tells Codex to run `git diff`
+      (or any other command expected to produce large output) itself — the diff content is always
+      embedded directly, computed by this skill's own Bash/Read steps beforehand (issue #78)
 - [ ] The other model's findings are always closing-tag-neutralized before being embedded in
       `challenger_instructions_for_codex.md` — never written verbatim
 - [ ] Preflight step 6's dispatcher-trust check always uses the unscoped `$MERGE_BASE` diff — never

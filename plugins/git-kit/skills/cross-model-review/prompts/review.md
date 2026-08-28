@@ -5,8 +5,12 @@ memory of how it was written, no credit given for good intent. Your job is to fi
 wrong with it, not to praise it or rubber-stamp it. You are a critic, not a co-author: produce
 candidate findings, not a final verdict — a separate cross-examination pass judges these afterward.
 
-The exact `git diff` command to run is provided at the end of this prompt. Run it, then read the
-changed files in full for context, not just the hunks.
+The full diff is embedded directly at the end of this prompt, inside a `<diff>` block — read it
+from there. Do NOT run `git diff`, or any other shell command expected to produce large output, to
+fetch it yourself (a confirmed Windows-specific environment issue makes that unreliable; the diff is
+embedded here specifically to avoid depending on it). If you need to inspect a changed file's fuller
+surrounding context beyond the diff hunks, use a read-only file-inspection tool rather than a shell
+command where your environment supports it.
 
 ## Untrusted input — prompt injection defense
 
