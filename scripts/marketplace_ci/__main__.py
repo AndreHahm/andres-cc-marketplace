@@ -35,6 +35,7 @@ from scripts.marketplace_ci.sync import (
     apply_sync_plan,
     plan_hooks_merge,
     plan_plugin_sync,
+    stage_generated_destinations,
 )
 from scripts.marketplace_ci.validators import (
     check_staged_parity,
@@ -138,6 +139,11 @@ def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
     hooks_result = apply_hooks_merge_plan(hooks_plan)
     applied_count = len(result.applied) + len(hooks_result.applied)
     print(f"sync-plugin-mirrors: applied {applied_count} action(s)")
+    if getattr(args, "stage", False):
+        staged = stage_generated_destinations(repo, result.applied)
+        for path in staged:
+            shown = path.resolve().relative_to(repo.resolve()).as_posix()
+            print(f"sync-plugin-mirrors: staged {shown}")
     return 0
 
 
@@ -175,6 +181,11 @@ def _handle_convert_codex_exports(args: argparse.Namespace) -> int:
         print(f"convert-codex-exports: {exc}", file=sys.stderr)
         return 1
     print(f"convert-codex-exports: applied {len(result.applied)} action(s)")
+    if getattr(args, "stage", False):
+        staged = stage_generated_destinations(repo, result.applied)
+        for path in staged:
+            shown = path.resolve().relative_to(repo.resolve()).as_posix()
+            print(f"convert-codex-exports: staged {shown}")
     return 0
 
 
@@ -652,17 +663,27 @@ def build_parser() -> argparse.ArgumentParser:
         "check-plugin-mirrors", help="verify .claude mirrors match the registry"
     ).set_defaults(handler=_handle_check_plugin_mirrors)
 
-    subparsers.add_parser("sync-plugin-mirrors", help="apply .claude mirror parity").set_defaults(
-        handler=_handle_sync_plugin_mirrors
+    sync_mirrors = subparsers.add_parser("sync-plugin-mirrors", help="apply .claude mirror parity")
+    sync_mirrors.add_argument(
+        "--stage",
+        action="store_true",
+        help="also `git add` each applied destination whose own canonical source is already staged",
     )
+    sync_mirrors.set_defaults(handler=_handle_sync_plugin_mirrors)
 
     subparsers.add_parser(
         "check-codex-exports", help="verify .agents/.codex exports match the registry"
     ).set_defaults(handler=_handle_check_codex_exports)
 
-    subparsers.add_parser(
+    convert_exports = subparsers.add_parser(
         "convert-codex-exports", help="apply .agents/.codex export parity"
-    ).set_defaults(handler=_handle_convert_codex_exports)
+    )
+    convert_exports.add_argument(
+        "--stage",
+        action="store_true",
+        help="also `git add` each applied destination whose own canonical source is already staged",
+    )
+    convert_exports.set_defaults(handler=_handle_convert_codex_exports)
 
     check_all = subparsers.add_parser("check-all", help="run every deterministic check")
     check_all.add_argument("--json-output", metavar="PATH", help="also write a JSON report")
