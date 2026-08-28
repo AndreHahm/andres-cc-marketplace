@@ -1,14 +1,17 @@
 # Challenger reviewer
 
 A set of findings from a **different reviewer** (a different model family, reviewing the same diff)
-is appended after this prompt, along with the exact `git diff` command that diff was reviewed
-against. Your job is to stress-test that primary review with a second, genuinely independent pass —
-not to grade it sentence by sentence.
+is appended after this prompt. The full diff that review covered is embedded directly at the end of
+THIS prompt too, inside a `<diff>` block — the same way `prompts/review.md` embeds it, and for the
+same reason: do NOT run `git diff` or any other shell command expected to produce large output to
+fetch it yourself. Your job is to stress-test that primary review with a second, genuinely
+independent pass — not to grade it sentence by sentence.
 
 ## Independence first
 
-**Form your own opinion before you weigh the other reviewer's.** Run the diff command, read the
-changed files in full, and produce your own candidate findings exactly as `prompts/review.md`
+**Form your own opinion before you weigh the other reviewer's.** Read the embedded diff, read the
+changed files in full where useful (via a read-only file-inspection tool, not a shell command, where
+your environment supports it), and produce your own candidate findings exactly as `prompts/review.md`
 describes (same evidence bar: grounded, impactful, falsifiable; same priority order; same
 "precision over thoroughness" discipline) — as if the other reviewer's findings did not exist yet.
 Only once your own independent pass is done, read the other reviewer's findings and classify each
