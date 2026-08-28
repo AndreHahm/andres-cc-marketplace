@@ -1,0 +1,13 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response reads the existing rule file before editing it", "passed": true, "evidence": "process-notes.md step 1: read the real file at .claude/rules/require-gitignored-scratch-locations.md, read-only"},
+    {"text": "The new case is appended to the appropriate section rather than replacing existing Incorrect/Correct examples", "passed": true, "evidence": "New ./tmp/ case appended within the existing 'Watch specifically for' paragraph and as a third Why incident"},
+    {"text": "Existing content (the original scratch-file cases) is preserved, not rewritten or dropped", "passed": true, "evidence": "Items 1 (pytest-cache-files) and 2 (.codex-review-instructions/) remain intact verbatim"},
+    {"text": "Response states or shows evidence of re-running the redundancy filter after the addition", "passed": true, "evidence": "process-notes.md step 3: Grep for '\\./tmp|scratch|gitignor' across .claude/rules/**/*.md, reviewed 4 tangential hits, found no overlap"},
+    {"text": "Response states or shows evidence of re-running the security self-check on the updated file", "passed": true, "evidence": "process-notes.md step 4: hex/base64/credential-keyword/internal-URL scan, nothing found"},
+    {"text": "Response states or shows evidence of re-confirming with /rules-review that the updated rule still fires correctly", "passed": true, "evidence": "process-notes.md step 5: explicitly discloses /rules-review was not actually invocable in the sandbox and describes the manual simulation performed instead"}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 6, "pass_rate": 1.0}
+}

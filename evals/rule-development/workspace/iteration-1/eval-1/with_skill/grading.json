@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Rule file follows the Description-Incorrect-Correct template (title, description, ## Incorrect, ## Correct)", "passed": true, "evidence": "File has title, opening description paragraph, '## Incorrect' and '## Correct' sections plus '## Enforcement'/'## Why'"},
+    {"text": "Description states WHAT the rule enforces and WHY, in imperative language (MUST/NEVER, not 'try to' or 'consider')", "passed": true, "evidence": "'Claude MUST first run `git status` and `git diff`... never assume it maps to wipe the whole file's working-tree state'"},
+    {"text": "Incorrect example shows the plausible `git checkout -- <path>` mistake without a prior `git status`, not a contrived variant", "passed": true, "evidence": "Incorrect section shows exactly this: 'User: discard my last edit... Assistant: git checkout -- src/utils.py'"},
+    {"text": "Correct example is the minimal fix of the same scenario (checks status / confirms before discarding), not a rewritten unrelated scenario", "passed": true, "evidence": "Correct section runs git status/git diff on the same file/scenario, then asks the user when more than one change is uncommitted"},
+    {"text": "Rule body contains no numbered steps or multi-step procedural content", "passed": true, "evidence": "Body uses prose + code-block dialogue transcripts, no numbered step list"},
+    {"text": "Output states or shows evidence of checking existing rules for redundancy/overlap before finalizing", "passed": true, "evidence": "process-notes.md step 3: globbed 21 existing rules, grepped for checkout/discard/git status, read recheck-state-before-side-effecting-action.md in full and explained why it's distinct"},
+    {"text": "Output states or shows evidence of validating with /rules-review (or explains why it wasn't run)", "passed": true, "evidence": "process-notes.md step 8: explicitly discloses /rules-review could not be run live in the sandbox and describes a manual simulated trace instead"}
+  ],
+  "summary": {"assertions_total": 7, "assertions_passed": 7, "pass_rate": 1.0}
+}

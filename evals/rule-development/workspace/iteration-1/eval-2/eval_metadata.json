@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/rule-development/SKILL.md",
+  "assertions": [
+    {
+      "text": "Response reads/re-derives the rule's own 'When this applies' scope rather than assuming applicability from its title",
+      "type": "quality",
+      "target": "outputs/ (reasoning trace)"
+    },
+    {
+      "text": "Response identifies that the rule's scope includes a *create* operation (new skill/agent/command/hook)",
+      "type": "presence",
+      "target": "outputs/ (reasoning trace)"
+    },
+    {
+      "text": "Response states that a path-scoped rule loads on file *read*, not on create/write, and that this makes naive path-scoping unsafe for a create-covering rule",
+      "type": "quality",
+      "target": "outputs/ (reasoning trace)"
+    },
+    {
+      "text": "Response recommends keeping the rule always-loaded (or explicitly discloses the read-vs-create risk) rather than silently proposing the unsafe path-scoped form",
+      "type": "functionality",
+      "target": "outputs/ (final recommendation)"
+    },
+    {
+      "text": "If folding into a skill is considered at all, response checks whether every trigger path is reachable from that one skill before recommending it",
+      "type": "quality",
+      "target": "outputs/ (reasoning trace)"
+    }
+  ]
+}

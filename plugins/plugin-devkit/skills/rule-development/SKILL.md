@@ -82,6 +82,15 @@ Rules without `paths` load unconditionally, every session; rules with `paths` lo
 
 **Use `paths` whenever it can be defined** — reduces context noise for unrelated work. Avoid overly broad patterns like `**/*` or `*`.
 
+**Migrating an *existing* always-loaded rule to `paths` (or folding it into a skill):** this is a
+different decision from choosing scope at creation time (Quick Start step 2) — run
+`references/lazy-loading-checklist.md` before proposing the relocation. A rule's own "When this
+applies" text can name a *create* operation (a new file, branch, or component that doesn't exist
+yet), which path-scoping silently breaks since a path-scoped rule loads on read, not on write; a
+rule folded into a skill can also silently drop coverage for a trigger path the target skill doesn't
+own. `.claude/rules/verify-rule-scope-before-lazy-loading.md` is the always-loaded guardrail backing
+this same check.
+
 ### User-Level Rules (`~/.claude/rules/`)
 
 Apply across all projects for personal preferences. See `references/rules-specification.md` for setup details.
@@ -265,11 +274,51 @@ Periodically audit CLAUDE.md, nested CLAUDE.md files, and all `.claude/rules/` f
 conflicting, duplicated, or drifted instructions — instructions written at different times can
 silently contradict each other, and Claude may resolve the conflict arbitrarily.
 
+## Testing & Validation
+
+**Verify this skill activates on:**
+- "create a rule for X" / "add a rule that agents should always do Y"
+- "write a .claude/rules file for this convention"
+- "this mistake keeps recurring across sessions, can we turn it into a rule"
+- "add path-scoped guidance for this file type"
+
+**Verify it does NOT activate on:**
+- "review my rule file for quality" → use the `rule-reviewer` agent instead
+- "check if this code complies with our rules" → use `rules-review` instead
+- "add a multi-step workflow for X" → use `skill-development` instead — rule files must not contain
+  procedural content
+
+**Quality gates:**
+- [ ] Rule Creation Checklist (above) fully satisfied
+- [ ] Incorrect/Correct examples are contrastive and plausible, not contrived
+- [ ] `/rules-review` fires on the intended violation with no false positives
+- [ ] `plugin-rulebook` compliance check run and PASS
+- [ ] `scripts/smoke_test.py` passes (this skill's own persisted structural smoke test)
+
+`evals/rule-development/evals.json` (3 scenarios: authoring a new rule, deciding path-scoping vs.
+folding for an existing rule, appending to an existing rule without overwriting it) backs this
+section per R28, alongside `scripts/smoke_test.py`'s structural checks (frontmatter validity,
+referenced-file existence, Reference Guide table integrity, Bash-grant usage) and the Rule Creation
+Checklist / live `/rules-review` run already required by Quick Start step 7.
+
+**Last dated run record:** 2026-08-28 — `scripts/smoke_test.py`: 4/4 checks passed
+(`check_frontmatter`, `check_referenced_files`, `check_bash_grants`, `check_reference_guide_files_exist`).
+`skill-tester` Full Pipeline, iteration-1: with_skill 100% (18/18 assertions), baseline 59.5%
+(10/18) — see `evals/rule-development/workspace/iteration-1/benchmark.json`. One of the 3 evals
+(deciding path-scoping vs. folding) showed no measurable delta (5/5 both sides): the baseline agent
+had unrestricted repo read/`git log` access and reconstructed the skill's own supporting content
+(`references/lazy-loading-checklist.md`, `.claude/rules/verify-rule-scope-before-lazy-loading.md`)
+by exploring the filesystem directly — a real confound of testing a rule-authoring skill inside the
+same repo that already ships its outputs as real files, not evidence the skill provides no value for
+that scenario. The other 2 evals showed a clean delta (+71.4 and +50.0 points).
+
 ## Reference Guide
 
 | Resource | Purpose |
 |---|---|
 | `references/examples.md` | Complete worked examples, anti-patterns, extended writing guidance |
 | `references/rules-specification.md` | Official Claude Code rules documentation (path scoping, symlinks, user-level rules) |
+| `references/lazy-loading-checklist.md` | Checklist for migrating an existing always-loaded rule to `paths` or folding it into a skill — run before proposing the relocation |
+| [`scripts/smoke_test.py`](scripts/smoke_test.py) | This skill's own persisted structural smoke test (frontmatter validity, referenced-file existence, Reference Guide table integrity, Bash-grant usage) — run before packaging or after any SKILL.md edit |
 | `plugin-rulebook` | Plugin-level rules — invoke before finalizing any rule file to check naming, language, formatting, and external-reference compliance |
 | `plugin-rulebook/references/size-rules.md` — R18 section | Before extracting an oversized inline example (e.g. a full rule-file skeleton) into `examples/`, check its "Before extracting, check whether extraction actually removes the violation" guidance first — a naive extraction can just re-wrap the same content in another oversized fence inside the new file. `examples/global-rule-example.md` and `examples/path-scoped-rule-example.md` in this skill are worked examples of extracting correctly (standalone files, independent non-nested fences) |

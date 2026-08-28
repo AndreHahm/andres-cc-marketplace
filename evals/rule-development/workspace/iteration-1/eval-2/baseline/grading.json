@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response reads/re-derives the rule's own 'When this applies' scope rather than assuming applicability from its title", "passed": true, "evidence": "'What the rule actually says (read in full, not inferred from its title)' section quotes the real file's scope text"},
+    {"text": "Response identifies that the rule's scope includes a *create* operation (new skill/agent/command/hook)", "passed": true, "evidence": "'explicitly including newly-created skills/agents/commands/hooks'"},
+    {"text": "Response states that a path-scoped rule loads on file *read*, not on create/write, and that this makes naive path-scoping unsafe for a create-covering rule", "passed": true, "evidence": "Quotes .claude/rules/verify-rule-scope-before-lazy-loading.md directly: 'a path-scoped rule loads on read, and a brand-new file has nothing to read yet'"},
+    {"text": "Response recommends keeping the rule always-loaded (or explicitly discloses the read-vs-create risk) rather than silently proposing the unsafe path-scoped form", "passed": true, "evidence": "'Bottom line: Neither. Keep it always-loaded (revert its current paths: frontmatter...)'"},
+    {"text": "If folding into a skill is considered at all, response checks whether every trigger path is reachable from that one skill before recommending it", "passed": true, "evidence": "'Option 2: Fold into a specific skill' enumerates 7-8 consumers and the two disclosed enforcement gaps before rejecting the fold"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0},
+  "note": "CONTAMINATED RESULT: this baseline agent had unrestricted Read/Bash/git-log access to the same repo that already contains .claude/rules/verify-rule-scope-before-lazy-loading.md and references/lazy-loading-checklist.md (both authored earlier in this same session), and used git log to find the exact prior incident commits. It effectively reconstructed the skill's own content by exploring the filesystem rather than lacking it. This eval does not measure skill-vs-no-skill for this scenario; see the aggregate report's Methodology Note."
+}
