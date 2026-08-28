@@ -4,7 +4,7 @@ description: >-
   Sync local main, then create a properly named branch (or worktree) to start new work. Use when
   starting new work, asked to "start a new branch", "create a branch for X", "sync main and branch
   off", or "set up a worktree for this feature" — before any commits happen. Validates the branch name
-  against git-kit's <type>/<description> convention and offers a worktree as an alternative to a plain
+  against git-kit's [type]/[description] convention and offers a worktree as an alternative to a plain
   branch checkout.
 argument-hint: (optional) branch type and description, e.g. "feature add-user-auth"
 allowed-tools: Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git symbolic-ref refs/remotes/origin/HEAD:*), Bash(git worktree add:*), Bash(git worktree lock:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Read, Glob, Write, AskUserQuestion
@@ -105,10 +105,13 @@ branch off", "set up a worktree for this feature".
      `codex-windows-guardrails.local.json` — generically, rather than a hardcoded list that needs a
      follow-up fix every time a new plugin adopts the same precedent. Also `Glob` the main worktree for `**/CLAUDE.local.md` and copy each
      match found into the same relative path in the new worktree, same no-clobber rule — but first drop
-     any match under a vendored/third-party tree (`node_modules/`, `.venv/`) or this plugin's own
-     `.temp/` directory, since a bare `**/CLAUDE.local.md` pattern would otherwise sweep those too;
-     `Glob` itself has no exclude syntax, so filter the match list before copying rather than trying to
-     encode the exclusion into the pattern.
+     any match under a vendored/third-party tree (`node_modules/`, `.venv/`), this repo's own `.temp/`
+     directory, or another worktree's own directory (`.claude/worktrees/*/`, `.codex/worktrees/*/`) —
+     this last exclusion matters because this same skill's own default worktree path lives under one of
+     those trees, so without it a `CLAUDE.local.md` belonging to a different, unrelated worktree could be
+     swept in and copied into the new one. Since a bare `**/CLAUDE.local.md` pattern would otherwise
+     sweep all of these, and `Glob` itself has no exclude syntax, filter the match list before copying
+     rather than trying to encode the exclusion into the pattern.
 5. **Report**: the branch (or worktree path) just created, current location, and — for a worktree —
    that `cd`-ing into the worktree path is needed before working there, and that it's now locked to this
    session: when the work here is done, `finishing-work`/`/git-cleanup` handles unlocking and removal —
@@ -177,6 +180,14 @@ state unchecked at Stop time, even though it's still locked and still at risk.
 - `.claude/*.local.json` glob stays top-level only — confirm a `.local.json` file nested deeper than
   `.claude/` (not a realistic case today, but the pattern shouldn't accidentally reach one) is not swept
 
+**Verify the CLAUDE.local.md exclusion behavior:**
+- An unrelated, already-existing worktree (e.g. `.claude/worktrees/other-topic/`) has its own
+  `CLAUDE.local.md` — confirm creating a new worktree never copies that file in; the sweep must drop
+  `.claude/worktrees/*/` and `.codex/worktrees/*/` matches the same way it already drops
+  `node_modules/`/`.venv/`/`.temp/`
+- A `CLAUDE.local.md` genuinely at or below the main worktree root (not inside another worktree) is
+  still copied normally
+
 **Verified live, 2026-08-28:** ran `find .claude -maxdepth 1 -name "*.local.json"` against this repo's
 real main checkout — matched exactly `.claude/settings.local.json` and
 `.claude/codex-windows-guardrails.local.json` (the same file issue #113's own reproduction steps cite),
@@ -203,6 +214,8 @@ end-to-end.
       — never left unlocked
 - [ ] Step 4's local-config copy always globs `.claude/*.local.json` (every per-plugin override), never
       just `.claude/settings.local.json` alone
+- [ ] Step 4's `CLAUDE.local.md` sweep always drops matches under another worktree's own directory
+      (`.claude/worktrees/*/`, `.codex/worktrees/*/`), never just `node_modules/`/`.venv/`/`.temp/`
 - [ ] Step 5's report always mentions the worktree is session-locked and points at
       `finishing-work`/`/git-cleanup` for removal — never suggests `git worktree remove --force` directly
 - [ ] Step 4 always writes the `git-branch-create` marker immediately before `git checkout -b` /
