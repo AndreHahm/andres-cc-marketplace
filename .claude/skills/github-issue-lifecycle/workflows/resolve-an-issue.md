@@ -17,10 +17,20 @@ Two distinct outcomes, both closing the issue but meaning different things — r
 `handling-review-findings`'s fixed/declined status pattern:
 
 - **Resolved** (status: fixed — something was actually fixed). `gh issue comment <number> --body
-  "Resolved: <summary>"` then `gh issue close <number>`.
+  "Resolved: <summary>"` then `gh issue close <number> --reason completed`.
 - **Declined** (status: declined — closed with nothing fixed: won't-fix, duplicate, risk-accepted,
   stale, or process-gap-not-defect). `gh issue comment <number> --body "Declined: <reason>"` then
-  `gh issue close <number>`.
+  `gh issue close <number> --reason "not planned"`.
+
+**`--reason` is required on both close calls, not optional.** Without it, `gh issue close` leaves
+GitHub's native `state_reason` field defaulted to `completed` regardless of which branch ran — so a
+Declined closure would be indistinguishable from a real fix to anything reading `state_reason`
+(the issue-list UI's closed-issue icon, the API, any automation), even though the comment says
+Declined. The comment text alone does not carry this distinction at the GitHub-native level; only
+`--reason` does. `gh issue close --help`'s allowed values are `completed`/`not planned`/`duplicate`
+only — the finer Declined sub-reasons (won't-fix, duplicate, risk-accepted, stale,
+process-gap-not-defect) still live in the comment text from `Step 2`, since `gh` has no dedicated
+value for each.
 
 Never close an issue silently — the status comment always precedes the close. This is deliberately a
 two-step comment-then-close form, not `gh issue close --comment`'s single-command form (which
