@@ -94,10 +94,9 @@ Common secret-shaped variable names and value formats that should trigger alerts
 ❌ **BAD: Hardcoded API key**
 ```python
 # scripts/fetch_data.py
-SERVICE_CREDENTIAL = "sk-proj-EXAMPLE1"
-
 def fetch_from_service():
-    headers = {"Authorization": f"Bearer {SERVICE_CREDENTIAL}"}
+    # Hardcoded directly -- ships with the script wherever it goes.
+    headers = {"Authorization": f"Bearer sk-proj-EXAMPLE1"}
     response = requests.get("https://api.service.com/data", headers=headers)
     return response.json()
 ```
@@ -169,21 +168,20 @@ def run_migration():
 ### Pattern 3: .env File Handling
 
 ❌ **BAD: .env file in git**
-```bash
-# Committed to repo (BAD!)
-# .env
-SERVICE_CREDENTIAL=sk-abc123
-DB_AUTH_VALUE=MyPassword
-STRIPE_CREDENTIAL=sk_live_51234567890
-```
+
+A committed `.env` file with real values for each variable your service needs — a git-history risk
+from the moment it's committed, regardless of whether the values look realistic or already-rotated.
 
 ✅ **GOOD: .env template, .gitignore protection**
-```bash
-# .env.example (committed to repo - no real secrets!)
-SERVICE_CREDENTIAL=YOUR_SERVICE_CREDENTIAL_HERE
-DB_AUTH_VALUE=YOUR_DB_AUTH_VALUE_HERE
-STRIPE_CREDENTIAL=YOUR_STRIPE_CREDENTIAL_HERE
-```
+
+Commit an `.env.example` file instead, listing each required variable name with an obvious
+placeholder value (e.g. `YOUR_..._HERE`) rather than a real one:
+
+| Variable name | `.env` (never commit) | `.env.example` (safe to commit) |
+|---|---|---|
+| service credential | a real `sk-`-prefixed value | `YOUR_SERVICE_CREDENTIAL_HERE` |
+| database password | a real plaintext password | `YOUR_DB_PASSWORD_HERE` |
+| payment provider key | a real `sk_live_`-prefixed value | `YOUR_PAYMENT_KEY_HERE` |
 
 ```bash
 # .gitignore (prevents .env from being committed)
@@ -248,10 +246,10 @@ git config credential.helper store
 ```bash
 #!/bin/bash
 # scripts/deploy.sh
-RELEASE_CREDENTIAL="dt_abc123def456"
 
-# Sent as the request's Bearer credential to https://deploy.service.com/release below --
-# hardcoded here, so it ships with the script wherever it goes.
+# The real token value, spelled out directly right here, sent as the request's
+# Bearer credential to https://deploy.service.com/release below -- hardcoded,
+# so it ships with the script wherever it goes.
 ```
 
 ✅ **GOOD: Token from environment with validation**
