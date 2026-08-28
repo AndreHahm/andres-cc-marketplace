@@ -71,6 +71,62 @@ if { [ "$TOOL_NAME" != "Bash" ] && [ "$TOOL_NAME" != "PowerShell" ]; } || [ -z "
   exit 0
 fi
 
+# Normalized copy of $COMMAND for the span-based matching below (BRANCH_SPANS,
+# WORKTREE_REMOVE_SPANS): a backslash-continued command (`git worktree remove
+# ./wt \` + newline + `  --force`) is one logical command to bash but
+# multiple records to a line-oriented `grep`, splitting the span extraction
+# across records and losing a flag that lands on a later "line" -- live-
+# verified as a real bypass for both span checks below. Fold `\` + newline
+# into nothing (matching bash's own line-continuation semantics: it splices
+# with no inserted character) and convert any remaining bare newline (a
+# genuinely separate command, e.g. from a heredoc or pasted multi-line
+# input) to `;`, a real command separator the span extraction already
+# terminates on. Pure bash parameter expansion, not sed/perl -- no new
+# dependency on top of the jq/git/grep this file already requires. See
+# issue #116.
+# Three refinements, all live-verified as necessary, not theoretical:
+# (1) Strip `\r` unconditionally, first, before either substitution below --
+#     a CRLF line ending otherwise leaves the `\r` sitting between the `\`
+#     and the `\n`, so the backslash+LF pattern below never matches it, and
+#     the bare-LF-to-`;` conversion then inserts a terminator in the middle
+#     of what should have been one continued span, severing a trailing
+#     force flag from its own invocation (a CRLF variant of the exact
+#     bypass this fix exists to close).
+# (2) The line-continuation splice is shell-specific, not a single rule
+#     applied to both: Bash's is backslash+newline; PowerShell's own
+#     continuation character is the backtick, not a backslash -- a
+#     PowerShell command ending in a literal trailing backslash is an
+#     ordinary Windows path (e.g. `cd C:\repo\`), not a continuation --
+#     splicing a character a given shell treats as a literal, not a
+#     continuation, misrepresents that shell's own statement boundaries
+#     (the two lines really are separate statements to it), even though
+#     GIT_PREFIX's own boundary class would still recognize a `git`
+#     invocation immediately after the spliced-away backslash either way.
+#     Each shell only gets its own continuation
+#     character spliced; a bare trailing backslash in a PowerShell command,
+#     or a bare trailing backtick in a Bash command, is just a literal
+#     character in that shell's own syntax, correctly left untouched and
+#     therefore correctly landing on the "bare newline -> `;`" branch
+#     below as a real separator, not a continuation.
+# (3) BRANCH_SPANS' own match logic (below) evaluates each extracted span
+#     independently, in a loop, never against the whole multi-span blob at
+#     once -- a chained pair of unrelated `git branch` invocations
+#     otherwise cross-contaminates: a delete flag from one plus a
+#     protected name from the other reads as a match neither invocation
+#     alone is. WORKTREE_REMOVE_SPANS' own check further below does NOT
+#     need this same per-span isolation -- it has only one condition
+#     (FORCE_FLAG_RE), so a hit anywhere in its blob always corresponds to
+#     a real force flag inside a real worktree-remove span; the
+#     cross-contamination risk here is specific to BRANCH_SPANS having two
+#     independent conditions ANDed together.
+COMMAND_FLAT="${COMMAND//$'\r'/}"
+if [ "$TOOL_NAME" = "Bash" ]; then
+  COMMAND_FLAT="${COMMAND_FLAT//$'\\\n'/}"
+elif [ "$TOOL_NAME" = "PowerShell" ]; then
+  COMMAND_FLAT="${COMMAND_FLAT//$'`\n'/}"
+fi
+COMMAND_FLAT="${COMMAND_FLAT//$'\n'/;}"
+
 # git(\.exe)? also catches the literal `git.exe` invocation PowerShell callers
 # sometimes use. The repeating group catches zero or more interposed global
 # options -- `-C <dir>`/`-c <k>=<v>` (each a separate space-delimited value
@@ -133,29 +189,98 @@ fi
 MATCH=false
 
 # `git branch -D <name>` (or the equivalent `-d -f`/`-f -d`/`-df`/`-fd`/
-# `--delete --force` spellings) -- only when <name> is one of the protected
-# patterns. <name> may optionally be quoted -- `git-cleanup/SKILL.md` itself
-# instructs quoting the branch variable, so an unquoted-only match would miss
-# the exact form that skill is told to write.
-DELETE_FLAG='(-D|--delete[[:space:]]+--force|--force[[:space:]]+--delete|-d[[:space:]]+-f|-f[[:space:]]+-d|-df|-fd)'
-# Herestring, not `echo "$COMMAND" | grep -qE ...` -- under `pipefail`, a
-# large-enough $COMMAND can SIGPIPE `echo` when `grep -q` exits on an early
-# match, and pipefail then reports that non-zero exit even though grep
-# matched -- an `if` condition is exempt from `set -e` aborting on that, so
-# a real match would silently read as "no match" and fall through to allow.
-# See issue #87; guard-raw-pr-review.sh already uses this fix.
-# Residual: if the herestring redirection itself fails (unwritable/full
-# $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
-# Not caught by the ERR trap (if-conditions are exempt) -- same class as the
-# pipe form's own fork-failure path, not a regression from it.
-# Trailing boundary widened the same way as GIT_PREFIX's own leading one
-# (issue #85): an argument-less `` `git branch -D main` ``/`$(...)` left a
-# `` ` ``/`)` immediately after the protected-branch name with no trailing
-# whitespace, which the old `([[:space:]]|$)` didn't recognize as a
-# boundary -- found via a security-reviewer pass on this same fix, live-
-# verified as a real bypass before this line existed.
-if grep -qE "${GIT_PREFIX}branch([[:space:]]+-[^[:space:]]+)*[[:space:]]+${DELETE_FLAG}([[:space:]]+-[^[:space:]]+)*[[:space:]]+[\"']?(main|master|develop|release/[^[:space:]\"']*)[\"']?([^[:alnum:]_.-]|\$)" <<< "$COMMAND"; then
-  MATCH=true
+# `--delete --force` spellings), only when <name> is one of the protected
+# patterns -- rewritten from a single positional regex (flags, then the
+# name, in that exact order) to a span-bounded check with two independent
+# conditions, mirroring WORKTREE_REMOVE_SPANS/FORCE_FLAG_RE below. The old
+# positional form missed three confirmed, live-verified bypasses: multiple
+# branch names where the protected one isn't first (`git branch -D feature
+# main` deletes main -- git accepts multiple names to `-D`), options placed
+# after the branch name (`git branch main -D`, since `git branch`'s own
+# argument parser permutes non-option arguments), and delete/force spelling
+# combinations the old enumerated alternation didn't cover (`--delete -f`,
+# `-d --force`, bundled `-Df`/`-fD`, and abbreviated long options
+# `--d`/`--forc` -- git's own parse-options accepts any unambiguous
+# prefix -- all confirmed as real, working git syntax). See issue #116.
+# `grep -oE` emits one line per matched `git branch` invocation when
+# $COMMAND_FLAT contains more than one (e.g. `git branch -d a && git branch
+# -f main origin/main`, two unrelated, individually-benign commands) --
+# each span below is matched independently in its own loop iteration, never
+# against the concatenated multi-span blob, so a delete flag from one
+# invocation can never combine with a protected name from a different one
+# to produce a false match neither invocation alone is.
+# Residual, same as WORKTREE_REMOVE_SPANS' own note further below (issue
+# #120): the span terminator class (`[^;&|]`) can't distinguish a real
+# shell separator from the same byte elsewhere -- a redirection operator
+# (`2>&1`) or a quoted branch name containing `;`/`&`/`|` placed before the
+# delete flag can truncate this span early and hide it. Properly closing
+# this needs real shell tokenization, not a character-class cut -- out of
+# scope for this fix, tracked in #120 for both span checks together.
+BRANCH_SPANS=$(echo "$COMMAND_FLAT" | grep -oE "${GIT_PREFIX}branch[^;&|]*" || true)
+# `-D` (or any short-option cluster containing uppercase `D`, e.g. `-Df`/
+# `-fD`) is git branch's own force-delete flag -- no other git-branch short
+# flag uses uppercase `D`, so any token containing it in this span is a
+# force-delete, regardless of what else is bundled into the same token.
+# Trailing boundary widened to the same negated-identifier class as
+# GIT_PREFIX/FORCE_FLAG_RE -- not `([[:space:]]|$)` as this line originally
+# read. That narrower trailing class missed the same wrapper shapes issue
+# #85 already found and fixed for the sibling FORCE_FLAG_RE below: `bash -c
+# "git branch main -D"` (trailing quote after `-D`), `$(git branch -d main
+# -f)` (trailing paren after `-f`), and `(cd /repo && git branch main -D)`
+# (same) all confirmed live to bypass the narrower class.
+# Leading boundary is `(^|[[:space:]])` plus an optional quote/backslash,
+# not the fully negated-identifier class GIT_PREFIX/FORCE_FLAG_RE use --
+# that wider class was tried and reverted after live-testing found it
+# created real false-positive denials on ordinary read-only `git branch`
+# invocations: `--sort=-committerdate` (the `=` before the dash admits
+# `-committerdate` as a bogus flag cluster containing `d`) and
+# `--format='...-DEV'` (the `'` before the dash admits `-DEV` as a bogus
+# cluster containing `D`). The optional `["'\]?` tolerance (same shape
+# BRANCH_NAME_RE below already uses) restores coverage for a deliberately
+# quoted or escaped flag (`git branch "-D" main`, `git branch '-D' main`,
+# `git branch \-D main`) without reopening either false positive -- in
+# both, the `=`/`'` sits immediately after another non-whitespace
+# character, not after whitespace, so the `(^|[[:space:]])` anchor before
+# the optional quote class still correctly excludes them. All three of
+# this issue's own confirmed bypasses are trailing-side only and remain
+# covered regardless, since the flag is always whitespace-preceded in each
+# -- found via three consecutive security-reviewer passes on this same
+# fix, after three earlier rounds each missed one facet of this asymmetry
+# in turn.
+BRANCH_D_RE='(^|[[:space:]])["'"'"'\\]?-[A-Za-z]*D[A-Za-z]*([^[:alnum:]_.-]|$)'
+# `-d`/`--delete` (non-forced delete) only counts as a deletion path when
+# paired with BRANCH_FORCE_RE below -- git refuses a plain `-d` on an
+# unmerged branch, which main/master/develop/release/* normally are, so
+# `-d` alone isn't the same guaranteed-destructive action `-D`/`-d -f` is.
+# `--d[a-z]*`/`--forc[a-z]*`, not the exact literal `--delete`/`--force` --
+# git's own parse-options accepts any unambiguous prefix, and the minimum
+# accepted length differs per option: `--delete` is git branch's only long
+# option starting with "d" at all, so even the bare 1-letter `--d` is
+# already unambiguous and git-accepted (live-verified: `git branch --d -f
+# main` force-deletes main); `--force` needs 4 letters (`--forc`) before
+# it's unambiguous, since `--format` shares the same first 3.
+BRANCH_LOWER_D_RE='(^|[[:space:]])["'"'"'\\]?(-[A-Za-z]*d[A-Za-z]*|--d[a-z]*)([^[:alnum:]_.-]|$)'
+BRANCH_FORCE_RE='(^|[[:space:]])["'"'"'\\]?(-[A-Za-z]*f[A-Za-z]*|--forc[a-z]*)([^[:alnum:]_.-]|$)'
+# Independent of flag position -- a protected name is a match wherever it
+# appears in the span, not just immediately after the delete flag. `<name>`
+# may optionally be quoted -- `git-cleanup/SKILL.md` itself instructs
+# quoting the branch variable, so an unquoted-only match would miss the
+# exact form that skill is told to write.
+BRANCH_NAME_RE='(^|[[:space:]])["'"'"']?(main|master|develop|release/[^[:space:]"'"'"']*)["'"'"']?([^[:alnum:]_.-]|$)'
+if [ -n "$BRANCH_SPANS" ]; then
+  while IFS= read -r branch_span; do
+    # `if [ -n ... ]` wrapping, not `[ -z ... ] && continue` -- the latter's
+    # failing `[` sits inside a `&&` list, which is exempt from both `set -e`
+    # and the ERR trap; harmless today (an empty span just isn't a match),
+    # but fragile in a script whose ERR trap denies unconditionally -- an
+    # `if` doesn't depend on that exemption at all.
+    if [ -n "$branch_span" ] && grep -qE "$BRANCH_NAME_RE" <<< "$branch_span" \
+       && { grep -qE "$BRANCH_D_RE" <<< "$branch_span" \
+            || { grep -qE "$BRANCH_LOWER_D_RE" <<< "$branch_span" && grep -qE "$BRANCH_FORCE_RE" <<< "$branch_span"; }; }; then
+      MATCH=true
+      break
+    fi
+  done <<< "$BRANCH_SPANS"
 fi
 
 # `git worktree remove --force`/`-f` only -- plain `remove` (no force flag)
@@ -189,14 +314,51 @@ fi
 # boundary didn't recognize as a boundary at all -- found via this issue's
 # own live testing: `git worktree remove foo --force` wrapped in backticks
 # still bypassed this guard even after the GIT_PREFIX fix below. See issue #85.
-FORCE_FLAG_RE='(^|[^[:alnum:]_.-])(--force|-f)([^[:alnum:]_.-]|$)'
+# `-f+`/`--f(o(r(c(e)?)?)?)?`, not the exact literal `-f`/`--force` --
+# `--force` is `git worktree remove`'s ONLY long option besides `--help`
+# (parse-options' own auto-generated `--no-force` also exists but is
+# correctly not matched -- its own internal `-f` is preceded by `o`, an
+# alnum, so the leading boundary fails), so `--f` alone is already an
+# unambiguous, git-accepted abbreviation (live-verified: on a dirty
+# worktree, where a plain `git worktree remove <path>` genuinely fails and
+# needs the flag to succeed, `git worktree remove <path> --f` succeeded);
+# `-ff` (repeated) is also real, working syntax (`OPT_COUNTUP` -- git
+# accepts a short flag repeated, idempotently). `-f+` matches `-f`/`-ff`/
+# `-fff` (one or more literal `f` characters after the dash, nothing else)
+# rather than the wider `-[A-Za-z]*f[A-Za-z]*` letter-cluster pattern
+# BRANCH_FORCE_RE uses -- deliberately narrower, since `git worktree
+# remove` has no other short option to legitimately bundle `-f` with (the
+# wider cluster form would match an ordinary path argument like `-file` as
+# a false-positive force flag, which this file's own `git branch` case
+# doesn't risk the same way since branch names can't start with `-` at
+# all). The long form spells out each valid prefix explicitly
+# (`--f(o(r(c(e)?)?)?)?`) rather than `--f[a-z]*`, so it matches exactly
+# `--f`/`--fo`/`--for`/`--forc`/`--force` and nothing past that -- a bare
+# `[a-z]*` tail would also match unrelated real git flags that happen to
+# start with "f" if one ever lands inside a `worktree remove` span
+# (`--format`, `--file`, `--fixup`), over-denying for no reason `git
+# worktree remove` itself gives grounds for.
+FORCE_FLAG_RE='(^|[^[:alnum:]_.-])(-f+|--f(o(r(c(e)?)?)?)?)([^[:alnum:]_.-]|$)'
 # The `-oE` extraction below stays a pipe, not a herestring -- `grep -o`
 # reads to EOF rather than exiting on first match, so it has no SIGPIPE
 # exposure (issue #87 doesn't apply here); the `-qE` check just below it
 # does, and uses a herestring for the same reason as the branch -D check
 # above (residual: same undocumented herestring-failure fail-open as noted
 # there, not caught by the ERR trap).
-WORKTREE_REMOVE_SPANS=$(echo "$COMMAND" | grep -oE "${GIT_PREFIX}worktree[[:space:]]+remove[^;&|]*" || true)
+# Reads $COMMAND_FLAT, not raw $COMMAND -- see that variable's own
+# definition above (issue #116) for why a backslash-continued command
+# needed normalizing before this span extraction.
+# Residual, tracked in issue #120 (extended there, not fixed here): the
+# span terminator class below (`[^;&|]`) still can't distinguish a real
+# shell separator from the same byte elsewhere -- a quoted path containing
+# a literal `;`/`&`/`|` (#120's original finding) or a redirection operator
+# like `2>&1`/`&>log` placed before the flag (a second vector onto the same
+# line, found during this issue's own review) both truncate the span early
+# and can hide a trailing force flag. Properly closing either needs real
+# shell tokenization, not a character-class cut -- out of scope for this
+# fix, which addresses the two-argument-order and flag-spelling gaps #116
+# was actually filed for.
+WORKTREE_REMOVE_SPANS=$(echo "$COMMAND_FLAT" | grep -oE "${GIT_PREFIX}worktree[[:space:]]+remove[^;&|]*" || true)
 if [ -n "$WORKTREE_REMOVE_SPANS" ] && grep -qE "$FORCE_FLAG_RE" <<< "$WORKTREE_REMOVE_SPANS"; then
   MATCH=true
 fi
