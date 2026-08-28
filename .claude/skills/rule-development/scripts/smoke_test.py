@@ -9,8 +9,6 @@ import pathlib
 import re
 import sys
 
-import yaml
-
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
 
@@ -47,13 +45,24 @@ def check_frontmatter():
     if end == -1:
         return False, "frontmatter block is never closed"
     fm = text[4:end]
-    try:
-        parsed = yaml.safe_load(fm)
-    except yaml.YAMLError as exc:
-        return False, f"frontmatter is not valid YAML: {exc}"
-    if not isinstance(parsed, dict) or "name" not in parsed or "description" not in parsed:
+    # No YAML parser in the stdlib, and PyYAML is a dev-only dependency of this
+    # marketplace repo (pyproject.toml's [dependency-groups].dev) -- never installed
+    # alongside the plugin itself, so importing it here breaks this gate for anyone
+    # who installs rule-development without also having this repo's dev environment.
+    # Catch the demonstrated failure shape (an unclosed `[`/`{` sequence after an
+    # otherwise-valid field) via bracket-balance instead, on top of the field-presence
+    # checks below.
+    for open_ch, close_ch in (("[", "]"), ("{", "}")):
+        if fm.count(open_ch) != fm.count(close_ch):
+            return (
+                False,
+                f"frontmatter has unbalanced '{open_ch}{close_ch}' -- likely malformed YAML",
+            )
+    if not re.search(r"^name:", fm, re.MULTILINE) or not re.search(
+        r"^description:", fm, re.MULTILINE
+    ):
         return False, "missing required frontmatter field ('name' or 'description')"
-    return True, "frontmatter present, closed, and valid YAML"
+    return True, "frontmatter present, closed, and structurally valid"
 
 
 def check_referenced_files():
