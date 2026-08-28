@@ -554,12 +554,15 @@ gh api repos/{owner}/{repo}/actions/runs/123456/logs > logs.zip
 
 **Endpoint:** `GET /search/repositories`
 
+Every example below needs a trailing `-X GET` — `gh api` switches to `POST` the moment any `-f`/`-F`
+parameter is present, and these search endpoints have no `POST` route, so omitting it 404s.
+
 ```bash
 # Search repositories
-gh api search/repositories -f q="topic:spring-boot language:java"
+gh api search/repositories -f q="topic:spring-boot language:java" -X GET
 
 # Search with filters
-gh api search/repositories -f q="stars:>1000 language:python"
+gh api search/repositories -f q="stars:>1000 language:python" -X GET
 ```
 
 ### Search Code
@@ -568,10 +571,10 @@ gh api search/repositories -f q="stars:>1000 language:python"
 
 ```bash
 # Search code
-gh api search/code -f q="addClass repo:owner/repo"
+gh api search/code -f q="addClass repo:owner/repo" -X GET
 
 # Search in specific path
-gh api search/code -f q="function path:src/ repo:owner/repo"
+gh api search/code -f q="function path:src/ repo:owner/repo" -X GET
 ```
 
 ### Search Issues and PRs
@@ -580,10 +583,10 @@ gh api search/code -f q="function path:src/ repo:owner/repo"
 
 ```bash
 # Search issues
-gh api search/issues -f q="is:issue is:open label:bug repo:owner/repo"
+gh api search/issues -f q="is:issue is:open label:bug repo:owner/repo" -X GET
 
 # Search PRs
-gh api search/issues -f q="is:pr is:merged author:username"
+gh api search/issues -f q="is:pr is:merged author:username" -X GET
 ```
 
 ## GraphQL API
