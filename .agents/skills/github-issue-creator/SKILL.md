@@ -10,7 +10,10 @@ allowed-tools: Write, Read
 Transform messy input (error logs, voice notes, screenshots) into clean, actionable GitHub issues.
 
 **Not for filing directly on GitHub** — this skill only writes a local markdown draft under `issues/`; it
-has no `Bash`/`gh` access. Filing a real, live GitHub issue (via `gh issue create`) is `gh-operations`' job.
+has no `Bash`/`gh` access. A request framed as filing a real issue as part of the full create lifecycle
+(dedup-check first, verify after, initial impact analysis) is `github-issue-lifecycle`'s job — it
+delegates the drafting step back here, then files the approved draft live itself. A bare one-off
+`gh issue create` with no lifecycle framing is `gh-operations`' job.
 
 ## Output Template
 
@@ -122,8 +125,10 @@ running from [LOCAL_PATH] with token [REDACTED_TOKEN].
 - "review this PR and leave comments" → `collaborating-on-a-pr`
 - "who owns this file/path" → `manage-codeowners`
 - "list open issues on this repo" → `gh-operations`
-- "file this as a real GitHub issue" / "create an issue on GitHub for this bug" → `gh-operations` (its
-  `gh issue create`); this skill only drafts a local markdown file, never files a live issue
+- "work this issue through create/dedup/verify and file it for real" → `github-issue-lifecycle`; it
+  delegates drafting back to this skill, then files the result itself
+- "just run `gh issue create` with this text, no dedup/verification needed" → `gh-operations`'s raw
+  one-off `gh issue create`; this skill only drafts a local markdown file, never files a live issue
 
 **Quality gates:**
 - [ ] Every generated issue follows the structure in `assets/issue-template.md` — never a freeform format

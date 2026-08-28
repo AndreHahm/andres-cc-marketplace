@@ -14,14 +14,18 @@ allowed-tools: Write, Read
 Transform messy input (error logs, voice notes, screenshots) into clean, actionable GitHub issues.
 
 **Not for filing directly on GitHub** — this skill only writes a local markdown draft under `issues/`; it
-has no `Bash`/`gh` access. Filing a real, live GitHub issue (via `gh issue create`) is `gh-operations`' job.
+has no `Bash`/`gh` access. A request framed as filing a real issue as part of the full create lifecycle
+(dedup-check first, verify after, initial impact analysis) is `github-issue-lifecycle`'s job — it
+delegates the drafting step back here, then files the approved draft live itself. A bare one-off
+`gh issue create` with no lifecycle framing is `gh-operations`' job.
 
 ## When NOT to Use
 
 - **A finding tied to an open PR's review thread** — that's `handling-review-findings`'s job. Its issue
   path adds required PR/head-SHA/thread traceability this skill's general-purpose template doesn't
   carry; a bare "write this up as an issue" with no PR/finding context is what belongs here.
-- **Filing directly on GitHub** — see the note above; that's `gh-operations`' job.
+- **Filing directly on GitHub** — see the note above; that's `github-issue-lifecycle`'s job when framed
+  as part of the create lifecycle, or `gh-operations`' job for a bare one-off `gh issue create`.
 
 ## Output Template
 
@@ -133,8 +137,10 @@ running from [LOCAL_PATH] with token [REDACTED_TOKEN].
 - "review this PR and leave comments" → `collaborating-on-a-pr`
 - "who owns this file/path" → `manage-codeowners`
 - "list open issues on this repo" → `gh-operations`
-- "file this as a real GitHub issue" / "create an issue on GitHub for this bug" → `gh-operations` (its
-  `gh issue create`); this skill only drafts a local markdown file, never files a live issue
+- "work this issue through create/dedup/verify and file it for real" → `github-issue-lifecycle`; it
+  delegates drafting back to this skill, then files the result itself
+- "just run `gh issue create` with this text, no dedup/verification needed" → `gh-operations`'s raw
+  one-off `gh issue create`; this skill only drafts a local markdown file, never files a live issue
 - "file an issue for this PR review finding instead of fixing it" → `handling-review-findings`; a
   finding tied to an open PR's review thread needs the PR/SHA/thread traceability payload that skill's
   issue path adds on top of this skill's own template, not this skill's general-purpose drafting

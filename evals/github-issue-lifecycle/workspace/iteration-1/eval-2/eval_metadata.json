@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+  "assertions": [
+    {"text": "Response uses GitHub's native sub-issues API, not a 'Related: #N' prose comment", "type": "functionality", "target": "outputs/"},
+    {"text": "Response uses the plural REST path repos/<owner>/<repo>/issues/<number>/sub_issues, not the singular sub_issue", "type": "functionality", "target": "outputs/"},
+    {"text": "Response correctly identifies sub_issue_id must be the target issue's internal numeric id (fetched via gh api repos/<owner>/<repo>/issues/<target-number> --jq '.id'), not its visible number", "type": "quality", "target": "outputs/"}
+  ]
+}

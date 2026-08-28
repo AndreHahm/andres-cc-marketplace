@@ -1,0 +1,31 @@
+{
+  "skill_name": "github-issue-lifecycle",
+  "skill_path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+  "description": "Owns the full lifecycle of a freestanding GitHub issue in this repo -- create, work, resolve -- the same reliability PR work already gets from git-kit's own lifecycle skills",
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": [],
+    "coverage_note": "Executed 2026-08-28 via skill-tester's Quick Workflow (with_skill only, no baseline) -- workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json each show 100% assertion pass rate (9/9 total across all 3 evals). No baseline comparison was run (Quick Workflow scope)."
+  },
+  "evals": [
+    {
+      "id": 1,
+      "name": "Workflow 1 never files without a dedup check first",
+      "prompt": "A user pastes a raw bug description and asks to file it as a new GitHub issue in this repo. Walk through what github-issue-lifecycle does before any issue is actually created on GitHub.",
+      "expected_output": "Step 1 of workflows/create-an-issue.md runs first: a dedup search (gh issue list --search and/or gh api search/issues) for an existing duplicate, before Skill(git-kit:github-issue-creator) is invoked to draft the content and before gh issue create files it live. If a real duplicate is found, the flow stops and points at the existing issue instead of filing a new one."
+    },
+    {
+      "id": 2,
+      "name": "Relating issues uses the native sub-issues API, not the old prose convention",
+      "prompt": "A user asks to mark issue #50 as a sub-issue of issue #40 in this repo. Which mechanism does github-issue-lifecycle use, and what's the specific gotcha it needs to get right?",
+      "expected_output": "Uses GitHub's native sub-issues API per references/sub-issues-api.md -- POST to the plural repos/<owner>/<repo>/issues/<number>/sub_issues endpoint (not the singular 'sub_issue', not a 'Related: #N' prose comment) with sub_issue_id set to the target issue's internal numeric id (fetched via gh api repos/<owner>/<repo>/issues/<target-number> --jq '.id'), not its visible number."
+    },
+    {
+      "id": 3,
+      "name": "Resolve is gated on the open-question check",
+      "prompt": "An issue has an unresolved open question logged in an earlier comment, and the user asks to resolve it as fixed. What does github-issue-lifecycle do?",
+      "expected_output": "Workflow 3's Step 1 (open-question gate) blocks marking the issue Resolved while the logged open question remains unaddressed -- the flow does not proceed to Step 2's close/comment sequence until that gate passes, per SKILL.md's own quality gate ('Workflow 3 never marks an issue Resolved while an open question from #10 remains unaddressed')."
+    }
+  ]
+}
