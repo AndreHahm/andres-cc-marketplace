@@ -1,4 +1,44 @@
+---
+paths:
+  - "plugins/*/skills/**"
+  - "plugins/*/agents/**"
+  - "plugins/*/commands/**"
+  - ".claude/skills/**"
+  - ".claude/agents/**"
+  - ".claude/commands/**"
+---
+
 # Read and Re-Trace Skill Chains Before Finalizing
+
+Re-trace a whole multi-skill chain after any timing/ordering fix, and read a dispatched skill's actual
+current SKILL.md before writing a `Skill(X)` call to it — both checks apply before finalizing.
+
+## Incorrect
+
+A fix moves `finishing-work` later in a chain (an explicit `cd` is inserted before it), and the session
+moves on without re-tracing the rest of the chain or reading `finishing-work`'s own current SKILL.md:
+
+```markdown
+Round 2: add `cd <worktree>` before dispatching
+`commit → create-pr → merge-pr → finishing-work`.
+[commits, moves to the next task]
+```
+
+The `cd` breaks `finishing-work`'s own cwd precondition — caught only in a later review round, because
+nothing re-simulated the chain or re-read `finishing-work`'s instructions after the edit.
+
+## Correct
+
+After the same fix, re-simulate every step in the chain against the new cwd, and read the dispatched
+skill's current SKILL.md before the call that reaches it:
+
+```markdown
+Round 2: add `cd <worktree>` before the chain.
+Re-trace: commit (cwd matches, ok) → create-pr (ok) → merge-pr (ok) →
+finishing-work — read its SKILL.md first: it assumes cwd is the *primary*
+checkout, not the worktree.
+Fix: `cd` back to the primary checkout before dispatching `finishing-work`.
+```
 
 ## When this applies
 
