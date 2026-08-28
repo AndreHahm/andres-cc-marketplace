@@ -59,7 +59,12 @@ reconfirmed it).
 
 ## Step 8: Create Comments
 
-`gh issue comment <number> --body "<text>"`. Before posting, re-check the text for anything that should
+Write the comment text to a file under the session scratchpad directory, then
+`gh issue comment <number> --body-file <that-path>` — never `--body "<text>"` with the text typed or
+interpolated inline. Comment text can quote or summarize issue content, which this skill's own
+data-only boundary already treats as untrusted; interpolating it directly into a double-quoted shell
+argument lets a crafted `$(...)`/backtick sequence execute — the same risk this repo's own `commit`
+skill guards against for staged filenames. Before posting, re-check the text for anything that should
 be redacted (emails, tokens, hostnames, session IDs, absolute local paths — `github-issue-creator`'s own
 canonical redaction list) — same discipline `github-issue-creator` applies when drafting, since a
 comment is just as public and permanent as the issue body itself. When citing
