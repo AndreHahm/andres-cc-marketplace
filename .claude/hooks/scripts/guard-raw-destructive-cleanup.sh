@@ -126,6 +126,68 @@ elif [ "$TOOL_NAME" = "PowerShell" ]; then
   COMMAND_FLAT="${COMMAND_FLAT//$'`\n'/}"
 fi
 COMMAND_FLAT="${COMMAND_FLAT//$'\n'/;}"
+# De-fang redirection operators that contain a `;`/`&`/`|` byte the span
+# terminator class below (`[^;&|]`) would otherwise mistake for a real
+# command separator, before span extraction below -- issue #120 (partial
+# fix; the original quoted-`;`/`&`/`|` vector that issue was filed for
+# remains a documented residual, see BRANCH_SPANS'/WORKTREE_REMOVE_SPANS'
+# own notes further down). Full, explicit coverage table of every bash/
+# PowerShell redirection operator containing one of those three bytes --
+# stated as a table so future completeness is checkable rather than
+# re-derived from scratch (this table itself was only completed after a
+# security-review round found `>|` missing from an earlier version that
+# claimed, incorrectly, to have proven the operator SET complete):
+#   &>    redirect stdout+stderr             -> de-fanged below
+#   &>>   append stdout+stderr               -> de-fanged below (contains `&>`)
+#   >&    fd-duplication (`2>&1`, etc.)      -> de-fanged below
+#   <&    fd-duplication (`0<&1`, etc.)      -> de-fanged below
+#   >|    noclobber-override redirect        -> de-fanged below
+#   |&    pipe stderr+stdout (`cmd1 |& cmd2`) -> deliberately NOT touched --
+#         this is a genuine command separator (shorthand for `2>&1 |`), and
+#         the leading `|` already correctly terminates the span on its own;
+#         no separate handling needed.
+# Live-verified as real bypasses before each was added: `git worktree
+# remove ./wt 2>&1 --force`/`git branch main 2>&1 -D` (truncated at the `&`
+# in `2>&1`), `git worktree remove ./wt 0<&1 --force` (the `<&` form), and
+# `git worktree remove ./wt >|/dev/null --force`/`git branch main
+# >|/dev/null -D` (the `>|` form, found in a later review round -- `|` is a
+# span terminator on its own, distinct from the `&`-based operators above).
+# Plain literal substring replacement (`&>` -> ` >`, `>&` -> `> `, `<&` ->
+# `< `, `>|` -> `> `), not a digit-matching pattern: an earlier attempt used
+# a bash glob `[0-9]*>&[0-9]*`, which in glob syntax means "one digit then
+# ANY characters" (not "zero-or-more digits", unlike regex) and consumed
+# far more of the string than intended -- reverted in favor of this
+# simpler, digit-agnostic form, which only ever touches the operator itself
+# and leaves any surrounding fd-number digits untouched.
+# Soundness is per-operator, not a claim that this set is exhaustive (see
+# the table above for what "exhaustive" actually required): in valid,
+# unescaped bash, `&` immediately followed by `>` -- or `<`/`>` immediately
+# followed by `&` -- can only ever be one of the `&`-based operators, never
+# a real separator, since a bare `&` (backgrounding) followed by a redirect
+# must have whitespace between them (`cmd & >file`, not `cmd &>file`), and
+# a bare `<`/`>` redirect requires a word target, not an `&`. Likewise `>`
+# immediately followed by `|` can only ever be the noclobber-override
+# redirect, never `>` followed by a structurally-valid standalone pipe.
+# Residual, not a bypass: a backslash-escaped or quoted `>` immediately
+# before a real `|` (e.g. `git worktree remove ./a\>|rm -f x`, where the
+# `|` is a genuine separator) still gets de-fanged by this substitution --
+# but only ever widens the resulting span, so the fail-safe direction below
+# still holds; it can never hide a flag that would otherwise have been
+# caught. Each substitution therefore only ever fires on a byte sequence
+# that either was never a command separator to begin with, or -- in this
+# one escaped/quoted edge case -- fires on a real separator but only in the
+# harmless, span-widening direction. It can only make a span larger
+# (fail-safe), never smaller. Deliberately leaves a standalone `&` or `|`
+# (backgrounding / piping) alone -- none of these patterns matches either
+# with no adjacent `<`/`>`, so each still correctly terminates the span as
+# a real separator, not a continuation. Covers PowerShell's own redirection
+# set too (`2>&1`, `*>&1`, `n>&1`); PowerShell has no `<&` or `>|` form
+# (per PowerShell's documented redirection operators -- not independently
+# executed/confirmed in this environment).
+COMMAND_FLAT="${COMMAND_FLAT//&>/ >}"
+COMMAND_FLAT="${COMMAND_FLAT//>&/> }"
+COMMAND_FLAT="${COMMAND_FLAT//<&/< }"
+COMMAND_FLAT="${COMMAND_FLAT//>|/> }"
 
 # git(\.exe)? also catches the literal `git.exe` invocation PowerShell callers
 # sometimes use. The repeating group catches zero or more interposed global
@@ -211,11 +273,19 @@ MATCH=false
 # to produce a false match neither invocation alone is.
 # Residual, same as WORKTREE_REMOVE_SPANS' own note further below (issue
 # #120): the span terminator class (`[^;&|]`) can't distinguish a real
-# shell separator from the same byte elsewhere -- a redirection operator
-# (`2>&1`) or a quoted branch name containing `;`/`&`/`|` placed before the
-# delete flag can truncate this span early and hide it. Properly closing
-# this needs real shell tokenization, not a character-class cut -- out of
-# scope for this fix, tracked in #120 for both span checks together.
+# shell separator from the same byte inside two related cases the
+# `COMMAND_FLAT` de-fang step above doesn't reach: (1) a quoted branch name
+# literally containing `;`/`&`/`|` placed before the delete flag, and (2)
+# an unquoted nested construct -- `$(...)`, backticks, `$((...))`,
+# `<(...)` -- whose own body contains one of these bytes (e.g. `git branch
+# $(echo main) -D`), which the span extraction has no way to treat as a
+# single, non-terminating unit. Both need real shell tokenization to close
+# properly, not a character-class cut -- out of scope for this fix, tracked
+# in #120. (The enumerated redirection-operator set -- `&>`/`&>>`/`>&`/
+# `<&`/`>|` -- IS closed by the `COMMAND_FLAT` de-fang step above, before
+# this span is ever extracted; see that step's own comment for the full
+# operator table and why it's a per-operator soundness claim, not a claim
+# that every possible redirection-adjacent bypass is closed.)
 BRANCH_SPANS=$(echo "$COMMAND_FLAT" | grep -oE "${GIT_PREFIX}branch[^;&|]*" || true)
 # `-D` (or any short-option cluster containing uppercase `D`, e.g. `-Df`/
 # `-fD`) is git branch's own force-delete flag -- no other git-branch short
@@ -348,16 +418,20 @@ FORCE_FLAG_RE='(^|[^[:alnum:]_.-])(-f+|--f(o(r(c(e)?)?)?)?)([^[:alnum:]_.-]|$)'
 # Reads $COMMAND_FLAT, not raw $COMMAND -- see that variable's own
 # definition above (issue #116) for why a backslash-continued command
 # needed normalizing before this span extraction.
-# Residual, tracked in issue #120 (extended there, not fixed here): the
-# span terminator class below (`[^;&|]`) still can't distinguish a real
-# shell separator from the same byte elsewhere -- a quoted path containing
-# a literal `;`/`&`/`|` (#120's original finding) or a redirection operator
-# like `2>&1`/`&>log` placed before the flag (a second vector onto the same
-# line, found during this issue's own review) both truncate the span early
-# and can hide a trailing force flag. Properly closing either needs real
-# shell tokenization, not a character-class cut -- out of scope for this
-# fix, which addresses the two-argument-order and flag-spelling gaps #116
-# was actually filed for.
+# Residual, tracked in issue #120: the span terminator class below
+# (`[^;&|]`) still can't distinguish a real shell separator from the same
+# byte inside two related cases the `COMMAND_FLAT` de-fang step above
+# doesn't reach: (1) a quoted path containing a literal `;`/`&`/`|` (#120's
+# original finding), and (2) an unquoted nested construct -- `$(...)`,
+# backticks, `$((...))`, `<(...)` -- whose own body contains one of these
+# bytes (e.g. `git worktree remove $(ls | head -1) --force`), which the
+# span extraction has no way to treat as a single, non-terminating unit.
+# Both can still truncate this span early and hide a trailing force flag.
+# Properly closing either needs real shell tokenization, not a
+# character-class cut -- out of scope for this fix. (The enumerated
+# redirection-operator set -- `&>`/`&>>`/`>&`/`<&`/`>|` -- IS closed by the
+# `COMMAND_FLAT` de-fang step above, before this span is ever extracted;
+# see that step's own comment for the full operator table.)
 WORKTREE_REMOVE_SPANS=$(echo "$COMMAND_FLAT" | grep -oE "${GIT_PREFIX}worktree[[:space:]]+remove[^;&|]*" || true)
 if [ -n "$WORKTREE_REMOVE_SPANS" ] && grep -qE "$FORCE_FLAG_RE" <<< "$WORKTREE_REMOVE_SPANS"; then
   MATCH=true
