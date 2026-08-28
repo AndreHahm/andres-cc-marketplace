@@ -12,7 +12,7 @@ description: >-
   recurring findings", or "what should go in the learnings doc next" — not
   mining-recurring-patterns' single-session sequence mining, and not
   reviewing-analysis-findings' cross-check of analysis-kit's own reports.
-allowed-tools: Read Glob Grep Write AskUserQuestion Bash(gh pr list:*) Bash(gh pr view:*) Bash(gh repo view:*) Bash(python */analysis-kit/scripts/pr_review_fetcher.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
+allowed-tools: Read Glob Grep Write AskUserQuestion Bash(gh pr list:*) Bash(gh pr view:*) Bash(gh repo view:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/pr_review_fetcher.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
 argument-hint: [PR numbers | merge-date range | "since last cited"]
 ---
 
@@ -106,9 +106,19 @@ For each PR in the resolved set:
 3. **Claude Code side**: run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/session_parser.py"
    --project-root <repo-root> --since <createdAt> --until <mergedAt>)`, padding the window by a stated
    ±24 hours on each side to catch a session that started shortly before the PR opened or continued
-   shortly after merge, disclosed as a heuristic bound, not a guarantee. Its real output (verified live,
-   not assumed) is `{"sessions": [{"provenance": {..., "source_file": ...}, "events": [...]}],
-   "summary": {...}}` — a list of per-session-file records, each with its own `events` array and
+   shortly after merge, disclosed as a heuristic bound, not a guarantee. **If this first call's
+   `"sessions"` array is empty (or none of its transcripts plausibly cover this PR), don't stop there —
+   discover linked worktree roots and retry.** Run `Bash(git worktree list --porcelain)`, extract every
+   `worktree <path>` line, and re-run `session_parser.py --project-root <worktree-path> --since ... --until
+   ...` (same padded window) for each one not already tried — a fix authored inside a linked worktree has
+   its transcripts filed under that worktree's own separately-encoded project path, invisible to a
+   primary-checkout-only call (see the Gotcha below). Only mark `session-transcript: unavailable` once
+   every discovered root (primary checkout plus every linked worktree) has been tried and none produced a
+   plausibly-matching transcript — a worktree that was itself deleted after the PR merged (its path no
+   longer listed by `git worktree list`) is a real, unavoidable gap this discovery step can't close;
+   report it as `session-transcript: unavailable` the same as any other miss, not as an error. Its real
+   output (verified live, not assumed) is `{"sessions": [{"provenance": {..., "source_file": ...}, "events":
+   [...]}], "summary": {...}}` — a list of per-session-file records, each with its own `events` array and
    `provenance.source_file`, not one flat event list. Read each non-empty `events` array and judge — a
    semantic read, not something the parser resolves for you — whether it plausibly covers *this* PR
    (mentions the PR number, its branch name, or content matching the fetched review findings); a
@@ -194,10 +204,14 @@ legitimate, common outcome, not a failure.
 - **A worktree-authored PR's session transcripts live under a different encoded project path** (verified
   live, not hypothetical). `session_parser.py`'s `--project-root` encodes the *exact* cwd path into its
   transcript-directory lookup; a fix authored inside `.claude/worktrees/<name>/` has its own transcripts
-  filed there, invisible to a `--project-root` call from the primary checkout. A real dry run against a
-  PR known to have been authored in a worktree came back with zero matching events for exactly this
-  reason — report it as `session-transcript: unavailable`, don't assume "no session found" means "no
-  session existed."
+  filed there, invisible to a `--project-root` call from the primary checkout alone. Phase 2 step 3's
+  `git worktree list` discovery closes this for a worktree that still exists at mining time — but a
+  worktree already deleted (by `finishing-work`/`git-cleanup` after its PR merged, the normal end-of-life
+  path for a session-scoped worktree) is gone from that listing too, and its transcripts become
+  permanently unreachable from this skill's own discovery, no matter how the search is widened. A real
+  dry run against a PR authored in a worktree that had already been cleaned up came back with zero
+  matching events for exactly this reason — report it as `session-transcript: unavailable`, don't assume
+  "no session found" means "no session existed."
 - **A PR cited once in the learnings document isn't fully covered.** Phase 3's exclusion check compares
   finding *content*, not PR-number presence — don't let a PR's existing citation for one finding hide a
   second, genuinely new finding from the same PR.
@@ -252,8 +266,9 @@ After Phase 4, verify before presenting output as final:
 - [ ] A zero-PR resolution in any mode stopped before Phase 2 rather than persisting an empty report
 - [ ] Every PR in the resolved set has an entry in Phase 2's output, cross-checked or
       GitHub-history-only, never silently dropped
-- [ ] Every "no transcript found" case is marked `session-transcript: unavailable` explicitly rather
-      than left ambiguous
+- [ ] Every "no transcript found" case ran the primary-checkout call AND the `git worktree list`
+      discovery loop across every currently-linked worktree before being marked
+      `session-transcript: unavailable` — never concluded from the primary-checkout call alone
 - [ ] Phase 3's already-cited exclusion compared finding content against the document's existing
       section for that PR, not just the PR number's presence
 - [ ] Every excluded one-off finding states its exclusion reasoning inline, never silently dropped
