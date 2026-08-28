@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
-import { runCodexExec } from "../../../scripts/lib/codex-exec.mjs";
+import { runCodexExec, redactSecrets } from "../../../scripts/lib/codex-exec.mjs";
 import { matchesSecretFilename } from "../../../scripts/lib/secret-filenames.mjs";
 import { ENVELOPE_SCHEMA, semanticallyValidate, isValidToken, neutralizeClosingTags } from "../../codex-review-bridge/scripts/bridge-invoke.mjs";
 
@@ -279,6 +279,37 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
   }
 }
 
+// Issue #78: SECRET_FILENAME_PATTERNS' four bare-substring patterns
+// (/secret/, /credential/, /password/, /token/) are deliberately loose --
+// shared with git.mjs's own basename-only untracked-file screen, where that
+// looseness is correct (a filename like "my-secrets.yaml" must still be
+// caught). Applied whole-repo here, that same looseness produced a real
+// false positive: a documentation file ABOUT secrets/credentials (not one
+// that IS a credential) permanently blocked this script's whole-repo scan,
+// with no way to dispatch at all until the file was renamed. Exempted only
+// when BOTH (a) the match came from one of those four loose patterns --
+// never the exact-filename/extension patterns (id_rsa, .pem, .key, .env,
+// etc.), which stay blocking regardless of location, since those really are
+// credential-shaped no matter where they live -- and (b) the file lives
+// under a references/ or docs/ directory AND carries a documentation
+// extension (a *.key file sitting in docs/ is still blocked).
+const LOOSE_SECRET_KEYWORD_PATTERN_SOURCES = new Set(["/secret/", "/credential/", "/password/", "/token/"]);
+const DOCUMENTATION_DIR_SEGMENT = /(^|[\\/])(references|docs)([\\/]|$)/i;
+const DOCUMENTATION_EXTENSION = /\.(md|mdx|txt|rst)$/i;
+
+function isDocumentationAboutSecrets(relativePath, matchedPattern) {
+  if (!LOOSE_SECRET_KEYWORD_PATTERN_SOURCES.has(String(matchedPattern))) return false;
+  // Security review, issue #78 fix (m2): a relativePath that escapes the
+  // canonical root (a ".."-prefixed traversal tail) must never satisfy this
+  // exemption, even if some ancestor segment happens to be literally named
+  // "docs"/"references" -- that would only be reachable via an operator-
+  // supplied --repo-root junction, and checkRepositoryBoundary/
+  // verifyRepoRootIsGitToplevel already treat that as out of scope; this is
+  // defense in depth, not the primary containment boundary.
+  if (relativePath.startsWith("..")) return false;
+  return DOCUMENTATION_DIR_SEGMENT.test(relativePath) && DOCUMENTATION_EXTENSION.test(relativePath);
+}
+
 function checkSecretFiles(targetPaths, repoRoot) {
   // Relativize against the CANONICAL root, not the raw repoRoot argument --
   // a path reached via symlink/junction recursion is already in canonical
@@ -304,7 +335,44 @@ function checkSecretFiles(targetPaths, repoRoot) {
       for (const name of file.checkNames) {
         const matched = matchesSecretPattern(name);
         if (matched) {
-          return typedFailure("secret_file_in_scope", `${path.relative(canonicalRoot, file.path)} matches sensitive-filename pattern ${matched}`);
+          const relativePath = path.relative(canonicalRoot, file.path);
+          // Security review, issue #78 fix (M4): only exempt when the
+          // MATCHED name is the file's own basename -- a file symlink is
+          // checked under both its own name and its real target's name
+          // (walkFiles above deliberately checks both, see its own
+          // comment). Exempting on the strength of the SYMLINK's
+          // documentation-shaped path while the match actually came from
+          // the TARGET's credential-shaped basename would let a target
+          // living somewhere this walk never visits directly (e.g. under
+          // .git/, which walkFiles skips outright) slip through wearing an
+          // innocuous references/*.md wrapper. A no-op for an ordinary
+          // file, whose single checkNames entry already equals its own
+          // basename.
+          const matchedOwnBasename = name === path.basename(relativePath);
+          if (matchedOwnBasename && isDocumentationAboutSecrets(relativePath, matched)) {
+            // Security review, issue #78 fix (M5): the path/extension
+            // shape alone only proves this file is NAMED like
+            // documentation about secrets -- it says nothing about
+            // whether its CONTENT actually is one. Content-scan just this
+            // small, explicitly-exempted set (never the whole repo --
+            // this check exists specifically because a whole-repo content
+            // scan isn't otherwise part of this basename-only design)
+            // with the same secret-shaped-string patterns codex-exec.mjs
+            // already uses to redact CI-persisted failure details. A real
+            // credential-shaped string still blocks; an unreadable file
+            // fails closed (falls through to the block below) rather than
+            // silently trusting an exemption that couldn't be verified.
+            let content = null;
+            try {
+              content = fs.readFileSync(file.path, "utf8");
+            } catch {
+              content = null;
+            }
+            if (content !== null && redactSecrets(content) === content) {
+              continue;
+            }
+          }
+          return typedFailure("secret_file_in_scope", `${relativePath} matches sensitive-filename pattern ${matched}`);
         }
       }
     }
