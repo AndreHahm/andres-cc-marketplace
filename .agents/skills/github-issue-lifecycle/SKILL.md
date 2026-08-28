@@ -11,7 +11,7 @@ description: >-
   new-issue drafting (delegated to it here), not `gh-operations`' raw one-off `gh issue` lookup with no
   judgment attached, and not `handling-review-findings`'s triage of findings already posted against an
   open PR review thread — this skill never touches PR-review findings, only freestanding issues.
-allowed-tools: Read, Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
+allowed-tools: Read, Write, Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
 ---
 
 # GitHub Issue Lifecycle
@@ -64,7 +64,16 @@ label, or sub-issue link under `repos/*/issues/*`, since `gh api`'s scoping synt
 by HTTP method. The actual bound is the documented workflow steps, not the grant itself: only the
 GET/POST calls named in `references/sub-issues-api.md` are sanctioned. Invoking `Skill(git-kit:
 github-issue-creator)` also transitively reaches that skill's own `Write` access to `issues/` at the
-repo root — this skill itself holds no `Write`/`Edit` grant, but the delegated call does.
+repo root.
+
+`allowed-tools` also grants `Write` directly (added 2026-08-28, external PR review round 2) — needed
+because Workflows 2 and 3 require writing comment text to a session-scratchpad file before every
+`gh issue comment --body-file` call (see the shell-interpolation note above). This is an unscoped
+`Write` grant, not narrowed to the scratchpad path — Claude Code's tool-scoping syntax has no
+path-restriction form for `Write` the way `Bash(cmd:*)` has for commands (the same limitation
+`github-issue-creator`'s own bare `Write, Read` grant already carries for its `issues/` output). The
+actual bound is the documented workflow steps: every `Write` call this skill makes is to a scratchpad
+file immediately before a `--body-file` read, never to a repo-tracked path.
 
 ## Quick Start
 
@@ -134,6 +143,14 @@ native duplicate-tracking (`--duplicate-of`) — added a dedicated Declined-dupl
 against `gh issue close --help`. No fresh `skill-tester` eval re-run for these edits; fix (1) was
 verified with a direct unit-level Python check (shown above), fixes (2)-(5) against `gh`'s own
 `--help` output and this repo's real git history, not behaviorally re-tested end-to-end.
+
+**Verified live, 2026-08-28 (external PR review, PR #172, round 2):** round 1's own fix (3) above —
+switching to `--body-file` — added a `Write` requirement to Workflows 2/3 without adding a matching
+`Write` grant to `allowed-tools`, which the Boundaries section even stated explicitly ("this skill
+itself holds no `Write`/`Edit` grant"). Codex caught this in the very next review round. Fixed by
+adding `Write` to `allowed-tools` and updating the Boundaries section to state the new grant's scope
+and rationale. No fresh eval run; verified by direct inspection of the frontmatter grant list against
+the workflow steps that now require it.
 
 **Verify this skill activates on:**
 - "work on issue #123"
