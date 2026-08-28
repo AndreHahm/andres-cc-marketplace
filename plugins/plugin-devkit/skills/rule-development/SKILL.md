@@ -5,7 +5,7 @@ description: >-
   Incorrect/Correct examples. Use when a mistake recurs across agent sessions, when the user
   identifies a behavioral gap, or when standardizing code conventions or adding path-scoped
   constraints for specific file types.
-allowed-tools: Read Write Edit Glob Grep Skill
+allowed-tools: Read Write Edit Glob Grep Skill Bash(python:*)
 ---
 
 # Create Rule
@@ -293,7 +293,10 @@ silently contradict each other, and Claude may resolve the conflict arbitrarily.
 - [ ] Incorrect/Correct examples are contrastive and plausible, not contrived
 - [ ] `/rules-review` fires on the intended violation with no false positives
 - [ ] `plugin-rulebook` compliance check run and PASS
-- [ ] `scripts/smoke_test.py` passes (this skill's own persisted structural smoke test)
+- [ ] `python scripts/smoke_test.py` passes (this skill's own persisted structural smoke test) — the
+      `Bash(python:*)` grant exists narrowly to run this script; it does not license the `find`/
+      marketplace-sync/deletion steps `references/lazy-loading-checklist.md` and this file's own
+      Redundancy Filter describe, which stay manual/user-performed steps outside this skill's scope
 
 `evals/rule-development/evals.json` (3 scenarios: authoring a new rule, deciding path-scoping vs.
 folding for an existing rule, appending to an existing rule without overwriting it) backs this
@@ -316,9 +319,10 @@ that scenario. The other 2 evals showed a clean delta (+71.4 and +50.0 points).
 
 | Resource | Purpose |
 |---|---|
+| `references/rule-file-skeleton.md` | The bare Description-Incorrect-Correct template every rule file must follow |
 | `references/examples.md` | Complete worked examples, anti-patterns, extended writing guidance |
 | `references/rules-specification.md` | Official Claude Code rules documentation (path scoping, symlinks, user-level rules) |
 | `references/lazy-loading-checklist.md` | Checklist for migrating an existing always-loaded rule to `paths` or folding it into a skill — run before proposing the relocation |
-| [`scripts/smoke_test.py`](scripts/smoke_test.py) | This skill's own persisted structural smoke test (frontmatter validity, referenced-file existence, Reference Guide table integrity, Bash-grant usage) — run before packaging or after any SKILL.md edit |
+| [`scripts/smoke_test.py`](scripts/smoke_test.py) | This skill's own persisted structural smoke test (frontmatter validity, referenced-file existence, Reference Guide table integrity, Bash-grant usage) — run `python scripts/smoke_test.py` before packaging or after any SKILL.md edit |
 | `plugin-rulebook` | Plugin-level rules — invoke before finalizing any rule file to check naming, language, formatting, and external-reference compliance |
 | `plugin-rulebook/references/size-rules.md` — R18 section | Before extracting an oversized inline example (e.g. a full rule-file skeleton) into `examples/`, check its "Before extracting, check whether extraction actually removes the violation" guidance first — a naive extraction can just re-wrap the same content in another oversized fence inside the new file. `examples/global-rule-example.md` and `examples/path-scoped-rule-example.md` in this skill are worked examples of extracting correctly (standalone files, independent non-nested fences) |
