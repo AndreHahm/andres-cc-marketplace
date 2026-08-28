@@ -31,6 +31,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { matchesSecretFilename, LOOSE_SECRET_FILENAME_PATTERNS } from "../../scripts/lib/secret-filenames.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GUARDED_DISPATCH = path.join(SCRIPT_DIR, "..", "..", "skills", "codex-windows-guardrails", "scripts", "guarded-dispatch.mjs");
@@ -454,6 +455,44 @@ console.log("\n=== NESTED directory symlink/junction escaping the repository roo
     fs.rmSync(outsideDir, { recursive: true, force: true });
   }
   fs.rmSync(path.join(repoRoot, "a"), { recursive: true, force: true });
+}
+
+console.log("\n=== scripts-reviewer fix (M1): the loose-pattern identity check is REFERENCE equality, not string reconstruction ===");
+{
+  // Regression guard for the exact fragility scripts-reviewer flagged: an
+  // earlier version of isDocumentationAboutSecrets compared
+  // `String(matchedPattern)` against a hand-typed `"/secret/"`-shaped
+  // string Set defined only in guarded-dispatch.mjs, with nothing tying it
+  // to secret-filenames.mjs's own SECRET_FILENAME_PATTERNS -- any future
+  // edit to one of those four patterns' literal form there (a flag, an
+  // escape, a rewrap) would have silently broken the match with no error.
+  // The fix: secret-filenames.mjs exports LOOSE_SECRET_FILENAME_PATTERNS
+  // referencing the SAME pattern objects used inside
+  // SECRET_FILENAME_PATTERNS, and matchesSecretFilename's `.find()`
+  // returns that exact object -- so `.includes(matchedPattern)` is real
+  // object-identity equality. Verified directly here via the real exported
+  // functions, not by inspecting guarded-dispatch.mjs's source text.
+  check(
+    "matchesSecretFilename('my-secret.yaml') returns an object that IS (by reference) one of the four exported loose patterns",
+    LOOSE_SECRET_FILENAME_PATTERNS.includes(matchesSecretFilename("my-secret.yaml")),
+    String(matchesSecretFilename("my-secret.yaml"))
+  );
+  check(
+    "same for 'credential', 'password', 'token' keyword matches",
+    ["my-credential.yaml", "my-password.yaml", "my-token.yaml"].every((name) =>
+      LOOSE_SECRET_FILENAME_PATTERNS.includes(matchesSecretFilename(name))
+    )
+  );
+  check(
+    "a STRICT pattern match (id_rsa) is correctly NOT one of the four loose patterns",
+    !LOOSE_SECRET_FILENAME_PATTERNS.includes(matchesSecretFilename("id_rsa")),
+    String(matchesSecretFilename("id_rsa"))
+  );
+  check(
+    "exactly four loose patterns are exported (no accidental over/under-export)",
+    LOOSE_SECRET_FILENAME_PATTERNS.length === 4,
+    `length=${LOOSE_SECRET_FILENAME_PATTERNS.length}`
+  );
 }
 
 console.log("\n=== Prompt-injection guard on instructionBody (source-level, not exercisable via subprocess without a real Codex exec) ===");

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 import { runCodexExec, redactSecrets } from "../../../scripts/lib/codex-exec.mjs";
-import { matchesSecretFilename } from "../../../scripts/lib/secret-filenames.mjs";
+import { matchesSecretFilename, LOOSE_SECRET_FILENAME_PATTERNS } from "../../../scripts/lib/secret-filenames.mjs";
 import { ENVELOPE_SCHEMA, semanticallyValidate, isValidToken, neutralizeClosingTags } from "../../codex-review-bridge/scripts/bridge-invoke.mjs";
 
 // Consolidated guardrail dispatch for local Windows danger-full-access Codex
@@ -293,12 +293,24 @@ function walkFiles(absolutePath, results, repoRoot, visitedRealpaths) {
 // credential-shaped no matter where they live -- and (b) the file lives
 // under a references/ or docs/ directory AND carries a documentation
 // extension (a *.key file sitting in docs/ is still blocked).
-const LOOSE_SECRET_KEYWORD_PATTERN_SOURCES = new Set(["/secret/", "/credential/", "/password/", "/token/"]);
 const DOCUMENTATION_DIR_SEGMENT = /(^|[\\/])(references|docs)([\\/]|$)/i;
 const DOCUMENTATION_EXTENSION = /\.(md|mdx|txt|rst)$/i;
 
 function isDocumentationAboutSecrets(relativePath, matchedPattern) {
-  if (!LOOSE_SECRET_KEYWORD_PATTERN_SOURCES.has(String(matchedPattern))) return false;
+  // scripts-reviewer finding (M1, post-security-review): identify one of
+  // the four loose patterns by REFERENCE against secret-filenames.mjs's own
+  // exported LOOSE_SECRET_FILENAME_PATTERNS -- matchesSecretFilename's
+  // `.find()` returns the exact array element from SECRET_FILENAME_PATTERNS,
+  // so this is a real object-identity check, not a string reconstruction. An
+  // earlier version compared `String(matchedPattern)` against a hand-typed
+  // `"/secret/"`-shaped string Set defined only in this file -- nothing tied
+  // the two files' representations together, so any future edit to one of
+  // those four patterns' literal form in secret-filenames.mjs (a flag, an
+  // escape, a rewrap) would have silently broken this check with no error
+  // anywhere, permanently un-exempting every documentation-about-secrets
+  // file again (fail-closed, but silently -- the exact regression issue #78
+  // fixed, reintroduced with no diagnostic).
+  if (!LOOSE_SECRET_FILENAME_PATTERNS.includes(matchedPattern)) return false;
   // Security review, issue #78 fix (m2): a relativePath that escapes the
   // canonical root (a ".."-prefixed traversal tail) must never satisfy this
   // exemption, even if some ancestor segment happens to be literally named
