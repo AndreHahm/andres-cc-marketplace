@@ -44,6 +44,7 @@ class SyncResult:
 class HooksMergePlan:
     actions: tuple[SyncAction, ...]
     merged_document: dict
+    sources: tuple[Path, ...] = ()
 
 
 def _iter_component_files(plugin_root: Path):
@@ -237,7 +238,11 @@ def plan_hooks_merge(
             )
         )
 
-    return HooksMergePlan(actions=tuple(actions), merged_document=merged_document)
+    return HooksMergePlan(
+        actions=tuple(actions),
+        merged_document=merged_document,
+        sources=tuple(path for _, path in sources),
+    )
 
 
 def _atomic_write(destination: Path, data: bytes) -> None:
@@ -282,36 +287,107 @@ def apply_hooks_merge_plan(plan: HooksMergePlan) -> SyncResult:
     return SyncResult(applied=tuple(applied))
 
 
-def stage_generated_destinations(repo: Path, actions: tuple[SyncAction, ...]) -> tuple[Path, ...]:
-    """Stage each applied create/update action's destination, but only when its own canonical
-    `source` is already staged in this commit -- leaving an unrelated repair (drift the sync
-    happened to also fix) untouched on disk, unstaged, matching the commit skill's existing
-    scope rule.
-
-    A canonical source or generated-destination path here is untrusted plugin content on a
-    fetched or contributed branch. Every path below reaches `git` as a single literal argv
-    element via `subprocess.run`'s list form -- never interpolated into a shell command string
-    -- so the shell never re-parses it and no quoting/injection concern applies regardless of
-    what characters the path contains.
-    """
-    staged = {
+def _staged_path_set(repo: Path) -> set[str]:
+    return {
         path
         for change in GitState(repo=repo).staged_paths()
         for path in (change.old_path, change.new_path)
         if path is not None
     }
+
+
+def _is_fully_staged(repo: Path, path: Path) -> bool:
+    """True when `path` has no unstaged worktree changes on top of what's staged -- i.e. the
+    index content `git diff --cached` shows for it is the same content actually on disk.
+
+    `plan_plugin_sync`/`plan_exports` read a canonical source's *working-tree* bytes
+    (`source.read_bytes()`), not its staged (index) content. If a source is only partially
+    staged (some hunks staged, some not), the generated destination gets built from the fuller
+    working-tree version and then staged as if it matched -- `check_staged_parity` then rejects
+    the commit, since the staged destination no longer byte-matches the staged source. Same
+    Y-character check `lint-staged-python.sh` already uses for the identical reason.
+
+    `:(top,literal)` anchors the match to the repo root regardless of `cwd` -- but that magic
+    word only makes sense applied to a repo-relative pathspec; `path` itself may be absolute
+    (every `SyncAction.source`/`HooksMergePlan.sources` entry is), so it's resolved relative to
+    `repo` first.
+    """
+    rel_path = path.resolve().relative_to(repo.resolve()).as_posix()
+    result = subprocess.run(
+        ["git", "status", "--porcelain", "-z", "--", f":(top,literal){rel_path}"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    entries = result.stdout.split(b"\0")
+    if not entries or not entries[0]:
+        return True  # nothing pending for this path at all -- trivially fully staged
+    status_line = entries[0].decode("utf-8", errors="surrogateescape")
+    return status_line[1:2] == " "
+
+
+def _git_add_forced(repo: Path, destination: Path) -> None:
+    # -f: a generated destination under .claude/.codex/.agents is a deliberately tracked file
+    # regardless of what a machine-local global gitignore says about those directory names (some
+    # machines exclude them everywhere) -- same override the test suite's own
+    # GitRepoHelper.stage() already applies for the identical reason.
+    #
+    # A destination path here is untrusted plugin content on a fetched or contributed branch;
+    # it reaches `git` as a single literal argv element via `subprocess.run`'s list form -- never
+    # interpolated into a shell command string -- so the shell never re-parses it and no
+    # quoting/injection concern applies regardless of what characters the path contains.
+    try:
+        subprocess.run(["git", "add", "-f", "--", str(destination)], cwd=repo, check=True)
+    except subprocess.CalledProcessError as exc:
+        raise SyncError(f"git add failed for {destination}: {exc}") from exc
+
+
+def stage_generated_destinations(repo: Path, actions: tuple[SyncAction, ...]) -> tuple[Path, ...]:
+    """Stage each applied create/update action's destination, but only when its own canonical
+    `source` is already staged in this commit *and* that source has no unstaged changes on top
+    (see `_is_fully_staged`) -- leaving an unrelated repair (drift the sync happened to also fix)
+    or a partially-staged source's mismatched destination untouched on disk, unstaged.
+    """
+    staged = _staged_path_set(repo)
     repo_resolved = repo.resolve()
     staged_destinations: list[Path] = []
     for action in actions:
         if action.operation not in ("create", "update") or action.source is None:
             continue
         rel_source = action.source.resolve().relative_to(repo_resolved).as_posix()
-        if rel_source not in staged:
+        if rel_source not in staged or not _is_fully_staged(repo, action.source):
             continue
-        # -f: a generated destination under .claude/.codex/.agents is a deliberately tracked
-        # file regardless of what a machine-local global gitignore says about those directory
-        # names (some machines exclude them everywhere) -- same override the test suite's own
-        # GitRepoHelper.stage() already applies for the identical reason.
-        subprocess.run(["git", "add", "-f", "--", str(action.destination)], cwd=repo, check=True)
+        _git_add_forced(repo, action.destination)
+        staged_destinations.append(action.destination)
+    return tuple(staged_destinations)
+
+
+def stage_hooks_merge_result(repo: Path, plan: HooksMergePlan) -> tuple[Path, ...]:
+    """Stage the merged `hooks.json` destination(s) when at least one contributing per-plugin
+    `hooks/hooks.json` (or the repo-level hooks path) is staged and fully staged.
+
+    The merge has no single 1:1 canonical source the way `plan_plugin_sync`/`plan_exports` do --
+    one destination is built from N contributing files -- so `stage_generated_destinations`
+    (which requires exactly one `action.source`) never covers it; every `HooksMergePlan` action
+    carries `source=None`. Without this, staging a canonical `plugins/<name>/hooks/hooks.json`
+    change leaves the regenerated `.claude/hooks/hooks.json` unstaged and unstageable by
+    `--stage`, silently narrowing coverage versus the old fully-manual step 8 flow this replaced.
+    """
+    staged = _staged_path_set(repo)
+    repo_resolved = repo.resolve()
+    any_staged_source = False
+    for source in plan.sources:
+        try:
+            rel_source = source.resolve().relative_to(repo_resolved).as_posix()
+        except ValueError:
+            continue  # a source outside the repo (e.g. a caller-supplied external path) can't
+            # be "staged" in this repo's index at all
+        if rel_source in staged and _is_fully_staged(repo, source):
+            any_staged_source = True
+    if not any_staged_source:
+        return ()
+    staged_destinations: list[Path] = []
+    for action in plan.actions:
+        _git_add_forced(repo, action.destination)
         staged_destinations.append(action.destination)
     return tuple(staged_destinations)

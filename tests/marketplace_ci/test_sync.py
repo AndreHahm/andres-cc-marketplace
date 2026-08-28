@@ -1,4 +1,5 @@
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ from scripts.marketplace_ci.sync import (
     plan_hooks_merge,
     plan_plugin_sync,
     stage_generated_destinations,
+    stage_hooks_merge_result,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -154,6 +156,101 @@ def test_stage_generated_destinations_skips_actions_without_staged_source(git_re
     executable = tuple(a for a in plan.actions if a.operation in ("create", "update"))
 
     staged = stage_generated_destinations(git_repo.root, executable)
+
+    assert staged == ()
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert result.stdout == ""
+
+
+def test_stage_generated_destinations_skips_partially_staged_source(git_repo, registry_for):
+    plan = plan_plugin_sync(
+        git_repo.root, registry_for("sample-kit"), previous=None, bootstrap=True
+    )
+    apply_sync_plan(plan)
+    source = git_repo.root / "plugins" / "sample-kit" / "skills" / "demo" / "SKILL.md"
+    subprocess.run(["git", "add", "-f", "--", str(source)], cwd=git_repo.root, check=True)
+    # Further, unstaged edit on top of the already-staged content -- a partial stage.
+    source.write_text(source.read_text(encoding="utf-8") + "\nmore\n", encoding="utf-8")
+    executable = tuple(a for a in plan.actions if a.operation in ("create", "update"))
+
+    staged = stage_generated_destinations(git_repo.root, executable)
+
+    assert staged == ()
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert ".claude/skills/demo/SKILL.md" not in result.stdout.splitlines()
+
+
+def test_stage_generated_destinations_wraps_git_add_failure_as_sync_error(git_repo, registry_for):
+    plan = plan_plugin_sync(
+        git_repo.root, registry_for("sample-kit"), previous=None, bootstrap=True
+    )
+    apply_sync_plan(plan)
+    subprocess.run(
+        ["git", "add", "-f", "--", "plugins/sample-kit/skills/demo/SKILL.md"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+    )
+    executable = list(a for a in plan.actions if a.operation in ("create", "update"))
+    real_action = next(
+        a for a in executable if a.destination.name == "SKILL.md" and "demo" in a.destination.parts
+    )
+    outside_destination = git_repo.root.parent / "outside-the-repo.md"
+    bad_action = replace(real_action, destination=outside_destination)
+
+    with pytest.raises(SyncError, match="git add failed"):
+        stage_generated_destinations(git_repo.root, (bad_action,))
+
+
+def test_stage_hooks_merge_result_stages_when_contributing_source_staged(git_repo, registry_for):
+    plan = plan_hooks_merge(
+        git_repo.root,
+        registry_for("sample-kit", "sample-kit-two"),
+        repo_hooks_path=FIXTURE_REPO_HOOKS,
+    )
+    apply_hooks_merge_plan(plan)
+    subprocess.run(
+        ["git", "add", "-f", "--", "plugins/sample-kit/hooks/hooks.json"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+    )
+
+    staged = stage_hooks_merge_result(git_repo.root, plan)
+
+    dest = (git_repo.root / ".claude" / "hooks" / "hooks.json").resolve()
+    assert dest in staged
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert ".claude/hooks/hooks.json" in result.stdout.splitlines()
+
+
+def test_stage_hooks_merge_result_skips_when_no_contributing_source_staged(git_repo, registry_for):
+    plan = plan_hooks_merge(
+        git_repo.root,
+        registry_for("sample-kit", "sample-kit-two"),
+        repo_hooks_path=FIXTURE_REPO_HOOKS,
+    )
+    apply_hooks_merge_plan(plan)
+
+    staged = stage_hooks_merge_result(git_repo.root, plan)
 
     assert staged == ()
     result = subprocess.run(

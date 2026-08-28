@@ -160,7 +160,13 @@ CRITICAL: Perform the following steps exactly as described:
    reimplement this staging step yourself with a model-composed `git add -- <path>`** — only `--stage`'s
    own internal logic ever touches a generated-destination filename; leave any other file those commands
    happened to repair (drift unrelated to this commit) on disk, unstaged, exactly as `--stage` already
-   does by only staging a destination whose own canonical source is already staged in this commit.
+   does by only staging a destination whose own canonical source is already staged in this commit **and**
+   has no unstaged changes on top of what's staged (a partially-staged source would otherwise get its
+   generated destination built from its fuller working-tree content and staged as if it matched, which
+   `check-all`'s own parity check below would then reject). `sync-plugin-mirrors --stage` additionally
+   stages the merged `.claude/hooks/hooks.json` result when any contributing plugin's own
+   `hooks/hooks.json` is staged (and fully staged) — that destination has no single canonical source the
+   per-file logic above matches against, so it needs this separate check.
    Finally run `uv run python -m scripts.marketplace_ci check-all --staged` — **this runs even
    under `--no-verify`**, since `--no-verify` only skips `pnpm lint`-style checks (step 4), not marketplace
    parity. If it fails, report the specific mismatch and stop; do not commit an inconsistent mirror/export.
@@ -184,7 +190,7 @@ CRITICAL: Perform the following steps exactly as described:
 14. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly. **Immediately before running `git commit`** (right after confirmation, or right before committing directly when confirmation is off), run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` — this writes the marker git-kit's commit-guard hook requires; it must be written right before the commit, not earlier in this run, since the hook only accepts a marker up to 60 seconds old.
 15. **Amend**: if `--amend` was given, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` immediately before running it, then use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
 **Steps 16 and 17's numbers below are cited externally** — `plugins/git-kit/skills/create-pr/SKILL.md` names them by number in its own Pre-flight Checks instructions to `commit`. If either step is ever renumbered, update `create-pr`'s citations in the same change.
-16. **Push**: skip this step entirely if `commit` was invoked as a nested dependency from `create-pr`'s own Pre-flight Checks (i.e. this run's instructions say not to push on this run's behalf) — this applies even when `--push` was given or `commit_auto_push` is `true`, and the push-confirmation `AskUserQuestion` below is not asked at all in that case, not merely answered on the caller's behalf; `create-pr`'s own Pre-flight step 4 mandatory review gate has not run yet at this point, and pushing here would let the branch reach the remote before that gate ever sees it. **State plainly in this run's output that the push was suppressed for this nested invocation** — a `--push` flag or `commit_auto_push: true` that silently produced no push would otherwise read as a dropped instruction rather than a deliberate gate. Otherwise: push after a successful commit when `--push` was given (explicit override, always pushes regardless of setting), or when `commit_auto_push` is `true`. Otherwise, when `commit_auto_push` is `false` and no `--push` flag was given, ask via `AskUserQuestion` whether to push. **Immediately before pushing, resolve the branch name with `git rev-parse --abbrev-ref HEAD` rather than retyping or recomposing whatever branch name is already in this run's own context** — after a `gh pr checkout` of a contributed PR, a branch name is attacker-influenced content, and `git check-ref-format`'s forbidden-character set doesn't exclude every shell metacharacter (`$`, `` ` ``, `(`, `)`, `;`, `|`, `&` can all be legal in a ref name), so a name recomposed by hand into `git push origin <branch>` carries the same injection-by-composition risk as a working-tree filename; resolving it fresh from `git rev-parse` immediately before the push and passing that value straight through avoids ever typing the name into the command yourself. If push fails because there's no upstream, suggest `git push -u origin <branch>` using that same freshly-resolved name. **Never push with `--force`, `--force-with-lease`, `--delete`, or a `+`-prefixed refspec** — the `allowed-tools` grant for `git push origin`/`git push -u origin` is wider than this skill ever uses (it permits those flags at the permission layer; nothing in the tool grant itself narrows them out), so this is a textual boundary on an already-broad grant, not an assumption that the grant enforces it. If a push is rejected as non-fast-forward, stop and report it — never force-push to resolve that.
+16. **Push**: skip this step entirely if `commit` was invoked as a nested dependency from `create-pr`'s own Pre-flight Checks (i.e. this run's instructions say not to push on this run's behalf) — this applies even when `--push` was given or `commit_auto_push` is `true`, and the push-confirmation `AskUserQuestion` below is not asked at all in that case, not merely answered on the caller's behalf; `create-pr`'s own Pre-flight step 4 mandatory review gate has not run yet at this point, and pushing here would let the branch reach the remote before that gate ever sees it. **State plainly in this run's output that the push was suppressed for this nested invocation** — a `--push` flag or `commit_auto_push: true` that silently produced no push would otherwise read as a dropped instruction rather than a deliberate gate. Otherwise: push after a successful commit when `--push` was given (explicit override, always pushes regardless of setting), or when `commit_auto_push` is `true`. Otherwise, when `commit_auto_push` is `false` and no `--push` flag was given, ask via `AskUserQuestion` whether to push. **Push with `git push origin HEAD` — never `git push origin <branch>` with a branch name typed or interpolated into the command text, including a value freshly resolved from `git rev-parse` immediately beforehand.** After a `gh pr checkout` of a contributed PR, a branch name is attacker-influenced content, and `git check-ref-format`'s forbidden-character set doesn't exclude every shell metacharacter (`$`, `` ` ``, `(`, `)`, `;`, `|`, `&` can all be legal in a ref name) — live-verified: a ref named `review/foo;touch${IFS}INJECTED` passes `check-ref-format` and, once composed into a `git push origin <branch>` command string and run, executes the injected `touch`. Resolving the name via `git rev-parse` first and passing *that value* into the next command doesn't help — the model still has to type the resolved text into the push command, which is the exact same composition step that made the vulnerability possible in the first place. `git push origin HEAD` sidesteps this entirely: `HEAD` is a fixed four-character literal that never varies, and git resolves it to the current branch internally, in its own ref-resolution code, never by re-parsing shell text the model composed — live-verified against the same crafted ref name: `git push origin HEAD` pushes correctly with no branch text ever appearing in a command the model builds. If push fails because there's no upstream, suggest `git push -u origin HEAD`. **Never push with `--force`, `--force-with-lease`, `--delete`, or a `+`-prefixed refspec** — the `allowed-tools` grant for `git push origin`/`git push -u origin` is wider than this skill ever uses (it permits those flags at the permission layer; nothing in the tool grant itself narrows them out), so this is a textual boundary on an already-broad grant, not an assumption that the grant enforces it. If a push is rejected as non-fast-forward, stop and report it — never force-push to resolve that.
 17. **Auto-PR**: skip this step entirely if `commit` was invoked as a nested dependency from `create-pr`'s own Pre-flight Checks (i.e. this run's instructions say to skip Auto-PR) — `create-pr` is about to create the PR itself right after this run returns, so running this step too would create a duplicate PR or nest `create-pr` inside itself. For a `create-pr`-nested invocation specifically, this is always passed together with step 16's push-skip instruction, never independently — a different caller may pass only this Auto-PR-skip instruction without also skipping step 16's push (see `plugins/analysis-kit/skills/running-a-full-retrospective/references/phase-5-fix-execution.md` for one such caller), so don't assume the two are coupled outside the `create-pr` case. Otherwise, after a successful push (from step 16), check `gh pr view --json number` for the current branch. If a PR is already open, skip this step entirely. Otherwise: when `push_auto_pr` is `true`, invoke `Skill(git-kit:create-pr)` directly; when `false`, ask via `AskUserQuestion` whether to create one now, and invoke `Skill(git-kit:create-pr)` only on yes.
 18. **Show the result**: commit hash, files changed, insertions/deletions, and push status (if a push happened)
 
@@ -304,7 +310,7 @@ pattern/examples, never as a separate source of truth):**
   points you to `standalone-commits` for the actual split — it doesn't perform the split itself
 - Always reviews the commit diff to ensure the message matches the changes
 - You'll be asked to confirm the generated message before the commit runs, unless `commit_confirm_before_commit: false` is set — but that setting (along with `commit_auto_stage: true`, `commit_auto_push: true`, and `push_auto_pr: true`) is only honored from `.claude/git-kit.local.json` when it isn't tracked by git; a git-tracked copy can never silently weaken any of these gates, and the skill falls back to the safe defaults in `git-kit.settings.json` instead
-- `--amend` warns before rewriting an already-pushed commit; `--push` pushes after a successful commit (an explicit override that always pushes) and suggests `git push -u origin <branch>` if there's no upstream; without `--push`, a push still happens automatically if `commit_auto_push: true`, otherwise you're asked — **except when `commit` was invoked as a nested dependency from `create-pr`'s Pre-flight Checks with instructions not to push, where step 16 skips entirely and `--push`/`commit_auto_push` are not honored for this run; that suppression is reported in this run's output** (see step 16)
+- `--amend` warns before rewriting an already-pushed commit; `--push` pushes after a successful commit (an explicit override that always pushes) via `git push origin HEAD`, suggesting `git push -u origin HEAD` if there's no upstream — never a branch name typed into the command; without `--push`, a push still happens automatically if `commit_auto_push: true`, otherwise you're asked — **except when `commit` was invoked as a nested dependency from `create-pr`'s Pre-flight Checks with instructions not to push, where step 16 skips entirely and `--push`/`commit_auto_push` are not honored for this run; that suppression is reported in this run's output** (see step 16)
 - After a push, if no PR is already open for the branch, a PR gets created automatically when `push_auto_pr: true`, otherwise you're asked whether to create one
 
 ## Testing & Validation
@@ -340,8 +346,24 @@ conversational, `AskUserQuestion`-driven skill with no other executable logic of
 - [ ] Step 6's staging never composes a `git add <filename>` string from a working-tree filename —
       partial-staging always goes through `stage-selected-files.sh --list` and then
       `stage-selected-files.sh <index...>`, passing only plain digits back, never the filename itself
-- [ ] Step 16 always resolves the branch name fresh via `git rev-parse --abbrev-ref HEAD` immediately
-      before `git push`, rather than reusing or retyping a branch name already in this run's context
+- [ ] `stage-selected-files.sh` is committed with the executable bit set (`100755`, not `100644`) —
+      on a fresh POSIX checkout, a non-executable script invoked by direct path (as step 6 does)
+      fails with `Permission denied` (exit 126) before the user ever sees the candidate list (found
+      by Codex's automated PR review, 2026-08-28: this repo's `core.fileMode=false` default let the
+      original commit ship non-executable without any local signal, since the working-tree file
+      still showed as executable regardless of what mode git actually recorded)
+- [ ] Staging by index always resolves against the exact snapshot `--list` produced, never a fresh
+      re-scan of `git status` at staging time — a working-tree change between the two calls must
+      never silently resolve the same index to a different file (found independently by this
+      session's own pre-push `cross-model-review` and by CodeRabbit's automated PR review,
+      2026-08-28)
+- [ ] `--list` enumerates an untracked directory's individual files, never the directory as one
+      collapsed candidate — selecting one numbered entry must never silently stage more than the
+      one file it displayed (found by Codex's automated PR review, 2026-08-28: `--untracked-files=all`
+      is required, since the default collapses a wholly-untracked directory to one `?? dirname/` entry)
+- [ ] Step 16 always pushes with `git push origin HEAD` (`git push -u origin HEAD` when there's no
+      upstream) — never a branch name typed or interpolated into the push command, including one
+      freshly resolved via `git rev-parse` immediately beforehand
 - [ ] Step 7.5's `lint-staged-python.sh` always positively confirms full-staging via `git status
       --porcelain` per staged `.py` path before auto-fixing it — a path that isn't confirmed fully
       staged always skips that file's auto-fix rather than risking a blanket `git add` pulling unstaged
@@ -379,6 +401,20 @@ staged correctly with no code execution; out-of-range/non-digit arguments correc
       (`test_stage_generated_destinations_stages_only_actions_with_staged_source`,
       `test_stage_generated_destinations_skips_actions_without_staged_source`) — both run against a real
       temporary git repository (the `git_repo` fixture), not a mock
+- [x] `--stage` skips a destination whose canonical source is only partially staged, rather than
+      staging a destination built from fuller working-tree content than what's actually staged
+      (`test_stage_generated_destinations_skips_partially_staged_source`; found by CodeRabbit's
+      automated PR review, 2026-08-28)
+- [x] A `git add` failure inside `--stage` surfaces as a normal command error (`SyncError` → exit 1),
+      never an uncaught `subprocess.CalledProcessError` traceback
+      (`test_stage_generated_destinations_wraps_git_add_failure_as_sync_error`; found by CodeRabbit's
+      automated PR review, 2026-08-28)
+- [x] `sync-plugin-mirrors --stage` also stages the merged `.claude/hooks/hooks.json` result when a
+      contributing plugin's own `hooks/hooks.json` is staged and fully staged
+      (`test_stage_hooks_merge_result_stages_when_contributing_source_staged`,
+      `test_stage_hooks_merge_result_skips_when_no_contributing_source_staged`; found by Codex's
+      automated PR review, 2026-08-28 — the per-file `--stage` logic above has no single source to
+      match against a merged, N-sources-to-1-destination result)
 - [ ] Live invocation: a real `commit` run against a deliberately drifted canonical file, confirming step 8
       actually repairs and stages the right subset in this repository (not yet exercised end-to-end;
       Task 12's rollout PR is the first real opportunity)
