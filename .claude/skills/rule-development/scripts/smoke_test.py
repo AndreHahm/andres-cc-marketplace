@@ -35,16 +35,17 @@ def check_frontmatter():
 
 
 def check_referenced_files():
-    # This skill's body cites both `references/foo.md` and `examples/foo.md` paths
-    # (the Reference Guide table's last row names both example files) -- both forms
-    # must be checked, or the example files silently go unverified.
+    # This skill's body cites `references/foo.md`/`examples/foo.md` paths both
+    # backtick-fenced and as markdown links (e.g. `[foo.md](references/foo.md)`, per
+    # SKILL.md's Rule Structure section) -- both forms must be checked, or a link-style
+    # citation like references/rule-file-skeleton.md silently goes unverified.
     _, body, _ = _frontmatter_and_body()
-    pattern = r"`((?:references|examples)/[\w.-]+\.md)`"
+    pattern = r"`((?:references|examples)/[\w.-]+\.md)`|\]\(((?:references|examples)/[\w.-]+\.md)\)"
     missing = []
     for match in re.finditer(pattern, body):
-        path = SKILL_DIR / match.group(1)
-        if not path.exists():
-            missing.append(match.group(1))
+        target = match.group(1) or match.group(2)
+        if not (SKILL_DIR / target).exists():
+            missing.append(target)
     if missing:
         return False, "referenced file(s) do not exist: " + ", ".join(sorted(set(missing)))
     return True, "all referenced files exist"
