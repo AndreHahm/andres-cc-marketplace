@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response identifies Workflow 3 Step 1's open-question gate as blocking before Step 2's resolve/close sequence", "passed": false, "evidence": "Baseline treated the open question as something to be answered inline as part of the same close operation, not as an explicit precondition gate blocking the close until a human addresses or overrides it -- no equivalent stop-and-surface-to-user step"},
+    {"text": "Response does not proceed to mark the issue Resolved while the open question remains unaddressed", "passed": false, "evidence": "Baseline's proposed sequence is: locate the comment, post a reply answering it itself, then close -- this proceeds to close in the same operation rather than gating and waiting for human confirmation, a materially different (more autonomous) behavior than the skill's explicit gate"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 0, "pass_rate": 0.0}
+}

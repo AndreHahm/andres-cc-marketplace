@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response identifies workflows/create-an-issue.md's Step 1 (dedup check via gh issue list --search / gh api search/issues) as running before any drafting or filing", "passed": true, "evidence": "Actually ran the real dedup check (gh issue list --search + gh api search/issues) against the live repo before proceeding, per Step 1"},
+    {"text": "Response states drafting is delegated to Skill(git-kit:github-issue-creator), not done directly by this skill", "passed": true, "evidence": "Actually invoked Skill(git-kit:github-issue-creator), producing a redacted draft file, rather than drafting inline itself"},
+    {"text": "Response states this skill (not github-issue-creator) files the issue live via gh issue create", "passed": true, "evidence": "Correctly stopped before Step 3 (File It Live) per task scope, but correctly described gh issue create as this skill's own responsibility, distinct from github-issue-creator's drafting-only role"},
+    {"text": "Response states that if a real duplicate is found, the flow stops and points at the existing issue instead of filing a new one", "passed": true, "evidence": "Stated this explicitly; 0 duplicates were found in the live check so this branch wasn't exercised, but the stated behavior matches the workflow doc"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

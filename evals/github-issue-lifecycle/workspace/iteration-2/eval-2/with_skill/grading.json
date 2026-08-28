@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response uses GitHub's native sub-issues API, not a 'Related: #N' prose comment", "passed": true, "evidence": "Correctly identified the native sub-issues REST API per references/sub-issues-api.md, citing this skill's own documented rationale"},
+    {"text": "Response uses the plural REST path repos/<owner>/<repo>/issues/<number>/sub_issues, not the singular sub_issue", "passed": true, "evidence": "Correctly used the plural path with the correct request shape"},
+    {"text": "Response correctly identifies sub_issue_id must be the target issue's internal numeric id (fetched via gh api repos/<owner>/<repo>/issues/<target-number> --jq '.id'), not its visible number", "passed": true, "evidence": "Correctly identified and explained the id-vs-number gotcha"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

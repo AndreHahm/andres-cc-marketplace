@@ -83,8 +83,9 @@ not its visible `number`.
 
 ## Testing & Validation
 
-**Eval evidence:** `evals/github-issue-lifecycle/evals.json` — 3 scenarios, run 2026-08-28 via
-`skill-tester`'s Quick Workflow (with_skill only), 9/9 assertions passing (100%).
+**Eval evidence:** `evals/github-issue-lifecycle/evals.json` — 3 scenarios, run 2026-08-28. Quick
+Workflow (with_skill only): 9/9 assertions (100%). Full Pipeline (with_skill + baseline): with_skill
+100%, baseline 50%, +50 percentage points.
 
 **Last dated run record:** 2026-08-28 — `scripts/smoke_test.py` (3/3 checks passing: frontmatter,
 referenced-file existence, Bash-scope grant consistency).

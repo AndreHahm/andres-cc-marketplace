@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response identifies workflows/create-an-issue.md's Step 1 (dedup check via gh issue list --search / gh api search/issues) as running before any drafting or filing", "passed": true, "evidence": "Baseline independently proposed searching open+closed issues for duplicates before drafting, from general good practice, not from the skill's own documented Step 1"},
+    {"text": "Response states drafting is delegated to Skill(git-kit:github-issue-creator), not done directly by this skill", "passed": false, "evidence": "No skill available in baseline mode; baseline drafted the issue content inline itself with no delegation concept -- structurally cannot satisfy this assertion"},
+    {"text": "Response states this skill (not github-issue-creator) files the issue live via gh issue create", "passed": false, "evidence": "N/A -- no two-skill delegation split exists in the baseline's model; baseline describes itself running gh issue create directly after drafting, no distinction between a drafting-only component and a filing component"},
+    {"text": "Response states that if a real duplicate is found, the flow stops and points at the existing issue instead of filing a new one", "passed": true, "evidence": "Baseline also stated it would present duplicates and not file a new issue if a real one is found"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 2, "pass_rate": 0.5}
+}
