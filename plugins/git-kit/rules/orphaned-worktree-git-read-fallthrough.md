@@ -23,6 +23,10 @@ rooted at the primary checkout path, not continuing in the orphaned one — `Wri
 continue to be correctly rejected by the worktree-isolation guard (which matches on the literal bound
 path, not on where git's fallthrough search happens to land) regardless of how normal the git reads look.
 
+See also [[require-worktree-rooted-absolute-paths]] for the broader, related case: a hand-typed absolute
+path to `Read`/`Edit`/`Grep` landing on the wrong checkout at any point in a worktree-bound session, not
+just this rule's narrower post-removal git-fallthrough scenario.
+
 ## Why
 
 Reproduced twice within a single session (`bb9785ce`, 2026-08-13): after `git-cleanup` removed a worktree
