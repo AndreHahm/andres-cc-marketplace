@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Correctly parses THIRD_PARTY_REVIEW_LEARNINGS.md for the last-cited PR",
+      "passed": true,
+      "evidence": "Grep found PR #172 as highest cited"
+    },
+    {
+      "text": "Correctly queries gh pr list --state merged for later PRs",
+      "passed": true,
+      "evidence": "86 merged PRs fetched, filtered to number greater than 172"
+    },
+    {
+      "text": "States the resolved candidate count explicitly",
+      "passed": true,
+      "evidence": "Stated exactly 1 candidate (PR 173)"
+    },
+    {
+      "text": "Correctly applies the cost-gate logic (small set threshold reasoning)",
+      "passed": true,
+      "evidence": "Cited the skill's own small-set clause and reasoned 1 PR meets it, no ask needed"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

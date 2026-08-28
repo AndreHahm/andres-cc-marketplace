@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Actually queries live GitHub PR #172 review history via a real tool call",
+      "passed": true,
+      "evidence": "Used gh pr view 172 and pr_review_fetcher.py, fetched 26 real entries"
+    },
+    {
+      "text": "Cross-checks against session transcripts, marking availability status explicitly",
+      "passed": true,
+      "evidence": "Checked 2 worktrees via session_parser.py, marked session-transcript: unavailable"
+    },
+    {
+      "text": "Correctly identifies which findings are already captured in the existing doc section, citing specific evidence",
+      "passed": true,
+      "evidence": "Cited doc lines 1011-1042, confirmed by content comparison not just PR-number presence"
+    },
+    {
+      "text": "Any new candidate proposed is grounded in real cited evidence, not fabricated",
+      "passed": true,
+      "evidence": "Cited real PR discussion URLs for the version-bump-omission finding"
+    },
+    {
+      "text": "States reasoning for findings judged already-generalized or non-generalizable rather than silently dropping them",
+      "passed": true,
+      "evidence": "2 findings judged already-generalized (cited line numbers), 1 judged one-off with stated reasoning"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

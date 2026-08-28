@@ -11,11 +11,11 @@ description: >-
   tools/frameworks, actor behavior, governance/rules, recurring patterns,
   or a session/spec comparison — such as a bare "run a retrospective" or
   "analyze this session," when explicitly asking "which analysis-kit skill
-  do I need," or wanting the whole analyze-then-follow-up flow walked
-  through step by step instead of invoking each skill by hand. Not for
-  running several analysis types at once and consolidating them into one
-  report, even when phrased as a bare "run a full retrospective" — use
-  running-a-full-retrospective for that.
+  do I need" for a session/date-range scope, or wanting the whole
+  analyze-then-follow-up flow walked through step by step instead of
+  invoking each skill by hand. Not for running several analysis types at
+  once and consolidating them into one report, even when phrased as a bare
+  "run a full retrospective" — use running-a-full-retrospective for that.
 allowed-tools: Read Glob AskUserQuestion Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(comparing-sessions) Skill(comparing-session-to-specification) Skill(generating-analysis-recommendations) Skill(reviewing-analysis-findings)
 argument-hint: [optional: what you want to analyze, in your own words]
 ---
@@ -38,7 +38,8 @@ analysis-kit has 13 skills total — this one is the entry point for the 7 that 
 ## When to Use
 
 - The request names no specific analysis type — a bare "run a retrospective on this session" or "analyze this session" with no mention of component/skill performance, tools/frameworks, actor behavior, governance/rules, recurring patterns, or a session/spec comparison
-- Asking "which analysis-kit skill do I need for X"
+- Asking "which analysis-kit skill do I need for X" — for a session/date-range scope; a PR-set scope
+  routes to `mining-review-learnings`/`managing-review-learnings` instead (see "When NOT to Use")
 - Wanting the whole analyze → expand-findings (→ cross-check) flow walked through with a stop between each step, instead of remembering to invoke each skill by hand
 
 ## When NOT to Use
@@ -47,6 +48,7 @@ analysis-kit has 13 skills total — this one is the entry point for the 7 that 
 - **Running several of the 5 date-range analysis types back-to-back without stopping between each, then consolidating them into one prioritized report** — use `running-a-full-retrospective` instead; this skill gates every hop by design (confirm-before-dispatch) and has no consolidation step of its own, so chaining several types through here means either calling each skill directly or using the dedicated multi-run skill. This redirect doesn't cover `comparing-sessions`/`comparing-session-to-specification` — `running-a-full-retrospective` can't run either (they take a comparison target, not a bare scope), so chaining those two still means calling each directly through here
 - **Expanding a finding or cross-checking reports you already have** — go straight to `generating-analysis-recommendations`/`reviewing-analysis-findings`; this skill's own Phase 5 offers them but doesn't add anything beyond what calling them directly gives you
 - **A component/skill/agent/rule retrospective is already the known target** — invoke `analyzing-plugin-components` directly instead of routing through here; this skill's own bare-request framing (see "When to Use" above) exists specifically to catch the typeless case, not to replace a direct call once the type is known
+- **Mining merged PRs for review-learning patterns, or managing THIRD_PARTY_REVIEW_LEARNINGS.md/filing an issue from a mined candidate** — use `mining-review-learnings`/`managing-review-learnings` directly instead; both take a PR-set scope, not the session/date-range scope this skill's Phase 2 asks for, so neither is offered as a Phase 1 option here
 
 ## Phase 1: Pick an Analysis Type
 

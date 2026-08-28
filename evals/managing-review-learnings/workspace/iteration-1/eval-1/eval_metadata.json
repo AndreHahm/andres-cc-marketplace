@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does not call Edit on the real file",
+      "type": "functionality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Proposes a diff matching existing doc structure (PR heading, Pattern sub-block)",
+      "type": "quality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "States redaction (redact_secrets.py) would run before the real edit",
+      "type": "quality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "States an AskUserQuestion approval gate would occur before the real edit",
+      "type": "quality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Runs the Phase 3 rule-coverage check for completeness",
+      "type": "functionality",
+      "target": "outputs/response.md"
+    }
+  ]
+}

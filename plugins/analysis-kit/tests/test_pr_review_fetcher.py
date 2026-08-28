@@ -1,9 +1,14 @@
+"""Tests for scripts/pr_review_fetcher.py -- normalize/load_fixture behavior,
+the CLI's fixture and live-argument-validation paths, and _run_gh_api's
+--paginate/--slurp flattening."""
+
 from __future__ import annotations
 
 import json
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -85,6 +90,38 @@ def test_normalize_null_user_does_not_crash():
     records = pr_review_fetcher.normalize(reviews, comments)
     assert records[0]["reviewer"] is None
     assert records[1]["reviewer"] is None
+
+
+def test_run_gh_api_flattens_multi_page_slurp_output():
+    # gh api --paginate --slurp wraps each page's own JSON array into one
+    # outer array of pages -- a multi-page result must be flattened, not
+    # passed through as a list of lists.
+    page_1 = [{"id": 1}, {"id": 2}]
+    page_2 = [{"id": 3}]
+    mock_result = subprocess.CompletedProcess(
+        args=["gh", "api", "some/path", "--paginate", "--slurp"],
+        returncode=0,
+        stdout=json.dumps([page_1, page_2]),
+        stderr="",
+    )
+    with patch("subprocess.run", return_value=mock_result) as mock_run:
+        result = pr_review_fetcher._run_gh_api("some/path")
+    assert result == [{"id": 1}, {"id": 2}, {"id": 3}]
+    called_args = mock_run.call_args.args[0]
+    assert "--paginate" in called_args
+    assert "--slurp" in called_args
+
+
+def test_run_gh_api_handles_single_page_slurp_output():
+    mock_result = subprocess.CompletedProcess(
+        args=["gh", "api", "some/path", "--paginate", "--slurp"],
+        returncode=0,
+        stdout=json.dumps([[{"id": 1}]]),
+        stderr="",
+    )
+    with patch("subprocess.run", return_value=mock_result):
+        result = pr_review_fetcher._run_gh_api("some/path")
+    assert result == [{"id": 1}]
 
 
 def test_load_fixture_missing_keys_raises(tmp_path):

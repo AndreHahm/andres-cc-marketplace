@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports outcome as filed, never not-filed or an invented status",
+      "type": "functionality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Explicitly qualifies as unverified for the post-filing verification concern, not as a filing failure",
+      "type": "quality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Cites the skill's own defined 3-outcome vocabulary correctly",
+      "type": "quality",
+      "target": "outputs/response.md"
+    }
+  ]
+}

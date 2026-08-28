@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reports outcome as filed, never not-filed or an invented status",
+      "passed": true,
+      "evidence": "Reported filing succeeded"
+    },
+    {
+      "text": "Explicitly qualifies as unverified for the post-filing verification concern, not as a filing failure",
+      "passed": false,
+      "evidence": "Described it narratively (not a filing failure, unresolved follow-up concern) but never used the skill's specific defined phrase 'filed, but flagged as unverified'"
+    },
+    {
+      "text": "Cites the skill's own defined 3-outcome vocabulary correctly",
+      "passed": false,
+      "evidence": "No mention of the skill's defined filed/found-as-duplicate/filing-failed vocabulary at all -- baseline has no knowledge of it"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.333
+  }
+}
