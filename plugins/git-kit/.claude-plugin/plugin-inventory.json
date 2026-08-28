@@ -1,0 +1,1157 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_51c8f3af",
+      "name": "codex-review-recovery",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-review-recovery"
+          ],
+          "name": "codex-review-recovery",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-review-recovery",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-review-recovery"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_64e27e42",
+      "name": "collaborating-on-a-pr",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/collaborating-on-a-pr"
+          ],
+          "name": "collaborating-on-a-pr",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/collaborating-on-a-pr",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/collaborating-on-a-pr"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_d42ff1c9",
+      "name": "commit",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/commit"
+          ],
+          "name": "commit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/commit",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/commit"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_ef25bf90",
+      "name": "create-pr",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/create-pr"
+          ],
+          "name": "create-pr",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/create-pr",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/create-pr"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_18535e9c",
+      "name": "cross-model-review",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/cross-model-review"
+          ],
+          "name": "cross-model-review",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/cross-model-review",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/cross-model-review"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_dab17316",
+      "name": "dependency-updater",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/dependency-updater"
+          ],
+          "name": "dependency-updater",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/dependency-updater",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/dependency-updater"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_674af82c",
+      "name": "explain-pr-changes",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/explain-pr-changes"
+          ],
+          "name": "explain-pr-changes",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/explain-pr-changes",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/explain-pr-changes"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_7b9eaa2a",
+      "name": "finishing-work",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/finishing-work"
+          ],
+          "name": "finishing-work",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/finishing-work",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/finishing-work"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_7c8fa6b7",
+      "name": "gh-operations",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/gh-operations"
+          ],
+          "name": "gh-operations",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/gh-operations",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/gh-operations"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_54d874f1",
+      "name": "git-bisect",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/git-bisect"
+          ],
+          "name": "git-bisect",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/git-bisect",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/git-bisect"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_690dc637",
+      "name": "git-cleanup",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/git-cleanup"
+          ],
+          "name": "git-cleanup",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/git-cleanup",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/git-cleanup"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_9c968024",
+      "name": "git-notes",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/git-notes"
+          ],
+          "name": "git-notes",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/git-notes",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/git-notes"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_fd64f7fd",
+      "name": "git-rebase-sync",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/git-rebase-sync"
+          ],
+          "name": "git-rebase-sync",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/git-rebase-sync",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/git-rebase-sync"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_108d368c",
+      "name": "git-worktrees",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/git-worktrees"
+          ],
+          "name": "git-worktrees",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/git-worktrees",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/git-worktrees"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_22d94647",
+      "name": "github-issue-creator",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/github-issue-creator"
+          ],
+          "name": "github-issue-creator",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/github-issue-creator",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/github-issue-creator"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_aa1a5c2a",
+      "name": "github-issue-lifecycle",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/github-issue-lifecycle"
+          ],
+          "name": "github-issue-lifecycle",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/github-issue-lifecycle",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/github-issue-lifecycle"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_efdb7b1c",
+      "name": "handling-review-findings",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/handling-review-findings"
+          ],
+          "name": "handling-review-findings",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/handling-review-findings",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/handling-review-findings"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_c0365ca3",
+      "name": "manage-codeowners",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/manage-codeowners"
+          ],
+          "name": "manage-codeowners",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/manage-codeowners",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/manage-codeowners"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_4b57a749",
+      "name": "merge-pr",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/merge-pr"
+          ],
+          "name": "merge-pr",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/merge-pr",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/merge-pr"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_6ef82f8b",
+      "name": "resolving-merge-conflicts",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/resolving-merge-conflicts"
+          ],
+          "name": "resolving-merge-conflicts",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/resolving-merge-conflicts",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/resolving-merge-conflicts"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_0283dbf9",
+      "name": "standalone-commits",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/standalone-commits"
+          ],
+          "name": "standalone-commits",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/standalone-commits",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/standalone-commits"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_b07a5af3",
+      "name": "starting-work",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/starting-work"
+          ],
+          "name": "starting-work",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/starting-work",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/starting-work"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_c8742627",
+      "name": "create-git-kit-local-json",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/create-git-kit-local-json.md"
+          ],
+          "name": "create-git-kit-local-json",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/create-git-kit-local-json.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/create-git-kit-local-json.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_76fbc881",
+      "name": "git-status",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/git-status.md"
+          ],
+          "name": "git-status",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/git-status.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/git-status.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_4978e649",
+      "name": "sync-branch",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/sync-branch.md"
+          ],
+          "name": "sync-branch",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/sync-branch.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/sync-branch.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_50b04740",
+      "name": "update-branch-name",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/update-branch-name.md"
+          ],
+          "name": "update-branch-name",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/update-branch-name.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/update-branch-name.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_7a99c5ed",
+      "name": "PreToolUse-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "PreToolUse-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_6894c708",
+      "name": "Stop-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "Stop-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-28",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin_8b374e26",
+  "plugin_name": "git-kit",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-08-28"
+}
