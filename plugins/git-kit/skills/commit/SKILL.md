@@ -415,6 +415,16 @@ staged correctly with no code execution; out-of-range/non-digit arguments correc
       `test_stage_hooks_merge_result_skips_when_no_contributing_source_staged`; found by Codex's
       automated PR review, 2026-08-28 — the per-file `--stage` logic above has no single source to
       match against a merged, N-sources-to-1-destination result)
+- [x] The merged hooks result is never staged while *any* contributing source has unstaged edits,
+      even when a different contributing source is cleanly staged — `merged_document` is built from
+      every contributor's working-tree bytes at once, so one dirty contributor already leaked into
+      it regardless of the others' state
+      (`test_stage_hooks_merge_result_skips_when_another_contributor_is_partially_staged`; found by
+      round 2 of Codex's automated PR review, 2026-08-28)
+- [x] A staged *deletion* of a contributing `plugins/<name>/hooks/hooks.json` is recognized as a
+      reason to stage the (now-smaller) merged result too, even though a deleted file is absent from
+      `plan.sources` entirely (`test_stage_hooks_merge_result_stages_when_a_contributing_source_is_deleted`;
+      found by round 2 of Codex's automated PR review, 2026-08-28)
 - [ ] Live invocation: a real `commit` run against a deliberately drifted canonical file, confirming step 8
       actually repairs and stages the right subset in this repository (not yet exercised end-to-end;
       Task 12's rollout PR is the first real opportunity)

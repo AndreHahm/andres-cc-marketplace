@@ -98,3 +98,31 @@ canonical source (`plugins/git-kit/skills/commit/SKILL.md`) was already staged, 
 All 16 `tests/marketplace_ci/test_sync.py` tests (and the full 232-test `tests/marketplace_ci/` suite)
 pass after this round; `ruff format --check`, `ruff check`, and `ty check` all pass clean on the
 changed files.
+
+**Round-2 follow-up, same date, after Codex's automated review found two more real issues in the
+just-added `stage_hooks_merge_result` itself:**
+- **Cross-contributor safety**: the round-1 version staged the merge as soon as *any one* contributor
+  was staged, but `merged_document` is built from *every* contributor's working-tree bytes at once —
+  a second, dirty contributor's unstaged edits were already baked into the content being staged, with
+  nothing to catch it. Fixed by requiring every contributor with a resolvable in-repo path to pass
+  `_is_fully_staged` before staging proceeds at all, not just the one(s) found in the staged set.
+  `test_stage_hooks_merge_result_skips_when_another_contributor_is_partially_staged` reproduces this:
+  one contributor cleanly staged, a second edited-but-never-staged, and confirms the merge stays
+  unstaged.
+- **Deleted contributors**: `plan.sources` only lists files that still exist on disk, so deleting a
+  plugin's `hooks/hooks.json` made it invisible to the staging check entirely — the regenerated,
+  now-smaller `.claude/hooks/hooks.json` never got staged. Fixed by also checking
+  `GitState.staged_paths()` for a staged deletion whose old path matches the plugin-hooks-source shape
+  (`plugins/<name>/hooks/hooks.json`) or the repo-level default path.
+  `test_stage_hooks_merge_result_stages_when_a_contributing_source_is_deleted` reproduces this: deletes
+  one of two contributors, re-plans against the now-current registry (so the deleted file is genuinely
+  absent from `plan.sources`, matching what the CLI actually does), and confirms the merge still gets
+  staged.
+
+Both fixes required correcting the earlier hooks-merge tests too: they had never established a
+committed baseline, so an untouched sibling plugin's file showed as genuinely untracked (`??`) rather
+than clean — which the new, stricter safety check correctly treats as unsafe, but which made the
+*existing* passing tests fail once the stricter check landed. Added a `_commit_baseline()` helper that
+commits every fixture file first, matching the realistic case where unrelated plugins are already part
+of history. All 18 `tests/marketplace_ci/test_sync.py` tests (234-test full suite) pass after this
+round.
