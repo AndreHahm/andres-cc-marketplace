@@ -82,6 +82,7 @@ if [ -f "$MARKER" ]; then
   guard="${guard:-}"  # defensive: a concurrent/partial read under `set -u` must degrade to "no marker", never crash
   if [ "$guard" = "gh-pr-create" ] || [ "$guard" = "gh-pr-merge" ]; then
     case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
+    if [ -n "$ts" ] && [ "${#ts}" -gt 10 ]; then ts=""; fi  # bound magnitude -- 10 digits covers epoch seconds until year 2286; robustness hardening (bash arithmetic silently wraps an oversized literal rather than erroring), not a bypass fix -- anyone who can write ts already controls the marker file
     if [ -n "$ts" ]; then
       ts=$((10#$ts))  # force base-10 -- a leading-zero epoch would otherwise be misread as octal
     fi
@@ -96,12 +97,22 @@ SKILL_NAME=""
 GH_SUBCOMMAND=""
 SKILL_HANDLES=""
 # gh(\.exe)? also catches the literal `gh.exe` invocation PowerShell callers sometimes use.
-if echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+create([[:space:]]|$)'; then
+# Herestring, not `echo "$COMMAND" | grep -qE ...` -- under `pipefail`, a
+# large-enough $COMMAND can SIGPIPE `echo` when `grep -q` exits on an early
+# match, and pipefail then reports that non-zero exit even though grep
+# matched -- an `if`/`elif` condition is exempt from `set -e` aborting on
+# that, so a real match would silently read as "no match" and fall through
+# to allow. See issue #87; guard-raw-pr-review.sh already uses this fix.
+# Residual: if the herestring redirection itself fails (unwritable/full
+# $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
+# Not caught by the ERR trap (if-conditions are exempt) -- same class as the
+# pipe form's own fork-failure path, not a regression from it.
+if grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+create([[:space:]]|$)' <<< "$COMMAND"; then
   GUARD_TYPE="gh-pr-create"
   SKILL_NAME="create-pr"
   GH_SUBCOMMAND="gh pr create"
   SKILL_HANDLES="template resolution, draft-vs-ready confirmation, and pre-flight commit checks"
-elif echo "$COMMAND" | grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)'; then
+elif grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)' <<< "$COMMAND"; then
   GUARD_TYPE="gh-pr-merge"
   SKILL_NAME="merge-pr"
   GH_SUBCOMMAND="gh pr merge"

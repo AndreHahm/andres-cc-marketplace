@@ -86,6 +86,7 @@ if [ -f "$MARKER" ]; then
   guard="${guard:-}"  # defensive: a concurrent/partial read under `set -u` must degrade to "no marker", never crash
   if [ "$guard" = "git-commit" ]; then
     case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
+    if [ -n "$ts" ] && [ "${#ts}" -gt 10 ]; then ts=""; fi  # bound magnitude -- 10 digits covers epoch seconds until year 2286; robustness hardening (bash arithmetic silently wraps an oversized literal rather than erroring), not a bypass fix -- anyone who can write ts already controls the marker file
     if [ -n "$ts" ]; then
       ts=$((10#$ts))  # force base-10 -- a leading-zero epoch would otherwise be misread as octal
       delta=$((now - ts))
@@ -107,7 +108,17 @@ fi
 # can't bypass this guard. Same prefix pattern guard-raw-branch-create.sh
 # already uses.
 GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--?[^[:space:]]+))*[[:space:]]+'
-if ! echo "$COMMAND" | grep -qE "${GIT_PREFIX}commit([[:space:]]|\$)"; then
+# Herestring, not `echo "$COMMAND" | grep -qE ...` -- under `pipefail`, a
+# large-enough $COMMAND can SIGPIPE `echo` when `grep -q` exits on an early
+# match, and pipefail then reports that non-zero exit even though grep
+# matched -- an `if`/`elif` condition is exempt from `set -e` aborting on
+# that, so a real match would silently read as "no match" and fall through
+# to allow. See issue #87; guard-raw-pr-review.sh already uses this fix.
+# Residual: if the herestring redirection itself fails (unwritable/full
+# $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
+# Not caught by the ERR trap (if-conditions are exempt) -- same class as the
+# pipe form's own fork-failure path, not a regression from it.
+if ! grep -qE "${GIT_PREFIX}commit([[:space:]]|\$)" <<< "$COMMAND"; then
   exit 0
 fi
 

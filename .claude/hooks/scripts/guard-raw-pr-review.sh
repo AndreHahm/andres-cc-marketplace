@@ -145,6 +145,7 @@ if [ -f "$MARKER" ]; then
   guard="${guard:-}"  # defensive: a concurrent/partial read under `set -u` must degrade to "no marker", never crash
   if [ "$guard" = "gh-pr-review" ]; then
     case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
+    if [ -n "$ts" ] && [ "${#ts}" -gt 10 ]; then ts=""; fi  # bound magnitude -- 10 digits covers epoch seconds until year 2286; robustness hardening (bash arithmetic silently wraps an oversized literal rather than erroring), not a bypass fix -- anyone who can write ts already controls the marker file
     if [ -n "$ts" ]; then
       ts=$((10#$ts))  # force base-10 -- a leading-zero epoch would otherwise be misread as octal
       delta=$((now - ts))
@@ -190,6 +191,10 @@ GRAPHQL_RE='(^|[^[:alnum:]_])graphql([^[:alnum:]_-]|$)'
 # itself matched -- an `if`/`elif` condition is exempt from `set -e` aborting on that, so the guard
 # would just silently treat a real match as "no match" and fall through toward `else: exit 0` (allow).
 # A herestring feeds the same text without a second process or a pipe, so there's nothing to SIGPIPE.
+# Residual: if the herestring redirection itself fails (unwritable/full
+# $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
+# Not caught by an ERR trap (if-conditions are exempt) -- same class as the
+# pipe form's own fork-failure path, not a regression from it.
 if grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+review([[:space:]]|$)' <<< "$COMMAND"; then
   GH_SUBCOMMAND="gh pr review"
 elif grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+comment([[:space:]]|$)' <<< "$COMMAND"; then

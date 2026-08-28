@@ -102,6 +102,7 @@ if [ -f "$MARKER" ]; then
   guard="${guard:-}"  # defensive: a concurrent/partial read under `set -u` must degrade to "no marker", never crash
   if [ "$guard" = "git-cleanup-destructive" ]; then
     case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
+    if [ -n "$ts" ] && [ "${#ts}" -gt 10 ]; then ts=""; fi  # bound magnitude -- 10 digits covers epoch seconds until year 2286; robustness hardening (bash arithmetic silently wraps an oversized literal rather than erroring), not a bypass fix -- anyone who can write ts already controls the marker file
     if [ -n "$ts" ]; then
       ts=$((10#$ts))  # force base-10 -- a leading-zero epoch would otherwise be misread as octal
       delta=$((now - ts))
@@ -121,7 +122,17 @@ MATCH=false
 # instructs quoting the branch variable, so an unquoted-only match would miss
 # the exact form that skill is told to write.
 DELETE_FLAG='(-D|--delete[[:space:]]+--force|--force[[:space:]]+--delete|-d[[:space:]]+-f|-f[[:space:]]+-d|-df|-fd)'
-if echo "$COMMAND" | grep -qE "${GIT_PREFIX}branch([[:space:]]+-[^[:space:]]+)*[[:space:]]+${DELETE_FLAG}([[:space:]]+-[^[:space:]]+)*[[:space:]]+[\"']?(main|master|develop|release/[^[:space:]\"']*)[\"']?([[:space:]]|\$)"; then
+# Herestring, not `echo "$COMMAND" | grep -qE ...` -- under `pipefail`, a
+# large-enough $COMMAND can SIGPIPE `echo` when `grep -q` exits on an early
+# match, and pipefail then reports that non-zero exit even though grep
+# matched -- an `if` condition is exempt from `set -e` aborting on that, so
+# a real match would silently read as "no match" and fall through to allow.
+# See issue #87; guard-raw-pr-review.sh already uses this fix.
+# Residual: if the herestring redirection itself fails (unwritable/full
+# $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
+# Not caught by the ERR trap (if-conditions are exempt) -- same class as the
+# pipe form's own fork-failure path, not a regression from it.
+if grep -qE "${GIT_PREFIX}branch([[:space:]]+-[^[:space:]]+)*[[:space:]]+${DELETE_FLAG}([[:space:]]+-[^[:space:]]+)*[[:space:]]+[\"']?(main|master|develop|release/[^[:space:]\"']*)[\"']?([[:space:]]|\$)" <<< "$COMMAND"; then
   MATCH=true
 fi
 
@@ -150,8 +161,14 @@ fi
 # that false-positive while still catching a force flag anywhere within a
 # genuine `worktree remove` call's own argument list.
 FORCE_FLAG_RE='(^|[[:space:]])(--force|-f)([[:space:]]|$)'
+# The `-oE` extraction below stays a pipe, not a herestring -- `grep -o`
+# reads to EOF rather than exiting on first match, so it has no SIGPIPE
+# exposure (issue #87 doesn't apply here); the `-qE` check just below it
+# does, and uses a herestring for the same reason as the branch -D check
+# above (residual: same undocumented herestring-failure fail-open as noted
+# there, not caught by the ERR trap).
 WORKTREE_REMOVE_SPANS=$(echo "$COMMAND" | grep -oE "${GIT_PREFIX}worktree[[:space:]]+remove[^;&|]*" || true)
-if [ -n "$WORKTREE_REMOVE_SPANS" ] && echo "$WORKTREE_REMOVE_SPANS" | grep -qE "$FORCE_FLAG_RE"; then
+if [ -n "$WORKTREE_REMOVE_SPANS" ] && grep -qE "$FORCE_FLAG_RE" <<< "$WORKTREE_REMOVE_SPANS"; then
   MATCH=true
 fi
 
