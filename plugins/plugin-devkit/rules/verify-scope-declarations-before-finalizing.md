@@ -1,4 +1,38 @@
+---
+paths:
+  - "plugins/*/skills/**"
+  - "plugins/*/agents/**"
+  - "plugins/*/commands/**"
+  - ".claude/skills/**"
+  - ".claude/agents/**"
+  - ".claude/commands/**"
+---
+
 # Verify Scope Declarations Before Finalizing
+
+Check that a changed scope declaration — a filtered file list, an exclusion clause, a tool-grant list —
+stays consistent with everything else that depends on or must agree with it, before finalizing.
+
+## Incorrect
+
+A new `Bash(cat:*)` call is added to a skill's body, but `allowed-tools` is left unchanged from before
+the edit:
+
+```markdown
++ Read the flagged config file directly: `Bash(cat config.yaml)`
+```
+(allowed-tools unchanged: `Read Write Edit`)
+
+The missing grant is caught only in a later review round, once the call is actually exercised.
+
+## Correct
+
+The matching grant is added in the same edit that adds the call:
+
+```markdown
++ Read the flagged config file directly: `Bash(cat config.yaml)`
+```
+(allowed-tools updated in this same edit: `Read Write Edit Bash(cat:*)`)
 
 ## When this applies
 
@@ -14,9 +48,12 @@ and that declaration needs to stay consistent with everything else that depends 
   correctly, independently-scoped pass instead.
 - **Exclusion clauses vs. worked examples.** After writing a "When NOT to Use"/exclusion clause, check
   it doesn't contradict any of the same skill's own worked examples or stated primary use case.
-- **New tool grants.** Every new `Bash(...)`/`Skill(...)` call added to a component's instructions needs
-  its exact matching grant already present in `allowed-tools` — check this in the same edit that adds
-  the call, not a later pass.
+- **New tool grants.** Every new `Bash(...)`/`Skill(...)` call added to a **skill or command**'s
+  instructions needs its exact matching scoped grant already present in `allowed-tools` — check this in
+  the same edit that adds the call, not a later pass. An **agent** file is the reverse case: agents
+  declare `tools` as bare tool names with no `Bash(...)` scoping syntax at all (`plugin-rulebook`'s R6)
+  — for an agent, verify `tools` includes bare `Bash`, never a scoped `Bash(cmd:*)` entry, which R6
+  treats as the violation instead of the fix.
 
 ## Why
 
