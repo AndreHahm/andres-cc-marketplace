@@ -401,6 +401,17 @@ passes, and the specific findings from three rounds of live GitHub review on PR 
 root cause and fix) live in `references/development-history.md` — read it for the "why does the design
 look like this" story; nothing in it is needed to execute a live triage run.
 
+**Verified live, 2026-08-28 (issue #95):** `references/round-and-dedup-rules.md`'s Hard Cap Exception
+severity definition had no fallback for a finding with no reviewer-stated severity label at all (the
+common case for an ordinary human review comment) — only examples that all assumed some explicit signal
+existed (a P1/Critical badge, or a human's explicit "this blocks merge"). Fixed by adding a fallback
+clause: classify from the described defect's actual content per Workflow step 2's existing "higher of
+stated label and actual defect" rule, defaulting to Major when that judgment is itself uncertain. A
+matching scenario and quality-gate item were added to `references/testing-scenarios.md`. No fresh
+`skill-tester` eval re-run for this edit — the fix is a documentation/guidance clarification of an
+already-established classification principle (Workflow step 2), not new decision logic, and its
+correctness was verified by re-reading it against the gap issue #95 described.
+
 **Concrete scenarios, the full quality-gates checklist, and the round-cap/dedup edge cases** live in
 `references/testing-scenarios.md` — kept out of the main procedure a reader follows on every triage
 pass, matching `cross-model-review`'s own `references/testing-scenarios.md` precedent in this plugin.
