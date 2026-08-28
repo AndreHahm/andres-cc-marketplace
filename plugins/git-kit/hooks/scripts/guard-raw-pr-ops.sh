@@ -107,12 +107,31 @@ SKILL_HANDLES=""
 # $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
 # Not caught by the ERR trap (if-conditions are exempt) -- same class as the
 # pipe form's own fork-failure path, not a regression from it.
-if grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+create([[:space:]]|$)' <<< "$COMMAND"; then
+# Negated-identifier prefix class, not an enumerated one -- the old
+# `(^|[;&|]|[[:space:]])` boundary missed `$(`, a backtick, and a
+# path-qualified invocation's `/`, letting each bypass this guard with no
+# marker check. `[^[:alnum:]_.-]` admits any of those as a valid boundary
+# while still excluding `.`/`-`, so "gh" mid-identifier is never mistaken
+# for an invocation start. The optional `['"]?` right after `(\.exe)?`
+# tolerates a PowerShell quoted-path invocation's closing quote landing
+# between the executable name and the required whitespace. See issue #85.
+# Tradeoff, accepted: widening the boundary this way also makes a quoted
+# textual *mention* of the guarded command (e.g. `grep -r "git commit" ./`)
+# indistinguishable from an invocation, since a quote is just another
+# non-identifier character -- such a mention now denies too. Fail-safe in
+# direction; a real behavior change from before, worth knowing if a
+# grep/rg call over this exact literal starts unexpectedly denying.
+# Trailing boundary also widened the same way: an argument-less `` `gh pr
+# create` ``/`$(gh pr merge)` left a `` ` ``/`)` immediately after the
+# subcommand with no trailing whitespace, which the old `([[:space:]]|$)`
+# didn't recognize as a boundary -- both are valid, real invocations with
+# no required arguments.
+if grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+create([^[:alnum:]_.-]|$)' <<< "$COMMAND"; then
   GUARD_TYPE="gh-pr-create"
   SKILL_NAME="create-pr"
   GH_SUBCOMMAND="gh pr create"
   SKILL_HANDLES="template resolution, draft-vs-ready confirmation, and pre-flight commit checks"
-elif grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)' <<< "$COMMAND"; then
+elif grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+merge([^[:alnum:]_.-]|$)' <<< "$COMMAND"; then
   GUARD_TYPE="gh-pr-merge"
   SKILL_NAME="merge-pr"
   GH_SUBCOMMAND="gh pr merge"
@@ -132,7 +151,7 @@ if [ "$allowed" = true ]; then
   exit 0
 fi
 
-REASON="Raw \`$GH_SUBCOMMAND\` is blocked by git-kit's PR-operations guard. Use the \`$SKILL_NAME\` skill (\`/$SKILL_NAME\`) instead -- it handles $SKILL_HANDLES this raw invocation would skip. If this fired from inside $SKILL_NAME itself, its marker-write step is missing or ran too late -- the marker must be written immediately before this command."
+REASON="Raw \`$GH_SUBCOMMAND\` is blocked by git-kit's PR-operations guard. Use the \`$SKILL_NAME\` skill (\`/$SKILL_NAME\`) instead -- it handles $SKILL_HANDLES this raw invocation would skip. If this fired from inside $SKILL_NAME itself, its marker-write step is missing or ran too late -- the marker must be written immediately before this command. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use \`Read\`/\`Grep\` instead of a shell search."
 
 jq -n --arg reason "$REASON" \
   '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'

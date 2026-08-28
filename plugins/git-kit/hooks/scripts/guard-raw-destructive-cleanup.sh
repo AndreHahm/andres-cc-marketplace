@@ -76,7 +76,23 @@ fi
 # options -- `-C <dir>`/`-c <k>=<v>` (each a separate space-delimited value
 # token) or any other single-token `-`/`--` flag -- same prefix pattern
 # guard-raw-commit.sh and guard-raw-branch-create.sh already use.
-GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--?[^[:space:]]+))*[[:space:]]+'
+# Negated-identifier prefix class, not an enumerated one -- the old
+# `(^|[;&|]|[[:space:]])` boundary missed `$(`, a backtick, and a
+# path-qualified invocation's `/` (e.g. `/usr/bin/git branch -D main`),
+# letting each bypass this guard with no marker check. `[^[:alnum:]_.-]`
+# admits any of those as a valid boundary while still excluding `.`/`-`
+# specifically, so "git" appearing mid-identifier (e.g. inside
+# "api.github.com") is never mistaken for an invocation start. The optional
+# `['"]?` right after `(\.exe)?` tolerates a PowerShell quoted-path
+# invocation's closing quote (`& 'C:\...\git.exe' branch -D main`) landing
+# between the executable name and the required whitespace. See issue #85.
+# Tradeoff, accepted: widening the boundary this way also makes a quoted
+# textual *mention* of the guarded command (e.g. `grep -r "git commit" ./`)
+# indistinguishable from an invocation, since a quote is just another
+# non-identifier character -- such a mention now denies too. Fail-safe in
+# direction; a real behavior change from before, worth knowing if a
+# grep/rg call over this exact literal starts unexpectedly denying.
+GIT_PREFIX='(^|[^[:alnum:]_.-])git(\.exe)?['"'"'"]?([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--?[^[:space:]]+))*[[:space:]]+'
 
 # Consume our own marker on every Bash/PowerShell call, before the MATCH
 # check below -- not just on the call that turns out to match. Consuming
@@ -132,7 +148,13 @@ DELETE_FLAG='(-D|--delete[[:space:]]+--force|--force[[:space:]]+--delete|-d[[:sp
 # $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
 # Not caught by the ERR trap (if-conditions are exempt) -- same class as the
 # pipe form's own fork-failure path, not a regression from it.
-if grep -qE "${GIT_PREFIX}branch([[:space:]]+-[^[:space:]]+)*[[:space:]]+${DELETE_FLAG}([[:space:]]+-[^[:space:]]+)*[[:space:]]+[\"']?(main|master|develop|release/[^[:space:]\"']*)[\"']?([[:space:]]|\$)" <<< "$COMMAND"; then
+# Trailing boundary widened the same way as GIT_PREFIX's own leading one
+# (issue #85): an argument-less `` `git branch -D main` ``/`$(...)` left a
+# `` ` ``/`)` immediately after the protected-branch name with no trailing
+# whitespace, which the old `([[:space:]]|$)` didn't recognize as a
+# boundary -- found via a security-reviewer pass on this same fix, live-
+# verified as a real bypass before this line existed.
+if grep -qE "${GIT_PREFIX}branch([[:space:]]+-[^[:space:]]+)*[[:space:]]+${DELETE_FLAG}([[:space:]]+-[^[:space:]]+)*[[:space:]]+[\"']?(main|master|develop|release/[^[:space:]\"']*)[\"']?([^[:alnum:]_.-]|\$)" <<< "$COMMAND"; then
   MATCH=true
 fi
 
@@ -160,7 +182,14 @@ fi
 # to just the matched invocation's own span (excluding `;`/`&`/`|`) closes
 # that false-positive while still catching a force flag anywhere within a
 # genuine `worktree remove` call's own argument list.
-FORCE_FLAG_RE='(^|[[:space:]])(--force|-f)([[:space:]]|$)'
+# Same negated-identifier boundary class as GIT_PREFIX above, on both ends --
+# WORKTREE_REMOVE_SPANS (below) captures up to the next `;`/`&`/`|` or end of
+# string, but a command wrapped in `$(...)`/backticks leaves a trailing `)`/
+# `` ` `` right after --force/-f, which the old `([[:space:]]|$)` trailing
+# boundary didn't recognize as a boundary at all -- found via this issue's
+# own live testing: `git worktree remove foo --force` wrapped in backticks
+# still bypassed this guard even after the GIT_PREFIX fix below. See issue #85.
+FORCE_FLAG_RE='(^|[^[:alnum:]_.-])(--force|-f)([^[:alnum:]_.-]|$)'
 # The `-oE` extraction below stays a pipe, not a herestring -- `grep -o`
 # reads to EOF rather than exiting on first match, so it has no SIGPIPE
 # exposure (issue #87 doesn't apply here); the `-qE` check just below it
@@ -185,7 +214,7 @@ cat <<'EOF'
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "Raw `git branch -D` targeting a protected branch (main/master/develop/release/*), or raw `git worktree remove --force`, is blocked by git-kit's destructive-cleanup guard. Use the `git-cleanup` skill (`/git-cleanup`) instead -- it gates these irreversible actions behind explicit user confirmation. If this fired from inside git-cleanup itself, its marker-write step is missing or ran too late -- the marker must be written immediately before this command."
+    "permissionDecisionReason": "Raw `git branch -D` targeting a protected branch (main/master/develop/release/*), or raw `git worktree remove --force`, is blocked by git-kit's destructive-cleanup guard. Use the `git-cleanup` skill (`/git-cleanup`) instead -- it gates these irreversible actions behind explicit user confirmation. If this fired from inside git-cleanup itself, its marker-write step is missing or ran too late -- the marker must be written immediately before this command. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use `Read`/`Grep` instead of a shell search."
   }
 }
 EOF

@@ -39,18 +39,20 @@
 # **This is not a claim of unconditional coverage.** This file previously
 # described a "known, disclosed residual" for a raw `gh api .../pulls/*`
 # write call outside the two shapes this file guards; that residual is
-# unchanged by this edit. Two more residuals apply specifically to the
-# `gh api graphql` branch and are tracked in issue #85 (this repo's issue
-# tracker), not fixed here: (1) the shared command-word prefix class below
-# (`(^|[;&|]|[[:space:]])`) doesn't recognize `$(`, a backtick, or a quote
-# character as a valid boundary, so `tid=$(gh api graphql -f query=...)` or
-# `` `gh api graphql ...` `` bypasses every branch in this file, not just
-# this one -- the same gap as the four sibling guard scripts' own subcommand
-# matching; (2) a `gh api graphql` call reached through a script file this
-# hook never inspects (e.g. `bash some-script.sh`, where the script's own
-# body runs `gh api graphql` internally) is invisible to this guard by
-# construction, since the tool call's own command text never contains the
-# literal words this file matches on.
+# unchanged by this edit. A second residual, previously tracked in issue #85
+# alongside the one below, is now fixed: the shared command-word prefix
+# class (below, and in this file's other two `gh` matches) is now a
+# negated-identifier class (`(^|[^[:alnum:]_.-])`) that recognizes `$(`, a
+# backtick, a path-qualified invocation's `/`, and a PowerShell quoted-path
+# invocation's closing quote as valid boundaries -- closing the
+# `tid=$(gh api graphql -f query=...)` / `` `gh api graphql ...` `` bypass
+# this file and the four sibling guard scripts previously shared. One
+# residual from issue #85 remains open, tracked there still: a `gh api
+# graphql` call reached through a script file this hook never inspects
+# (e.g. `bash some-script.sh`, where the script's own body runs `gh api
+# graphql` internally) stays invisible to this guard by construction, since
+# the tool call's own command text never contains the literal words this
+# file matches on -- no regex change can close that gap.
 # A third residual, surfaced by a security-reviewer pass on 2026-08-22 while
 # adding handling-review-findings's new `gh pr comment` trigger-post call
 # (unrelated to the two above): the `git rev-parse --git-dir` check just
@@ -175,7 +177,7 @@ GH_SUBCOMMAND=""
 # widening was itself a regression (it dropped bare-whitespace/`env`-prefixed/indented `gh api ...`
 # as valid prefixes) fixing a bypass that didn't actually exist. Reverted to the original,
 # narrower form below.
-API_RE='(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+api([[:space:]]|$)'
+API_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+api([^[:alnum:]_.-]|$)'
 # Boundary classes below are "not alnum/underscore" (leading) and "not alnum/underscore/hyphen"
 # (trailing), not the narrower "whitespace or /" used previously -- a quoted endpoint
 # (`gh api "repos/.../replies"`, single-quoted, or the trailing `)`/backtick of a `$(...)`/
@@ -195,9 +197,27 @@ GRAPHQL_RE='(^|[^[:alnum:]_])graphql([^[:alnum:]_-]|$)'
 # $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
 # Not caught by an ERR trap (if-conditions are exempt) -- same class as the
 # pipe form's own fork-failure path, not a regression from it.
-if grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+review([[:space:]]|$)' <<< "$COMMAND"; then
+# Negated-identifier prefix class, not an enumerated one -- the old
+# `(^|[;&|]|[[:space:]])` boundary missed `$(`, a backtick, and a
+# path-qualified invocation's `/`, letting each bypass this guard with no
+# marker check. `[^[:alnum:]_.-]` admits any of those as a valid boundary
+# while still excluding `.`/`-`, so "gh" mid-identifier is never mistaken
+# for an invocation start. The optional `['"]?` right after `(\.exe)?`
+# tolerates a PowerShell quoted-path invocation's closing quote landing
+# between the executable name and the required whitespace. See issue #85.
+# Tradeoff, accepted: widening the boundary this way also makes a quoted
+# textual *mention* of the guarded command (e.g. `grep -r "git commit" ./`)
+# indistinguishable from an invocation, since a quote is just another
+# non-identifier character -- such a mention now denies too. Fail-safe in
+# direction; a real behavior change from before, worth knowing if a
+# grep/rg call over this exact literal starts unexpectedly denying.
+# Trailing boundary also widened the same way: an argument-less `` `gh pr
+# review` ``/`$(gh pr comment)` left a `` ` ``/`)` immediately after the
+# subcommand with no trailing whitespace, which the old `([[:space:]]|$)`
+# didn't recognize as a boundary.
+if grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+review([^[:alnum:]_.-]|$)' <<< "$COMMAND"; then
   GH_SUBCOMMAND="gh pr review"
-elif grep -qE '(^|[;&|]|[[:space:]])gh(\.exe)?[[:space:]]+pr[[:space:]]+comment([[:space:]]|$)' <<< "$COMMAND"; then
+elif grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+comment([^[:alnum:]_.-]|$)' <<< "$COMMAND"; then
   GH_SUBCOMMAND="gh pr comment"
 elif grep -qE "$API_RE" <<< "$COMMAND" && grep -qE "$REPLIES_RE" <<< "$COMMAND"; then
   GH_SUBCOMMAND="gh api .../comments/{id}/replies"
@@ -215,7 +235,7 @@ if [ "$allowed" = true ]; then
   exit 0
 fi
 
-REASON="Raw \`$GH_SUBCOMMAND\` is blocked by git-kit's reviewer-action guard. Use whichever of \`collaborating-on-a-pr\`, \`explain-pr-changes\`, \`codex-review-recovery\`, or \`handling-review-findings\` matches what you're doing instead -- each writes the marker this guard requires immediately before running the same command. If this fired from inside one of those skills, its marker-write step is missing or ran too late -- the marker must be written immediately before this command."
+REASON="Raw \`$GH_SUBCOMMAND\` is blocked by git-kit's reviewer-action guard. Use whichever of \`collaborating-on-a-pr\`, \`explain-pr-changes\`, \`codex-review-recovery\`, or \`handling-review-findings\` matches what you're doing instead -- each writes the marker this guard requires immediately before running the same command. If this fired from inside one of those skills, its marker-write step is missing or ran too late -- the marker must be written immediately before this command. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use \`Read\`/\`Grep\` instead of a shell search."
 
 jq -n --arg reason "$REASON" \
   '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'

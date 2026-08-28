@@ -107,7 +107,23 @@ fi
 # stacked options like `git -c a=b -c c=d commit` or `git --no-pager commit`
 # can't bypass this guard. Same prefix pattern guard-raw-branch-create.sh
 # already uses.
-GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--?[^[:space:]]+))*[[:space:]]+'
+# Negated-identifier prefix class, not an enumerated one -- the old
+# `(^|[;&|]|[[:space:]])` boundary missed `$(`, a backtick, and a
+# path-qualified invocation's `/` (e.g. `/usr/bin/git commit`), letting each
+# bypass this guard with no marker check. `[^[:alnum:]_.-]` admits any of
+# those as a valid boundary while still excluding `.`/`-` specifically, so
+# "git" appearing mid-identifier (e.g. inside "api.github.com") is never
+# mistaken for an invocation start. The optional `['"]?` right after
+# `(\.exe)?` tolerates a PowerShell quoted-path invocation's closing quote
+# (`& 'C:\...\git.exe' commit`) landing between the executable name and the
+# required whitespace. See issue #85.
+# Tradeoff, accepted: widening the boundary this way also makes a quoted
+# textual *mention* of the guarded command (e.g. `grep -r "git commit" ./`)
+# indistinguishable from an invocation, since a quote is just another
+# non-identifier character -- such a mention now denies too. Fail-safe in
+# direction; a real behavior change from before, worth knowing if a
+# grep/rg call over this exact literal starts unexpectedly denying.
+GIT_PREFIX='(^|[^[:alnum:]_.-])git(\.exe)?['"'"'"]?([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--?[^[:space:]]+))*[[:space:]]+'
 # Herestring, not `echo "$COMMAND" | grep -qE ...` -- under `pipefail`, a
 # large-enough $COMMAND can SIGPIPE `echo` when `grep -q` exits on an early
 # match, and pipefail then reports that non-zero exit even though grep
@@ -118,7 +134,13 @@ GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+(-[Cc][[:space:]]+[^[:s
 # $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
 # Not caught by the ERR trap (if-conditions are exempt) -- same class as the
 # pipe form's own fork-failure path, not a regression from it.
-if ! grep -qE "${GIT_PREFIX}commit([[:space:]]|\$)" <<< "$COMMAND"; then
+# Trailing boundary widened the same way as GIT_PREFIX's own leading one
+# (issue #85): an argument-less `` `git commit` ``/`$(git commit)` left a
+# `` ` ``/`)` immediately after "commit" with no argument or trailing
+# whitespace, which the old `([[:space:]]|$)` didn't recognize as a
+# boundary -- found via a security-reviewer pass on this same fix, live-
+# verified as a real bypass before this line existed.
+if ! grep -qE "${GIT_PREFIX}commit([^[:alnum:]_.-]|\$)" <<< "$COMMAND"; then
   exit 0
 fi
 
@@ -131,7 +153,7 @@ cat <<'EOF'
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "Raw `git commit` is blocked by git-kit's commit guard. Use the `commit` skill (`/commit`) instead -- it handles staging review, sensitive-file scanning, message formatting, and the behavior-change test gate this raw invocation would skip. If this fired from inside an allowlisted git-kit skill (commit, standalone-commits), its marker-write step is missing or ran too late -- the marker must be written immediately before this command, not earlier in the same run."
+    "permissionDecisionReason": "Raw `git commit` is blocked by git-kit's commit guard. Use the `commit` skill (`/commit`) instead -- it handles staging review, sensitive-file scanning, message formatting, and the behavior-change test gate this raw invocation would skip. If this fired from inside an allowlisted git-kit skill (commit, standalone-commits), its marker-write step is missing or ran too late -- the marker must be written immediately before this command, not earlier in the same run. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use `Read`/`Grep` instead of a shell search."
   }
 }
 EOF

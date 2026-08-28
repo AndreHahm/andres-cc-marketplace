@@ -99,7 +99,23 @@ fi
 # The repeating group catches zero or more interposed global options -- see
 # this script's header comment for why it must repeat and be case-insensitive
 # on -C/-c.
-GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--?[^[:space:]]+))*[[:space:]]+'
+# Negated-identifier prefix class, not an enumerated one -- the old
+# `(^|[;&|]|[[:space:]])` boundary missed `$(`, a backtick, and a
+# path-qualified invocation's `/` (e.g. `/usr/bin/git checkout -b`), letting
+# each bypass this guard with no marker check. `[^[:alnum:]_.-]` admits any
+# of those as a valid boundary while still excluding `.`/`-` specifically,
+# so "git" appearing mid-identifier (e.g. inside "api.github.com") is never
+# mistaken for an invocation start. The optional `['"]?` right after
+# `(\.exe)?` tolerates a PowerShell quoted-path invocation's closing quote
+# (`& 'C:\...\git.exe' checkout -b`) landing between the executable name and
+# the required whitespace. See issue #85.
+# Tradeoff, accepted: widening the boundary this way also makes a quoted
+# textual *mention* of the guarded command (e.g. `grep -r "git commit" ./`)
+# indistinguishable from an invocation, since a quote is just another
+# non-identifier character -- such a mention now denies too. Fail-safe in
+# direction; a real behavior change from before, worth knowing if a
+# grep/rg call over this exact literal starts unexpectedly denying.
+GIT_PREFIX='(^|[^[:alnum:]_.-])git(\.exe)?['"'"'"]?([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--?[^[:space:]]+))*[[:space:]]+'
 # Herestring, not `echo "$COMMAND" | grep -qE ...` -- under `pipefail`, a
 # large-enough $COMMAND can SIGPIPE `echo` when `grep -q` exits on an early
 # match, and pipefail then reports that non-zero exit even though grep
@@ -110,12 +126,16 @@ GIT_PREFIX='(^|[;&|]|[[:space:]])git(\.exe)?([[:space:]]+(-[Cc][[:space:]]+[^[:s
 # $TMPDIR), grep never runs and the condition reads as "no match" -> allow.
 # Not caught by the ERR trap (if-conditions are exempt) -- same class as the
 # pipe form's own fork-failure path, not a regression from it.
+# Trailing boundaries widened the same way as GIT_PREFIX's own leading one
+# (issue #85): an argument-less invocation (no branch name) left a `` ` ``/
+# `)` immediately after `-b`/`-c` with no trailing whitespace, which the old
+# `([[:space:]]|$)` didn't recognize as a boundary.
 MATCH=false
-if grep -qE "${GIT_PREFIX}checkout([[:space:]]+-[^[:space:]]+)*[[:space:]]+-[bB]([[:space:]]|\$)" <<< "$COMMAND"; then
+if grep -qE "${GIT_PREFIX}checkout([[:space:]]+-[^[:space:]]+)*[[:space:]]+-[bB]([^[:alnum:]_.-]|\$)" <<< "$COMMAND"; then
   MATCH=true
-elif grep -qE "${GIT_PREFIX}switch([[:space:]]+-[^[:space:]]+)*[[:space:]]+(-[cC]|--create)([[:space:]]|\$)" <<< "$COMMAND"; then
+elif grep -qE "${GIT_PREFIX}switch([[:space:]]+-[^[:space:]]+)*[[:space:]]+(-[cC]|--create)([^[:alnum:]_.-]|\$)" <<< "$COMMAND"; then
   MATCH=true
-elif grep -qE "${GIT_PREFIX}worktree[[:space:]]+add([[:space:]]+-[^[:space:]]+)*[[:space:]]+-[bB]([[:space:]]|\$)" <<< "$COMMAND"; then
+elif grep -qE "${GIT_PREFIX}worktree[[:space:]]+add([[:space:]]+-[^[:space:]]+)*[[:space:]]+-[bB]([^[:alnum:]_.-]|\$)" <<< "$COMMAND"; then
   MATCH=true
 fi
 if [ "$MATCH" != true ]; then
@@ -131,7 +151,7 @@ cat <<'EOF'
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "Raw branch creation (`git checkout -b`/`git switch -c`/`git worktree add -b`) is blocked by git-kit's branch-creation guard. Use the `starting-work` skill (`Skill(git-kit:starting-work)`) instead -- it syncs main, validates the branch name, and asks worktree-vs-branch, all of which this raw invocation would skip. If this fired from inside starting-work itself, its marker-write step is missing or ran too late -- the marker must be written immediately before this command."
+    "permissionDecisionReason": "Raw branch creation (`git checkout -b`/`git switch -c`/`git worktree add -b`) is blocked by git-kit's branch-creation guard. Use the `starting-work` skill (`Skill(git-kit:starting-work)`) instead -- it syncs main, validates the branch name, and asks worktree-vs-branch, all of which this raw invocation would skip. If this fired from inside starting-work itself, its marker-write step is missing or ran too late -- the marker must be written immediately before this command. If this was a textual mention of the command (a grep/rg search pattern, a heredoc, a doc string) rather than an actual invocation, this guard cannot distinguish the two -- reword the literal or use `Read`/`Grep` instead of a shell search."
   }
 }
 EOF
