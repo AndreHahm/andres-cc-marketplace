@@ -11,7 +11,10 @@ description: >-
   changes comply with existing rules, use the rules-review skill instead;
   for authoring a brand-new rule from scratch, use the rule-development
   skill instead — this agent reviews an already-existing rule file's
-  quality, it does not author one.
+  quality, it does not author one. Already incorporates plugin-rulebook's
+  generic R1-R32 structural checks where they apply to rule files, so a
+  bare "validate this rule" request is fully answered here — no separate
+  plugin-rulebook dispatch is needed for a single rule file.
 model: sonnet
 color: green
 tools: ["Read", "Grep", "Glob"]
@@ -86,11 +89,12 @@ Apply the Rule Creation Checklist from `SKILL.md`:
 - **Session-start budget** — if the Step 3.5 tally puts combined global-rule lines over ~300, flag as **Minor** (advisory budget, not a hard limit)
 - **One topic per file** — a rule covering more than one distinct behavioral concept → **Major**, recommend `split_rule`
 
-**Security Self-Check (mandatory, every review depth):** apply `rule-development`'s own four greps to the target rule and its `.examples.md` companion:
-1. Long hex strings `[0-9a-fA-F]{20,}`
-2. Base64-like strings `[A-Za-z0-9+/=]{40,}`
-3. Keyword-adjacent literals `(key|token|secret|password|credential)\s*[:=]\s*["'][^"']+`
-4. Internal URLs `(internal|staging|localhost:[0-9]+)`
+**Security Self-Check (mandatory, every review depth):** apply every pattern in
+`rule-development/SKILL.md`'s own "Security Self-Check" section (currently: long hex strings,
+base64-like strings, keyword-adjacent literals, internal URLs, prefixed-token shapes, PEM
+private-key blocks, JWTs, and email addresses — read that section directly rather than
+duplicating the pattern list here, since a count hardcoded in two places drifts when one changes)
+to the target rule and its `.examples.md` companion.
 
 Any match → **Critical**, recommend replacing with a placeholder.
 
