@@ -33,7 +33,7 @@ Turn one or more findings from any analysis-kit report into a classified, action
 
 ## When NOT to Use
 
-- **Producing the original finding** — this skill only expands an existing finding; run the matching analysis skill first (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `comparing-sessions`, `comparing-session-to-specification`) to produce one
+- **Producing the original finding** — this skill only expands an existing finding; run the matching analysis skill first (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `comparing-sessions`, `comparing-session-to-specification`, `mining-review-learnings`) to produce one
 - **Applying the plan** — this skill stops at a written plan; it never edits code or commits changes itself
 
 ## Phase 1: Identify the Findings
