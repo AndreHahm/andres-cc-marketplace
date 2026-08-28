@@ -58,7 +58,10 @@ def load_fixture(path: Path) -> tuple[list[dict], list[dict]]:
         raise FetchError(f"{path}: {exc}") from exc
     if not isinstance(data, dict) or "reviews" not in data or "comments" not in data:
         raise FetchError(f"{path}: expected a JSON object with 'reviews' and 'comments' keys")
-    return data["reviews"], data["comments"]
+    reviews, comments = data["reviews"], data["comments"]
+    if not isinstance(reviews, list) or not isinstance(comments, list):
+        raise FetchError(f"{path}: 'reviews' and 'comments' must both be JSON arrays")
+    return reviews, comments
 
 
 def normalize(reviews: list[dict], comments: list[dict]) -> list[dict]:
@@ -75,7 +78,7 @@ def normalize(reviews: list[dict], comments: list[dict]) -> list[dict]:
     for review in reviews:
         records.append(
             {
-                "reviewer": review.get("user", {}).get("login"),
+                "reviewer": (review.get("user") or {}).get("login"),
                 "kind": "review",
                 "file": None,
                 "line": None,
@@ -95,7 +98,7 @@ def normalize(reviews: list[dict], comments: list[dict]) -> list[dict]:
             line = comment.get("original_line")
         records.append(
             {
-                "reviewer": comment.get("user", {}).get("login"),
+                "reviewer": (comment.get("user") or {}).get("login"),
                 "kind": "inline_comment",
                 "file": comment.get("path"),
                 "line": line,

@@ -28,7 +28,7 @@ This skill reviews *other reports*, not production code or a live session — it
 3. Classify findings pairs per `references/cross-check-taxonomy.md` — Duplicate, Contradiction, or Severity Undercut (Phase 3).
 4. Review the report, then check the persisted path.
 
-**Arguments:** `$ARGUMENTS` — optionally, 2+ paths to persisted analysis-kit reports, or `"latest N"` to use the N most recently modified reports found under `.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/`. If omitted, ask the user which reports to cross-check.
+**Arguments:** `$ARGUMENTS` — optionally, 2+ paths to persisted analysis-kit reports, or `"latest N"` to use the N most recently modified reports found under `.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/`. If omitted, ask the user which reports to cross-check. A `mining-review-learnings`/`managing-review-learnings` report is valid input too, but only via an explicit path — neither directory is in this 9-directory `"latest N"` glob, per those two skills' own deliberate exclusion from it.
 
 ## When to Use
 

@@ -178,10 +178,12 @@ legitimate, common outcome, not a failure.
 ## Gotchas
 
 - **This skill's report is deliberately excluded from `report-discovery-convention.md`'s 9-directory
-  glob.** That glob's `<scope-slug>` semantics assume a session/date-range scope; this skill's own scope
-  is a PR-number set with no comparable session identity, so forcing it into that convention would
-  misrepresent what it actually covers — the same reasoning `running-a-full-retrospective` already
-  documents for its own exclusion from that glob.
+  glob** — a different reason than `running-a-full-retrospective`'s own exclusion from the same glob
+  (that skill's report is a *consolidation* of other reports, so counting it too would double-count
+  coverage; this skill's report is a fresh, independent finding set, not a consolidation). This skill's
+  own reason: that glob's `<scope-slug>` semantics assume a session/date-range scope, and this skill's
+  own scope is a PR-number set with no comparable session identity — forcing it into that convention
+  would misrepresent what it actually covers.
 - **Neither `session_parser.py` nor `codex_session_parser.py` is PR-aware, but only one of them
   discovers anything.** `session_parser.py` discovers transcripts by a time window itself.
   `codex_session_parser.py` has no discovery of its own at all (verified live: its only argument is

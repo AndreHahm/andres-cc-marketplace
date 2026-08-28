@@ -12,6 +12,8 @@ A short kebab-case description of the scope a report covers, used as the filenam
 - **`reviewing-analysis-findings`**: derive from the reports being cross-checked, e.g. `<skill-a>-and-<skill-b>-<date>`.
 - **`generating-analysis-recommendations`**: derive from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report.
 - **`running-a-full-retrospective`**: reuses whichever `<scope-slug>` its own dispatched date-range analyses used for that run (the shared scope confirmed once in Phase 1) — no independent derivation of its own.
+- **`mining-review-learnings`**: not a `<scope-slug>` in this file's sense at all — its own persisted-filename prefix is a PR-number-set slug (e.g. `pr-47-172`), with no session/date-range scope identity to derive from.
+- **`managing-review-learnings`**: derives `<source-slug>` from the input `mining-review-learnings` report's own PR-set slug (e.g. `pr-47-172`), or `direct-finding-<date>` when acting on a user-named finding with no input report at all.
 
 **Two different things share this one name — read this before wiring a new discovery glob.** `<scope-slug>` is used two ways in this plugin: as a *filename prefix* (always — every skill's own Persist step, per the derivations above), and as a *cross-skill discovery filter* (a `<value>-*.md` glob checking "do 2+ reports share this scope," used only at the specific sites listed below — not universally). Whether a site can filter by scope, and by what value, depends entirely on whether that skill's own persisted-filename slug is a value a sibling report could plausibly share:
 
@@ -24,6 +26,8 @@ A short kebab-case description of the scope a report covers, used as the filenam
 | `starting-an-analysis` Phase 5, when `comparing-session-to-specification` was dispatched | none — same "any other report" check | Same reason as above |
 | `comparing-sessions` Phase 1 "latest" resolution, `mining-recurring-patterns` Phase 3 memory-recall, `generating-analysis-recommendations` Phase 1, `reviewing-analysis-findings` Arguments block and Phase 1 | none — bare, unfiltered glob | These sites list/discover candidate reports generally, not a "does this specific scope already have 2+ reports" check |
 | `running-a-full-retrospective` Phase 1 reuse check | `<scope-slug>-*.md`, filtered per candidate analysis type's own report directory | Checks whether a report already exists for the confirmed scope before dispatching, mirroring each date-range skill's own Next-step filter |
+| `mining-review-learnings` Phase 1 "since last cited" resolution | none — bare `Grep` against the live document, not a report glob | Resolves the last-cited PR number from `THIRD_PARTY_REVIEW_LEARNINGS.md` itself, not from a prior report |
+| `managing-review-learnings` Phase 1 report resolution | none — bare, unfiltered `Glob('.claude/output/mining-review-learnings/*.md')`, most-recent-modified | Discovers the latest input report generally, not a "does this specific scope already have 2+ reports" check |
 
 `comparing-sessions` and `mining-recurring-patterns` each appear twice above — once with a filter, once without — since each uses both forms in different places within its own file.
 
@@ -55,5 +59,11 @@ Every site below must match this file. If you change either definition here, upd
   consolidating other reports shouldn't count as a 10th independent one
 - `skills/mining-review-learnings/SKILL.md` — has no `<scope-slug>` in the sense this file defines it
   (its own persisted-filename prefix is a PR-number-set slug, e.g. `pr-47-172`, not a session/date-range
-  scope) and is deliberately *not* added to the 9-directory report-discovery glob enumeration above, for
-  the same reasoning `running-a-full-retrospective` already states — see this skill's own Gotchas section
+  scope) and is deliberately *not* added to the 9-directory report-discovery glob enumeration above —
+  see this skill's own Gotchas section for its own reason (distinct from `running-a-full-retrospective`'s
+  own exclusion reason, which is about consolidation double-counting, not scope-shape mismatch)
+- `skills/managing-review-learnings/SKILL.md` — Phase 1 report resolution (bare glob, see table above),
+  Persist step (`<source-slug>` derivation, see above) — two sites. Like `mining-review-learnings`, its
+  own report is deliberately *not* added to the 9-directory glob enumeration, for the same scope-shape
+  reason: a `<source-slug>` inherited from a PR-set slug (or `direct-finding-<date>`) has no session/
+  date-range identity a sibling report could plausibly share
