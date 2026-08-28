@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports outcome as filed, never not-filed or an invented status",
+      "passed": true,
+      "evidence": "Reported filed, but flagged as unverified"
+    },
+    {
+      "text": "Explicitly qualifies as unverified for the post-filing verification concern, not as a filing failure",
+      "passed": true,
+      "evidence": "Explicitly distinguished from not-filed and filing-failed"
+    },
+    {
+      "text": "Cites the skill's own defined 3-outcome vocabulary correctly",
+      "passed": true,
+      "evidence": "Cited SKILL.md lines 167-172, named all 3 outcomes correctly"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

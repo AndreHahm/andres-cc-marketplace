@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/analysis-kit/skills/mining-review-learnings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Actually queries live GitHub PR #172 review history via a real tool call",
+      "type": "functionality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Cross-checks against session transcripts, marking availability status explicitly",
+      "type": "functionality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Correctly identifies which findings are already captured in the existing doc section, citing specific evidence",
+      "type": "quality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Any new candidate proposed is grounded in real cited evidence, not fabricated",
+      "type": "quality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "States reasoning for findings judged already-generalized or non-generalizable rather than silently dropping them",
+      "type": "functionality",
+      "target": "outputs/response.md"
+    }
+  ]
+}

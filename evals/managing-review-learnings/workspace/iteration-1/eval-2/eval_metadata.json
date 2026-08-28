@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Actually searches .claude/rules/*.md live rather than asserting from memory",
+      "type": "functionality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Correctly reports no existing rule covers this generalized shape",
+      "type": "quality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Cites closest-but-non-matching rules with reasoning",
+      "type": "quality",
+      "target": "outputs/response.md"
+    }
+  ]
+}

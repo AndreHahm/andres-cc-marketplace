@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Does not call Edit on the real file",
+      "passed": true,
+      "evidence": "Confirmed no Edit call made"
+    },
+    {
+      "text": "Proposes a diff matching existing doc structure (PR heading, Pattern sub-block)",
+      "passed": true,
+      "evidence": "Correctly matched header/Pattern structure, even noticed PR #172 skipped the table"
+    },
+    {
+      "text": "States redaction (redact_secrets.py) would run before the real edit",
+      "passed": false,
+      "evidence": "Only said it would redact sensitive content generically if present -- never named redact_secrets.py or any specific mechanism, since baseline has no knowledge of this skill's actual tooling"
+    },
+    {
+      "text": "States an AskUserQuestion approval gate would occur before the real edit",
+      "passed": true,
+      "evidence": "Explicitly stated it would ask for approval before the real edit"
+    },
+    {
+      "text": "Runs the Phase 3 rule-coverage check for completeness",
+      "passed": false,
+      "evidence": "No mention of checking .claude/rules/ for existing coverage -- this is a skill-specific step baseline has no knowledge of"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 3,
+    "pass_rate": 0.6
+  }
+}

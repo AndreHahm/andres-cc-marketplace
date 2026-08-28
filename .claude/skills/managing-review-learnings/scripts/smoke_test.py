@@ -125,7 +125,7 @@ def check_phase_sequence():
 def check_edit_target_named_in_phase_2():
     """This skill's sole Edit target is THIRD_PARTY_REVIEW_LEARNINGS.md -- assert its own
     Phase 2 body actually names that file, since the grant itself carries no path-scoping
-    to enforce the documented bound mechanically (security-reviewer finding, 2026-08-29)."""
+    to enforce the documented bound mechanically (security-reviewer finding, 2026-08-28)."""
     text = SKILL_MD.read_text(encoding="utf-8")
     phase2_start = text.find("\n## Phase 2:")
     if phase2_start == -1:

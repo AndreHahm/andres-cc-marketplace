@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Actually searches .claude/rules/*.md live rather than asserting from memory",
+      "passed": true,
+      "evidence": "Checked all 22 rule files with targeted grep"
+    },
+    {
+      "text": "Correctly reports no existing rule covers this generalized shape",
+      "passed": true,
+      "evidence": "Correctly concluded no existing rule matches"
+    },
+    {
+      "text": "Cites closest-but-non-matching rules with reasoning",
+      "passed": true,
+      "evidence": "Cited 3 candidate rules with specific reasons each falls short"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

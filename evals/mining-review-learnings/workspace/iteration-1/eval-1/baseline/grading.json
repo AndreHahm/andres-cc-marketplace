@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Actually queries live GitHub PR #172 review history via a real tool call",
+      "passed": true,
+      "evidence": "Used gh api pulls/172/reviews and /comments directly"
+    },
+    {
+      "text": "Cross-checks against session transcripts, marking availability status explicitly",
+      "passed": false,
+      "evidence": "No mention of checking any session transcript at all -- baseline worked from GitHub history and the doc only, with no session-transcript step or availability marker"
+    },
+    {
+      "text": "Correctly identifies which findings are already captured in the existing doc section, citing specific evidence",
+      "passed": true,
+      "evidence": "Cited doc lines 1011-1042, correctly identified 2/6 real findings already captured"
+    },
+    {
+      "text": "Any new candidate proposed is grounded in real cited evidence, not fabricated",
+      "passed": true,
+      "evidence": "Cited exact review comment text and commit SHAs for the version-bump-omission finding"
+    },
+    {
+      "text": "States reasoning for findings judged already-generalized or non-generalizable rather than silently dropping them",
+      "passed": true,
+      "evidence": "Cited 3 of 4 missing findings as recurrences of PR #88/#79/#54 patterns, each with its own citation"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  }
+}

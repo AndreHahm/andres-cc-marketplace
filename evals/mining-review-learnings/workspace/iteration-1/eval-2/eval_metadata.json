@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/analysis-kit/skills/mining-review-learnings/SKILL.md",
+  "assertions": [
+    {
+      "text": "Correctly parses THIRD_PARTY_REVIEW_LEARNINGS.md for the last-cited PR",
+      "type": "functionality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Correctly queries gh pr list --state merged for later PRs",
+      "type": "functionality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "States the resolved candidate count explicitly",
+      "type": "quality",
+      "target": "outputs/response.md"
+    },
+    {
+      "text": "Correctly applies the cost-gate logic (small set threshold reasoning)",
+      "type": "quality",
+      "target": "outputs/response.md"
+    }
+  ]
+}

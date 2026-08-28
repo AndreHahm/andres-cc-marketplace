@@ -1,0 +1,33 @@
+{
+  "skill_name": "managing-review-learnings",
+  "skill_path": "plugins/analysis-kit/skills/managing-review-learnings/SKILL.md",
+  "description": "Proposes doc-diffs to THIRD_PARTY_REVIEW_LEARNINGS.md from mined candidates, checks rule coverage, and delegates issue filing to git-kit:github-issue-lifecycle.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Doc-diff proposal, structure and approval gate",
+      "prompt": "Working in the repo at C:/Dev/Repos/andres-cc-marketplace/.claude/worktrees/analysis-kit-wave3-pr-review-fetcher, you have this mined candidate: 'PR #199 review found that a script silently swallowed a subprocess non-zero exit code by not checking returncode before parsing stdout as JSON, producing a confusing downstream JSONDecodeError instead of the real subprocess failure.' Propose a doc-diff to add this as a new Pattern entry in .claude/THIRD_PARTY_REVIEW_LEARNINGS.md, following its existing structure. Do NOT actually run any Edit tool call — instead, describe exactly what diff you would apply, what section/heading convention you'd follow, and confirm explicitly whether you would ask for approval (and redact) before making the real edit.",
+      "expected_output": "Proposes a diff matching the doc's existing '## PR #N — ...' / '### Pattern:' structure, explicitly states it would run the proposed text through redact_secrets.py and ask via AskUserQuestion for approval before any real Edit, and does not actually call Edit on the real file.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Rule-coverage check with citation",
+      "prompt": "Working in the repo at C:/Dev/Repos/andres-cc-marketplace/.claude/worktrees/analysis-kit-wave3-pr-review-fetcher, check whether this generalized pattern is already covered by an existing rule: 'folding several distinct sub-cases into one generic tool-call path silently discards tool-native state a more specific flag/reason would have preserved' (e.g. gh issue close --reason \"not planned\" used even for actual duplicates, discarding --duplicate-of). Search .claude/rules/*.md and report whether an existing rule covers this shape, citing the specific rule file if one matches, or stating plainly that none does.",
+      "expected_output": "Actually searches .claude/rules/*.md (not just asserts from memory) and correctly reports that no existing rule currently covers this generalized shape, citing that it checked the rules directory rather than a bare unverified 'already covered' or 'not covered' claim.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "Filing-delegation outcome vocabulary",
+      "prompt": "You delegated a mined candidate to git-kit's github-issue-lifecycle skill (Workflow 1: Create). It reported back that the issue was filed successfully, but a post-filing verification step it also ran flagged the new issue's initial impact-analysis step as inconclusive (not a filing failure, just an unresolved follow-up concern). Report this outcome using your skill's own defined status vocabulary.",
+      "expected_output": "Reports the outcome as 'filed' (not 'not filed', 'filing-failed', or an invented status), explicitly qualified as 'filed, but flagged as unverified' for the impact-analysis concern — matching the skill's own documented quality gate that a post-filing verification concern must never be reported as 'not filed'.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
+  }
+}

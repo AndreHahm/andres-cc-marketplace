@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not call Edit on the real file",
+      "passed": true,
+      "evidence": "Explicitly confirmed no Edit call made"
+    },
+    {
+      "text": "Proposes a diff matching existing doc structure (PR heading, Pattern sub-block)",
+      "passed": true,
+      "evidence": "Drafted matching header format with placeholders for missing metadata"
+    },
+    {
+      "text": "States redaction (redact_secrets.py) would run before the real edit",
+      "passed": true,
+      "evidence": "Explicitly stated redact_secrets.py step before Edit"
+    },
+    {
+      "text": "States an AskUserQuestion approval gate would occur before the real edit",
+      "passed": true,
+      "evidence": "Explicitly stated approval ask naming the resolved absolute path, with Approve/Edit/Skip options"
+    },
+    {
+      "text": "Runs the Phase 3 rule-coverage check for completeness",
+      "passed": true,
+      "evidence": "Grepped .claude/rules/, found no existing coverage, would not be dropped"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

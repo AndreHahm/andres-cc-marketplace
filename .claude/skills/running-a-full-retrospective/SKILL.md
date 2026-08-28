@@ -65,6 +65,9 @@ stop and say so; do not substitute a judgment call for a human decision.
 - **Fixing a specific, already-known issue with no retrospective needed first** — edit directly, or use
   the matching development skill for that component; this skill's own Phase 5 loop exists for findings
   just consolidated here, worked through one topic at a time, not a single already-known fix
+- **Mining merged PRs for review-learning patterns** — use `mining-review-learnings` instead, even when
+  phrased as a bare "run a full retrospective on recent PR reviews"; this skill only consolidates the 5
+  session/date-range analysis types, none of which take a PR-set scope
 
 ## Phase 1: Pick Analyses and Scope
 
@@ -350,7 +353,11 @@ available (5a) or no open findings existed.
   deliberately excluded from the report-discovery glob's 9-directory enumeration other analysis-kit
   skills check for "does 2+ reports exist for this scope" — counting a consolidation of other reports as
   a 10th independent report would double-count coverage that was already established by the reports it
-  consolidates.
+  consolidates. `mining-review-learnings`/`managing-review-learnings` are also excluded from that same
+  enumeration and cite this skill's own exclusion reasoning as a *distinct* case (their exclusion is
+  about scope-shape mismatch — a PR-set slug has no session/date-range identity — not consolidation
+  double-counting) — see `report-discovery-convention.md`'s "Sites That Restate These Facts" list for
+  both exclusions side by side.
 - **A finding with no clear fix isn't forced into a mechanical status.** Some findings (a genuine design
   decision, not a specified fix) should say so plainly in their Status line rather than inventing a
   plausible-sounding fix summary — matches `generating-analysis-recommendations`' own discipline for the

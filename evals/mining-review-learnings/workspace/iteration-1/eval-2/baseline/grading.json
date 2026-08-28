@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Correctly parses THIRD_PARTY_REVIEW_LEARNINGS.md for the last-cited PR",
+      "passed": true,
+      "evidence": "Correctly found PR #172 as most recently cited"
+    },
+    {
+      "text": "Correctly queries gh pr list --state merged for later PRs",
+      "passed": true,
+      "evidence": "Correctly identified PR #173 as the only later merged PR"
+    },
+    {
+      "text": "States the resolved candidate count explicitly",
+      "passed": true,
+      "evidence": "Stated 1 candidate (PR #173)"
+    },
+    {
+      "text": "Correctly applies the cost-gate logic (small set threshold reasoning)",
+      "passed": false,
+      "evidence": "Baseline said it would ask for confirmation even for this single-PR set, with no awareness of the skill's own documented threshold that allows skipping the ask for a small set -- generically cautious rather than matching the skill's actual rule"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

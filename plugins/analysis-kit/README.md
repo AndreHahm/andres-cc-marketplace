@@ -34,7 +34,7 @@ This plugin has no hard dependency required just to install and run its core ana
 
 ## Prerequisites
 
-Every skill that calls a shared script shells out to `python` (must resolve to Python 3.9+ on PATH — several scripts use PEP 585 builtin generics that fail on 3.8 and earlier).
+Every skill that calls a shared script shells out to `python` (must resolve to Python 3.9+ on PATH — several scripts use PEP 585 builtin generics that fail on 3.8 and earlier). `scripts/pr_review_fetcher.py`'s own test suite (`tests/test_pr_review_fetcher.py`, 12 tests) additionally requires `pytest` — not needed to run any skill, only to develop against this plugin's own scripts.
 
 ## Installation
 
