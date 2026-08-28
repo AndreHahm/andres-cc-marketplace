@@ -90,6 +90,18 @@ Workflow (with_skill only): 9/9 assertions (100%). Full Pipeline (with_skill + b
 **Last dated run record:** 2026-08-28 — `scripts/smoke_test.py` (3/3 checks passing: frontmatter,
 referenced-file existence, Bash-scope grant consistency).
 
+**Verified live, 2026-08-28 (cross-model-review, pre-PR):** a `cross-model-review` pass (Claude +
+Codex) on this branch found `workflows/resolve-an-issue.md`'s Step 2 called `gh issue close` with no
+`--reason`, which left GitHub's native `state_reason` defaulted to `completed` for a Declined closure
+too — indistinguishable from a real fix to anything reading that field. Verified live against
+`gh issue close --help` (`-r, --reason string  Reason for closing: {completed|not planned|duplicate}`)
+before fixing; `gh issue reopen --help` was also checked and confirmed to have no analogous gap. Fixed
+in the same session by adding `--reason completed`/`--reason "not planned"` to the two branches — see
+`workflows/resolve-an-issue.md`'s own Step 2 for the current text. No fresh `skill-tester` eval re-run
+for this specific edit (the fix is mechanical and its correctness was verified directly against `gh`'s
+own `--help` output, not behaviorally re-tested end-to-end); eval 3 in `evals/github-issue-lifecycle/
+evals.json` already exercises the Resolve gate this Step 2 belongs to.
+
 **Verify this skill activates on:**
 - "work on issue #123"
 - "triage these issues"
@@ -108,6 +120,7 @@ referenced-file existence, Bash-scope grant consistency).
 - [ ] Workflow 1 never files an issue without a dedup check first
 - [ ] Workflow 2's relate step always uses the native sub-issues API (`references/sub-issues-api.md`), never the older prose-comment convention
 - [ ] Workflow 3 never marks an issue Resolved while an open question logged in a prior comment remains unaddressed
+- [ ] Workflow 3's Step 2 `gh issue close` always passes `--reason` (`completed` for Resolved, `"not planned"` for Declined) — never omitted, since GitHub defaults `state_reason` to `completed` otherwise, making a Declined closure indistinguishable from a real fix
 - [ ] This skill never writes or proposes the actual code fix — only status/vocabulary/documentation
 
 ## Reference Guide
