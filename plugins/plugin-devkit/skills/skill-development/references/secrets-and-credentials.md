@@ -56,17 +56,17 @@ Organizations with SOC 2, HIPAA, PCI DSS, or GDPR compliance cannot store secret
 ## Detection Patterns
 
 ### Pattern Matching
-Common secret formats that should trigger alerts:
+Common secret-shaped variable names and value formats that should trigger alerts:
 
-```
-API_KEY=sk-abc123def456
-PASSWORD=MySecurePass123!
-SECRET_TOKEN=ghp_AbCdEfGhIjKlMnOpQrStUvWxYz
-CREDENTIALS={"username":"user","password":"pass"}
-DATABASE_URL=postgres://user:password@host/db
-AWS_SECRET_ACCESS_KEY=aws_secret_key_here
-GITHUB_TOKEN=ghp_1234567890abcdefg
-```
+| Variable name | Example value shape |
+|---|---|
+| `API_KEY` | `sk-` prefix followed by random characters |
+| `PASSWORD` | a plaintext password string |
+| `SECRET_TOKEN` | `ghp_` prefix (GitHub) followed by random characters |
+| `CREDENTIALS` | a JSON blob with `username`/`password` fields |
+| `DATABASE_URL` | a connection string with embedded `user:password@host` |
+| `AWS_SECRET_ACCESS_KEY` | a long random string |
+| `GITHUB_TOKEN` | `ghp_` prefix followed by random characters |
 
 ### File Patterns to Never Commit
 - `.env` or `.env.local` — Local environment configuration
@@ -94,10 +94,10 @@ GITHUB_TOKEN=ghp_1234567890abcdefg
 ❌ **BAD: Hardcoded API key**
 ```python
 # scripts/fetch_data.py
-API_KEY = "sk-proj-abc123def456ghi789"
+SERVICE_CREDENTIAL = "sk-proj-EXAMPLE1"
 
 def fetch_from_service():
-    headers = {"Authorization": f"Bearer {API_KEY}"}
+    headers = {"Authorization": f"Bearer {SERVICE_CREDENTIAL}"}
     response = requests.get("https://api.service.com/data", headers=headers)
     return response.json()
 ```
@@ -109,12 +109,12 @@ import os
 import sys
 
 def fetch_from_service():
-    api_key = os.getenv("API_KEY")
-    if not api_key:
+    credential = os.getenv("API_KEY")
+    if not credential:
         print("ERROR: API_KEY environment variable not set", file=sys.stderr)
         sys.exit(1)
 
-    headers = {"Authorization": f"Bearer {api_key}"}
+    headers = {"Authorization": f"Bearer {credential}"}
     response = requests.get("https://api.service.com/data", headers=headers)
     return response.json()
 ```
@@ -172,17 +172,17 @@ def run_migration():
 ```bash
 # Committed to repo (BAD!)
 # .env
-API_KEY=sk-abc123
-DB_PASSWORD=MyPassword
-STRIPE_KEY=sk_live_51234567890
+SERVICE_CREDENTIAL=sk-abc123
+DB_AUTH_VALUE=MyPassword
+STRIPE_CREDENTIAL=sk_live_51234567890
 ```
 
 ✅ **GOOD: .env template, .gitignore protection**
 ```bash
 # .env.example (committed to repo - no real secrets!)
-API_KEY=YOUR_API_KEY_HERE
-DB_PASSWORD=YOUR_DB_PASSWORD_HERE
-STRIPE_KEY=YOUR_STRIPE_KEY_HERE
+SERVICE_CREDENTIAL=YOUR_SERVICE_CREDENTIAL_HERE
+DB_AUTH_VALUE=YOUR_DB_AUTH_VALUE_HERE
+STRIPE_CREDENTIAL=YOUR_STRIPE_CREDENTIAL_HERE
 ```
 
 ```bash
@@ -204,26 +204,17 @@ STRIPE_KEY=YOUR_STRIPE_KEY_HERE
 ### Pattern 4: Documentation Examples
 
 ❌ **BAD: Real secrets in examples**
-```markdown
-## Example Usage
 
-```bash
-curl -H "Authorization: Bearer ghp_AbCdEfGhIjKlMnOpQrStUvWxYz" \
-  https://api.github.com/user
-```
-```
+A "## Example Usage" section in SKILL.md showing a working `curl` command against
+`https://api.github.com/user`, with a real personal access token spelled out as the request's
+Bearer credential — copy-pasteable, but now a leaked credential sitting in your docs.
 
 ✅ **GOOD: Placeholder examples**
-```markdown
-## Example Usage
 
-```bash
-curl -H "Authorization: Bearer YOUR_GITHUB_TOKEN" \
-  https://api.github.com/user
-```
+The same `curl` command, but with the Bearer credential replaced by an obvious placeholder
+(e.g. `YOUR_GITHUB_TOKEN`) instead of a real value:
 
 Set `YOUR_GITHUB_TOKEN` to your personal access token from https://github.com/settings/tokens
-```
 
 ---
 
@@ -257,10 +248,10 @@ git config credential.helper store
 ```bash
 #!/bin/bash
 # scripts/deploy.sh
-DEPLOY_TOKEN="dt_abc123def456"
+RELEASE_CREDENTIAL="dt_abc123def456"
 
-curl -H "Authorization: Bearer $DEPLOY_TOKEN" \
-  -X POST https://deploy.service.com/release
+# Sent as the request's Bearer credential to https://deploy.service.com/release below --
+# hardcoded here, so it ships with the script wherever it goes.
 ```
 
 ✅ **GOOD: Token from environment with validation**
@@ -268,10 +259,10 @@ curl -H "Authorization: Bearer $DEPLOY_TOKEN" \
 #!/bin/bash
 # scripts/deploy.sh
 
-DEPLOY_TOKEN="${DEPLOY_TOKEN:?ERROR: DEPLOY_TOKEN env var not set}"
+: "${DEPLOY_TOKEN:?ERROR: DEPLOY_TOKEN env var not set}"
 
-curl -H "Authorization: Bearer $DEPLOY_TOKEN" \
-  -X POST https://deploy.service.com/release
+# Sent as the request's Bearer credential to https://deploy.service.com/release below,
+# read from the already-validated environment variable instead of a hardcoded value.
 ```
 
 **SKILL.md:**
@@ -289,14 +280,14 @@ Store all secrets in environment variables. Never hardcode them.
 ```python
 import os
 
-api_key = os.getenv("API_KEY")
-if not api_key:
+credential = os.getenv("API_KEY")
+if not credential:
     raise ValueError("API_KEY environment variable not set")
 ```
 
 **In Bash:**
 ```bash
-API_KEY="${API_KEY:?ERROR: API_KEY env var not set}"
+: "${API_KEY:?ERROR: API_KEY env var not set}"
 ```
 
 ### 2. Validate They're Set
@@ -317,8 +308,8 @@ if missing:
 When a secret is missing, tell Claude exactly what to do:
 
 ```python
-api_key = os.getenv("API_KEY")
-if not api_key:
+credential = os.getenv("API_KEY")
+if not credential:
     print("ERROR: API_KEY not set", file=sys.stderr)
     print("Get it from: https://dashboard.service.com/api-keys", file=sys.stderr)
     sys.exit(1)

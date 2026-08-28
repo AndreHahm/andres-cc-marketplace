@@ -109,17 +109,16 @@ of the following hold:
 
 Motivating case: `references/secrets-and-credentials.md` — a documentation file *about* secrets, not
 itself a credential — was permanently blocking this script's whole-repo scan (and therefore the
-entire Windows fallback dispatch path) before this exemption existed. **This exemption resolves that
-for a documentation file with no illustrative secret-shaped strings in its own content — it does
-not resolve it for the actual motivating file.** Confirmed live (2026-08-28, `cross-model-review`):
-`skill-development`'s own `secrets-and-credentials.md` (identical at three locations —
-`plugins/plugin-devkit/`, `.claude/`, and `.agents/`) still fails `secret_file_in_scope` today,
-because a doc that *teaches* what a secret looks like is exactly the kind of file most likely to
-contain realistic example values (e.g. `API_KEY=sk-abc123def456`, `SECRET_TOKEN=ghp_...`) for
-illustration — and those match the same `redactSecrets` patterns a real credential would. The
-exemption's path/extension gate passes; the content-scan correctly (by its own design) still blocks
-it, since it can't distinguish an illustrative example from a real secret. Not fixed in this pass —
-see "Known limitations" below.
+entire Windows fallback dispatch path) before this exemption existed. **The exemption's path/
+extension gate alone does not resolve this for a file whose own content contains illustrative
+secret-shaped strings** — confirmed live (2026-08-28, `cross-model-review`): `skill-development`'s
+own `secrets-and-credentials.md` failed `secret_file_in_scope` even though it satisfied the path/
+extension gate, because a doc that *teaches* what a secret looks like is exactly the kind of file
+most likely to contain realistic example values for illustration, and those match the same
+`redactSecrets` patterns a real credential would. Two of its three identical copies were then
+rewritten to teach the same lessons without any `redactSecrets`-matching content (see "Known
+limitations" below for the full account, including why the third copy — `.agents/` — was
+deliberately left unfixed, and why that alone still blocks the whole-repo scan today regardless).
 
 **Same limitation as the source list, outside the narrow exemption above**: filename-pattern-only. A
 credential-shaped string embedded in an otherwise-unflagged file's *content* is not caught by this
@@ -152,15 +151,28 @@ required to produce, every time.
   known gap rather than silently left unmentioned.
 - **The documentation-about-secrets exemption's content-scan can't tell an illustrative example
   from a real secret.** Confirmed live (2026-08-28) against this exemption's own motivating file
-  (`skill-development`'s `secrets-and-credentials.md`, present at three identical locations): a
-  reference doc that teaches what a secret looks like, using realistic example values for
-  illustration, still fails `secret_file_in_scope` — the content-scan (see check 2 above) matches
-  those example values the same way it would match a real credential. The exemption resolves the
-  bare-filename false positive for a documentation file with no illustrative secret-shaped strings
-  in it; it does not resolve blocking for a doc that itself contains realistic-looking examples. Not
-  fixed in this pass — narrowing the content-scan to tolerate clearly-fenced/labeled example values
-  would itself be a new, fragile detection surface, so this is left as a known, disclosed gap rather
-  than patched speculatively.
+  (`skill-development`'s `secrets-and-credentials.md`): a reference doc that teaches what a secret
+  looks like, using realistic example values for illustration, failed `secret_file_in_scope` even
+  though it satisfied the path/extension exemption — the content-scan (see check 2 above) matched
+  those example values the same way it would match a real credential. Two of the three prior
+  identical copies (`plugins/plugin-devkit/skills/skill-development/references/secrets-and-credentials.md`
+  and its `.claude/` mirror) were rewritten to teach the same lessons without forming any
+  `redactSecrets`-matching content — confirmed via a direct `redactSecrets(content) === content`
+  check on the rewritten file, and via a live dispatch showing this specific file no longer
+  triggers `secret_file_in_scope` on its own. The third copy, at `.agents/skills/skill-development/
+  references/secrets-and-credentials.md`, was deliberately left unfixed — `.agents/` is documented
+  elsewhere in this repo as a stale mirror outside the automated `sync-plugin-mirrors` tooling, and
+  fixing it would require a manual, tooling-bypassing copy. Because `checkSecretFiles` scans the
+  **whole repository root**, not just the caller's declared scope, this stale `.agents/` copy alone
+  still blocks the Windows fallback dispatch path for the whole repo today, confirmed live
+  post-rewrite: a dispatch targeting only the now-fixed `plugins/plugin-devkit/` copy still fails
+  with `secret_file_in_scope` on the `.agents/` copy instead, since directory traversal reaches it
+  first. Not fully resolved in this pass — the general "content-scan can't distinguish an
+  illustrative example from a real secret" limitation also still holds for any *other*
+  documentation-about-secrets file elsewhere in this repo (or added in the future) whose own
+  examples happen to be realistic-looking; narrowing the content-scan to tolerate clearly-fenced/
+  labeled example values would itself be a new, fragile detection surface, so that general case is
+  left as a known, disclosed gap rather than patched speculatively.
 
 ## Why dangerous-command isn't a fourth pre-flight check
 
