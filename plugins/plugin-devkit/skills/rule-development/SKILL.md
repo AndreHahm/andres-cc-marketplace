@@ -1,10 +1,11 @@
 ---
 name: rule-development
 description: >-
-  Creates and validates .claude/rules/ behavioral guardrail files using contrastive
-  Incorrect/Correct examples. Use when a mistake recurs across agent sessions, when the user
-  identifies a behavioral gap, or when standardizing code conventions or adding path-scoped
-  constraints for specific file types.
+  Creates .claude/rules/ behavioral guardrail files using contrastive Incorrect/Correct
+  examples, and self-checks a newly-created rule via /rules-review as part of that same
+  workflow. Use when a single, already-identified mistake recurs across agent sessions and
+  needs one new guardrail rule, when the user identifies a specific behavioral gap, or when
+  standardizing code conventions or adding path-scoped constraints for specific file types.
 allowed-tools: Read Write Edit Glob Grep Skill AskUserQuestion Bash(python:*)
 ---
 
@@ -31,10 +32,14 @@ Guide for creating effective `.claude/rules` files with contrastive examples tha
 
 ## When NOT to Use
 
-- Task-specific workflows → use a skill instead
+- Task-specific workflows → use the `skill-development` skill instead
 - One-time instructions → put in the prompt
 - Broad project context → put in CLAUDE.md
-- Multi-step procedures → use a skill
+- Multi-step procedures → use the `skill-development` skill instead
+- Reviewing an existing rule's authoring quality/structure only (no new rule being created) →
+  use the `rule-reviewer` agent instead
+- Bulk-extracting rules/domain knowledge from an existing codebase, a full conversation, or PR
+  review feedback → use `rules-extract` instead
 
 ## Finding-ID Fix Mode
 
