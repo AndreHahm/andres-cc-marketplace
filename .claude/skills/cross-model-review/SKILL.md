@@ -508,6 +508,6 @@ See `references/deliberately-not-done.md` (extracted per plugin-rulebook's R13 l
 
 **Concrete scenarios to check, and quality gates:** see
 `references/testing-scenarios.md` — extracted per plugin-rulebook's R13 line-count threshold; the
-26 numbered scenarios and full quality-gate checklist live there, covering every behavior described
+27 numbered scenarios and full quality-gate checklist live there, covering every behavior described
 above (single-model mode, `$MERGE_BASE` diff containment, dispatcher-trust matching, reviewer
 identity, closing-tag neutralization, partial-failure preservation, and more).

@@ -241,6 +241,54 @@ console.log("\n=== Cross-model-review fix (issue #78): an AUTH-named assignment 
   fs.rmSync(refsDir, { recursive: true, force: true });
 }
 
+console.log("\n=== PR #161 review fix (Codex + CodeRabbit, independently): a BARE unprefixed CREDENTIAL=/AUTH= assignment is also caught ===");
+{
+  // Two independent reviewers on this PR found that the first version of
+  // this check required at least one character before the trigger word
+  // (the same first-character-consumption quirk redactSecrets' own pattern
+  // has for bare PASSWORD=), so a bare "CREDENTIAL=..."/"AUTH=..." line --
+  // no prefix at all -- was never caught. Confirmed live before this fix:
+  // both bare forms passed straight through undetected.
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  fs.writeFileSync(path.join(refsDir, "secrets-and-credentials.md"), "# Notes\nCREDENTIAL=opaque-value-no-vendor-prefix\n");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected with secret_file_in_scope -- a BARE CREDENTIAL= assignment (no prefix) is caught",
+    result.ok === false && result.category === "secret_file_in_scope" && /secrets-and-credentials\.md/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
+}
+
+console.log("\n=== PR #161 review fix: a BARE unprefixed AUTH= assignment is also caught, same reasoning ===");
+{
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  fs.writeFileSync(path.join(refsDir, "secrets-and-credentials.md"), "# Notes\nAUTH=opaque-value-no-vendor-prefix\n");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected with secret_file_in_scope -- a BARE AUTH= assignment (no prefix) is caught",
+    result.ok === false && result.category === "secret_file_in_scope" && /secrets-and-credentials\.md/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
+}
+
+console.log("\n=== PR #161 review fix: a mixed-case Db_Auth_Value= assignment is still caught (case-insensitive throughout) ===");
+{
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  fs.writeFileSync(path.join(refsDir, "secrets-and-credentials.md"), "# Notes\nDb_Auth_Value=opaque-value-no-vendor-prefix\n");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected with secret_file_in_scope -- mixed-case CREDENTIAL/AUTH assignments are caught too",
+    result.ok === false && result.category === "secret_file_in_scope" && /secrets-and-credentials\.md/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
+}
+
 console.log("\n=== Cross-model-review fix (issue #78): the new check doesn't over-block CREDENTIAL/AUTH mentioned outside assignment shape ===");
 {
   // "credential"/"auth" appearing in prose, or as a function-call argument
@@ -263,17 +311,52 @@ console.log("\n=== Cross-model-review fix (issue #78): the new check doesn't ove
   fs.rmSync(refsDir, { recursive: true, force: true });
 }
 
-console.log("\n=== Security review fix (M4): a symlink's doc-shaped path cannot exempt its credential-shaped TARGET basename ===");
+console.log("\n=== PR #161 review fix: the function-call exemption is scoped to actual calls, not any code-shaped RHS ===");
+{
+  // A property-access reference (process.env.X, no parentheses -- not a
+  // call) must NOT be treated as safe the way a real function call is --
+  // otherwise a real hardcoded secret written as e.g.
+  // "CREDENTIAL=window.location" (a property chain, not a call) could
+  // exploit the same exemption meant only for "this value is read from
+  // somewhere, not hardcoded here" call expressions.
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  fs.writeFileSync(path.join(refsDir, "secrets-and-credentials.md"), "# Notes\nCREDENTIAL=process.env.API_KEY\n");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected with secret_file_in_scope -- a property-access RHS (no parentheses) is NOT exempted the way a real function call is",
+    result.ok === false && result.category === "secret_file_in_scope" && /secrets-and-credentials\.md/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(refsDir, { recursive: true, force: true });
+}
+
+console.log("\n=== Security review fix (M4): a symlink to a STRICT-pattern target is blocked regardless of any doc-shaped wrapper ===");
 {
   // The link itself lives at references/notes.md (path/extension-exempt
   // shape); its real target is named id_rsa (a strict, never-exempted
-  // pattern). walkFiles checks a file symlink under BOTH names -- the
-  // exemption must gate on which name actually matched, not the link's own
-  // path, or a symlink could smuggle a credential-shaped target through
-  // wearing an innocuous references/*.md wrapper.
+  // pattern -- isDocumentationAboutSecrets rejects a strict-pattern match
+  // outright, independent of matchedOwnBasename, since it only ever
+  // exempts one of the four LOOSE patterns). This scenario proves that
+  // property, not the matchedOwnBasename gate itself -- see the next
+  // scenario for a target basename that actually IS exemption-eligible,
+  // where matchedOwnBasename is the only thing standing between it and a
+  // false exemption.
+  //
+  // CodeRabbit finding, PR #161 (verified, fixed here): an earlier version
+  // of this scenario placed the real target at repoRoot/key-storage/id_rsa
+  // -- an ORDINARY directory walkFiles visits directly during its own
+  // top-down recursion, independent of the symlink. That meant the
+  // assertion below passed even with the whole M4 gate removed, since
+  // id_rsa got flagged via its own direct visit regardless. Placing the
+  // target under .git/ instead -- which walkFiles skips outright during
+  // ordinary directory recursion (see its own ".git" check) -- makes the
+  // symlink's second checkNames entry the ONLY way this target is ever
+  // seen, and the asserted detail now names the link's own path (notes.md)
+  // specifically, not just any secret_file_in_scope category.
   const refsDir = path.join(repoRoot, "references");
   fs.mkdirSync(refsDir, { recursive: true });
-  const targetDir = path.join(repoRoot, "key-storage");
+  const targetDir = path.join(repoRoot, ".git", "smoke-key-storage");
   fs.mkdirSync(targetDir, { recursive: true });
   const realKeyFile = path.join(targetDir, "id_rsa");
   fs.writeFileSync(realKeyFile, "not a real key");
@@ -281,13 +364,49 @@ console.log("\n=== Security review fix (M4): a symlink's doc-shaped path cannot 
   try {
     fs.symlinkSync(realKeyFile, linkPath, "file");
   } catch (e) {
-    skipScenario("symlink doc-shaped-path/credential-shaped-target check", `cannot create a file symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
+    skipScenario("symlink doc-shaped-path/strict-pattern-target check", `cannot create a file symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
   }
   if (fs.existsSync(linkPath)) {
     const result = runDispatch(repoRoot, repoRoot, instructionFile);
     check(
-      "still rejected with secret_file_in_scope -- the link's references/*.md path never exempts the match that actually came from the target's id_rsa basename",
-      result.ok === false && result.category === "secret_file_in_scope",
+      "still rejected with secret_file_in_scope, attributed to the SYMLINK's own path (notes.md) -- a strict-pattern target is never exemption-eligible, and the target is unreachable any other way (under .git/, which walkFiles never visits directly)",
+      result.ok === false && result.category === "secret_file_in_scope" && /notes\.md/.test(result.detail),
+      JSON.stringify(result)
+    );
+  }
+  fs.rmSync(refsDir, { recursive: true, force: true });
+  fs.rmSync(targetDir, { recursive: true, force: true });
+}
+
+console.log("\n=== Security review fix (M4): matchedOwnBasename itself -- a LOOSE-pattern (exemption-eligible) TARGET basename is still blocked ===");
+{
+  // Unlike the id_rsa scenario above, "prod-secret-backup" matches a LOOSE
+  // pattern (/secret/) -- the only category isDocumentationAboutSecrets
+  // ever considers exempting. If matchedOwnBasename didn't gate on which
+  // name actually matched, this target -- reached only via a symlink whose
+  // OWN path (references/notes.md) satisfies the doc-dir/doc-extension
+  // check, with innocuous content that would pass the content-scan too --
+  // would be wrongly exempted. This is the actual scenario the M4 fix
+  // exists to close; the id_rsa scenario above tests a different, already-
+  // independently-enforced property (strict patterns are never exemption-
+  // eligible at all).
+  const refsDir = path.join(repoRoot, "references");
+  fs.mkdirSync(refsDir, { recursive: true });
+  const targetDir = path.join(repoRoot, ".git", "smoke-key-storage-loose");
+  fs.mkdirSync(targetDir, { recursive: true });
+  const realKeyFile = path.join(targetDir, "prod-secret-backup");
+  fs.writeFileSync(realKeyFile, "not a real secret, innocuous content");
+  const linkPath = path.join(refsDir, "notes.md");
+  try {
+    fs.symlinkSync(realKeyFile, linkPath, "file");
+  } catch (e) {
+    skipScenario("symlink doc-shaped-path/loose-pattern-target check", `cannot create a file symlink in this environment (${e.code || e.message}); requires elevated privilege or Developer Mode on Windows`);
+  }
+  if (fs.existsSync(linkPath)) {
+    const result = runDispatch(repoRoot, repoRoot, instructionFile);
+    check(
+      "still rejected with secret_file_in_scope, attributed to the SYMLINK's own path (notes.md) -- an exemption-ELIGIBLE (loose-pattern) target is still blocked because the match came from the target's name, not the symlink's own",
+      result.ok === false && result.category === "secret_file_in_scope" && /notes\.md/.test(result.detail),
       JSON.stringify(result)
     );
   }
