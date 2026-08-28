@@ -7,6 +7,31 @@
 # of commands and has its own guard-type values.
 set -euo pipefail
 
+# Fail closed on an unexpected non-zero exit below (not the deliberate deny
+# paths, and not a context set -e already exempts -- an if/while/&&/||/case
+# test). Residual, not covered by this trap: a fatal expansion error (an
+# unbound variable, a bad arithmetic expression) is a parse-time error bash
+# treats differently from a command's exit status, and a missing/
+# non-executable interpreter or a hook timeout kill are outside this script's
+# control entirely -- all three still fail open under this hook's "onError":
+# "warn" registration. What this trap does close: an ordinary command
+# failure (e.g. `jq` choking on malformed input) that would otherwise crash
+# the script and let the guarded command through with no marker check at
+# all. See issue #83.
+fail_closed_deny() {
+  cat <<'EOF' || true
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "git-kit's PR-operations guard failed unexpectedly and could not verify the command is safe -- denying by default rather than allowing it through unguarded."
+  }
+}
+EOF
+  exit 0
+}
+trap fail_closed_deny ERR
+
 # Fail closed, not open: if jq isn't available, the script below can't parse
 # INPUT and would otherwise crash -- which, under this hook's "onError": "warn"
 # registration, lets the tool call proceed with just a warning. Emit an
@@ -57,9 +82,12 @@ if [ -f "$MARKER" ]; then
   guard="${guard:-}"  # defensive: a concurrent/partial read under `set -u` must degrade to "no marker", never crash
   if [ "$guard" = "gh-pr-create" ] || [ "$guard" = "gh-pr-merge" ]; then
     case "${ts:-}" in '' | *[!0-9]*) ts="" ;; esac  # digits-only -- never reaches arithmetic otherwise
+    if [ -n "$ts" ]; then
+      ts=$((10#$ts))  # force base-10 -- a leading-zero epoch would otherwise be misread as octal
+    fi
     marker_guard="$guard"
     marker_ts="$ts"
-    rm -f "$MARKER"  # consume as soon as seen -- single use, regardless of which (if either) subcommand this call turns out to be
+    rm -f "$MARKER" || true  # consume as soon as seen -- single use, regardless of which (if either) subcommand this call turns out to be; `|| true` so a read-only/permission-restricted .git/ can't turn this into a session-wide lockout via the ERR trap above
   fi
 fi
 
@@ -82,8 +110,11 @@ else
   exit 0
 fi
 
-if [ "$marker_guard" = "$GUARD_TYPE" ] && [ -n "$marker_ts" ] && [ $((now - marker_ts)) -le 60 ]; then
-  allowed=true
+if [ "$marker_guard" = "$GUARD_TYPE" ] && [ -n "$marker_ts" ]; then
+  delta=$((now - marker_ts))
+  if [ "$delta" -ge 0 ] && [ "$delta" -le 60 ]; then
+    allowed=true
+  fi
 fi
 
 if [ "$allowed" = true ]; then
