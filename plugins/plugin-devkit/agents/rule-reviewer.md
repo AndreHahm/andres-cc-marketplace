@@ -8,7 +8,10 @@ description: >-
   practices before it loads into every session. Trigger proactively after
   rule creation or modification. Reviews the rule file's own authoring
   quality (structure, examples, phrasing) — for checking whether code
-  changes comply with existing rules, use the rules-review skill instead.
+  changes comply with existing rules, use the rules-review skill instead;
+  for authoring a brand-new rule from scratch, use the rule-development
+  skill instead — this agent reviews an already-existing rule file's
+  quality, it does not author one.
 model: sonnet
 color: green
 tools: ["Read", "Grep", "Glob"]
