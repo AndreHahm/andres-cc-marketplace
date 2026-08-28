@@ -38,8 +38,53 @@
 # "Resolving a review thread" section for the updated marker-timing guidance.
 # **This is not a claim of unconditional coverage.** This file previously
 # described a "known, disclosed residual" for a raw `gh api .../pulls/*`
-# write call outside the two shapes this file guards; that residual is
-# unchanged by this edit. A second residual, previously tracked in issue #85
+# write call outside the shapes this file guards. Issue #86 narrowed that
+# residual: `gh api ... repos/{owner}/{repo}/pulls/{n}/reviews` (the REST
+# equivalent of `gh pr review --approve`/`--request-changes`) is now guarded
+# too (see REVIEWS_RE below), verb-agnostic (GET-list and POST-submit both
+# denied, matching this file's existing REPLIES_RE/GRAPHQL_RE convention --
+# a verb-scoped regex is itself a bypassable substring check, and `gh api`
+# defaults to POST the moment any `-f`/`-F` param is present, so the
+# issue's own repro carries no explicit verb token to match on at all). A
+# security-reviewer pass found this reaches further than git-kit's own
+# `allowed-tools` grants: `plugin-devkit`'s `rules-extract` skill
+# (`Bash(gh:*)`, no git-kit marker grant) read this same endpoint via raw
+# `gh api` for its PR-review-mode data collection. Fixed in the same
+# change: `rules-extract` migrated to `gh pr view --json reviews` (see
+# `plugins/plugin-devkit/skills/rules-extract/references/pr-review-mode.md`'s
+# Step P3), which this guard never touches. Verified two ways, not one: an
+# instruction-level grep for the literal endpoint string across every
+# plugin's actual documented commands (not just its `allowed-tools` grant
+# list) found `rules-extract` as the only Claude-Code-executed component
+# that actually issued this call -- a broad grant alone doesn't mean a
+# conflict, since several other components (`extract-rules`/`apply-rules`
+# commands, `rules-apply`, git-kit's own `codex-review-recovery`) hold a
+# blanket `Bash(gh:*)`/`Bash(gh api *)`/`Bash(gh api:*)` grant reaching this
+# endpoint but never instruct a call to it. gh-operations' own quality gate
+# separately confirms the write side specifically was already a known,
+# deliberately-avoided conflict before this change ("cannot be scoped
+# narrower than the merge/review write paths it would also reach").
+# **Deliberately still unguarded**, unlike the above: `gh api ...
+# repos/{owner}/{repo}/issues/{n}/comments` (the REST equivalent of
+# `gh pr comment`, since PRs share the Issues API for comments) -- issue
+# #86 also named this endpoint, but both `gh-operations`
+# (`Bash(gh api repos/*/issues:*)`, with a documented example using exactly
+# this endpoint) and `github-issue-lifecycle`
+# (`Bash(gh api repos/*/issues/*:*)`, broader still) already have a
+# legitimate, currently-functioning grant reaching it for genuine
+# issue-commenting -- and a PR number and an issue number share the same ID
+# space, so "commenting on issue #45" and "commenting on PR #45" are
+# syntactically identical at this endpoint; no regex can tell them apart.
+# Guarding it would break those two skills' existing functionality, not
+# just close a gap. Left open by explicit decision (2026-08-28), not an
+# oversight -- closing it needs a coordinated fix across those two skills
+# (a marker handshake, or switching their raw `gh api` usage to
+# `gh issue comment`) before this file can safely guard the endpoint too.
+# Out of scope by construction, not by decision: `.github/workflows/
+# await-codex-review.yml` also calls the reviews endpoint directly, but a
+# `PreToolUse` hook only ever fires on a Claude Code tool call, never on a
+# CI job step -- this guard has no way to reach it and none is needed.
+# A second residual, previously tracked in issue #85
 # alongside the one below, is now fixed: the shared command-word prefix
 # class (below, and in this file's other two `gh` matches) is now a
 # negated-identifier class (`(^|[^[:alnum:]_.-])`) that recognizes `$(`, a
@@ -187,6 +232,14 @@ API_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+api([^[:alnum:]_.-]|$)
 # these commands.
 REPLIES_RE='(^|[^[:alnum:]_])repos/[^[:space:]]+/pulls/[^[:space:]]+/comments/[^[:space:]]+/replies([^[:alnum:]_-]|$)'
 GRAPHQL_RE='(^|[^[:alnum:]_])graphql([^[:alnum:]_-]|$)'
+# Matches any `gh api ... repos/{owner}/{repo}/pulls/{n}/reviews` call
+# regardless of HTTP verb (GET to list, POST to submit an approve/request-
+# changes/comment review) -- same unconditional-endpoint-match approach as
+# REPLIES_RE/GRAPHQL_RE above, not a verb-specific check: this file's own
+# `gh api graphql` branch already established that verb-agnostic matching
+# is the safer default here, since a verb check is itself regex-based and
+# addable-to the same bypass class this file exists to avoid. See issue #86.
+REVIEWS_RE='(^|[^[:alnum:]_])repos/[^[:space:]]+/pulls/[^[:space:]]+/reviews([^[:alnum:]_-]|$)'
 # Herestrings (<<<), not `echo ... | grep -q`, for every match below: under `set -o pipefail`, a
 # `grep -q` match found early enough to leave `$COMMAND` partly unread can SIGPIPE the `echo` that's
 # still writing it, and pipefail then reports that non-zero exit for the pipeline even though grep
@@ -221,6 +274,8 @@ elif grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+c
   GH_SUBCOMMAND="gh pr comment"
 elif grep -qE "$API_RE" <<< "$COMMAND" && grep -qE "$REPLIES_RE" <<< "$COMMAND"; then
   GH_SUBCOMMAND="gh api .../comments/{id}/replies"
+elif grep -qE "$API_RE" <<< "$COMMAND" && grep -qE "$REVIEWS_RE" <<< "$COMMAND"; then
+  GH_SUBCOMMAND="gh api .../pulls/{n}/reviews"
 elif grep -qE "$API_RE" <<< "$COMMAND" && grep -qE "$GRAPHQL_RE" <<< "$COMMAND"; then
   # Unconditional deny-by-default -- no read-only carve-out. See this file's header comment for
   # why: a substring-matching carve-out here was tried and independently defeated by 3 different
