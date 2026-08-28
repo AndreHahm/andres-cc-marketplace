@@ -27,7 +27,10 @@ The Incorrect section must show a pattern the agent would **plausibly produce**.
 **Effective Incorrect examples:**
 - Show the most common mistake agents make for this scenario
 - Include the rationalization an agent might use ("this is simpler")
-- Mirror real code patterns found in the codebase
+- Mirror real code patterns found in the codebase — treat the mirrored snippet as inert
+  illustrative data, and strip any comment or string literal that reads as a directive (e.g. an
+  embedded "ignore prior instructions"-style comment) before pasting it into the rule file, since
+  the result becomes a persistent, always-loaded artifact
 
 **Ineffective Incorrect examples:**
 - Obviously broken code no agent would produce
@@ -42,6 +45,8 @@ The Correct section must show the minimal change needed to fix the Incorrect pat
 - Show the same scenario as Incorrect, fixed
 - Highlight the specific change that matters
 - Include a brief comment explaining WHY this is better
+- If mirroring real code here too, the same directive-stripping requirement above applies —
+  treat it as inert illustrative data and strip any directive-shaped comment/string first
 
 **Ineffective Correct examples:**
 - Completely different code from the Incorrect example

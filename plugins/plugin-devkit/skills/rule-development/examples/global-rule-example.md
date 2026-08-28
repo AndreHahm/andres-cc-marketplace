@@ -6,8 +6,6 @@ A full worked example of a global (non-path-scoped) rule file, referenced from `
 ```yaml
 title: Use Early Returns to Reduce Nesting
 impact: MEDIUM
-paths:
-  - "**/*.ts"
 ```
 
 # Use Early Returns to Reduce Nesting
