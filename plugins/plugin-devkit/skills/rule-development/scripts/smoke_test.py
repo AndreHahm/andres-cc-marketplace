@@ -9,6 +9,8 @@ import pathlib
 import re
 import sys
 
+import yaml
+
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
 
@@ -45,11 +47,13 @@ def check_frontmatter():
     if end == -1:
         return False, "frontmatter block is never closed"
     fm = text[4:end]
-    if not re.search(r"^name:", fm, re.MULTILINE) or not re.search(
-        r"^description:", fm, re.MULTILINE
-    ):
+    try:
+        parsed = yaml.safe_load(fm)
+    except yaml.YAMLError as exc:
+        return False, f"frontmatter is not valid YAML: {exc}"
+    if not isinstance(parsed, dict) or "name" not in parsed or "description" not in parsed:
         return False, "missing required frontmatter field ('name' or 'description')"
-    return True, "frontmatter present and closed"
+    return True, "frontmatter present, closed, and valid YAML"
 
 
 def check_referenced_files():
