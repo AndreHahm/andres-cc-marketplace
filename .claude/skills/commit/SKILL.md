@@ -309,6 +309,12 @@ pattern/examples, never as a separate source of truth):**
 
 ## Testing & Validation
 
+**Verify this skill activates on:**
+- "/commit" / "commit this" / "commit and push" / "create a commit" for staged or about-to-be-staged
+  changes
+- "amend the last commit"
+- Any request to turn staged/unstaged changes into a properly formatted commit
+
 **Verify this skill does NOT activate on:**
 - "split this diff into separate commits" / "break this up into multiple commits" / "how should I order
   these changes into waves" → these route to `standalone-commits`, not `commit`; step 11's "multiple
@@ -349,20 +355,14 @@ and reconfirmed clean; `ty check` separately caught 2 real issues `ruff` didn't 
 union type) — confirming `ty check`'s inclusion catches a real class of error `ruff` alone misses. All
 three checks passed clean after fixes.
 
-**Step 6 (interactive staging via `stage-selected-files.sh`) — verified live, 2026-08-28:** built a
-throwaway repo with two files deliberately named `$(touch INJECTION_PROOF).py` and
-`other$(touch INJECTION_PROOF2).txt`, alongside two ordinary unstaged files. `--list` printed all four
-as a numbered list (each command-substitution filename shown literally, unexecuted). Staging all four by
-index (`stage-selected-files.sh 1 2 3 4`) correctly staged every file, including the two crafted names —
-confirmed via `git status --porcelain` showing them as staged, quoted, literal paths — and confirmed no
-`INJECTION_PROOF*` file was ever created, i.e. the embedded `$(...)` never executed. Also verified: an
-out-of-range index (`99`) exits 1 with an error and stages nothing; a non-digit argument (`abc`) exits 2
-with an error and stages nothing.
+**Step 6 (interactive staging via `stage-selected-files.sh`) — verified live, 2026-08-28.** See
+`references/staging-fix-verification-log.md` for the full run narrative (injection-crafted filenames
+staged correctly with no code execution; out-of-range/non-digit arguments correctly rejected).
 
 **Step 8 (marketplace CI targeted repair) — verified via `tests/marketplace_ci/test_hooks.py`'s
-`check_staged_parity` coverage (deterministic, not blind A/B — see rationale below), 2026-08-13, plus
-`tests/marketplace_ci/test_sync.py`'s `stage_generated_destinations` coverage (added alongside the
-`--stage` flag, 2026-08-28):**
+`check_staged_parity` coverage (deterministic, not blind A/B — see rationale below), 2026-08-13; the
+`--stage` flag added 2026-08-28 has its own test and dogfooding narrative in
+`references/staging-fix-verification-log.md`:**
 - [x] Staging a canonical `plugins/<name>/...` change without staging its generated `.claude` mirror
       counterpart is correctly flagged as a parity failure, even when the mirror file's *working-tree*
       content already happens to match (`test_unstaged_repair_does_not_satisfy_staged_parity`)
