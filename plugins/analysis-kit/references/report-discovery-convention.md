@@ -53,3 +53,7 @@ Every site below must match this file. If you change either definition here, upd
   own dispatches used) — two sites. Its own persisted report is deliberately *not* added to the 9-directory
   report-discovery glob enumeration above — see this skill's own Gotchas section for why a meta-report
   consolidating other reports shouldn't count as a 10th independent one
+- `skills/mining-review-learnings/SKILL.md` — has no `<scope-slug>` in the sense this file defines it
+  (its own persisted-filename prefix is a PR-number-set slug, e.g. `pr-47-172`, not a session/date-range
+  scope) and is deliberately *not* added to the 9-directory report-discovery glob enumeration above, for
+  the same reasoning `running-a-full-retrospective` already states — see this skill's own Gotchas section

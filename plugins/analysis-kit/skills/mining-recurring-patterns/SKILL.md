@@ -40,6 +40,7 @@ Mine a Claude Code session for recurring action sequences, loops, recall/memory 
 - **Whole-session token/time accounting** — this skill only aggregates what's actually observable (subagent-dispatch usage figures); it does not and cannot report main-conversation totals. Don't expect a full cost breakdown.
 - **Per-component retrospective SWOT** — use `analyzing-plugin-components` instead
 - **Tracking whether a recurring failure represents an unresolved rule violation or governance issue** (with a resolved/unresolved/workaround status) — use `analyzing-governance-and-conflicts` instead; this skill's retry-loop detection is a mechanical, sequence-level pattern (the same command repeated with no intervening change), not a governance/rule-conformance classification
+- **Recurring findings across multiple closed PRs' GitHub review history** — use `mining-review-learnings` instead; this skill mines one session's own action sequence, not cross-PR review-finding patterns
 - **No repeated commands, no subagent dispatches, and no repeated questions observed** — nothing to mine
 
 ## Phase 1: Scope
