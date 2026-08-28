@@ -48,11 +48,14 @@ proposal is presented or applied.
   Use"/constraints section first — if it refuses to run under the exact condition the rule describes, the
   fold can't cover that condition. A trigger path with no governing skill at all (e.g. a raw manual
   command) can't be folded; the rule stays standalone.
-- **Canonical source:** before editing, find the rule's true canonical source with a whole-tree search
-  (`plugins/*/rules/`, `scripts/marketplace_ci/rules/`) — `.claude/rules/<name>.md` is a generated mirror,
-  and editing it directly is silently reverted by the next sync. After editing, re-run the sync and diff
-  the mirror pair — confirm the `.claude/` copy actually reflects the edit, not stale pre-edit content
-  the sync silently restored.
+- **Canonical source:** applies only inside a `plugin-devkit`-style marketplace repo, where a
+  `plugins/*/rules/` or `scripts/marketplace_ci/rules/` mirror-source tree actually exists — check for
+  one (e.g. `scripts/marketplace_ci/` present) before assuming it. In that case, before editing find
+  the rule's true canonical source with a whole-tree search — `.claude/rules/<name>.md` is a generated
+  mirror there, and editing it directly is silently reverted by the next sync; after editing, re-run
+  the sync and diff the mirror pair to confirm the `.claude/` copy reflects the edit. In an ordinary
+  downstream project with no such mirror tooling (this plugin installed as a marketplace plugin),
+  `.claude/rules/<name>.md` is simply the canonical file — edit it directly, no sync step exists.
 - **Batch proposals:** check every candidate individually against this rule, not sampled or
   pattern-matched from ones that already passed, and get an independent review before treating the
   migration as ready to ship.
