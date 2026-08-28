@@ -313,7 +313,48 @@ const DOCUMENTATION_EXTENSION = /\.(md|mdx|txt|rst)$/i;
 // (CI-log redaction), and widening its trigger list changes that
 // caller's behavior too, an unrelated blast radius. This is a second,
 // LOCAL check scoped to only this content-scan gate.
-const ADDITIONAL_CREDENTIAL_ASSIGNMENT_PATTERN = /^\s*[A-Za-z_][A-Za-z0-9_]*(?:CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*=\s*.+$/im;
+//
+// Two independent PR-review findings on the first version of this check
+// (Codex + CodeRabbit, both live on PR #161): the identifier prefix
+// `[A-Za-z_][A-Za-z0-9_]*` required at least one character before the
+// trigger word, so a BARE, unprefixed `CREDENTIAL=...`/`AUTH=...` line (no
+// prefix at all) was never matched -- the same first-character-consumption
+// quirk `redactSecrets`' own pattern has for bare `PASSWORD=...`. Widening
+// the identifier match to allow a zero-length prefix fixes that, but a
+// naive version of that fix also matched this file's own GOOD examples
+// (`credential = os.getenv("API_KEY")`) purely because "credential" is
+// *itself* the trigger word once no prefix is required -- confirmed live by
+// testing the naive fix against this exact file, which failed. The
+// distinguishing signal kept: a REAL hardcoded secret is a literal value
+// (a quoted string, a bare token, `.env`-style syntax); reading from the
+// environment is a FUNCTION CALL on the right-hand side
+// (`os.getenv(...)`, `process.env.X` is a property access rather than a
+// call and is intentionally NOT exempted by this narrow check -- if that
+// shape needs covering later, extend `CREDENTIAL_ASSIGNMENT_CALL_SHAPE`
+// rather than loosening the line-match pattern itself). Split into two
+// steps (capture the right-hand side, test its shape separately) rather
+// than one combined regex with a lookahead: an earlier attempt at a single
+// lookahead-based regex was defeated by the greedy `\s*` before it
+// backtracking to zero-width, letting the lookahead evaluate against
+// leftover whitespace instead of the actual value -- confirmed live via a
+// literal `RegExp#exec` trace showing the match landing one character
+// short of where the lookahead needed to run. Case-insensitive throughout
+// (matches `redactSecrets`' own case-insensitivity for the same patterns,
+// and closes the mixed-case gap a separate, already-refuted PR finding
+// raised and this repo's own live testing confirmed was NOT actually
+// present in the original case-insensitive version).
+const CREDENTIAL_ASSIGNMENT_LINE_PATTERN = /^\s*[A-Za-z0-9_]*(?:CREDENTIAL|AUTH)[A-Za-z0-9_]*\s*=\s*(.+)$/im;
+const CREDENTIAL_ASSIGNMENT_CALL_SHAPE = /^[\w.]+\([\s\S]*\)\s*$/;
+
+function looksLikeCredentialAssignment(content) {
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(CREDENTIAL_ASSIGNMENT_LINE_PATTERN);
+    if (match && !CREDENTIAL_ASSIGNMENT_CALL_SHAPE.test(match[1].trim())) {
+      return true;
+    }
+  }
+  return false;
+}
 
 function isDocumentationAboutSecrets(relativePath, matchedPattern) {
   // scripts-reviewer finding (M1, post-security-review): identify one of
@@ -402,7 +443,7 @@ function checkSecretFiles(targetPaths, repoRoot) {
             if (
               content !== null &&
               redactSecrets(content) === content &&
-              !ADDITIONAL_CREDENTIAL_ASSIGNMENT_PATTERN.test(content)
+              !looksLikeCredentialAssignment(content)
             ) {
               continue;
             }
