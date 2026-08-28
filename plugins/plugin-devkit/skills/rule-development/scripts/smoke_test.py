@@ -13,9 +13,27 @@ SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
 
 
+def _frontmatter_end_index(text):
+    """Validated end-of-frontmatter index (position of the closing '---' line's own
+    newline), or -1 if the block never opens/closes -- the single source of truth
+    check_frontmatter and _frontmatter_and_body both build on, so a malformed file
+    can't split silently into a bogus frontmatter/body pair in one of them while the
+    other correctly reports FAIL."""
+    if not text.startswith("---\n"):
+        return -1
+    return text.find("\n---\n", 4)
+
+
 def _frontmatter_and_body():
     text = SKILL_MD.read_text(encoding="utf-8")
-    header_end = text.find("\n---\n", 4) + 5
+    end = _frontmatter_end_index(text)
+    if end == -1:
+        # Malformed frontmatter: check_frontmatter already reports this as FAIL:
+        # fall back to an empty frontmatter / whole-file-as-body split so the other
+        # checks degrade to their own "not found" branches instead of building on an
+        # arbitrary, unguarded slice.
+        return "", text, text
+    header_end = end + 5
     return text[:header_end], text[header_end:], text
 
 
@@ -23,7 +41,7 @@ def check_frontmatter():
     text = SKILL_MD.read_text(encoding="utf-8")
     if not text.startswith("---\n"):
         return False, "SKILL.md does not start with a frontmatter block"
-    end = text.find("\n---\n", 4)
+    end = _frontmatter_end_index(text)
     if end == -1:
         return False, "frontmatter block is never closed"
     fm = text[4:end]
@@ -44,7 +62,7 @@ def check_referenced_files():
     missing = []
     for match in re.finditer(pattern, body):
         target = match.group(1) or match.group(2)
-        if not (SKILL_DIR / target).exists():
+        if not (SKILL_DIR / target).is_file():
             missing.append(target)
     if missing:
         return False, "referenced file(s) do not exist: " + ", ".join(sorted(set(missing)))
@@ -70,7 +88,7 @@ def check_bash_grants():
         return True, "no allowed-tools line found (skip)"
     if not tokens:
         return True, "no Bash(...) grants found (skip)"
-    unused = [t for t in tokens if not re.search(re.escape(t.split("/")[-1]), body)]
+    unused = [t for t in tokens if not re.search(r"\b" + re.escape(t.split("/")[-1]) + r"\b", body)]
     if unused:
         return False, "Bash grant(s) never referenced anywhere in the body: " + ", ".join(
             sorted(set(unused))
