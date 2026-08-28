@@ -27,7 +27,7 @@
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 4,
-    "declared_scenarios_covered": 4,
-    "uncovered": []
+    "declared_scenarios_covered": 3,
+    "uncovered": ["add path-scoped guidance for this file type"]
   }
 }
