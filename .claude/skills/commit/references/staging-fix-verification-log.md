@@ -16,6 +16,29 @@ confirmed via `git status --porcelain` showing them as staged, quoted, literal p
 out-of-range index (`99`) exits 1 with an error and stages nothing; a non-digit argument (`abc`) exits 2
 with an error and stages nothing.
 
+**Follow-up round, same date, after this PR's own automated review found three more real issues in
+this same script:**
+- **Executable bit**: `git ls-files --stage` confirmed the script was committed as `100644` — this
+  repo's `core.fileMode=false` meant a local `chmod +x` never got recorded (the working-tree file
+  still *looked* executable regardless). Fixed via `git update-index --chmod=+x`, re-confirmed
+  `100755` in the index afterward.
+- **Untracked-directory collapsing**: reproduced live — an untracked directory with 2 files showed as
+  one `--list` candidate, and staging it staged both files. Added `--untracked-files=all` to the
+  `git status --porcelain -z` call; re-verified the same directory now lists as 2 separate candidates,
+  and staging only one of the two leaves the other genuinely untracked.
+- **Snapshot-based anti-TOCTOU**: `--list` now persists its exact candidate list to
+  `$(git rev-parse --git-dir)/stage-selected-files.snapshot`; the indexed staging call reads that
+  snapshot back instead of recomputing `git status` fresh. Live-verified: ran `--list` (index 1 =
+  `file-b.txt`), then created a new file (`aaa-new.txt`) that would sort first in a live re-scan,
+  then staged index `1` — the snapshot's `file-b.txt` was staged, not `aaa-new.txt`, and the snapshot
+  file is removed after a successful stage. Also closes GitHub issue #158 (filed for this exact race
+  before this same review round independently reconfirmed it as CodeRabbit finding
+  `stage-selected-files.sh:13`).
+- **Control-byte-safe display**: the numbered `--list` output now prints each candidate through
+  bash's `printf '%q'` (display only — the snapshot file and the actual `git add` pathspec still use
+  the raw, unescaped bytes). Live-verified against the same command-substitution-crafted filename
+  from the original run: displayed as `\$\(touch\ PROOF3\).py`, safely escaped, not run.
+
 ## Step 7.5 (lint/format/type-check staged Python files) — verified live, 2026-08-16
 
 Ran `uv run ruff format`/`uv run ruff check --fix`/`uv run ty check` against two newly-written scripts
@@ -25,6 +48,20 @@ and reconfirmed clean; `ty check` separately caught 2 real issues `ruff` didn't 
 `# type: ignore`, and `sys.stdout.reconfigure`/`sys.stderr.reconfigure` not resolving on the `TextIO`
 union type) — confirming `ty check`'s inclusion catches a real class of error `ruff` alone misses. All
 three checks passed clean after fixes.
+
+## Step 16 (push) — fixed and verified live, 2026-08-28
+
+This PR's first pass at step 16 replaced "retype/recompose the branch name" with "resolve it fresh
+via `git rev-parse --abbrev-ref HEAD` immediately before pushing" — but this PR's own pre-push
+automated review (Codex) correctly pointed out that this doesn't close the actual injection vector:
+the model still has to interpolate the resolved value into the next command's text, which is the same
+composition step that made the original version exploitable. Live-verified both halves in a scratch
+repo: created a ref literally named `review/foo;touch${IFS}INJECTED` (confirmed a legal ref via
+`git check-ref-format --branch`, exit 0); interpolating the `git rev-parse`-resolved value into a
+composed `git push origin <branch>` string and running it did execute the injected `touch` (the
+`INJECTED` file was created); `git push origin HEAD` against the identical ref pushed correctly with
+no branch text ever appearing in a command the model builds, and created no `INJECTED` file. Step 16
+now uses `git push origin HEAD` (`git push -u origin HEAD` with no upstream) instead.
 
 ## Step 8 (marketplace CI targeted repair, `--stage` flag) — added 2026-08-28
 
@@ -42,3 +79,22 @@ Also dogfooded for real, in the same session, against this exact fix's own stage
 `sync-plugin-mirrors --stage` correctly staged the `.claude/skills/commit/SKILL.md` mirror once its
 canonical source (`plugins/git-kit/skills/commit/SKILL.md`) was already staged, and
 `check-all --staged` reported OK afterward.
+
+**Follow-up round, same date, after this PR's own automated review found three more real issues:**
+- **Partial-staging skip**: `test_stage_generated_destinations_skips_partially_staged_source` stages
+  a canonical source, then makes a further unstaged edit on top (a partial stage), and confirms
+  `--stage` leaves the generated destination unstaged rather than syncing it from the fuller
+  working-tree content and staging a mismatch `check_staged_parity` would then reject.
+- **`git add` failure handling**: `test_stage_generated_destinations_wraps_git_add_failure_as_sync_error`
+  points a `SyncAction`'s destination outside the repository (where `git add` genuinely fails) and
+  confirms `stage_generated_destinations` raises `SyncError`, not an uncaught
+  `subprocess.CalledProcessError` — the CLI's existing `except SyncError` handling now covers it.
+- **Hooks-merge staging**: `test_stage_hooks_merge_result_stages_when_contributing_source_staged` and
+  `_skips_when_no_contributing_source_staged` confirm the new `stage_hooks_merge_result` correctly
+  stages the merged `.claude/hooks/hooks.json` only when a contributing plugin's own
+  `hooks/hooks.json` is staged and fully staged — the per-file `--stage` logic above has no single
+  source to match against a merged, N-sources-to-1-destination result, so it never covered this case.
+
+All 16 `tests/marketplace_ci/test_sync.py` tests (and the full 232-test `tests/marketplace_ci/` suite)
+pass after this round; `ruff format --check`, `ruff check`, and `ty check` all pass clean on the
+changed files.

@@ -36,6 +36,7 @@ from scripts.marketplace_ci.sync import (
     plan_hooks_merge,
     plan_plugin_sync,
     stage_generated_destinations,
+    stage_hooks_merge_result,
 )
 from scripts.marketplace_ci.validators import (
     check_staged_parity,
@@ -140,7 +141,12 @@ def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
     applied_count = len(result.applied) + len(hooks_result.applied)
     print(f"sync-plugin-mirrors: applied {applied_count} action(s)")
     if getattr(args, "stage", False):
-        staged = stage_generated_destinations(repo, result.applied)
+        try:
+            staged = stage_generated_destinations(repo, result.applied)
+            staged += stage_hooks_merge_result(repo, hooks_plan)
+        except SyncError as exc:
+            print(f"sync-plugin-mirrors: {exc}", file=sys.stderr)
+            return 1
         for path in staged:
             shown = path.resolve().relative_to(repo.resolve()).as_posix()
             print(f"sync-plugin-mirrors: staged {shown}")
@@ -182,7 +188,11 @@ def _handle_convert_codex_exports(args: argparse.Namespace) -> int:
         return 1
     print(f"convert-codex-exports: applied {len(result.applied)} action(s)")
     if getattr(args, "stage", False):
-        staged = stage_generated_destinations(repo, result.applied)
+        try:
+            staged = stage_generated_destinations(repo, result.applied)
+        except SyncError as exc:
+            print(f"convert-codex-exports: {exc}", file=sys.stderr)
+            return 1
         for path in staged:
             shown = path.resolve().relative_to(repo.resolve()).as_posix()
             print(f"convert-codex-exports: staged {shown}")
