@@ -1008,6 +1008,40 @@ to prose-level review.
 
 ---
 
+## PR #172 — `github-issue-lifecycle` skill, freestanding issue work (Codex, 2 rounds, 2026-08-28)
+
+### Pattern: `gh issue close` has a dedicated reason/flag for each closure type, not just one generic path
+
+**What happened:** An instruction folded every "Declined" reason (including "duplicate") into the
+generic `not planned` close path. `gh issue close --help` documents a dedicated `--duplicate-of
+<number-or-url>` flag together with a `duplicate` reason, which is what actually preserves GitHub's own
+duplicate-issue relationship and link to the canonical issue — the generic path silently discards that
+data.
+
+**Assumed vs. actual:**
+
+| Assumed | Actual |
+|---|---|
+| Any "Declined" reason, including duplicate, can close via the generic `not planned` path | `gh issue close` has a dedicated `--reason duplicate --duplicate-of <canonical>` path that preserves the duplicate link; the generic path discards it |
+
+**Rule:** Before folding several "declined" sub-reasons into one generic close path, check the tool's
+own `--help` for a reason-specific flag that preserves data the generic path would silently drop.
+
+### Pattern: untrusted issue/comment text in a Bash double-quoted `gh` argument is a shell-injection surface, not a style nit
+
+**What happened:** A workflow placed generated comment/title text directly inside a Bash command's
+double quotes before passing it to `gh issue comment`/`gh issue create`. Double-quoting does not
+suppress `$(...)`/backtick/`$VAR` shell expansion, so text containing shell syntax — plausible in
+summarized pasted logs or attacker-controlled issue content — can execute before `gh` ever receives it.
+`gh issue comment --help` documents `-F, --body-file <file>` specifically to read body text from a file
+instead of a shell argument.
+
+**Rule:** Any generated text that will be interpolated into a `gh`/git shell command and did not
+originate as a fixed literal must go through that command's own `--*-file` flag (reading from a
+scratchpad file), never a double-quoted inline argument.
+
+---
+
 ## Master pre-push checklist (all PRs analyzed, including this session's #61/#62/#65/#68/#76/#79/#92/#88)
 
 ### Tool, API & language behavior — verify, don't assume
