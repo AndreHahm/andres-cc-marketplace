@@ -53,3 +53,7 @@ shared procedure itself lives here.
 - `skills/analyzing-plugin-components/SKILL.md` Phase 1 — procedure only; this skill's own Phase 1 adds
   further *sequential* steps after it (a timezone pitfall note, the narrow-scope gap-awareness check,
   the sibling-scope-overlap check), not an inline addendum to the procedure itself
+- `skills/mining-review-learnings/SKILL.md` — deliberately **not** a site. Its own Phase 1 cites this
+  file only to distinguish its merge-date PR filter from this shared session/conversation scope
+  procedure — it never resolves a session scope itself, so it restates nothing from here to keep in
+  sync.

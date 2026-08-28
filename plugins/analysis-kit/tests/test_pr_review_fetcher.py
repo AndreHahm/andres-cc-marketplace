@@ -67,9 +67,36 @@ def test_normalize_pr_with_zero_review_comments():
     assert records == []
 
 
+def test_normalize_null_user_does_not_crash():
+    # GitHub returns "user": null for a review/comment whose author's account
+    # has since been deleted -- dict.get("user", {}) does NOT catch this,
+    # since the key is present with value None, not absent.
+    reviews = [{"id": 1, "user": None, "body": "", "submitted_at": "2026-01-01T00:00:00Z"}]
+    comments = [
+        {
+            "id": 2,
+            "user": None,
+            "path": "f.py",
+            "line": 1,
+            "body": "",
+            "created_at": "2026-01-01T00:00:00Z",
+        }
+    ]
+    records = pr_review_fetcher.normalize(reviews, comments)
+    assert records[0]["reviewer"] is None
+    assert records[1]["reviewer"] is None
+
+
 def test_load_fixture_missing_keys_raises(tmp_path):
     bad = tmp_path / "bad.json"
     bad.write_text(json.dumps({"reviews": []}), encoding="utf-8")
+    with pytest.raises(pr_review_fetcher.FetchError):
+        pr_review_fetcher.load_fixture(bad)
+
+
+def test_load_fixture_non_list_reviews_raises(tmp_path):
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps({"reviews": "oops", "comments": []}), encoding="utf-8")
     with pytest.raises(pr_review_fetcher.FetchError):
         pr_review_fetcher.load_fixture(bad)
 
