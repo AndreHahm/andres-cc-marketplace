@@ -182,7 +182,11 @@ follow — same boundary "Updating Existing Rules" step 3 states for the update 
 Glob .claude/rules/**/*.md
 Grep "relevant-keyword" in .claude/rules/
 ```
-If overlap found → update existing rule, delete the duplicate you just created.
+If overlap found → update the existing rule, then confirm via `AskUserQuestion` and hand the
+deletion of the duplicate file you just created to the user — this skill must never perform the
+deletion itself, including via `Bash(python:*)`; it has no delete grant, and a rule file's
+deletion (an irreversible change to what loads into every session) stays a user-performed step,
+not something this skill does on the user's behalf even after confirmation.
 
 Also check for **cross-format duplicates**: a project-specific pattern in a `.local.md` file may
 already be captured as a Principle in the corresponding `.md` file under a different name. Use
@@ -325,9 +329,10 @@ silently contradict each other, and Claude may resolve the conflict arbitrarily.
 - [ ] `/rules-review` fires on the intended violation with no false positives
 - [ ] `plugin-rulebook` compliance check run and PASS
 - [ ] `python scripts/smoke_test.py` passes (this skill's own persisted structural smoke test) — the
-      `Bash(python:*)` grant exists narrowly to run this script; it does not license the `find`/
-      marketplace-sync/deletion steps `references/lazy-loading-checklist.md` and this file's own
-      Redundancy Filter describe, which stay manual/user-performed steps outside this skill's scope
+      `Bash(python:*)` grant also covers `references/lazy-loading-checklist.md`'s marketplace-sync
+      re-run (`python -m scripts.marketplace_ci sync-plugin-mirrors`), but not file deletion — the
+      redundant-duplicate deletion this file's own Redundancy Filter and the lazy-loading checklist
+      describe stays a user hand-off, never performed silently
 
 `evals/rule-development/evals.json` (3 scenarios: authoring a new rule, deciding path-scoping vs.
 folding for an existing rule, appending to an existing rule without overwriting it) backs this

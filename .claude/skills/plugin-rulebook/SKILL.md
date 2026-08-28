@@ -38,6 +38,10 @@ Read active settings from `${CLAUDE_SKILL_DIR}/assets/settings.json` (plugin-por
 - Structural/manifest validation (`plugin.json` correctness, directory layout, component wiring, README/LICENSE presence) → use `plugin-validator` instead. This skill checks naming, language, formatting, and tool-scoping (R1-R32) against a component's own content — it does not verify the plugin manifest or that components are correctly wired together.
 - Plugin directory structure, component organization, auto-discovery, or manifest configuration itself (deciding where files live, what directories are called) → use `plugin-development` instead. This skill checks a component's own naming/language/formatting/tool-scoping (R1-R32) once it exists — it does not decide directory layout or scaffold new structure.
 - Project-specific behavioral rules → use `rule-development` instead
+- Validating a single existing rule file's quality (both its R1-R32 structural compliance and its
+  behavioral-content quality — Incorrect/Correct examples, wording, scope) → use the
+  `rule-reviewer` agent instead; it already incorporates this skill's generic rules for exactly
+  this case, so a bare "validate this rule" request needs only that one dispatch
 - Skill quality metrics (token efficiency, trigger phrases) → use `skill-reviewer` instead
 - Security threat analysis → use `skill-security` instead
 - Script/code correctness (missing file encodings, shell logic bugs, mojibake corruption, YAML parsing gaps) → use `scripts-reviewer` instead. R1–R32 check structure, naming, formatting, and frontmatter only — a PASS here makes no claim about whether a component's scripts actually run correctly. This is not a hypothetical caveat: a 3-command pipeline once passed this exact check cleanly while shipping 2 real functional bugs (a multi-line-command normalization bug and a session-selection logic bug), both caught only by later running it against real data — see `plugin-lifecycle-upstream`'s Phase 5 command-component live-trial check, added for this reason.
