@@ -321,6 +321,11 @@ pattern/examples, never as a separate source of truth):**
   concerns?" signal exists to catch this mid-flow (a diff that looks split-worthy once already staged),
   not to make `commit` a second entry point for a request to split in the first place
 
+**Last dated run record:** see the per-step dated entries below and in
+`references/staging-fix-verification-log.md`; `scripts/smoke_test.py` covers frontmatter validity,
+`allowed-tools`-grant usage, and step-header sequencing only (structural checks — this is a
+conversational, `AskUserQuestion`-driven skill with no other executable logic of its own to simulate).
+
 **Verified live, 2026-08-11:** `commit` was invoked for real (`Skill(commit)`, not a raw `git commit`) roughly 5 times across that session's fix-batch commits, including the final commit of that session's second fix batch (`2160f56`) — the test-behavior-change check (now step 10, renumbered from step 9 by step 8's later targeted-repair insertion) fired correctly on every behavior-changing commit in that run. That live run confirmed the check fires and gates correctly in real use; it did not walk each item below individually, so the checkboxes stay unchecked pending a full manual pass — re-run this checklist (and check off what it confirms) after the next behavior-changing invocation, rather than treating this date as a permanent guarantee:
 
 - [ ] The staged-diff scan actually fires — a change to `skills/*/SKILL.md`, `skills/*/references/*.md`, or `agents/*.md` content triggers the `AskUserQuestion`; an unrelated change (docs, scripts, config) does not
@@ -346,14 +351,9 @@ pattern/examples, never as a separate source of truth):**
 - [ ] A skipped partially-staged file is always reported by name, never silently dropped — and is still
       included in the `ty check` pass, which only reads
 
-**Step 7.5 (lint/format/type-check staged Python files) — verified live, 2026-08-16:** ran
-`uv run ruff format`/`uv run ruff check --fix`/`uv run ty check` against two newly-written scripts
-(`remap-handoff-shas.py`, `check-pr-title.py`) in this repository. `ruff format` reformatted both files on
-the first pass; `ruff check` flagged 2 non-auto-fixable `E501` (line-too-long) violations, fixed manually
-and reconfirmed clean; `ty check` separately caught 2 real issues `ruff` didn't (an unused blanket
-`# type: ignore`, and `sys.stdout.reconfigure`/`sys.stderr.reconfigure` not resolving on the `TextIO`
-union type) — confirming `ty check`'s inclusion catches a real class of error `ruff` alone misses. All
-three checks passed clean after fixes.
+**Step 7.5 (lint/format/type-check staged Python files) — verified live, 2026-08-16.** See
+`references/staging-fix-verification-log.md` for the full run narrative (`ruff format`/`ruff check --fix`/
+`ty check` against two newly-written scripts, including 2 issues `ty check` caught that `ruff` missed).
 
 **Step 6 (interactive staging via `stage-selected-files.sh`) — verified live, 2026-08-28.** See
 `references/staging-fix-verification-log.md` for the full run narrative (injection-crafted filenames

@@ -5,6 +5,16 @@ Full verification-run narratives for behavior changes to `commit`'s staging step
 narrative belongs in `references/`, not inline — only the short checklist items stay in `SKILL.md`
 itself).
 
+## Step 7.5 (lint/format/type-check staged Python files) — verified live, 2026-08-16
+
+Ran `uv run ruff format`/`uv run ruff check --fix`/`uv run ty check` against two newly-written scripts
+(`remap-handoff-shas.py`, `check-pr-title.py`) in this repository. `ruff format` reformatted both files on
+the first pass; `ruff check` flagged 2 non-auto-fixable `E501` (line-too-long) violations, fixed manually
+and reconfirmed clean; `ty check` separately caught 2 real issues `ruff` didn't (an unused blanket
+`# type: ignore`, and `sys.stdout.reconfigure`/`sys.stderr.reconfigure` not resolving on the `TextIO`
+union type) — confirming `ty check`'s inclusion catches a real class of error `ruff` alone misses. All
+three checks passed clean after fixes.
+
 ## Step 6 (interactive staging via `stage-selected-files.sh`) — verified live, 2026-08-28
 
 Built a throwaway repo with two files deliberately named `$(touch INJECTION_PROOF).py` and
