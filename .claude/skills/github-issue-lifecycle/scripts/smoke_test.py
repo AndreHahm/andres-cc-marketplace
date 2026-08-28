@@ -5,7 +5,13 @@ plus every workflows/*.md and references/*.md file. Adapted from
 plugin-lifecycle-upstream's own scripts/smoke_test.py, minus its
 phase-sequencing checks -- this skill's workflow files use independent
 "## Step N:" headers per file, not a single shared "Phase N" sequence
-spanning files, so there is no cross-file sequence to validate here."""
+spanning files, so there is no cross-file sequence to validate here.
+
+check_bash_grants only verifies each declared grant is exercised somewhere in
+the skill's own files -- it does not check whether a grant is broader than
+what's actually invoked (e.g. a prefix grant covering more HTTP methods/paths
+than the documented commands use). A green run here is not evidence the
+grant set is minimal; that's a separate, manual review question."""
 
 import pathlib
 import re
@@ -81,6 +87,12 @@ def check_bash_grants():
         if d.is_dir():
             for f in sorted(d.glob("*.md")):
                 search_text += "\n" + f.read_text(encoding="utf-8")
+
+    # Strip literal `Bash(...)` scope-syntax mentions before matching -- a prose sentence
+    # that quotes a grant back (e.g. a Boundaries section disclosing "allowed-tools grants
+    # Bash(gh api repos/*/issues/*:*)") would otherwise self-satisfy this check for that
+    # grant without a single real example command ever appearing anywhere in the file.
+    search_text = re.sub(r"Bash\([^)]*\)", "", search_text)
 
     # Body text here uses bare `gh ...`/`gh api ...` commands, not the literal
     # `Bash(...)` scope syntax -- match on the underlying command instead of requiring

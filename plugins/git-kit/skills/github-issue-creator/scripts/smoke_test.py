@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Persisted smoke test for github-issue-creator: frontmatter validity,
-referenced-file existence, Bash-scope grant usage, and step-header
-sequencing ("## Reproduction Steps" section) -- structural checks only, since this is a
+"""Persisted smoke test for github-issue-creator: frontmatter validity and
+referenced-file existence -- structural checks only, since this is a
 conversational skill with no executable logic of its own to simulate.
-Adapted from handling-review-findings's own smoke_test.py (same check set
-and refined Bash-grant-match logic), extended to also search this skill's
-own references/scripts files -- and any cross-skill reference file this
-skill's own body explicitly points at -- before declaring a Bash grant
-unused, since several git-kit skills push command usage into a references
-file (progressive disclosure) rather than spelling it out in SKILL.md's
-own body."""
+Adapted from handling-review-findings's own smoke_test.py, extended to also
+search this skill's own references/scripts files -- and any cross-skill
+reference file this skill's own body explicitly points at -- before
+declaring a Bash grant unused, since several git-kit skills push command
+usage into a references file (progressive disclosure) rather than
+spelling it out in SKILL.md's own body. No step-header sequencing check:
+this skill has no real top-level numbered-step section of its own -- the
+only "## Reproduction Steps" headers in the file live inside the fenced
+worked-example blocks under ## Examples, and checking those would validate
+the fabricated example's own numbering, not this skill's actual
+procedure."""
 
 import pathlib
 import re
@@ -17,7 +20,6 @@ import sys
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
-SECTION_HEADERS = ["## Reproduction Steps"]
 
 
 def check_frontmatter():
@@ -104,7 +106,22 @@ def check_bash_grants():
     fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
     if not fm_line_match:
         return True, "no allowed-tools line found (skip)"
-    granted_cmds = re.findall(r"Bash\(([\w.*/${} -]+?)(?::|\))", fm_line_match.group(1))
+    value = fm_line_match.group(1).strip()
+    if value in (">-", ">", "|", "|-", "|+", ">+"):
+        # YAML block scalar: the real value is on subsequent, more-indented lines. Without
+        # this, a future reformat of allowed-tools to >- syntax would make the regex below
+        # match zero commands and this check would silently report PASS with nothing
+        # actually validated.
+        block_lines = []
+        for line in frontmatter[fm_line_match.end():].splitlines():
+            if line.strip() == "":
+                continue
+            if line[:1] in (" ", "\t"):
+                block_lines.append(line)
+            else:
+                break
+        value = " ".join(block_lines)
+    granted_cmds = re.findall(r"Bash\(([\w.*/${} -]+?)(?::|\))", value)
     granted_cmds = [c.lstrip("*/") for c in granted_cmds]
 
     body = fm_text[header_end:]
@@ -134,44 +151,6 @@ def check_bash_grants():
     return True, "every granted Bash command is invoked somewhere in the skill's own files"
 
 
-def check_step_sequence():
-    # Scoped to the declared SECTION_HEADERS only -- other sections (e.g. "Testing &
-    # Validation") legitimately restart their own numbered lists for unrelated scenarios,
-    # which a whole-file scan would wrongly flag as non-sequential. Within a found section,
-    # a "### " subsection (e.g. distinct scenarios/paths) is checked independently too --
-    # each subsection legitimately restarts its own numbering.
-    text = SKILL_MD.read_text(encoding="utf-8")
-    found_any = False
-    for header in SECTION_HEADERS:
-        start = text.find("\n" + header + "\n")
-        if start == -1:
-            continue
-        found_any = True
-        end = text.find("\n## ", start + 1)
-        section = text[start : end if end != -1 else len(text)]
-
-        sub_starts = [m.start() for m in re.finditer(r"^### ", section, re.MULTILINE)]
-        if sub_starts:
-            bounds = [0, *sub_starts, len(section)]
-            chunks = [section[bounds[i] : bounds[i + 1]] for i in range(len(bounds) - 1)]
-        else:
-            chunks = [section]
-
-        for chunk in chunks:
-            numbers = [int(n) for n in re.findall(r"^(\d+)\. ", chunk, re.MULTILINE)]
-            if not numbers:
-                continue
-            expected = list(range(numbers[0], numbers[0] + len(numbers)))
-            if numbers != expected:
-                return False, (
-                    f"step numbering not sequential in '{header}': "
-                    f"found {numbers}, expected {expected}"
-                )
-    if not found_any:
-        return True, f"none of {SECTION_HEADERS} found (skip)"
-    return True, "step headers sequential in every found section/subsection"
-
-
 def _find_repo_root(start: pathlib.Path) -> pathlib.Path | None:
     current = start
     for _ in range(10):
@@ -183,7 +162,7 @@ def _find_repo_root(start: pathlib.Path) -> pathlib.Path | None:
     return None
 
 
-CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants, check_step_sequence]
+CHECKS = [check_frontmatter, check_referenced_files, check_bash_grants]
 
 
 def main():

@@ -256,11 +256,13 @@ gh issue list --search "is:open label:bug created:>2024-01-01"
 2. **Provide context** - Include steps to reproduce
 3. **Add labels** - Help with categorization and filtering
 4. **Assign appropriately** - Tag people who can help
-5. **Link related items** - Connect to PRs, other issues
+5. **Link related items** - Connect to PRs, other issues (the raw `gh` commands above; for the
+   triage/relate/prioritize/resolve judgment behind *when* and *how* to link, see `github-issue-lifecycle`)
 
 ### Issue Management
 
-1. **Triage regularly** - Review and label new issues
+1. **Triage regularly** - Review and label new issues (raw commands only; `github-issue-lifecycle` owns
+   the actual triage judgment)
 2. **Update status** - Keep issues current with comments
 3. **Close resolved issues** - Link to fixing PR
 4. **Use milestones** - Group related work
