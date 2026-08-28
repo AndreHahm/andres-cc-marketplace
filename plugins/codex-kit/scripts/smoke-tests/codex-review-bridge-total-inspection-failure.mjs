@@ -98,13 +98,51 @@ console.log("\n=== Security review fix (M3): broadened verb/modal coverage catch
   const variants = [
     "The sandbox was unable to start a process to run git diff.",
     "Codex couldn't create a process inside the workspace.",
-    "The tool failed to start a process (sandbox restriction).",
-    "The file cannot be accessed by the system.",
-    "error 1920 while starting the requested tool"
+    "The tool failed to start a process (sandbox restriction)."
   ];
   for (const note of variants) {
     check(`recognized: "${note}"`, isTotalInspectionFailure({ findings: [], inspection_limits: [note] }));
   }
+}
+
+console.log("\n=== Cross-model-review fix (F1, issue #78): a REAL Codex-observed phrasing with a gap between the modal+verb and \"process\" is still recognized ===");
+{
+  // Live-observed from an actual sandboxed Codex dispatch during this
+  // issue's own cross-model-review pass: "could not start" is not
+  // immediately followed by "process" -- several words intervene. The
+  // pattern must tolerate a short gap, not require exact adjacency.
+  const note = "A read-only attempt to inspect surrounding source files could not start because the workspace process launcher failed with Windows error 1920.";
+  check("a real Codex phrasing with words between the modal+verb and \"process\" is still recognized", isTotalInspectionFailure({ findings: [], inspection_limits: [note] }));
+}
+
+console.log("\n=== Cross-model-review fix (F1, issue #78): standalone OS-message/error-code fragments no longer over-match ===");
+{
+  // Codex's own fresh-eyes pass on this diff (live dispatch, issue #78)
+  // found that an earlier revision's bare `error\s*1920\b` and bare
+  // "cannot be accessed by the system" alternatives carried no
+  // process-start or totality requirement, so they could ALSO match a
+  // narrow note about a single inaccessible target file -- reclassifying
+  // a partial, non-total limitation as a total sandbox failure and
+  // widening the resolver's danger-full-access fallback trigger to a
+  // case that isn't actually a total failure. Both alternatives were
+  // removed entirely; every real total-failure phrasing observed live so
+  // far still matches via the process-create/start alternative or the
+  // CreateProcessAsUserW literal (see the scenarios above).
+  check(
+    "a bare OS-rendered message with no process-start context does NOT trigger reclassification",
+    !isTotalInspectionFailure({ findings: [], inspection_limits: ["The file cannot be accessed by the system."] })
+  );
+  check(
+    "a bare error-1920 mention with no process-start context does NOT trigger reclassification",
+    !isTotalInspectionFailure({ findings: [], inspection_limits: ["error 1920 while starting the requested tool"] })
+  );
+  check(
+    "the exact F1 scenario -- a single inaccessible target file described with 'error 1920'/'cannot be accessed' -- does NOT trigger reclassification",
+    !isTotalInspectionFailure({
+      findings: [],
+      inspection_limits: ["could not read the requested config file: error 1920 (cannot be accessed by the system)"]
+    })
+  );
 }
 
 console.log("\n=== Malformed/missing shape never throws ===");

@@ -237,10 +237,28 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // broadened past the exact reported wording ("could not create a process")
 // to cover "couldn't"/"cannot"/"can't"/"unable to"/"failed to" and
 // "start", since this text is Codex's own free-form narration and won't
-// always match one exact phrasing; also matches error 1920 without
-// requiring the literal word "windows" first, and the actual Windows-
-// rendered text for that code ("cannot be accessed by the system").
-const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\s+(?:a\s+)?process|CreateProcessAsUserW|error\s*1920\b|cannot be accessed by the system/i;
+// always match one exact phrasing.
+//
+// Cross-model-review fix (F1, issue #78, live Codex fresh-eyes finding):
+// an earlier revision also matched bare `error\s*1920\b` and bare
+// "cannot be accessed by the system" as STANDALONE alternatives, with no
+// requirement that they co-occur with process-start language. Codex
+// correctly flagged that those two OS-message fragments can also appear
+// in a narrow, PARTIAL note about one single inaccessible target file
+// (e.g. "could not read the requested config file: error 1920 (cannot be
+// accessed by the system)") -- confirmed live: that exact narrow case
+// matched the old pattern. Reclassifying that as a TOTAL failure would
+// widen the resolver's danger-full-access fallback trigger to a case
+// that isn't actually a total failure at all. Removed both standalone
+// alternatives entirely -- every real total-failure phrasing observed
+// live so far (including a "could not start because the workspace
+// process launcher failed with Windows error 1920" phrasing, which
+// doesn't put "start" immediately next to "process") still matches via
+// the process-create/start alternative below, now tolerant of a short
+// run of words between the modal+verb and "process" (`[^.]{0,40}?`) so
+// it doesn't require exact adjacency -- or via the CreateProcessAsUserW
+// literal.
+const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\b[^.]{0,40}?\bprocess\b|CreateProcessAsUserW/i;
 
 // Exported so a smoke test can exercise the detection directly, matching
 // the existing reuse pattern (locateInSemanticScope, semanticallyValidate).
