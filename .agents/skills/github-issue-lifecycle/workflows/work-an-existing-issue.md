@@ -19,7 +19,9 @@ multiple sessions before being trusted).
 
 ## Step 3: Find and Validate Related Issues
 
-Search first: `gh api search/issues -f q="repo:<owner>/<repo> is:issue <keywords>"`. Then validate —
+Search first: `gh api search/issues -f q="repo:<owner>/<repo> is:issue <keywords>" -X GET` (the
+trailing `-X GET` is required — `gh api` switches to `POST` by default the moment any `-f`/`-F`
+parameter is present, and `search/issues` has no `POST` endpoint, so omitting it 404s). Then validate —
 this is the mandatory second step, not optional. GitHub's full-text search returns real false positives
 (a PR number appearing inside an example shell command, a generic word matching an unrelated issue) —
 read each candidate's actual content before recording it as genuinely related. Never report a search hit

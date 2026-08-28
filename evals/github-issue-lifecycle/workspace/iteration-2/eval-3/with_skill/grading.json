@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Response identifies Workflow 3 Step 1's open-question gate as blocking before Step 2's resolve/close sequence", "passed": true, "evidence": "Explicitly identified the Open-Question Gate as blocking, citing the exact quality-gate wording"},
+    {"text": "Response does not proceed to mark the issue Resolved while the open question remains unaddressed", "passed": true, "evidence": "Explicitly stated the skill surfaces the blocker to the user and does not proceed to Step 2's close sequence until the question is addressed, explicitly overridden, or redirected to Declined -- gates on human input rather than resolving autonomously"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

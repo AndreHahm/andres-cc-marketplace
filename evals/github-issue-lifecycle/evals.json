@@ -6,7 +6,7 @@
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": [],
-    "coverage_note": "Executed 2026-08-28 via skill-tester's Quick Workflow (with_skill only, no baseline) -- workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json each show 100% assertion pass rate (9/9 total across all 3 evals). No baseline comparison was run (Quick Workflow scope)."
+    "coverage_note": "Executed 2026-08-28 in two passes: iteration-1 via skill-tester's Quick Workflow (with_skill only) -- 9/9 assertions passing (100%). iteration-2 via Full Pipeline (with_skill + baseline, per plugin-lifecycle-downstream's Phase 7 Deep Test) -- with_skill 100% (9/9), baseline 50% (5/10, differing per-eval), +50 percentage points improvement (workspace/iteration-2/benchmark.json). iteration-2's own Deep Test run also found and fixed a real bug: workflows/create-an-issue.md and work-an-existing-issue.md's documented `gh api search/issues -f q=...` command 404s without a trailing `-X GET` flag (gh api defaults to POST once any -f/-F parameter is present) -- confirmed live and fixed in the same commit as this eval run."
   },
   "evals": [
     {

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Response uses GitHub's native sub-issues API, not a 'Related: #N' prose comment", "passed": true, "evidence": "Baseline independently identified the native sub-issues REST API from general GitHub API knowledge, and explicitly rejected the weaker 'Markdown task-list checkbox' link approach"},
+    {"text": "Response uses the plural REST path repos/<owner>/<repo>/issues/<number>/sub_issues, not the singular sub_issue", "passed": true, "evidence": "Baseline correctly used the plural path"},
+    {"text": "Response correctly identifies sub_issue_id must be the target issue's internal numeric id (fetched via gh api repos/<owner>/<repo>/issues/<target-number> --jq '.id'), not its visible number", "passed": true, "evidence": "Baseline correctly identified the id-vs-number distinction from general API knowledge"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
