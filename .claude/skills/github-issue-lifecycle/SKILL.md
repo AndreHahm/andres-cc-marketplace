@@ -5,12 +5,13 @@ description: >-
   triage and relate it to other issues (including via GitHub's native sub-issues API), prioritize and
   analyze its impact, and resolve or decline it with documented follow-up — the same reliability PR work
   already has via git-kit's own lifecycle skills. Use when asked to "work on issue #N", "triage these
-  issues", "is this issue still valid", "resolve issue #N", "find issues related to X", "close this
-  issue as a duplicate", "reopen issue #N", or similar freestanding-issue work. Not
+  issues", "resolve issue #N", "find issues related to X", "close this issue as a duplicate", or
+  similar freestanding-issue work. Not
   `collaborating-on-a-pr`'s PR-to-issue linking (delegated to it here), not `github-issue-creator`'s
   new-issue drafting (delegated to it here), not `gh-operations`' raw one-off `gh issue` lookup with no
-  judgment attached, and not `handling-review-findings`'s triage of findings already posted against an
-  open PR review thread — this skill never touches PR-review findings, only freestanding issues.
+  judgment attached, not `handling-review-findings`'s triage of findings already posted against an open
+  PR review thread, and not `managing-review-learnings`'s mined-candidate routing (dispatches here once
+  approved) — never PR-review findings, only freestanding issues.
 allowed-tools: Read, Write, Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
 ---
 
@@ -36,6 +37,7 @@ duplicating what they already do.
 
 - Linking a PR to the issue it closes — that's `collaborating-on-a-pr`'s job (`Skill(git-kit:collaborating-on-a-pr)`); this skill delegates to it rather than re-implementing PR↔issue linking
 - Drafting a brand-new issue from raw notes/logs/screenshots — that's `github-issue-creator`'s job (`Skill(git-kit:github-issue-creator)`); this skill delegates to it for the drafting step, then files the result live itself (see Workflow 1)
+- Filing an issue derived from a mined, cross-PR systemic-pattern candidate that still needs a doc-update/rule-coverage judgment applied first — that's `analysis-kit`'s `managing-review-learnings` job; it applies a doc-diff to `THIRD_PARTY_REVIEW_LEARNINGS.md` and checks `.claude/rules/` coverage before ever dispatching here, then dispatches this skill's own Workflow 1 for the actual filing. A request already framed as filing one specific, already-analyzed issue (no PR-mining or rule-coverage check wanted) still belongs here directly.
 - A raw one-off `gh issue` lookup or edit with no judgment attached — see `gh-operations`' reference material instead; this skill owns the triage/relate/resolve judgment layer, not ad hoc `gh` calls
 - Triaging a finding already posted against an open PR's review thread — that's `handling-review-findings`'s job; this skill never touches PR-review findings, only freestanding issues
 - Writing the actual code fix for an issue — "resolve" here means status, vocabulary, and documentation only; the real fix still goes through the normal `starting-work` → `commit` → `create-pr` flow like any other change
@@ -163,6 +165,7 @@ the workflow steps that now require it.
 **Verify it does NOT activate on:**
 - "create a PR that closes #123" → `collaborating-on-a-pr`
 - "turn this error log into a GitHub issue" → `github-issue-creator` (drafting step; this skill's own Workflow 1 delegates to it, but a bare drafting request with no lifecycle framing goes straight there)
+- "add this mined finding to the learnings doc" / "turn these mined candidates into issues" → `analysis-kit`'s `managing-review-learnings`; it runs its own doc-diff and rule-coverage checks before ever dispatching here
 - "what's the status of PR #50's review" → `handling-review-findings`
 - "list open issues assigned to me" with no triage/relate/resolve judgment needed → `gh-operations`
 
