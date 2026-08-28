@@ -258,6 +258,33 @@ export function locateInSemanticScope(targetPaths, location, repoRoot) {
 // run of words between the modal+verb and "process" (`[^.]{0,40}?`) so
 // it doesn't require exact adjacency -- or via the CreateProcessAsUserW
 // literal.
+//
+// Known, accepted residual limitation (Codex live finding, issue #78,
+// round 3 of narrowing this same pattern): the bare `CreateProcessAsUserW`
+// literal has the identical theoretical gap the two removed alternatives
+// had -- it doesn't itself prove TOTALITY, only that some process-spawn
+// attempt failed. A discretionary subprocess call Codex chooses to make
+// for one file (e.g. running a linter on it) could fail this way while
+// the rest of a genuinely clean review still produced zero findings,
+// getting misreclassified as a total failure. Deliberately NOT narrowed
+// further: every real total-failure case observed live so far (three
+// separate dispatches) was an unambiguous, genuine total failure, and two
+// prior narrowing rounds each just relocated the same fundamental problem
+// (a free-text heuristic can't perfectly distinguish "nothing was
+// reviewed" from "one discretionary subprocess call failed") to a
+// different substring -- diminishing returns, not a fix. `CreateProcessAsUserW`
+// is kept unqualified because, unlike the two removed alternatives, it
+// can ONLY ever appear in a process-creation-attempt failure (Windows'
+// own process-spawn API), never a plain file-read failure -- a
+// meaningfully tighter signal, even though it still doesn't fully prove
+// scope. The residual risk is bounded regardless: an over-eager
+// escalation still passes through Step 2's own independent gates
+// (repository-boundary, secret-file content-scan, instruction-
+// containment) before any `danger-full-access` dispatch actually runs,
+// and `cross-model-review`'s own durable fix (embedding the diff instead
+// of asking Codex to run it) already removes the primary trigger for
+// this whole detection path -- what remains is Codex's own discretionary
+// tool use, not the core diff-reading step.
 const TOTAL_INSPECTION_FAILURE_PATTERN = /(?:could not|couldn't|cannot|can't|unable to|failed to)\s+(?:create|start)\b[^.]{0,40}?\bprocess\b|CreateProcessAsUserW/i;
 
 // Exported so a smoke test can exercise the detection directly, matching
