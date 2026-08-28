@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,7 @@ from scripts.marketplace_ci.registry import Registry, RemovalSet
 COMPONENT_DIRS = ("skills", "agents", "commands", "hooks", "rules")
 DEFAULT_REPO_HOOKS_PATH = Path("scripts/marketplace_ci/hooks/hooks.json")
 DEFAULT_REPO_RULES_PATH = Path("scripts/marketplace_ci/rules")
+_HOOKS_SOURCE_PATTERN = re.compile(r"^plugins/[^/]+/hooks/hooks\.json$")
 
 
 class SyncError(RuntimeError):
@@ -364,7 +366,14 @@ def stage_generated_destinations(repo: Path, actions: tuple[SyncAction, ...]) ->
 
 def stage_hooks_merge_result(repo: Path, plan: HooksMergePlan) -> tuple[Path, ...]:
     """Stage the merged `hooks.json` destination(s) when at least one contributing per-plugin
-    `hooks/hooks.json` (or the repo-level hooks path) is staged and fully staged.
+    `hooks/hooks.json` (or the repo-level hooks path) is staged, or a contributing source was
+    itself staged as a deletion -- but only when *every remaining* contributing source is fully
+    staged (or untouched). `plan.merged_document` was built from *all* contributors' working-tree
+    bytes at once (`plan_hooks_merge` reads each with `path.read_text(...)`, not from the index),
+    so if even one contributor has unstaged edits, the merge already reflects content that isn't
+    actually staged for that contributor -- staging the result regardless of the *other*
+    contributors' state would let unstaged hook behavior ride into the commit silently, since
+    `check_staged_parity` deliberately excludes top-level hook manifests from its own check.
 
     The merge has no single 1:1 canonical source the way `plan_plugin_sync`/`plan_exports` do --
     one destination is built from N contributing files -- so `stage_generated_destinations`
@@ -382,8 +391,24 @@ def stage_hooks_merge_result(repo: Path, plan: HooksMergePlan) -> tuple[Path, ..
         except ValueError:
             continue  # a source outside the repo (e.g. a caller-supplied external path) can't
             # be "staged" in this repo's index at all
-        if rel_source in staged and _is_fully_staged(repo, source):
+        if not _is_fully_staged(repo, source):
+            return ()  # this contributor's unstaged content already leaked into merged_document
+        if rel_source in staged:
             any_staged_source = True
+
+    # A contributing plugin's hooks.json can be *deleted* -- `plan.sources` only lists files that
+    # still exist on disk, so a staged deletion never appears there, but it still changes what the
+    # merge should contain. `GitState.staged_paths()` reports only already-staged changes, so a "D"
+    # entry here is guaranteed staged (no separate full-staging check needed for a removed file).
+    if not any_staged_source:
+        for change in GitState(repo=repo).staged_paths():
+            if change.status == "D" and change.old_path is not None:
+                if _HOOKS_SOURCE_PATTERN.match(change.old_path) or change.old_path == str(
+                    DEFAULT_REPO_HOOKS_PATH.as_posix()
+                ):
+                    any_staged_source = True
+                    break
+
     if not any_staged_source:
         return ()
     staged_destinations: list[Path] = []

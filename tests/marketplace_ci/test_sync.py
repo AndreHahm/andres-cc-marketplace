@@ -214,13 +214,30 @@ def test_stage_generated_destinations_wraps_git_add_failure_as_sync_error(git_re
         stage_generated_destinations(git_repo.root, (bad_action,))
 
 
+def _commit_baseline(git_repo) -> None:
+    """Commit every fixture file as-is -- the state before the change under test. Without this,
+    every plugin file starts genuinely untracked ("??"), which `_is_fully_staged` correctly treats
+    as unsafe (an untracked file is not reflected in any commit yet); a realistic test needs an
+    already-committed, untouched sibling plugin to exercise "this one's fine, that one isn't"."""
+    subprocess.run(["git", "add", "-A"], cwd=git_repo.root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "baseline"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+    )
+
+
 def test_stage_hooks_merge_result_stages_when_contributing_source_staged(git_repo, registry_for):
+    _commit_baseline(git_repo)
     plan = plan_hooks_merge(
         git_repo.root,
         registry_for("sample-kit", "sample-kit-two"),
         repo_hooks_path=FIXTURE_REPO_HOOKS,
     )
     apply_hooks_merge_plan(plan)
+    source_a = git_repo.root / "plugins" / "sample-kit" / "hooks" / "hooks.json"
+    source_a.write_text(source_a.read_text(encoding="utf-8") + "\n", encoding="utf-8")
     subprocess.run(
         ["git", "add", "-f", "--", "plugins/sample-kit/hooks/hooks.json"],
         cwd=git_repo.root,
@@ -243,6 +260,7 @@ def test_stage_hooks_merge_result_stages_when_contributing_source_staged(git_rep
 
 
 def test_stage_hooks_merge_result_skips_when_no_contributing_source_staged(git_repo, registry_for):
+    _commit_baseline(git_repo)
     plan = plan_hooks_merge(
         git_repo.root,
         registry_for("sample-kit", "sample-kit-two"),
@@ -261,6 +279,73 @@ def test_stage_hooks_merge_result_skips_when_no_contributing_source_staged(git_r
         text=True,
     )
     assert result.stdout == ""
+
+
+def test_stage_hooks_merge_result_skips_when_another_contributor_is_partially_staged(
+    git_repo, registry_for
+):
+    _commit_baseline(git_repo)
+    plan = plan_hooks_merge(
+        git_repo.root,
+        registry_for("sample-kit", "sample-kit-two"),
+        repo_hooks_path=FIXTURE_REPO_HOOKS,
+    )
+    apply_hooks_merge_plan(plan)
+    source_a = git_repo.root / "plugins" / "sample-kit" / "hooks" / "hooks.json"
+    source_b = git_repo.root / "plugins" / "sample-kit-two" / "hooks" / "hooks.json"
+    source_a.write_text(source_a.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-f", "--", str(source_a)], cwd=git_repo.root, check=True)
+    # source_b gets an unstaged edit -- merged_document already reflects it (plan_hooks_merge reads
+    # working-tree bytes), but it was never staged for source_b.
+    source_b.write_text(source_b.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+
+    staged = stage_hooks_merge_result(git_repo.root, plan)
+
+    assert staged == ()
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert ".claude/hooks/hooks.json" not in result.stdout.splitlines()
+
+
+def test_stage_hooks_merge_result_stages_when_a_contributing_source_is_deleted(
+    git_repo, registry_for
+):
+    _commit_baseline(git_repo)
+    plan = plan_hooks_merge(
+        git_repo.root,
+        registry_for("sample-kit", "sample-kit-two"),
+        repo_hooks_path=FIXTURE_REPO_HOOKS,
+    )
+    apply_hooks_merge_plan(plan)
+    source_b = git_repo.root / "plugins" / "sample-kit-two" / "hooks" / "hooks.json"
+    subprocess.run(["git", "rm", "-f", "--", str(source_b)], cwd=git_repo.root, check=True)
+    # The deletion changes what the merge should contain -- re-plan against the now-single-source
+    # registry to get the merged_document/actions a real caller would apply and stage.
+    post_delete_plan = plan_hooks_merge(
+        git_repo.root, registry_for("sample-kit"), repo_hooks_path=FIXTURE_REPO_HOOKS
+    )
+    apply_hooks_merge_plan(post_delete_plan)
+
+    # A real caller (the CLI) always re-plans against the *current* registry/filesystem state --
+    # post_delete_plan.sources no longer lists sample-kit-two's hooks.json at all (it's gone from
+    # disk), which is exactly the shape that needs the staged-deletion detection to notice.
+    staged = stage_hooks_merge_result(git_repo.root, post_delete_plan)
+
+    dest = (git_repo.root / ".claude" / "hooks" / "hooks.json").resolve()
+    assert dest in staged
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=git_repo.root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert ".claude/hooks/hooks.json" in result.stdout.splitlines()
 
 
 def test_bootstrap_flags_orphan_destination_with_no_source(repo, registry_for):
