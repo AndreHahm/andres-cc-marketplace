@@ -96,9 +96,14 @@ branch off", "set up a worktree for this feature".
      `git worktree remove` (without `--force`) until it's explicitly unlocked — `git-cleanup` knows to
      unlock a session-locked worktree before removing it once its branch is safe to delete.
      Then copy over local, gitignored config `git worktree add` doesn't carry (it only shares tracked
-     history, not untracked files): if `.claude/settings.local.json` exists in the main worktree root,
-     copy it to the same relative path in the new worktree, only if the destination doesn't already
-     exist there (never clobber). Also `Glob` the main worktree for `**/CLAUDE.local.md` and copy each
+     history, not untracked files): `Glob` the main worktree root for `.claude/*.local.json` (top-level
+     only, not recursive) and copy each match found into the same relative path in the new worktree,
+     only if the destination doesn't already exist there (never clobber). This covers
+     `.claude/settings.local.json` plus every other per-plugin `.claude/<name>.local.json` override this
+     repo's local-config precedent (`.claude/rules/ask-before-config-decisions.md`) produces — e.g.
+     `git-kit.local.json`, `analysis-kit.local.json`, `plugin-auditor.local.json`,
+     `codex-windows-guardrails.local.json` — generically, rather than a hardcoded list that needs a
+     follow-up fix every time a new plugin adopts the same precedent. Also `Glob` the main worktree for `**/CLAUDE.local.md` and copy each
      match found into the same relative path in the new worktree, same no-clobber rule — but first drop
      any match under a vendored/third-party tree (`node_modules/`, `.venv/`) or this plugin's own
      `.temp/` directory, since a bare `**/CLAUDE.local.md` pattern would otherwise sweep those too;
@@ -163,6 +168,24 @@ state unchecked at Stop time, even though it's still locked and still at risk.
 - Confirm the computed path is never mentioned inside step 3's own option description text as a substitute
   for step 4's own question — step 3 asks *whether*, step 4 asks *where*
 
+**Verify the local-config copy behavior (issue #113):**
+- Main worktree root has `.claude/settings.local.json` plus one or more other `.claude/<name>.local.json`
+  files (e.g. `.claude/git-kit.local.json`) — confirm every one of them is copied into the new worktree,
+  not just `settings.local.json`
+- A destination `.claude/<name>.local.json` already exists in the new worktree — confirm it's never
+  clobbered
+- `.claude/*.local.json` glob stays top-level only — confirm a `.local.json` file nested deeper than
+  `.claude/` (not a realistic case today, but the pattern shouldn't accidentally reach one) is not swept
+
+**Verified live, 2026-08-28:** ran `find .claude -maxdepth 1 -name "*.local.json"` against this repo's
+real main checkout — matched exactly `.claude/settings.local.json` and
+`.claude/codex-windows-guardrails.local.json` (the same file issue #113's own reproduction steps cite),
+confirming a `.claude/*.local.json` glob reaches every real per-plugin local override this repo
+currently has, not just `settings.local.json`. No fresh `skill-tester` eval re-run for this edit — the
+fix is a mechanical glob-pattern generalization of already-eval-covered copy logic
+(`evals/starting-work/evals.json`), verified directly against real repo files rather than re-run
+end-to-end.
+
 **Quality gates:**
 - [ ] Step 1 never fast-forwards a diverged local `main` silently — always stops and tells the user
 - [ ] Step 2 never hardcodes the branch-type list — always points at `commit`'s own convention section
@@ -178,6 +201,8 @@ state unchecked at Stop time, even though it's still locked and still at risk.
       overrides to one
 - [ ] Every worktree Step 4 creates is locked (`git worktree lock`) immediately after `git worktree add`
       — never left unlocked
+- [ ] Step 4's local-config copy always globs `.claude/*.local.json` (every per-plugin override), never
+      just `.claude/settings.local.json` alone
 - [ ] Step 5's report always mentions the worktree is session-locked and points at
       `finishing-work`/`/git-cleanup` for removal — never suggests `git worktree remove --force` directly
 - [ ] Step 4 always writes the `git-branch-create` marker immediately before `git checkout -b` /
