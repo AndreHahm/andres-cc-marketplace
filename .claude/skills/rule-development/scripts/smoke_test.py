@@ -61,6 +61,9 @@ def check_referenced_files():
     # backtick-fenced and as markdown links (e.g. `[foo.md](references/foo.md)`, per
     # SKILL.md's Rule Structure section) -- both forms must be checked, or a link-style
     # citation like references/rule-file-skeleton.md silently goes unverified.
+    # No '..'-traversal guard needed here: [\w.-]+\.md admits no '/' character, so a
+    # multi-segment traversal can never match this pattern in the first place (unlike
+    # check_reference_guide_files_exist's broader [\w./-]+ pattern below).
     _, body, _ = _frontmatter_and_body()
     pattern = r"`((?:references|examples)/[\w.-]+\.md)`|\]\(((?:references|examples)/[\w.-]+\.md)\)"
     missing = []
@@ -110,7 +113,15 @@ def check_reference_guide_files_exist():
     targets = set(backtick_targets)
     if not targets:
         return True, "no file paths found in '## Reference Guide' (skip)"
-    missing = [t for t in targets if not (SKILL_DIR / t).is_file()]
+    # '..' rejected before is_file(): the [\w./-]+ pattern above admits '/', so
+    # e.g. 'references/../SKILL.md' matches and resolves outside references/ --
+    # is_file() alone would report a false PASS for a target that isn't actually
+    # a Reference Guide file.
+    missing = [
+        t
+        for t in targets
+        if ".." in pathlib.PurePosixPath(t).parts or not (SKILL_DIR / t).is_file()
+    ]
     if missing:
         return False, "'## Reference Guide' file(s) do not exist: " + ", ".join(sorted(missing))
     return True, f"all {len(targets)} '## Reference Guide' file path(s) exist"

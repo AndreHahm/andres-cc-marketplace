@@ -156,8 +156,9 @@ patterns for sensitive information that may have been copied from real code:
 7. JWTs: `eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+`
 8. Email addresses that may have been mirrored from real code: `[\w.+-]+@[\w-]+\.[\w.-]+`
 
-If found, replace with placeholders (`API_KEY_REDACTED`, `https://example.com`, `user@example.com`,
-etc.) before the file is ever written or committed. This scan covers secrets/PII shapes only —
+If found, replace with placeholders (`API_KEY_REDACTED`, `https://example.com`, `EMAIL_REDACTED`,
+etc. — never a fake-but-real-looking email like `user@example.com`, which itself matches pattern 8
+above and would fail this same check) before the file is ever written or committed. This scan covers secrets/PII shapes only —
 see `references/examples.md`'s guidance on stripping directive-shaped comments/strings from
 mirrored code separately, before pasting it into an example.
 
@@ -328,7 +329,10 @@ silently contradict each other, and Claude may resolve the conflict arbitrarily.
 - [ ] Incorrect/Correct examples are contrastive and plausible, not contrived
 - [ ] `/rules-review` fires on the intended violation with no false positives
 - [ ] `plugin-rulebook` compliance check run and PASS
-- [ ] `python scripts/smoke_test.py` passes (this skill's own persisted structural smoke test) — the
+- [ ] `python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py` passes (this skill's own persisted
+      structural smoke test — always via `${CLAUDE_SKILL_DIR}`, never a bare `scripts/`-relative
+      path, since a bare path resolves against the current project's cwd once this skill is
+      installed elsewhere, not this skill's own directory) — the
       `Bash(python:*)` grant also covers `references/lazy-loading-checklist.md`'s marketplace-sync
       re-run (`python -m scripts.marketplace_ci sync-plugin-mirrors`), but not file deletion — the
       redundant-duplicate deletion this file's own Redundancy Filter and the lazy-loading checklist
@@ -369,6 +373,6 @@ for the security-gate/exclusion prose added afterward, which has no eval coverag
 | `references/examples.md` | Complete worked examples, anti-patterns, extended writing guidance |
 | `references/rules-specification.md` | Official Claude Code rules documentation (path scoping, symlinks, user-level rules) |
 | `references/lazy-loading-checklist.md` | Checklist for migrating an existing always-loaded rule to `paths` or folding it into a skill — run before proposing the relocation |
-| [`scripts/smoke_test.py`](scripts/smoke_test.py) | This skill's own persisted structural smoke test (frontmatter validity, referenced-file existence, Reference Guide table integrity, Bash-grant usage) — run `python scripts/smoke_test.py` before packaging or after any SKILL.md edit |
+| [`scripts/smoke_test.py`](scripts/smoke_test.py) | This skill's own persisted structural smoke test (frontmatter validity, referenced-file existence, Reference Guide table integrity, Bash-grant usage) — run `python ${CLAUDE_SKILL_DIR}/scripts/smoke_test.py` before packaging or after any SKILL.md edit |
 | `plugin-rulebook` | Plugin-level rules — invoke before finalizing any rule file to check naming, language, formatting, and external-reference compliance |
 | `plugin-rulebook/references/size-rules.md` — R18 section | Before extracting an oversized inline example (e.g. a full rule-file skeleton) into `examples/`, check its "Before extracting, check whether extraction actually removes the violation" guidance first — a naive extraction can just re-wrap the same content in another oversized fence inside the new file. `examples/global-rule-example.md` and `examples/path-scoped-rule-example.md` in this skill are worked examples of extracting correctly (standalone files, independent non-nested fences) |

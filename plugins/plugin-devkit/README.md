@@ -94,7 +94,7 @@ cc --plugin-dir /path/to/plugin-devkit
 
 | Skill | Use when |
 |---|---|
-| `rule-development` | Writing or validating a single `.claude/rules/` file with contrastive examples |
+| `rule-development` | Authoring a new `.claude/rules/` file with contrastive examples (for reviewing an *existing* rule's quality, see `rule-reviewer` below) |
 | `rules-extract` | Mining a codebase, PR, or conversation for project-specific rules |
 | `rules-merge` | Consolidating extracted rules from multiple repos into a shared, portable set |
 | `rules-apply` | Applying merged org-wide rules to a project and cleaning up local overrides |
