@@ -113,6 +113,11 @@
   confirm the one reviewer or fix the configuration.
 - 8c leaves zero reviewers surviving validation — 8b's `AskUserQuestion` is skipped entirely; the run
   reports plainly that no reviewer is available to trigger, naming each excluded entry and 8c's reason.
+- A human reviewer leaves an ordinary comment with no severity label or badge at all (e.g. "this looks
+  wrong, please check the null case") — severity is classified from what the described defect actually
+  warrants (`references/round-and-dedup-rules.md`'s Hard Cap section), not left undefined; if that
+  content-based judgment is itself uncertain, the finding defaults to Major rather than silently
+  defaulting to Minor and risking a real Critical/Major finding bypassing the Hard Cap exception.
 
 ## Quality gates
 
@@ -202,3 +207,6 @@
       selecting it reports the unmet floor and stops rather than silently ending the run.
 - [ ] When 8c leaves zero validated reviewers, 8b's `AskUserQuestion` is never constructed with an
       empty or single-item options array — the run reports the configuration gap instead.
+- [ ] A finding with no reviewer-stated severity label at all is never left unclassified — it's judged
+      from the described defect's actual content, and defaults to Major (never Minor) when that
+      judgment is itself uncertain.

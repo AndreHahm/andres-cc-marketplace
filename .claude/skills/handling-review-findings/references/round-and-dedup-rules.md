@@ -143,6 +143,14 @@ Severity here means the reviewer's own stated severity (Codex P1/Critical, Devin
 reviewer's explicit "this blocks merge") — a live re-read of the finding at classification time
 (Workflow step 2), not a cached judgment carried over from an earlier round.
 
+**When no severity signal is stated at all** — the common case for an ordinary human review comment
+with no P1/Critical-style badge — classify from what the described defect actually warrants, per
+SKILL.md step 2's "higher of the reviewer's own stated label and what the described defect actually
+warrants" rule; an absent label is simply the low end of that comparison, not a separate case. If that
+content-based judgment is itself genuinely uncertain, default to Major — the conservative choice, since
+it triggers this Hard Cap exception's protections rather than risking a real Critical/Major finding
+silently bypassing them — until a human explicitly reclassifies it.
+
 ## Severity-gate interaction
 
 `review_findings_severity_gate` (see SKILL.md's Settings section) is orthogonal to the Hard Cap
