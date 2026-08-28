@@ -2,7 +2,7 @@
 
 The bare Description-Incorrect-Correct template every rule file must follow.
 
-**R18 exception (recorded):** intentionally exceeds the 30-line threshold — the file's own stated purpose is this exact skeleton "every rule file must follow"; trimming would contradict that.
+**R18 note:** the template block is 26 content lines — Warning tier (>20, ≤30 per `plugin-rulebook/assets/settings.json`'s thresholds), not Critical. Warning recommends extraction but doesn't block; no exception is needed at this tier, and this file's own stated purpose (the exact skeleton "every rule file must follow") is the reason to keep it inline rather than extract further.
 
 ```markdown
 ---
