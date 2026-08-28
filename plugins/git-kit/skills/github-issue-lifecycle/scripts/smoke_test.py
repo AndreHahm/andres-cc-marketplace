@@ -29,8 +29,14 @@ def check_frontmatter():
     if end == -1:
         return False, "frontmatter block is never closed"
     fm = text[4:end]
-    if "name:" not in fm or "description:" not in fm:
-        return False, "missing required frontmatter field ('name' or 'description')"
+    # Anchored, non-comment YAML key-line match -- a plain substring check would also match
+    # `skill-name:`/`long-description:`, letting the required `name`/`description` keys be
+    # absent while this check still reports PASS.
+    key_lines = [ln.split("#", 1)[0].strip() for ln in fm.splitlines()]
+    if not any(re.match(r"^name:\s*\S", ln) for ln in key_lines):
+        return False, "missing required frontmatter field ('name')"
+    if not any(re.match(r"^description:\s*\S", ln) for ln in key_lines):
+        return False, "missing required frontmatter field ('description')"
     return True, "frontmatter present and closed"
 
 
@@ -71,7 +77,7 @@ def check_bash_grants():
         if value in (">-", ">", "|", "|-", "|+", ">+"):
             # YAML block scalar: the real value is on subsequent, more-indented lines.
             block_lines = []
-            for line in frontmatter[fm_line_match.end():].splitlines():
+            for line in frontmatter[fm_line_match.end() :].splitlines():
                 if line.strip() == "":
                     continue
                 if line[:1] in (" ", "\t"):
@@ -99,7 +105,7 @@ def check_bash_grants():
     # the frontmatter's own scope-string spelling to appear verbatim in prose.
     unused = []
     for grant in sorted(granted):
-        cmd = grant[len("Bash("):-1].strip()
+        cmd = grant[len("Bash(") : -1].strip()
         if cmd.endswith("*"):
             cmd = cmd[:-1]
         cmd = cmd.rstrip(":").strip()
