@@ -5,8 +5,8 @@ description: >-
   triage and relate it to other issues (including via GitHub's native sub-issues API), prioritize and
   analyze its impact, and resolve or decline it with documented follow-up — the same reliability PR work
   already has via git-kit's own lifecycle skills. Use when asked to "work on issue #N", "triage these
-  issues", "resolve issue #N", "find issues related to X", "close this issue as a duplicate", or
-  similar freestanding-issue work. Not
+  issues", "is this issue still valid", "resolve issue #N", "find issues related to X", "close this
+  issue as a duplicate", "reopen issue #N", or similar freestanding-issue work. Not
   `collaborating-on-a-pr`'s PR-to-issue linking (delegated to it here), not `github-issue-creator`'s
   new-issue drafting (delegated to it here), not `gh-operations`' raw one-off `gh issue` lookup with no
   judgment attached, not `handling-review-findings`'s triage of findings already posted against an open
