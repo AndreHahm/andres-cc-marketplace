@@ -1,0 +1,16 @@
+[
+  {
+    "name": "demo-plugin-old-name",
+    "valid_from": "2026-08-26",
+    "valid_to": "2026-08-29",
+    "reason": "Original name at plugin creation, before being renamed to demo-plugin on the same day it was first inventoried. Backfilled historical period missed at bootstrap.",
+    "evidence": ["hypothetical test scenario for eval-4 (marketplace-inventory repair-history)"]
+  },
+  {
+    "name": "demo-plugin",
+    "valid_from": "2026-08-29",
+    "valid_to": null,
+    "reason": "Current name at inventory bootstrap.",
+    "evidence": [".claude-plugin/marketplace.json"]
+  }
+]

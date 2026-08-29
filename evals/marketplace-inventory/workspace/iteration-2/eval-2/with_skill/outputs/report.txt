@@ -1,0 +1,106 @@
+TASK: Import a component-mode (target_type: "skill") plugin-grader report into
+marketplace-inventory via import-grading, and explain why the skill's own docs
+say this should be rejected.
+
+WHAT I DID
+Built a synthetic sandbox entirely under the session scratchpad (never touched the
+real repo's .claude-plugin/marketplace-inventory.json):
+  - <scratch>/eval2-with-skill/synthetic_repo/.claude-plugin/marketplace-inventory.json
+    -- a minimal, schema-valid marketplace inventory with one active plugin record
+    ("plugin-devkit", score/security_score both null, empty scoring histories).
+  - <scratch>/eval2-with-skill/component_report_marketplace-inventory.json
+    -- a synthetic plugin-grader COMPONENT-mode report: target="marketplace-inventory"
+    (a skill inside plugin-devkit), target_type="skill", carrying "final_score" and a
+    "dimensions.safety_risk_handling.score" (the component-mode report shape).
+  - <scratch>/eval2-with-skill/plugin_report_plugin-devkit.json -- a control, valid
+    whole-plugin-mode report (target_type="plugin", plugin_final_score/plugin_security_score)
+    used afterward to prove the same command path succeeds and mutates the inventory
+    when target_type really is "plugin".
+
+Then ran the REAL script (plugins/plugin-devkit/skills/marketplace-inventory/scripts/
+marketplace-inventory.py) via Bash, exactly as the skill's own "Import Grading" section
+documents:
+
+  python .../marketplace-inventory.py import-grading <repo_root> <inventory_path> \
+      <component_report_marketplace-inventory.json> plugin-devkit skill
+
+WHAT HAPPENED (real, observed)
+The command exited with code 1 and printed:
+
+  marketplace-inventory only imports whole-plugin reports (target_type='plugin');
+  got target_type='skill' -- a component-level report belongs in plugin-inventory's
+  own import-grading instead
+
+The synthetic inventory file was verified byte-for-byte unchanged afterward (score
+still null, scoring_history still empty, updated_on untouched). No lock file, no
+read of the inventory JSON, and no read of the report JSON occurred at all -- the
+rejection is the very first statement executed inside cmd_import_grading() in
+marketplace-inventory.py:
+
+    if args.target_type != "plugin":
+        raise SystemExit(
+            f"marketplace-inventory only imports whole-plugin reports (target_type='plugin'); "
+            f"got target_type={args.target_type!r} -- a component-level report belongs in "
+            f"plugin-inventory's own import-grading instead"
+        )
+
+This check runs on the CLI's own `target_type` positional argument, before even the
+`require_inventory_path_under_scope_dir` write-boundary check's file lookups resolve
+into an open() call, and long before `grading.load_and_validate_report` would parse
+the report file. In other words: this is a pure, cheap CLI-argument guard clause,
+not a downstream validation-schema failure -- it fails fast, with zero I/O against
+either the inventory or the report.
+
+As a control, I then ran the identical command shape with a genuine plugin-mode
+report (target_type="plugin", target="plugin-devkit") against the same synthetic
+inventory: it exited 0, printed the appended-score summary, and the inventory file
+was actually mutated (score: null -> 8.7, security_score: null -> 9.1, one entry
+appended to each history array). This confirms the rejection above is specific to
+target_type, not some other misconfiguration in my synthetic fixtures.
+
+WHY THE SKILL DOCUMENTS THIS AS A REQUIRED REJECTION
+Two independent layers of reasoning, both visible in the actual source:
+
+1. Structural: marketplace-inventory.json's plugin records carry exactly one
+   `score`/`security_score` pair per plugin, meant to represent the plugin as a
+   whole. There is no field on a plugin record for "this one skill's score" --
+   only plugin-inventory.json (a separate, per-plugin file) has component-level
+   records with their own score/security_score. If a component-mode report were
+   allowed through here, there would be nowhere correct to put it: overwriting the
+   plugin's own score/security_score with one skill's grade would silently corrupt
+   the meaning of "the whole-plugin score" (a skill scoring 8.4 doesn't mean the
+   14-component plugin scores 8.4).
+
+2. Divergent extraction logic: inventory_common/grading.py's extract_quality_score/
+   extract_security_score genuinely branch on target_type: plugin-mode reads
+   `plugin_final_score`/`plugin_security_score`; component-mode reads `final_score`/
+   `dimensions.safety_risk_handling.score`. These are different fields sourced from
+   different parts of a plugin-grader report, produced by different plugin-grader
+   modes. Blurring the two per-record semantics would make `score`/`security_score`
+   on a "plugin" record silently mean different things depending on which kind of
+   report last got imported into it -- a correctness bug, not just a modeling
+   inconvenience.
+
+The skill's own frontmatter description states this ownership boundary directly:
+"Repository-wide plugin membership and rollups are this skill's job -- a single
+plugin's own component inventory is plugin-inventory's job instead." The
+`import-grading` doc section repeats it operationally: "target_type is always
+'plugin' for this inventory's own records -- the script itself rejects any other
+value outright, since a component-level report belongs in plugin-inventory's own
+import-grading instead." The real CLI run above is exactly that rejection firing,
+verified live rather than taken on faith from the docs.
+
+FILES IN THIS OUTPUT DIRECTORY
+  - report.txt (this file)
+  - component_report_marketplace-inventory.json  (the rejected component-mode report)
+  - plugin_report_plugin-devkit.json              (control: valid plugin-mode report)
+  - marketplace-inventory_before.json             (synthetic inventory before either attempt;
+                                                    identical to the state after the rejected
+                                                    attempt, proving no mutation occurred)
+  - marketplace-inventory_after_successful_plugin_import.json
+                                                    (synthetic inventory after the control's
+                                                    successful plugin-mode import)
+  - command_transcript.txt                        (exact commands run + exact stdout/exit codes)
+
+None of this touched the real repo's own .claude-plugin/marketplace-inventory.json --
+everything ran against a synthetic repo_root under the session scratchpad.

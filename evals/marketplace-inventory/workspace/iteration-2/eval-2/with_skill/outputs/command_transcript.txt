@@ -1,0 +1,43 @@
+Commands actually executed against the real marketplace-inventory.py script
+(plugins/plugin-devkit/skills/marketplace-inventory/scripts/marketplace-inventory.py),
+targeting a synthetic repo_root/inventory under the session scratchpad --
+the real repo's .claude-plugin/marketplace-inventory.json was never touched.
+
+=== Case A: rejected component-mode (target_type=skill) import ===
+
+$ python plugins/plugin-devkit/skills/marketplace-inventory/scripts/marketplace-inventory.py \
+    import-grading <SCRATCH>/synthetic_repo \
+    <SCRATCH>/synthetic_repo/.claude-plugin/marketplace-inventory.json \
+    <SCRATCH>/component_report_marketplace-inventory.json \
+    plugin-devkit skill
+
+stdout/stderr:
+marketplace-inventory only imports whole-plugin reports (target_type='plugin'); got target_type='skill' -- a component-level report belongs in plugin-inventory's own import-grading instead
+
+EXIT_CODE=1
+
+Inventory file after this call: byte-for-byte unchanged from marketplace-inventory_before.json
+(score still null, scoring_history still [], updated_on unchanged) -- no lock was taken, no
+read/parse of the inventory or report even occurred, since the rejection fires as the very first
+statement inside cmd_import_grading(), before require reading either file.
+
+=== Case B (control): accepted whole-plugin-mode (target_type=plugin) import, same plugin record ===
+
+$ python plugins/plugin-devkit/skills/marketplace-inventory/scripts/marketplace-inventory.py \
+    import-grading <SCRATCH>/synthetic_repo \
+    <SCRATCH>/synthetic_repo/.claude-plugin/marketplace-inventory.json \
+    <SCRATCH>/plugin_report_plugin-devkit.json \
+    plugin-devkit plugin
+
+stdout:
+{
+  "quality_score_appended": true,
+  "security_score_appended": true,
+  "current_score": 8.7,
+  "current_security_score": 9.1
+}
+
+EXIT_CODE=0
+
+Inventory file after this call: score=8.7, security_score=9.1, scoring_history/
+security_scoring_history each gained one entry -- see marketplace-inventory_after_successful_plugin_import.json.

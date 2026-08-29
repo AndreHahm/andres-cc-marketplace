@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the scratch inventory to a path outside the real .claude-plugin/ directory, never touching the real repo's marketplace-inventory.json",
+      "passed": true,
+      "evidence": "Built a mirror repo_root under the scratchpad (copying marketplace.json and each plugin's own plugin-inventory.json), ran bootstrap/check against it only."
+    },
+    {
+      "text": "Actually invokes scripts/marketplace-inventory.py bootstrap and check rather than fabricating a result",
+      "passed": true,
+      "evidence": "Found and ran the real script (discovered it by exploring the repo, not via skill instructions), reported real JSON output."
+    },
+    {
+      "text": "Correctly reports missing_plugin_inventories as non-empty since no plugin-inventory.json files exist yet",
+      "passed": true,
+      "evidence": "STALE ASSERTION, graded on real-world correctness instead: this agent's mirror copied each plugin's real plugin-inventory.json, so it correctly reported an empty missing list -- matching the real repo's current state (all 4 plugins already bootstrapped earlier this session), even though this contradicts the assertion's now-outdated wording."
+    },
+    {
+      "text": "States it would ask before invoking plugin-inventory, naming Skill(plugin-inventory) with plugin_dir + mode args, never batch-applying",
+      "passed": true,
+      "evidence": "Explicitly described asking for approval, then one Skill(plugin-inventory) call per approved plugin with '<plugin_dir> build' args, re-running plan/check after each -- but only because it happened to discover this exact documented procedure by reading the skill's own SKILL.md directly during exploration, not from any baseline-only reasoning."
+    }
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0.0",
+  "marketplace_name": "synthetic-test-marketplace",
+  "updated_on": "2026-08-29",
+  "plugins": [
+    {
+      "id": "plugin-0001",
+      "name": "plugin-devkit",
+      "source": "./plugins/plugin-devkit",
+      "status": "active",
+      "status_history": [
+        {
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null,
+          "reason": "Synthetic fixture for eval test.",
+          "evidence": []
+        }
+      ],
+      "functional_role": null,
+      "domains": [],
+      "score": null,
+      "security_score": null,
+      "created_on": null,
+      "compatibility": {},
+      "naming_history": [
+        {
+          "name": "plugin-devkit",
+          "valid_from": "2026-08-29",
+          "valid_to": null,
+          "reason": "Current name at inventory bootstrap.",
+          "evidence": []
+        }
+      ],
+      "scoring_history": [],
+      "security_scoring_history": [],
+      "provenance": {}
+    }
+  ]
+}

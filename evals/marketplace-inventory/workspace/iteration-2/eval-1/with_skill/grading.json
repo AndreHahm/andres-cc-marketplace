@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Writes the scratch inventory to a path outside the real .claude-plugin/ directory, never touching the real repo's marketplace-inventory.json",
+      "passed": true,
+      "evidence": "Built a mirror repo_root under the scratchpad, ran bootstrap/check against it only, and confirmed via git status/diff that the real .claude-plugin/marketplace-inventory.json had zero diff."
+    },
+    {
+      "text": "Actually invokes scripts/marketplace-inventory.py bootstrap and check rather than fabricating a result",
+      "passed": true,
+      "evidence": "Ran real discover/bootstrap/check commands against the mirror and reported their actual JSON output."
+    },
+    {
+      "text": "Correctly reports missing_plugin_inventories as non-empty since no plugin-inventory.json files exist yet",
+      "passed": false,
+      "evidence": "STALE ASSERTION, graded on real-world correctness instead: the mirror it built copied marketplace.json but not each plugin's real plugin-inventory.json, so it reported all 4 plugins as missing -- but the real repo currently has all 4 plugins' plugin-inventory.json files (bootstrapped earlier this session), so the actually-correct current answer is an empty missing list. This agent's mirror was incomplete relative to current repo state, producing a wrong answer that happens to match the assertion's now-outdated wording."
+    },
+    {
+      "text": "States it would ask before invoking plugin-inventory, naming Skill(plugin-inventory) with plugin_dir + mode args, never batch-applying",
+      "passed": true,
+      "evidence": "Explicitly listed one Skill(plugin-inventory) call per plugin (e.g. \"plugins/analysis-kit build\"), stated approval-first, never batched."
+    }
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 3, "pass_rate": 0.75}
+}

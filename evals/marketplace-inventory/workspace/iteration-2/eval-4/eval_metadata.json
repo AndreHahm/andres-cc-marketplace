@@ -1,0 +1,12 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-inventory/SKILL.md",
+  "assertions": [
+    {"text": "Presents the full before/after diff of naming_history before running any destructive rewrite", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Asks for explicit approval before invoking repair-history -- never runs it unprompted", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Runs repair-history with a replacement history array containing exactly one open period matching the current name 'demo-plugin'", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "The replacement's closed prior period correctly names 'demo-plugin-old-name'", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Uses the --confirm <plugin_id> flag matching the plugin being repaired", "type": "structure", "target": "outputs/ directory"},
+    {"text": "Confirms afterward via check that drift_count is 0", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

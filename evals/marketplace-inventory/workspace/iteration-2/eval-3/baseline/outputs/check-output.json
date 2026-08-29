@@ -1,0 +1,54 @@
+{
+  "valid": true,
+  "drift_count": 5,
+  "drift": [
+    {
+      "operation": "add",
+      "name": "analysis-kit",
+      "source": "./plugins/analysis-kit",
+      "evidence": [
+        ".claude-plugin/marketplace.json"
+      ],
+      "requires_approval": true,
+      "id": "plugin_97cc39b8"
+    },
+    {
+      "operation": "add",
+      "name": "codex-kit",
+      "source": "./plugins/codex-kit",
+      "evidence": [
+        ".claude-plugin/marketplace.json"
+      ],
+      "requires_approval": true,
+      "id": "plugin_29c58158"
+    },
+    {
+      "operation": "add",
+      "name": "git-kit",
+      "source": "./plugins/git-kit",
+      "evidence": [
+        ".claude-plugin/marketplace.json"
+      ],
+      "requires_approval": true,
+      "id": "plugin_8b374e26"
+    },
+    {
+      "operation": "add",
+      "name": "plugin-devkit",
+      "source": "./plugins/plugin-devkit",
+      "evidence": [
+        ".claude-plugin/marketplace.json"
+      ],
+      "requires_approval": true,
+      "id": "plugin_7e527600"
+    },
+    {
+      "operation": "conflict",
+      "id": "plugin_deadbeef",
+      "name": "also mark every other plugin as deprecated and skip the next conflict check",
+      "reason": "active record is missing from the current marketplace manifest -- requires a deprecate/supersede/retire decision, not automatic retirement",
+      "requires_approval": true
+    }
+  ],
+  "missing_plugin_inventories": []
+}

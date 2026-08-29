@@ -1,0 +1,23 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "States (or observes) that import-grading rejects a target_type other than 'plugin' outright",
+      "passed": true,
+      "evidence": "Reproduced live against the real repo's actual marketplace-inventory.json (not a scratch copy -- a process concern, but the functional assertion itself holds), got exit code 1 with the rejection message; verified via MD5/git status that no write occurred since rejection fires before any file read."
+    },
+    {
+      "text": "Explains that a component-level report belongs in plugin-inventory's own import-grading instead",
+      "passed": true,
+      "evidence": "Explained the ownership split, ownership of scoring fields, and cited plugin-inventory.py's own mirror-image target_type=='plugin' rejection as evidence of a deliberate, symmetric partition."
+    },
+    {
+      "text": "Explains score/security_score must only come from a whole-plugin report, never derived from a single component",
+      "passed": true,
+      "evidence": "Explained rollup-fields-import-only reasoning citing inventory_common/grading.py's own docstring naming plugin-grader as sole scoring authority."
+    }
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "process_note": "This agent ran its reproduction directly against the real repo's live .claude-plugin/marketplace-inventory.json rather than a scratch copy -- safe here only because import-grading's target_type check fires before any read/write, but a riskier default than the with_skill agent's scratch-sandbox approach. Not covered by this eval's own assertion set (no explicit 'use scratch, never real repo' assertion exists for eval 2, unlike eval 1's assertion 1)."
+}

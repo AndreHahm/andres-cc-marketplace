@@ -1,0 +1,13 @@
+{
+  "name": "eval4-fixture-marketplace",
+  "owner": {
+    "name": "eval-fixture"
+  },
+  "plugins": [
+    {
+      "name": "demo-plugin",
+      "source": "./plugins/demo-plugin",
+      "description": "Synthetic fixture plugin for marketplace-inventory eval 4."
+    }
+  ]
+}

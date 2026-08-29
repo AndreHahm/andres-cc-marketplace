@@ -250,8 +250,11 @@ generic JSON Schema validator against it (no such dependency is available in thi
 - "decide what a plugin should contain" → `plugin-planning`/`plugin-lifecycle-upstream`
 
 **Last dated run record:** 2026-08-29 — `scripts/smoke_test.py` (26/26 checks passing, adding 4 new
-Repair History checks) and `evals/marketplace-inventory/` eval 3 (5/5 assertions, `skill-tester` Quick
-Workflow, live-executed 2026-08-27).
+Repair History checks) and `evals/marketplace-inventory/` `skill-tester` Full Pipeline, iteration-2,
+live-executed 2026-08-29: 4 evals (17/18 with_skill assertions, 17/18 baseline) including a new eval 4
+covering Repair History's diff-then-confirm flow. Eval 1's assertion 3 was found stale mid-run (it
+assumed a repo state that predated this session's own bootstrap work) and corrected in `evals.json` for
+future runs.
 
 See `references/test-scenarios.md` for the full 26-scenario test walkthrough.
 
