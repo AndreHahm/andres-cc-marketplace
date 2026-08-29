@@ -901,6 +901,37 @@ def check_check_rejects_malformed_compatibility():
         return True, "check correctly rejected a malformed compatibility shape with a clean message"
 
 
+def check_bootstrap_refuses_existing_inventory():
+    """Scenario 22 (Bootstrap refuses an already-existing inventory):
+    calling bootstrap twice against the same path must make the second call
+    fail closed with 'refusing to bootstrap: ... already exists' and leave
+    the first call's file untouched -- this is exactly the guard
+    check_cli_bootstrap_check_roundtrip's real-plugin-devkit-directory copy
+    now has to work around by unlinking a pre-existing plugin-inventory.json
+    before bootstrapping; nothing previously asserted the guard itself still
+    fires."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        first = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if first.returncode != 0:
+            return False, f"first bootstrap failed: {first.stderr.strip()}"
+        before_text = inventory_path.read_text(encoding="utf-8")
+
+        second = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if second.returncode == 0:
+            return False, "second bootstrap against an existing inventory should have failed"
+        if "already exists" not in second.stderr:
+            return False, f"unexpected rejection message: {second.stderr.strip()}"
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return False, "inventory file was modified despite the second bootstrap being refused"
+        return True, "bootstrap correctly refused to overwrite an existing inventory"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -924,6 +955,7 @@ CHECKS = [
     check_import_grading_rejects_offset_graded_at,
     check_reconciliation_prefers_active_on_duplicate_key,
     check_check_rejects_malformed_compatibility,
+    check_bootstrap_refuses_existing_inventory,
 ]
 
 

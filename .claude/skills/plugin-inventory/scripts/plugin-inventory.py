@@ -474,6 +474,7 @@ def cmd_repair_history(args):
         inventory = reconcile.validate_or_exit(
             json_store.read_json, args.inventory_path, context="repair-history"
         )
+        reconcile.validate_or_exit(validate_inventory, inventory, context="repair-history")
         component = next((c for c in inventory["components"] if c["id"] == args.component_id), None)
         if component is None:
             raise SystemExit(f"no component with id {args.component_id!r} in this inventory")
