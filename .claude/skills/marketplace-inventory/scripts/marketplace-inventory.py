@@ -9,6 +9,8 @@ Subcommands:
   apply           <repo_root> <inventory_path> <approved_plan.json> <expected_hash>
   import-grading  <repo_root> <inventory_path> <report_path> <target> <target_type>
   check           <repo_root> <inventory_path>
+  repair-history  <repo_root> <inventory_path> <plugin_id> <status_history|naming_history> \
+                  <replacement_history.json> --confirm <plugin_id>
 
 Every write-capable subcommand takes `repo_root` so it can enforce that
 `inventory_path` resolves to exactly `<repo_root>/.claude-plugin/
@@ -48,8 +50,8 @@ INVENTORY_FILENAME = "marketplace-inventory.json"
 # record. 'id'/'name' are structural identity, never updated in place;
 # 'status' only ever changes via 'status-transition' (which keeps
 # status_history in sync); every history/scoring field is append-only,
-# editable only through history.append_* -- this script has no
-# repair-history mode at all, so none of those belong here either way.
+# editable only through history.append_*/repair-history's own
+# explicit-confirmation gate.
 ALLOWED_UPDATE_FIELDS = {
     "source",
     "functional_role",
@@ -430,6 +432,76 @@ def cmd_check(args):
     )
 
 
+def _load_replacement_history(path):
+    """Read and structurally validate a repair-history replacement file:
+    must be a JSON array of periods, never a bare object or scalar."""
+    with open(path, encoding="utf-8") as f:
+        replacement = json.load(f)
+    if not isinstance(replacement, list):
+        raise ValueError(
+            f"replacement history at {path!r} must be a JSON array of periods, "
+            f"got {type(replacement).__name__}"
+        )
+    return replacement
+
+
+def cmd_repair_history(args):
+    """The only mode allowed to rewrite existing history entries. The
+    calling skill must show the user the exact before/after diff and get
+    explicit approval before invoking this -- `--confirm <plugin_id>`
+    (repeating the same id being repaired) is this function's own
+    mechanical gate, so an invocation missing it fails closed instead of
+    relying solely on the calling skill having actually shown that diff."""
+    if args.confirm != args.plugin_id:
+        raise SystemExit(
+            "repair-history requires --confirm <plugin_id> to exactly match the "
+            "plugin_id being repaired -- this is the destructive-rewrite gate; "
+            "show the user the full before/after diff and get explicit approval first"
+        )
+    reconcile.require_inventory_path_under_scope_dir(
+        args.inventory_path, args.repo_root, INVENTORY_FILENAME
+    )
+    with json_store.InventoryLock(args.inventory_path):
+        inventory = reconcile.validate_or_exit(
+            json_store.read_json, args.inventory_path, context="repair-history"
+        )
+        plugin = next((p for p in inventory["plugins"] if p["id"] == args.plugin_id), None)
+        if plugin is None:
+            raise SystemExit(f"no plugin with id {args.plugin_id!r} in this inventory")
+        if args.history_field not in ("status_history", "naming_history"):
+            raise SystemExit("history_field must be 'status_history' or 'naming_history'")
+        replacement = reconcile.validate_or_exit(
+            _load_replacement_history, args.replacement_history_path, context="repair-history"
+        )
+        reconcile.validate_or_exit(
+            models.validate_history_periods,
+            replacement,
+            f"{args.plugin_id}.{args.history_field}",
+            context="repair-history",
+        )
+        value_key = "status" if args.history_field == "status_history" else "name"
+        open_value = models.open_period_value(replacement, value_key)
+        current_value = (
+            plugin["status"] if args.history_field == "status_history" else plugin["name"]
+        )
+        if open_value != current_value:
+            raise SystemExit(
+                f"replacement history's open period value {open_value!r} does not match "
+                f"the record's current {value_key} {current_value!r} -- "
+                "update one or the other first"
+            )
+        plugin[args.history_field] = replacement
+        inventory["updated_on"] = reconcile.today()
+        reconcile.validate_or_exit(
+            json_store.atomic_write_json,
+            args.inventory_path,
+            inventory,
+            validator=validate_inventory,
+            context="repair-history",
+        )
+    print(json.dumps({"repaired": args.plugin_id, "field": args.history_field}, indent=2))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -467,6 +539,21 @@ def main():
     p.add_argument("repo_root")
     p.add_argument("inventory_path")
     p.set_defaults(func=cmd_check)
+
+    p = sub.add_parser("repair-history")
+    p.add_argument("repo_root")
+    p.add_argument("inventory_path")
+    p.add_argument("plugin_id")
+    p.add_argument("history_field")
+    p.add_argument("replacement_history_path")
+    p.add_argument(
+        "--confirm",
+        required=True,
+        help="must exactly equal plugin_id -- the mechanical confirmation gate for this "
+        "destructive mode; the calling skill should only pass this after showing the user "
+        "the full before/after diff and getting explicit approval",
+    )
+    p.set_defaults(func=cmd_repair_history)
 
     args = parser.parse_args()
     args.func(args)

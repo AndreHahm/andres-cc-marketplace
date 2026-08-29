@@ -57,8 +57,7 @@ def check_bash_grants():
     fm_match = re.search(r"^allowed-tools:\s*(.*(?:\n[ \t]+.+)*)", frontmatter, re.MULTILINE)
     allowed_tools_text = fm_match.group(1) if fm_match else ""
     granted_prefixes = [
-        g.rsplit(":", 1)[0].strip()
-        for g in re.findall(r"Bash\(([^)]*)\)", allowed_tools_text)
+        g.rsplit(":", 1)[0].strip() for g in re.findall(r"Bash\(([^)]*)\)", allowed_tools_text)
     ]
     invoked = set()
     for block in re.findall(r"```bash\n(.*?)```", body, re.DOTALL):
@@ -892,6 +891,165 @@ def check_check_rejects_malformed_compatibility():
         return True, "check correctly rejected a malformed compatibility shape with a clean message"
 
 
+def check_repair_history_structural_rejection():
+    """A replacement naming_history with two open periods must be rejected
+    before any write happens."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        replacement_path = pathlib.Path(tmpdir) / "replacement.json"
+        replacement_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "name": "plugin-a",
+                        "valid_from": "2020-01-01",
+                        "valid_to": None,
+                        "reason": "bad fixture 1",
+                        "evidence": [],
+                    },
+                    {
+                        "name": "plugin-a-renamed",
+                        "valid_from": "2021-01-01",
+                        "valid_to": None,
+                        "reason": "bad fixture 2 -- also open, invalid",
+                        "evidence": [],
+                    },
+                ]
+            ),
+            encoding="utf-8",
+        )
+        repair = _run(
+            "repair-history",
+            repo_root,
+            inventory_path,
+            plugin_id,
+            "naming_history",
+            replacement_path,
+            "--confirm",
+            plugin_id,
+        )
+        if repair.returncode == 0:
+            return False, "repair-history accepted a replacement with two open periods"
+        return True, "repair-history correctly rejected a structurally invalid replacement history"
+
+
+def check_repair_history_open_value_mismatch_rejected():
+    """A replacement whose open period's name doesn't match the record's
+    current name must be rejected before any write -- Repair History fixes
+    history shape, it never changes the record's current value at the same
+    time."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        replacement_path = pathlib.Path(tmpdir) / "replacement.json"
+        replacement_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "name": "plugin-a-wrong-current-name",
+                        "valid_from": "2020-01-01",
+                        "valid_to": None,
+                        "reason": "open period names a value other than the record's current name",
+                        "evidence": [],
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        repair = _run(
+            "repair-history",
+            repo_root,
+            inventory_path,
+            plugin_id,
+            "naming_history",
+            replacement_path,
+            "--confirm",
+            plugin_id,
+        )
+        if repair.returncode == 0:
+            return (
+                False,
+                "repair-history accepted an open period whose name doesn't match current name",
+            )
+        return True, "repair-history correctly rejected an open-period/current-name mismatch"
+
+
+def check_repair_history_naming_backfill_succeeds():
+    """The actual intended use case: backfilling a historical naming period
+    a bootstrap missed (the record's real prior name before it was ever
+    inventoried). A structurally valid replacement -- a closed prior-name
+    period followed by the current open period -- is accepted and written,
+    and check reports 0 drift afterward."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        replacement_path = pathlib.Path(tmpdir) / "replacement.json"
+        replacement_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "name": "plugin-a-original-name",
+                        "valid_from": "2020-01-01",
+                        "valid_to": "2020-06-01",
+                        "reason": "real prior name, backfilled from git history",
+                        "evidence": ["commit abc1234"],
+                    },
+                    {
+                        "name": "plugin-a",
+                        "valid_from": "2020-06-01",
+                        "valid_to": None,
+                        "reason": "renamed to current name",
+                        "evidence": ["commit def5678"],
+                    },
+                ]
+            ),
+            encoding="utf-8",
+        )
+        repair = _run(
+            "repair-history",
+            repo_root,
+            inventory_path,
+            plugin_id,
+            "naming_history",
+            replacement_path,
+            "--confirm",
+            plugin_id,
+        )
+        if repair.returncode != 0:
+            return False, f"repair-history rejected a valid backfill: {repair.stderr.strip()}"
+        naming_history = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0][
+            "naming_history"
+        ]
+        if len(naming_history) != 2 or naming_history[0]["name"] != "plugin-a-original-name":
+            return False, f"naming_history wasn't replaced as expected: {naming_history}"
+        check = _run("check", repo_root, inventory_path)
+        if check.returncode != 0 or json.loads(check.stdout)["drift_count"] != 0:
+            return (
+                False,
+                f"check reported drift after a valid repair-history backfill: {check.stdout}",
+            )
+        return True, "repair-history correctly backfilled a historical naming period"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -915,6 +1073,9 @@ CHECKS = [
     check_import_grading_rejects_offset_graded_at,
     check_reconciliation_prefers_active_on_duplicate_key,
     check_check_rejects_malformed_compatibility,
+    check_repair_history_structural_rejection,
+    check_repair_history_open_value_mismatch_rejected,
+    check_repair_history_naming_backfill_succeeds,
 ]
 
 
