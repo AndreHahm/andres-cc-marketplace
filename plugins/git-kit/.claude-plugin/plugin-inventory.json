@@ -2,7 +2,7 @@
   "components": [
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-17",
       "details": {
         "schema": "skill"
       },
@@ -43,7 +43,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-05",
       "details": {
         "schema": "skill"
       },
@@ -84,7 +84,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -104,7 +104,10 @@
         }
       ],
       "path": "skills/commit",
-      "provenance": {},
+      "provenance": {
+        "notes": "Author: Vlad Goncharov (NeoLabHQ). Source: github.com/NeoLabHQ/context-engineering-kit, plugins/git. License: GPL-3.0 -- git-kit's own LICENSE carries this forward per GPL-3.0's copyleft terms. See plugins/git-kit/THIRD_PARTY_NOTICES.md.",
+        "origin": "Began as NeoLabHQ's context-engineering-kit 'git' plugin skill, lightly adapted (e.g. dropping the emoji commit-message convention, simplifying branch-naming)"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -125,7 +128,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -145,7 +148,10 @@
         }
       ],
       "path": "skills/create-pr",
-      "provenance": {},
+      "provenance": {
+        "notes": "Author: Vlad Goncharov (NeoLabHQ). Source: github.com/NeoLabHQ/context-engineering-kit, plugins/git. License: GPL-3.0 -- git-kit's own LICENSE carries this forward per GPL-3.0's copyleft terms. See plugins/git-kit/THIRD_PARTY_NOTICES.md.",
+        "origin": "Began as NeoLabHQ's context-engineering-kit 'git' plugin skill, lightly adapted (e.g. dropping the emoji commit-message convention, simplifying branch-naming)"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -166,7 +172,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-18",
       "details": {
         "schema": "skill"
       },
@@ -207,7 +213,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -248,7 +254,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -289,7 +295,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-05",
       "details": {
         "schema": "skill"
       },
@@ -330,7 +336,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -350,7 +356,10 @@
         }
       ],
       "path": "skills/gh-operations",
-      "provenance": {},
+      "provenance": {
+        "notes": "Source: github.com/fernandezbaptiste/claude-code-skills, github-ops. License: MIT. See plugins/git-kit/THIRD_PARTY_NOTICES.md.",
+        "origin": "Began as fernandezbaptiste's claude-code-skills 'github-ops' skill"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -371,7 +380,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -412,7 +421,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -453,7 +462,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -473,7 +482,10 @@
         }
       ],
       "path": "skills/git-notes",
-      "provenance": {},
+      "provenance": {
+        "notes": "Author: Vlad Goncharov (NeoLabHQ). Source: github.com/NeoLabHQ/context-engineering-kit, plugins/git. License: GPL-3.0 -- git-kit's own LICENSE carries this forward per GPL-3.0's copyleft terms. See plugins/git-kit/THIRD_PARTY_NOTICES.md.",
+        "origin": "Began as NeoLabHQ's context-engineering-kit 'git' plugin skill, lightly adapted (e.g. dropping the emoji commit-message convention, simplifying branch-naming)"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -494,7 +506,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -535,7 +547,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -555,7 +567,10 @@
         }
       ],
       "path": "skills/git-worktrees",
-      "provenance": {},
+      "provenance": {
+        "notes": "Author: Vlad Goncharov (NeoLabHQ). Source: github.com/NeoLabHQ/context-engineering-kit, plugins/git. License: GPL-3.0 -- git-kit's own LICENSE carries this forward per GPL-3.0's copyleft terms. See plugins/git-kit/THIRD_PARTY_NOTICES.md.",
+        "origin": "Began as NeoLabHQ's context-engineering-kit 'git' plugin skill, lightly adapted (e.g. dropping the emoji commit-message convention, simplifying branch-naming)"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -576,7 +591,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -617,7 +632,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-28",
       "details": {
         "schema": "skill"
       },
@@ -658,7 +673,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-21",
       "details": {
         "schema": "skill"
       },
@@ -699,7 +714,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-27",
       "details": {
         "schema": "skill"
       },
@@ -740,7 +755,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-27",
       "details": {
         "schema": "skill"
       },
@@ -781,7 +796,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-26",
       "details": {
         "schema": "skill"
       },
@@ -822,7 +837,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "skill"
       },
@@ -842,7 +857,10 @@
         }
       ],
       "path": "skills/standalone-commits",
-      "provenance": {},
+      "provenance": {
+        "notes": "Author: Braden Wong (EpicenterHQ). Source: EpicenterHQ/epicenter, .claude/skills/standalone-commits. License: AGPL-3.0-or-later, combined with git-kit's GPL-3.0 under GPLv3 section 13. See plugins/git-kit/THIRD_PARTY_NOTICES.md.",
+        "origin": "Began as EpicenterHQ's epicenter 'standalone-commits' skill, lightly adapted (fixed a cross-reference, genericized one example)"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -863,7 +881,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-05",
       "details": {
         "schema": "skill"
       },
@@ -904,7 +922,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-27",
       "details": {
         "schema": "command"
       },
@@ -945,7 +963,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "command"
       },
@@ -986,7 +1004,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "command"
       },
@@ -1027,7 +1045,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-26",
       "details": {
         "schema": "command"
       },
@@ -1068,7 +1086,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-05",
       "details": {
         "schema": "hook"
       },
@@ -1109,7 +1127,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-10",
       "details": {
         "schema": "hook"
       },
