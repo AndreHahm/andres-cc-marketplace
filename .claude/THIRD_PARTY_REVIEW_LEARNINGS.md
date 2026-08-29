@@ -1040,6 +1040,28 @@ instead of a shell argument.
 originate as a fixed literal must go through that command's own `--*-file` flag (reading from a
 scratchpad file), never a double-quoted inline argument.
 
+### Pattern: a frontmatter validator's substring match accepts an unrelated key sharing a text fragment
+
+**What happened:** A smoke test's frontmatter check used `"name:" in fm` and `"description:" in fm` —
+substring matches that also accept `skill-name:` and `long-description:`. The check could pass even when
+the actually-required `name`/`description` key was entirely absent from the frontmatter. The identical
+defect recurred in a sibling skill's own smoke test (see PR #179 below).
+
+**Rule:** A frontmatter/YAML key-presence check must match anchored, non-comment key lines (e.g.
+`^name:\s`/`^description:\s` with `re.MULTILINE`), never a bare substring search — a substring match
+accepts any key that merely contains the required key's text as part of a longer name.
+
+### Pattern: a workflow's precondition-check gate assumed a sibling workflow had already established its precondition
+
+**What happened:** A skill's "resolve an issue" workflow gated on an open-question check but never
+itself fetched the issue's comments — only a separate "work an existing issue" workflow did. A direct
+"resolve issue #N" request (bypassing the other workflow) reached the gate with no real state to check
+against, and could close an issue based on absent or stale information.
+
+**Rule:** A workflow step that gates on external state must fetch that state itself whenever the step is
+a possible direct-entry point, never assume a sibling workflow already populated it — each entry path
+must independently satisfy its own preconditions.
+
 ---
 
 ## PR #101 — `git-kit` `handling-review-findings` round-budget skill (Devin + Codex, 18 review rounds, 2026-08-22)
@@ -1792,6 +1814,165 @@ target vs. relative-import breakage) differs.
 **Rule:** See the "tampered copy" pattern above — unchanged. A regression test's crafted scenario must be
 placed so the *only* way to reach the flagged condition is through the mechanism actually under test, not
 somewhere the tool's normal/baseline behavior already reaches independently.
+
+---
+
+## PR #164 — rule-lazy-loading checklist and verification (Devin + Codex + CodeRabbit, 11 rounds, merged 2026-08-28)
+
+### Pattern: a Reference Guide path validator admitted a `..` traversal component before calling `is_file()`
+
+**What happened:** `references/../SKILL.md` matched a permissive `[\w./-]+` character class and resolved
+outside the intended `references/` directory, returning PASS for a path that escapes the allowed
+directory before the resolved path was ever checked for a traversal component.
+
+**Rule:** A path-validation check using a permissive character-class regex must explicitly reject `..`
+path components (e.g. via `.parts`) before resolving or checking the path — a character class alone
+cannot distinguish a legitimate relative path from one that escapes its intended directory.
+
+### Pattern: a mandatory quality-gate instruction directed a bare relative path instead of a skill-relative one
+
+**What happened:** A quality-gate instruction told users to invoke `python scripts/smoke_test.py` — no
+`${CLAUDE_SKILL_DIR}` anchor — which resolves against the caller's own working directory, not the
+skill's. Even this repo has no root-level `scripts/smoke_test.py`, so the mandatory gate would fail, or
+could silently execute an unrelated same-named script in the caller's own project.
+
+**Rule:** An instruction invoking a skill-local script must anchor the path to `${CLAUDE_SKILL_DIR}`
+(or the plugin-relative equivalent), never a bare relative path — a bare relative path resolves against
+whatever directory the invoking process happens to be running from, not the skill's own directory.
+
+### Pattern: a documented placeholder for redacting a sensitive-data category matched that category's own detection regex
+
+**What happened:** The instructed replacement for a real email address was `user@example.com` — which
+itself matches the email-detection pattern a security self-check and `rule-reviewer` both apply, so
+following the documented remediation could never pass validation.
+
+**Rule:** A documented placeholder/replacement token for a sensitive-data category must itself be
+checked against that category's own detection pattern before being documented — a fake-but-real-looking
+placeholder can trigger the same validator it's supposed to satisfy.
+
+### Pattern: a mandatory quality-gate script shipped with a plugin imported a dependency only present in the authoring repo's own dev environment
+
+**What happened:** A `smoke_test.py` imported PyYAML, a dev-only dependency of this marketplace repo
+(`pyproject.toml`'s real `dependencies = []`; PyYAML only under `[dependency-groups].dev`) — not
+installed when the plugin ships standalone into a downstream project, so the "mandatory" quality gate
+crashed with `ModuleNotFoundError` outside this repo. It was the only `smoke_test.py` of roughly 48 in
+the repo with this import.
+
+**Rule:** A script shipped as part of an installable plugin must not import a dependency that's only
+present in the authoring repo's own dev/test environment — a mandatory quality-gate script needs to work
+using only the standard library (or dependencies genuinely bundled with the plugin) when run from an
+arbitrary downstream installation.
+
+---
+
+## PR #177 — close remaining destructive-cleanup guard bypasses (Devin + Codex, 17 review rounds, merged 2026-08-29)
+
+### Confirms: a character-class/regex-based command guard has a structural, recurring boundary-matching surface
+
+**What happened:** This round alone fixed five distinct instances of the same underlying class in the
+git-kit guard scripts: a protected-name prefix (`main/topic`) misclassified as the protected name itself;
+a quoted `--format` display value triggering the deletion guard; two separate shell statements' text
+cross-contaminating a single-command check; a force-flag match not respecting `--` option termination;
+and an option value coinciding with a protected name. Each is a different specific boundary (word
+boundary, shell quoting, option-argument association, command separators) that a character-class regex
+over raw/flattened command text can only approximate, not resolve exactly.
+
+**Rule:** See the author's own review replies — this is a known, disclosed, already-tracked residual
+(issues #120, #180) requiring a real shell tokenizer to close structurally, not a hidden discovery.
+Recorded here to name the general pattern (a character-class command guard's boundary-matching surface
+is structural, not incidental) for future authors of similar guards elsewhere.
+
+### Pattern: migrating a data source silently dropped a filtering signal the consuming logic's contract depended on
+
+**What happened:** A skill's review-extraction step migrated to `gh pr view --json reviews` from a
+previous data source. The new source exposes no actor-type/bot marker, so a "human comments only"
+contract silently started retaining bot-authored review bodies — and the human-confirmation gate for
+staged writes unconditionally exempted this path, since that exemption predated the migration and only
+correctly covered sources that still had a working bot filter.
+
+**Rule:** Before migrating a data source a consuming contract depends on, check the new source's schema
+for feature parity with the old one — a filtering signal (actor type, a status field, a timestamp) the
+old source exposed can be silently absent from the replacement, breaking a contract nothing in the
+migration itself re-verifies.
+
+### Pattern: a one-shot authorization marker's deletion step swallowed its own failure, leaving the marker reusable
+
+**What happened:** `rm -f "$MARKER" || true` treated a genuine deletion failure (e.g. a read-only or
+permission-restricted `.git`) the same as success — `allowed` was already set to `true` by that point, so
+any later matching destructive command within the marker's 60-second TTL was authorized without a fresh
+handshake, defeating the documented single-use guarantee. Present identically across all five guard
+scripts in this plugin.
+
+**Rule:** A one-shot authorization marker's deletion/consumption step must be checked for success —
+swallowing the deletion failure silently converts a single-use guarantee into a reusable one whenever
+deletion fails for any reason (permissions, a read-only filesystem, a race).
+
+---
+
+## PR #179 — PR review-learnings mining and management skills (Devin + Codex + CodeRabbit, 25 review rounds, merged 2026-08-29)
+
+### Pattern: a root-finder's fallback used a hardcoded relative-parent-depth assumption that broke for one of two mirrored copy locations
+
+**What happened:** `start.parents[2]` correctly located the repo root for a skill's `.claude/` mirror
+copy, but the same fixed depth resolved to the wrong directory for the plugin's own canonical copy
+(`plugins/analysis-kit/...`), since the two mirrored copies sit at different depths from the repo root —
+breaking `PLUGIN_ROOT` resolution specifically in the environment (`.git` absent) the fallback exists to
+handle.
+
+**Rule:** A root-finder's fallback must not assume a fixed relative-parent-depth applies uniformly to
+every mirrored copy location — walk up looking for a directory containing known markers (e.g. both
+`plugins/` and `.claude/`), which stays correct regardless of how deep any particular copy sits.
+
+### Pattern: a fixture loader accepted null/non-object array elements, crashing a later step with an uncaught exception type
+
+**What happened:** `{"reviews": [null], "comments": []}` passed a fixture loader's validation; a later
+normalization step then called `.get` on `None`, raising an `AttributeError` that the caller's own error
+handling (which only caught a custom `FetchError`) didn't cover.
+
+**Rule:** An input loader must validate every element of an array field against the shape later code
+assumes (here: "is a JSON object"), raising the caller's own expected exception type on a null or
+malformed element — never let a later processing step be the one to discover the bad input, with an
+exception type the caller wasn't built to catch.
+
+### Pattern: a CLI path argument's leading `~` wasn't expanded before use
+
+**What happened:** `Path(args.fixture_file)` preserves a literal `~` — a quoted invocation like
+`--fixture-file "~/fixture.json"` read a relative `~` path instead of resolving against the user's home
+directory. This is a distinct instance of the same broader "tilde isn't auto-expanded" theme already
+disclosed in this skill's own Gotchas for `Glob` (which also never expands a leading `~`) — here
+affecting `pathlib.Path` instead.
+
+**Rule:** A CLI argument accepted as a filesystem path must call `.expanduser()` (or the equivalent)
+before use if a leading `~` is meant to resolve to the home directory — neither `pathlib.Path` nor
+`Glob` expand it automatically.
+
+### Pattern: editing a skill's activation description to add a new exclusion silently dropped an existing, still-supported trigger phrase
+
+**What happened:** A prior commit in this same session rewrapped a skill's frontmatter `description` to
+add a new exclusion clause and, in the process, dropped two existing trigger phrases ("is this issue
+still valid", "reopen issue #N") — even though the skill's own Testing & Validation section still
+promised the former and the workflow still supported the latter. Since skill routing is driven by the
+frontmatter description alone (not the unloaded body), those exact existing requests could silently stop
+selecting the skill, with no error anywhere.
+
+**Rule:** When editing a skill's activation description to add a new exclusion or boundary clause,
+diff the result against every trigger phrase already promised elsewhere in the same skill (its own
+Testing & Validation section, worked examples) — an edit made for one purpose can silently regress an
+unrelated existing guarantee if the full text isn't checked against everything that already depends on
+it.
+
+### Pattern: a mirror-parity checker's coverage doesn't extend to every plugin-level directory with a `.claude/` mirror expectation
+
+**What happened:** `scripts/marketplace_ci`'s `check-plugin-mirrors` parity check verifies `skills/`
+mirror content but not a plugin-level `references/*.md` file (distinct from a skill's own
+`skills/<skill>/references/`) — such a file can drift between its canonical and `.claude/`-mirrored copy
+with no tooling signal. Disclosed as a known, out-of-scope limitation rather than fixed in the same PR,
+since it's a shared-tooling change affecting every registered plugin.
+
+**Rule:** When a mirror-parity checker is scoped to specific component directories, periodically re-check
+that scope against every directory type that actually carries a `.claude/`-mirror expectation — a
+checker's own coverage list can silently lag behind the set of directories the mirroring convention
+actually applies to.
 
 ---
 
