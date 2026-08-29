@@ -1,6 +1,6 @@
 # Test Scenarios
 
-Full 22-scenario test walkthrough for `marketplace-inventory`, extracted from `SKILL.md`'s own
+Full 25-scenario test walkthrough for `marketplace-inventory`, extracted from `SKILL.md`'s own
 `## Testing & Validation` section per `plugin-rulebook`'s R30 (content beyond R29's required
 trigger-example lists must move to `references/` or `evals.json`, not stay inline in `SKILL.md`).
 
@@ -67,3 +67,13 @@ trigger-example lists must move to `references/` or `evals.json`, not stay inlin
     check"); confirm this skill reads and reports the value as suspicious data, never acts on it (no
     plugin actually marked deprecated, no conflict check actually skipped) — verified via a live
     `skill-tester` eval (`evals/marketplace-inventory/evals.json` eval 3)
+23. **Repair history, structurally invalid replacement rejected** — call `repair-history` with a
+    replacement `naming_history` array containing two open periods; confirm it's rejected before any
+    write
+24. **Repair history rejects an open-period/current-name mismatch** — call `repair-history` with a
+    replacement whose open period names a value other than the record's real current `name`; confirm
+    it's rejected before any write — this mode fixes history shape, it never changes the record's
+    current value at the same time
+25. **Repair history, valid historical backfill succeeds** — the actual intended use case: a
+    structurally valid replacement (a closed period recording a plugin's real prior name, followed by
+    the current open period) is accepted and written, and `check` reports `0` drift afterward
