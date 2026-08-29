@@ -3,23 +3,38 @@
   "plugins": [
     {
       "compatibility": {},
-      "created_on": null,
-      "domains": [],
-      "functional_role": null,
+      "created_on": "2026-08-03",
+      "domains": [
+        "review-learnings",
+        "session-analysis"
+      ],
+      "functional_role": "workflow",
       "id": "plugin_97cc39b8",
       "name": "analysis-kit",
       "naming_history": [
         {
           "evidence": [
-            ".claude-plugin/marketplace.json"
+            "commit b92bdb7"
+          ],
+          "name": "analyzing-kit",
+          "reason": "Created as analyzing-kit, porting plugin-devkit's analyzing-sessions skill into a standalone plugin.",
+          "valid_from": "2026-08-03",
+          "valid_to": "2026-08-03"
+        },
+        {
+          "evidence": [
+            "commit 50ba1ef"
           ],
           "name": "analysis-kit",
-          "reason": "Current name at inventory bootstrap.",
-          "valid_from": "2026-08-28",
+          "reason": "Renamed from analyzing-kit the same day, before the marketplace inventory ever existed.",
+          "valid_from": "2026-08-03",
           "valid_to": null
         }
       ],
-      "provenance": {},
+      "provenance": {
+        "notes": "Created as 'analyzing-kit' (commit b92bdb7, 2026-08-03) with cross-plugin dependencies (enhancement-suggestor, skill-reviewer) removed for independence; renamed to 'analysis-kit' the same day (commit 50ba1ef).",
+        "origin": "Ported from plugin-devkit's analyzing-sessions skill into a standalone plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -40,9 +55,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
-      "domains": [],
-      "functional_role": null,
+      "created_on": "2026-08-08",
+      "domains": [
+        "codex-integration",
+        "marketplace-review-policy"
+      ],
+      "functional_role": "mixed",
       "id": "plugin_29c58158",
       "name": "codex-kit",
       "naming_history": [
@@ -56,7 +74,10 @@
           "valid_to": null
         }
       ],
-      "provenance": {},
+      "provenance": {
+        "notes": "Apache-2.0 licensed upstream, per plugins/codex-kit/NOTICE. Windows shim-spawning logic in scripts/lib/codex-exec.mjs is a direct port of node-cross-spawn's argument-escaping algorithm (MIT). Substantial original additions not in the upstream plugin: independent double-check verification, research, and a generic reviewer-agnostic bridge.",
+        "origin": "Engine (scripts/app-server-broker.mjs and related) is a derivative of OpenAI's official 'codex' Claude Code plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -77,23 +98,42 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
-      "domains": [],
-      "functional_role": null,
+      "created_on": "2026-07-26",
+      "domains": [
+        "git-lifecycle",
+        "git-utilities",
+        "issue-management",
+        "maintenance",
+        "pr-review",
+        "safety-gates"
+      ],
+      "functional_role": "workflow",
       "id": "plugin_8b374e26",
       "name": "git-kit",
       "naming_history": [
         {
           "evidence": [
-            ".claude-plugin/marketplace.json"
+            "commit 82d223f"
+          ],
+          "name": "gitkit",
+          "reason": "Created as gitkit, bootstrapping a new git/GitHub workflow plugin.",
+          "valid_from": "2026-07-26",
+          "valid_to": "2026-07-28"
+        },
+        {
+          "evidence": [
+            "commit 94713f5"
           ],
           "name": "git-kit",
-          "reason": "Current name at inventory bootstrap.",
-          "valid_from": "2026-08-28",
+          "reason": "Renamed to git-kit per marketplace naming convention (exactly one hyphen before kit/devkit suffix).",
+          "valid_from": "2026-07-28",
           "valid_to": null
         }
       ],
-      "provenance": {},
+      "provenance": {
+        "notes": "commit/create-pr/git-notes/git-worktrees from NeoLabHQ's context-engineering-kit (GPL-3.0); gh-operations from fernandezbaptiste's claude-code-skills (MIT); standalone-commits from EpicenterHQ's epicenter (AGPL-3.0-or-later). Created as 'gitkit' (commit 82d223f, 2026-07-26), renamed to 'git-kit' (commit 94713f5, 2026-07-28). Remaining skills are original content.",
+        "origin": "Adapted from three external sources, documented in plugins/git-kit/THIRD_PARTY_NOTICES.md"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
