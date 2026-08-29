@@ -1325,6 +1325,249 @@ not a location check alone.
 
 ---
 
+## PR #133 — `plugin-devkit` add skill-authoring-evals upstream source (Devin, 2 review rounds, 2026-08-24)
+
+### Pattern: a three-way tracked mirror's sync/parity config can be incomplete for one of the three copies
+
+**What happened:** This repo tracks three copies of a registry file (`plugins/plugin-devkit/...`,
+`.claude/...`, `.agents/...`). The PR updated the first two but not the third; no CI check caught the
+drift because the sync/parity config (`.claude/marketplace-sync.json`'s `codex_exports.skills`) doesn't
+list this skill at all, so `plan_exports`/`check_staged_parity` never compare its `.agents/` copy.
+
+**Rule:** A mirror-sync/parity tool's own registration list must be checked for completeness whenever a
+skill is added — a skill genuinely tracked in 3 locations but only *registered* for 2 of them silently
+loses parity checking on the unregistered copy, with no error at any layer.
+
+---
+
+## PR #137 — `git-kit`/`analysis-kit` close plugin-auditor findings on 4 skills (Devin + Codex + CodeRabbit, 8 review rounds, 2026-08-25)
+
+### Pattern: a Git object-ID validation regex rejects case/length variants Git itself accepts
+
+**What happened:** A guard regex (`^[0-9a-f]{7,40}$`) rejected uppercase hex SHAs (which `git rev-parse
+--verify` resolves correctly) and 64-character SHA-256-repository object IDs. The identical regex was
+independently duplicated into two skills (`analyzing-plugin-components`, `analyzing-sessions`), and a
+third, still-unfixed instance was self-disclosed in `plugins/git-kit/scripts/remap-handoff-shas.py`.
+
+**Assumed vs. actual:**
+
+| Assumed | Actual |
+|---|---|
+| A Git object ID is always lowercase hex, 7-40 characters | Git accepts uppercase hex, and a SHA-256 repository's object IDs are 64 characters |
+
+**Rule:** A Git object-ID shape check must accept both hex cases and the repository's actual supported
+hash length (`^[0-9a-fA-F]{7,64}$`), verified live against `git rev-parse --verify`/`git show` rather than
+assumed from a remembered SHA-1-only shape.
+
+### Pattern: a security allowlist must be the intersection of "valid per the domain tool" and "safe per the execution context" — not either alone
+
+**What happened:** A branch-name guard's regex was too strict, rejecting Git-valid, shell-safe characters
+(`+`, `@`, `=`). The reviewer's own suggested alternative — "just validate against Git's own ref syntax" —
+was independently verified and proven *unsafe*: `git check-ref-format` accepts many shell metacharacters
+(`;`, `&`, `|`, `$`, backticks, parens, quotes) as valid ref-name characters, so adopting it would have
+reopened the exact shell-injection surface the guard exists to close.
+
+**Rule:** When correcting a security allowlist that's "too strict," verify any suggested broader rule
+(including a reviewer's own alternative) against *both* domains it must satisfy — valid per the consuming
+tool, and safe per the execution context the value will be interpolated into — before adopting it; a rule
+valid in one domain can be actively unsafe in the other.
+
+### Pattern: a verification step written as a conditional's continuation clause can be structurally unreachable on the untested branch
+
+**What happened:** A "verify remote branch deletion" step was written as prose continuing directly from
+"if this command exits non-zero" — with no separate clause at all for the exit-0 (normal success) path.
+On a clean successful merge, the entire verification block was structurally unreachable, even though a
+separate checklist elsewhere asserted "always checks."
+
+**Rule:** A documented procedural step's own literal grammatical structure can scope a check to only one
+branch of a conditional, the same way code can — when a checklist and a step's own prose disagree about
+whether a check "always" runs, re-read the step's actual sentence structure for which branch it's
+grammatically attached to, don't trust the checklist's summary claim.
+
+### Methodology note: verify a "revert this unrelated formatting" nitpick against the project's own enforced formatter before reverting
+
+**What happened:** CodeRabbit flagged several import-order/wrapping/spacing changes as "unrelated
+formatting." Reverting them in a scratch copy and re-running this repo's own mandatory `ruff format`/
+`ruff check --fix` reproduced the exact same reordering/wrapping — confirming the "unrelated formatting"
+was deterministic output of the project's own required pre-commit tooling, not a discretionary edit.
+
+**Rule:** Before reverting a review finding that flags "unrelated formatting changes," check whether
+they're the deterministic output of the project's own enforced formatter/linter — reverting a formatter's
+own output just causes it to be silently reapplied the next time the file goes through the project's
+required commit flow.
+
+---
+
+## PR #141 — `plugin-devkit` add plugin-inventory and marketplace-inventory skills (Devin + Codex + CodeRabbit, 25 review rounds, 2026-08-25)
+
+### Pattern: comparing ISO8601 timestamp strings lexicographically is not the same as comparing them chronologically
+
+**What happened:** A `graded_at` field was compared as a raw string (`max(..., key=lambda e:
+e["graded_at"])`) to find the most recent entry. `2026-08-25T10:00:00+10:00` sorts lexicographically
+*after* `2026-08-25T01:00:00Z`, even though the `+10:00` offset makes it chronologically *earlier* in real
+UTC time — the wrong score became "current."
+
+**Assumed vs. actual:**
+
+| Assumed | Actual |
+|---|---|
+| Sorting ISO8601 timestamp strings lexicographically gives chronological order | It only does when every value shares the same UTC offset/format — mixed offsets (or a bare non-`Z` format) break it |
+
+**Rule:** Before using string comparison to order timestamps, confirm every value is normalized to the
+same UTC representation (or parse to a real datetime first) — a lexicographic comparison of ISO8601
+strings with differing offsets silently produces the wrong chronological order.
+
+### Pattern: a naive key→record index silently resolves a legitimate key collision by array order, not by an explicit rule
+
+**What happened:** Building a `{key: record}` index via a dict comprehension (or a bare `next(...)`
+lookup) over records where two entries can legitimately share the same lookup key (an active and a
+retired record with the same name) silently kept whichever record happened to appear last (or first) in
+array order. A live update could then land on the wrong (retired) record while the active one stayed
+stale, or a conflict could be reported against the wrong record.
+
+**Rule:** When a schema legitimately allows two records to share the same lookup key, an index or lookup
+built from that key needs an explicit tie-breaking rule (e.g. always prefer the active record) — silently
+resolving the collision by iteration/array order is order-dependent and can silently act on the wrong
+record.
+
+### Pattern: an aggregation over a keyed collection that should mirror a sibling collection must reject a partial key set, not silently average the present subset
+
+**What happened:** A security-score rollup averaged whatever entries existed in `component_security_scores`
+without checking they matched `component_scores`' full key set. Omitting just one component's security
+score meant the rollup silently averaged the *remaining* subset — an omitted critical component became
+indistinguishable from "this component scored perfectly," materially inflating the published result.
+
+**Rule:** When an aggregation is supposed to run over a complete, corresponding key set from a sibling
+collection, reject a partial/mismatched key set outright before computing the mean/rollup — silently
+degrading to "average of what's present" makes a missing value look identical to a perfect one, which is
+the worst possible default for anything security- or quality-relevant.
+
+---
+
+## PR #142 — `plugin-devkit` add plugin-conception skill as upstream/maintenance Phase 1 (Devin + Codex + CodeRabbit, 19 review rounds, 2026-08-26/27)
+
+### Pattern: adding a new enumerated classification value to a multi-stage pipeline requires threading it through every consumer
+
+**What happened:** Introducing a `Create` classification (alongside existing Enhance/Repair/Consolidate/
+Reposition/Retain/Reject/Defer) required updates in at least five separate places across the same PR:
+`plugin-lifecycle-maintenance`'s routing table (had no Create disposition — candidates were silently
+stranded), `plugin-lifecycle-upstream`'s auto-detection (resumed Ideate for any brief without checking
+classification, including non-Create ones that should have been rejected), `plugin-conception` itself
+(wrote a full brief for a Retain outcome that should short-circuit with no brief), `build-handoff-writer`
+(never consumed the new Conception Brief artifact type), and `plugin-planning` (assumed
+Enhance/Consolidate/Reposition for any brief without validating its actual classification).
+
+**Rule:** When adding a new enumerated classification/type value to a system with multiple independent
+consumers (routing tables, auto-detection branches, schemas, downstream agent input contracts), enumerate
+every consumer that branches on the existing values and update each one explicitly — a single un-updated
+consumer silently drops or misroutes the new value, and this can recur in more than one place in the same
+change.
+
+### Confirms: the basename/substring-match anti-pattern recurred a third and fourth time, independently
+
+**What happened:** Both a frontmatter-key check (`"name:" in fm` satisfied by `rename:`) and a Bash-grant
+"is this invoked" check (a bare command-word mention, e.g. "date", satisfied an allowed-tools entry with
+no actual invocation) recurred in this PR's own new skills — the same underlying anti-pattern this
+document already names from PR #108 (`check_bash_grants`) and PR #132 (`check_frontmatter`), now confirmed
+a third and fourth independent time within about two weeks.
+
+**Rule:** (Same as PR #108/#132's entries — see those for the full rule.) The recurrence count itself is
+the notable fact here: this anti-pattern has now independently appeared four times across four different
+skills' own smoke-test validators, suggesting a shared validator module (rather than four independently
+hand-written copies) would close the whole class at once.
+
+---
+
+## PR #143 — `git-kit` add resolving-merge-conflicts skill (Devin + Codex + CodeRabbit, 24 review rounds, 2026-08-26)
+
+### Pattern: `${var%.*}` on a dotfile-shaped name strips the whole name to empty, and an empty grep pattern matches everything
+
+**What happened:** `${filename%.*}` (strip the shortest suffix matching `.*`) on a pure dotfile like
+`.gitignore` treats the leading dot as *the* extension separator, stripping the entire name to an empty
+string. `grep -iF -- "$base_name"` then received an empty fixed-string pattern, which matches every line —
+the relocation-target search listed nearly every tracked file in the repository.
+
+**Assumed vs. actual:**
+
+| Assumed | Actual |
+|---|---|
+| `${filename%.*}` always leaves a non-empty "base name" for any real filename | A pure dotfile (no extension beyond the leading dot) strips to an empty string |
+| An empty pattern passed to `grep -F` matches nothing (or errors) | An empty fixed-string pattern matches *every* line |
+
+**Rule:** After a shell parameter-expansion strip operation intended to produce a "base name," explicitly
+guard against an empty result (falling back to the original value) before using it as a search pattern —
+both halves of this bug (the dotfile edge case, and grep's own empty-pattern behavior) are individually
+easy to miss.
+
+### Pattern: `git show N:file` without a leading colon is parsed as a revision literally named N, not an index stage
+
+**What happened:** `git show 2:<file>` / `git show 3:<file>` (no leading colon) is parsed by Git as a
+request for a revision named `2`/`3`, which doesn't exist — exiting 128 with `fatal: invalid object name`.
+Index-stage syntax requires the leading colon: `:2:<file>`/`:3:<file>`.
+
+**Assumed vs. actual:**
+
+| Assumed | Actual |
+|---|---|
+| `git show <stage-number>:<file>` addresses an index stage | Git parses this as a revision name; index-stage syntax requires a leading colon (`:<stage-number>:<file>`) |
+
+**Rule:** When addressing a merge conflict's index stage via `git show`, always use the leading-colon
+`:<stage>:<file>` form — the bare `<stage>:<file>` form is syntactically valid Git syntax for a different,
+unrelated meaning (a revision name), so it fails with a plausible-looking but misleading error rather than
+an obvious typo error.
+
+### Pattern: a Git-operation completion check must scope content scans to what changed and model the operation's full state lifecycle
+
+**What happened:** Two related validator bugs in the same conflict-resolution logic: (1) once no unmerged
+paths remained, the validator scanned *every tracked file* in the repository for conflict-marker-shaped
+lines (`<<<<<<<`, `=======`, `>>>>>>>`), so legitimate content merely resembling a marker (including this
+very skill's own documentation) made validation permanently fail; (2) a separate check treated
+`MERGE_HEAD`'s mere presence as failure, without accounting for the fact that `MERGE_HEAD` legitimately
+persists after every conflict is resolved and staged, until the merge commit itself is created.
+
+**Rule:** A Git-operation completion/validity check needs two disciplines together: scope any content scan
+to what actually changed (staged files/diff), never the whole tracked tree, and model the operation's full
+state lifecycle explicitly (e.g. "in progress," "resolved but uncommitted," "complete") rather than
+treating a state marker's mere presence as equivalent to "not yet done."
+
+### Pattern: a filename beginning with `-` is parsed as a command option unless `--` terminates option parsing first
+
+**What happened:** Found independently in two different commands in the same script: `grep -iF --
+"$base_name"`-style calls without a preceding `--` let a Git-valid filename like `-a` be parsed as a
+`grep`/`basename` option instead of a positional filename argument — `grep` silently read from stdin
+instead of the file (returning "no match" instead of detecting a real conflict marker), and `basename -a`
+exited with a "missing operand" error, aborting the whole script under `set -e`.
+
+**Rule:** Any command invoked with a variable filename that could plausibly begin with `-` (any Git-valid
+path) needs an explicit `--` to terminate option parsing before the filename argument — omitting it lets
+an adversarial or merely unlucky filename be silently reinterpreted as a flag.
+
+### Pattern: a backup mechanism preserving original relative paths can collide with a report file written into the same directory
+
+**What happened:** A conflict-resolution backup mechanism copied each conflicted file to a backup
+directory under its own original relative path, and separately wrote a generated `SUMMARY.md` report into
+the top level of that same directory. A conflicted file that happened to be named `SUMMARY.md` had its
+backup silently overwritten by the report — the exact safety net the backup mechanism exists to provide
+was lost for that one filename.
+
+**Rule:** When a mechanism backs up files by their original relative path into a directory that also holds
+generated metadata/report files, reserve a namespace (e.g. a dedicated `files/` subdirectory) for one of
+the two — otherwise any original path matching the metadata filename silently collides with it.
+
+### Self-caught: `CLAUDE_PLUGIN_ROOT` resolves to the plugin's root directory, not an individual skill's own directory
+
+**What happened:** Every script invocation in this new skill used `${CLAUDE_PLUGIN_ROOT}/scripts/<name>`,
+which for an installed plugin resolves to `<plugin-root>/scripts/<name>` — but this skill's helper scripts
+live under `<plugin-root>/skills/resolving-merge-conflicts/scripts/`, so every call failed with "No such
+file or directory." Confirmed against sibling precedent (`analysis-kit`, `codex-kit` both already
+reference their own skill-local files as `${CLAUDE_PLUGIN_ROOT}/skills/<name>/...`).
+
+**Rule:** `CLAUDE_PLUGIN_ROOT` always resolves to the *plugin's* root, never an individual skill's own
+directory — any reference to a skill-local script/resource must explicitly include the
+`skills/<skill-name>/` segment.
+
+---
+
 ## Master pre-push checklist (all PRs analyzed, including this session's #61/#62/#65/#68/#76/#79/#92/#88)
 
 ### Tool, API & language behavior — verify, don't assume
