@@ -1,0 +1,18 @@
+[
+  {
+    "operation": "update",
+    "id": "component_de6ab94e",
+    "name": "demo-skill",
+    "field": "provenance",
+    "old_value": {},
+    "new_value": {
+      "origin": "Ported from open-source project acme-example-tools (https://github.com/example-org/acme-example-tools), commit a1b2c3d4e5f6789012345678901234567890abcd",
+      "license": "MIT",
+      "notes": "Skill logic adapted from acme-example-tools' 'demo-skill' module at the cited commit; license text preserved in THIRD_PARTY_NOTICES.md. This is a synthetic/hypothetical example constructed for a plugin-inventory test, not a real ported component."
+    },
+    "evidence": [
+      "hypothetical commit a1b2c3d4e5f6789012345678901234567890abcd cited by the user for this test scenario"
+    ],
+    "requires_approval": true
+  }
+]

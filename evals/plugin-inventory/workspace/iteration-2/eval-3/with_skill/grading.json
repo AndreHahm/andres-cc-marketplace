@@ -1,0 +1,12 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Constructs an update operation with field 'provenance' and a real object new_value (not a string/list/null)", "passed": true, "evidence": "Constructed and applied an update with a real object containing origin/license/notes for a fake port scenario."},
+    {"text": "Runs apply with a freshly-fetched expected_hash from the same plan pass, not a reused one", "passed": true, "evidence": "Ran plan immediately before apply and used that exact hash."},
+    {"text": "Confirms via check that drift is 0 after the update", "passed": true, "evidence": "Ran check, got drift_count: 0."},
+    {"text": "For a component with no known external origin, explicitly states it would leave provenance as {} rather than fabricate an origin", "passed": true, "evidence": "Explicit, detailed answer: 'I would not write any update operation... {} is a valid final state, not a pending item.'"},
+    {"text": "Cites the skill's own SKILL.md guidance on provenance being evidence-based, not a general-purpose annotation to invent freely", "passed": true, "evidence": "Directly cited the skill's instructions on real-evidence-only provenance and even flagged the meta-point that asserting 'definitely no origin' without checking is itself a form of fabrication."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

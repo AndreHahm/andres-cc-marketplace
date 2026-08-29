@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Writes the scratch inventory to a path outside the real plugin's .claude-plugin/ directory, never touching the real repo's inventory files", "passed": true, "evidence": "Copied the entire plugins/plugin-devkit tree into the scratchpad and ran discover/bootstrap only against that copy; confirmed via git status that the real .claude-plugin/ was untouched."},
+    {"text": "Actually invokes scripts/plugin-inventory.py bootstrap rather than fabricating a result", "passed": true, "evidence": "Ran real discover + bootstrap commands, got 89 real components with a type breakdown."},
+    {"text": "Correctly states functional_role/domain/created_on/compatibility start null and need a follow-up classification pass", "passed": true, "evidence": "Explicitly listed all 5 default-null/empty fields (including provenance) and described the batched follow-up classification plan."},
+    {"text": "Correctly states the classification pass happens after the initial write, not before it", "passed": true, "evidence": "Explicit: 'this is a required follow-up pass -- not a blocker on the write that already happened.'"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
