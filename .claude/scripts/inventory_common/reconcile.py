@@ -204,6 +204,8 @@ def validate_records(records, uniqueness_key):
             models.validate_functional_role(record["functional_role"])
         for compat_entry in record.get("compatibility", {}).values():
             models.validate_compatibility_level(compat_entry["level"])
+        if not isinstance(record.get("provenance", {}), dict):
+            raise ValueError(f"{record['id']}: provenance must be an object")
         models.validate_history_periods(record["status_history"], f"{record['id']}.status_history")
         models.validate_history_periods(record["naming_history"], f"{record['id']}.naming_history")
         if models.open_period_value(record["status_history"], "status") != record["status"]:
