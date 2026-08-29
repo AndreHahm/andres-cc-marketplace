@@ -1,0 +1,870 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "codex-integration",
+      "functional_role": "mixed",
+      "id": "component_6ce84ad7",
+      "name": "codex-audit-loop",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-audit-loop"
+          ],
+          "name": "codex-audit-loop",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-audit-loop",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-audit-loop"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "codex-integration",
+      "functional_role": "integration",
+      "id": "component_850d6315",
+      "name": "codex-peer-review",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-peer-review"
+          ],
+          "name": "codex-peer-review",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-peer-review",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-peer-review"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "codex-integration",
+      "functional_role": "mixed",
+      "id": "component_ec624f27",
+      "name": "codex-plan-loop",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-plan-loop"
+          ],
+          "name": "codex-plan-loop",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-plan-loop",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-plan-loop"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "codex-integration",
+      "functional_role": "reference",
+      "id": "component_87bdec7f",
+      "name": "codex-prompt-protocol",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-prompt-protocol"
+          ],
+          "name": "codex-prompt-protocol",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-prompt-protocol",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-prompt-protocol"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "codex-integration",
+      "functional_role": "integration",
+      "id": "component_d3fd6bcd",
+      "name": "codex-rescue",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-rescue"
+          ],
+          "name": "codex-rescue",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-rescue",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-rescue"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "codex-integration",
+      "functional_role": "integration",
+      "id": "component_f5b3fb56",
+      "name": "codex-research",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-research"
+          ],
+          "name": "codex-research",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-research",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-research"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "codex-integration",
+      "functional_role": "integration",
+      "id": "component_e4e615d9",
+      "name": "codex-review-bridge",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-review-bridge"
+          ],
+          "name": "codex-review-bridge",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-review-bridge",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-review-bridge"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "codex-integration",
+      "functional_role": "infrastructure",
+      "id": "component_72479f4e",
+      "name": "codex-session-lookup",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-session-lookup"
+          ],
+          "name": "codex-session-lookup",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-session-lookup",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-session-lookup"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "codex-integration",
+      "functional_role": "integration",
+      "id": "component_e3ada559",
+      "name": "codex-verify",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-verify"
+          ],
+          "name": "codex-verify",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-verify",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-verify"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "codex-integration",
+      "functional_role": "infrastructure",
+      "id": "component_877a7cef",
+      "name": "codex-windows-guardrails",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/codex-windows-guardrails"
+          ],
+          "name": "codex-windows-guardrails",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/codex-windows-guardrails",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/codex-windows-guardrails"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "marketplace-review-policy",
+      "functional_role": "reference",
+      "id": "component_5dffb026",
+      "name": "plugin-marketplace-review",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-marketplace-review"
+          ],
+          "name": "plugin-marketplace-review",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-marketplace-review",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-marketplace-review"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": "codex-integration",
+      "functional_role": "integration",
+      "id": "component_722f4ae4",
+      "name": "adversarial-review",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/adversarial-review.md"
+          ],
+          "name": "adversarial-review",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/adversarial-review.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/adversarial-review.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": "codex-integration",
+      "functional_role": "infrastructure",
+      "id": "component_a8d285ee",
+      "name": "cancel",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/cancel.md"
+          ],
+          "name": "cancel",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/cancel.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/cancel.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": "codex-integration",
+      "functional_role": "infrastructure",
+      "id": "component_0f827f59",
+      "name": "result",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/result.md"
+          ],
+          "name": "result",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/result.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/result.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": "codex-integration",
+      "functional_role": "integration",
+      "id": "component_02090992",
+      "name": "review",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/review.md"
+          ],
+          "name": "review",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/review.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/review.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": "codex-integration",
+      "functional_role": "infrastructure",
+      "id": "component_2e4f4a87",
+      "name": "setup",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/setup.md"
+          ],
+          "name": "setup",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/setup.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/setup.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": "codex-integration",
+      "functional_role": "infrastructure",
+      "id": "component_c0e6aedf",
+      "name": "status",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/status.md"
+          ],
+          "name": "status",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/status.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/status.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": "codex-integration",
+      "functional_role": "integration",
+      "id": "component_7246a872",
+      "name": "transfer",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/transfer.md"
+          ],
+          "name": "transfer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/transfer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/transfer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": "codex-integration",
+      "functional_role": "infrastructure",
+      "id": "component_bbf71a48",
+      "name": "SessionEnd-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "SessionEnd-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": "codex-integration",
+      "functional_role": "infrastructure",
+      "id": "component_646f2934",
+      "name": "SessionStart-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "SessionStart-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": "codex-integration",
+      "functional_role": "reviewer",
+      "id": "component_84ec5e9c",
+      "name": "Stop-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "Stop-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin_29c58158",
+  "plugin_name": "codex-kit",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-08-29"
+}
