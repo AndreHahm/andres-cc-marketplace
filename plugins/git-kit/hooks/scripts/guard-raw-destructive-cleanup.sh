@@ -244,7 +244,29 @@ if [ -f "$MARKER" ]; then
         allowed=true
       fi
     fi
-    rm -f "$MARKER" || true # consume as soon as seen -- single use, regardless of whether this call turns out to MATCH below; `|| true` so a read-only/permission-restricted .git/ can't turn this into a session-wide lockout via the ERR trap above
+    # `if ! rm -f ...; then ...` -- not the earlier `rm -f "$MARKER" || true` --
+    # so a genuinely failed deletion (e.g. .git becomes read-only/permission-
+    # restricted after the marker was written, the marker file itself still
+    # readable) withholds authorization instead of trusting a marker we
+    # couldn't actually consume. Live-verified as a real bug before this fix:
+    # the old `|| true` form let `allowed` stay `true` from the check above
+    # while the marker stayed on disk unconsumed, so a later matching command
+    # within the remaining TTL could also be authorized by the same
+    # once-intended marker -- found independently by both Devin and Codex on
+    # PR #177. An `if` construct is itself exempt from `set -e`/the ERR trap
+    # (same exemption this file's own `[ -n ... ]` wrapping elsewhere relies
+    # on), so this closes the gap without reopening the session-wide-lockout
+    # risk the original `|| true` existed to prevent -- a persistent .git
+    # permission problem now just denies cleanly via this normal "no valid
+    # marker" path, not a crash through fail_closed_deny. Residual, narrower
+    # than before: if the underlying failure is transient and a LATER,
+    # unrelated call's own `rm -f` succeeds in deleting this same leftover
+    # marker, that later call could still be authorized by it (bounded by the
+    # original 60s TTL) -- not fully closed here, since doing so needs a
+    # tombstone mechanism disproportionate to this edge case's likelihood.
+    if ! rm -f "$MARKER"; then
+      allowed=false
+    fi
   fi
 fi
 
@@ -336,7 +358,19 @@ BRANCH_FORCE_RE='(^|[[:space:]])["'"'"'\\]?(-[A-Za-z]*f[A-Za-z]*|--forc[a-z]*)([
 # may optionally be quoted -- `git-cleanup/SKILL.md` itself instructs
 # quoting the branch variable, so an unquoted-only match would miss the
 # exact form that skill is told to write.
-BRANCH_NAME_RE='(^|[[:space:]])["'"'"']?(main|master|develop|release/[^[:space:]"'"'"']*)["'"'"']?([^[:alnum:]_.-]|$)'
+# Split into two patterns, not one combined alternation, because the correct
+# trailing boundary differs per branch of the match: `main`/`master`/`develop`
+# are EXACT protected names, so `/` must NOT count as a valid trailing
+# boundary after them -- the single negated-identifier class
+# `[^[:alnum:]_.-]` used everywhere else in this file admits `/` (it's not
+# alnum/underscore/dot/hyphen), which let `main/topic` (a genuinely different,
+# unprotected branch that merely shares a prefix) match as "main" and get
+# incorrectly denied -- live-verified, found by Devin's review of PR #177.
+# `release/*`, in contrast, NEEDS `/` to keep matching -- its own body already
+# captures everything through the trailing boundary via
+# `release/[^[:space:]"']*`, so its half of the check is unchanged.
+BRANCH_NAME_RE='(^|[[:space:]])["'"'"']?(main|master|develop)["'"'"']?([^[:alnum:]_./-]|$)'
+BRANCH_RELEASE_RE='(^|[[:space:]])["'"'"']?release/[^[:space:]"'"'"']*["'"'"']?([^[:alnum:]_.-]|$)'
 if [ -n "$BRANCH_SPANS" ]; then
   while IFS= read -r branch_span; do
     # `if [ -n ... ]` wrapping, not `[ -z ... ] && continue` -- the latter's
@@ -344,7 +378,8 @@ if [ -n "$BRANCH_SPANS" ]; then
     # and the ERR trap; harmless today (an empty span just isn't a match),
     # but fragile in a script whose ERR trap denies unconditionally -- an
     # `if` doesn't depend on that exemption at all.
-    if [ -n "$branch_span" ] && grep -qE "$BRANCH_NAME_RE" <<< "$branch_span" \
+    if [ -n "$branch_span" ] \
+       && { grep -qE "$BRANCH_NAME_RE" <<< "$branch_span" || grep -qE "$BRANCH_RELEASE_RE" <<< "$branch_span"; } \
        && { grep -qE "$BRANCH_D_RE" <<< "$branch_span" \
             || { grep -qE "$BRANCH_LOWER_D_RE" <<< "$branch_span" && grep -qE "$BRANCH_FORCE_RE" <<< "$branch_span"; }; }; then
       MATCH=true
