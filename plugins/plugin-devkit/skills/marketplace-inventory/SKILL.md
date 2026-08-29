@@ -9,8 +9,9 @@ description: >-
   identity, status, domains, compatibility, and referential-integrity
   checks. Use when the user asks to "build the marketplace inventory",
   "list all marketplace plugins and their status", "update the marketplace
-  database", "import the latest plugin grades", or "check all plugin
-  inventories for drift". Repository-wide plugin membership and rollups are
+  database", "import the latest plugin grades", "check all plugin
+  inventories for drift", "backfill a plugin's real prior name", or "fix a
+  malformed status/naming history entry". Repository-wide plugin membership and rollups are
   this skill's job — a single plugin's own component inventory is
   `plugin-inventory`'s job instead, and this skill never edits that file
   directly; it only invokes `plugin-inventory` after explicit approval.
@@ -42,6 +43,10 @@ only by the `plugin-inventory` skill, never directly by this one.
 5. **Apply** — `python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py apply <repo_root> <inventory_path> <approved_plan.json> <expected_hash>`
 6. **Offer repair** — if `missing_plugin_inventories` is non-empty, ask before invoking `plugin-inventory` for any of them
 7. **Confirm the written path** to the user
+
+To fix a malformed or missing historical `naming_history`/`status_history` period instead (e.g. a
+plugin's real prior name before it was ever inventoried), skip straight to the Repair History mode below
+— it's a separate, destructive-rewrite path from the build→plan→apply loop above.
 
 ## When to Use
 
@@ -235,6 +240,8 @@ generic JSON Schema validator against it (no such dependency is available in thi
 - "build the marketplace inventory"
 - "list all marketplace plugins and their status"
 - "check all plugin inventories for drift"
+- "backfill this plugin's real prior name before it was ever inventoried"
+- "fix a malformed naming/status history entry for a plugin"
 
 **Verify it does NOT activate on:**
 - "update a single plugin's own component inventory" → `plugin-inventory` instead; this skill never
@@ -242,11 +249,11 @@ generic JSON Schema validator against it (no such dependency is available in thi
 - "grade this plugin" → `plugin-grader`; this skill only imports its completed reports
 - "decide what a plugin should contain" → `plugin-planning`/`plugin-lifecycle-upstream`
 
-**Last dated run record:** 2026-08-29 — `scripts/smoke_test.py` (25/25 checks passing, adding 3 new
+**Last dated run record:** 2026-08-29 — `scripts/smoke_test.py` (26/26 checks passing, adding 4 new
 Repair History checks) and `evals/marketplace-inventory/` eval 3 (5/5 assertions, `skill-tester` Quick
 Workflow, live-executed 2026-08-27).
 
-See `references/test-scenarios.md` for the full 25-scenario test walkthrough.
+See `references/test-scenarios.md` for the full 26-scenario test walkthrough.
 
 **Quality gates:**
 - [ ] `scripts/marketplace-inventory.py` is always invoked for discovery, plan construction, and apply
@@ -268,9 +275,9 @@ See `references/test-scenarios.md` for the full 25-scenario test walkthrough.
 | Resource | Purpose |
 |---|---|
 | `scripts/marketplace-inventory.py` | Deterministic discovery, plan construction, atomic apply, and grading-import CLI |
-| `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, and 19 behavioral scenario checks including a live bootstrap+check round-trip) — re-run before packaging or after any edit |
+| `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, and 23 behavioral scenario checks including a live bootstrap+check round-trip) — re-run before packaging or after any edit |
 | `references/reconciliation.md` | Reconciliation operations, the missing-plugin-inventory report, and the Repair Plugins delegation sequence |
-| `references/test-scenarios.md` | Full 25-scenario test walkthrough, extracted from this file's own Testing & Validation section |
+| `references/test-scenarios.md` | Full 26-scenario test walkthrough, extracted from this file's own Testing & Validation section |
 | `assets/marketplace-inventory.schema.json` | The canonical JSON Schema this inventory file must validate against |
 | `../../scripts/inventory_common/` | Shared ID generation, history append/validation, canonical serialization/hashing, and grading-report reading — used by both this script and `plugin-inventory`'s |
 | `plugin-inventory` skill | Per-plugin sibling — invoked here only after explicit approval, never called for a batch of plugins in one pass |

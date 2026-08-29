@@ -1,6 +1,6 @@
 # Test Scenarios
 
-Full 25-scenario test walkthrough for `marketplace-inventory`, extracted from `SKILL.md`'s own
+Full 26-scenario test walkthrough for `marketplace-inventory`, extracted from `SKILL.md`'s own
 `## Testing & Validation` section per `plugin-rulebook`'s R30 (content beyond R29's required
 trigger-example lists must move to `references/` or `evals.json`, not stay inline in `SKILL.md`).
 
@@ -77,3 +77,7 @@ trigger-example lists must move to `references/` or `evals.json`, not stay inlin
 25. **Repair history, valid historical backfill succeeds** — the actual intended use case: a
     structurally valid replacement (a closed period recording a plugin's real prior name, followed by
     the current open period) is accepted and written, and `check` reports `0` drift afterward
+26. **Repair history, status_history backfill succeeds** — the same valid-backfill scenario as 25, but
+    exercising `status_history` instead of `naming_history` (scenarios 23-25 only covered the
+    `naming_history` branch of the shared validation logic); confirms the `status_history` branch works
+    end to end too
