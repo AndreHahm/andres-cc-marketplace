@@ -1554,11 +1554,13 @@ treating a state marker's mere presence as equivalent to "not yet done."
 
 ### Pattern: a filename beginning with `-` is parsed as a command option unless `--` terminates option parsing first
 
-**What happened:** Found independently in two different commands in the same script: `grep -iF --
-"$base_name"`-style calls without a preceding `--` let a Git-valid filename like `-a` be parsed as a
-`grep`/`basename` option instead of a positional filename argument — `grep` silently read from stdin
-instead of the file (returning "no match" instead of detecting a real conflict marker), and `basename -a`
-exited with a "missing operand" error, aborting the whole script under `set -e`.
+**What happened:** Found independently in two different scripts of the same skill:
+`validate-conflicts.sh`'s `grep '^<<<<<<<\|^=======\|^>>>>>>>' "$file"` and
+`handle-deleted-modified.sh`'s `basename "$file"` — both missing a `--` before the variable filename
+argument. A Git-valid filename beginning with `-` (e.g. `-a`) is parsed as a command option instead of a
+positional argument: `grep` silently read from stdin instead of the file (returning "no match" instead
+of detecting a real conflict marker), and GNU `basename -a` exited with a "missing operand" error,
+aborting the whole script under `set -e`.
 
 **Rule:** Any command invoked with a variable filename that could plausibly begin with `-` (any Git-valid
 path) needs an explicit `--` to terminate option parsing before the filename argument — omitting it lets
