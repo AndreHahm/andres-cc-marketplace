@@ -12,7 +12,7 @@ description: >-
   recurring findings", or "what should go in the learnings doc next" — not
   mining-recurring-patterns' single-session sequence mining, and not
   reviewing-analysis-findings' cross-check of analysis-kit's own reports.
-allowed-tools: Read Glob Grep Write AskUserQuestion Bash(gh pr list:*) Bash(gh pr view:*) Bash(gh repo view:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/pr_review_fetcher.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
+allowed-tools: Read Glob Grep Write AskUserQuestion Bash(gh pr list:*) Bash(gh pr view:*) Bash(gh repo view:*) Bash(git worktree list:*) Bash(echo:*) Bash(python */analysis-kit/scripts/pr_review_fetcher.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
 argument-hint: [PR numbers | merge-date range | "since last cited"]
 ---
 
@@ -136,11 +136,16 @@ For each PR in the resolved set:
    hypothetical edge case.
 4. **Codex CLI side**: `codex_session_parser.py` takes only `--session-file <path>` — it has no
    time-window or project-root discovery of its own (verified live: `--help` shows exactly one argument).
-   Discover candidate files yourself first: `Glob('~/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-*.jsonl')`
-   for each calendar date the padded window spans (Codex CLI's own real on-disk layout, confirmed live —
-   see `codex-session-lookup`'s own documentation of this same path shape). For each candidate file
-   found, run `codex_session_parser.py --session-file <path>` and judge plausibility the same way as the
-   Claude Code side.
+   Discover candidate files yourself first — **`Glob` never expands a leading `~`** (verified live: a
+   literal `Glob('~/.codex/sessions/**/*.jsonl')` call returns no results even when real session files
+   exist there, since `Glob` is a dedicated tool call, not a shell command, and never receives shell-level
+   tilde expansion). Resolve the home directory to an absolute path first —
+   `Bash(echo $HOME)` — then substitute that resolved path into the pattern:
+   `Glob('<resolved-home>/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-*.jsonl')` for each calendar date the
+   padded window spans (Codex CLI's own real on-disk layout, confirmed live — see
+   `codex-session-lookup`'s own documentation of this same path shape). For each candidate file found, run
+   `codex_session_parser.py --session-file <path>` and judge plausibility the same way as the Claude Code
+   side.
 5. **Cross-check or mark unavailable**: when a plausibly-matching transcript is found, compare its own
    account of the fix against the fetched review comments — do they describe the same root cause? Note
    agreement or divergence explicitly. When no transcript is found, or none in the window plausibly
@@ -202,8 +207,9 @@ legitimate, common outcome, not a failure.
 - **Neither `session_parser.py` nor `codex_session_parser.py` is PR-aware, but only one of them
   discovers anything.** `session_parser.py` discovers transcripts by a time window itself.
   `codex_session_parser.py` has no discovery of its own at all (verified live: its only argument is
-  `--session-file`) — this skill's own Phase 2 step 4 does the discovery (a `Glob` over
-  `~/.codex/sessions/<YYYY>/<MM>/<DD>/`) before ever calling it. Judging whether a transcript found by
+  `--session-file`) — this skill's own Phase 2 step 4 does the discovery (`Bash(echo $HOME)` to resolve
+  an absolute path first, then a `Glob` over `<resolved-home>/.codex/sessions/<YYYY>/<MM>/<DD>/` — never
+  a literal `~`, which `Glob` never expands) before ever calling it. Judging whether a transcript found by
   either path actually covers a given PR is always this skill's own semantic read, never something
   either script resolves mechanically.
 - **A worktree-authored PR's session transcripts live under a different encoded project path** (verified

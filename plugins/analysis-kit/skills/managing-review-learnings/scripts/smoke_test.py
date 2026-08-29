@@ -27,6 +27,14 @@ def _find_repo_root(start: pathlib.Path) -> pathlib.Path:
 # no scripts/ or references/ of its own.
 PLUGIN_ROOT = _find_repo_root(SKILL_DIR) / "plugins" / "analysis-kit"
 
+# The canonical location of THIS skill, regardless of whether this script is
+# actually running from plugins/analysis-kit/ or the .claude/ mirror -- a
+# Reference Guide path is always authored relative to the skill's own
+# canonical directory, so resolving against it (not the possibly-mirrored
+# SKILL_DIR) is what makes a plugin-root-escaping path like
+# ../../scripts/redact_secrets.py land on the real file in both locations.
+CANONICAL_SKILL_DIR = PLUGIN_ROOT / "skills" / SKILL_DIR.name
+
 
 def check_frontmatter():
     text = SKILL_MD.read_text(encoding="utf-8")
@@ -101,7 +109,7 @@ def check_reference_guide_files_exist():
             continue  # output directory, not expected to exist yet
         if "<" in p:
             continue  # runtime-resolved placeholder (e.g. <repo-root>), not a literal path
-        resolved = (SKILL_DIR / p).resolve()
+        resolved = (CANONICAL_SKILL_DIR / p).resolve()
         if not resolved.is_file():
             missing.append(p)
     if missing:
