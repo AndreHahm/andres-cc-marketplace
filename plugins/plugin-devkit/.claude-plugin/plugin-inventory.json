@@ -2,7 +2,7 @@
   "components": [
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -22,7 +22,10 @@
         }
       ],
       "path": "skills/agent-development",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -43,7 +46,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -63,7 +66,10 @@
         }
       ],
       "path": "skills/analyzing-sessions",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -84,7 +90,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -104,7 +110,10 @@
         }
       ],
       "path": "skills/command-development",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -125,7 +134,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-28",
       "details": {
         "schema": "skill"
       },
@@ -166,7 +175,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -186,7 +195,10 @@
         }
       ],
       "path": "skills/hook-development",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -207,7 +219,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -227,7 +239,10 @@
         }
       ],
       "path": "skills/marketplace-development",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -248,7 +263,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-25",
       "details": {
         "schema": "skill"
       },
@@ -289,7 +304,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -309,7 +324,10 @@
         }
       ],
       "path": "skills/mcp-integration",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -330,7 +348,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-13",
       "details": {
         "schema": "skill"
       },
@@ -371,7 +389,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "skill"
       },
@@ -412,7 +430,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-27",
       "details": {
         "schema": "skill"
       },
@@ -453,7 +471,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -473,7 +491,10 @@
         }
       ],
       "path": "skills/plugin-development",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -494,7 +515,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "skill"
       },
@@ -535,7 +556,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -555,7 +576,10 @@
         }
       ],
       "path": "skills/plugin-evaluation",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -576,7 +600,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "skill"
       },
@@ -617,7 +641,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "skill"
       },
@@ -658,7 +682,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-25",
       "details": {
         "schema": "skill"
       },
@@ -699,7 +723,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "skill"
       },
@@ -740,7 +764,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "skill"
       },
@@ -781,7 +805,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "skill"
       },
@@ -822,7 +846,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "skill"
       },
@@ -863,7 +887,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -883,7 +907,10 @@
         }
       ],
       "path": "skills/plugin-rulebook",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -904,7 +931,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -924,7 +951,10 @@
         }
       ],
       "path": "skills/plugin-settings",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -945,7 +975,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-19",
       "details": {
         "schema": "skill"
       },
@@ -986,7 +1016,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1006,7 +1036,10 @@
         }
       ],
       "path": "skills/rule-development",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1027,7 +1060,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1047,7 +1080,10 @@
         }
       ],
       "path": "skills/rules-apply",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1068,7 +1104,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1088,7 +1124,10 @@
         }
       ],
       "path": "skills/rules-extract",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1109,7 +1148,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1129,7 +1168,10 @@
         }
       ],
       "path": "skills/rules-merge",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1150,7 +1192,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1170,7 +1212,10 @@
         }
       ],
       "path": "skills/rules-review",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1191,7 +1236,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1211,7 +1256,10 @@
         }
       ],
       "path": "skills/skill-development",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1232,7 +1280,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1252,7 +1300,10 @@
         }
       ],
       "path": "skills/skill-improver-loop",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1273,7 +1324,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "skill"
       },
@@ -1314,7 +1365,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1334,7 +1385,10 @@
         }
       ],
       "path": "skills/skill-refiner-interactive",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1355,7 +1409,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1375,7 +1429,10 @@
         }
       ],
       "path": "skills/skill-security",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1396,7 +1453,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1416,7 +1473,10 @@
         }
       ],
       "path": "skills/skill-stocktake",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1437,7 +1497,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1457,7 +1517,10 @@
         }
       ],
       "path": "skills/skill-tester",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1478,7 +1541,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-23",
       "details": {
         "schema": "skill"
       },
@@ -1519,7 +1582,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-07",
       "details": {
         "schema": "skill"
       },
@@ -1560,7 +1623,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "skill"
       },
@@ -1601,7 +1664,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "skill"
       },
@@ -1621,7 +1684,10 @@
         }
       ],
       "path": "skills/workflow-skill-development",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1642,7 +1708,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "agent"
       },
@@ -1683,7 +1749,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -1703,7 +1769,10 @@
         }
       ],
       "path": "agents/agent-creator.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1724,7 +1793,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "agent"
       },
@@ -1765,7 +1834,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -1785,7 +1854,10 @@
         }
       ],
       "path": "agents/claudemd-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1806,7 +1878,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -1826,7 +1898,10 @@
         }
       ],
       "path": "agents/command-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1847,7 +1922,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -1867,7 +1942,10 @@
         }
       ],
       "path": "agents/completeness-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1888,7 +1966,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -1908,7 +1986,10 @@
         }
       ],
       "path": "agents/consistency-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -1929,7 +2010,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "agent"
       },
@@ -1970,7 +2051,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "agent"
       },
@@ -2011,7 +2092,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -2031,7 +2112,10 @@
         }
       ],
       "path": "agents/external-references-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2052,7 +2136,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -2072,7 +2156,10 @@
         }
       ],
       "path": "agents/hook-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2093,7 +2180,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "agent"
       },
@@ -2134,7 +2221,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -2154,7 +2241,10 @@
         }
       ],
       "path": "agents/language-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2175,7 +2265,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "agent"
       },
@@ -2216,7 +2306,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "agent"
       },
@@ -2257,7 +2347,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-23",
       "details": {
         "schema": "agent"
       },
@@ -2298,7 +2388,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -2318,7 +2408,10 @@
         }
       ],
       "path": "agents/plugin-validator.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2339,7 +2432,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -2359,7 +2452,10 @@
         }
       ],
       "path": "agents/rule-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2380,7 +2476,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -2400,7 +2496,10 @@
         }
       ],
       "path": "agents/scripts-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2421,7 +2520,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "agent"
       },
@@ -2462,7 +2561,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -2482,7 +2581,10 @@
         }
       ],
       "path": "agents/skill-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2503,7 +2605,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "agent"
       },
@@ -2544,7 +2646,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-09",
       "details": {
         "schema": "agent"
       },
@@ -2585,7 +2687,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "agent"
       },
@@ -2605,7 +2707,10 @@
         }
       ],
       "path": "agents/subagent-reviewer.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2626,7 +2731,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "command"
       },
@@ -2667,7 +2772,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -2687,7 +2792,10 @@
         }
       ],
       "path": "commands/apply-rules.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2708,7 +2816,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -2728,7 +2836,10 @@
         }
       ],
       "path": "commands/cancel-skill-improver.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2749,7 +2860,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -2769,7 +2880,10 @@
         }
       ],
       "path": "commands/create-command.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2790,7 +2904,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -2810,7 +2924,10 @@
         }
       ],
       "path": "commands/create-plugin.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2831,7 +2948,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -2851,7 +2968,10 @@
         }
       ],
       "path": "commands/extract-rules.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2872,7 +2992,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -2892,7 +3012,10 @@
         }
       ],
       "path": "commands/find-dev-rule.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2913,7 +3036,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "command"
       },
@@ -2954,7 +3077,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -2974,7 +3097,10 @@
         }
       ],
       "path": "commands/implement-dev-rules.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -2995,7 +3121,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "command"
       },
@@ -3036,7 +3162,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -3056,7 +3182,10 @@
         }
       ],
       "path": "commands/merge-rules.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -3077,7 +3206,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -3097,7 +3226,10 @@
         }
       ],
       "path": "commands/plan-dev-rules.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -3118,7 +3250,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -3138,7 +3270,10 @@
         }
       ],
       "path": "commands/report-dev-rules.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -3159,7 +3294,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -3179,7 +3314,10 @@
         }
       ],
       "path": "commands/review-rules.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -3200,7 +3338,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -3220,7 +3358,10 @@
         }
       ],
       "path": "commands/skill-improver.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -3241,7 +3382,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "command"
       },
@@ -3282,7 +3423,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -3302,7 +3443,10 @@
         }
       ],
       "path": "commands/update-dev-rule.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -3323,7 +3467,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "command"
       },
@@ -3343,7 +3487,10 @@
         }
       ],
       "path": "commands/verify-dev-rules.md",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -3364,7 +3511,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-25",
       "details": {
         "schema": "command"
       },
@@ -3405,7 +3552,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "hook"
       },
@@ -3425,7 +3572,10 @@
         }
       ],
       "path": "hooks/hooks.json",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -3446,7 +3596,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-16",
       "details": {
         "schema": "hook"
       },
@@ -3487,7 +3637,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-16",
       "details": {
         "schema": "hook"
       },
@@ -3528,7 +3678,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-16",
       "details": {
         "schema": "hook"
       },
@@ -3569,7 +3719,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-12",
       "details": {
         "schema": "hook"
       },
@@ -3610,7 +3760,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-07-08",
       "details": {
         "schema": "hook"
       },
@@ -3630,7 +3780,10 @@
         }
       ],
       "path": "hooks/hooks.json",
-      "provenance": {},
+      "provenance": {
+        "notes": "Substantially rewritten or extended since -- renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25), ~150 commits after the fork. See the plugin-level marketplace-inventory provenance record for the full fork narrative.",
+        "origin": "Present in the repo's initial commit (8d6f8f2, 2026-07-08) as part of Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
