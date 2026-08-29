@@ -12,7 +12,7 @@ description: >-
   reports for scores and accepted plugin-planning output for planned
   components — it never grades, plans, or scores anything itself.
 argument-hint: "[plugin path] [mode: build|check|plan|apply|import-grading|repair-history]"
-allowed-tools: Read Glob Grep AskUserQuestion Write Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py:*) Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/smoke_test.py:*)
+allowed-tools: Read AskUserQuestion Write Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py:*) Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/smoke_test.py:*)
 ---
 
 # Plugin Inventory
@@ -80,10 +80,15 @@ python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py
 **What this script call writes immediately, with no approval gate:** the discovered components
 themselves — their `name`/`type`/`path`/`status` are deterministic, provable facts (a file exists at a
 given path), not a judgment call, so `bootstrap` writes them without asking. Every discovered component
-starts with `functional_role: null`, `domain: null`, `created_on: null`, and an empty `compatibility`
-object, though — **present every one of these to the user for classification before treating Build as
-fully done**: every inferred lifecycle, functional-role, domain, and compatibility value needs human
-approval before it's treated as settled. This is a follow-up pass *after* the initial write, not
+starts with `functional_role: null`, `domain: null`, `created_on: null`, an empty `compatibility` object,
+and an empty `provenance` object, though — **present every one of these to the user for classification
+before treating Build as fully done**: every inferred lifecycle, functional-role, domain, and
+compatibility value needs human approval before it's treated as settled. `provenance` is a free-form
+annotation object recording a component's real external origin when one exists (e.g. `{"origin": "...",
+"notes": "..."}` describing a fork/port from another plugin or open-source project, sourced from
+`git log`/commit messages/a `THIRD_PARTY_NOTICES.md`-style file) — leave it `{}` when no such origin is
+evidenced; never fabricate an origin story for a component that was simply built directly for this
+plugin. This is a follow-up pass *after* the initial write, not
 a gate blocking it — classification decisions are then persisted as ordinary `update` operations through
 Plan/Apply, the same path any later reclassification would use. For a genuinely large plugin, batch the
 follow-up classification questions rather than asking one field at a time; a `null` left unresolved this
@@ -229,8 +234,10 @@ until a future mode gives it a writer.
   `no-op` that would leave the record's lifecycle status silently out of sync with reality.
 - **Invalid plugin-grader report**: `import-grading` raises `GradingReportError` (target/type mismatch,
   malformed JSON, missing required field, or a `final_score`/security score that isn't a real number in
-  `[0, 10]`, or a `graded_at` that isn't a non-empty string) — reject the import, current
-  scores/histories stay unchanged.
+  `[0, 10]`, or a `graded_at` that isn't a non-empty string ending in `'Z'` — a syntactically valid but
+  non-UTC-offset timestamp like `+10:00` is rejected too, since two differently-offset timestamps would
+  otherwise sort in the wrong chronological order under `history.py`'s raw lexicographic sort/max) —
+  reject the import, current scores/histories stay unchanged.
 - **Ambiguous name-based grading target**: `import-grading` looks up its target by `(name, type)` — if a
   retired and an active component happen to share the same `(name, type)` (reachable via
   `plugin-planning`'s own hand-built `add` operations, which bypass `build_plan`'s conflict detection),
@@ -257,55 +264,24 @@ until a future mode gives it a writer.
 
 ## Testing & Validation
 
-1. **Discovery, live** — run `discover` against this repo's own `plugins/plugin-devkit`; confirm every
-   `skills/<name>/SKILL.md` directory, every `agents/*.md`, and every `commands/*.md` file appears
-   exactly once, sorted, with no duplicates
-2. **Bootstrap + Check round-trip** — bootstrap a fresh inventory from a real plugin directory, then run
-   `check` immediately after with no filesystem changes; confirm `drift_count` is `0`
-3. **Plan/Apply, add operation** — add a new skill directory to a test fixture plugin; confirm `plan`
-   proposes exactly one `add` operation with `requires_approval: true`, and `apply` with that operation
-   approved creates exactly one new component record with a freshly-generated `component_*` ID
-4. **Stale hash rejection** — call `apply` with a hash that doesn't match the current file; confirm it
-   exits non-zero with a clear message and makes no write
-5. **Import grading, dedup** — import the same report twice for the same component; confirm the second
-   import reports `quality_score_appended: false`/`security_score_appended: false` and the score is
-   unchanged, not duplicated in history
-6. **Conflict, missing active component** — remove a component's path from the fixture filesystem while
-   its inventory record stays `active`; confirm `plan` emits a `conflict` operation, never a silent
-   auto-retirement
-7. **History invariants** — confirm every component's `status_history`/`naming_history` has exactly one
-   open period (`valid_to: null`) whose value matches the record's current `status`/`name`
-8. **Status transition** — apply a `status-transition` operation (e.g. `active` -> `deprecated`);
-   confirm the previously-open status period closes and the new one opens, both consistent with the
-   record's new current `status`
-9. **Repair history, structurally invalid replacement rejected** — call `repair-history` with a
-   replacement array containing two open periods; confirm it's rejected before any write
-10. **Enum rejection** — set a component's `functional_role` to a value outside the controlled
-    vocabulary; confirm `validate_inventory` rejects it before any write
-11. **Self-check** — `scripts/smoke_test.py` passes (this skill's own persisted smoke test, including a
-    live bootstrap+check round-trip against this repo's own `plugin-devkit` plugin), re-run after any
-    SKILL.md or script edit
-12. **Conflict, non-active record reappears** — a discovered candidate matches an existing
-    `planned`/`retired`/`deprecated`/`superseded` record (e.g. a planned component that has now actually
-    been built); confirm `plan` emits a `conflict`, never a silent `no-op`
-13. **Check, clean rejection on an invalid inventory** — hand-corrupt an on-disk inventory (e.g. an
-    out-of-vocabulary `functional_role`); confirm `check` exits non-zero with a clean rejection message,
-    never an uncaught Python traceback
-14. **Apply rejects an out-of-allowlist `update` field** — construct an approved plan with an `update`
-    operation naming `status_history` (or any other non-allowlisted field) directly; confirm `apply`
-    rejects it before any write, never silently overwriting append-only history
-15. **Import grading rejects an out-of-range/non-numeric score** — construct a plugin-grader report with
-    `final_score` set to `999`, a negative number, or a boolean; confirm `import-grading` rejects it
-    before any write, current scores/history unchanged
-16. **Status transition with rename** — apply a `status-transition` operation carrying `new_name`;
-    confirm both `name` and `naming_history` update atomically (the previously-open period closes, a new
-    one opens with the new name)
-17. **Import grading rejects an ambiguous name-based target** — construct an inventory where a retired
-    and an active component share the same `(name, type)`; confirm `import-grading` refuses to guess
-    rather than silently updating whichever one happens to come first in array order
-18. **Import grading rejects a non-string `graded_at`** — construct a plugin-grader report with
-    `graded_at` set to an integer; confirm `import-grading` rejects it on the first import, before it
-    could otherwise crash a later import with a type-mismatch error
+**Verify this skill activates on:**
+- "build the plugin inventory"
+- "update this plugin's component database"
+- "record this component rename"
+- "import the latest component grades"
+- "check whether plugin-inventory is stale"
+
+**Verify it does NOT activate on:**
+- "check all plugin inventories for drift" → `marketplace-inventory` instead; this skill never edits
+  marketplace scope
+- "grade this component" → `plugin-grader`; this skill only imports its completed reports
+- "decide what components to build" → `plugin-planning`
+- "validate plugin.json/directory structure" → `plugin-validator`
+
+**Last dated run record:** 2026-08-29 — `scripts/smoke_test.py` (23/23 checks passing, adding a new
+Bootstrap-refuses-existing-inventory check).
+
+See `references/test-scenarios.md` for the full 22-scenario test walkthrough.
 
 **Quality gates:**
 - [ ] `scripts/plugin-inventory.py` is always invoked for discovery, plan construction, and apply — the
@@ -327,6 +303,7 @@ until a future mode gives it a writer.
 | `scripts/plugin-inventory.py` | Deterministic discovery, plan construction, atomic apply, and grading-import CLI — the only source of truth for this skill's reconciliation mechanics |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, and a live bootstrap+check round-trip) — re-run before packaging or after any edit |
 | `references/component-detectors.md` | Exactly which logical component types are detected, and how, per type |
+| `references/test-scenarios.md` | Full 22-scenario test walkthrough, extracted from this file's own Testing & Validation section |
 | `assets/plugin-inventory.schema.json` | The canonical JSON Schema this inventory file must validate against |
 | `../../scripts/inventory_common/` | Shared ID generation, history append/validation, canonical serialization/hashing, and grading-report reading — used by both this script and `marketplace-inventory`'s |
 | `plugin-grader` skill | Source of quality/security scores this skill imports, never computes |
