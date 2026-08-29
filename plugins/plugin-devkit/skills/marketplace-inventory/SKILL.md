@@ -193,10 +193,10 @@ generic JSON Schema validator against it (no such dependency is available in thi
   retired and an active plugin happen to share the same `name`, the lookup refuses to guess and exits
   before any write, rather than silently updating whichever record happens to come first in array order.
 - **Out-of-allowlist `update` field**: `apply` only permits an `update` operation to set
-  `source`/`functional_role`/`domains`/`compatibility`/`created_on` — `id`, `status`, `name`, and every
-  history/scoring field are refused with `SystemExit` before any write. `status` only ever changes via
-  `status-transition`; `name` only ever changes via `status-transition`'s own `new_name` field (see Plan
-  mode above); history/scoring fields are append-only.
+  `source`/`functional_role`/`domains`/`compatibility`/`created_on`/`provenance` — `id`, `status`, `name`,
+  and every history/scoring field are refused with `SystemExit` before any write. `status` only ever
+  changes via `status-transition`; `name` only ever changes via `status-transition`'s own `new_name` field
+  (see Plan mode above); history/scoring fields are append-only.
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
 - **Stale plugin inventory during repair**: skip that plugin's update and report the required
   `plugin-inventory` run — never patch around a stale per-plugin file from this script.

@@ -50,7 +50,14 @@ INVENTORY_FILENAME = "marketplace-inventory.json"
 # status_history in sync); every history/scoring field is append-only,
 # editable only through history.append_* -- this script has no
 # repair-history mode at all, so none of those belong here either way.
-ALLOWED_UPDATE_FIELDS = {"source", "functional_role", "domains", "compatibility", "created_on"}
+ALLOWED_UPDATE_FIELDS = {
+    "source",
+    "functional_role",
+    "domains",
+    "compatibility",
+    "created_on",
+    "provenance",
+}
 
 
 def discover_plugins(repo_root):

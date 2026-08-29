@@ -114,9 +114,23 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
-      "domains": [],
-      "functional_role": null,
+      "created_on": "2026-07-08",
+      "domains": [
+        "component-authoring",
+        "concept-planning",
+        "inventory",
+        "lifecycle-orchestration",
+        "marketplace-publishing",
+        "mcp-integration",
+        "permissions",
+        "plugin-documentation",
+        "plugin-review-qa",
+        "rules-management",
+        "security-gates",
+        "session-analysis",
+        "skill-improvement"
+      ],
+      "functional_role": "mixed",
       "id": "plugin_7e527600",
       "name": "plugin-devkit",
       "naming_history": [
@@ -130,7 +144,10 @@
           "valid_to": null
         }
       ],
-      "provenance": {},
+      "provenance": {
+        "notes": "Renamed plugin-dev -> plugin-devkit at commit eb87b3a (2026-07-25); by then ~150 commits ahead of the upstream example, with most of its 33 skills/23 agents/16 commands newly built or substantially rewritten.",
+        "origin": "Forked from Anthropic's official plugin-dev example plugin"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -151,5 +168,5 @@
     }
   ],
   "schema_version": "1.0.0",
-  "updated_on": "2026-08-28"
+  "updated_on": "2026-08-29"
 }
