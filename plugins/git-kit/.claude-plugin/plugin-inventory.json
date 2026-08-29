@@ -6,8 +6,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "pr-review",
+      "functional_role": "workflow",
       "id": "component_51c8f3af",
       "name": "codex-review-recovery",
       "naming_history": [
@@ -47,8 +47,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "pr-review",
+      "functional_role": "reviewer",
       "id": "component_64e27e42",
       "name": "collaborating-on-a-pr",
       "naming_history": [
@@ -88,8 +88,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "workflow",
       "id": "component_d42ff1c9",
       "name": "commit",
       "naming_history": [
@@ -129,8 +129,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "workflow",
       "id": "component_ef25bf90",
       "name": "create-pr",
       "naming_history": [
@@ -170,8 +170,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "pr-review",
+      "functional_role": "reviewer",
       "id": "component_18535e9c",
       "name": "cross-model-review",
       "naming_history": [
@@ -211,8 +211,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "maintenance",
+      "functional_role": "workflow",
       "id": "component_dab17316",
       "name": "dependency-updater",
       "naming_history": [
@@ -252,8 +252,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "pr-review",
+      "functional_role": "workflow",
       "id": "component_674af82c",
       "name": "explain-pr-changes",
       "naming_history": [
@@ -293,8 +293,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "workflow",
       "id": "component_7b9eaa2a",
       "name": "finishing-work",
       "naming_history": [
@@ -334,8 +334,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-utilities",
+      "functional_role": "reference",
       "id": "component_7c8fa6b7",
       "name": "gh-operations",
       "naming_history": [
@@ -375,8 +375,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-utilities",
+      "functional_role": "workflow",
       "id": "component_54d874f1",
       "name": "git-bisect",
       "naming_history": [
@@ -416,8 +416,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "maintenance",
+      "functional_role": "infrastructure",
       "id": "component_690dc637",
       "name": "git-cleanup",
       "naming_history": [
@@ -457,8 +457,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-utilities",
+      "functional_role": "reference",
       "id": "component_9c968024",
       "name": "git-notes",
       "naming_history": [
@@ -498,8 +498,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "workflow",
       "id": "component_fd64f7fd",
       "name": "git-rebase-sync",
       "naming_history": [
@@ -539,8 +539,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-utilities",
+      "functional_role": "reference",
       "id": "component_108d368c",
       "name": "git-worktrees",
       "naming_history": [
@@ -580,8 +580,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "issue-management",
+      "functional_role": "workflow",
       "id": "component_22d94647",
       "name": "github-issue-creator",
       "naming_history": [
@@ -621,8 +621,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "issue-management",
+      "functional_role": "workflow",
       "id": "component_aa1a5c2a",
       "name": "github-issue-lifecycle",
       "naming_history": [
@@ -662,8 +662,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "pr-review",
+      "functional_role": "workflow",
       "id": "component_efdb7b1c",
       "name": "handling-review-findings",
       "naming_history": [
@@ -703,8 +703,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "issue-management",
+      "functional_role": "infrastructure",
       "id": "component_c0365ca3",
       "name": "manage-codeowners",
       "naming_history": [
@@ -744,8 +744,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "workflow",
       "id": "component_4b57a749",
       "name": "merge-pr",
       "naming_history": [
@@ -785,8 +785,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "workflow",
       "id": "component_6ef82f8b",
       "name": "resolving-merge-conflicts",
       "naming_history": [
@@ -826,8 +826,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "workflow",
       "id": "component_0283dbf9",
       "name": "standalone-commits",
       "naming_history": [
@@ -867,8 +867,8 @@
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "workflow",
       "id": "component_b07a5af3",
       "name": "starting-work",
       "naming_history": [
@@ -908,8 +908,8 @@
       "details": {
         "schema": "command"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "infrastructure",
       "id": "component_c8742627",
       "name": "create-git-kit-local-json",
       "naming_history": [
@@ -949,8 +949,8 @@
       "details": {
         "schema": "command"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "infrastructure",
       "id": "component_76fbc881",
       "name": "git-status",
       "naming_history": [
@@ -990,8 +990,8 @@
       "details": {
         "schema": "command"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "workflow",
       "id": "component_4978e649",
       "name": "sync-branch",
       "naming_history": [
@@ -1031,8 +1031,8 @@
       "details": {
         "schema": "command"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-lifecycle",
+      "functional_role": "infrastructure",
       "id": "component_50b04740",
       "name": "update-branch-name",
       "naming_history": [
@@ -1072,8 +1072,8 @@
       "details": {
         "schema": "hook"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "safety-gates",
+      "functional_role": "validator",
       "id": "component_7a99c5ed",
       "name": "PreToolUse-0",
       "naming_history": [
@@ -1113,8 +1113,8 @@
       "details": {
         "schema": "hook"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "safety-gates",
+      "functional_role": "validator",
       "id": "component_6894c708",
       "name": "Stop-0",
       "naming_history": [
@@ -1153,5 +1153,5 @@
   "plugin_id": "plugin_8b374e26",
   "plugin_name": "git-kit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-08-28"
+  "updated_on": "2026-08-29"
 }
