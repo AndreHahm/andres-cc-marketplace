@@ -1568,6 +1568,233 @@ directory — any reference to a skill-local script/resource must explicitly inc
 
 ---
 
+## PR #147 — plugin-devkit testing-mandate rules (R28-R32) (devin-ai-integration[bot], chatgpt-codex-connector[bot], 11 rounds, merged 2026-08-27)
+
+### Pattern: a content-scan validation heuristic can misclassify a legitimately short, intentional regex as a vacuous assertion
+
+**What happened:** A new plugin-rulebook anchoring check treated every short, unanchored `re.search`
+branch in a skill's own quality-gate code as a "vacuous SKILL.md assertion." A real, legitimate check in
+`plugin-grader` used exactly this shape to detect shell metacharacters (`&&`, pipes, semicolons)
+anywhere in a command line — intentionally short and unanchored, since the pattern must match those
+characters at any position. The unconditional new rule produced a false REQUIRED failure on valid code.
+
+**Rule:** A content-scan validation heuristic that flags "suspiciously short/unanchored" patterns as
+defects must scope itself to the actual context it's meant to catch (e.g. only assertion-content
+variables) rather than applying unconditionally — a short, unanchored regex can be entirely intentional
+when the thing it's matching can legitimately appear anywhere in its target string.
+
+---
+
+## PR #148 — stabilize merge-pr/git-worktrees merge-rebase process (devin-ai-integration[bot], chatgpt-codex-connector[bot], 12 rounds, merged 2026-08-27)
+
+### Pattern: a one-shot guard marker consumed by the first attempt of a multi-step operation isn't automatically valid for a fallback retry
+
+**What happened:** `guard-raw-pr-ops.sh` consumes git-kit's one-shot marker file on the *first*
+`gh pr merge --rebase` attempt. When that attempt failed and a documented fallback path (readiness
+checks, user confirmation, retry) ran afterward, the marker was already gone — the retry was
+unconditionally blocked by the same guard regardless of the marker's 60-second TTL, since the TTL never
+even got a chance to matter.
+
+**Rule:** A one-shot guard-marker mechanism must be rewritten immediately before *every* attempt of the
+guarded operation, not just the first — including inside any documented fallback/retry branch.
+
+### Pattern: `git merge-base --is-ancestor` tests the wrong relationship for "does this commit exist and is it reachable"
+
+**What happened:** For a normal cherry-pick candidate living only on a feature branch, the commit is
+*intentionally* not an ancestor of the target — that's exactly why it needs cherry-picking. Using
+`--is-ancestor` to validate a commit is real/reachable therefore rejected precisely the commits that
+needed the operation, inverting the check's own purpose.
+
+**Assumed vs. actual:**
+
+| Assumed | Actual |
+|---|---|
+| `git merge-base --is-ancestor <sha> HEAD` can confirm a commit exists/is reachable | It answers a narrower question — "is the first ref an ancestor of the second" — which a legitimate not-yet-merged commit fails by design |
+
+**Rule:** Verify a commit's existence with `git cat-file -e <sha>^{commit}` and its reachability with
+`git branch --all --contains <sha>`; reserve `--is-ancestor` for its actual purpose (checking whether one
+ref is already integrated into another), never as a general object-existence/reachability check.
+
+### Pattern: a tree-hash-equality dedup heuristic can discard a commit that's structurally identical to an earlier one but semantically required
+
+**What happened:** Two commits sharing the same resulting tree aren't necessarily redundant replays — if
+commit A sets a tree, B changes it, and C reverts B back to A's tree, A and C are tree-identical but C is
+still required when replaying the sequence (omitting it leaves B's change applied). Classifying tree
+equality as "duplicate, safe to drop" can silently produce an incorrect result for exactly this common
+revert shape.
+
+**Rule:** Tree-hash equality between two commits should trigger history-aware investigation (or a
+user-facing confirmation), never automatic removal from a resolved commit list — content equality
+doesn't imply the commit is redundant.
+
+### Pattern: a bare, no-argument `gh repo view` silently resolves to the current checkout's repository, not the repository actually being operated on
+
+**What happened:** When an accepted PR reference pointed to a different repository than the current
+checkout (a full cross-repo URL), a later step deriving `{owner}/{repo}` via a fresh `gh repo view` call
+(rather than reusing the already-resolved PR's own repo) queried the *current directory's* repository
+instead — `gh repo view --help` confirms this is its documented default behavior with no argument.
+
+**Rule:** Once an operation has resolved its real target repository from a specific input (a PR URL, an
+explicit `--repo` flag), reuse that resolved value for every subsequent API call in the same operation —
+never re-derive repo coordinates via a bare, context-dependent command that silently assumes "the
+current directory."
+
+### Pattern: a GitHub REST list endpoint's documented page cap isn't overcome by `--paginate`, and a returned commit SHA isn't guaranteed to exist in the local object database
+
+**What happened:** Two related gaps in the same cherry-pick strategy: GitHub's "list commits on a pull
+request" endpoint caps at 250 commits regardless of `--paginate` — a PR with more commits than that
+silently truncates, so a strategy relying on it can report success after cherry-picking only part of a
+large PR. Separately, even a correctly fetched, valid SHA can be absent from the local git object
+database (e.g. a maintainer checkout that never fetched the feature branch), so `git cherry-pick` fails
+with an unknown/bad-object error deep into the operation rather than being caught up front.
+
+**Rule:** When a documented API endpoint has a hard page cap, fall back to a genuinely paginated
+alternative (e.g. the compare endpoint) once the cap is hit rather than trusting `--paginate` to walk
+past a server-side ceiling; separately, verify every commit a remote API returns actually exists locally
+(`git cat-file -e`) and fetch it if missing before handing the list to a cherry-pick step.
+
+---
+
+## PR #154 — lazy-load 7 always-loaded plugin rules (chatgpt-codex-connector[bot], devin-ai-integration[bot], 8 rounds, merged 2026-08-27)
+
+### Confirms: this PR is the originating incident behind `.claude/rules/verify-rule-scope-before-lazy-loading.md`
+
+**What happened:** This PR's own review (Codex + Devin) found 2 of 5 proposed path-scoped rules and the
+one skill-folded rule needed a full revert — the exact incident already fully documented in that rule's
+own "Why" section. No new content to add here beyond the cross-reference. A separate, smaller finding on
+this PR (the `.agents/` Codex mirror left un-synced with this PR's changes) is a previously-known,
+explicitly-accepted mirror-drift gap confirmed again by the author's own reply on this PR, not a new
+systemic gap.
+
+**Rule:** See `.claude/rules/verify-rule-scope-before-lazy-loading.md` — unchanged.
+
+---
+
+## PR #157 — 3 authoring-discipline rules (devin-ai-integration[bot], chatgpt-codex-connector[bot], 5 rounds, merged 2026-08-28)
+
+### Pattern: a rule instructing "add the missing tool grant" doesn't distinguish agent `tools:` frontmatter from skill/command `allowed-tools:` frontmatter — and the two have incompatible syntax
+
+**What happened:** A skill or command's `allowed-tools` needs an exact scoped grant (e.g. `Bash(cmd:*)`);
+an agent's `tools` field uses bare tool names with no `Bash(...)` scoping syntax at all — a scoped entry
+there is itself the violation, not the fix. Generic rule text written for one component type instructed
+an agent edit to add frontmatter that's invalid for agents.
+
+**Rule:** Any rule, checklist, or reviewer instruction touching tool-grant frontmatter must explicitly
+distinguish skill/command `allowed-tools` (scoped grants required) from agent `tools` (bare names only,
+scoped syntax is itself wrong) — never write "add the grant" generically across both component types.
+
+---
+
+## PR #159 — close command-injection surfaces in commit skill (chatgpt-codex-connector[bot], devin-ai-integration[bot], coderabbitai[bot], 19 rounds, merged 2026-08-28)
+
+### Confirms: `core.fileMode=false` locally can mask a missing executable bit — recurred on a second script
+
+**What happened:** `stage-selected-files.sh` was committed at git mode `100644` despite being invoked
+directly (not via an interpreter prefix); local testing never caught it, for the identical reason PR
+#121's instance (above) didn't — `core.fileMode=false` plus an already-executable local disk copy. This
+is the same already-documented pattern recurring on a different script, not a new one.
+
+**Rule:** See PR #121's entry above — unchanged. Recorded here because a second real occurrence in
+production strengthens the case for actually filing the GitHub issue that was drafted but left unfiled
+after PR #121 (`issues/2026-08-29-filemode-false-masks-missing-executable-bit.md`).
+
+### Pattern: resolving a value via a separate `git rev-parse` call does not sanitize it against later shell interpolation
+
+**What happened:** A step resolved the current branch name via `git rev-parse --abbrev-ref HEAD`, then
+interpolated that resolved value into a generated `git push origin <branch>` shell command. A branch name
+is attacker-controllable on a contributed/fetched checkout — `git check-ref-format --branch` accepts a
+name like `review/foo;touch${IFS}/tmp/PWN`, and live-verified in a scratch repo, composing that resolved
+value into the push command executed the injected `touch`.
+
+**Rule:** Resolving a value through one command does not make it safe to compose into a *different* shell
+command afterward — the composition step is where the shell parses metacharacters, regardless of how the
+value was obtained. Prefer a fixed command with no interpolation at all (`git push origin HEAD`) over
+resolve-then-interpolate whenever the fixed form is available.
+
+### Pattern: `git status --porcelain`'s default untracked-files mode collapses an entire untracked directory into one candidate line
+
+**What happened:** A numbered file-selection UI built on the default porcelain output showed one entry
+(`?? newdir/`) for an untracked directory containing multiple files — selecting that single index then
+staged every file beneath it, even though the UI's own numbering implied one file per index.
+Live-reproduced: a 2-file untracked directory showed as 1 candidate; selecting it staged both.
+
+**Rule:** A file-selection UI built on `git status --porcelain` must pass `--untracked-files=all` to get
+one line per actual file — the tool's own default groups an untracked directory as a single unit, which
+silently breaks any "one candidate = one file" assumption.
+
+### Pattern: printing an untrusted filename's raw bytes in a numbered selection list can inject control characters that make the display misleading
+
+**What happened:** A `printf '%s'` display of candidate filenames passed newline, tab, and ANSI control
+bytes straight through — a crafted filename can visually corrupt or spoof the numbered list, causing a
+human to select the wrong index despite reading the display correctly.
+
+**Rule:** When displaying an untrusted filename in any numbered/indexed selection UI, escape it for
+display (e.g. `printf '%q'`) while keeping the raw, unescaped bytes in the actual selection pipeline (a
+NUL-delimited pathspec, index-based lookup) — display safety and selection correctness need different
+treatments of the same string.
+
+### Pattern: a "stage the generated destination when its source is staged" gate must verify the source is fully staged, not merely staged-at-all — and this applies per-contributor when several sources feed one generated artifact
+
+**What happened:** Two related instances of the same gap in the same mirror/hooks-sync staging logic: a
+staging helper generated content from working-tree bytes, so a source with unstaged changes *on top of*
+what's staged produced a destination that didn't match the staged source, failing the repo's own staged
+parity check. Separately, when several sources merge into one generated artifact (e.g. two plugins'
+`hooks.json` merging into one output), the merge logic accepted the first staged contributor without
+checking that *every* contributor was fully staged — a second, dirty contributor's unstaged edits were
+already baked into the merged document and got staged anyway.
+
+**Rule:** A "regenerate and stage a derived artifact when its source(s) are staged" mechanism must confirm
+every contributing source has no unstaged changes on top of what's staged (not just "is staged at all")
+before staging the derived artifact — check this per-contributor when multiple sources merge into one
+output, not just for whichever contributor triggered the check.
+
+### Pattern: iterating "current files" to decide whether to stage a derived artifact misses a source's staged deletion entirely
+
+**What happened:** When a tracked contributing source file was deleted, it was absent from a "current
+files" tuple built by scanning what exists on disk now — so the staging decision, built only from that
+tuple, couldn't recognize the deletion happened and left the regenerated artifact un-staged, silently
+retaining the deleted contributor's content in the generated output.
+
+**Rule:** A mechanism deciding whether to re-stage a derived/generated artifact must check staged
+deletions explicitly against git's own staged-paths state, not rely solely on enumerating files that
+currently exist — a deletion has no "current file" to enumerate, so it needs its own separate check.
+
+---
+
+## PR #161 — fix Windows Codex dispatch (#78) (devin-ai-integration[bot], chatgpt-codex-connector[bot], coderabbitai[bot], 9 rounds, merged 2026-08-28)
+
+### Pattern: a required-prefix character class in a security-relevant regex can silently exclude the exact literal shape the check exists to catch
+
+**What happened:** A credential-assignment pattern required a leading `[A-Za-z_]` character before the
+`CREDENTIAL`/`AUTH` alternation — a bare `AUTH=opaque-value` or `CREDENTIAL=opaque-value` assignment (no
+prefix at all) didn't match, because the required leading character class consumed the assignment's own
+first letter before the alternation was evaluated. Live node-verified: the regex matched
+`SERVICE_CREDENTIAL=...` and `DB_AUTH_VALUE=...` but not bare `CREDENTIAL=...`/`AUTH=...`. A
+documentation file containing exactly this bare-assignment shape would have bypassed the secret-file
+check before a `danger-full-access` Windows dispatch.
+
+**Rule:** When a security check's regex is built as "optional prefix + required keyword," verify with a
+direct test (not just a read-through) that the *bare, unprefixed* form of the keyword still matches — a
+required leading character class easily reads as "prefix or nothing" while actually consuming the
+keyword's own leading character and defeating the match.
+
+### Confirms: a regression test's crafted target can live somewhere the tool's own baseline scan already reaches directly, making the test pass regardless of whether the mechanism under test exists
+
+**What happened:** A symlink security-regression scenario placed its credential-shaped real target under
+a directory the scanner's normal file walk already visits directly (independent of symlink resolution) —
+so the test's own assertion held even with the actual symlink-exemption gate removed, giving false
+confidence the gate was under test. This is a distinct instance of the same broader theme as the
+already-documented "tampered copy" pattern above (a test's placement can make it pass for reasons
+unrelated to the code path it's meant to exercise) — the underlying lesson (a test must actually isolate
+the mechanism it claims to cover) is the same, even though the specific mechanism here (baseline-reachable
+target vs. relative-import breakage) differs.
+
+**Rule:** See the "tampered copy" pattern above — unchanged. A regression test's crafted scenario must be
+placed so the *only* way to reach the flagged condition is through the mechanism actually under test, not
+somewhere the tool's normal/baseline behavior already reaches independently.
+
+---
+
 ## Master pre-push checklist (all PRs analyzed, including this session's #61/#62/#65/#68/#76/#79/#92/#88)
 
 ### Tool, API & language behavior — verify, don't assume
