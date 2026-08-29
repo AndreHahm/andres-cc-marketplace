@@ -113,12 +113,14 @@ fi
 #     once -- a chained pair of unrelated `git branch` invocations
 #     otherwise cross-contaminates: a delete flag from one plus a
 #     protected name from the other reads as a match neither invocation
-#     alone is. WORKTREE_REMOVE_SPANS' own check further below does NOT
-#     need this same per-span isolation -- it has only one condition
-#     (FORCE_FLAG_RE), so a hit anywhere in its blob always corresponds to
-#     a real force flag inside a real worktree-remove span; the
-#     cross-contamination risk here is specific to BRANCH_SPANS having two
-#     independent conditions ANDed together.
+#     alone is. WORKTREE_REMOVE_SPANS' own check further below now ALSO
+#     requires per-span isolation (revised from an earlier version of this
+#     comment, which said it didn't) -- not for the cross-contamination
+#     reason BRANCH_SPANS has, but because its own `--`-terminator
+#     truncation (issue #177 round 2, Fix C) operates on one span's text at
+#     a time: truncating a concatenated multi-span blob at the first
+#     standalone `--` would silently discard every later span's own content
+#     entirely, not just that one span's own tail past its terminator.
 COMMAND_FLAT="${COMMAND//$'\r'/}"
 if [ "$TOOL_NAME" = "Bash" ]; then
   COMMAND_FLAT="${COMMAND_FLAT//$'\\\n'/}"
@@ -373,13 +375,57 @@ BRANCH_NAME_RE='(^|[[:space:]])["'"'"']?(main|master|develop)["'"'"']?([^[:alnum
 BRANCH_RELEASE_RE='(^|[[:space:]])["'"'"']?release/[^[:space:]"'"'"']*["'"'"']?([^[:alnum:]_.-]|$)'
 if [ -n "$BRANCH_SPANS" ]; then
   while IFS= read -r branch_span; do
-    # `if [ -n ... ]` wrapping, not `[ -z ... ] && continue` -- the latter's
-    # failing `[` sits inside a `&&` list, which is exempt from both `set -e`
-    # and the ERR trap; harmless today (an empty span just isn't a match),
-    # but fragile in a script whose ERR trap denies unconditionally -- an
-    # `if` doesn't depend on that exemption at all.
-    if [ -n "$branch_span" ] \
-       && { grep -qE "$BRANCH_NAME_RE" <<< "$branch_span" || grep -qE "$BRANCH_RELEASE_RE" <<< "$branch_span"; } \
+    # `if [ -z ... ]; then continue; fi`, not `[ -z ... ] && continue` --
+    # the latter's failing `[` sits inside a `&&` list, which is exempt from
+    # both `set -e` and the ERR trap; harmless today (an empty span just
+    # isn't a match), but fragile in a script whose ERR trap denies
+    # unconditionally -- an `if` doesn't depend on that exemption at all.
+    if [ -z "$branch_span" ]; then continue; fi
+    # Strip `--format <value>`/`--format=<value>` from the span before
+    # running BRANCH_NAME_RE/BRANCH_RELEASE_RE against it -- `--format`'s own
+    # value is a free-form display template that can coincidentally equal a
+    # protected name (`git branch --format main -D feature` deletes only
+    # `feature`, but the old code saw "main" and "-D" as two independent
+    # matches in the same span and denied it) -- live-verified, found by
+    # Codex's review of PR #177 round 2. Pure bash word-splitting (`read
+    # -ra`), not a regex substitution -- no new dependency on top of the
+    # jq/git/grep this file already requires, and native tokenization is
+    # actually more precise here than a hand-written regex would be for
+    # "skip this flag and the one token after it". Scoped to `--format`
+    # specifically, the one case actually confirmed live -- `git branch`
+    # has several other value-taking flags (`--sort`, `--contains`,
+    # `--no-contains`, `--merged`, `--no-merged`) that could theoretically
+    # share this same class of gap, but none has a confirmed live bypass, so
+    # extending this fix to them speculatively is deferred rather than
+    # guessed at (this scoping assumes no other reachable `git branch`
+    # option consumes a separate-argument value while `-D`/delete mode is
+    # also present -- unverified for `--sort` specifically, since git's own
+    # mutual-exclusion checks weren't traced for every combination). Only
+    # strips the literal `--format` token's own value -- the quoted-value
+    # variant of this same problem (`--format='main -D'`) remains a
+    # separate, already-tracked residual (issue #180), since a value
+    # containing embedded whitespace inside quotes needs real shell
+    # tokenization to isolate correctly, which this word-splitting approach
+    # doesn't attempt. Matches only the literal token `--format`/
+    # `--format=...` -- git's own accepted unambiguous abbreviations
+    # (`--form`, `--forma`) aren't stripped, so `git branch --form main -D
+    # feature` still over-denies; fail-safe direction, not fixed here.
+    branch_name_search="$branch_span"
+    if [[ "$branch_span" == *"--format"* ]]; then
+      read -ra _branch_tokens <<< "$branch_span"
+      _branch_filtered=()
+      _skip_next_token=false
+      for _tok in "${_branch_tokens[@]}"; do
+        if $_skip_next_token; then _skip_next_token=false; continue; fi
+        case "$_tok" in
+          --format) _skip_next_token=true; continue ;;
+          --format=*) continue ;;
+        esac
+        _branch_filtered+=("$_tok")
+      done
+      branch_name_search="${_branch_filtered[*]}"
+    fi
+    if { grep -qE "$BRANCH_NAME_RE" <<< "$branch_name_search" || grep -qE "$BRANCH_RELEASE_RE" <<< "$branch_name_search"; } \
        && { grep -qE "$BRANCH_D_RE" <<< "$branch_span" \
             || { grep -qE "$BRANCH_LOWER_D_RE" <<< "$branch_span" && grep -qE "$BRANCH_FORCE_RE" <<< "$branch_span"; }; }; then
       MATCH=true
@@ -443,7 +489,44 @@ fi
 # start with "f" if one ever lands inside a `worktree remove` span
 # (`--format`, `--file`, `--fixup`), over-denying for no reason `git
 # worktree remove` itself gives grounds for.
-FORCE_FLAG_RE='(^|[^[:alnum:]_.-])(-f+|--f(o(r(c(e)?)?)?)?)([^[:alnum:]_.-]|$)'
+# Leading boundary excludes `/` (`[^[:alnum:]_./-]`, not the
+# `[^[:alnum:]_.-]` class GIT_PREFIX/BRANCH_D_RE use) -- a worktree PATH
+# argument can legitimately end in `-f`/`--force` (`git worktree remove
+# ./-f`, `git worktree remove path/--force`; `git worktree remove -h`
+# documents the syntax as `[-f] <worktree>`, and git genuinely parses these
+# as the positional path, not the flag, live-verified by creating and
+# cleanly removing a real worktree at exactly this path with no force
+# needed). The old class admitted `/` as a valid boundary the same way it
+# admits a quote/paren/backtick, but nothing in this file's own history
+# shows a confirmed bypass that needed `/` specifically on the LEADING
+# side (only the TRAILING side's `)`/backtick widening, just below, has
+# that live-verified justification) -- found by Codex's review of PR #177
+# round 2. Worktree paths, unlike branch names, routinely contain `/`, so
+# this leading-boundary narrowing is worktree-remove-specific and not
+# applied to BRANCH_D_RE/BRANCH_FORCE_RE above, which don't face the same
+# risk (git branch names can never start with `-` at all).
+# Shell-conditional on whether `\` is ALSO excluded from the leading
+# boundary, unlike `/` above which is excluded unconditionally -- `\` means
+# two different things depending on which shell produced $COMMAND. On Bash,
+# `\-f` is a legitimately backslash-escaped flag (bash's own quote
+# processing reduces it to the literal two characters `-f`, still a real
+# flag git receives) -- issue #85's own BRANCH_D_RE fix already needed the
+# leading boundary to admit a literal backslash for exactly this reason
+# (`git branch \-D main`), and narrowing it away here would reopen that
+# same class of bypass for FORCE_FLAG_RE. On PowerShell, `\` is an ordinary
+# Windows path separator, not an escape character (PowerShell's own escape
+# character is the backtick) -- a worktree path like `.\-f` is exactly the
+# same false-positive shape `/` above already fixes, just spelled with the
+# platform's native separator. Live-verified both halves: `git worktree
+# remove .\-f` (PowerShell) incorrectly denied before this fix; `git branch
+# \-f main` (Bash, single-char flag matching FORCE_FLAG_RE's own `-f+`
+# pattern) still correctly matches after it. Found by a security-reviewer
+# pass on Fix B above (PR #177 round 2).
+if [ "$TOOL_NAME" = "PowerShell" ]; then
+  FORCE_FLAG_RE='(^|[^[:alnum:]_./\-])(-f+|--f(o(r(c(e)?)?)?)?)([^[:alnum:]_.-]|$)'
+else
+  FORCE_FLAG_RE='(^|[^[:alnum:]_./-])(-f+|--f(o(r(c(e)?)?)?)?)([^[:alnum:]_.-]|$)'
+fi
 # The `-oE` extraction below stays a pipe, not a herestring -- `grep -o`
 # reads to EOF rather than exiting on first match, so it has no SIGPIPE
 # exposure (issue #87 doesn't apply here); the `-qE` check just below it
@@ -468,8 +551,50 @@ FORCE_FLAG_RE='(^|[^[:alnum:]_.-])(-f+|--f(o(r(c(e)?)?)?)?)([^[:alnum:]_.-]|$)'
 # `COMMAND_FLAT` de-fang step above, before this span is ever extracted;
 # see that step's own comment for the full operator table.)
 WORKTREE_REMOVE_SPANS=$(echo "$COMMAND_FLAT" | grep -oE "${GIT_PREFIX}worktree[[:space:]]+remove[^;&|]*" || true)
-if [ -n "$WORKTREE_REMOVE_SPANS" ] && grep -qE "$FORCE_FLAG_RE" <<< "$WORKTREE_REMOVE_SPANS"; then
-  MATCH=true
+if [ -n "$WORKTREE_REMOVE_SPANS" ]; then
+  while IFS= read -r wt_span; do
+    if [ -z "$wt_span" ]; then continue; fi
+    # Truncate at the first standalone `--` token (POSIX end-of-options
+    # terminator) before checking FORCE_FLAG_RE -- once `--` appears as its
+    # own whitespace-bounded token, git treats everything after it as a
+    # positional argument, never a flag (`git worktree remove -- -f`
+    # live-verified to remove a worktree literally named `-f` with no force
+    # needed, git parsing `-f` as the plain worktree name). The old check
+    # scanned the whole span unconditionally, matching a force-flag-shaped
+    # token anywhere, including past a real `--` -- found by Devin's review
+    # of PR #177 round 2. `${wt_span%% -- *}` (bash suffix-removal, longest
+    # match) finds the FIRST standalone ` -- ` and keeps only what's before
+    # it; the `%%` operator prefers removing the longest matching suffix,
+    # which for a `*`-terminated pattern means matching from the earliest
+    # possible ` -- ` rather than the last one. That pattern requires a
+    # trailing space after `--`, so it correctly does NOT match inside
+    # `--format`/`--force` (whose own trailing character is never a space
+    # immediately after `--`) -- only a genuinely standalone `--` token
+    # trips it. The `case` fallback below covers the one shape that pattern
+    # alone misses: `--` sitting at the exact end of the span with nothing
+    # after it (no trailing space for ` -- *` to match against).
+    # Residual, same class as issue #120's own quoted-separator residual
+    # (see BRANCH_SPANS'/this variable's own earlier notes): this
+    # truncation is purely textual, with no notion of quoting -- a
+    # standalone ` -- ` sitting INSIDE a quoted or backslash-escaped path
+    # (e.g. `git worktree remove "my -- dir" --force`) still truncates the
+    # span at that point, hiding a real trailing force flag that a
+    # genuine shell would correctly treat as part of a SEPARATE, later
+    # argument. Found by a security-reviewer pass on this fix (PR #177
+    # round 2). Not closed here, since doing so needs real shell
+    # tokenization, not a character-class cut -- tracked alongside #120's
+    # other already-accepted residuals in this same file.
+    wt_search="${wt_span%% -- *}"
+    if [ "$wt_search" = "$wt_span" ]; then
+      case "$wt_span" in
+        *" --") wt_search="${wt_span% --}" ;;
+      esac
+    fi
+    if grep -qE "$FORCE_FLAG_RE" <<< "$wt_search"; then
+      MATCH=true
+      break
+    fi
+  done <<< "$WORKTREE_REMOVE_SPANS"
 fi
 
 if [ "$MATCH" != true ]; then
