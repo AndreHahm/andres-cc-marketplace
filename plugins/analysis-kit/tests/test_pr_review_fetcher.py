@@ -38,6 +38,9 @@ def test_normalize_review_level_record():
     assert review["review_id"] == 4951194864
     assert review["comment_id"] is None
     assert review["in_reply_to_id"] is None
+    assert review["source_url"] == (
+        "https://github.com/AndreHahm/andres-cc-marketplace/pull/47#pullrequestreview-4951194864"
+    )
 
 
 def test_normalize_standalone_inline_comment():
@@ -51,6 +54,35 @@ def test_normalize_standalone_inline_comment():
     # line was null in the raw payload; original_line is the fallback.
     assert standalone["line"] == 51
     assert standalone["in_reply_to_id"] is None
+    assert standalone["source_url"] == (
+        "https://github.com/AndreHahm/andres-cc-marketplace/pull/47#discussion_r3796051996"
+    )
+
+
+def test_normalize_issue_comment_record():
+    data = _load("pr47.json")
+    records = pr_review_fetcher.normalize(data["reviews"], data["comments"], data["issue_comments"])
+
+    issue_comments = [r for r in records if r["kind"] == "issue_comment"]
+    assert len(issue_comments) == 1
+    comment = issue_comments[0]
+    assert comment["reviewer"] == "coderabbitai[bot]"
+    assert comment["comment_id"] == 5315563213
+    assert comment["review_id"] is None
+    assert comment["in_reply_to_id"] is None
+    assert comment["file"] is None
+    assert comment["line"] is None
+    assert comment["source_url"] == (
+        "https://github.com/AndreHahm/andres-cc-marketplace/pull/47#issuecomment-5315563213"
+    )
+
+
+def test_normalize_without_issue_comments_arg_omits_them():
+    # issue_comments is optional -- existing 2-arg call sites must keep working
+    # and simply not produce any issue_comment records.
+    data = _load("pr47.json")
+    records = pr_review_fetcher.normalize(data["reviews"], data["comments"])
+    assert not any(r["kind"] == "issue_comment" for r in records)
 
 
 def test_normalize_reply_to_reply_thread():
@@ -87,9 +119,11 @@ def test_normalize_null_user_does_not_crash():
             "created_at": "2026-01-01T00:00:00Z",
         }
     ]
-    records = pr_review_fetcher.normalize(reviews, comments)
+    issue_comments = [{"id": 3, "user": None, "body": "", "created_at": "2026-01-01T00:00:00Z"}]
+    records = pr_review_fetcher.normalize(reviews, comments, issue_comments)
     assert records[0]["reviewer"] is None
     assert records[1]["reviewer"] is None
+    assert records[2]["reviewer"] is None
 
 
 def test_run_gh_api_flattens_multi_page_slurp_output():
@@ -138,6 +172,24 @@ def test_load_fixture_non_list_reviews_raises(tmp_path):
         pr_review_fetcher.load_fixture(bad)
 
 
+def test_load_fixture_non_list_issue_comments_raises(tmp_path):
+    bad = tmp_path / "bad.json"
+    bad.write_text(
+        json.dumps({"reviews": [], "comments": [], "issue_comments": "oops"}), encoding="utf-8"
+    )
+    with pytest.raises(pr_review_fetcher.FetchError):
+        pr_review_fetcher.load_fixture(bad)
+
+
+def test_load_fixture_missing_issue_comments_key_defaults_to_empty(tmp_path):
+    # issue_comments is optional in the fixture file -- a pre-existing
+    # two-key fixture (e.g. empty.json) must stay valid.
+    two_key = tmp_path / "two_key.json"
+    two_key.write_text(json.dumps({"reviews": [], "comments": []}), encoding="utf-8")
+    reviews, comments, issue_comments = pr_review_fetcher.load_fixture(two_key)
+    assert issue_comments == []
+
+
 def test_load_fixture_unreadable_path_raises(tmp_path):
     missing = tmp_path / "does-not-exist.json"
     with pytest.raises(pr_review_fetcher.FetchError):
@@ -158,8 +210,8 @@ def test_cli_fixture_mode_prints_json_and_exits_zero():
     )
     assert result.returncode == 0
     records = json.loads(result.stdout)
-    assert len(records) == 4  # 1 review + 3 comments
-    assert {r["kind"] for r in records} == {"review", "inline_comment"}
+    assert len(records) == 5  # 1 review + 3 comments + 1 issue comment
+    assert {r["kind"] for r in records} == {"review", "inline_comment", "issue_comment"}
 
 
 def test_cli_pr_without_repo_errors():
