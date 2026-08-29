@@ -2,7 +2,7 @@
   "components": [
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-04",
       "details": {
         "schema": "skill"
       },
@@ -43,7 +43,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-04",
       "details": {
         "schema": "skill"
       },
@@ -84,7 +84,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-03",
       "details": {
         "schema": "skill"
       },
@@ -95,16 +95,28 @@
       "naming_history": [
         {
           "evidence": [
-            "skills/analyzing-plugin-components"
+            "commit b92bdb7"
+          ],
+          "name": "analyzing-sessions-by-project-and-time",
+          "reason": "Name at analysis-kit's initial creation, porting plugin-devkit's analyzing-sessions skill.",
+          "valid_from": "2026-08-03",
+          "valid_to": "2026-08-03"
+        },
+        {
+          "evidence": [
+            "commit 6b9b35f"
           ],
           "name": "analyzing-plugin-components",
-          "reason": "Current name at inventory bootstrap.",
-          "valid_from": "2026-08-29",
+          "reason": "Renamed the same day when Phase 2's shared scripts/component_inventory.py replaced its inline Globs.",
+          "valid_from": "2026-08-03",
           "valid_to": null
         }
       ],
       "path": "skills/analyzing-plugin-components",
-      "provenance": {},
+      "provenance": {
+        "notes": "Entered as analyzing-sessions-by-project-and-time (commit b92bdb7, 2026-08-03); renamed to analyzing-plugin-components the same day (commit 6b9b35f) when Phase 2's shared scripts/component_inventory.py replaced its inline Globs.",
+        "origin": "Ported from plugin-devkit's analyzing-sessions skill as part of analysis-kit's initial creation"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -125,7 +137,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-03",
       "details": {
         "schema": "skill"
       },
@@ -166,7 +178,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-04",
       "details": {
         "schema": "skill"
       },
@@ -207,7 +219,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-04",
       "details": {
         "schema": "skill"
       },
@@ -248,7 +260,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-04",
       "details": {
         "schema": "skill"
       },
@@ -289,7 +301,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-28",
       "details": {
         "schema": "skill"
       },
@@ -330,7 +342,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-04",
       "details": {
         "schema": "skill"
       },
@@ -371,7 +383,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-28",
       "details": {
         "schema": "skill"
       },
@@ -412,7 +424,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-05",
       "details": {
         "schema": "skill"
       },
@@ -453,7 +465,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-14",
       "details": {
         "schema": "skill"
       },
@@ -494,7 +506,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-06",
       "details": {
         "schema": "skill"
       },
