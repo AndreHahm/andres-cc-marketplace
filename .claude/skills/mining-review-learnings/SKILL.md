@@ -101,6 +101,11 @@ For each PR in the resolved set:
 
 1. **Fetch GitHub review history**:
    `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review_fetcher.py" --pr <n> --repo <owner/repo>)`.
+   Its output covers three record kinds — `review` (a formal review submission), `inline_comment` (a
+   comment anchored to a diff line), and `issue_comment` (general PR conversation/timeline comments,
+   e.g. a bot's summary comment) — normalized with a common shape including a `source_url` field for
+   direct citation. Read all three kinds for candidate extraction, not just `review`/`inline_comment`;
+   a real finding (including a bot's own summary comment) can land in any of them.
 2. **Locate the merge window**: `gh pr view <n> --json createdAt,mergedAt` (already available from
    Phase 1 for a date-range or since-last-cited resolution; fetch fresh for an explicit-list resolution).
 3. **Claude Code side**: run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/session_parser.py"

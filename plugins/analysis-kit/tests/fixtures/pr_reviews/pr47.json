@@ -250,5 +250,108 @@
       "position": 1,
       "subject_type": "line"
     }
+  ],
+  "issue_comments": [
+    {
+      "url": "https://api.github.com/repos/AndreHahm/andres-cc-marketplace/issues/comments/5315563213",
+      "html_url": "https://github.com/AndreHahm/andres-cc-marketplace/pull/47#issuecomment-5315563213",
+      "issue_url": "https://api.github.com/repos/AndreHahm/andres-cc-marketplace/issues/47",
+      "id": 5315563213,
+      "node_id": "IC_kwDOTi7e-s8AAAABPNUOzQ",
+      "user": {
+        "login": "coderabbitai[bot]",
+        "id": 136622811,
+        "node_id": "BOT_kgDOCCSy2w",
+        "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+        "html_url": "https://github.com/apps/coderabbitai",
+        "followers_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/followers",
+        "following_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/following{/other_user}",
+        "gists_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/subscriptions",
+        "organizations_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/orgs",
+        "repos_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/repos",
+        "events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/coderabbitai%5Bbot%5D/received_events",
+        "type": "Bot",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "created_at": "2026-08-17T11:42:04Z",
+      "updated_at": "2026-08-17T12:14:45Z",
+      "body": "<!-- This is an auto-generated comment: summarize by coderabbit.ai -->\n<!-- review_stack_entry_start -->\n\n[![Review Change Stack](https://storage.googleapis.com/coderabbit_public_assets/review-stack-in-coderabbit-ui.svg)](https://app.coderabbit.ai/change-stack/AndreHahm/andres-cc-marketplace/pull/47?utm_source=github_walkthrough&utm_medium=github&utm_campaign=change_stack)\n\n<!-- review_stack_entry_end -->\n<!-- This is an auto-generated comment: skip review by coderabbit.ai -->\n\n> [!IMPORTANT]\n> ## Review available on request\n> \n> - [ ] <!-- {\"checkboxId\": \"e9bb8d72-00e8-4f67-9cb2-caf3b22574fe\"} --> 🔍 Trigger review\n> \n> Reviews should be triggered manually for repositories with fewer than 10 stars. Select **Trigger review** above or comment `@coderabbitai review` to review the latest changes. For a full review, comment `@coderabbitai full review`.\n> \n> <details>\n> <summary>⚙️ Run configuration</summary>\n> \n> **Configuration used**: Organization UI\n> \n> **Review profile**: CHILL\n> \n> **Plan**: Pro Plus\n> \n> **Run ID**: `ba13722c-f020-4911-ad67-6b5afddaf3a0`\n> \n> </details>\n\n<!-- end of auto-generated comment: skip review by coderabbit.ai -->\n\n<!-- walkthrough_start -->\n\n<details>\n<summary>📝 Walkthrough</summary>\n\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n\n- Added Bash and PowerShell scratchpad cleanup scripts.\n- Added configurable age filtering with a 7-day default.\n- Added dry-run reporting for session age and size.\n- Added confirmation before deletion.\n- Added validation for paths, thresholds, repository context, and missing targets.\n\n| Author | Lines added | Lines removed |\n|---|---:|---:|\n| AndreHahm | 160 | 0 |\n\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->\n## Walkthrough\n\nAdded PowerShell and Bash utilities that locate repository Claude scratchpads, identify sessions older than a configurable threshold, report candidates, and delete them after confirmation.\n\n### Changes\n\n**Scratchpad cleanup**\n\n|Layer / File(s)|Summary|\n|---|---|\n|**Repository discovery and validation** <br> `.claude/scripts/cleanup-scratchpad.ps1`, `.claude/scripts/cleanup-scratchpad.sh`|Both scripts validate the age threshold, locate the Git repository, construct the scratchpad path, and handle invalid context or missing directories.|\n|**Stale-session scanning and deletion** <br> `.claude/scripts/cleanup-scratchpad.sh`|The Bash script evaluates session age and size, reports eligible sessions, handles empty results, requests confirmation, and recursively deletes selected directories.|\n\n**Suggested labels:** `t: chore`, `i: minor change`\n\n</details>\n\n<!-- walkthrough_end -->\n<!-- pre_merge_checks_walkthrough_start -->\n\n<details>\n<summary>🚥 Pre-merge checks | ✅ 5</summary>\n\n<details>\n<summary>✅ Passed checks (5 passed)</summary>\n\n|         Check name         | Status   | Explanation                                                                                                            |\n| :------------------------: | :------- | :--------------------------------------------------------------------------------------------------------------------- |\n|         Title check        | ✅ Passed | The title clearly and concisely describes the Bash and PowerShell scratchpad-cleanup scripts.                          |\n|      Description check     | ✅ Passed | The description covers the required sections and provides clear scope, changes, testing details, and checklist status. |\n|     Docstring Coverage     | ✅ Passed | No functions found in the changed files to evaluate docstring coverage. Skipping docstring coverage check.             |\n|     Linked Issues check    | ✅ Passed | Check skipped because no linked issues were found for this pull request.                                               |\n| Out of Scope Changes check | ✅ Passed | Check skipped because no linked issues were found for this pull request.                                               |\n\n</details>\n\n</details>\n\n<!-- pre_merge_checks_walkthrough_end -->\n<!-- finishing_touch_checkbox_start -->\n\n<details>\n<summary>✨ Finishing Touches</summary>\n\n<details>\n<summary>📝 Generate docstrings</summary>\n\n- [ ] <!-- {\"checkboxId\": \"7962f53c-55bc-4827-bfbf-6a18da830691\"} --> Create stacked PR\n- [ ] <!-- {\"checkboxId\": \"3e1879ae-f29b-4d0d-8e06-d12b7ba33d98\"} --> Commit on current branch\n\n</details>\n<details>\n<summary>🧪 Generate unit tests (beta)</summary>\n\n- [ ] <!-- {\"checkboxId\": \"f47ac10b-58cc-4372-a567-0e02b2c3d479\", \"radioGroupId\": \"utg-output-choice-group-5315563213\"} -->   Create PR with unit tests\n- [ ] <!-- {\"checkboxId\": \"6ba7b810-9dad-11d1-80b4-00c04fd430c8\", \"radioGroupId\": \"utg-output-choice-group-5315563213\"} -->   Commit unit tests in branch `chore/scratchpad-cleanup-script`\n\n</details>\n\n</details>\n\n<!-- finishing_touch_checkbox_end -->\n<!-- tips_start -->\n\n---\n\nThanks for using [CodeRabbit](https://coderabbit.ai?utm_source=oss&utm_medium=github&utm_campaign=AndreHahm/andres-cc-marketplace&utm_content=47)! It's free for OSS, and your support helps us grow. If you like it, consider giving us a shout-out.\n\n<details>\n<summary>❤️ Share</summary>\n\n- [X](https://twitter.com/intent/tweet?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A&url=https%3A//coderabbit.ai)\n- [Mastodon](https://mastodon.social/share?text=I%20just%20used%20%40coderabbitai%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20the%20proprietary%20code.%20Check%20it%20out%3A%20https%3A%2F%2Fcoderabbit.ai)\n- [Reddit](https://www.reddit.com/submit?title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&text=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code.%20Check%20it%20out%3A%20https%3A//coderabbit.ai)\n- [LinkedIn](https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fcoderabbit.ai&mini=true&title=Great%20tool%20for%20code%20review%20-%20CodeRabbit&summary=I%20just%20used%20CodeRabbit%20for%20my%20code%20review%2C%20and%20it%27s%20fantastic%21%20It%27s%20free%20for%20OSS%20and%20offers%20a%20free%20trial%20for%20proprietary%20code)\n\n</details>\n\n\n<sub>Comment `@coderabbitai help` to get the list of available commands.</sub>\n\n<!-- tips_end -->",
+      "author_association": "NONE",
+      "reactions": {
+        "url": "https://api.github.com/repos/AndreHahm/andres-cc-marketplace/issues/comments/5315563213/reactions",
+        "total_count": 0,
+        "+1": 0,
+        "-1": 0,
+        "laugh": 0,
+        "hooray": 0,
+        "confused": 0,
+        "heart": 0,
+        "rocket": 0,
+        "eyes": 0
+      },
+      "performed_via_github_app": {
+        "id": 347564,
+        "client_id": "Iv1.6aaafe4fe882736b",
+        "slug": "coderabbitai",
+        "node_id": "A_kwHOB96YWc4ABU2s",
+        "owner": {
+          "login": "coderabbitai",
+          "id": 132028505,
+          "node_id": "O_kgDOB96YWQ",
+          "avatar_url": "https://avatars.githubusercontent.com/u/132028505?v=4",
+          "gravatar_id": "",
+          "url": "https://api.github.com/users/coderabbitai",
+          "html_url": "https://github.com/coderabbitai",
+          "followers_url": "https://api.github.com/users/coderabbitai/followers",
+          "following_url": "https://api.github.com/users/coderabbitai/following{/other_user}",
+          "gists_url": "https://api.github.com/users/coderabbitai/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/coderabbitai/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/coderabbitai/subscriptions",
+          "organizations_url": "https://api.github.com/users/coderabbitai/orgs",
+          "repos_url": "https://api.github.com/users/coderabbitai/repos",
+          "events_url": "https://api.github.com/users/coderabbitai/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/coderabbitai/received_events",
+          "type": "Organization",
+          "user_view_type": "public",
+          "site_admin": false
+        },
+        "name": "coderabbitai",
+        "description": "# Transforming Code Reviews with AI\r\n\r\n## Features\r\n\r\n**Automated Reviews**: Continuous reviews of the pull requests including incremental commits. \r\n\r\n**Summarization**: Generates high-level summary and a technical walkthrough of the PR changes. \r\n\r\n**Line-by-line review**: Provides line-by-line suggestions committable with one click.\r\n\r\n**Codebase verification**:  Verifies the impact on the overall codebase and identifies missing changes.\r\n\r\n**Insights into your code**:  Ask any questions on your codebase within the pull request \r\n\r\n**Chat about your code** : Chat with the bot around your code. The more you chat, the smarter it gets.\r\n\r\n**Issue Validation**:  Validates the PR against the linked issues and identifies other related issues \r\n\r\n\r\n\r\n",
+        "external_url": "https://coderabbit.ai?utm_source=cr_app&utm_medium=github",
+        "html_url": "https://github.com/apps/coderabbitai",
+        "created_at": "2023-06-14T15:47:27Z",
+        "updated_at": "2026-08-21T17:46:15Z",
+        "permissions": {
+          "actions": "read",
+          "checks": "write",
+          "contents": "write",
+          "discussions": "read",
+          "issues": "write",
+          "members": "read",
+          "metadata": "read",
+          "pull_requests": "write",
+          "statuses": "write"
+        },
+        "events": [
+          "issues",
+          "issue_comment",
+          "label",
+          "organization",
+          "pull_request",
+          "pull_request_review",
+          "pull_request_review_comment",
+          "pull_request_review_thread",
+          "release",
+          "repository"
+        ]
+      },
+      "minimized": null
+    }
   ]
 }

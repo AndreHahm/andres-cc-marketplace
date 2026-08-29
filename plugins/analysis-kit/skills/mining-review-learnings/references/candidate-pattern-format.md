@@ -23,7 +23,9 @@ mismatch):
 **Rule:** <the generalizable rule this finding implies, in the document's own imperative style>
 **Evidence:** <comment URL(s) from the fetched review history, and the transcript locator when
 `session-transcript: available` — the raw source, not a metadata block; no formal evidence-metadata
-schema exists yet for this>
+schema exists yet for this. Use `pr_review_fetcher.py`'s own `source_url` field directly for each cited
+record — it's GitHub's real `html_url` for that review/comment/issue-comment, so this URL never needs
+hand-reconstructing from a bare `review_id`/`comment_id`.>
 **Cross-check:** <only when session-transcript is available — does the transcript's own account agree
 with the review comment's stated root cause? Note agreement or divergence explicitly.>
 ```

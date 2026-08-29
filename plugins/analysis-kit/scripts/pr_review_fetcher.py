@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Deterministic PR review-history fetcher and normalizer for analysis-kit.
 
-Wraps `gh api repos/{owner}/{repo}/pulls/{n}/reviews` and `.../comments`,
-normalizing both into one flat list of records with a common shape. Purely a
+Wraps `gh api repos/{owner}/{repo}/pulls/{n}/reviews`, `.../pulls/{n}/comments`,
+and `.../issues/{n}/comments` (general PR conversation comments -- a PR is
+also an issue internally, so line-anchored review comments and top-level
+conversation comments live under two different REST endpoints), normalizing
+all three into one flat list of records with a common shape. Purely a
 fetch-and-normalize step -- it makes no judgment about severity, pattern, or
 recurrence; that's the calling skill's job (`mining-review-learnings`).
 
@@ -15,9 +18,13 @@ since `subprocess.run` is called with a list argv and no `shell=True`.
 
 Two ways to get input JSON, never both:
   --pr/--repo   Shell out to `gh api` live (real use).
-  --fixture-file PATH   Read reviews/comments JSON already saved to disk,
-                        skipping `gh` entirely (tests and offline replay).
-                        Expects a JSON object: {"reviews": [...], "comments": [...]}.
+  --fixture-file PATH   Read reviews/comments/issue_comments JSON already
+                        saved to disk, skipping `gh` entirely (tests and
+                        offline replay). Expects a JSON object:
+                        {"reviews": [...], "comments": [...], "issue_comments": [...]}.
+                        `issue_comments` is optional in the fixture file
+                        (defaults to an empty list) so pre-existing
+                        two-key fixtures stay valid.
                         Accepts any local path -- no containment check limits
                         it to this plugin's own fixtures/ directory.
 """
@@ -57,13 +64,14 @@ def _run_gh_api(path: str) -> list[dict]:
     return [item for page in pages for item in page]
 
 
-def fetch_live(pr: int, repo: str) -> tuple[list[dict], list[dict]]:
+def fetch_live(pr: int, repo: str) -> tuple[list[dict], list[dict], list[dict]]:
     reviews = _run_gh_api(f"repos/{repo}/pulls/{pr}/reviews")
     comments = _run_gh_api(f"repos/{repo}/pulls/{pr}/comments")
-    return reviews, comments
+    issue_comments = _run_gh_api(f"repos/{repo}/issues/{pr}/comments")
+    return reviews, comments, issue_comments
 
 
-def load_fixture(path: Path) -> tuple[list[dict], list[dict]]:
+def load_fixture(path: Path) -> tuple[list[dict], list[dict], list[dict]]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -71,20 +79,34 @@ def load_fixture(path: Path) -> tuple[list[dict], list[dict]]:
     if not isinstance(data, dict) or "reviews" not in data or "comments" not in data:
         raise FetchError(f"{path}: expected a JSON object with 'reviews' and 'comments' keys")
     reviews, comments = data["reviews"], data["comments"]
-    if not isinstance(reviews, list) or not isinstance(comments, list):
-        raise FetchError(f"{path}: 'reviews' and 'comments' must both be JSON arrays")
-    return reviews, comments
+    issue_comments = data.get("issue_comments", [])
+    if (
+        not isinstance(reviews, list)
+        or not isinstance(comments, list)
+        or not isinstance(issue_comments, list)
+    ):
+        raise FetchError(
+            f"{path}: 'reviews', 'comments', and 'issue_comments' must all be JSON arrays"
+        )
+    return reviews, comments, issue_comments
 
 
-def normalize(reviews: list[dict], comments: list[dict]) -> list[dict]:
-    """Flatten raw GitHub review/comment JSON into one common record shape.
+def normalize(
+    reviews: list[dict], comments: list[dict], issue_comments: list[dict] | None = None
+) -> list[dict]:
+    """Flatten raw GitHub review/comment/issue-comment JSON into one common record shape.
 
-    Each record: reviewer, kind (review|inline_comment), file, line, body,
-    submitted_at, review_id, comment_id, in_reply_to_id. The last three are
-    None where not applicable to that record's kind -- comment_id and
-    in_reply_to_id only exist for inline comments, and a review-level record
-    has no file/line since it isn't anchored to a diff position.
+    Each record: reviewer, kind (review|inline_comment|issue_comment), file,
+    line, body, submitted_at, review_id, comment_id, in_reply_to_id,
+    source_url. The kind-specific fields are None where not applicable --
+    comment_id and in_reply_to_id only exist for inline/issue comments, and
+    a review-level or issue-comment record has no file/line since neither is
+    anchored to a diff position. source_url is GitHub's own html_url for
+    that review/comment when present, else None -- the direct citation link
+    `mining-review-learnings`' candidate format requires in its Evidence
+    field, so callers should never need to hand-reconstruct it.
     """
+    issue_comments = issue_comments or []
     records: list[dict] = []
 
     for review in reviews:
@@ -99,6 +121,7 @@ def normalize(reviews: list[dict], comments: list[dict]) -> list[dict]:
                 "review_id": review.get("id"),
                 "comment_id": None,
                 "in_reply_to_id": None,
+                "source_url": review.get("html_url"),
             }
         )
 
@@ -119,6 +142,23 @@ def normalize(reviews: list[dict], comments: list[dict]) -> list[dict]:
                 "review_id": comment.get("pull_request_review_id"),
                 "comment_id": comment.get("id"),
                 "in_reply_to_id": comment.get("in_reply_to_id"),
+                "source_url": comment.get("html_url"),
+            }
+        )
+
+    for comment in issue_comments:
+        records.append(
+            {
+                "reviewer": (comment.get("user") or {}).get("login"),
+                "kind": "issue_comment",
+                "file": None,
+                "line": None,
+                "body": comment.get("body", ""),
+                "submitted_at": comment.get("created_at"),
+                "review_id": None,
+                "comment_id": comment.get("id"),
+                "in_reply_to_id": None,
+                "source_url": comment.get("html_url"),
             }
         )
 
@@ -140,10 +180,10 @@ def main() -> int:
 
     try:
         if args.pr is not None:
-            reviews, comments = fetch_live(args.pr, args.repo)
+            reviews, comments, issue_comments = fetch_live(args.pr, args.repo)
         else:
-            reviews, comments = load_fixture(Path(args.fixture_file))
-        records = normalize(reviews, comments)
+            reviews, comments, issue_comments = load_fixture(Path(args.fixture_file))
+        records = normalize(reviews, comments, issue_comments)
     except FetchError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
