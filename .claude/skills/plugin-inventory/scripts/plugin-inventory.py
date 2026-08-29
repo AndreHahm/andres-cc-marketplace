@@ -46,7 +46,14 @@ INVENTORY_FILENAME = "plugin-inventory.json"
 # status_history in sync); every history/scoring field is append-only,
 # editable only through history.append_*/repair-history's own
 # explicit-confirmation gate -- none of those belong here.
-ALLOWED_UPDATE_FIELDS = {"path", "functional_role", "domain", "compatibility", "created_on"}
+ALLOWED_UPDATE_FIELDS = {
+    "path",
+    "functional_role",
+    "domain",
+    "compatibility",
+    "created_on",
+    "provenance",
+}
 
 # Logical component types this script has a real filesystem-convention
 # detector for. Of the remaining logical types, only mcp-server/lsp-server

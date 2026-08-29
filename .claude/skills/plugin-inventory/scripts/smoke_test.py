@@ -422,6 +422,11 @@ def check_cli_bootstrap_check_roundtrip():
             real_plugin_dir, plugin_dir, ignore=shutil.ignore_patterns("__pycache__", "*.pyc")
         )
         inventory_path = _fresh_inventory_path(plugin_dir)
+        # plugin-devkit's own real plugin-inventory.json may already exist (it does,
+        # independently of this test) -- this scenario bootstraps a *fresh* copy
+        # regardless, so strip any inventory the copytree above carried along.
+        if inventory_path.exists():
+            inventory_path.unlink()
         bootstrap = _run(
             "bootstrap", plugin_dir, inventory_path, "plugin_deadbeef", "plugin-devkit"
         )
