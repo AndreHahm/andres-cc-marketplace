@@ -12,6 +12,17 @@ SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 SKILL_MD = SKILL_DIR / "SKILL.md"
 SCRIPT = SKILL_DIR / "scripts" / "plugin-inventory.py"
 
+sys.path.insert(0, str(SKILL_DIR.parent.parent / "scripts"))
+from inventory_common import json_store  # noqa: E402  # ty: ignore[unresolved-import]
+
+
+def _current_hash(inventory_path):
+    """The same json_store.compute_hash the CLI itself uses for repair-history's
+    --expected-hash/--expected-replacement-hash and apply's expected_hash -- lets a
+    test build a valid hash for the "correct" case, and a deliberately wrong one
+    for the "stale" case."""
+    return json_store.compute_hash(json.loads(inventory_path.read_text(encoding="utf-8")))
+
 
 def check_frontmatter():
     text = SKILL_MD.read_text(encoding="utf-8")
@@ -320,10 +331,394 @@ def check_repair_history_structural_rejection():
             replacement_path,
             "--confirm",
             component_id,
+            "--expected-hash",
+            _current_hash(inventory_path),
+            "--expected-replacement-hash",
+            _current_hash(replacement_path),
         )
         if repair.returncode == 0:
             return False, "repair-history accepted a replacement with two open periods"
         return True, "repair-history correctly rejected a structurally invalid replacement history"
+
+
+def check_repair_history_stale_hash_rejected():
+    """A --expected-hash that doesn't match the live inventory must be
+    rejected before any write -- repair-history's own optimistic-concurrency
+    gate, added after a live PR review found the original --confirm gate had
+    no defense against a repair approved from a snapshot that changed before
+    this command actually ran."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        before_text = inventory_path.read_text(encoding="utf-8")
+        component_id = json.loads(before_text)["components"][0]["id"]
+        replacement_path = pathlib.Path(tmpdir) / "replacement.json"
+        replacement_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "status": "planned",
+                        "valid_from": "2020-01-01",
+                        "valid_to": "2020-06-01",
+                        "reason": "real prior status, backfilled from git history",
+                        "evidence": ["commit abc1234"],
+                    },
+                    {
+                        "status": "active",
+                        "valid_from": "2020-06-01",
+                        "valid_to": None,
+                        "reason": "became active",
+                        "evidence": ["commit def5678"],
+                    },
+                ]
+            ),
+            encoding="utf-8",
+        )
+        repair = _run(
+            "repair-history",
+            plugin_dir,
+            inventory_path,
+            component_id,
+            "status_history",
+            replacement_path,
+            "--confirm",
+            component_id,
+            "--expected-hash",
+            "0" * 64,
+            "--expected-replacement-hash",
+            _current_hash(replacement_path),
+        )
+        if repair.returncode == 0:
+            return False, "repair-history accepted a wrong/stale --expected-hash"
+        if "stale repair" not in repair.stderr:
+            return (
+                False,
+                f"expected a 'stale repair' rejection message, got: {repair.stderr.strip()}",
+            )
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return False, "inventory file was modified despite a stale --expected-hash"
+        return True, "repair-history correctly rejected a stale/wrong --expected-hash"
+
+
+def check_repair_history_invalid_status_rejected():
+    """A replacement status_history period with a status value outside
+    STATUS_VALUES must be rejected before any write -- validate_history_periods
+    alone only checks date shapes/ordering, not the status enum itself."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        before_text = inventory_path.read_text(encoding="utf-8")
+        component_id = json.loads(before_text)["components"][0]["id"]
+        replacement_path = pathlib.Path(tmpdir) / "replacement.json"
+        replacement_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "status": "totally-invalid",
+                        "valid_from": "2020-01-01",
+                        "valid_to": None,
+                        "reason": "a status value outside STATUS_VALUES",
+                        "evidence": [],
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        repair = _run(
+            "repair-history",
+            plugin_dir,
+            inventory_path,
+            component_id,
+            "status_history",
+            replacement_path,
+            "--confirm",
+            component_id,
+            "--expected-hash",
+            _current_hash(inventory_path),
+            "--expected-replacement-hash",
+            _current_hash(replacement_path),
+        )
+        if repair.returncode == 0:
+            return False, "repair-history accepted a status value outside STATUS_VALUES"
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return False, "inventory file was modified despite an invalid status value"
+        return True, "repair-history correctly rejected an invalid status enum value"
+
+
+def check_repair_history_missing_reason_rejected():
+    """A replacement period missing 'reason' (or with a non-list 'evidence')
+    must be rejected before any write -- validate_history_periods alone
+    never checks these fields at all."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        before_text = inventory_path.read_text(encoding="utf-8")
+        component_id = json.loads(before_text)["components"][0]["id"]
+        replacement_path = pathlib.Path(tmpdir) / "replacement.json"
+        replacement_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "status": "active",
+                        "valid_from": "2020-01-01",
+                        "valid_to": None,
+                        "evidence": [],
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        repair = _run(
+            "repair-history",
+            plugin_dir,
+            inventory_path,
+            component_id,
+            "status_history",
+            replacement_path,
+            "--confirm",
+            component_id,
+            "--expected-hash",
+            _current_hash(inventory_path),
+            "--expected-replacement-hash",
+            _current_hash(replacement_path),
+        )
+        if repair.returncode == 0:
+            return False, "repair-history accepted a period with no 'reason' field"
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return False, "inventory file was modified despite a missing 'reason' field"
+        return True, "repair-history correctly rejected a period missing 'reason'"
+
+
+def check_repair_history_stale_replacement_hash_rejected():
+    """A --expected-replacement-hash that doesn't match the actual
+    replacement_history_path file's content must be rejected before any
+    write -- a real gap found by a live security-reviewer pass on PR #238:
+    --expected-hash alone only binds the *inventory's* pre-repair state, not
+    the replacement content itself, so a caller could get approval for one
+    replacement file and then swap in a different one at invocation time."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        before_text = inventory_path.read_text(encoding="utf-8")
+        component_id = json.loads(before_text)["components"][0]["id"]
+        replacement_path = pathlib.Path(tmpdir) / "replacement.json"
+        replacement_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "status": "planned",
+                        "valid_from": "2020-01-01",
+                        "valid_to": "2020-06-01",
+                        "reason": "real prior status, backfilled from git history",
+                        "evidence": ["commit abc1234"],
+                    },
+                    {
+                        "status": "active",
+                        "valid_from": "2020-06-01",
+                        "valid_to": None,
+                        "reason": "became active",
+                        "evidence": ["commit def5678"],
+                    },
+                ]
+            ),
+            encoding="utf-8",
+        )
+        repair = _run(
+            "repair-history",
+            plugin_dir,
+            inventory_path,
+            component_id,
+            "status_history",
+            replacement_path,
+            "--confirm",
+            component_id,
+            "--expected-hash",
+            _current_hash(inventory_path),
+            "--expected-replacement-hash",
+            "0" * 64,
+        )
+        if repair.returncode == 0:
+            return False, "repair-history accepted a wrong/stale --expected-replacement-hash"
+        if "stale repair" not in repair.stderr:
+            return (
+                False,
+                f"expected a 'stale repair' rejection message, got: {repair.stderr.strip()}",
+            )
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return False, "inventory file was modified despite a stale --expected-replacement-hash"
+        return True, "repair-history correctly rejected a stale/wrong --expected-replacement-hash"
+
+
+def check_repair_history_evidence_item_type_rejected():
+    """A replacement period whose 'evidence' list contains a non-string item
+    must be rejected before any write -- the schema declares evidence as an
+    array of strings; validating only the container (not its items) would
+    let arbitrary nested JSON into the append-only audit history, found by a
+    live security-reviewer pass on PR #238."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        before_text = inventory_path.read_text(encoding="utf-8")
+        component_id = json.loads(before_text)["components"][0]["id"]
+        replacement_path = pathlib.Path(tmpdir) / "replacement.json"
+        replacement_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "status": "active",
+                        "valid_from": "2020-01-01",
+                        "valid_to": None,
+                        "reason": "evidence contains a non-string item",
+                        "evidence": [{"nested": "object"}],
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        repair = _run(
+            "repair-history",
+            plugin_dir,
+            inventory_path,
+            component_id,
+            "status_history",
+            replacement_path,
+            "--confirm",
+            component_id,
+            "--expected-hash",
+            _current_hash(inventory_path),
+            "--expected-replacement-hash",
+            _current_hash(replacement_path),
+        )
+        if repair.returncode == 0:
+            return False, "repair-history accepted an 'evidence' list with a non-string item"
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return False, "inventory file was modified despite a non-string 'evidence' item"
+        return True, "repair-history correctly rejected an 'evidence' list with a non-string item"
+
+
+def check_repair_history_succeeds_on_malformed_current_inventory():
+    """repair-history must be usable on the exact malformed history it's
+    documented to fix -- e.g. two open status_history periods hand-corrupted
+    into the current on-disk file. A live security-reviewer pass on PR #238
+    found the original implementation pre-validated the *current* inventory
+    with validate_inventory before doing anything else, which would reject
+    the malformed file outright and lock the operator out of the one
+    command meant to repair it. This confirms that pre-validation was
+    removed and repair-history can now actually run in that scenario --
+    atomic_write_json's own post-write validator (not a pre-read one) is
+    what guarantees the *result* is valid."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plugin_dir = pathlib.Path(tmpdir) / "fixture_plugin"
+        _write_skill(plugin_dir / "skills", "skill-a")
+        inventory_path = _fresh_inventory_path(plugin_dir)
+        bootstrap = _run("bootstrap", plugin_dir, inventory_path, "plugin_test", "fixture-plugin")
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+        component = inventory["components"][0]
+        component_id = component["id"]
+        # Hand-corrupt status_history to have two open periods -- bypasses the
+        # CLI entirely, simulating a bug in an earlier run or a hand edit.
+        component["status_history"] = [
+            {
+                "status": "active",
+                "valid_from": "2020-01-01",
+                "valid_to": None,
+                "reason": "original bootstrap period",
+                "evidence": [],
+            },
+            {
+                "status": "deprecated",
+                "valid_from": "2021-01-01",
+                "valid_to": None,
+                "reason": "bug in an earlier run left this open too",
+                "evidence": [],
+            },
+        ]
+        component["status"] = "active"
+        inventory_path.write_text(json.dumps(inventory), encoding="utf-8")
+        replacement_path = pathlib.Path(tmpdir) / "replacement.json"
+        replacement_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "status": "active",
+                        "valid_from": "2020-01-01",
+                        "valid_to": None,
+                        "reason": "corrected: only one open period",
+                        "evidence": ["manual correction"],
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+        repair = _run(
+            "repair-history",
+            plugin_dir,
+            inventory_path,
+            component_id,
+            "status_history",
+            replacement_path,
+            "--confirm",
+            component_id,
+            "--expected-hash",
+            _current_hash(inventory_path),
+            "--expected-replacement-hash",
+            _current_hash(replacement_path),
+        )
+        if repair.returncode != 0:
+            return (
+                False,
+                "repair-history refused to run against its own documented malformed-history "
+                f"scenario: {repair.stderr.strip()}",
+            )
+        check = _run("check", inventory_path, plugin_dir)
+        if check.returncode != 0 or json.loads(check.stdout)["drift_count"] != 0:
+            return (
+                False,
+                f"check reported drift after repairing a malformed inventory: {check.stdout}",
+            )
+        return (
+            True,
+            "repair-history correctly repaired a current inventory validate_inventory would reject",
+        )
 
 
 def check_enum_rejection():
@@ -943,6 +1338,12 @@ CHECKS = [
     check_conflict_missing_active_component,
     check_history_invariants,
     check_repair_history_structural_rejection,
+    check_repair_history_stale_hash_rejected,
+    check_repair_history_invalid_status_rejected,
+    check_repair_history_missing_reason_rejected,
+    check_repair_history_stale_replacement_hash_rejected,
+    check_repair_history_evidence_item_type_rejected,
+    check_repair_history_succeeds_on_malformed_current_inventory,
     check_enum_rejection,
     check_cli_bootstrap_check_roundtrip,
     check_non_active_reappearance_conflict,

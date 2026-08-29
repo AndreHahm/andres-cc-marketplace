@@ -117,6 +117,33 @@ def validate_history_periods(periods, entity_label):
             )
 
 
+def validate_history_period_fields(periods, entity_label, value_key):
+    """Validate the non-date fields `validate_history_periods` doesn't cover:
+    every period must carry a real string `value_key` ('status' or 'name'), a
+    non-empty `reason` string, and an `evidence` list of strings. For
+    `value_key == 'status'`, the value is additionally checked against
+    STATUS_VALUES. Call this after `validate_history_periods`, which already
+    established period well-formedness (open-period cardinality, date
+    shapes/ordering) -- this only exists because a `repair-history`
+    replacement file is arbitrary user-supplied JSON, unlike
+    `history.append_*`'s own programmatically-built periods, which always
+    carry these fields by construction."""
+    for period in periods:
+        value = period.get(value_key)
+        if not value:
+            raise ValueError(f"{entity_label}: every period must have a non-empty {value_key!r}")
+        if not isinstance(value, str):
+            raise ValueError(f"{entity_label}: {value_key!r} must be a string")
+        if value_key == "status":
+            validate_status(value)
+        reason = period.get("reason")
+        if not isinstance(reason, str) or not reason:
+            raise ValueError(f"{entity_label}: every period must have a non-empty 'reason' string")
+        evidence = period.get("evidence")
+        if not isinstance(evidence, list) or not all(isinstance(item, str) for item in evidence):
+            raise ValueError(f"{entity_label}: 'evidence' must be a list of strings")
+
+
 def open_period_value(periods, value_key):
     """Return the value_key field (e.g. 'status' or 'name') of the one open period."""
     for period in periods:

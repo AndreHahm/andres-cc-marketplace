@@ -91,8 +91,18 @@ This keeps `plugin-inventory`'s exclusive per-plugin ownership intact — this s
 
 `bootstrap`, `apply`, `import-grading`, and `repair-history` all hold
 `inventory_common.json_store.InventoryLock` for their full read-modify-write span, in addition to the
-hash-based staleness check `apply` already performs — the lock prevents two concurrent invocations from
-interleaving between the hash check and the atomic write; the hash check alone prevents a *stale* write,
-not a *simultaneous* one. `repair-history` has no hash-based staleness check of its own (it isn't a
-plan/apply operation), so the lock is its only protection against a concurrent write racing its
-read-modify-write span.
+hash-based staleness check `apply` and `repair-history` both perform — the lock prevents two concurrent
+invocations from interleaving between the hash check and the atomic write; the hash check alone prevents
+a *stale* write, not a *simultaneous* one. `repair-history`'s own `--expected-hash` (added after a live
+PR review, #238, found the original `--confirm`-only gate had no defense against a repair approved from
+a snapshot that changed before the command actually ran) mirrors `apply`'s `expected_hash` exactly: a
+`json_store.compute_hash` of the inventory as shown to the user for approval, checked under the lock
+before any mutation. A follow-up `security-reviewer` pass on that same fix found `--expected-hash` alone
+only bound the inventory's *pre-repair* state, never the replacement file's own content — a second flag,
+`--expected-replacement-hash` (the same `compute_hash` over the replacement array), closes that gap by
+binding the "after" side of the diff too. That same pass also found `repair-history` was pre-validating
+the *current* on-disk inventory with `validate_inventory` before doing anything else — which would lock
+an operator out of repairing the exact malformed-history scenario this mode exists to fix. That pre-read
+validation was removed; `atomic_write_json`'s own post-write validator (already run under the same lock,
+before the atomic replace) is what actually guarantees the invariant that matters: the *result* of a
+repair is always a valid inventory, regardless of whether the input was.
