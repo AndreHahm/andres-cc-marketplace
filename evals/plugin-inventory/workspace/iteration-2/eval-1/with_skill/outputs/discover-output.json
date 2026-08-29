@@ -1,0 +1,447 @@
+[
+  {
+    "type": "skill",
+    "name": "agent-development",
+    "path": "skills/agent-development"
+  },
+  {
+    "type": "skill",
+    "name": "analyzing-sessions",
+    "path": "skills/analyzing-sessions"
+  },
+  {
+    "type": "skill",
+    "name": "command-development",
+    "path": "skills/command-development"
+  },
+  {
+    "type": "skill",
+    "name": "component-prototyping",
+    "path": "skills/component-prototyping"
+  },
+  {
+    "type": "skill",
+    "name": "hook-development",
+    "path": "skills/hook-development"
+  },
+  {
+    "type": "skill",
+    "name": "marketplace-development",
+    "path": "skills/marketplace-development"
+  },
+  {
+    "type": "skill",
+    "name": "marketplace-inventory",
+    "path": "skills/marketplace-inventory"
+  },
+  {
+    "type": "skill",
+    "name": "mcp-integration",
+    "path": "skills/mcp-integration"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-auditor",
+    "path": "skills/plugin-auditor"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-comparison",
+    "path": "skills/plugin-comparison"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-conception",
+    "path": "skills/plugin-conception"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-development",
+    "path": "skills/plugin-development"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-documentation",
+    "path": "skills/plugin-documentation"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-evaluation",
+    "path": "skills/plugin-evaluation"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-grader",
+    "path": "skills/plugin-grader"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-ideation",
+    "path": "skills/plugin-ideation"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-inventory",
+    "path": "skills/plugin-inventory"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-lifecycle-downstream",
+    "path": "skills/plugin-lifecycle-downstream"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-lifecycle-maintenance",
+    "path": "skills/plugin-lifecycle-maintenance"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-lifecycle-upstream",
+    "path": "skills/plugin-lifecycle-upstream"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-planning",
+    "path": "skills/plugin-planning"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-rulebook",
+    "path": "skills/plugin-rulebook"
+  },
+  {
+    "type": "skill",
+    "name": "plugin-settings",
+    "path": "skills/plugin-settings"
+  },
+  {
+    "type": "skill",
+    "name": "reviewing-evals",
+    "path": "skills/reviewing-evals"
+  },
+  {
+    "type": "skill",
+    "name": "rule-development",
+    "path": "skills/rule-development"
+  },
+  {
+    "type": "skill",
+    "name": "rules-apply",
+    "path": "skills/rules-apply"
+  },
+  {
+    "type": "skill",
+    "name": "rules-extract",
+    "path": "skills/rules-extract"
+  },
+  {
+    "type": "skill",
+    "name": "rules-merge",
+    "path": "skills/rules-merge"
+  },
+  {
+    "type": "skill",
+    "name": "rules-review",
+    "path": "skills/rules-review"
+  },
+  {
+    "type": "skill",
+    "name": "skill-development",
+    "path": "skills/skill-development"
+  },
+  {
+    "type": "skill",
+    "name": "skill-improver-loop",
+    "path": "skills/skill-improver-loop"
+  },
+  {
+    "type": "skill",
+    "name": "skill-maintenance",
+    "path": "skills/skill-maintenance"
+  },
+  {
+    "type": "skill",
+    "name": "skill-refiner-interactive",
+    "path": "skills/skill-refiner-interactive"
+  },
+  {
+    "type": "skill",
+    "name": "skill-security",
+    "path": "skills/skill-security"
+  },
+  {
+    "type": "skill",
+    "name": "skill-stocktake",
+    "path": "skills/skill-stocktake"
+  },
+  {
+    "type": "skill",
+    "name": "skill-tester",
+    "path": "skills/skill-tester"
+  },
+  {
+    "type": "skill",
+    "name": "upstream-sources-registry",
+    "path": "skills/upstream-sources-registry"
+  },
+  {
+    "type": "skill",
+    "name": "using-plugin-devkit",
+    "path": "skills/using-plugin-devkit"
+  },
+  {
+    "type": "skill",
+    "name": "verify-agent-citations",
+    "path": "skills/verify-agent-citations"
+  },
+  {
+    "type": "skill",
+    "name": "workflow-skill-development",
+    "path": "skills/workflow-skill-development"
+  },
+  {
+    "type": "agent",
+    "name": "activation-reviewer",
+    "path": "agents/activation-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "agent-creator",
+    "path": "agents/agent-creator.md"
+  },
+  {
+    "type": "agent",
+    "name": "build-handoff-writer",
+    "path": "agents/build-handoff-writer.md"
+  },
+  {
+    "type": "agent",
+    "name": "claudemd-reviewer",
+    "path": "agents/claudemd-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "command-reviewer",
+    "path": "agents/command-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "completeness-reviewer",
+    "path": "agents/completeness-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "consistency-reviewer",
+    "path": "agents/consistency-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "dependency-reviewer",
+    "path": "agents/dependency-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "enhancement-suggestor",
+    "path": "agents/enhancement-suggestor.md"
+  },
+  {
+    "type": "agent",
+    "name": "external-references-reviewer",
+    "path": "agents/external-references-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "hook-reviewer",
+    "path": "agents/hook-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "human-doc-reviewer",
+    "path": "agents/human-doc-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "language-reviewer",
+    "path": "agents/language-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "permission-reviewer",
+    "path": "agents/permission-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "plugin-inspector",
+    "path": "agents/plugin-inspector.md"
+  },
+  {
+    "type": "agent",
+    "name": "plugin-rulebook-checker",
+    "path": "agents/plugin-rulebook-checker.md"
+  },
+  {
+    "type": "agent",
+    "name": "plugin-validator",
+    "path": "agents/plugin-validator.md"
+  },
+  {
+    "type": "agent",
+    "name": "rule-reviewer",
+    "path": "agents/rule-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "scripts-reviewer",
+    "path": "agents/scripts-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "security-reviewer",
+    "path": "agents/security-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "skill-reviewer",
+    "path": "agents/skill-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "skilldir-reviewer",
+    "path": "agents/skilldir-reviewer.md"
+  },
+  {
+    "type": "agent",
+    "name": "smoke-tester",
+    "path": "agents/smoke-tester.md"
+  },
+  {
+    "type": "agent",
+    "name": "subagent-reviewer",
+    "path": "agents/subagent-reviewer.md"
+  },
+  {
+    "type": "command",
+    "name": "apply-permissions",
+    "path": "commands/apply-permissions.md"
+  },
+  {
+    "type": "command",
+    "name": "apply-rules",
+    "path": "commands/apply-rules.md"
+  },
+  {
+    "type": "command",
+    "name": "cancel-skill-improver",
+    "path": "commands/cancel-skill-improver.md"
+  },
+  {
+    "type": "command",
+    "name": "create-command",
+    "path": "commands/create-command.md"
+  },
+  {
+    "type": "command",
+    "name": "create-plugin",
+    "path": "commands/create-plugin.md"
+  },
+  {
+    "type": "command",
+    "name": "extract-rules",
+    "path": "commands/extract-rules.md"
+  },
+  {
+    "type": "command",
+    "name": "find-dev-rule",
+    "path": "commands/find-dev-rule.md"
+  },
+  {
+    "type": "command",
+    "name": "find-permissions",
+    "path": "commands/find-permissions.md"
+  },
+  {
+    "type": "command",
+    "name": "implement-dev-rules",
+    "path": "commands/implement-dev-rules.md"
+  },
+  {
+    "type": "command",
+    "name": "implemented",
+    "path": "commands/implemented.md"
+  },
+  {
+    "type": "command",
+    "name": "merge-rules",
+    "path": "commands/merge-rules.md"
+  },
+  {
+    "type": "command",
+    "name": "plan-dev-rules",
+    "path": "commands/plan-dev-rules.md"
+  },
+  {
+    "type": "command",
+    "name": "report-dev-rules",
+    "path": "commands/report-dev-rules.md"
+  },
+  {
+    "type": "command",
+    "name": "review-rules",
+    "path": "commands/review-rules.md"
+  },
+  {
+    "type": "command",
+    "name": "skill-improver",
+    "path": "commands/skill-improver.md"
+  },
+  {
+    "type": "command",
+    "name": "trim-permissions",
+    "path": "commands/trim-permissions.md"
+  },
+  {
+    "type": "command",
+    "name": "update-dev-rule",
+    "path": "commands/update-dev-rule.md"
+  },
+  {
+    "type": "command",
+    "name": "verify-dev-rules",
+    "path": "commands/verify-dev-rules.md"
+  },
+  {
+    "type": "command",
+    "name": "verify-permissions",
+    "path": "commands/verify-permissions.md"
+  },
+  {
+    "type": "hook",
+    "name": "PostToolUse-0",
+    "path": "hooks/hooks.json"
+  },
+  {
+    "type": "hook",
+    "name": "PostToolUse-1",
+    "path": "hooks/hooks.json"
+  },
+  {
+    "type": "hook",
+    "name": "PostToolUse-2",
+    "path": "hooks/hooks.json"
+  },
+  {
+    "type": "hook",
+    "name": "PostToolUseFailure-0",
+    "path": "hooks/hooks.json"
+  },
+  {
+    "type": "hook",
+    "name": "PreToolUse-0",
+    "path": "hooks/hooks.json"
+  },
+  {
+    "type": "hook",
+    "name": "Stop-0",
+    "path": "hooks/hooks.json"
+  }
+]

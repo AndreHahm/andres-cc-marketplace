@@ -1,0 +1,101 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_27f1997a",
+      "name": "alpha-skill",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/alpha-skill"
+          ],
+          "name": "alpha-skill",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/alpha-skill",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/alpha-skill"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_c799f592",
+      "name": "beta-skill",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/beta-skill"
+          ],
+          "name": "beta-skill",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/beta-skill",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "retired",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/beta-skill"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": "unknown"
+        },
+        {
+          "evidence": [
+            "plan run 2026-08-29: build_plan() emitted a conflict for component_c799f592 (beta-skill, type=skill) with reason 'active record's discovered path is missing'",
+            "skills/beta-skill/SKILL.md is absent from the plugin directory listing"
+          ],
+          "reason": "beta-skill's discovered filesystem path (skills/beta-skill) no longer exists on disk as of 2026-08-29 plan run; confirmed with the human this is an intentional removal, not a rename or supersession, so the record is retired rather than restored.",
+          "status": "retired",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin-fixture001",
+  "plugin_name": "inv-conflict-fixture",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-08-29"
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "operation": "status-transition",
+    "id": "component_c799f592",
+    "new_status": "retired",
+    "reason": "beta-skill's discovered filesystem path (skills/beta-skill) no longer exists on disk as of 2026-08-29 plan run; confirmed with the human this is an intentional removal, not a rename or supersession, so the record is retired rather than restored.",
+    "evidence": [
+      "plan run 2026-08-29: build_plan() emitted a conflict for component_c799f592 (beta-skill, type=skill) with reason 'active record's discovered path is missing'",
+      "skills/beta-skill/SKILL.md is absent from the plugin directory listing"
+    ]
+  }
+]

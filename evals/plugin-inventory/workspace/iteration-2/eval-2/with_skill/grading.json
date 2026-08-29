@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Correctly identifies the scenario as a 'conflict' operation (missing active component)", "passed": true, "evidence": "Live-reproduced: plan emitted a real conflict operation for beta-skill with the exact documented reason text."},
+    {"text": "States the conflict is never applied as its own shape and never auto-resolved", "passed": true, "evidence": "Explicit statement, plus live behavior confirmed it (apply was only run with a constructed status-transition, never the bare conflict)."},
+    {"text": "Constructs a status-transition operation with the correct shape (operation, id, new_status, reason, evidence)", "passed": true, "evidence": "Exact JSON shown, matching schema; applied for real, resulting inventory showed the status_history correctly updated with two periods."},
+    {"text": "Names the correct apply command and explains history.close_and_append_status_period keeps status and status_history in sync", "passed": true, "evidence": "Exact apply command with freshly-fetched hash shown and run for real; explained the atomic status/status_history update mechanism."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

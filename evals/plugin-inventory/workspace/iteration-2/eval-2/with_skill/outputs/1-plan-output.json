@@ -1,0 +1,18 @@
+{
+  "expected_hash": "67aad54a7c9c04fd864f6f4144fc0986d9c08046ff152c70e9962ca65c23b37d",
+  "operations": [
+    {
+      "operation": "no-op",
+      "name": "alpha-skill",
+      "type": "skill"
+    },
+    {
+      "operation": "conflict",
+      "id": "component_c799f592",
+      "name": "beta-skill",
+      "type": "skill",
+      "reason": "active record's discovered path is missing -- requires a rename, supersede, retire, or restoration decision, not an automatic retirement",
+      "requires_approval": true
+    }
+  ]
+}

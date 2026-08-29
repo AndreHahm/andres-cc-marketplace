@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/plugin-inventory/SKILL.md",
+  "assertions": [
+    {"text": "Constructs an update operation with field 'provenance' and a real object new_value (not a string/list/null)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Runs apply with a freshly-fetched expected_hash from the same plan pass, not a reused one", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Confirms via check that drift is 0 after the update", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "For a component with no known external origin, explicitly states it would leave provenance as {} rather than fabricate an origin", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Cites the skill's own SKILL.md guidance on provenance being evidence-based, not a general-purpose annotation to invent freely", "type": "presence", "target": "outputs/ directory"}
+  ]
+}

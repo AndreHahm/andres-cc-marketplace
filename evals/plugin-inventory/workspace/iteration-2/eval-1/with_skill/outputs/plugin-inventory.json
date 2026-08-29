@@ -1,0 +1,3658 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_6459b0ef",
+      "name": "agent-development",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/agent-development"
+          ],
+          "name": "agent-development",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/agent-development",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/agent-development"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_1d284828",
+      "name": "analyzing-sessions",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/analyzing-sessions"
+          ],
+          "name": "analyzing-sessions",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/analyzing-sessions",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/analyzing-sessions"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_ee3a471d",
+      "name": "command-development",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/command-development"
+          ],
+          "name": "command-development",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/command-development",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/command-development"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_fb39fa29",
+      "name": "component-prototyping",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/component-prototyping"
+          ],
+          "name": "component-prototyping",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/component-prototyping",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/component-prototyping"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_72e90b42",
+      "name": "hook-development",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/hook-development"
+          ],
+          "name": "hook-development",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/hook-development",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/hook-development"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_d7095bd0",
+      "name": "marketplace-development",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/marketplace-development"
+          ],
+          "name": "marketplace-development",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/marketplace-development",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/marketplace-development"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_a130f304",
+      "name": "marketplace-inventory",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/marketplace-inventory"
+          ],
+          "name": "marketplace-inventory",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/marketplace-inventory",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/marketplace-inventory"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_6f4390b8",
+      "name": "mcp-integration",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/mcp-integration"
+          ],
+          "name": "mcp-integration",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/mcp-integration",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/mcp-integration"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_8746d82e",
+      "name": "plugin-auditor",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-auditor"
+          ],
+          "name": "plugin-auditor",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-auditor",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-auditor"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_58cb80eb",
+      "name": "plugin-comparison",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-comparison"
+          ],
+          "name": "plugin-comparison",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-comparison",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-comparison"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e6c87cba",
+      "name": "plugin-conception",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-conception"
+          ],
+          "name": "plugin-conception",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-conception",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-conception"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_12173414",
+      "name": "plugin-development",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-development"
+          ],
+          "name": "plugin-development",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-development",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-development"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_c9915b07",
+      "name": "plugin-documentation",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-documentation"
+          ],
+          "name": "plugin-documentation",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-documentation",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-documentation"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e2716d24",
+      "name": "plugin-evaluation",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-evaluation"
+          ],
+          "name": "plugin-evaluation",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-evaluation",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-evaluation"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_8112fa82",
+      "name": "plugin-grader",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-grader"
+          ],
+          "name": "plugin-grader",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-grader",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-grader"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_60524a14",
+      "name": "plugin-ideation",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-ideation"
+          ],
+          "name": "plugin-ideation",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-ideation",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-ideation"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_7ff7f399",
+      "name": "plugin-inventory",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-inventory"
+          ],
+          "name": "plugin-inventory",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-inventory",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-inventory"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_1c757af9",
+      "name": "plugin-lifecycle-downstream",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-lifecycle-downstream"
+          ],
+          "name": "plugin-lifecycle-downstream",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-lifecycle-downstream",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-lifecycle-downstream"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_5a0659c1",
+      "name": "plugin-lifecycle-maintenance",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-lifecycle-maintenance"
+          ],
+          "name": "plugin-lifecycle-maintenance",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-lifecycle-maintenance",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-lifecycle-maintenance"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_5cbc2c27",
+      "name": "plugin-lifecycle-upstream",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-lifecycle-upstream"
+          ],
+          "name": "plugin-lifecycle-upstream",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-lifecycle-upstream",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-lifecycle-upstream"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_c743fc54",
+      "name": "plugin-planning",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-planning"
+          ],
+          "name": "plugin-planning",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-planning",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-planning"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_24aecb38",
+      "name": "plugin-rulebook",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-rulebook"
+          ],
+          "name": "plugin-rulebook",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-rulebook",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-rulebook"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_69978a1b",
+      "name": "plugin-settings",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-settings"
+          ],
+          "name": "plugin-settings",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-settings",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-settings"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_b45a57d6",
+      "name": "reviewing-evals",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/reviewing-evals"
+          ],
+          "name": "reviewing-evals",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/reviewing-evals",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/reviewing-evals"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_d542b0ab",
+      "name": "rule-development",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/rule-development"
+          ],
+          "name": "rule-development",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/rule-development",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/rule-development"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_94811f2c",
+      "name": "rules-apply",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/rules-apply"
+          ],
+          "name": "rules-apply",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/rules-apply",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/rules-apply"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_fb535672",
+      "name": "rules-extract",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/rules-extract"
+          ],
+          "name": "rules-extract",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/rules-extract",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/rules-extract"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_a7f0aa96",
+      "name": "rules-merge",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/rules-merge"
+          ],
+          "name": "rules-merge",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/rules-merge",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/rules-merge"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_34255575",
+      "name": "rules-review",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/rules-review"
+          ],
+          "name": "rules-review",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/rules-review",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/rules-review"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_9464a740",
+      "name": "skill-development",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/skill-development"
+          ],
+          "name": "skill-development",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/skill-development",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/skill-development"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_190e7fbe",
+      "name": "skill-improver-loop",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/skill-improver-loop"
+          ],
+          "name": "skill-improver-loop",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/skill-improver-loop",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/skill-improver-loop"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_43dd07aa",
+      "name": "skill-maintenance",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/skill-maintenance"
+          ],
+          "name": "skill-maintenance",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/skill-maintenance",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/skill-maintenance"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_8a06da49",
+      "name": "skill-refiner-interactive",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/skill-refiner-interactive"
+          ],
+          "name": "skill-refiner-interactive",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/skill-refiner-interactive",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/skill-refiner-interactive"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_921c565d",
+      "name": "skill-security",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/skill-security"
+          ],
+          "name": "skill-security",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/skill-security",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/skill-security"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_a7878687",
+      "name": "skill-stocktake",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/skill-stocktake"
+          ],
+          "name": "skill-stocktake",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/skill-stocktake",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/skill-stocktake"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_384a8754",
+      "name": "skill-tester",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/skill-tester"
+          ],
+          "name": "skill-tester",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/skill-tester",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/skill-tester"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_7f2e2378",
+      "name": "upstream-sources-registry",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/upstream-sources-registry"
+          ],
+          "name": "upstream-sources-registry",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/upstream-sources-registry",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/upstream-sources-registry"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_71ff9525",
+      "name": "using-plugin-devkit",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/using-plugin-devkit"
+          ],
+          "name": "using-plugin-devkit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/using-plugin-devkit",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/using-plugin-devkit"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_1935e36d",
+      "name": "verify-agent-citations",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/verify-agent-citations"
+          ],
+          "name": "verify-agent-citations",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/verify-agent-citations",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/verify-agent-citations"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_7b85c997",
+      "name": "workflow-skill-development",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/workflow-skill-development"
+          ],
+          "name": "workflow-skill-development",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/workflow-skill-development",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/workflow-skill-development"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_95a0f093",
+      "name": "activation-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/activation-reviewer.md"
+          ],
+          "name": "activation-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/activation-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/activation-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_16e73d05",
+      "name": "agent-creator",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/agent-creator.md"
+          ],
+          "name": "agent-creator",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/agent-creator.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/agent-creator.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_7d65116b",
+      "name": "build-handoff-writer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/build-handoff-writer.md"
+          ],
+          "name": "build-handoff-writer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/build-handoff-writer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/build-handoff-writer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e16276d5",
+      "name": "claudemd-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/claudemd-reviewer.md"
+          ],
+          "name": "claudemd-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/claudemd-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/claudemd-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_cf45e668",
+      "name": "command-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/command-reviewer.md"
+          ],
+          "name": "command-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/command-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/command-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_f57d5809",
+      "name": "completeness-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/completeness-reviewer.md"
+          ],
+          "name": "completeness-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/completeness-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/completeness-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_b33f3204",
+      "name": "consistency-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/consistency-reviewer.md"
+          ],
+          "name": "consistency-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/consistency-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/consistency-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_29302bc8",
+      "name": "dependency-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/dependency-reviewer.md"
+          ],
+          "name": "dependency-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/dependency-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/dependency-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_19088f97",
+      "name": "enhancement-suggestor",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/enhancement-suggestor.md"
+          ],
+          "name": "enhancement-suggestor",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/enhancement-suggestor.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/enhancement-suggestor.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_9a1a9388",
+      "name": "external-references-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/external-references-reviewer.md"
+          ],
+          "name": "external-references-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/external-references-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/external-references-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_71de34b5",
+      "name": "hook-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/hook-reviewer.md"
+          ],
+          "name": "hook-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/hook-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/hook-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_9beaffca",
+      "name": "human-doc-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/human-doc-reviewer.md"
+          ],
+          "name": "human-doc-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/human-doc-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/human-doc-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_df95bf43",
+      "name": "language-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/language-reviewer.md"
+          ],
+          "name": "language-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/language-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/language-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_d91a518b",
+      "name": "permission-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/permission-reviewer.md"
+          ],
+          "name": "permission-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/permission-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/permission-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_9ee411cc",
+      "name": "plugin-inspector",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/plugin-inspector.md"
+          ],
+          "name": "plugin-inspector",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/plugin-inspector.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/plugin-inspector.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_95a9d376",
+      "name": "plugin-rulebook-checker",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/plugin-rulebook-checker.md"
+          ],
+          "name": "plugin-rulebook-checker",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/plugin-rulebook-checker.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/plugin-rulebook-checker.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_0c71aecb",
+      "name": "plugin-validator",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/plugin-validator.md"
+          ],
+          "name": "plugin-validator",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/plugin-validator.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/plugin-validator.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_4897dffe",
+      "name": "rule-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/rule-reviewer.md"
+          ],
+          "name": "rule-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/rule-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/rule-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_c7672d8c",
+      "name": "scripts-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/scripts-reviewer.md"
+          ],
+          "name": "scripts-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/scripts-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/scripts-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_b2a61fe4",
+      "name": "security-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/security-reviewer.md"
+          ],
+          "name": "security-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/security-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/security-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_d3a06630",
+      "name": "skill-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/skill-reviewer.md"
+          ],
+          "name": "skill-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/skill-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/skill-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_7fa61ead",
+      "name": "skilldir-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/skilldir-reviewer.md"
+          ],
+          "name": "skilldir-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/skilldir-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/skilldir-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_aea987ce",
+      "name": "smoke-tester",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/smoke-tester.md"
+          ],
+          "name": "smoke-tester",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/smoke-tester.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/smoke-tester.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_76860aa5",
+      "name": "subagent-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/subagent-reviewer.md"
+          ],
+          "name": "subagent-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/subagent-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/subagent-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_5fc082da",
+      "name": "apply-permissions",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/apply-permissions.md"
+          ],
+          "name": "apply-permissions",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/apply-permissions.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/apply-permissions.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_f6cf1930",
+      "name": "apply-rules",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/apply-rules.md"
+          ],
+          "name": "apply-rules",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/apply-rules.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/apply-rules.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_a0c1a87b",
+      "name": "cancel-skill-improver",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/cancel-skill-improver.md"
+          ],
+          "name": "cancel-skill-improver",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/cancel-skill-improver.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/cancel-skill-improver.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_0b1458e8",
+      "name": "create-command",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/create-command.md"
+          ],
+          "name": "create-command",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/create-command.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/create-command.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_11982b5e",
+      "name": "create-plugin",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/create-plugin.md"
+          ],
+          "name": "create-plugin",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/create-plugin.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/create-plugin.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_51f2c6ef",
+      "name": "extract-rules",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/extract-rules.md"
+          ],
+          "name": "extract-rules",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/extract-rules.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/extract-rules.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_fbffafb3",
+      "name": "find-dev-rule",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/find-dev-rule.md"
+          ],
+          "name": "find-dev-rule",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/find-dev-rule.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/find-dev-rule.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_1e66d894",
+      "name": "find-permissions",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/find-permissions.md"
+          ],
+          "name": "find-permissions",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/find-permissions.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/find-permissions.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_4f6ae497",
+      "name": "implement-dev-rules",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/implement-dev-rules.md"
+          ],
+          "name": "implement-dev-rules",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/implement-dev-rules.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/implement-dev-rules.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_fa2d5a9b",
+      "name": "implemented",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/implemented.md"
+          ],
+          "name": "implemented",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/implemented.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/implemented.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_a9d14156",
+      "name": "merge-rules",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/merge-rules.md"
+          ],
+          "name": "merge-rules",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/merge-rules.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/merge-rules.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_154302a4",
+      "name": "plan-dev-rules",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/plan-dev-rules.md"
+          ],
+          "name": "plan-dev-rules",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/plan-dev-rules.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/plan-dev-rules.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_ff7f5b06",
+      "name": "report-dev-rules",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/report-dev-rules.md"
+          ],
+          "name": "report-dev-rules",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/report-dev-rules.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/report-dev-rules.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_54f4c6e9",
+      "name": "review-rules",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/review-rules.md"
+          ],
+          "name": "review-rules",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/review-rules.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/review-rules.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_6893a025",
+      "name": "skill-improver",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/skill-improver.md"
+          ],
+          "name": "skill-improver",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/skill-improver.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/skill-improver.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_2ce76387",
+      "name": "trim-permissions",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/trim-permissions.md"
+          ],
+          "name": "trim-permissions",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/trim-permissions.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/trim-permissions.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_949973ed",
+      "name": "update-dev-rule",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/update-dev-rule.md"
+          ],
+          "name": "update-dev-rule",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/update-dev-rule.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/update-dev-rule.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_953d882b",
+      "name": "verify-dev-rules",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/verify-dev-rules.md"
+          ],
+          "name": "verify-dev-rules",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/verify-dev-rules.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/verify-dev-rules.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "command"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_4fc8a7b7",
+      "name": "verify-permissions",
+      "naming_history": [
+        {
+          "evidence": [
+            "commands/verify-permissions.md"
+          ],
+          "name": "verify-permissions",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "commands/verify-permissions.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "commands/verify-permissions.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "command"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e29467f3",
+      "name": "PostToolUse-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "PostToolUse-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_ba5caf4d",
+      "name": "PostToolUse-1",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "PostToolUse-1",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_439cb7b3",
+      "name": "PostToolUse-2",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "PostToolUse-2",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_b8bff967",
+      "name": "PostToolUseFailure-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "PostToolUseFailure-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_c84a1a13",
+      "name": "PreToolUse-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "PreToolUse-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "hook"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e4eda3fa",
+      "name": "Stop-0",
+      "naming_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "name": "Stop-0",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "hooks/hooks.json",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "hooks/hooks.json"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "hook"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin_test1234",
+  "plugin_name": "plugin-devkit",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-08-29"
+}

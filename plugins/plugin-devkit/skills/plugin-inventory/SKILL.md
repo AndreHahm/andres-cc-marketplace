@@ -279,7 +279,9 @@ until a future mode gives it a writer.
 - "validate plugin.json/directory structure" → `plugin-validator`
 
 **Last dated run record:** 2026-08-29 — `scripts/smoke_test.py` (23/23 checks passing, adding a new
-Bootstrap-refuses-existing-inventory check).
+Bootstrap-refuses-existing-inventory check) and `evals/plugin-inventory/` `skill-tester` Quick Workflow,
+iteration-2, live-executed 2026-08-29: 3 evals, 13/13 assertions passed, including a new eval 3 covering
+the `provenance` field (real-origin update vs. correctly leaving `{}` with no evidence).
 
 See `references/test-scenarios.md` for the full 22-scenario test walkthrough.
 
