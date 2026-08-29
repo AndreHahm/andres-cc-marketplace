@@ -17,6 +17,14 @@ chatgpt-codex-connector[bot] (2026-08-19)`. When the same finding was raised mor
 across separate review rounds, not just separate reviewers), list each occurrence's own date rather than
 collapsing to one — the distinct dates are what shows it recurred across rounds. Both fields already
 live on every record `pr_review_fetcher.py` returns — never a new fetch or tool grant to populate this.>
+**Review round(s):** <the source PR's own total review-round count — the number of distinct
+review-level records (`kind: "review"`, deduped by `review_id`) `pr_review_fetcher.py` returned for
+*this PR as a whole*, one round per formal review submission (Codex/CodeRabbit/Devin/a human each
+submitting one review is one round). This is a PR-wide count, not scoped to just the record(s) that
+raised this specific candidate — `managing-review-learnings`' own document header
+(`references/doc-update-conventions.md`'s `(<reviewer(s)>, <round count> rounds, <date>)` format)
+needs the PR's overall round count regardless of which round first surfaced any one finding. Not the
+same as counting individual inline comments, which can span multiple rounds or cluster within one.>
 **session-transcript:** available | unavailable
 **What happened:** <1-3 sentences, matching the document's own "What happened" framing>
 **Assumed vs. actual** (when applicable — omit for findings that aren't a tool/API/language-behavior
@@ -50,6 +58,7 @@ which). An excluded finding is never silently dropped from the report.
 
 **Source PR:** #49 — fix(codex-review-recovery): stuck-check retry mechanics
 **Reviewer(s):** chatgpt-codex-connector[bot] (2026-08-12)
+**Review round(s):** 1
 **session-transcript:** unavailable
 **What happened:** An instruction assumed `jq -e 'any(...)'` over `--paginate` output matches if any
 page matched. In fact `jq -e`'s exit status reflects only the last value it emitted — an earlier page's
