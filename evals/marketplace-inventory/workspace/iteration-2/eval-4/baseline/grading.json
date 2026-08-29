@@ -1,0 +1,13 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Presents the full before/after diff of naming_history before running any destructive rewrite", "passed": true, "evidence": "Presented an explicit before/after description of the two periods."},
+    {"text": "Asks for explicit approval before invoking repair-history -- never runs it unprompted", "passed": false, "evidence": "Report moves directly from describing the diff/mechanism to running the command, with no distinct narrated approval-seeking step (unlike with_skill's explicit 'Approval that would be sought: ...' framing). Without the skill's explicit instruction to show the diff and get AskUserQuestion approval before running this specific destructive mode, the baseline treated it more as 'documented mechanism, then execute' than 'propose, then confirm, then execute.'"},
+    {"text": "Runs repair-history with a replacement history array containing exactly one open period matching the current name 'demo-plugin'", "passed": true, "evidence": "Confirmed via command and result."},
+    {"text": "The replacement's closed prior period correctly names 'demo-plugin-old-name'", "passed": true, "evidence": "Confirmed in the diff shown."},
+    {"text": "Uses the --confirm <plugin_id> flag matching the plugin being repaired", "passed": true, "evidence": "Command shown: --confirm plugin_542572ec, matching the target plugin_id -- this is the script's own mechanical gate (fails closed regardless of prose), so both configurations satisfy it equally."},
+    {"text": "Confirms afterward via check that drift_count is 0", "passed": true, "evidence": "Ran check, got drift_count: 0."}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 5, "pass_rate": 0.833}
+}

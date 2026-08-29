@@ -1,0 +1,11 @@
+{
+  "target": "marketplace-inventory",
+  "target_type": "skill",
+  "final_score": 8.7,
+  "graded_at": "2026-08-29T00:00:00Z",
+  "grader_schema_version": 2,
+  "dimensions": {
+    "structure": 9.0,
+    "safety_risk_handling": 8.5
+  }
+}

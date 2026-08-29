@@ -1,0 +1,65 @@
+{
+  "marketplace_name": "synthetic-test-marketplace",
+  "plugins": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "domains": [],
+      "functional_role": null,
+      "id": "plugin-0001",
+      "name": "plugin-devkit",
+      "naming_history": [
+        {
+          "evidence": [],
+          "name": "plugin-devkit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "provenance": {},
+      "score": 8.7,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-29T12:00:00Z",
+          "grader_schema_version": "1.0.0",
+          "imported_on": "2026-08-29",
+          "report_path": "<scratchpad>/eval2-with-skill/plugin_report_plugin-devkit.json",
+          "report_sha256": "463a536d6dd8bd44ea641fcb98282e666d69fc002cc041e2f4aaa39f740992a5",
+          "score": 8.7,
+          "target": "plugin-devkit",
+          "target_type": "plugin"
+        }
+      ],
+      "security_score": 9.1,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-29T12:00:00Z",
+          "grader_schema_version": "1.0.0",
+          "imported_on": "2026-08-29",
+          "is_na": null,
+          "report_path": "<scratchpad>/eval2-with-skill/plugin_report_plugin-devkit.json",
+          "report_sha256": "463a536d6dd8bd44ea641fcb98282e666d69fc002cc041e2f4aaa39f740992a5",
+          "security_score": 9.1,
+          "source_field": "plugin_security_score",
+          "target": "plugin-devkit",
+          "target_type": "plugin"
+        }
+      ],
+      "source": "./plugins/plugin-devkit",
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [],
+          "reason": "Synthetic fixture for eval test.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ]
+    }
+  ],
+  "schema_version": "1.0.0",
+  "updated_on": "2026-08-29"
+}

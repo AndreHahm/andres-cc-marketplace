@@ -1,0 +1,22 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States (or observes) that import-grading rejects a target_type other than 'plugin' outright",
+      "passed": true,
+      "evidence": "Live-reproduced against a synthetic sandbox, got exit code 1 with the exact rejection message, plus a control test showing a real target_type='plugin' report succeeds."
+    },
+    {
+      "text": "Explains that a component-level report belongs in plugin-inventory's own import-grading instead",
+      "passed": true,
+      "evidence": "Explicitly stated this ownership split, citing the skill's own SKILL.md text."
+    },
+    {
+      "text": "Explains score/security_score must only come from a whole-plugin report, never derived from a single component",
+      "passed": true,
+      "evidence": "Explained the divergent extraction logic (plugin-mode reads plugin_final_score/plugin_security_score, component-mode reads final_score/dimensions.*) and why blurring them would corrupt the record."
+    }
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

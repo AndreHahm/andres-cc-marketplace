@@ -1,0 +1,16 @@
+[
+  {
+    "name": "demo-plugin-old-name",
+    "valid_from": "2026-08-26",
+    "valid_to": "2026-08-29",
+    "reason": "Real prior name before rename; backfilled -- plugin was actually created as 'demo-plugin-old-name' three days before being renamed to 'demo-plugin' the same day it was inventoried.",
+    "evidence": ["hypothetical test scenario, per task instructions"]
+  },
+  {
+    "name": "demo-plugin",
+    "valid_from": "2026-08-29",
+    "valid_to": null,
+    "reason": "Renamed to current name on the same day the plugin was inventoried/bootstrapped.",
+    "evidence": ["hypothetical test scenario, per task instructions"]
+  }
+]

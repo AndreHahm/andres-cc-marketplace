@@ -1,0 +1,9 @@
+{
+  "target": "plugin-devkit",
+  "target_type": "plugin",
+  "graded_at": "2026-08-29T12:00:00Z",
+  "grader_schema_version": "1.0.0",
+  "plugin_final_score": 8.7,
+  "plugin_security_score": 9.1,
+  "plugin_gates_applied": []
+}

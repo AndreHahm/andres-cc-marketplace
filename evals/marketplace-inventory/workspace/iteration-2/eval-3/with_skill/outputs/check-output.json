@@ -1,0 +1,17 @@
+{
+  "valid": true,
+  "drift_count": 1,
+  "drift": [
+    {
+      "operation": "add",
+      "name": "fake-plugin",
+      "source": "./fake-plugin",
+      "evidence": [
+        ".claude-plugin/marketplace.json"
+      ],
+      "requires_approval": true,
+      "id": "plugin-0001"
+    }
+  ],
+  "missing_plugin_inventories": []
+}

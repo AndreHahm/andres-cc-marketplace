@@ -1,0 +1,103 @@
+BASELINE REPORT: backfilling demo-plugin's naming_history
+============================================================
+
+WHAT WAS BUILT
+
+A synthetic marketplace repo fixture under the session scratchpad
+(.../scratchpad/eval4-baseline/repo/):
+
+- .claude-plugin/marketplace.json -- lists one plugin, demo-plugin, with
+  source "./plugins/demo-plugin".
+- plugins/demo-plugin/ -- a real, empty directory on disk.
+
+TOOLING USED
+
+Found via repo exploration (no special skill invoked, per baseline instructions):
+plugins/plugin-devkit/skills/marketplace-inventory/scripts/marketplace-inventory.py,
+backed by plugins/plugin-devkit/scripts/inventory_common/ (models.py, reconcile.py,
+json_store.py). Its docstring documents a "repair-history" subcommand as "the only mode
+allowed to rewrite existing history entries."
+
+STEPS TAKEN
+
+1. discover <repo_root> -- confirmed the fixture's demo-plugin entry is read correctly
+   from marketplace.json.
+2. bootstrap <repo_root> <inventory_path> -- created
+   .claude-plugin/marketplace-inventory.json, minting id "plugin_542572ec" and a
+   single-entry naming_history:
+   [
+     {
+       "name": "demo-plugin",
+       "valid_from": "2026-08-29",
+       "valid_to": null,
+       "reason": "Current name at inventory bootstrap.",
+       "evidence": [".claude-plugin/marketplace.json"]
+     }
+   ]
+3. Constructed the replacement naming_history reflecting the hypothetical real history
+   (created as demo-plugin-old-name on 2026-08-26, renamed to demo-plugin on
+   2026-08-29 -- the same day it was inventoried), saved to
+   naming_history_replacement.json.
+
+DIFF PRESENTED BEFORE THE DESTRUCTIVE REWRITE
+
+BEFORE:
+[
+  {
+    "name": "demo-plugin",
+    "valid_from": "2026-08-29",
+    "valid_to": null,
+    "reason": "Current name at inventory bootstrap.",
+    "evidence": [".claude-plugin/marketplace.json"]
+  }
+]
+
+AFTER:
+[
+  {
+    "name": "demo-plugin-old-name",
+    "valid_from": "2026-08-26",
+    "valid_to": "2026-08-29",
+    "reason": "Real prior name before rename; backfilled -- plugin was actually created as 'demo-plugin-old-name' three days before being renamed to 'demo-plugin' the same day it was inventoried.",
+    "evidence": ["hypothetical test scenario, per task instructions"]
+  },
+  {
+    "name": "demo-plugin",
+    "valid_from": "2026-08-29",
+    "valid_to": null,
+    "reason": "Renamed to current name on the same day the plugin was inventoried/bootstrapped.",
+    "evidence": ["hypothetical test scenario, per task instructions"]
+  }
+]
+
+EXACT COMMAND RUN
+
+python plugins/plugin-devkit/skills/marketplace-inventory/scripts/marketplace-inventory.py repair-history \
+  <repo_root> \
+  <repo_root>/.claude-plugin/marketplace-inventory.json \
+  plugin_542572ec \
+  naming_history \
+  naming_history_replacement.json \
+  --confirm plugin_542572ec
+
+Output: {"repaired": "plugin_542572ec", "field": "naming_history"}
+
+VERIFICATION
+
+- Re-read marketplace-inventory.json: naming_history now has 2 entries, the open
+  period's name still equals the record's current name ("demo-plugin"), matching
+  cmd_repair_history's own open-period/current-value consistency check.
+- Ran check <repo_root> <inventory_path>: drift_count: 0 (the reported
+  missing_plugin_inventories: ["demo-plugin"] is expected/unrelated -- no
+  plugin-inventory.json exists for the fixture plugin, which is out of this task's scope).
+
+NOTES ON THE MECHANISM
+
+repair-history's own destructive-rewrite gate is --confirm <plugin_id> -- it must exactly
+match the plugin_id argument or the command fails closed (cmd_repair_history checks this
+before touching the file). The script also refuses the rewrite unless the replacement
+history is structurally valid (models.validate_history_periods: exactly one open period,
+last in array order, real ISO dates) and unless the replacement's open period's value
+matches the record's actual current value (open_period_value vs. plugin["name"]) -- both
+checks passed here since the fixture's replacement preserves demo-plugin as the final,
+open-ended entry.

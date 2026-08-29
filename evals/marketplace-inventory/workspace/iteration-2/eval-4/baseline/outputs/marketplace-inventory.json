@@ -1,0 +1,53 @@
+{
+  "marketplace_name": "demo-marketplace",
+  "plugins": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "domains": [],
+      "functional_role": null,
+      "id": "plugin_542572ec",
+      "name": "demo-plugin",
+      "naming_history": [
+        {
+          "evidence": [
+            "hypothetical test scenario, per task instructions"
+          ],
+          "name": "demo-plugin-old-name",
+          "reason": "Real prior name before rename; backfilled -- plugin was actually created as 'demo-plugin-old-name' three days before being renamed to 'demo-plugin' the same day it was inventoried.",
+          "valid_from": "2026-08-26",
+          "valid_to": "2026-08-29"
+        },
+        {
+          "evidence": [
+            "hypothetical test scenario, per task instructions"
+          ],
+          "name": "demo-plugin",
+          "reason": "Renamed to current name on the same day the plugin was inventoried/bootstrapped.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "source": "./plugins/demo-plugin",
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "reason": "Discovered by marketplace-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ]
+    }
+  ],
+  "schema_version": "1.0.0",
+  "updated_on": "2026-08-29"
+}

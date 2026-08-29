@@ -1,0 +1,97 @@
+MARKETPLACE INVENTORY BUILD - OUTPUT LOG
+
+Approach
+--------
+The marketplace-inventory.py script enforces a hard, mechanical write-boundary guard
+(inventory_common.reconcile.require_inventory_path_under_scope_dir): every write-capable
+subcommand (bootstrap/apply/import-grading) requires that inventory_path resolve to EXACTLY
+<repo_root>/.claude-plugin/marketplace-inventory.json. It is therefore not possible to point
+repo_root at the real repo while writing the inventory file to an arbitrary scratch path -- the
+script raises SystemExit if the two don't line up.
+
+To honor "write to a scratch path, do not touch the real repo" while still exercising the skill
+against real marketplace data, a minimal mirror repo_root was built under the scratchpad
+directory:
+
+  <scratchpad>/mp-mirror/.claude-plugin/marketplace.json   (unmodified copy of the real file)
+
+The script was then run with repo_root = <scratchpad>/mp-mirror and
+inventory_path = <scratchpad>/mp-mirror/.claude-plugin/marketplace-inventory.json. This satisfies
+the script's own scope-dir guard and never reads or writes anything under the real repo's
+.claude-plugin/. The real repo's plugins/* directories were not copied -- discover/bootstrap/check
+only need marketplace.json itself; the per-plugin plugin-inventory.json existence check
+(read_plugin_inventory) is a file-exists test against a path that's absent either way, so omitting
+the plugin directories doesn't change the result.
+
+Commands run
+------------
+python marketplace-inventory.py discover <mirror_root>
+python marketplace-inventory.py bootstrap <mirror_root> <mirror_root>/.claude-plugin/marketplace-inventory.json
+python marketplace-inventory.py check     <mirror_root> <mirror_root>/.claude-plugin/marketplace-inventory.json
+
+Results
+-------
+Plugins found: 4 -- analysis-kit, codex-kit, git-kit, plugin-devkit (read from the real
+.claude-plugin/marketplace.json's plugins array). All bootstrapped as status: "active" with
+functional_role: null, domains: [], created_on: null, and an empty compatibility object -- per the
+skill's own Build-mode instructions these fields need human review/approval before being treated
+as final (not done here since this is a scratch/test run, not a real inventory build).
+
+check result:
+{
+  "valid": true,
+  "drift_count": 0,
+  "drift": [],
+  "missing_plugin_inventories": [
+    "analysis-kit",
+    "codex-kit",
+    "git-kit",
+    "plugin-devkit"
+  ]
+}
+
+drift_count is 0 (a freshly-bootstrapped inventory is by definition in sync with the manifest it
+was built from). missing_plugin_inventories lists all 4 discovered plugins -- none of them have a
+.claude-plugin/plugin-inventory.json file of their own in the real repo yet. This matches existing
+project memory that no plugin-inventory.json or marketplace-inventory.json has ever existed
+anywhere in this repo before this test run.
+
+What the skill would offer next (Repair Plugins mode)
+------------------------------------------------------
+Per the skill's own "Repair Plugins" section, since missing_plugin_inventories is non-empty, the
+skill would ask the user (via AskUserQuestion) whether to invoke plugin-inventory to bootstrap
+each missing plugin's own component inventory -- one plugin at a time, never batched, and only
+after explicit approval for each one (plugin-inventory's own bootstrap mode has no Plan/Apply gate
+of its own, so approval must happen before invocation, per the "No silent writes" rule in this
+repo's require-inventory-updates-for-new-plugins-and-components.md).
+
+For each approved plugin, the exact invocation would be:
+
+  Skill(plugin-inventory) with args "<plugin_dir> build"
+
+concretely, for the 4 plugins found here (against the REAL repo, not the scratch mirror, since
+that's what an actual repair would target):
+
+  Skill(plugin-inventory) with args "plugins/analysis-kit build"
+  Skill(plugin-inventory) with args "plugins/codex-kit build"
+  Skill(plugin-inventory) with args "plugins/git-kit build"
+  Skill(plugin-inventory) with args "plugins/plugin-devkit build"
+
+After any approved repairs, the skill would re-run its own plan/check to confirm
+missing_plugin_inventories shrank accordingly. No plugin-inventory invocations were actually made
+in this test run -- this section states what would be offered, not an action taken.
+
+Real repo state
+----------------
+Not touched. No file under C:/Dev/Repos/andres-cc-marketplace/.claude-plugin/ was written. All
+script invocations targeted the scratch mirror at <scratchpad>/mp-mirror/.claude-plugin/. The only
+interaction with the real repo was a single read of .claude-plugin/marketplace.json (copied into
+the mirror) and a read of the script itself.
+
+Output files in this directory
+-------------------------------
+- marketplace-inventory.json  -- the bootstrapped inventory (from the scratch mirror)
+- marketplace.json.copy       -- the copy of the real marketplace.json used as the mirror's manifest
+- check-result.json           -- the check command's JSON output
+- final-response.txt          -- this log (mirrors the final assistant response)
+- timing.json                 -- token/duration estimate for this run

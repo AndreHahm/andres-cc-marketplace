@@ -1,0 +1,9 @@
+{
+  "name": "eval3-fixture-marketplace",
+  "plugins": [
+    {
+      "name": "fake-plugin",
+      "source": "./fake-plugin"
+    }
+  ]
+}

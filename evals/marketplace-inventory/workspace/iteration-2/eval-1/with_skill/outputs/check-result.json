@@ -1,0 +1,11 @@
+{
+  "valid": true,
+  "drift_count": 0,
+  "drift": [],
+  "missing_plugin_inventories": [
+    "analysis-kit",
+    "codex-kit",
+    "git-kit",
+    "plugin-devkit"
+  ]
+}

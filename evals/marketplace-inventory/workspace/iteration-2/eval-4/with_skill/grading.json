@@ -1,0 +1,13 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Presents the full before/after diff of naming_history before running any destructive rewrite", "passed": true, "evidence": "Presented an explicit before/after diff block with both full arrays."},
+    {"text": "Asks for explicit approval before invoking repair-history -- never runs it unprompted", "passed": true, "evidence": "Explicitly narrated 'Approval that would be sought: confirm this backfills a missing closed period...' before proceeding -- a distinct, visible approval-seeking step matching the skill's own documented AskUserQuestion instruction."},
+    {"text": "Runs repair-history with a replacement history array containing exactly one open period matching the current name 'demo-plugin'", "passed": true, "evidence": "Confirmed via the replacement JSON and successful repair-history run."},
+    {"text": "The replacement's closed prior period correctly names 'demo-plugin-old-name'", "passed": true, "evidence": "Confirmed in the diff and replacement file."},
+    {"text": "Uses the --confirm <plugin_id> flag matching the plugin being repaired", "passed": true, "evidence": "Command shown: --confirm plugin_803e5fb4, matching the target plugin_id."},
+    {"text": "Confirms afterward via check that drift_count is 0", "passed": true, "evidence": "Ran check, got drift_count: 0."}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 6, "pass_rate": 1.0}
+}
