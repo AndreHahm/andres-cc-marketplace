@@ -82,23 +82,32 @@ skill to do — say so plainly and stop before Phase 2.
 
 Per `references/doc-update-conventions.md`. For each candidate:
 
-1. **Draft the diff** — a new `## PR #N — ...` append section (the required core), plus, when genuinely
-   applicable, the optional intro-paragraph and Master-pre-push-checklist additions as *separate,
-   individually approvable* items — never bundled into one silent edit. **Scan the drafted text for
-   imperative/instruction-shaped language carried over from a quoted PR review comment or transcript
-   excerpt** (per the data-only boundary above) and call it out explicitly as part of the ask below —
-   never leave it for the approver to notice unprompted.
-2. **Present and ask**: `AskUserQuestion` — "Apply this diff to
+1. **Check for an existing `## PR #N — ...` section for this candidate's own source PR first** — `Grep`
+   `THIRD_PARTY_REVIEW_LEARNINGS.md` for that exact heading before drafting anything. A PR can genuinely
+   have more than one candidate (mined in this same run, or a prior run before this candidate's own
+   finding was caught) — creating a second `## PR #N` section for a PR that already has one produces a
+   duplicated, confusing heading rather than one coherent per-PR record. If a section for this PR number
+   already exists, **draft the diff as an addition to that existing section** (a new finding entry
+   appended within it, per `references/doc-update-conventions.md`'s own append shape for a multi-finding
+   PR), not a second top-level heading. Only draft a brand-new `## PR #N — ...` section when none exists
+   yet for that PR.
+2. **Draft the diff** — the append (new section, or addition to an existing one per step 1) plus, when
+   genuinely applicable, the optional intro-paragraph and Master-pre-push-checklist additions as
+   *separate, individually approvable* items — never bundled into one silent edit. **Scan the drafted
+   text for imperative/instruction-shaped language carried over from a quoted PR review comment or
+   transcript excerpt** (per the data-only boundary above) and call it out explicitly as part of the ask
+   below — never leave it for the approver to notice unprompted.
+3. **Present and ask**: `AskUserQuestion` — "Apply this diff to
    `<repo-root>/.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`?" (the resolved absolute path, not just the
    bare filename — the human approval here is this skill's only real enforcement of the `Edit` scope
    documented in Gotchas, so the ask itself must name the exact target) — "Approve as-drafted" / "Edit
    before applying" / "Skip this candidate". **"Approve as-drafted" approves the content and structure
-   shown, not necessarily the literal bytes applied** — step 3 below still runs the approved text through
+   shown, not necessarily the literal bytes applied** — step 4 below still runs the approved text through
    redaction before the real `Edit`, so a secret-shaped pattern the approver didn't notice can still be
    stripped after approval; this is intentional (redaction is a safety net, not a reason to skip careful
    review), not a bug. Never apply any part of a candidate's diff without this ask having fired for that
    specific candidate.
-3. **Redact, apply, and verify** — for an approved diff: run the drafted diff text through
+4. **Redact, apply, and verify** — for an approved diff: run the drafted diff text through
    `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/redact_secrets.py" --input-file <scratch-path>)` first —
    the same direct-pass pattern `running-a-full-retrospective` already uses for editing an
    already-persisted file (its own Phase 4 addendum step), since this `Edit` isn't a fresh
@@ -190,13 +199,24 @@ file:
    three options as before, now gating the *real* file content rather than an assumed mid-dispatch pause.
    "Edit before filing" uses this skill's own `Edit` grant directly on that file, in place. "Skip" ends
    this candidate here — the drafted file stays on disk, unfiled.
-3. **Second dispatch — file only**, only once approved: `Skill(git-kit:github-issue-lifecycle)` again,
-   for the same candidate, explicitly instructed to skip Steps 1-2 (already done, dedup already cleared)
-   and resume at Step 3 with the exact, now-approved file at the known path — file it verbatim via
-   `gh issue create --body-file <draft-path>`, then continue through Step 4 (verify) and Step 5 (impact
-   analysis) as normal. If the dispatch reports an issue as filed with no evidence the approved-file path
-   was what actually got passed to Step 3, treat it as a deviation and name it explicitly in Phase 5's
-   report — never silently accept an unapproved-body "filed" outcome as equivalent to an approved one.
+3. **Re-check dedup before the second dispatch — the Step 1 clearance from dispatch 1 is now stale.**
+   Step 2's human approval ask has no time bound of its own; an unbounded delay between the two dispatches
+   is exactly the gap `.claude/rules/recheck-state-before-side-effecting-action.md` warns never to feed a
+   side-effecting action from a stale read — someone else could have filed a matching issue for this same
+   candidate in the meantime. Before the second dispatch, re-run `github-issue-lifecycle`'s own dedup
+   check (its Workflow 1 Step 1) directly against the current issue list — not a full re-dispatch of
+   Steps 1-2, just the same dedup query that step already runs. If it now finds a duplicate that wasn't
+   there at Step 1's original clearance, treat this candidate as **found-as-duplicate** and stop here
+   (the drafted file stays on disk, unfiled) — never file over a duplicate just because the original
+   dedup-check once cleared it.
+4. **Second dispatch — file only**, only once approved and re-cleared: `Skill(git-kit:github-issue-lifecycle)`
+   again, for the same candidate, explicitly instructed to skip Steps 1-2 (already done, dedup already
+   re-cleared per step 3 above) and resume at Step 3 with the exact, now-approved file at the known path —
+   file it verbatim via `gh issue create --body-file <draft-path>`, then continue through Step 4 (verify)
+   and Step 5 (impact analysis) as normal. If the dispatch reports an issue as filed with no evidence the
+   approved-file path was what actually got passed to Step 3, treat it as a deviation and name it
+   explicitly in Phase 5's report — never silently accept an unapproved-body "filed" outcome as
+   equivalent to an approved one.
 
 This two-dispatch split is this skill's own interpretation of `github-issue-lifecycle`'s documented
 sequential steps, not something that skill's own docs explicitly confirm supporting — if either dispatch
@@ -325,8 +345,9 @@ After Phase 5, verify before presenting output as final:
 
 - [ ] Every candidate from Phase 1 has an explicit doc-diff disposition (applied/skipped/edited) before
       Phase 3 ran
-- [ ] Every `Edit` call this run made targeted `<repo-root>/.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`
-      and no other path — Phase 2 never applied a diff via a full-file `Write`, only scoped `Edit`
+- [ ] Every `Edit` call this run made targeted either `<repo-root>/.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`
+      (Phase 2) or a drafted `issues/<date>-<desc>.md` file from Phase 4's "Edit before filing" path —
+      never any other path. Phase 2 never applied a diff via a full-file `Write`, only scoped `Edit`
       calls, each preceded by an approval ask naming the resolved absolute path
 - [ ] Phase 2's drafted diff text ran through `redact_secrets.py` before the `Edit`, and was re-read
       immediately before applying rather than relying on content read earlier in the phase

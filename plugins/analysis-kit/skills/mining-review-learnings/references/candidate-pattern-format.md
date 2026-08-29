@@ -11,6 +11,12 @@ added to the document yet.
 ### Candidate: <short pattern name>
 
 **Source PR:** #<number> — <PR title>
+**Reviewer(s):** <one or more `reviewer` logins from the cited `pr_review_fetcher.py` record(s), each
+paired with its own `submitted_at` date (UTC, `YYYY-MM-DD`) — e.g. `coderabbitai[bot] (2026-08-17),
+chatgpt-codex-connector[bot] (2026-08-19)`. When the same finding was raised more than once (a repeat
+across separate review rounds, not just separate reviewers), list each occurrence's own date rather than
+collapsing to one — the distinct dates are what shows it recurred across rounds. Both fields already
+live on every record `pr_review_fetcher.py` returns — never a new fetch or tool grant to populate this.>
 **session-transcript:** available | unavailable
 **What happened:** <1-3 sentences, matching the document's own "What happened" framing>
 **Assumed vs. actual** (when applicable — omit for findings that aren't a tool/API/language-behavior
@@ -43,6 +49,7 @@ which). An excluded finding is never silently dropped from the report.
 ### Candidate: gh api pagination silently drops earlier page's true result under jq -e
 
 **Source PR:** #49 — fix(codex-review-recovery): stuck-check retry mechanics
+**Reviewer(s):** chatgpt-codex-connector[bot] (2026-08-12)
 **session-transcript:** unavailable
 **What happened:** An instruction assumed `jq -e 'any(...)'` over `--paginate` output matches if any
 page matched. In fact `jq -e`'s exit status reflects only the last value it emitted — an earlier page's

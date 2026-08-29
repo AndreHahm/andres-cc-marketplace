@@ -69,16 +69,28 @@ used); otherwise ask via `AskUserQuestion`.
   `gh pr view <n> --json state,mergedAt` before mining it; an unmerged or nonexistent PR is dropped from
   the set with a stated reason, not silently skipped.
 - **Merge-date range** — resolve via
-  `gh pr list --state merged --search "merged:<start>..<end>" --json number,title,mergedAt,createdAt,url`.
-  This is a *merge-date* filter on GitHub's own PR history, distinct from
+  `gh pr list --state merged --search "merged:<start>..<end>" --json number,title,mergedAt,createdAt,url
+  --limit 300`. If the raw result count equals the `--limit` value exactly, state plainly that coverage
+  may be incomplete (more merged PRs may exist within the range beyond the fetched page) rather than
+  silently treating the filtered set as exhaustive — suggest narrowing the range if that matters for the
+  run. This is a *merge-date* filter on GitHub's own PR history, distinct from
   `../../references/date-range-scope-convention.md`'s session/conversation scope convention that other
   `analysis-kit` skills use — don't conflate the two; this phase never resolves a session scope.
 - **"Since last cited"** — `Grep` `.claude/THIRD_PARTY_REVIEW_LEARNINGS.md` for `PR #[0-9]+`, take the
-  highest number found as `<last-cited>`. Then `gh pr list --state merged --json
-  number,title,mergedAt,createdAt,url --limit 300`, filter to `number > <last-cited>`. If the raw result
-  count equals the `--limit` value exactly, state plainly that coverage may be incomplete (more merged
-  PRs may exist beyond the fetched page) rather than silently treating the filtered set as exhaustive —
-  suggest narrowing with an explicit merge-date range instead if that matters for the run.
+  highest number found as `<last-cited>`. **Filter by merge time, not PR number** — a PR's creation order
+  can diverge from its merge order (an older-numbered PR can merge later than a newer-numbered one that
+  was created after it but merged first), so `number > <last-cited>` can both miss a genuinely-new PR and
+  re-include one already cited. Resolve the cited PR's own merge timestamp first:
+  `gh pr view <last-cited> --json mergedAt --jq .mergedAt`, then filter GitHub's own search on that same
+  timestamp (verified live: `merged:` accepts a full ISO 8601 timestamp with a strict `>` comparison,
+  e.g. `merged:>2026-08-28T17:10:18Z`, not just a bare date):
+  `gh pr list --state merged --search "merged:>{that-timestamp}" --json
+  number,title,mergedAt,createdAt,url --limit 300`. If the raw result count equals the `--limit` value
+  exactly, state plainly that coverage may be incomplete (more merged PRs may exist beyond the fetched
+  page) rather than silently treating the filtered set as exhaustive — suggest narrowing with an explicit
+  merge-date range instead if that matters for the run. If `<last-cited>`'s own `gh pr view` lookup fails
+  (deleted PR, wrong number parsed from a malformed citation), report that and fall back to asking the
+  user for an explicit merge-date range instead of guessing.
 
 A resolution that finds zero merged PRs in any mode is a legitimate empty result — say so and stop
 before Phase 2, don't persist an empty report.
@@ -172,9 +184,11 @@ finding surfaced in Phase 2.
   shape) — state the exclusion reasoning inline in an "Excluded" subsection, never silently drop it from
   the report.
 - Every kept candidate carries its `session-transcript` availability (per Phase 2), the source PR
-  number, and a direct citation (comment URL or transcript locator) — no formal evidence-metadata schema
-  exists yet for this, so cite the raw source directly rather than inventing a structured field this
-  format doesn't define.
+  number, its `Reviewer(s)` field (the `reviewer` login(s) and `submitted_at` date(s) from the cited
+  `pr_review_fetcher.py` record(s) — already fetched in Phase 2, never a new lookup), and a direct
+  citation (comment URL or transcript locator) — no formal evidence-metadata schema exists yet beyond
+  that, so cite the raw source directly rather than inventing further structured fields the format
+  doesn't define.
 
 ## Phase 4: Report
 

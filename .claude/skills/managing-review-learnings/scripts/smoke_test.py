@@ -18,7 +18,17 @@ def _find_repo_root(start: pathlib.Path) -> pathlib.Path:
     for parent in (start, *start.parents):
         if (parent / ".git").exists():
             return parent
-    return start.parents[2]  # fallback: should be unreachable inside this repo
+    # Fallback (should be unreachable inside this repo -- .git is always
+    # present in a real checkout). A fixed parents[N] index here is wrong:
+    # SKILL_DIR sits at a different depth under plugins/analysis-kit/ than
+    # under the .claude/ mirror, so one fixed N can't be correct for both.
+    # Walk up instead, looking for the marketplace-root fingerprint (a
+    # directory containing both plugins/ and .claude/), which is depth-
+    # independent.
+    for parent in (start, *start.parents):
+        if (parent / "plugins").is_dir() and (parent / ".claude").is_dir():
+            return parent
+    return start.parents[2]  # last-resort fallback, truly unreachable
 
 
 # Resolved against the repository root rather than SKILL_DIR.parent.parent so this
@@ -44,7 +54,12 @@ def check_frontmatter():
     if end == -1:
         return False, "frontmatter block is never closed"
     fm = text[4:end]
-    if "name:" not in fm or "description:" not in fm:
+    # Anchored key-line match, not a bare substring -- "name:"/"description:"
+    # appearing inside another field's own value text (e.g. prose quoting
+    # the literal word) must not satisfy this check.
+    if not re.search(r"^name:\s", fm, re.MULTILINE) or not re.search(
+        r"^description:\s", fm, re.MULTILINE
+    ):
         return False, "missing required frontmatter field ('name' or 'description')"
     return True, "frontmatter present and closed"
 
