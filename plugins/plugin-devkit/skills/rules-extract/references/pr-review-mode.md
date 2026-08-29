@@ -76,7 +76,12 @@ For each PR, fetch all review-related comments from 3 sources:
    output to signal truncation. Accepted: this skill's own Performance note
    already caps at ~10 PRs and Large PR handling below already truncates
    above ~100 comments, so a 100+-review single PR is an edge case, not the
-   common path.
+   common path. **Runtime signal, not just this doc comment:** after fetching
+   source 3 for a PR, check whether it returned exactly 100 reviews -- if so,
+   note in this run's own output that this PR's review-body source may be
+   truncated (the 100-review API cap was hit), so the person running the
+   skill sees the caveat at the moment it's actually relevant, not only a
+   maintainer reading this reference file later.
    The field shape also differs from the REST form entirely:
    `author.login`/`body`/`state`/`submittedAt` (GraphQL-shaped, camelCase),
    not `user.login`/`user.type`/`body`/`state`/`submitted_at` (REST-shaped,
