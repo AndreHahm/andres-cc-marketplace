@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Persisted smoke test for marketplace-inventory: frontmatter validity, referenced-file
-existence, Bash-scope grant consistency, and 19 behavioral scenario checks against the
+existence, Bash-scope grant consistency, and 23 behavioral scenario checks against the
 shared CLI script's own subcommands."""
 
 import json
@@ -953,7 +953,8 @@ def check_repair_history_open_value_mismatch_rejected():
         bootstrap = _run("bootstrap", repo_root, inventory_path)
         if bootstrap.returncode != 0:
             return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
-        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        before_text = inventory_path.read_text(encoding="utf-8")
+        plugin_id = json.loads(before_text)["plugins"][0]["id"]
         replacement_path = pathlib.Path(tmpdir) / "replacement.json"
         replacement_path.write_text(
             json.dumps(
@@ -984,6 +985,9 @@ def check_repair_history_open_value_mismatch_rejected():
                 False,
                 "repair-history accepted an open period whose name doesn't match current name",
             )
+        after_text = inventory_path.read_text(encoding="utf-8")
+        if after_text != before_text:
+            return False, "inventory file was modified despite repair-history being rejected"
         return True, "repair-history correctly rejected an open-period/current-name mismatch"
 
 
@@ -1050,6 +1054,69 @@ def check_repair_history_naming_backfill_succeeds():
         return True, "repair-history correctly backfilled a historical naming period"
 
 
+def check_repair_history_status_backfill_succeeds():
+    """The 3 naming_history checks above only exercise repair-history's
+    naming_history branch -- this exercises the sibling status_history
+    branch (e.g. backfilling a real prior status a bootstrap missed) with
+    the same shared validation logic (validate_history_periods,
+    open_period_value), confirming it works end to end too."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_root = _build_fixture_repo(tmpdir, ["plugin-a"])
+        inventory_path = _fresh_inventory_path(repo_root)
+        bootstrap = _run("bootstrap", repo_root, inventory_path)
+        if bootstrap.returncode != 0:
+            return False, f"bootstrap failed: {bootstrap.stderr.strip()}"
+        plugin_id = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0]["id"]
+        replacement_path = pathlib.Path(tmpdir) / "replacement.json"
+        replacement_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "status": "planned",
+                        "valid_from": "2020-01-01",
+                        "valid_to": "2020-06-01",
+                        "reason": "real prior status, backfilled from git history",
+                        "evidence": ["commit abc1234"],
+                    },
+                    {
+                        "status": "active",
+                        "valid_from": "2020-06-01",
+                        "valid_to": None,
+                        "reason": "became active",
+                        "evidence": ["commit def5678"],
+                    },
+                ]
+            ),
+            encoding="utf-8",
+        )
+        repair = _run(
+            "repair-history",
+            repo_root,
+            inventory_path,
+            plugin_id,
+            "status_history",
+            replacement_path,
+            "--confirm",
+            plugin_id,
+        )
+        if repair.returncode != 0:
+            return False, f"repair-history rejected a valid backfill: {repair.stderr.strip()}"
+        status_history = json.loads(inventory_path.read_text(encoding="utf-8"))["plugins"][0][
+            "status_history"
+        ]
+        if len(status_history) != 2 or status_history[0]["status"] != "planned":
+            return False, f"status_history wasn't replaced as expected: {status_history}"
+        check = _run("check", repo_root, inventory_path)
+        if check.returncode != 0 or json.loads(check.stdout)["drift_count"] != 0:
+            return (
+                False,
+                f"check reported drift after a valid status backfill: {check.stdout}",
+            )
+        return True, "repair-history correctly backfilled a historical status period"
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -1076,6 +1143,7 @@ CHECKS = [
     check_repair_history_structural_rejection,
     check_repair_history_open_value_mismatch_rejected,
     check_repair_history_naming_backfill_succeeds,
+    check_repair_history_status_backfill_succeeds,
 ]
 
 

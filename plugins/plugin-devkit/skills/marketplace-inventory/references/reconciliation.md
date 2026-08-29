@@ -89,7 +89,10 @@ This keeps `plugin-inventory`'s exclusive per-plugin ownership intact — this s
 
 ## Concurrency
 
-`bootstrap`, `apply`, and `import-grading` all hold `inventory_common.json_store.InventoryLock` for
-their full read-modify-write span, in addition to the hash-based staleness check `apply` already
-performs — the lock prevents two concurrent invocations from interleaving between the hash check and
-the atomic write; the hash check alone prevents a *stale* write, not a *simultaneous* one.
+`bootstrap`, `apply`, `import-grading`, and `repair-history` all hold
+`inventory_common.json_store.InventoryLock` for their full read-modify-write span, in addition to the
+hash-based staleness check `apply` already performs — the lock prevents two concurrent invocations from
+interleaving between the hash check and the atomic write; the hash check alone prevents a *stale* write,
+not a *simultaneous* one. `repair-history` has no hash-based staleness check of its own (it isn't a
+plan/apply operation), so the lock is its only protection against a concurrent write racing its
+read-modify-write span.

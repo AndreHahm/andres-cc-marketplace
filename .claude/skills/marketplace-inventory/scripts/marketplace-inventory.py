@@ -51,7 +51,10 @@ INVENTORY_FILENAME = "marketplace-inventory.json"
 # 'status' only ever changes via 'status-transition' (which keeps
 # status_history in sync); every history/scoring field is append-only,
 # editable only through history.append_*/repair-history's own
-# explicit-confirmation gate.
+# explicit-confirmation gate. 'provenance' is a free-form annotation object,
+# not history -- a plain 'update' overwriting it whole is intended, even
+# though apply_status_transition also writes into it (superseded_by_id) as
+# a side effect of a rename/supersede decision.
 ALLOWED_UPDATE_FIELDS = {
     "source",
     "functional_role",
@@ -313,10 +316,10 @@ def cmd_bootstrap(args):
         inventory = empty_inventory(marketplace_name)
         discovered = discover_plugins(args.repo_root)
         plan, _missing = build_plan(inventory, discovered, args.repo_root)
+        add_ops = [op for op in plan if op["operation"] == "add"]
         existing_ids = set()
-        for op in plan:
-            if op["operation"] == "add":
-                apply_add(inventory, op, existing_ids)
+        for op in add_ops:
+            apply_add(inventory, op, existing_ids)
         reconcile.validate_or_exit(validate_inventory, inventory, context="bootstrap")
         reconcile.validate_or_exit(
             json_store.atomic_write_json,
@@ -325,7 +328,7 @@ def cmd_bootstrap(args):
             validator=validate_inventory,
             context="bootstrap",
         )
-    print(json.dumps({"bootstrapped": len(discovered), "path": args.inventory_path}, indent=2))
+    print(json.dumps({"bootstrapped": len(add_ops), "path": args.inventory_path}, indent=2))
 
 
 def cmd_plan(args):
@@ -465,6 +468,7 @@ def cmd_repair_history(args):
         inventory = reconcile.validate_or_exit(
             json_store.read_json, args.inventory_path, context="repair-history"
         )
+        reconcile.validate_or_exit(validate_inventory, inventory, context="repair-history")
         plugin = next((p for p in inventory["plugins"] if p["id"] == args.plugin_id), None)
         if plugin is None:
             raise SystemExit(f"no plugin with id {args.plugin_id!r} in this inventory")
