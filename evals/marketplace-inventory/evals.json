@@ -33,12 +33,12 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 26,
-    "declared_scenarios_covered": 24,
+    "declared_scenarios_total": 32,
+    "declared_scenarios_covered": 30,
     "uncovered": [
       "1: Discovery, live -- the standalone `discover` CLI subcommand's own direct output has no dedicated automated assertion; the underlying discover_plugins() function is exercised indirectly via bootstrap/plan/check",
       "3: Missing plugin inventories reported -- no smoke_test.py check exercises the missing_plugin_inventories reporting path directly (confirmed via grep, zero matches for 'missing_plugin' anywhere in the file); build_plan's underlying logic for this is exercised only incidentally as a side effect of other scenarios' bootstrap/plan/check calls, never asserted on directly"
     ],
-    "coverage_note": "Corrected 2026-08-29 (third pass, after adding repair-history's scenarios 23-26 to references/test-scenarios.md). Total scenarios grew from 22 to 26; scenarios 23-25 cover repair-history's structural rejection, open-value-mismatch rejection, and valid naming_history backfill, and scenario 26 covers the sibling status_history backfill path -- each with a real, dedicated smoke_test.py check (check_repair_history_structural_rejection, check_repair_history_open_value_mismatch_rejected, check_repair_history_naming_backfill_succeeds, check_repair_history_status_backfill_succeeds respectively). This pass also re-verified the prior note's blanket 'scenarios 2-21 are each covered' claim scenario-by-scenario and found scenario 3 (Missing plugin inventories reported) was miscounted as covered -- it has no dedicated check, added to uncovered alongside the already-known scenario 1 gap. declared_scenarios_covered is 24 of 26 (only scenarios 1 and 3 remain uncovered); scenario 22 (Data-only boundary) remains covered by eval 3 (5/5 assertions, skill-tester Quick Workflow, live-executed 2026-08-27)."
+    "coverage_note": "Corrected 2026-08-29 (fifth pass, after a mandatory security-reviewer dispatch on PR #238's own repair-history fix found 3 further Major gaps, added as scenarios 30-32 to references/test-scenarios.md). Total scenarios grew from 29 to 32; scenario 30 covers repair-history's --expected-replacement-hash staleness rejection (a gap left open by scenario 27's --expected-hash alone), scenario 31 covers rejecting a non-string item inside a replacement period's evidence list, and scenario 32 covers repair-history now succeeding against a hand-corrupted current inventory (the pre-read validate_inventory self-lockout bug is fixed) -- each with a real, dedicated smoke_test.py check (check_repair_history_stale_replacement_hash_rejected, check_repair_history_evidence_item_type_rejected, check_repair_history_succeeds_on_malformed_current_inventory respectively). declared_scenarios_covered is 30 of 32 (only scenarios 1 and 3 remain uncovered, unchanged from the prior pass); scenario 22 (Data-only boundary) remains covered by eval 3 (5/5 assertions, skill-tester Quick Workflow, live-executed 2026-08-27)."
   }
 }

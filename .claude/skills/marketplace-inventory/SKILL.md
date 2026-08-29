@@ -170,21 +170,33 @@ sequencing.
 The only mode allowed to alter an existing history entry.
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py repair-history <repo_root> <inventory_path> <plugin_id> <status_history|naming_history> <replacement_history.json> --confirm <plugin_id>
+python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py repair-history <repo_root> <inventory_path> <plugin_id> <status_history|naming_history> <replacement_history.json> --confirm <plugin_id> --expected-hash <hash> --expected-replacement-hash <hash>
 ```
 
 Show the user the exact destructive rewrite being proposed (the full old array vs. the full new array)
 and get explicit approval via `AskUserQuestion` before running this. **`--confirm <plugin_id>` must
 repeat the same `plugin_id` argument** — this is the script's own mechanical gate, not just a prose
 instruction, so an invocation missing or mismatching it fails closed with `SystemExit` before touching
-the file, regardless of whether the calling context actually asked first. The script itself still
+the file, regardless of whether the calling context actually asked first. **`--expected-hash` and
+`--expected-replacement-hash` must be `json_store.compute_hash` of the inventory and the replacement
+file's parsed content, respectively, exactly as shown to the user for that approval** (compute both the
+same way `plan` mode already computes its own hash, right before presenting the before/after diff) —
+each is recomputable straight from disk, so neither is proof the calling context actually asked
+(`AskUserQuestion` is the only real proof of that); what they actually guarantee is that neither side of
+the approved diff has changed by the time this command runs — the live inventory (another repair, or a
+concurrent `apply`, landed in between) or the replacement file itself (swapped or edited after being
+shown). A mismatch on either one rejects the repair outright before any write. The script itself still
 enforces structural correctness on the replacement (exactly one open period, valid `valid_to` sentinel
-shape) and requires the replacement's open period value to match the record's *current* `status`/`name`
-— this mode fixes malformed history shape or backfills a historical period a bootstrap missed (e.g. a
-plugin's real prior name before it was ever inventoried), it never changes what the record's current
-value is at the same time. Use `status-transition` (via Plan/Apply) for an ordinary forward rename or
-status change instead — Repair History is not a shortcut for that, since `status-transition` can only
-close the *currently open* period and append a new one going forward, never insert a period before it.
+shape, a valid `status` enum value for `status_history`, and a non-empty `reason` plus a list of string
+`evidence` on every period) and requires the replacement's open period value to match the record's
+*current* `status`/`name` — this mode fixes malformed history shape (including a shape
+`validate_inventory` would itself reject — Repair History deliberately never pre-validates the *current*
+on-disk inventory, so it can still run in exactly the scenario it's meant to fix) or backfills a
+historical period a bootstrap missed (e.g. a plugin's real prior name before it was ever inventoried), it
+never changes what the record's current value is at the same time. Use `status-transition` (via
+Plan/Apply) for an ordinary forward rename or status change instead — Repair History is not a shortcut
+for that, since `status-transition` can only close the *currently open*
+period and append a new one going forward, never insert a period before it.
 
 ## Output Format
 
@@ -249,14 +261,28 @@ generic JSON Schema validator against it (no such dependency is available in thi
 - "grade this plugin" → `plugin-grader`; this skill only imports its completed reports
 - "decide what a plugin should contain" → `plugin-planning`/`plugin-lifecycle-upstream`
 
-**Last dated run record:** 2026-08-29 — `scripts/smoke_test.py` (26/26 checks passing, adding 4 new
-Repair History checks) and `evals/marketplace-inventory/` `skill-tester` Full Pipeline, iteration-2,
-live-executed 2026-08-29: 4 evals (17/18 with_skill assertions, 17/18 baseline) including a new eval 4
-covering Repair History's diff-then-confirm flow. Eval 1's assertion 3 was found stale mid-run (it
-assumed a repo state that predated this session's own bootstrap work) and corrected in `evals.json` for
-future runs.
+**Last dated run record:** 2026-08-29 — `scripts/smoke_test.py` (32/32 checks passing) and
+`evals/marketplace-inventory/` `skill-tester` Full Pipeline, iteration-2, live-executed 2026-08-29:
+4 evals (17/18 with_skill assertions, 17/18 baseline) including a new eval 4 covering Repair History's
+diff-then-confirm flow. Eval 1's assertion 3 was found stale mid-run (it assumed a repo state that
+predated this session's own bootstrap work) and corrected in `evals.json` for future runs. A same-day PR
+review (#238) found Repair History's `--confirm` gate didn't bind to the replacement's actual content
+and its validation didn't check status-enum/reason/evidence fields — fixed with `--expected-hash` and
+`models.validate_history_period_fields`, adding 3 checks (`check_repair_history_stale_hash_rejected`,
+`check_repair_history_invalid_status_rejected`, `check_repair_history_missing_reason_rejected`). A
+follow-up `security-reviewer` dispatch on that fix (mandatory per `.claude/rules/
+require-security-review-before-new-gate.md`, since it changed an existing destructive gate's pass/fail
+logic) found 3 further Major gaps, all fixed same-day: `--expected-hash` alone bound only the inventory's
+pre-repair state, never the replacement file's own content (fixed by adding
+`--expected-replacement-hash`); the pre-read `validate_inventory` call would lock an operator out of
+repairing the exact malformed-history scenario this mode exists to fix (removed — `atomic_write_json`'s
+own post-write validator still guarantees the result is valid); and `evidence` list items were never
+checked as strings, letting arbitrary nested JSON into the append-only audit history (fixed). 3 more
+checks added (`check_repair_history_stale_replacement_hash_rejected`,
+`check_repair_history_evidence_item_type_rejected`,
+`check_repair_history_succeeds_on_malformed_current_inventory`).
 
-See `references/test-scenarios.md` for the full 26-scenario test walkthrough.
+See `references/test-scenarios.md` for the full 32-scenario test walkthrough.
 
 **Quality gates:**
 - [ ] `scripts/marketplace-inventory.py` is always invoked for discovery, plan construction, and apply
@@ -272,15 +298,26 @@ See `references/test-scenarios.md` for the full 26-scenario test walkthrough.
 - [ ] Repair History always requires `--confirm <plugin_id>` to exactly match the plugin being
       repaired, and always rejects a replacement whose open period's value doesn't match the record's
       current `status`/`name`
+- [ ] Repair History always requires `--expected-hash` to match the live inventory's current
+      `json_store.compute_hash` — a stale or wrong hash is rejected before any write
+- [ ] Repair History always requires `--expected-replacement-hash` to match the replacement file's
+      current `json_store.compute_hash` — a swapped or edited replacement file is rejected before any
+      write, independent of the `--expected-hash` (inventory-side) check
+- [ ] Repair History always rejects a replacement period with an invalid `status` enum value, a missing
+      or empty `reason`, or an `evidence` that isn't a list of strings — not just a structurally
+      valid-but-empty period
+- [ ] Repair History never pre-validates the *current* on-disk inventory with `validate_inventory` before
+      repairing — it must still be able to run against the exact malformed-history scenario it's
+      documented to fix; only the post-write `atomic_write_json` validator gates the result
 
 ## Reference Guide
 
 | Resource | Purpose |
 |---|---|
 | `scripts/marketplace-inventory.py` | Deterministic discovery, plan construction, atomic apply, and grading-import CLI |
-| `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, and 23 behavioral scenario checks including a live bootstrap+check round-trip) — re-run before packaging or after any edit |
+| `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, and 29 behavioral scenario checks including a live bootstrap+check round-trip) — re-run before packaging or after any edit |
 | `references/reconciliation.md` | Reconciliation operations, the missing-plugin-inventory report, and the Repair Plugins delegation sequence |
-| `references/test-scenarios.md` | Full 26-scenario test walkthrough, extracted from this file's own Testing & Validation section |
+| `references/test-scenarios.md` | Full 32-scenario test walkthrough, extracted from this file's own Testing & Validation section |
 | `assets/marketplace-inventory.schema.json` | The canonical JSON Schema this inventory file must validate against |
 | `../../scripts/inventory_common/` | Shared ID generation, history append/validation, canonical serialization/hashing, and grading-report reading — used by both this script and `plugin-inventory`'s |
 | `plugin-inventory` skill | Per-plugin sibling — invoked here only after explicit approval, never called for a batch of plugins in one pass |

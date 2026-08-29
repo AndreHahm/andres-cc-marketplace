@@ -1,6 +1,6 @@
 # Test Scenarios
 
-Full 26-scenario test walkthrough for `marketplace-inventory`, extracted from `SKILL.md`'s own
+Full 32-scenario test walkthrough for `marketplace-inventory`, extracted from `SKILL.md`'s own
 `## Testing & Validation` section per `plugin-rulebook`'s R30 (content beyond R29's required
 trigger-example lists must move to `references/` or `evals.json`, not stay inline in `SKILL.md`).
 
@@ -81,3 +81,31 @@ trigger-example lists must move to `references/` or `evals.json`, not stay inlin
     exercising `status_history` instead of `naming_history` (scenarios 23-25 only covered the
     `naming_history` branch of the shared validation logic); confirms the `status_history` branch works
     end to end too
+27. **Repair history rejects a stale/wrong `--expected-hash`** — call `repair-history` with a
+    well-formed `--confirm`/replacement but an `--expected-hash` that doesn't match the live inventory's
+    current `json_store.compute_hash`; confirm it's rejected before any write with a `stale repair`
+    message — found by a live PR review (#238) as a gap in the original `--confirm`-only gate, which had
+    no defense against a repair approved from a snapshot that changed before the command actually ran
+28. **Repair history rejects an invalid `status` enum value** — a replacement `status_history` period
+    whose `status` value isn't in `STATUS_VALUES` (e.g. `"totally-invalid"`); confirm it's rejected
+    before any write — `validate_history_periods` alone only checks date shapes/ordering, not the status
+    enum itself
+29. **Repair history rejects a period missing `reason`** — a replacement period with no `reason` field
+    (or a non-list `evidence`); confirm it's rejected before any write — `validate_history_periods`
+    alone never checks these fields at all
+30. **Repair history rejects a stale/wrong `--expected-replacement-hash`** — call `repair-history` with
+    a valid `--expected-hash` but an `--expected-replacement-hash` that doesn't match the actual
+    replacement file's `json_store.compute_hash`; confirm it's rejected before any write — found by a
+    live `security-reviewer` pass on PR #238 as a gap `--expected-hash` alone left open: it only bound
+    the inventory's pre-repair state, never the replacement content itself
+31. **Repair history rejects an `evidence` list with a non-string item** — a replacement period whose
+    `evidence` array contains a non-string element (e.g. a nested object); confirm it's rejected before
+    any write — the schema declares `evidence` as an array of strings, and validating only the container
+    (not its items) would let arbitrary nested JSON into the append-only audit history
+32. **Repair history succeeds against a hand-corrupted current inventory** — a plugin's on-disk
+    `naming_history` is hand-corrupted to two open periods (bypassing the CLI entirely, simulating a bug
+    in an earlier run), then `repair-history` is invoked with a valid replacement; confirm it succeeds
+    and `check` reports `0` drift afterward — found by a live `security-reviewer` pass on PR #238 as a
+    self-lockout bug: the original implementation pre-validated the *current* inventory with
+    `validate_inventory` before doing anything else, which would have rejected the malformed file
+    outright and locked the operator out of the one command meant to fix it

@@ -10,7 +10,8 @@ Subcommands:
   import-grading  <repo_root> <inventory_path> <report_path> <target> <target_type>
   check           <repo_root> <inventory_path>
   repair-history  <repo_root> <inventory_path> <plugin_id> <status_history|naming_history> \
-                  <replacement_history.json> --confirm <plugin_id>
+                  <replacement_history.json> --confirm <plugin_id> --expected-hash <hash> \
+                  --expected-replacement-hash <hash>
 
 Every write-capable subcommand takes `repo_root` so it can enforce that
 `inventory_path` resolves to exactly `<repo_root>/.claude-plugin/
@@ -454,7 +455,27 @@ def cmd_repair_history(args):
     explicit approval before invoking this -- `--confirm <plugin_id>`
     (repeating the same id being repaired) is this function's own
     mechanical gate, so an invocation missing it fails closed instead of
-    relying solely on the calling skill having actually shown that diff."""
+    relying solely on the calling skill having actually shown that diff.
+    `--expected-hash` and `--expected-replacement-hash` are `json_store.
+    compute_hash` staleness checks (recomputable from disk, like `apply`'s
+    own `expected_hash` -- not proof the calling skill actually asked; that
+    proof is `AskUserQuestion`, not this flag) over the "before" (the
+    inventory as shown for approval) and "after" (the replacement array as
+    shown for approval) sides of the diff respectively -- a repair approved
+    from either snapshot changing before this command actually runs (another
+    repair, a concurrent apply, or a replacement file swapped after the diff
+    was shown) fails closed instead of silently writing something other than
+    what was approved.
+
+    Deliberately does not pre-validate the *current* on-disk inventory
+    before repairing -- this is the only mode meant to fix an inventory
+    `validate_inventory` would otherwise reject (e.g. two open periods from
+    a bug in an earlier run), so gating entry on that same check would lock
+    the operator out of the one path meant to fix it. `atomic_write_json`'s
+    own `validator=validate_inventory` (below) still guarantees the
+    *post*-repair inventory is valid before anything is written -- that is
+    the invariant that actually matters, not whether the pre-repair file
+    happened to already be valid."""
     if args.confirm != args.plugin_id:
         raise SystemExit(
             "repair-history requires --confirm <plugin_id> to exactly match the "
@@ -468,7 +489,13 @@ def cmd_repair_history(args):
         inventory = reconcile.validate_or_exit(
             json_store.read_json, args.inventory_path, context="repair-history"
         )
-        reconcile.validate_or_exit(validate_inventory, inventory, context="repair-history")
+        current_hash = json_store.compute_hash(inventory)
+        if current_hash != args.expected_hash:
+            raise SystemExit(
+                f"stale repair: inventory hash is {current_hash} but --expected-hash was "
+                f"{args.expected_hash} -- the inventory changed since this repair's before/after "
+                "diff was shown; re-read the inventory and regenerate the diff and approval"
+            )
         plugin = next((p for p in inventory["plugins"] if p["id"] == args.plugin_id), None)
         if plugin is None:
             raise SystemExit(f"no plugin with id {args.plugin_id!r} in this inventory")
@@ -477,6 +504,14 @@ def cmd_repair_history(args):
         replacement = reconcile.validate_or_exit(
             _load_replacement_history, args.replacement_history_path, context="repair-history"
         )
+        replacement_hash = json_store.compute_hash(replacement)
+        if replacement_hash != args.expected_replacement_hash:
+            raise SystemExit(
+                f"stale repair: replacement hash is {replacement_hash} but "
+                f"--expected-replacement-hash was {args.expected_replacement_hash} -- the "
+                "replacement file doesn't match what was shown for approval; regenerate the "
+                "diff and approval against the actual replacement file being used"
+            )
         reconcile.validate_or_exit(
             models.validate_history_periods,
             replacement,
@@ -484,6 +519,13 @@ def cmd_repair_history(args):
             context="repair-history",
         )
         value_key = "status" if args.history_field == "status_history" else "name"
+        reconcile.validate_or_exit(
+            models.validate_history_period_fields,
+            replacement,
+            f"{args.plugin_id}.{args.history_field}",
+            value_key,
+            context="repair-history",
+        )
         open_value = models.open_period_value(replacement, value_key)
         current_value = (
             plugin["status"] if args.history_field == "status_history" else plugin["name"]
@@ -556,6 +598,19 @@ def main():
         help="must exactly equal plugin_id -- the mechanical confirmation gate for this "
         "destructive mode; the calling skill should only pass this after showing the user "
         "the full before/after diff and getting explicit approval",
+    )
+    p.add_argument(
+        "--expected-hash",
+        required=True,
+        help="json_store.compute_hash of the inventory exactly as shown to the user for "
+        "approval -- rejected if the live inventory's hash no longer matches (stale snapshot)",
+    )
+    p.add_argument(
+        "--expected-replacement-hash",
+        required=True,
+        help="json_store.compute_hash of the replacement_history_path file's parsed content, "
+        "exactly as shown to the user for approval -- rejected if the file at that path no "
+        "longer matches (a swapped or edited replacement file)",
     )
     p.set_defaults(func=cmd_repair_history)
 
