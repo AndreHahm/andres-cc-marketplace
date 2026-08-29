@@ -2,7 +2,7 @@
   "components": [
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "skill"
       },
@@ -43,7 +43,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "skill"
       },
@@ -84,7 +84,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "skill"
       },
@@ -125,7 +125,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "skill"
       },
@@ -166,7 +166,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "skill"
       },
@@ -207,7 +207,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "skill"
       },
@@ -248,7 +248,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "skill"
       },
@@ -289,7 +289,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "skill"
       },
@@ -330,7 +330,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "skill"
       },
@@ -371,7 +371,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-15",
       "details": {
         "schema": "skill"
       },
@@ -412,7 +412,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "skill"
       },
@@ -453,7 +453,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "command"
       },
@@ -494,7 +494,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "command"
       },
@@ -535,7 +535,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "command"
       },
@@ -576,7 +576,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "command"
       },
@@ -617,7 +617,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "command"
       },
@@ -658,7 +658,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "command"
       },
@@ -699,7 +699,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "command"
       },
@@ -740,7 +740,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "hook"
       },
@@ -760,7 +760,10 @@
         }
       ],
       "path": "hooks/hooks.json",
-      "provenance": {},
+      "provenance": {
+        "notes": "Modifications from the original include renamed env var prefix and opt-in (not always-on) config persistence -- see plugins/codex-kit/NOTICE for the full list.",
+        "origin": "Hook command directly invokes session-lifecycle-hook.mjs, a derivative work of OpenAI's official codex plugin (Apache-2.0, per plugins/codex-kit/NOTICE)"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -781,7 +784,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "hook"
       },
@@ -801,7 +804,10 @@
         }
       ],
       "path": "hooks/hooks.json",
-      "provenance": {},
+      "provenance": {
+        "notes": "Modifications from the original include renamed env var prefix and opt-in (not always-on) config persistence -- see plugins/codex-kit/NOTICE for the full list.",
+        "origin": "Hook command directly invokes session-lifecycle-hook.mjs, a derivative work of OpenAI's official codex plugin (Apache-2.0, per plugins/codex-kit/NOTICE)"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
@@ -822,7 +828,7 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-08-08",
       "details": {
         "schema": "hook"
       },
@@ -842,7 +848,10 @@
         }
       ],
       "path": "hooks/hooks.json",
-      "provenance": {},
+      "provenance": {
+        "notes": "See plugins/codex-kit/NOTICE for the full list of modifications from the original.",
+        "origin": "Hook command directly invokes stop-review-gate-hook.mjs, a derivative work of OpenAI's official codex plugin (Apache-2.0, per plugins/codex-kit/NOTICE)"
+      },
       "score": null,
       "scoring_history": [],
       "security_score": null,
