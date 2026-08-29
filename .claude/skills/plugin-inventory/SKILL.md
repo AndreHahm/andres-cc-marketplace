@@ -237,11 +237,11 @@ until a future mode gives it a writer.
   the lookup refuses to guess and exits before any write, rather than silently updating whichever record
   happens to come first in array order.
 - **Out-of-allowlist `update` field**: `apply` only permits an `update` operation to set
-  `path`/`functional_role`/`domain`/`compatibility`/`created_on` — `id`, `status`, `name`, and every
-  history/scoring field are refused with `SystemExit` before any write. `status` only ever changes via
-  `status-transition`; `name` only ever changes via `status-transition`'s own `new_name` field (see Plan
-  mode above); history/scoring fields are append-only, editable only through Repair History's own
-  `--confirm` gate.
+  `path`/`functional_role`/`domain`/`compatibility`/`created_on`/`provenance` — `id`, `status`, `name`,
+  and every history/scoring field are refused with `SystemExit` before any write. `status` only ever
+  changes via `status-transition`; `name` only ever changes via `status-transition`'s own `new_name` field
+  (see Plan mode above); history/scoring fields are append-only, editable only through Repair History's
+  own `--confirm` gate.
 - **Stale apply**: the script rejects a hash mismatch outright; regenerate the plan, don't retry.
 - **Atomic write failure**: `json_store.atomic_write_json` never leaves a partial canonical file — the
   temp file is removed and the original is untouched on any exception.
