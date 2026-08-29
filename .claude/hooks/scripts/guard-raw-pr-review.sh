@@ -10,13 +10,21 @@
 #
 # Deliberately narrow: `gh pr view` (read-only) and `gh pr edit` (used for
 # non-review metadata edits across several skills) are NOT guarded here --
-# only write actions a git-kit skill actually owns. The two `gh api` branches
-# below check "is this an api call" and "does the endpoint/keyword appear
-# anywhere in the command" as independent conditions (not "does the endpoint
-# sit immediately after `api`") specifically because `gh api` accepts flags
+# only write actions a git-kit skill actually owns. The three `gh api`
+# branches (REPLIES_RE/REVIEWS_RE/GRAPHQL_RE) below span-extract each `gh
+# api` invocation's own argument range (from `api` up to the next `;`/`&`/`|`
+# or end of string, issue #116/#120-style span-bounding) and match the
+# endpoint/keyword anywhere WITHIN that span (not "does the endpoint sit
+# immediately after `api`") specifically because `gh api` accepts flags
 # between `api` and the endpoint, and accepts a leading `/` -- see each
 # branch's own inline comment for the reasoning and the reachable-by-accident
-# invocations this guards against. The `gh api graphql` branch denies by
+# invocations this guards against. Span-bounded, not "does an api call and
+# the endpoint text each appear anywhere in the whole command" as two fully
+# independent conditions -- that whole-command form was this file's own
+# original design and was found to be a live, false-positive-producing bug
+# (PR #177): an unrelated benign `gh api` call chained with unrelated later
+# text that happened to contain an endpoint substring could combine into a
+# false deny. The `gh api graphql` branch denies by
 # default for any `gh api graphql` invocation *whose command text this hook
 # can actually see* -- an earlier revision of this file tried to carve out a
 # narrow "verifiably read-only inline `reviewThreads` lookup, no `mutation`
@@ -200,20 +208,74 @@ if [ -f "$MARKER" ]; then
         allowed=true
       fi
     fi
-    rm -f "$MARKER" || true # consume as soon as seen -- single use, regardless of whether this call turns out to match below; `|| true` so a read-only/permission-restricted .git/ can't turn this into a session-wide lockout via the ERR trap above
+    # `if ! rm -f ...; then ...` -- not the earlier `rm -f "$MARKER" || true` --
+    # so a genuinely failed deletion (e.g. .git becomes read-only/permission-
+    # restricted after the marker was written, the marker file itself still
+    # readable) withholds authorization instead of trusting a marker we
+    # couldn't actually consume. The old `|| true` form let `allowed` stay
+    # `true` from the check above while the marker stayed on disk unconsumed,
+    # so a later matching command within the remaining TTL could also be
+    # authorized by the same once-intended marker -- this exact file/line was
+    # Devin's own cited example (SEC finding, PR #177), independently
+    # confirmed by Codex on the sibling guard-raw-destructive-cleanup.sh. An
+    # `if` construct is itself exempt from `set -e`/the ERR trap, so this
+    # closes the gap without reopening the session-wide-lockout risk the
+    # original `|| true` existed to prevent. See
+    # guard-raw-destructive-cleanup.sh's own copy of this fix for the fuller
+    # rationale and the one residual it explicitly leaves open.
+    if ! rm -f "$MARKER"; then
+      allowed=false
+    fi
   fi
 fi
 
+# Normalized copy of $COMMAND for every match below (pr review/pr comment, and
+# the API_SPANS extraction further down) -- a backslash-continued (Bash) or
+# backtick-continued (PowerShell) `gh api ...` invocation is one logical
+# command but multiple lines to a line-oriented `grep`, so span extraction via
+# `grep -oE` only ever saw the first line, silently missing an endpoint match
+# sitting on a later line -- live-verified as a real bypass (a
+# `gh api \` + newline + `-X POST \` + newline + `repos/.../reviews \` +
+# newline + `-f event=APPROVE` call was allowed through entirely). Found by a
+# security-reviewer pass on this same span-scoping fix (PR #177) -- the fix
+# ports guard-raw-destructive-cleanup.sh's own COMMAND_FLAT normalization
+# (issue #116), which that file needed for the identical reason. See that
+# file's own COMMAND_FLAT definition for its own two-part rationale
+# (CRLF-first stripping, per-shell continuation character). A third point is
+# specific to THIS file, not documented on the sibling: bare `grep -q` on raw
+# $COMMAND for the `pr review`/`pr comment` checks below was ALSO
+# line-oriented and vulnerable to the same continuation-escaping gap, just
+# pre-existing rather than introduced by this fix -- not previously disclosed
+# anywhere in this file until now.
+COMMAND_FLAT="${COMMAND//$'\r'/}"
+if [ "$TOOL_NAME" = "Bash" ]; then
+  COMMAND_FLAT="${COMMAND_FLAT//$'\\\n'/}"
+elif [ "$TOOL_NAME" = "PowerShell" ]; then
+  COMMAND_FLAT="${COMMAND_FLAT//$'`\n'/}"
+fi
+COMMAND_FLAT="${COMMAND_FLAT//$'\n'/;}"
+# De-fang redirection operators that contain a `;`/`&`/`|` byte the API_SPANS
+# terminator class below (`[^;&|]`) would otherwise mistake for a real command
+# separator, narrowing (not closing) the residual noted at API_SPANS' own
+# definition -- same operator set and same rationale as
+# guard-raw-destructive-cleanup.sh's own copy of this fix (issue #120); see
+# that file's own comment for the full per-operator coverage table.
+COMMAND_FLAT="${COMMAND_FLAT//&>/ >}"
+COMMAND_FLAT="${COMMAND_FLAT//>&/> }"
+COMMAND_FLAT="${COMMAND_FLAT//<&/< }"
+COMMAND_FLAT="${COMMAND_FLAT//>|/> }"
+
 GH_SUBCOMMAND=""
 # gh(\.exe)? also catches the literal `gh.exe` invocation PowerShell callers sometimes use.
-# The two `gh api` branches below deliberately check "is this an api call" and "does the
-# endpoint/keyword appear anywhere in the command" as two INDEPENDENT conditions, unlike the
-# `pr review`/`pr comment` branches above, which can safely require the subcommand word to sit
-# immediately after `gh` -- `gh` requires those subcommand words adjacent, but `gh api` accepts
-# flags (`-X POST`, `-H ...`) between `api` and the endpoint, and accepts the endpoint with or
-# without a leading `/` or a full `https://api.github.com/...` prefix. A single combined regex
-# expecting the endpoint immediately after `api` misses all of those, letting a perfectly
-# ordinary `gh api -X POST repos/.../replies` invocation fall through unguarded.
+# The `gh api` branch below span-extracts each invocation (API_SPAN_PREFIX_RE
+# + API_SPANS further down) rather than checking a single combined regex,
+# because `gh api` accepts flags (`-X POST`, `-H ...`) between `api` and the
+# endpoint, and accepts the endpoint with or without a leading `/` or a full
+# `https://api.github.com/...` prefix -- unlike `pr review`/`pr comment`
+# below, which can safely require the subcommand word to sit immediately
+# after `gh`. A single combined regex expecting the endpoint immediately
+# after `api` misses all of those, letting a perfectly ordinary
+# `gh api -X POST repos/.../replies` invocation fall through unguarded.
 # `api` DOES have to sit immediately after `gh` -- verified against `gh --help`/`gh api --help`
 # (2026-08-21): `gh`'s root command has no persistent flags besides `--help`/`--version`, and `gh
 # api` itself has no `-R`/`--repo` flag either, so there is no real `gh <flag> api ...` invocation
@@ -221,8 +283,8 @@ GH_SUBCOMMAND=""
 # tolerate flags there anyway, on an unverified assumption about `gh`'s flag placement -- that
 # widening was itself a regression (it dropped bare-whitespace/`env`-prefixed/indented `gh api ...`
 # as valid prefixes) fixing a bypass that didn't actually exist. Reverted to the original,
-# narrower form below.
-API_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+api([^[:alnum:]_.-]|$)'
+# narrower form, which API_SPAN_PREFIX_RE below still uses as its own leading boundary.
+API_SPAN_PREFIX_RE='(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+api'
 # Boundary classes below are "not alnum/underscore" (leading) and "not alnum/underscore/hyphen"
 # (trailing), not the narrower "whitespace or /" used previously -- a quoted endpoint
 # (`gh api "repos/.../replies"`, single-quoted, or the trailing `)`/backtick of a `$(...)`/
@@ -240,9 +302,11 @@ GRAPHQL_RE='(^|[^[:alnum:]_])graphql([^[:alnum:]_-]|$)'
 # is the safer default here, since a verb check is itself regex-based and
 # addable-to the same bypass class this file exists to avoid. See issue #86.
 REVIEWS_RE='(^|[^[:alnum:]_])repos/[^[:space:]]+/pulls/[^[:space:]]+/reviews([^[:alnum:]_-]|$)'
-# Herestrings (<<<), not `echo ... | grep -q`, for every match below: under `set -o pipefail`, a
-# `grep -q` match found early enough to leave `$COMMAND` partly unread can SIGPIPE the `echo` that's
-# still writing it, and pipefail then reports that non-zero exit for the pipeline even though grep
+# Herestrings (<<<), not `echo ... | grep -q`, for every match below (now against $COMMAND_FLAT/
+# $api_span, not raw $COMMAND -- see those variables' own definitions above): under
+# `set -o pipefail`, a `grep -q` match found early enough to leave its input partly unread can
+# SIGPIPE the `echo` that's still writing it, and pipefail then reports that non-zero exit for the
+# pipeline even though grep
 # itself matched -- an `if`/`elif` condition is exempt from `set -e` aborting on that, so the guard
 # would just silently treat a real match as "no match" and fall through toward `else: exit 0` (allow).
 # A herestring feeds the same text without a second process or a pipe, so there's nothing to SIGPIPE.
@@ -268,22 +332,76 @@ REVIEWS_RE='(^|[^[:alnum:]_])repos/[^[:space:]]+/pulls/[^[:space:]]+/reviews([^[
 # review` ``/`$(gh pr comment)` left a `` ` ``/`)` immediately after the
 # subcommand with no trailing whitespace, which the old `([[:space:]]|$)`
 # didn't recognize as a boundary.
-if grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+review([^[:alnum:]_.-]|$)' <<< "$COMMAND"; then
+if grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+review([^[:alnum:]_.-]|$)' <<< "$COMMAND_FLAT"; then
   GH_SUBCOMMAND="gh pr review"
-elif grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+comment([^[:alnum:]_.-]|$)' <<< "$COMMAND"; then
+elif grep -qE '(^|[^[:alnum:]_.-])gh(\.exe)?['"'"'"]?[[:space:]]+pr[[:space:]]+comment([^[:alnum:]_.-]|$)' <<< "$COMMAND_FLAT"; then
   GH_SUBCOMMAND="gh pr comment"
-elif grep -qE "$API_RE" <<< "$COMMAND" && grep -qE "$REPLIES_RE" <<< "$COMMAND"; then
-  GH_SUBCOMMAND="gh api .../comments/{id}/replies"
-elif grep -qE "$API_RE" <<< "$COMMAND" && grep -qE "$REVIEWS_RE" <<< "$COMMAND"; then
-  GH_SUBCOMMAND="gh api .../pulls/{n}/reviews"
-elif grep -qE "$API_RE" <<< "$COMMAND" && grep -qE "$GRAPHQL_RE" <<< "$COMMAND"; then
-  # Unconditional deny-by-default -- no read-only carve-out. See this file's header comment for
-  # why: a substring-matching carve-out here was tried and independently defeated by 3 different
-  # reviewers using 4 different techniques, so every `gh api graphql` call is guarded now,
-  # including a genuine read-only `reviewThreads` lookup.
-  GH_SUBCOMMAND="gh api graphql"
 else
-  exit 0
+  # Span-bound REPLIES_RE/REVIEWS_RE/GRAPHQL_RE to each individual `gh api`
+  # invocation's own argument span (from `api` up to the next `;`/`&`/`|` or
+  # end of string), not run independently against the whole $COMMAND string.
+  # $COMMAND can legally contain multiple chained sub-commands
+  # (`&&`/`;`/`|`); the previous form (a "gh ... api" prefix match ANDed with
+  # a separate REVIEWS_RE/REPLIES_RE/GRAPHQL_RE match, each run against the
+  # whole $COMMAND independently) checked "is there a gh api call
+  # anywhere" and "does the endpoint text appear anywhere" as two fully
+  # independent conditions against the same whole-string text, so an
+  # unrelated, benign `gh api` call chained with unrelated later text that
+  # happened to contain one of these endpoint substrings could combine into a
+  # false deny -- live-verified: `gh api user; echo
+  # repos/acme/project/pulls/12/reviews` (the reviews text sits in an `echo`
+  # argument, not a `gh api` call at all) was denied by the old form. Found by
+  # Devin's review of PR #177. Mirrors the same span-bounding fix
+  # guard-raw-destructive-cleanup.sh's own BRANCH_SPANS/WORKTREE_REMOVE_SPANS
+  # already use (issue #116) -- each span is checked independently, in a
+  # loop, never against a concatenated multi-span blob.
+  # Reads $COMMAND_FLAT, not raw $COMMAND -- a backslash/backtick-continued
+  # `gh api` call is one logical command but multiple lines to a
+  # line-oriented `grep -oE`, which silently missed an endpoint match sitting
+  # on a later line -- a real fail-open bypass found by a security-reviewer
+  # pass on this exact fix, closed by the COMMAND_FLAT normalization above.
+  # Residual, same class as issue #120's already-accepted residual on the
+  # sibling guard-raw-destructive-cleanup.sh: this span terminator class
+  # (`[^;&|]`) still can't distinguish a real shell separator from the same
+  # byte inside two related cases the COMMAND_FLAT de-fang step above doesn't
+  # reach: (1) a quoted argument value placed before the endpoint text (e.g.
+  # `gh api --jq '.[] | .id' repos/.../reviews`, where the quoted `|` inside
+  # `--jq`'s own value truncates the span before it ever reaches the
+  # endpoint), and (2) an unquoted nested construct -- `$(...)`, backticks,
+  # `$((...))`, `<(...)` -- whose own body contains one of these bytes (e.g.
+  # `gh api repos/o/r/pulls/$(gh pr view --json number | jq -r .number)/reviews`,
+  # where the `|` inside `$(...)` truncates the span before `/reviews`, and
+  # the inner `gh pr view` call itself matches none of this file's other
+  # checks either) -- arguably the more likely shape in practice, since a
+  # `gh api` endpoint is often built by interpolation rather than typed
+  # literally. Neither case is closed here, since doing so needs real shell
+  # tokenization, not a character-class cut. The enumerated redirection
+  # operator set (`&>`/`&>>`/`>&`/`<&`/`>|`) IS de-fanged by the
+  # COMMAND_FLAT step above, before this span is ever extracted.
+  API_SPANS=$(grep -oE "${API_SPAN_PREFIX_RE}[^;&|]*" <<< "$COMMAND_FLAT" || true)
+  if [ -n "$API_SPANS" ]; then
+    while IFS= read -r api_span; do
+      # `if [ -n ... ]` wrapping, not `[ -z ... ] && continue` -- same
+      # set -e/ERR-trap exemption reasoning as BRANCH_SPANS' own loop.
+      if [ -n "$api_span" ] && grep -qE "$REPLIES_RE" <<< "$api_span"; then
+        GH_SUBCOMMAND="gh api .../comments/{id}/replies"
+        break
+      elif [ -n "$api_span" ] && grep -qE "$REVIEWS_RE" <<< "$api_span"; then
+        GH_SUBCOMMAND="gh api .../pulls/{n}/reviews"
+        break
+      elif [ -n "$api_span" ] && grep -qE "$GRAPHQL_RE" <<< "$api_span"; then
+        # Unconditional deny-by-default -- no read-only carve-out. See this file's header comment
+        # for why: a substring-matching carve-out here was tried and independently defeated by 3
+        # different reviewers using 4 different techniques, so every `gh api graphql` call is
+        # guarded now, including a genuine read-only `reviewThreads` lookup.
+        GH_SUBCOMMAND="gh api graphql"
+        break
+      fi
+    done <<< "$API_SPANS"
+  fi
+  if [ -z "$GH_SUBCOMMAND" ]; then
+    exit 0
+  fi
 fi
 
 if [ "$allowed" = true ]; then

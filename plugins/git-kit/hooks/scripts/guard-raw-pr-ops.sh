@@ -88,7 +88,28 @@ if [ -f "$MARKER" ]; then
     fi
     marker_guard="$guard"
     marker_ts="$ts"
-    rm -f "$MARKER" || true  # consume as soon as seen -- single use, regardless of which (if either) subcommand this call turns out to be; `|| true` so a read-only/permission-restricted .git/ can't turn this into a session-wide lockout via the ERR trap above
+    # `if ! rm -f ...; then marker_ts=""; ...` -- not the earlier
+    # `rm -f "$MARKER" || true` -- so a genuinely failed deletion (e.g. .git
+    # becomes read-only/permission-restricted after the marker was written,
+    # the marker file itself still readable) withholds authorization instead
+    # of trusting a marker we couldn't actually consume. Blanking marker_ts on
+    # failure reuses this file's own existing invalid-marker sentinel (see its
+    # initialization above and the malformed-timestamp handling just above
+    # this block) -- the later `[ -n "$marker_ts" ]` check further down
+    # already treats an empty marker_ts as "no valid marker", so no new
+    # variable is needed. The old `|| true` form let marker_ts/marker_guard
+    # stay populated while the marker stayed on disk unconsumed, so a later
+    # matching command within the remaining TTL could also be authorized by
+    # the same once-intended marker -- found independently by both Devin and
+    # Codex on the sibling guard-raw-destructive-cleanup.sh (PR #177), same
+    # pattern here. An `if` construct is itself exempt from `set -e`/the ERR
+    # trap, so this closes the gap without reopening the session-wide-lockout
+    # risk the original `|| true` existed to prevent. See
+    # guard-raw-destructive-cleanup.sh's own copy of this fix for the fuller
+    # rationale and the one residual it explicitly leaves open.
+    if ! rm -f "$MARKER"; then
+      marker_ts=""
+    fi
   fi
 fi
 

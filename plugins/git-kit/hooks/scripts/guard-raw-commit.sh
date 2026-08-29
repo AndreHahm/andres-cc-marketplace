@@ -94,7 +94,23 @@ if [ -f "$MARKER" ]; then
         allowed=true
       fi
     fi
-    rm -f "$MARKER" || true  # consume as soon as seen -- single use, regardless of whether this call turns out to match below; `|| true` so a read-only/permission-restricted .git/ can't turn this into a session-wide lockout via the ERR trap above
+    # `if ! rm -f ...; then ...` -- not the earlier `rm -f "$MARKER" || true` --
+    # so a genuinely failed deletion (e.g. .git becomes read-only/permission-
+    # restricted after the marker was written, the marker file itself still
+    # readable) withholds authorization instead of trusting a marker we
+    # couldn't actually consume. The old `|| true` form let `allowed` stay
+    # `true` from the check above while the marker stayed on disk unconsumed,
+    # so a later matching command within the remaining TTL could also be
+    # authorized by the same once-intended marker -- found independently by
+    # both Devin and Codex on guard-raw-destructive-cleanup.sh (PR #177), same
+    # pattern here. An `if` construct is itself exempt from `set -e`/the ERR
+    # trap, so this closes the gap without reopening the session-wide-lockout
+    # risk the original `|| true` existed to prevent. See
+    # guard-raw-destructive-cleanup.sh's own copy of this fix for the fuller
+    # rationale and the one residual it explicitly leaves open.
+    if ! rm -f "$MARKER"; then
+      allowed=false
+    fi
   fi
 fi
 
