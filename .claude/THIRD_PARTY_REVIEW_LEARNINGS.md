@@ -1042,6 +1042,289 @@ scratchpad file), never a double-quoted inline argument.
 
 ---
 
+## PR #101 — `git-kit` `handling-review-findings` round-budget skill (Devin + Codex, 18 review rounds, 2026-08-22)
+
+### Pattern: a comment-body trigger match can't tell which skill/actor posted it
+
+**What happened:** A review-round budget counter re-derived a "triggered cycle" count by matching PR
+comment bodies against a reviewer's trigger string (e.g. `@codex review`). The sibling skill
+`codex-review-recovery` posts a byte-identical trigger comment as its own stuck-check retry mechanism,
+so its comments were indistinguishable from this skill's own proactive triggers and silently inflated
+the count, exhausting the round budget early.
+
+**Rule:** A side-effect counter built on matching a comment's *body text* alone cannot establish which
+actor/skill posted it. Combine a per-decision marker with an author-ownership check (`author.login`
+verified against the account actually running the skill) — the marker text alone is forgeable by
+anyone with repo write access, since it's published in the skill's own docs.
+
+### Pattern: AskUserQuestion's reserved/mandatory options must be budgeted into the cap, and the 2-option floor needs an explicit low-count path
+
+**What happened:** A trigger-ask question capped at 4 total options (3 seeded reviewers + 1 mandatory
+"no round now" option) was already at capacity; documentation claiming "nothing assumes exactly three
+reviewers" was false, since a 4th reviewer would push the question to 5 options. Separately, when fewer
+than `min_rounds` cycles have run and only 0 or 1 reviewers remain eligible, omitting the stop option
+(to enforce the floor) produces a 0- or 1-item `options` array, below `AskUserQuestion`'s own 2-option
+minimum.
+
+**Assumed vs. actual:**
+
+| Assumed | Actual |
+|---|---|
+| A mandatory/reserved option doesn't count against a variable list's own stated capacity | It does — the reserved slot must be subtracted from the total cap before sizing the variable list |
+| The "at least 2 options" structural minimum only matters for an over-full question | It also fails on the *under*-full side: 0 or 1 eligible items with no compensating option is invalid |
+
+**Rule:** When sizing an `AskUserQuestion`'s option list against its per-question cap, budget every
+reserved/mandatory option into that cap up front — don't treat "N variable items + 1 fixed item" as
+independently bounded. Separately, add an explicit path for 0- or 1-eligible-item cases rather than
+assuming the variable list will always land in the tool's 2-4 valid range.
+
+### Pattern: group side effects from one logical decision into one unit of count
+
+**What happened:** Selecting two reviewers in one decision posted two separate trigger comments; the
+budget counter counted each comment independently, so a single logical review cycle consumed two units
+of the round budget instead of one.
+
+**Rule:** When one user decision fans out into multiple physical side effects (e.g. one comment per
+selected reviewer), count the *decision* as the unit, not each side effect — tag every side effect from
+one decision with a shared batch identifier and dedupe on that identifier before counting.
+
+### Self-caught: `git ls-files` pathspec fails open when run outside the repo root
+
+**What happened:** A trust-boundary check used `git ls-files --error-unmatch .claude/git-kit.local.json`
+(a bare relative pathspec) to decide whether a local settings override file was tracked. Live-verified:
+this form reports "no match" from any working directory other than the repo root, even for a genuinely
+tracked file — silently treating a tracked (and therefore untrustworthy-for-safety-overrides) file as
+untracked. Found via a self-dispatched `security-reviewer` follow-up during this PR's own review thread,
+not by a third-party reviewer directly.
+
+**Assumed vs. actual:**
+
+| Assumed | Actual |
+|---|---|
+| A bare relative `git ls-files --error-unmatch <path>` pathspec check is cwd-independent | It fails open (reports "not tracked") whenever invoked from any directory other than the repo root |
+
+**Rule:** A `git ls-files`-based trust/tracked-file check must anchor its pathspec to the repo root
+(`:(top,literal)<path>`) and be resolved from a repo-root-anchored path — never a bare relative form,
+which silently fails open depending on the invoking shell's current working directory.
+
+---
+
+## PR #108 — `analysis-kit` structural smoke tests + downstream QA fixes (Devin + Codex + CodeRabbit, 16 review rounds, 2026-08-24)
+
+### Pattern: a mirrored script's own relative-path root derivation breaks when run from the mirror copy
+
+**What happened:** A smoke test derived its own plugin root as `SKILL_DIR.parent.parent` — correct only
+under `plugins/analysis-kit/`. The byte-identical mirror copy under `.claude/skills/<skill>/scripts/`
+resolves that same expression to `.claude`, which has no matching `scripts/`/`references/` directory, so
+every mirrored copy's structural checks false-failed while the canonical copy passed.
+
+**Rule:** A script that is deliberately shipped as a byte-identical copy at more than one directory
+depth (this repo's `plugins/<name>/` ↔ `.claude/` mirror convention) must resolve its own root by
+discovery (e.g. walk up to find `.git`) rather than by a fixed parent-directory-count assumption —
+the count is only valid at one of the copy's locations.
+
+### Pattern: a basename-substring "is this grant used" check can't distinguish a real invocation from a documentation mention
+
+**What happened:** A smoke test's `check_bash_grants` reduced each declared grant to its basename and
+searched the whole skill body for that string. A grant named only in a `## Reference Guide` table row
+(documentation, not an actual invocation) satisfied the "used" check, so a genuinely-unused grant could
+hide behind its own documentation mention.
+
+**Rule:** A check for "is this declared permission/grant actually used" must distinguish an executable
+invocation from a documentation-only mention of the same name — a bare substring/basename search across
+all body text conflates the two. Exclude documentation-only sections (or require an executable-command
+shape) rather than matching anywhere.
+
+### Pattern: a workflow's own dependency gate must cover every hard dependency its later, unconditional steps invoke
+
+**What happened:** A direct-fix path's up-front dependency check only required `git-kit` to be resolved.
+Its own later, unconditional step invoked `Skill(plugin-rulebook)` — a `plugin-devkit` skill. A supported
+standalone configuration (`analysis-kit` + `git-kit`, no `plugin-devkit`) was offered the direct-fix path
+and then stalled mid-fix, with modified state, once the undeclared dependency was reached.
+
+**Rule:** A workflow's own up-front "can I run this path" gate must check every dependency its later
+steps unconditionally invoke, not just the dependency named at the gate itself — an unconditional
+downstream call is an undeclared dependency if the gate doesn't also check for it.
+
+### Pattern: "a path exists at the expected mirror location" doesn't prove it's a 1:1 mirror safe to auto-overwrite
+
+**What happened:** A direct-fix flow treated "a corresponding `.claude/`-side file exists" as sufficient
+grounds to resolve and auto-edit it as the source's mirror. For `skills/`/`agents/`/`commands/`/`rules/`
+that assumption holds (a clean 1:1 mirror), but `plugins/<name>/hooks/hooks.json` has no such
+relationship to `.claude/hooks/hooks.json` — the latter is a *merged aggregate* of several plugins' own
+hook configs, not a copy of any single one. Editing "the mirror" there could silently overwrite an
+unrelated aggregate file with the wrong plugin's content.
+
+**Rule:** Before treating a resolved "mirror path" as safe to auto-overwrite, verify it is actually a
+clean 1:1 mirror of the one source being edited — existence alone doesn't establish that. A
+many-sources-to-one merged/aggregate destination is a categorically different case and must be routed
+to a hand-off/human path instead of a direct auto-edit.
+
+---
+
+## PR #112 — `codex-kit` full downstream QA audit (Devin + Codex + CodeRabbit, 28 review rounds, 2026-08-24)
+
+### Pattern: an unanchored "sensitive filename" substring match masks ordinary files from review
+
+**What happened:** A secret-filename classifier matched broad terms (`token`, `password`, etc.) anywhere
+in a basename, so ordinary files like `tokenizer.ts`, `token_bucket.go`, `password-validator.js` were
+classified as sensitive. The consuming code then replaced their contents with a skip marker before
+handing them to a review/audit pass — silently producing a "clean" result without ever reviewing the
+real content of an ordinary new file. Confirmed real but not fixed in this PR — deferred as a
+cross-plugin ownership question (the same pattern is shared with `git-kit`'s `scan-staged-files.sh`),
+tracked via issue #109's own candidate 28.
+
+**Rule:** A sensitive-filename classifier used to gate content masking must anchor to genuinely sensitive
+filename *shapes* (e.g. `.env`, `id_rsa`, `*.pem`), not match a broad term anywhere in the basename — an
+unanchored match doesn't just mis-flag; it silently defeats the review it's embedded in.
+
+### Pattern: reading untracked file content via a symlink-following stat call can leak an unrelated secret's contents
+
+**What happened:** An untracked-file formatter used `fs.statSync()` (which follows symbolic links) to
+check a file before reading its content for a review/audit context. An untracked file with a safe-looking
+name that is actually a symlink to a real secret (e.g. `~/.ssh/id_rsa`) passed the basename check, and
+the *target's* content was then read and forwarded.
+
+**Rule:** A security-relevant "is this safe to read" check on an untracked/unknown file must inspect the
+file's own type without following links (`lstatSync()`/equivalent) and skip symbolic links outright
+before any content read — a symlink-following stat call defeats a basename-based secret screen entirely.
+
+### Pattern: a "tampered copy" regression test can pass for the wrong reason if the copy runs from a different directory than the original
+
+**What happened:** A smoke test tampered with a copy of a hook script placed under the OS temp directory
+to verify the hook's own catch-path behavior. Because the copy's relative imports/assets no longer
+resolved from that location, Node could exit during module loading — before the catch path under test
+ever ran — and the test's own "non-zero exit means regression detected" assertion still reported a pass,
+for a reason unrelated to the code path it was meant to exercise.
+
+**Rule:** A regression test that runs a tampered copy of a script must place that copy beside the
+original (not a generic temp directory) so its relative imports/asset resolution stay intact — otherwise
+a module-loading crash can make the test vacuously "pass" without ever reaching the logic under test.
+
+### Pattern: a YAML permission-grant scanner anchored to one quoting style misses the equally-valid unquoted form
+
+**What happened:** A smoke test rejecting a prohibited `Skill` grant in `allowed-tools` used a regex
+matching only the quoted forms (`"Skill"`/`'Skill'`). A valid, equally-legal bare/unquoted YAML flow-list
+entry (`allowed-tools: [Read, Grep, Glob, Skill]`) passed the check and restored the prohibited grant.
+
+**Assumed vs. actual:**
+
+| Assumed | Actual |
+|---|---|
+| A grant name in a YAML flow sequence is reliably quoted | YAML flow-sequence scalars are valid either quoted or bare — a check anchored to one form misses the other |
+
+**Rule:** When writing a check against a YAML list entry's literal text, split and normalize each entry
+(strip surrounding quotes/whitespace) before comparing — never anchor the pattern to one specific
+quoting style, since YAML permits multiple equally-valid forms for the same value.
+
+### Pattern: a permission-hardening fix scoped to newly-created objects leaves a pre-existing, already-loose object unaddressed
+
+**What happened:** A state directory and a job log file were only narrowed to safe permissions
+(`0o700`/`0o600`) via the flags passed to their own creation calls (`mkdirSync`/file-open mode). A
+directory or file that already existed on disk before this code ran (e.g. created under an older,
+looser-permission code path) never passed back through creation, so it kept its original, looser mode.
+
+**Rule:** A permission-hardening fix must explicitly re-narrow objects that could already exist on disk
+before the code path runs (e.g. an explicit `chmodSync`/`fchmodSync` after open/mkdir), not rely solely
+on the creation call's own mode flag — that flag only ever governs objects the current run itself creates.
+
+---
+
+## PR #121 — `git-kit` security hardening and rulebook fixes from QA sweep (Devin + Codex + CodeRabbit, 17 review rounds, 2026-08-24)
+
+### Pattern: `core.fileMode=false` locally can mask a missing executable bit on a directly-invoked helper script
+
+**What happened:** Two new helper scripts were committed at git mode `100644` (non-executable) despite
+being invoked directly (not via `bash <path>`) from a skill's own instructions. The local dev environment
+had `core.fileMode=false` *and* both files already had the executable bit set on local disk — so nothing
+in local testing ever surfaced the actual committed mode. A fresh clone with standard Unix checkout
+permissions would fail with exit 126 (`Permission denied`) the first time the skill ran.
+
+**Assumed vs. actual:**
+
+| Assumed | Actual |
+|---|---|
+| A script's local on-disk executable bit reflects what's actually committed | With `core.fileMode=false`, git ignores local permission changes entirely — only the index's own recorded mode matters, and it can silently diverge from disk |
+
+**Rule:** For a script a skill invokes directly (not via an interpreter prefix), verify its *git index*
+mode (`git ls-files -s <path>` — expect `100755`) rather than trusting a local `ls -la`, especially in
+any environment with `core.fileMode=false` (checkable via `git config core.fileMode`) — local disk state
+and the committed mode can silently diverge.
+
+### Pattern: a staged-file rename can be silently turned into a deletion by an unstage that only restores the destination path
+
+**What happened:** A sensitive-file scanner built on `git diff --cached --name-only` sees only the
+destination path of a staged rename (e.g. `config/plain.txt` → `config/secrets/plain.txt`). When the
+scanner "protectively" unstaged the flagged destination path, the rename's source-side deletion stayed
+staged, so the commit would have silently recorded a bare deletion of the original file — data loss
+disguised as a rejected rename.
+
+**Rule:** A staged-file scan/restore built on rename-blind `git diff --cached --name-only` must switch to
+rename-aware `git diff --cached --name-status -M` and, when a flagged path is one side of a detected
+rename, restore *both* sides — restoring only the visible destination path silently converts a rejected
+rename into a real deletion.
+
+### Pattern: a least-privilege grant-narrowing pass must be reconciled against the component's own documented capability list
+
+**What happened:** An earlier security-motivated narrowing pass replaced an unbounded `Bash(gh pr:*)`/
+`Bash(gh issue:*)` grant with an explicit allowlist. The new list omitted several subcommands
+(`gh issue view/comment/reopen/pin/transfer`, `gh pr close/reopen/checkout/ready/diff`) that the same
+skill's own reference docs still documented as supported — the security fix silently broke advertised
+functionality it never checked against.
+
+**Rule:** When narrowing a tool grant for least privilege, cross-check the resulting allowlist against
+every subcommand the component's own reference/documentation files claim to support — a scope-tightening
+pass that only reasons from "what's obviously dangerous" rather than "what's actually documented as
+supported" can regress real, advertised functionality.
+
+---
+
+## PR #132 — `plugin-devkit` self-reflexion and review findings across 4 skills (Devin + Codex + CodeRabbit, 18 review rounds, 2026-08-24)
+
+### Pattern: a credential-stripping subprocess sanitizer applied unconditionally can break a legitimately-trusted custom runner
+
+**What happened:** A test harness stripped credential-shaped environment variables before launching any
+backend, to protect against an untrusted agent description reaching a live session. This unconditionally
+also stripped credentials from a user-configured custom/fallback runner (`AGENT_TRIGGER_LLM_COMMAND`)
+that legitimately needs its own API key to function — the fallback path exited with a provider error
+instead of ever running.
+
+**Rule:** A security-motivated environment/credential-stripping step must be scoped to the actual risk
+path (an untrusted target reaching a trusted credential) — applying it blanket to every subprocess launch
+can silently break a differently-trusted path (a user-configured runner that is itself the trust boundary
+for its own credentials).
+
+### Confirms: a frontmatter "required key present" substring check is satisfied by any superstring containing that key
+
+**What happened:** A smoke test's frontmatter check used a bare substring test for `"name:"` and
+`"description:"`. `rename:` satisfies the first; `short-description:` satisfies the second — so a file
+missing both actually-required keys was reported as having valid frontmatter. This is the same
+underlying anti-pattern as PR #108's `check_bash_grants` basename-substring finding above, recurring
+independently in a different validator (`check_frontmatter`) in a different skill within the same week.
+
+**Rule:** A "does this required key/name exist" check must anchor to the start of a line (or another
+unambiguous boundary), never a bare substring test — a substring/basename match is satisfied by any
+superstring that happens to contain it. (See also this document's PR #108 `check_bash_grants` pattern —
+the same anti-pattern, independently found twice in five days.)
+
+### Pattern: confirming a script's file location is contained is not the same as confirming it's safe to execute
+
+**What happened:** A skill that reviews a third-party/PR-supplied plugin runs that plugin's own
+`scripts/smoke_test.py` after checking the script's resolved path is contained within the checkout (a
+symlink-escape guard). Path containment says nothing about what the script does once it actually runs —
+`python <path>` executes it with the user's full filesystem/network/environment privileges, so a
+malicious target-authored script can exfiltrate credentials or modify files outside the checkout before
+producing a PASS/FAIL result. Confirmed real but explicitly deferred rather than fixed in-PR — filed as
+issue #134, since closing it properly is a design decision (real sandboxing vs. a new trust gate) that
+would itself need its own dedicated security review before shipping.
+
+**Rule:** A path-containment check (blocking symlink escape) is necessary but not sufficient to treat an
+untrusted, target-authored script as safe to execute — real safety requires either genuine sandboxing
+(OS-level or a credential-stripped subprocess) or an explicit trust-confirmation gate before execution,
+not a location check alone.
+
+---
+
 ## Master pre-push checklist (all PRs analyzed, including this session's #61/#62/#65/#68/#76/#79/#92/#88)
 
 ### Tool, API & language behavior — verify, don't assume
