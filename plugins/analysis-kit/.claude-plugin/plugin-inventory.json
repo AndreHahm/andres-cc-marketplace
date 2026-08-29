@@ -1,0 +1,542 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "workflow",
+      "id": "component_8041f62d",
+      "name": "analyzing-actor-behavior",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/analyzing-actor-behavior"
+          ],
+          "name": "analyzing-actor-behavior",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/analyzing-actor-behavior",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/analyzing-actor-behavior"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "workflow",
+      "id": "component_222d68ca",
+      "name": "analyzing-governance-and-conflicts",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/analyzing-governance-and-conflicts"
+          ],
+          "name": "analyzing-governance-and-conflicts",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/analyzing-governance-and-conflicts",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/analyzing-governance-and-conflicts"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "workflow",
+      "id": "component_51624283",
+      "name": "analyzing-plugin-components",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/analyzing-plugin-components"
+          ],
+          "name": "analyzing-plugin-components",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/analyzing-plugin-components",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/analyzing-plugin-components"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "workflow",
+      "id": "component_e8428f3b",
+      "name": "analyzing-tool-and-framework-use",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/analyzing-tool-and-framework-use"
+          ],
+          "name": "analyzing-tool-and-framework-use",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/analyzing-tool-and-framework-use",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/analyzing-tool-and-framework-use"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "workflow",
+      "id": "component_c95fa043",
+      "name": "comparing-session-to-specification",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/comparing-session-to-specification"
+          ],
+          "name": "comparing-session-to-specification",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/comparing-session-to-specification",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/comparing-session-to-specification"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "workflow",
+      "id": "component_1042a5e6",
+      "name": "comparing-sessions",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/comparing-sessions"
+          ],
+          "name": "comparing-sessions",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/comparing-sessions",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/comparing-sessions"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "workflow",
+      "id": "component_32f32272",
+      "name": "generating-analysis-recommendations",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/generating-analysis-recommendations"
+          ],
+          "name": "generating-analysis-recommendations",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/generating-analysis-recommendations",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/generating-analysis-recommendations"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "review-learnings",
+      "functional_role": "workflow",
+      "id": "component_814d6432",
+      "name": "managing-review-learnings",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/managing-review-learnings"
+          ],
+          "name": "managing-review-learnings",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/managing-review-learnings",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/managing-review-learnings"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "workflow",
+      "id": "component_d14812ed",
+      "name": "mining-recurring-patterns",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/mining-recurring-patterns"
+          ],
+          "name": "mining-recurring-patterns",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/mining-recurring-patterns",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/mining-recurring-patterns"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "review-learnings",
+      "functional_role": "workflow",
+      "id": "component_a4ae3f88",
+      "name": "mining-review-learnings",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/mining-review-learnings"
+          ],
+          "name": "mining-review-learnings",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/mining-review-learnings",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/mining-review-learnings"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "reviewer",
+      "id": "component_ee59acc4",
+      "name": "reviewing-analysis-findings",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/reviewing-analysis-findings"
+          ],
+          "name": "reviewing-analysis-findings",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/reviewing-analysis-findings",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/reviewing-analysis-findings"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "workflow",
+      "id": "component_18081121",
+      "name": "running-a-full-retrospective",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/running-a-full-retrospective"
+          ],
+          "name": "running-a-full-retrospective",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/running-a-full-retrospective",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/running-a-full-retrospective"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "session-analysis",
+      "functional_role": "workflow",
+      "id": "component_07d3975d",
+      "name": "starting-an-analysis",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/starting-an-analysis"
+          ],
+          "name": "starting-an-analysis",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/starting-an-analysis",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/starting-an-analysis"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-29",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin_97cc39b8",
+  "plugin_name": "analysis-kit",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-08-29"
+}
