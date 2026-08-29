@@ -44,9 +44,9 @@ directly following #172 and preceding the Master checklist, exactly where #172 i
 ```diff
 @@ -1041,6 +1041,22 @@
  scratchpad file), never a double-quoted inline argument.
- 
+
  ---
- 
+
 +## PR #199 — <PLACEHOLDER: script/component name> (<PLACEHOLDER: reviewer(s), e.g. Codex>, <PLACEHOLDER: N> round(s), <PLACEHOLDER: YYYY-MM-DD>)
 +
 +### Pattern: a subprocess's non-zero exit code was never checked before its stdout was parsed as JSON

@@ -5,6 +5,7 @@ the CLI's fixture and live-argument-validation paths, and _run_gh_api's
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -194,6 +195,49 @@ def test_load_fixture_unreadable_path_raises(tmp_path):
     missing = tmp_path / "does-not-exist.json"
     with pytest.raises(pr_review_fetcher.FetchError):
         pr_review_fetcher.load_fixture(missing)
+
+
+def test_load_fixture_null_review_element_raises(tmp_path):
+    # A null element in the "reviews" array previously passed load_fixture's
+    # list-type check, then crashed normalize() with an uncaught
+    # AttributeError when it called .get() on None.
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps({"reviews": [None], "comments": []}), encoding="utf-8")
+    with pytest.raises(pr_review_fetcher.FetchError):
+        pr_review_fetcher.load_fixture(bad)
+
+
+def test_load_fixture_non_object_issue_comment_element_raises(tmp_path):
+    bad = tmp_path / "bad.json"
+    bad.write_text(
+        json.dumps({"reviews": [], "comments": [], "issue_comments": ["not-an-object"]}),
+        encoding="utf-8",
+    )
+    with pytest.raises(pr_review_fetcher.FetchError):
+        pr_review_fetcher.load_fixture(bad)
+
+
+def test_cli_fixture_mode_expands_tilde_in_path(tmp_path, monkeypatch):
+    # --fixture-file "~/foo.json" must resolve against the user's home
+    # directory, not a literal "~" subdirectory of the cwd.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    fixture = tmp_path / "empty.json"
+    fixture.write_text(json.dumps({"reviews": [], "comments": []}), encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS_DIR / "pr_review_fetcher.py"),
+            "--fixture-file",
+            "~/empty.json",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env={**os.environ, "HOME": str(tmp_path), "USERPROFILE": str(tmp_path)},
+    )
+    assert result.returncode == 0
+    assert json.loads(result.stdout) == []
 
 
 def test_cli_fixture_mode_prints_json_and_exits_zero():

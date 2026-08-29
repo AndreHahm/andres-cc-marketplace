@@ -24,8 +24,12 @@ Two ways to get input JSON, never both:
                         {"reviews": [...], "comments": [...], "issue_comments": [...]}.
                         `issue_comments` is optional in the fixture file
                         (defaults to an empty list) so pre-existing
-                        two-key fixtures stay valid.
-                        Accepts any local path -- no containment check limits
+                        two-key fixtures stay valid. Every element of each
+                        array must itself be a JSON object -- a null or
+                        non-object element raises FetchError rather than
+                        crashing normalize() with an uncaught AttributeError.
+                        Accepts any local path (a leading ~ is expanded to the
+                        user's home directory) -- no containment check limits
                         it to this plugin's own fixtures/ directory.
 """
 
@@ -88,6 +92,16 @@ def load_fixture(path: Path) -> tuple[list[dict], list[dict], list[dict]]:
         raise FetchError(
             f"{path}: 'reviews', 'comments', and 'issue_comments' must all be JSON arrays"
         )
+    for name, items in (
+        ("reviews", reviews),
+        ("comments", comments),
+        ("issue_comments", issue_comments),
+    ):
+        for i, item in enumerate(items):
+            if not isinstance(item, dict):
+                raise FetchError(
+                    f"{path}: '{name}[{i}]' must be a JSON object, got {type(item).__name__}"
+                )
     return reviews, comments, issue_comments
 
 
@@ -182,7 +196,7 @@ def main() -> int:
         if args.pr is not None:
             reviews, comments, issue_comments = fetch_live(args.pr, args.repo)
         else:
-            reviews, comments, issue_comments = load_fixture(Path(args.fixture_file))
+            reviews, comments, issue_comments = load_fixture(Path(args.fixture_file).expanduser())
         records = normalize(reviews, comments, issue_comments)
     except FetchError as exc:
         print(f"Error: {exc}", file=sys.stderr)
