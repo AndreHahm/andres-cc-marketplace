@@ -79,14 +79,9 @@ Use"), a two-dot diff would silently skip any uncommitted work-in-progress — i
 case of reviewing before the first commit is even made. A single-ref `git diff <merge-base>`
 includes the working tree (index and unstaged changes both) on top of the merge-base.
 
-**Intent-add untracked files before diffing, or they never appear at all.** A brand-new file that
-was never `git add`ed shows up in `git status` as `??` but produces *no* output from `git diff` in
-any ref form, single or two-dot — Git only diffs tracked content. Verified empirically: an isolated
-untracked file yields nothing from `git diff "$MERGE_BASE" -- <file>` until `git add -N` (intent-to-
-add) records it in the index with an empty placeholder blob, after which the same diff command shows
-its full content as an addition. Without this, an all-untracked change set (the common case right
-after `git init` or creating a wholly new file) reports "nothing to review" despite genuinely having
-something to review.
+**Intent-add untracked files before diffing, or they never appear at all** — `git diff` produces no
+output at all for untracked content until `git add -N` intent-adds it. See
+`references/diff-mechanics-rationale.md` for the full empirical verification.
 
 **Do this against a throwaway index, never the repository's real one.** `git add -N` against the
 real `.git/index` is a persistent mutation that outlives this skill's own run — a later, unrelated
@@ -118,16 +113,8 @@ path, copying nothing. Avoids two data-loss bugs a from-scratch reseed (e.g. `gi
 doesn't, and — if the copy itself fails — sets `$INDEX_COPY_FAILED=1` rather than reviewing silently.
 See `references/index-seeding-rationale.md` for all three.
 
-**`|| true` on `git add -N` matters for a deletion-only `$SCOPE`** — its pathspec needs a disk match,
-so it fails outright and, untolerated, aborts the chain. `git diff "$MERGE_BASE" -- "$SCOPE"` still
-shows the deletion.
-
-**`$UNTRACKED_FILES` matters beyond this chain: Codex's own dispatch can't see intent-added files.**
-Phase 1/2 tell Codex to re-run the diff command itself, in a separate subprocess that never inherits
-this env-scoped `GIT_INDEX_FILE` — so Codex's own `git diff "$MERGE_BASE"` still sees those paths as
-bare `??`, invisible. If `$UNTRACKED_FILES` is non-empty, Phase 1 and Phase 2 both append it
-explicitly to Codex's instructions (see each phase's Codex-facing assembly step) so Codex reads
-those files directly instead of silently missing them.
+**`|| true` on `git add -N` matters for a deletion-only `$SCOPE`**, and **`$UNTRACKED_FILES` matters
+beyond this chain** for Codex's own dispatch — see `references/diff-mechanics-rationale.md` for both.
 
 To **run** it, use `"${DIFF[@]}"` (quoted, no word-splitting). To **embed** it as text, use
 `$DIFF_STR`. Every other diff invocation here (Preflight steps 2 and 6, `CODEX_DIFF`) reuses this
@@ -223,16 +210,13 @@ literal, already-resolved value — substitute the concrete string into every la
    echo "$UNSCOPED_CHANGED_FILES" | grep -qE 'plugins/codex-kit/(.*/)?(scripts|assets)/' && DISPATCHER_TOUCHED=1 || true
    ```
 
-   Use `-E` (extended regex) — plain `grep`'s default basic mode treats `(`/`)`/`?` as literal
-   characters and fails to match either path; verified: plain `grep` exits 1 against
-   `plugins/codex-kit/scripts/lib/codex-exec.mjs`, `grep -E` exits 0. **The trailing `|| true` is
-   required**: a no-match is grep's *normal* exit (1) on nearly every review, and untolerated aborts
-   the whole `&&`-chained Preflight before any later step runs. `$DISPATCHER_TOUCHED` (unset unless
-   matched), not grep's exit code, is what the First-Send Confirmation's clause (c) checks — a
-   property of the *whole diff*, which is why a `$SCOPE` excluding `plugins/codex-kit` (e.g.
-   `$SCOPE=plugins/git-kit`) can't silently hide a dispatcher change made elsewhere in the same diff.
-   The pattern's `(.*/)?` group and `assets/` alternative are both required — see
-   `references/dispatcher-trust-pattern.md` for why neither can be dropped. Step 5 protects the two
+   Both `-E` and the trailing `|| true` are required — see `references/dispatcher-trust-pattern.md`
+   for why (verified `grep` behavior, and why a no-match here must not abort the chain).
+   `$DISPATCHER_TOUCHED` (unset unless matched), not grep's exit code, is what the First-Send
+   Confirmation's clause (c) checks — a property of the *whole diff*, which is why a `$SCOPE` excluding
+   `plugins/codex-kit` (e.g. `$SCOPE=plugins/git-kit`) can't silently hide a dispatcher change made
+   elsewhere in the same diff. The pattern's `(.*/)?` group and `assets/` alternative are both
+   required — see the same reference for why neither can be dropped. Step 5 protects the two
    *prompt* files against a self-modifying diff; it does nothing for the *executable* or these policy
    inputs — `bridge-invoke.mjs`/`guarded-dispatch.mjs` (and everything both read at runtime) run from
    the working tree by a repo-relative path with no `$BASE` verification of their own. If
@@ -330,14 +314,8 @@ nothing fills `dispatch`/`provenance`/`contract_version` automatically the way C
 **Codex's pass**, via the resolver above (skip entirely in single-model mode — see resolver step 3):
 Codex has no prior context, so its instruction file must contain the diff **content itself**, not a
 command for Codex to run — `$RUN/review.md` alone only promises "the full diff is embedded directly
-at the end of this prompt," it doesn't actually provide it. Never instruct Codex to run `git diff`
-(or any other command expected to produce large output) itself: a confirmed, live Windows-specific
-issue (issue #78) makes Codex's own large-output shell-execution path fail outright
-(`CreateProcessAsUserW` / Windows error 1920) on some machines, while a small-output command from
-the same dispatch succeeds fine — the failure is about anticipated output size, not the sandbox
-profile, so it isn't specific to the danger-full-access Step 2 path either. Embedding the diff as
-plain text sidesteps the whole failure class, on every platform, with no reliability cost — Codex
-still receives the exact same diff content either way. `Read` `$RUN/review.md`, then `Read` the diff
+at the end of this prompt," it doesn't actually provide it. **Never instruct Codex to run `git diff`
+itself — see `references/embed-diff-not-run-rationale.md` for why (issue #78).** `Read` `$RUN/review.md`, then `Read` the diff
 itself (`git diff "$MERGE_BASE" -- <eligible files>`, i.e. the same command `$CODEX_DIFF_STR`
 represents — but run it yourself here, in this Bash/Read step, never leave it for Codex to run),
 and append it to `$RUN/review.md`'s content as `\n<diff>\n<the diff text>\n</diff>\n`, preceded by a
@@ -412,8 +390,8 @@ an excluded `location` or excluded `components` entry (per the paragraph above) 
 these, then in what remains, replace every closing-tag-shaped substring (`<`, optional whitespace,
 `/`, a tag-like name, optional whitespace, `>`) with `(/name)` so it can't prematurely close
 `<other_reviewer_findings>` or any other structural tag below. **Same embedding requirement as Phase
-1 above, same reason (issue #78) — never instruct Codex to run `git diff` itself; embed the diff
-content directly.** Then `Write` `$RUN/challenger_instructions_for_codex.md` as the concatenation
+1 above — never instruct Codex to run `git diff` itself; embed the diff content directly (see
+`references/embed-diff-not-run-rationale.md`).** Then `Write` `$RUN/challenger_instructions_for_codex.md` as the concatenation
 of, in order: `review.md`'s content; a blank line; `refute.md`'s content; a blank line, then a line
 telling Codex not to run `git diff` or any other shell command to fetch the diff, since it's already
 embedded, followed by `\n<diff>\n<the same diff text Phase 1 embedded>\n</diff>\n`; **if
