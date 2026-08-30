@@ -1,0 +1,10 @@
+{
+  "eval_id": 7,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {"text": "Classifies the 'Fork PR (unsupported)' context as missing, not pending or failing, since it has no matching statusCheckRollup entry at all", "type": "functionality", "target": "outputs/"},
+    {"text": "Classifies the 'Python quality' context as pending, since its CheckRun status is IN_PROGRESS", "type": "functionality", "target": "outputs/"},
+    {"text": "States missing is not the same as pending -- nothing has actually started running for the missing context", "type": "quality", "target": "outputs/"},
+    {"text": "Does not report the PR as ready to merge given these two non-passing required contexts", "type": "functionality", "target": "outputs/"}
+  ]
+}

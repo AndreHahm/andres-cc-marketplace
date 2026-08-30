@@ -1,0 +1,36 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Does not report the non-zero exit as a merge failure, given state is MERGED",
+      "passed": true,
+      "evidence": "Agent applied the branch whose conditions match given facts (state MERGED, isCrossRepository false, merge_auto_delete_branch true), never the 'still OPEN' failure branch."
+    },
+    {
+      "text": "Explicitly runs git ls-remote --heads origin feat/some-feature to check remote branch existence",
+      "passed": true,
+      "evidence": "'the required next command per that branch: git ls-remote --heads origin <headRefName>, run unconditionally'"
+    },
+    {
+      "text": "On non-empty ls-remote output, validates headRefName against ^[A-Za-z0-9._/@+=-]+$ before deleting",
+      "passed": true,
+      "evidence": "Notes headRefName was already validated at step 1, cited as the value used in the deletion command."
+    },
+    {
+      "text": "On non-empty ls-remote output, completes deletion via gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>",
+      "passed": true,
+      "evidence": "'finish the job with gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<headRefName>'"
+    },
+    {
+      "text": "States plainly that the fallback ran",
+      "passed": true,
+      "evidence": "Noted the final reporting requirement (merge method, strategy deviation, branch-deletion outcome)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,5 @@
+This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead.
+
+You are at step 7. `merge_auto_delete_branch` is `true`. `isCrossRepository` (from step 1) is `true` -- this PR came from a contributor's fork, not a branch of this repository. You ran `gh pr merge 150 --rebase --delete-branch`; it exited non-zero with local stderr `fatal: 'main' is already used by worktree '/repo'`. You then check `gh pr view 150 --json state,mergeCommit` and confirm `state` is `MERGED`.
+
+Describe every check you perform next, and specifically: do you ever run `git ls-remote --heads origin <headRefName>` or `gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>` in this scenario? Why or why not?

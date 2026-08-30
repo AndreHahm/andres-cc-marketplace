@@ -1,0 +1,26 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States gh pr view --json state,mergeCommit is checked regardless of the merge command's exit code",
+      "passed": true,
+      "evidence": "'regardless of the... exit code (0 here), step 7(e) requires re-fetching gh pr view 160 --json state,mergeCommit before reporting anything'."
+    },
+    {
+      "text": "States git ls-remote --heads origin <headRefName> always runs when merge_auto_delete_branch is true and isCrossRepository is false, even after a clean exit-0 merge",
+      "passed": true,
+      "evidence": "'yes, git ls-remote... always runs here, unconditionally... The clean exit does not exempt this check.'"
+    },
+    {
+      "text": "On non-empty ls-remote output, states it completes deletion via gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>",
+      "passed": true,
+      "evidence": "'run gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<headRefName>... then report that the branch was deleted via this fallback'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

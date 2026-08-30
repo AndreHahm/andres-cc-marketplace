@@ -469,6 +469,45 @@ def check_boundaries_graphql_grant_disclosure():
     )
 
 
+def check_boundaries_rest_grants_method_unrestricted_disclosure():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    start = text.find("\n## Boundaries\n")
+    if start == -1:
+        return False, "'## Boundaries' section not found"
+    end = text.find("\n## ", start + 1)
+    boundaries = text[start : end if end != -1 else len(text)]
+    if "method-unrestricted, same reasoning as" not in boundaries:
+        return (
+            False,
+            "Boundaries no longer discloses that the REST grants (branches/protection, compare, "
+            "pulls/commits, labels, collaborators/permission) are method-unrestricted, same as the "
+            "graphql grant (security-reviewer M1, round 2)",
+        )
+    return True, "Boundaries discloses the REST grants' method-unrestricted breadth"
+
+
+def check_step2_advisory_failure_handling():
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "could not be determined" not in step2:
+        return (
+            False,
+            "step 2's advisory disclosures no longer state a failed call is reported as "
+            "'could not be determined' rather than silently as 0 (security-reviewer M2)",
+        )
+    if step2.count("could not be determined") < 2:
+        return (
+            False,
+            "step 2's failure-handling clause is missing from one of the two advisory disclosures "
+            "-- both out-of-sync-with-base and unresolved-review-threads need their own",
+        )
+    return (
+        True,
+        "both advisory disclosures state a failed call is reported as undetermined, never as 0",
+    )
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -488,6 +527,8 @@ CHECKS = [
     check_step2_out_of_sync_disclosure,
     check_step2_unresolved_threads_disclosure,
     check_boundaries_graphql_grant_disclosure,
+    check_boundaries_rest_grants_method_unrestricted_disclosure,
+    check_step2_advisory_failure_handling,
     check_step5_states_advisory_disclosures,
 ]
 

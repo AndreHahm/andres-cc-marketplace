@@ -1,0 +1,26 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Never runs the git ls-remote/gh api -X DELETE fallback when isCrossRepository is true",
+      "passed": true,
+      "evidence": "'neither git ls-remote... nor gh api -X DELETE... is ever run' -- fires 'regardless of merge_auto_delete_branch or the local --delete-branch step's own exit code'."
+    },
+    {
+      "text": "Reports that the branch lives in the contributor's fork and isn't this skill's to delete",
+      "passed": true,
+      "evidence": "'reports the merge succeeded with branch deletion skipped (\"lives in the contributor's fork, not this skill's to delete\")'."
+    },
+    {
+      "text": "Does not attempt to compute or guess the fork's own owner/repo to retarget the deletion -- simply skips it",
+      "passed": true,
+      "evidence": "Explains {owner}/{repo} always resolves to this repository, never attempts to resolve the fork's own owner/repo -- skips outright."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

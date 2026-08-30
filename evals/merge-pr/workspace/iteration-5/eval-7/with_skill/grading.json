@@ -1,0 +1,31 @@
+{
+  "eval_id": 7,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the 'Fork PR (unsupported)' context as missing, not pending or failing, since it has no matching statusCheckRollup entry at all",
+      "passed": true,
+      "evidence": "Table: 'Fork PR (unsupported) | missing | no matching entry in statusCheckRollup at all'."
+    },
+    {
+      "text": "Classifies the 'Python quality' context as pending, since its CheckRun status is IN_PROGRESS",
+      "passed": true,
+      "evidence": "Table: 'Python quality (ruff, ty, pytest) | pending | IN_PROGRESS'."
+    },
+    {
+      "text": "States missing is not the same as pending -- nothing has actually started running for the missing context",
+      "passed": true,
+      "evidence": "'never ran for this head commit, distinct from pending' in the table rationale."
+    },
+    {
+      "text": "Does not report the PR as ready to merge given these two non-passing required contexts",
+      "passed": true,
+      "evidence": "'Verdict: not ready to merge. Two of four required contexts are non-passing.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
