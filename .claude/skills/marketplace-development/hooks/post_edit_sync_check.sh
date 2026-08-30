@@ -36,13 +36,14 @@ done
 [[ -z "$MARKETPLACE_JSON" ]] && exit 0
 
 # Check if this skill is registered and if version needs bumping
-python3 -c "
+python3 - "$MARKETPLACE_JSON" "$SKILL_NAME" <<'PY' 2>/dev/null
 import json, sys
 
-with open('$MARKETPLACE_JSON', encoding='utf-8') as f:
+marketplace_json, skill_name = sys.argv[1], sys.argv[2]
+
+with open(marketplace_json, encoding='utf-8') as f:
     data = json.load(f)
 
-skill_name = '$SKILL_NAME'
 found = False
 for p in data.get('plugins', []):
     skills = p.get('skills', [])
@@ -54,7 +55,7 @@ for p in data.get('plugins', []):
     if matched:
         found = True
         version = p.get('version', 'unknown')
-        msg = f'SKILL.md for \"{skill_name}\" was modified. Remember to bump its version in marketplace.json (currently {version}). Users on the old version won\\'t receive this update otherwise.'
+        msg = f'SKILL.md for "{skill_name}" was modified. Remember to bump its version in marketplace.json (currently {version}). Users on the old version won\'t receive this update otherwise.'
         print(json.dumps({
             'decision': 'block',
             'reason': msg,
@@ -63,10 +64,10 @@ for p in data.get('plugins', []):
         break
 
 if not found:
-    msg = f'SKILL.md for \"{skill_name}\" was modified but this skill is NOT registered in marketplace.json. Add it if you want it installable via plugin marketplace.'
+    msg = f'SKILL.md for "{skill_name}" was modified but this skill is NOT registered in marketplace.json. Add it if you want it installable via plugin marketplace.'
     print(json.dumps({
         'decision': 'block',
         'reason': msg,
         'hookSpecificOutput': {'hookEventName': 'PostToolUse'},
     }))
-" 2>/dev/null
+PY
