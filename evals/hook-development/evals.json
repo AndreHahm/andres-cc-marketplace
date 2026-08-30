@@ -7,7 +7,7 @@
       "id": 1,
       "name": "Skill-frontmatter-embedded hooks: block, path reference",
       "prompt": "I'm writing a new skill at .claude/skills/my-validator/SKILL.md (a project-level skill, not part of any plugin). I want its own YAML frontmatter to declare a PostToolUse hook that runs a script at .claude/skills/my-validator/hooks/check.sh after every Write/Edit. Write the exact frontmatter hooks: block, including the command path.",
-      "expected_output": "The command path does NOT use ${CLAUDE_PLUGIN_ROOT} (unconfirmed/broken for a project-level skill's frontmatter-embedded hooks). It uses either a bare relative path (./hooks/check.sh) or ${CLAUDE_PROJECT_DIR} with the full path from project root.",
+      "expected_output": "The command path does NOT use ${CLAUDE_PLUGIN_ROOT} (unconfirmed/broken for a project-level skill's frontmatter-embedded hooks) and does NOT use a bare relative path like ./hooks/check.sh (hook handlers run in the session's cwd, not the skill's own directory, so a bare relative path is unsafe). It uses ${CLAUDE_PROJECT_DIR}/.claude/skills/my-validator/hooks/check.sh -- the full, explicit path from the project root.",
       "files": []
     },
     {

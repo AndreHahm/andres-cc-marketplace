@@ -1,52 +1,41 @@
 # Frontmatter `hooks:` block for `.claude/skills/my-validator/SKILL.md`
 
-`.claude/skills/my-validator/SKILL.md` is a **project-level skill** (no enclosing plugin), so
-`$CLAUDE_PLUGIN_ROOT` is not available — the `hook-development` skill explicitly calls this out as
-confirmed broken in that case. Use a relative path instead, resolved relative to the skill's own
-directory (`.claude/skills/my-validator/`), which makes `./hooks/check.sh` resolve to
-`.claude/skills/my-validator/hooks/check.sh` — exactly the script location requested.
+Since `my-validator` is a **project-level skill** (not part of any plugin), `${CLAUDE_PLUGIN_ROOT}` must not be used — it is not confirmed available inside a SKILL.md-embedded `hooks:` block, and is confirmed to resolve unpredictably (duplicated-path failure) for exactly this case: a project-level skill with no enclosing plugin. A bare relative path (e.g. `./hooks/check.sh` or `hooks/check.sh`) must also not be used, since hook handlers run in the live session's current working directory, not the skill's own directory.
+
+The correct variable is `$CLAUDE_PROJECT_DIR`, combined with the full path from the project root to the script — this is documented as stable regardless of cwd.
+
+## Exact frontmatter block
 
 ```yaml
 ---
 name: my-validator
-description: <your existing description here>
+description: <your skill's description>
 hooks:
   PostToolUse:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./hooks/check.sh"
+          command: "${CLAUDE_PROJECT_DIR}/.claude/skills/my-validator/hooks/check.sh"
           timeout: 5000
 ---
 ```
 
-## Why this shape
+## Notes on each piece
 
-- **Nested `hooks:` array** — `PostToolUse` maps to a list of matcher objects, each with its own
-  nested `hooks: [...]` array of actual hook definitions. Omitting this inner array is the most common
-  hooks.json/frontmatter mistake and causes the hook to silently do nothing.
-- **`matcher: "^(Write|Edit)$"`** — fires only for the `Write` and `Edit` tools, per the request ("after
-  every Write/Edit").
-- **`command: "./hooks/check.sh"`** — a relative path, resolved relative to the skill's own directory,
-  not `$CLAUDE_PLUGIN_ROOT` (unavailable/broken for a project-level skill with no enclosing plugin) and
-  not `$CLAUDE_PROJECT_DIR` (works, but is unnecessarily verbose here since a plain relative path already
-  resolves correctly from the skill directory).
-- **`timeout: 5000`** — a reasonable explicit timeout (milliseconds) so the hook can't hang the tool call
-  indefinitely; adjust to whatever `check.sh` actually needs.
-- Hooks defined this way are registered only while the `my-validator` skill is active, per
-  `hook-development`'s "Hook Frontmatter Hooks (skill/agent-embedded)" section.
+- **`matcher: "^(Write|Edit)$"`** — fires on either a `Write` or an `Edit` tool call. This is a regex matcher, not a literal list, so it needs the anchors/alternation shown (a bare `Write|Edit` without anchors would also work but is less precise).
+- **`hooks:` (inner array)** — required nesting: even a single hook must live inside its own `hooks: [...]` array under the matcher entry. Omitting this nested array is the #1 JSON/YAML structural mistake for hook configs.
+- **`command`** — uses `${CLAUDE_PROJECT_DIR}` (not `${CLAUDE_PLUGIN_ROOT}`, not a bare relative path) followed by the explicit path from the project root: `.claude/skills/my-validator/hooks/check.sh`. This matches where the script actually lives on disk for this project-level skill.
+- **`timeout`** — optional; 5000ms shown as a reasonable default for a validation script. Adjust based on what `check.sh` actually does.
 
-## Script side note (not part of the frontmatter, but required for the hook to work)
+## Reminder for `check.sh` itself
 
-`check.sh` must read its event data from **stdin**, not environment variables — the skill's own
-"CRITICAL: Command Hooks Receive Data via Stdin" section:
+The script must read event data from **stdin as JSON**, not environment variables:
 
 ```bash
 #!/bin/bash
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path')
-# ...validation logic...
+# ... validation logic using $FILE_PATH ...
 ```
 
-Make sure `.claude/skills/my-validator/hooks/check.sh` is executable (`chmod +x`) so Claude Code can run
-it directly via the `command` hook type.
+This hook is registered only while the `my-validator` skill is active (component-scoped hook behavior, as opposed to a marketplace/plugin-level `hooks/hooks.json`).
