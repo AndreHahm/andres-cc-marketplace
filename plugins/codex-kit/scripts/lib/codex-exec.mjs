@@ -277,6 +277,41 @@ function buildSpawnInvocation(command, args, options, platform = process.platfor
 // directly, without needing a real npm-shim install on the test machine.
 export { escapeWindowsArgument, escapeWindowsCommand, resolveWindowsExecutable, buildSpawnInvocation };
 
+// Resolves what `codex` would actually be invoked as, without spawning it --
+// used only by runCodexExec's `dryRun` branch below. On win32, delegates to
+// buildSpawnInvocation so a dry run resolves through the exact same
+// .cmd-shim/cmd.exe-escaping logic a real dispatch would use. On every other
+// platform, buildSpawnInvocation always reports resolved: true without
+// checking PATH at all -- fine for a real dispatch (a missing binary already
+// surfaces correctly via the spawned child's own "error" event, per the
+// child.on("error", ...) handler below), but a dry run never spawns anything
+// to raise that event, so it needs its own lightweight PATH/executable-bit
+// check instead. Not folded into buildSpawnInvocation itself: that would add
+// a PATH pre-check to the real (non-dry-run) POSIX dispatch path too, which
+// already works correctly today and doesn't need it. `platform` defaults to
+// process.platform but is injectable, the same pattern buildSpawnInvocation
+// itself already uses, so a smoke test can exercise both branches on any CI
+// runner, not just a real Windows machine.
+function resolveDryRunInvocation(command, args, cwd, platform = process.platform) {
+  if (platform === "win32") {
+    return buildSpawnInvocation(command, args, { cwd, stdio: ["pipe", "pipe", "pipe"] }, platform);
+  }
+  const pathDirs = (process.env.PATH || "").split(path.delimiter).filter(Boolean);
+  for (const dir of pathDirs) {
+    const candidate = path.join(dir, command);
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
+      return { command: candidate, args, options: { cwd }, resolved: true };
+    } catch {
+      // Not in this PATH directory -- keep looking.
+    }
+  }
+  return { resolved: false, reason: "not_found" };
+}
+
+// Exported for the same smoke-testing reason as the Windows helpers above.
+export { resolveDryRunInvocation };
+
 function makeScratchFiles(dispatchId) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `codex-kit-exec-${dispatchId}-`));
   return {
@@ -302,9 +337,15 @@ function makeScratchFiles(dispatchId) {
  *   name here -- see cli-reference.md's "codex-kit never hardcodes a model name" note. A caller
  *   exposing this to its own environment (e.g. codex-review-bridge reading CODEX_KIT_REVIEW_MODEL)
  *   is responsible for validating the value before passing it through.
- * @returns {Promise<{ok: true, data: object} | {ok: false, category: string, detail: string}>}
+ * @param {boolean} [opts.dryRun=false] - when true, builds the real prompt/args and resolves the
+ *   `codex` invocation exactly as a real dispatch would, but never spawns it. Returns
+ *   `{ok: true, dryRun: true, wouldRun: {...}}` on success, or the same typed failure a real
+ *   dispatch would return for a missing binary (`CLI_UNAVAILABLE`) or an unsafe argument
+ *   (`NON_ZERO_EXIT`) -- every other failure category (auth, timeout, schema mismatch, ...) can
+ *   only occur once Codex actually runs, so a dry run cannot surface those by construction.
+ * @returns {Promise<{ok: true, data: object} | {ok: true, dryRun: true, wouldRun: object} | {ok: false, category: string, detail: string}>}
  */
-export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox, dispatchId = `d${Date.now().toString(36)}`, model }) {
+export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox, dispatchId = `d${Date.now().toString(36)}`, model, dryRun = false }) {
   if (!sandbox) {
     throw new Error("runCodexExec requires an explicit sandbox mode — never omit it (scope-expansion gap #4).");
   }
@@ -344,6 +385,31 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
     ];
     if (model) {
       args.push("--model", model);
+    }
+
+    if (dryRun) {
+      const dryInvocation = resolveDryRunInvocation("codex", args, cwd);
+      if (!dryInvocation.resolved) {
+        if (dryInvocation.reason === "unsafe_argument") {
+          return finish(typedFailure(FAILURE_CATEGORIES.NON_ZERO_EXIT, dryInvocation.detail));
+        }
+        return finish(typedFailure(FAILURE_CATEGORIES.CLI_UNAVAILABLE, "codex binary not found on PATH"));
+      }
+      return finish({
+        ok: true,
+        dryRun: true,
+        wouldRun: {
+          command: dryInvocation.command,
+          args: dryInvocation.args,
+          cwd,
+          sandbox,
+          model: model || null,
+          timeoutMs,
+          dispatchId,
+          promptLength: prompt.length,
+          prompt: redactSecrets(prompt)
+        }
+      });
     }
 
     const invocation = buildSpawnInvocation("codex", args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
