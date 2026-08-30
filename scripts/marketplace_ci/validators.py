@@ -203,7 +203,9 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
     messages: list[str] = []
     divergence_exceptions = {(exc.source, exc.dest) for exc in registry.divergence_exceptions}
 
-    def check_pair(rel_source: str, rel_dest: str, *, is_agent: bool = False) -> None:
+    def check_pair(
+        rel_source: str, rel_dest: str, *, is_agent: bool = False, honor_exceptions: bool = False
+    ) -> None:
         # Exact match against the staged path set -- not a directory-prefix
         # key -- so that staging one file in a skill (e.g. SKILL.md) never
         # requires an untouched sibling (e.g. references/*.md) to also be
@@ -219,7 +221,13 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
                 "counterpart was not staged"
             )
             return
-        if (rel_source, rel_dest) in divergence_exceptions:
+        # honor_exceptions is only ever true for the plugin-mirror loop below --
+        # divergence_exceptions is a plan_plugin_sync concept with no equivalent in
+        # plan_exports, which has zero knowledge of exceptions. Honoring one here for
+        # a skill/agent export pair would let check-all --staged pass a stale export
+        # that the real, non-staged check-codex-exports (plan_exports) always rejects
+        # -- exactly the inconsistency this scoping prevents.
+        if honor_exceptions and (rel_source, rel_dest) in divergence_exceptions:
             # Whole-file exception (see DivergenceException docstring) -- both
             # sides being staged is still required above; only the byte-equality
             # check below is skipped.
@@ -244,7 +252,7 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
             rel_dest = (
                 (claude_root / source_file.relative_to(plugin_root)).relative_to(repo).as_posix()
             )
-            check_pair(rel_source, rel_dest)
+            check_pair(rel_source, rel_dest, honor_exceptions=True)
 
     for skill_name in registry.skills:
         source_dir = claude_root / "skills" / skill_name
