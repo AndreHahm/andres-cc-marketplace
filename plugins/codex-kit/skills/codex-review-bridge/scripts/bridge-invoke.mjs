@@ -321,6 +321,14 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   const { "reviewer-type": reviewerType, "instruction-file": instructionFile, "target-paths": targetPathsRaw, "execution-profile": executionProfile, "dispatch-id": dispatchId, cwd = process.cwd() } = options;
 
+  // Explicit value ("--dry-run true"), not a bare boolean flag: parseArgs
+  // above always consumes the NEXT argv element as the current flag's value
+  // (options[arg.slice(2)] = argv[i + 1]), so a bare --dry-run appearing
+  // before another flag would silently eat that flag's own name as its
+  // value and desync the rest of parsing. Matching the file's existing
+  // --flag value convention sidesteps that instead of changing the parser.
+  const dryRun = options["dry-run"] === "true";
+
   if (!reviewerType || !instructionFile || !targetPathsRaw || !executionProfile || !dispatchId) {
     console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "missing required --reviewer-type/--instruction-file/--target-paths/--execution-profile/--dispatch-id" }));
     process.exit(1);
@@ -527,12 +535,23 @@ async function main() {
     cwd,
     dispatchId,
     model: modelOverride || undefined,
+    dryRun,
     ...(timeoutOverrideMs !== undefined ? { timeoutMs: timeoutOverrideMs } : {})
   });
 
   if (!result.ok) {
     console.error(JSON.stringify(result));
     process.exit(1);
+  }
+
+  // A dry run has no real Codex response to run semanticallyValidate or
+  // isTotalInspectionFailure against -- every check up to this point (arg
+  // validation, repo-root containment, instruction-containment, prompt
+  // assembly/neutralization, and now the codex-invocation resolution itself)
+  // already ran for real; this is where a real dispatch would happen.
+  if (result.dryRun) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
   }
 
   // semanticallyValidate runs FIRST, before isTotalInspectionFailure --

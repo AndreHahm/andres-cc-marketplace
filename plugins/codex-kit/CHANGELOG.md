@@ -52,6 +52,14 @@ All notable changes to this plugin are documented here.
 - `codex-audit-loop` and `codex-peer-review` each gained a real live `skill-tester`
   baseline-comparison run (both clearly beat baseline), upgrading this plugin's
   live-eval-coverage count from 2 to 4 of its 11 skills.
+- Added a `dryRun` option to the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`),
+  exposed as `--dry-run true` on both of its current callers (`codex-review-bridge`'s
+  `bridge-invoke.mjs`, `codex-windows-guardrails`' `guarded-dispatch.mjs`). Every pre-flight guard
+  still runs for real and can still reject the call; only the final `codex` invocation is
+  short-circuited after resolving it (Windows shim resolution, or a new POSIX PATH/executable check),
+  so a caller can validate its arguments, containment checks, and exact assembled prompt without
+  spending a real Codex call or, for guardrails' `danger-full-access` path, granting any real
+  unsandboxed execution.
 
 ## [1.0.0-alpha.1] - 2026-08-08
 

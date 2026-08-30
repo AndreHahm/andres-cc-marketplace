@@ -488,6 +488,20 @@ async function main() {
     }
   }
 
+  // Explicit value ("--dry-run true"), not a bare boolean flag -- matches
+  // codex-review-bridge's own bridge-invoke.mjs convention and for the same
+  // reason: parseArgs above always consumes the NEXT argv element as the
+  // current flag's value, so a bare --dry-run would silently eat whichever
+  // flag came after it. Every guard below (config-enabled, repo-root/
+  // git-toplevel, repository-boundary, whole-repo secret scan, instruction-
+  // containment, prompt assembly/neutralization) still runs for real under
+  // dry-run -- only the final runCodexExec call is short-circuited. That's
+  // the actual point: this is the one dispatch path with no sandbox at all,
+  // so proving the whole guard chain still fires correctly, and seeing the
+  // exact assembled prompt, without ever granting real danger-full-access
+  // execution, is what a dry run is for here.
+  const dryRun = args["dry-run"] === "true";
+
   const { "reviewer-type": reviewerType, "instruction-file": instructionFile, "dispatch-id": dispatchId, "repo-root": repoRoot } = args;
 
   // Both values are interpolated into the <dispatch> prompt tag below and
@@ -652,7 +666,8 @@ async function main() {
     schema: ENVELOPE_SCHEMA,
     sandbox: "danger-full-access",
     cwd: repoRoot,
-    dispatchId
+    dispatchId,
+    dryRun
   });
 
   if (!result.ok) {
@@ -662,6 +677,16 @@ async function main() {
     // output could carry more than the read-only path's equivalent would.
     const detail = typeof result.detail === "string" ? result.detail.slice(0, 500) : result.detail;
     fail(result.category, detail);
+    return;
+  }
+
+  // A dry run has no real Codex response for semanticallyValidate to check --
+  // every guard above (config-enabled, repo-root/git-toplevel, repository-
+  // boundary, secret scan, instruction-containment, prompt assembly/
+  // neutralization) already ran for real; this is where a real
+  // danger-full-access dispatch would happen.
+  if (result.dryRun) {
+    console.log(JSON.stringify(result, null, 2));
     return;
   }
 
