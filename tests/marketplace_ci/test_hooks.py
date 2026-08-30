@@ -18,6 +18,14 @@ def _write_registry(repo, **kwargs):
     registry_path = repo / ".claude" / "marketplace-sync.json"
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     registry_path.write_text(json.dumps(payload), encoding="utf-8")
+    # check_staged_parity reads the registry from the Git index (staged content), never disk --
+    # stage it here so every caller's registry is visible the same way a real commit would see it.
+    subprocess.run(
+        ["git", "add", "-f", ".claude/marketplace-sync.json"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
 
 
 def test_unstaged_repair_does_not_satisfy_staged_parity(git_repo):

@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 from dataclasses import replace
 from pathlib import Path
@@ -82,6 +83,36 @@ def test_divergence_exception_prevents_post_edit_sync_from_overwriting_mirror(re
     assert ".claude/skills/demo/SKILL.md" not in destinations_with_actions
 
 
+def test_divergence_exception_warns_instead_of_creating_missing_destination(repo):
+    # Devin-found gap: an excepted destination that doesn't exist yet (not just mismatched)
+    # must never be silently created from the canonical source's own bytes -- those bytes are,
+    # by definition, wrong for this destination. Must produce a "warn" action, not "create".
+    from scripts.marketplace_ci.registry import DivergenceException, Registry
+
+    registry = Registry(
+        version=1,
+        plugin_mirrors=("sample-kit",),
+        skills=(),
+        agents=(),
+        divergence_exceptions=(
+            DivergenceException(
+                source="plugins/sample-kit/skills/demo/SKILL.md",
+                dest=".claude/skills/demo/SKILL.md",
+                reason="test: intentionally divergent for a documented reason",
+            ),
+        ),
+    )
+    plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=False)
+    matching = [
+        action
+        for action in plan.actions
+        if action.destination.relative_to(repo).as_posix() == ".claude/skills/demo/SKILL.md"
+    ]
+    assert len(matching) == 1
+    assert matching[0].operation == "warn"
+    assert not (repo / ".claude" / "skills" / "demo" / "SKILL.md").exists()
+
+
 def test_two_plugins_hooks_json_concatenate_without_collision(repo, registry_for):
     plan = plan_hooks_merge(
         repo, registry_for("sample-kit", "sample-kit-two"), repo_hooks_path=FIXTURE_REPO_HOOKS
@@ -102,12 +133,17 @@ def test_hooks_scripts_still_collide_normally(repo, registry_for):
 
 
 def test_repo_owned_rule_maps_1to1_into_claude_rules(repo, registry_for):
+    # repo_rules_path must live under `repo` -- plan_plugin_sync resolves every source's
+    # path relative to `repo` (for divergence-exception lookups), matching how the real
+    # CLI always calls this with a repo-relative path (see __main__.py's _repo_rules_path).
+    repo_rules_path = repo / "repo-rules"
+    shutil.copytree(FIXTURE_REPO_RULES, repo_rules_path)
     plan = plan_plugin_sync(
         repo,
         registry_for("sample-kit"),
         previous=None,
         bootstrap=True,
-        repo_rules_path=FIXTURE_REPO_RULES,
+        repo_rules_path=repo_rules_path,
     )
     destinations = {action.destination.relative_to(repo).as_posix() for action in plan.actions}
     assert ".claude/rules/example-rule.md" in destinations

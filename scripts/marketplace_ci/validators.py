@@ -182,12 +182,17 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
     problem when the *filesystem* disagrees, which is exactly the case an
     unstaged-but-already-correct destination does not trigger.
     """
-    registry_path = repo / ".claude" / "marketplace-sync.json"
-    if not registry_path.is_file():
+    git_state = GitState(repo=repo)
+    registry_blob = git_state.read_index(PurePosixPath(".claude/marketplace-sync.json"))
+    if registry_blob is None:
         return HookCheckResult(exit_code=0)
 
-    registry = Registry.load(registry_path)
-    git_state = GitState(repo=repo)
+    # Index-only, matching this function's own contract: an exception added to the
+    # working-tree copy of marketplace-sync.json but never staged must never be
+    # honored here -- it isn't part of what's actually about to be committed.
+    registry = Registry.loads(
+        registry_blob.decode("utf-8"), source=".claude/marketplace-sync.json (staged)"
+    )
     staged = git_state.staged_paths()
     staged_new_paths = {cp.new_path for cp in staged if cp.new_path is not None}
     if not staged_new_paths:

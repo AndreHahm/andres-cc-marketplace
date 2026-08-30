@@ -132,12 +132,13 @@ def plan_plugin_sync(
             continue
         source = sources[0]
         source_bytes = source.read_bytes()
+        rel_source = source.relative_to(repo).as_posix()
+        rel_dest = dest.relative_to(repo).as_posix()
+        is_excepted = (rel_source, rel_dest) in divergence_exceptions
         if dest.exists():
             if dest.read_bytes() == source_bytes:
                 continue
-            rel_source = source.relative_to(repo).as_posix()
-            rel_dest = dest.relative_to(repo).as_posix()
-            if (rel_source, rel_dest) in divergence_exceptions:
+            if is_excepted:
                 # Whole-file exception (see registry.DivergenceException docstring) --
                 # this destination is allowed to differ from its canonical source, so
                 # never schedule a sync action that would overwrite it.
@@ -148,6 +149,24 @@ def plan_plugin_sync(
                     source=source,
                     destination=dest,
                     reason="content differs from canonical source",
+                )
+            )
+        elif is_excepted:
+            # The canonical source's own bytes are, by definition, wrong for this
+            # destination (that's the entire reason the exception exists) -- never
+            # auto-create it from the canonical source. Surface a warning instead of
+            # silently producing a mirror with incorrect content.
+            actions.append(
+                SyncAction(
+                    operation="warn",
+                    source=None,
+                    destination=dest,
+                    reason=(
+                        "missing from destination, but excepted from canonical sync "
+                        "(divergence_exceptions) -- recreating from the canonical source "
+                        "would be incorrect; reconstruct this file's intended "
+                        "destination-specific content manually"
+                    ),
                 )
             )
         else:
