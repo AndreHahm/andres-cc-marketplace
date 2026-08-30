@@ -18,3 +18,16 @@ changed-file list. Two parts of that pattern are each load-bearing on their own:
   all) to shape and gate a `danger-full-access` run. Both live under `assets/`, not `scripts/`, so a
   `scripts/`-only pattern would miss a diff that weakens either one — the trust-relevant surface isn't
   limited to executable code.
+
+## Why `-E` and the trailing `|| true` are both required on the check itself
+
+`grep`'s default basic mode treats `(`/`)`/`?` as literal characters, so it fails to match either
+alternative in the pattern above — verified: a plain `grep` run against
+`plugins/codex-kit/scripts/lib/codex-exec.mjs` exits 1 (no match) where `grep -E` correctly exits 0.
+`-E` (extended regex) is required for the pattern to work at all, not just a style preference.
+
+The trailing `|| true` is separately required: a no-match is `grep`'s *normal* exit code (1) on nearly
+every review (most diffs don't touch the Codex dispatcher), and this whole check runs as one link in
+Preflight's `&&`-chained sequence — untolerated, that ordinary no-match would abort the rest of
+Preflight before any later step runs. `$DISPATCHER_TOUCHED` staying unset is what actually signals
+"not touched"; the check's own exit code is never read for that.

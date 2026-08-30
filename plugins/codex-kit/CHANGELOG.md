@@ -68,6 +68,39 @@ All notable changes to this plugin are documented here.
   `cwd` entirely (a documented, legitimate `runCodexExec` call shape) crashed with a `TypeError`
   outside any cleanup path, instead of defaulting to `process.cwd()` the way a real dispatch already
   does.
+- Fixed `bridge-invoke.mjs`'s `semanticallyValidate` discarding an entire returned envelope
+  over a single out-of-scope/nonexistent `location`/`components[]` citation (issues
+  #236/#111) — it now drops just the affected finding (or, for a `components`-only miss,
+  just that citation) and records the drop in `inspection_limits`, so `cross-model-review`'s
+  resolver no longer falls back to single-model mode over one plausible, otherwise-valid
+  finding. A `dispatch.id`/`dispatch.reviewer` mismatch or a duplicate finding id still
+  reject the whole envelope, unchanged.
+- Fixed the above fix: the dropped-finding note recorded in `inspection_limits` echoed the raw,
+  model-controlled `location`/`component` text verbatim, which could let a crafted citation
+  (e.g. containing `"CreateProcessAsUserW"`) misclassify as a total sandbox failure via
+  `isTotalInspectionFailure()` once `findings` was empty, triggering an unwarranted
+  `danger-full-access` fallback (found by `cross-model-review`, live-verified against the
+  actual call order in `main()`). The note is now a fixed, static string with no
+  citation text embedded.
+- Fixed the above fix's own residual gap: the "fixed, static" note still interpolated
+  `finding.id`, which is just as model-controlled and unconstrained (`type: "string"`,
+  no pattern) as the `location`/`component` text the first fix removed — a crafted `id`
+  containing the same process-start-failure phrasing reopened the identical
+  `isTotalInspectionFailure` misclassification path. Found by a second round of
+  `cross-model-review` against the first fix; the note is now fully static with zero
+  interpolated values.
+- Fixed two more issues in the same graceful-degradation path, both found by this PR's own
+  GitHub-side automated review (Devin + Codex): (1) a finding's `components` field was
+  unconditionally coerced from `null` to `[]`, erasing the distinction between a legitimate
+  single-file finding and a multi-file finding whose components all got dropped — it's now
+  only reassigned when it started as an array; (2) if *every* returned finding got dropped as
+  out-of-scope/nonexistent, the envelope still returned `ok: true` with an empty `findings`
+  array — indistinguishable from a genuine clean pass to `scripts/marketplace_ci`'s
+  `validate_review_output`/`run-codex-review`, which derive `blocking` purely from `findings`
+  and never read `inspection_limits`. An all-hallucinated Codex response could silently pass
+  CI with zero real review coverage. `semanticallyValidate` now fails the whole envelope
+  closed when the original findings list was non-empty but nothing survived filtering — a
+  response that never had findings to begin with is unaffected.
 
 ## [1.0.0-alpha.1] - 2026-08-08
 

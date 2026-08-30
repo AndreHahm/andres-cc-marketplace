@@ -9,8 +9,10 @@ string `/repo-sibling` lexically starts with `/repo` even though it's a sibling 
 descendant — the same class of bug `codex-review-bridge`'s own `isWithin()` helper already guards
 against for exactly this reason. Exclude the candidate unless it equals the repo root exactly or
 starts with `<repo root>/` (trailing separator included). Both dispatch scripts canonicalize target
-paths before their own containment check and reject the *entire dispatch* on one such entry, forcing
-an unnecessary single-model fallback over one symlink.
+paths before their own containment check; per issues #236/#111 that check now only drops the one
+finding/citation the symlink ends up cited in rather than rejecting the entire dispatch, but
+excluding it here in Preflight is still preferred — it stops the symlink's content from reaching
+Codex at all, not just its citation from surviving semantic validation afterward.
 
 ## Why `$UNTRACKED_FILES` needs the same treatment
 
@@ -21,4 +23,5 @@ directly (see the Inputs section's own note on why). An untracked path that's a 
 outside the repository would otherwise be named there unfiltered — and since the confirmation already
 states `--target-paths` doesn't constrain what a dispatched process can *read*, following that
 instruction could send content from outside the consented repository to Codex, on top of any
-resulting citation failing semantic validation and discarding the whole envelope.
+resulting citation being dropped by semantic validation (per issues #236/#111, just that finding —
+not the whole envelope — but the read-boundary leak itself already happened by that point).

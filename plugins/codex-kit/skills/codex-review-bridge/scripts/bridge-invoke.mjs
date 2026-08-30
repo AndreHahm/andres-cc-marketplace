@@ -295,24 +295,107 @@ export function isTotalInspectionFailure(envelope) {
   return envelope.inspection_limits.some((note) => TOTAL_INSPECTION_FAILURE_PATTERN.test(String(note)));
 }
 
+// Issues #236/#111: an out-of-scope/nonexistent citation degrades gracefully
+// instead of rejecting the whole envelope. `dispatch.id`/`dispatch.reviewer`
+// mismatch and a duplicate finding id are protocol-integrity problems (the
+// response may not even be authentically from this dispatch) and still fail
+// the entire envelope, unchanged. A scope/existence problem is different: it
+// is a property of one finding's citation, not of the envelope as a whole,
+// so only that citation is affected -- a finding whose `location` fails is
+// dropped (its primary citation is invalid), while a finding whose
+// `location` is fine but one `components[]` entry fails just has that
+// entry removed, keeping the finding itself. Every drop is recorded in
+// `envelope.inspection_limits` -- as a fully static note text, with NO
+// interpolated value at all, not even `finding.id` (also model-controlled,
+// unconstrained `type: "string"` in ENVELOPE_SCHEMA -- round 2 of a
+// cross-model-review fix: round 1 stopped interpolating `location`/
+// `component` but still interpolated `finding.id`, missing that it's just
+// as attacker-controlled) -- so a crafted citation or finding id can't
+// smuggle process-start-failure-shaped text into a field main()'s
+// isTotalInspectionFailure() pattern-matches on. A finding's `components`
+// stays `null` when it started `null` (a legitimate single-file finding,
+// per ENVELOPE_SCHEMA) rather than being coerced to `[]`, which would erase
+// the distinction from a multi-file finding whose components all got
+// dropped (found by Devin's automated PR review). And if EVERY originally-
+// returned finding gets dropped, this function fails the whole envelope
+// closed rather than returning `ok: true` with an empty `findings` array --
+// that shape is indistinguishable from a genuine "nothing to report" clean
+// pass to a downstream consumer that only reads `findings`, never
+// `inspection_limits` (scripts/marketplace_ci/review.py and __main__.py both
+// do exactly this), so an all-hallucinated Codex response would otherwise
+// silently pass CI with zero real review coverage (found by Codex's
+// automated PR review, a P1 finding). Mutates `envelope` in place (rather
+// than returning a new object) so both this file's own `main()` and
+// `guarded-dispatch.mjs`'s import of this same function keep working from
+// `result.data` unchanged after a call.
 export function semanticallyValidate(envelope, { targetPaths, dispatchId, reviewerType, repoRoot }) {
   if (envelope.dispatch.id !== dispatchId || envelope.dispatch.reviewer !== reviewerType) {
     return { ok: false, category: "semantic_validation_failure", detail: "dispatch id/reviewer mismatch" };
   }
   const seenIds = new Set();
+  const keptFindings = [];
+  const droppedNotes = [];
+  const hadFindings = envelope.findings.length > 0;
   for (const finding of envelope.findings) {
     if (seenIds.has(finding.id)) {
       return { ok: false, category: "semantic_validation_failure", detail: `duplicate finding id ${finding.id}` };
     }
     seenIds.add(finding.id);
     if (!locateInSemanticScope(targetPaths, finding.location, repoRoot)) {
-      return { ok: false, category: "semantic_validation_failure", detail: `finding ${finding.id} cites an out-of-scope or nonexistent path: ${finding.location}` };
+      // Never echo the raw, model-controlled `finding.location` text into this
+      // note: it is appended to envelope.inspection_limits below, which
+      // isTotalInspectionFailure() pattern-matches against process-start-failure
+      // phrasing once findings is empty -- a crafted location string (e.g.
+      // containing "CreateProcessAsUserW") would otherwise let a dropped
+      // out-of-scope citation misclassify as a total sandbox failure and trigger
+      // the resolver's danger-full-access fallback (found by cross-model-review).
+      droppedNotes.push("a finding was dropped: location cites an out-of-scope or nonexistent path");
+      continue;
     }
+    const keptComponents = [];
     for (const component of finding.components ?? []) {
-      if (!locateInSemanticScope(targetPaths, component, repoRoot)) {
-        return { ok: false, category: "semantic_validation_failure", detail: `finding ${finding.id} cites an out-of-scope or nonexistent component: ${component}` };
+      if (locateInSemanticScope(targetPaths, component, repoRoot)) {
+        keptComponents.push(component);
+      } else {
+        droppedNotes.push("a finding's components[] entry was dropped: out-of-scope or nonexistent citation");
       }
     }
+    // Only reassign `components` when it was actually an array to begin with --
+    // a finding whose `components` was legitimately `null` (a single-file
+    // finding, per ENVELOPE_SCHEMA's `components: { type: ["array", "null"] }`)
+    // must stay `null`, not silently become `[]`, or a consumer loses the
+    // ability to tell "no components by design" from "components existed but
+    // every one was dropped" (found by cross-model-review / Devin's review).
+    if (Array.isArray(finding.components)) {
+      finding.components = keptComponents;
+    }
+    keptFindings.push(finding);
+  }
+  envelope.findings = keptFindings;
+  if (droppedNotes.length > 0) {
+    envelope.inspection_limits = [...(envelope.inspection_limits ?? []), ...droppedNotes];
+  }
+  // If the envelope originally had findings but every one was dropped as
+  // out-of-scope/nonexistent, this is indistinguishable from a hallucinated
+  // or garbage response with zero real review coverage -- fail closed
+  // (reject the whole envelope) instead of returning `ok: true` with an
+  // empty `findings` array, which looks exactly like a genuine "nothing to
+  // report" clean pass. This matters because the downstream marketplace-ci
+  // consumer (scripts/marketplace_ci/review.py's validate_review_output,
+  // scripts/marketplace_ci/__main__.py's run-codex-review) derives its
+  // `blocking` decision purely from `findings` and never reads
+  // `inspection_limits` at all -- without this check, an all-hallucinated
+  // Codex response would silently pass CI with zero review coverage instead
+  // of failing loudly the way it did before issues #236/#111's fix (found by
+  // Codex's automated PR review, a P1 "fail closed" finding on this PR).
+  // A response that never had any findings to begin with (a genuine "approve,
+  // nothing wrong" pass) is unaffected -- `hadFindings` is false in that case.
+  if (hadFindings && keptFindings.length === 0) {
+    return {
+      ok: false,
+      category: "semantic_validation_failure",
+      detail: "every returned finding cited an out-of-scope or nonexistent path -- no valid review coverage survived"
+    };
   }
   return { ok: true };
 }
