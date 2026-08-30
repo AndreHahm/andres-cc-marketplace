@@ -118,6 +118,7 @@ def plan_plugin_sync(
             delete_destinations[dest] = source_file
 
     actions: list[SyncAction] = []
+    matched_exceptions: set[tuple[str, str]] = set()
 
     for dest, sources in sorted(destinations.items()):
         if len(sources) > 1:
@@ -134,14 +135,35 @@ def plan_plugin_sync(
         source_bytes = source.read_bytes()
         rel_source = source.relative_to(repo).as_posix()
         rel_dest = dest.relative_to(repo).as_posix()
-        is_excepted = (rel_source, rel_dest) in divergence_exceptions
+        exception_key = (rel_source, rel_dest)
+        is_excepted = exception_key in divergence_exceptions
+        if is_excepted:
+            matched_exceptions.add(exception_key)
         if dest.exists():
             if dest.read_bytes() == source_bytes:
                 continue
             if is_excepted:
                 # Whole-file exception (see registry.DivergenceException docstring) --
                 # this destination is allowed to differ from its canonical source, so
-                # never schedule a sync action that would overwrite it.
+                # never schedule a sync action that would overwrite it. Surfaced as an
+                # informational "warn" (not a silent no-op) so the active divergence
+                # stays visible on every check/check-all run, rather than requiring a
+                # human to remember to manually re-compare -- mitigates the "unrelated
+                # drift can hide indefinitely behind a whole-file exception" risk that
+                # is otherwise inherent to a whole-file (not line-level) exception.
+                actions.append(
+                    SyncAction(
+                        operation="warn",
+                        source=None,
+                        destination=dest,
+                        reason=(
+                            "intentionally divergent from its canonical source per a "
+                            "declared divergence_exceptions entry -- re-confirm the "
+                            "divergence is still only the documented, expected "
+                            "difference, not unrelated drift"
+                        ),
+                    )
+                )
                 continue
             actions.append(
                 SyncAction(
@@ -178,6 +200,28 @@ def plan_plugin_sync(
                     reason="missing from destination",
                 )
             )
+
+    # A declared exception whose (source, dest) never matched any real, registered
+    # mirror pair above is dead configuration -- most likely a typo in
+    # divergence_exceptions itself -- and the mirror pair it was actually meant to
+    # protect is left unprotected. Surfaced as "warn" so it's visible on every
+    # check/check-all run without blocking the commit.
+    for exc in sorted(registry.divergence_exceptions, key=lambda e: (e.source, e.dest)):
+        if (exc.source, exc.dest) in matched_exceptions:
+            continue
+        actions.append(
+            SyncAction(
+                operation="warn",
+                source=None,
+                destination=(repo / exc.dest).resolve(),
+                reason=(
+                    f"divergence_exceptions entry (source={exc.source!r}, "
+                    f"dest={exc.dest!r}) does not match any registered mirror pair -- "
+                    "likely a typo; this exception protects nothing, and its intended "
+                    "pair (if any) is left unprotected"
+                ),
+            )
+        )
 
     for dest, source in sorted(delete_destinations.items()):
         actions.append(

@@ -56,7 +56,10 @@ def test_divergence_exception_prevents_post_edit_sync_from_overwriting_mirror(re
     # This is the Codex-found gap this test closes: check_staged_parity respecting the
     # exception isn't enough on its own -- plan_plugin_sync (run on every watched edit via
     # run_post_edit, independent of any commit-time check) must respect it too, or the very
-    # next unrelated edit silently overwrites the intentionally-divergent mirror.
+    # next unrelated edit silently overwrites the intentionally-divergent mirror. An
+    # informational "warn" action is expected (see the Devin-found "unrelated drift can hide
+    # indefinitely" gap) -- what must never happen is a "create"/"update" that would touch
+    # the file on disk.
     from scripts.marketplace_ci.registry import DivergenceException, Registry
 
     (repo / ".claude" / "skills" / "demo").mkdir(parents=True, exist_ok=True)
@@ -77,10 +80,16 @@ def test_divergence_exception_prevents_post_edit_sync_from_overwriting_mirror(re
         ),
     )
     plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=False)
-    destinations_with_actions = {
-        action.destination.relative_to(repo).as_posix() for action in plan.actions
-    }
-    assert ".claude/skills/demo/SKILL.md" not in destinations_with_actions
+    matching = [
+        action
+        for action in plan.actions
+        if action.destination.relative_to(repo).as_posix() == ".claude/skills/demo/SKILL.md"
+    ]
+    assert len(matching) == 1
+    assert matching[0].operation == "warn"
+    assert (
+        repo / ".claude" / "skills" / "demo" / "SKILL.md"
+    ).read_text() == "genuinely different mirror content"
 
 
 def test_divergence_exception_warns_instead_of_creating_missing_destination(repo):
@@ -111,6 +120,60 @@ def test_divergence_exception_warns_instead_of_creating_missing_destination(repo
     assert len(matching) == 1
     assert matching[0].operation == "warn"
     assert not (repo / ".claude" / "skills" / "demo" / "SKILL.md").exists()
+
+
+def test_divergence_exception_typo_warns_as_unmatched(repo):
+    # Devin-found gap: a divergence_exceptions entry whose (source, dest) doesn't match any
+    # real, registered mirror pair is dead configuration (most likely a typo) and leaves its
+    # intended pair unprotected. Must be surfaced, not silently ignored.
+    from scripts.marketplace_ci.registry import DivergenceException, Registry
+
+    registry = Registry(
+        version=1,
+        plugin_mirrors=("sample-kit",),
+        skills=(),
+        agents=(),
+        divergence_exceptions=(
+            DivergenceException(
+                source="plugins/sample-kit/skills/demo/SKILL.mdd",  # typo: trailing "d"
+                dest=".claude/skills/demo/SKILL.md",
+                reason="test: a typo'd source path",
+            ),
+        ),
+    )
+    plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=False)
+    warn_reasons = [
+        action.reason
+        for action in plan.actions
+        if action.operation == "warn"
+        and "does not match any registered mirror pair" in action.reason
+    ]
+    assert len(warn_reasons) == 1
+    assert "SKILL.mdd" in warn_reasons[0]
+
+
+def test_divergence_exception_matched_pair_produces_no_typo_warning(repo, registry_for):
+    # Regression guard: a correctly-declared exception (matching a real pair, files identical)
+    # must never trigger the unmatched-exception warning above.
+    from scripts.marketplace_ci.registry import DivergenceException, Registry
+
+    registry = Registry(
+        version=1,
+        plugin_mirrors=("sample-kit",),
+        skills=(),
+        agents=(),
+        divergence_exceptions=(
+            DivergenceException(
+                source="plugins/sample-kit/skills/demo/SKILL.md",
+                dest=".claude/skills/demo/SKILL.md",
+                reason="test: correctly declared, dest not created yet",
+            ),
+        ),
+    )
+    plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=False)
+    assert not any(
+        "does not match any registered mirror pair" in action.reason for action in plan.actions
+    )
 
 
 def test_two_plugins_hooks_json_concatenate_without_collision(repo, registry_for):
