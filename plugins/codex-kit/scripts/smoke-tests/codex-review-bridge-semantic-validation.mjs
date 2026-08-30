@@ -20,7 +20,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { semanticallyValidate } from "../../skills/codex-review-bridge/scripts/bridge-invoke.mjs";
+import { semanticallyValidate, isTotalInspectionFailure } from "../../skills/codex-review-bridge/scripts/bridge-invoke.mjs";
 
 let pass = 0;
 let fail = 0;
@@ -162,6 +162,48 @@ console.log("\n=== The exact pre-fix failure mode: a semicolon-joined path list 
     "a multi-path string stuffed into location alone (the old workaround) never becomes a validated finding -- proves the fix is components[], not a looser location check",
     envelope.findings.length === 0,
     JSON.stringify(envelope.findings)
+  );
+}
+
+console.log("\n=== cross-model-review finding: a dropped-location note never leaks raw citation text that could satisfy isTotalInspectionFailure ===");
+{
+  // A malicious/malformed Codex response whose only finding has a location
+  // string crafted to contain process-start-failure phrasing. Pre-fix, this
+  // text was echoed verbatim into the dropped-finding's inspection_limits
+  // note; post-fix, the note is a fixed static string with no citation text.
+  const envelope = baseEnvelope([
+    { id: "X1", location: "../outside/CreateProcessAsUserW failed to start process.md" }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check("envelope still validates (the crafted finding is dropped, not the envelope)", result.ok, JSON.stringify(result));
+  check("the crafted finding is dropped, leaving zero findings", envelope.findings.length === 0, JSON.stringify(envelope.findings));
+  check(
+    "the dropped-location note contains no raw citation text (no 'CreateProcessAsUserW', no 'failed to start process')",
+    (envelope.inspection_limits ?? []).every(
+      (note) => !note.includes("CreateProcessAsUserW") && !/failed to start.*process/i.test(note)
+    ),
+    JSON.stringify(envelope.inspection_limits)
+  );
+  check(
+    "isTotalInspectionFailure does NOT misclassify this as a total sandbox failure",
+    !isTotalInspectionFailure(envelope),
+    JSON.stringify(envelope.inspection_limits)
+  );
+}
+{
+  // Same crafted phrasing, but on a dropped components[] citation instead of location.
+  const envelope = baseEnvelope([
+    {
+      id: "X2",
+      location: "skill-a/SKILL.md:1",
+      components: ["../outside/CreateProcessAsUserW.md"]
+    }
+  ]);
+  semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check(
+    "a dropped components[] citation's note contains no raw 'CreateProcessAsUserW' text",
+    (envelope.inspection_limits ?? []).every((note) => !note.includes("CreateProcessAsUserW")),
+    JSON.stringify(envelope.inspection_limits)
   );
 }
 

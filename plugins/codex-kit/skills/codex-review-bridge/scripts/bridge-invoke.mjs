@@ -305,11 +305,14 @@ export function isTotalInspectionFailure(envelope) {
 // dropped (its primary citation is invalid), while a finding whose
 // `location` is fine but one `components[]` entry fails just has that
 // entry removed, keeping the finding itself. Every drop is recorded in
-// `envelope.inspection_limits` so the caller isn't left with a silently
-// empty findings list looking like a clean pass. Mutates `envelope` in
-// place (rather than returning a new object) so both this file's own
-// `main()` and `guarded-dispatch.mjs`'s import of this same function keep
-// working from `result.data` unchanged after a call.
+// `envelope.inspection_limits` -- as a fixed, static note text, never the raw
+// `finding.location`/`component` string itself, so a crafted citation can't
+// smuggle process-start-failure-shaped text into a field main()'s
+// isTotalInspectionFailure() pattern-matches on -- so the caller isn't left
+// with a silently empty findings list looking like a clean pass. Mutates
+// `envelope` in place (rather than returning a new object) so both this
+// file's own `main()` and `guarded-dispatch.mjs`'s import of this same
+// function keep working from `result.data` unchanged after a call.
 export function semanticallyValidate(envelope, { targetPaths, dispatchId, reviewerType, repoRoot }) {
   if (envelope.dispatch.id !== dispatchId || envelope.dispatch.reviewer !== reviewerType) {
     return { ok: false, category: "semantic_validation_failure", detail: "dispatch id/reviewer mismatch" };
@@ -323,7 +326,14 @@ export function semanticallyValidate(envelope, { targetPaths, dispatchId, review
     }
     seenIds.add(finding.id);
     if (!locateInSemanticScope(targetPaths, finding.location, repoRoot)) {
-      droppedNotes.push(`finding ${finding.id} dropped: cites an out-of-scope or nonexistent path: ${finding.location}`);
+      // Never echo the raw, model-controlled `finding.location` text into this
+      // note: it is appended to envelope.inspection_limits below, which
+      // isTotalInspectionFailure() pattern-matches against process-start-failure
+      // phrasing once findings is empty -- a crafted location string (e.g.
+      // containing "CreateProcessAsUserW") would otherwise let a dropped
+      // out-of-scope citation misclassify as a total sandbox failure and trigger
+      // the resolver's danger-full-access fallback (found by cross-model-review).
+      droppedNotes.push(`finding ${finding.id} dropped: location cites an out-of-scope or nonexistent path`);
       continue;
     }
     const keptComponents = [];
@@ -331,7 +341,7 @@ export function semanticallyValidate(envelope, { targetPaths, dispatchId, review
       if (locateInSemanticScope(targetPaths, component, repoRoot)) {
         keptComponents.push(component);
       } else {
-        droppedNotes.push(`finding ${finding.id}: dropped out-of-scope or nonexistent component citation: ${component}`);
+        droppedNotes.push(`finding ${finding.id}: dropped an out-of-scope or nonexistent components[] citation`);
       }
     }
     finding.components = keptComponents;

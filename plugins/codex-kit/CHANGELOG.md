@@ -59,6 +59,13 @@ All notable changes to this plugin are documented here.
   resolver no longer falls back to single-model mode over one plausible, otherwise-valid
   finding. A `dispatch.id`/`dispatch.reviewer` mismatch or a duplicate finding id still
   reject the whole envelope, unchanged.
+- Fixed the above fix: the dropped-finding note recorded in `inspection_limits` echoed the raw,
+  model-controlled `location`/`component` text verbatim, which could let a crafted citation
+  (e.g. containing `"CreateProcessAsUserW"`) misclassify as a total sandbox failure via
+  `isTotalInspectionFailure()` once `findings` was empty, triggering an unwarranted
+  `danger-full-access` fallback (found by `cross-model-review`, live-verified against the
+  actual call order in `main()`). The note is now a fixed, static string with no
+  citation text embedded.
 
 ## [1.0.0-alpha.1] - 2026-08-08
 
