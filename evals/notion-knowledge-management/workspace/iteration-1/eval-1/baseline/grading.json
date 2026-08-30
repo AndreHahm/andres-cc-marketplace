@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output identifies this as an Idea record, not another record type", "passed": true, "evidence": "Created a Notion page titled 'Idea: Export Transition History as CSV'"},
+    {"text": "Output includes the shared Idea fields (title, area, body) per the record-type property table", "passed": false, "evidence": "Has title and body content but no 'area' categorization field — no structured property model was applied"},
+    {"text": "Output states approval is required before writing, not just before reading", "passed": false, "evidence": "Created the real Notion page directly with no approval step or preview"},
+    {"text": "Output does not claim an actual Notion write succeeded without a working connector", "passed": true, "evidence": "The write genuinely succeeded (real page created) — but this reveals the baseline has no approval gate at all, a real side effect created without user confirmation"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 2, "pass_rate": 0.5}
+}

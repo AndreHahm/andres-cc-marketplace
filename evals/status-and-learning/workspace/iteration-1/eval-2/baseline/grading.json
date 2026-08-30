@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output captures a concise outcome/learning, not a full transcript of the work", "passed": true, "evidence": "Disclosed the scope limitation honestly and gave a concise, generic set of plausible learnings plus a template, not a fabricated transcript"},
+    {"text": "Output defers open follow-up disposition to open-item-management rather than handling it itself", "passed": false, "evidence": "No awareness of any such distinction — offers to write it up directly instead"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 1, "pass_rate": 0.5}
+}

@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/status-and-learning/SKILL.md",
+  "assertions": [
+    {"text": "Output captures a concise outcome/learning, not a full transcript of the work", "type": "quality", "target": "outputs/"},
+    {"text": "Output defers open follow-up disposition to open-item-management rather than handling it itself", "type": "functionality", "target": "outputs/"}
+  ]
+}

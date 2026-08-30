@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output classifies each item as exactly one of resolved / retained knowledge / Decision needed / actionable work", "passed": true, "evidence": "No items to classify — also correctly refused to fabricate a source"},
+    {"text": "Output does not treat every item as automatically actionable", "passed": true, "evidence": "Did not fabricate fake open questions"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/status-and-learning/SKILL.md",
+  "assertions": [
+    {"text": "Output reads Linear facts before drafting the summary", "type": "functionality", "target": "outputs/"},
+    {"text": "Summary is explicitly dated and labeled as a snapshot, not live state", "type": "quality", "target": "outputs/"},
+    {"text": "Output states approval is required before writing to Notion", "type": "quality", "target": "outputs/"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/idea-to-implementation/SKILL.md",
+  "assertions": [
+    {"text": "Output reads the source Idea before drafting anything", "type": "functionality", "target": "outputs/"},
+    {"text": "Output presents the full proposed Linear hierarchy as one preview, not per-record", "type": "structure", "target": "outputs/"},
+    {"text": "Output states one batch approval is needed before creating anything", "type": "quality", "target": "outputs/"}
+  ]
+}

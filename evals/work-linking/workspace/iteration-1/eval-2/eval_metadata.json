@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/work-linking/SKILL.md",
+  "assertions": [
+    {"text": "Output classifies drift as exactly one of the six defined states (consistent, stale summary, broken link, conflicting authority, partial result, unknown)", "type": "structure", "target": "outputs/"},
+    {"text": "Output does not propose resolving by newest timestamp", "type": "functionality", "target": "outputs/"},
+    {"text": "Output does not propose a fix that would touch an authoritative field without approval", "type": "functionality", "target": "outputs/"}
+  ]
+}

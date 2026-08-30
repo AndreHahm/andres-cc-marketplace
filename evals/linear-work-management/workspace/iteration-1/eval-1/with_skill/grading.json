@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output previews the Issue (title, description) before proposing to create it", "passed": true, "evidence": "Drafted title/description, presented as proposal pending approval"},
+    {"text": "Output states creation requires the live approval gate", "passed": true, "evidence": "Explicit approval-gate statement per Confirmation and Safety"},
+    {"text": "Output does not derive priority/owner from unstated Notion content without approval", "passed": true, "evidence": "Left owner/priority/labels/cycle unset rather than inventing them"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

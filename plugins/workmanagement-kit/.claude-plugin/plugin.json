@@ -1,0 +1,9 @@
+{
+  "name": "workmanagement-kit",
+  "version": "1.0.0-alpha.1",
+  "description": "The sole Notion/Linear access point for this repository: capture and manage knowledge (Ideas, Decisions, proposed Goals, Notes, Research, Reports, Outcomes, Learning) in Notion and accepted execution (Goals, Roadmaps, Projects, Milestones, Issues) in Linear; deliberately promote accepted knowledge into tracked Linear work; produce dated, non-live Linear-to-Notion status and learning summaries; maintain stable cross-system links with drift detection and bounded repair; revalidate and disposition open follow-up items; and provide a governed cross-plugin intake gate so no other plugin in this repository needs its own Notion or Linear connector. Two read-only Codex reviewer personas — live via codex-kit's codex-review-bridge, and standalone via the Codex CLI — review transitions, closures, and ambiguous intake; Claude Code is the only agent that mutates either system.",
+  "author": {
+    "name": "Andre Hahm"
+  },
+  "dependencies": ["codex-kit"]
+}

@@ -1,0 +1,21 @@
+{
+  "skill_name": "open-item-management",
+  "skill_path": "plugins/workmanagement-kit/skills/open-item-management/SKILL.md",
+  "description": "Revalidate and disposition open questions, decisions, and follow-ups surfaced from a Notion Report, Decision, or completed work.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Revalidate open questions from a report",
+      "prompt": "Revalidate the open questions from last week's CSV-export retrospective report.",
+      "expected_output": "Classifies each item as exactly one of resolved / retained knowledge / Decision needed / actionable work, and does not treat every item as automatically actionable.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Disposition follow-ups from a decision",
+      "prompt": "Disposition the follow-ups from the read-only-mirror design decision.",
+      "expected_output": "Presents only the actionable-work items as a batch for approval, each with a source anchor, and does not silently create Linear Issues for retained-knowledge or Decision-needed items.",
+      "files": []
+    }
+  ]
+}

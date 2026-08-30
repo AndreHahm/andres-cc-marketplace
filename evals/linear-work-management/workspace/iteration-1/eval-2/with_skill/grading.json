@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output treats this as a read requiring no approval", "passed": true, "evidence": "Correctly treated status check as read-only"},
+    {"text": "Output resolves the target by stable ID reasoning, not an assumed unique name match", "passed": true, "evidence": "Stated the skill's stable-ID resolution requirement explicitly"},
+    {"text": "Output does not apply any pending change while just checking status", "passed": true, "evidence": "No change applied; correctly disclosed connector block rather than substituting an unscoped tool"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

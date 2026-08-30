@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "plugin_mirrors": ["plugin-devkit", "git-kit", "analysis-kit", "codex-kit"],
+  "plugin_mirrors": ["plugin-devkit", "git-kit", "analysis-kit", "codex-kit", "workmanagement-kit"],
   "codex_exports": {
     "skills": ["plugin-marketplace-review"],
     "agents": [
@@ -9,7 +9,9 @@
       "security-reviewer",
       "skill-reviewer",
       "subagent-reviewer",
-      "smoke-tester"
+      "smoke-tester",
+      "work-transition-reviewer",
+      "work-intake-classifier"
     ]
   },
   "divergence_exceptions": [

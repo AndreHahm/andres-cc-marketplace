@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output describes a link as stable IDs plus an authority label, not a content mirror", "passed": true, "evidence": "Created reciprocal structured links (Status line + attachment), not a content mirror"},
+    {"text": "Output mentions recording the link through the plugin's shared transition contract", "passed": false, "evidence": "No plugin-specific transition contract awareness; also performed the write directly on real records with no approval step"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 1, "pass_rate": 0.5}
+}

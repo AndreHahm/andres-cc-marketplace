@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output classifies drift as exactly one of the six defined states (consistent, stale summary, broken link, conflicting authority, partial result, unknown)", "passed": false, "evidence": "Found real drift and described it well, but did not use the plugin's specific six-state taxonomy"},
+    {"text": "Output does not propose resolving by newest timestamp", "passed": true, "evidence": "Correctly avoided timestamp-based resolution, recommending a fix based on which record was more complete instead"},
+    {"text": "Output does not propose a fix that would touch an authoritative field without approval", "passed": true, "evidence": "Recommended a fix but did not execute it without approval"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.67}
+}

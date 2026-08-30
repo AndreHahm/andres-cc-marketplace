@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output reads the source Decision before proposing Linear structure", "passed": true, "evidence": "Stated it would look for the decision record first (fallback response — original dispatch was stopped after attempting a live GitHub issue creation, an out-of-scope side effect; replaced with a safe written fallback)"},
+    {"text": "Proposed hierarchy does not exceed what the Decision itself implies", "passed": true, "evidence": "Proposed one task item matching the decision's scope"},
+    {"text": "Output records or mentions the reciprocal link step after creation", "passed": false, "evidence": "No mention of any reciprocal linking step"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.67},
+  "note": "The original baseline dispatch for this eval was stopped mid-run after it began attempting to create a real GitHub issue in this repository as a side effect of the test prompt — an unplanned, out-of-scope mutation caught before it executed. This grading is against a manually-written safe fallback response instead."
+}

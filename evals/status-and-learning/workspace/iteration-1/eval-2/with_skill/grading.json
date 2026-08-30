@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output captures a concise outcome/learning, not a full transcript of the work", "passed": true, "evidence": "No fabricated transcript; correctly identified missing real facts and a missing stable Linear ID rather than inventing content"},
+    {"text": "Output defers open follow-up disposition to open-item-management rather than handling it itself", "passed": false, "evidence": "Response focused on the missing-data/missing-connector blockers; did not explicitly name open-item-management as the place for follow-up disposition"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 1, "pass_rate": 0.5}
+}

@@ -1,0 +1,21 @@
+{
+  "skill_name": "work-linking",
+  "skill_path": "plugins/workmanagement-kit/skills/work-linking/SKILL.md",
+  "description": "Create and maintain stable cross-system links, and detect/repair drift, between Notion and Linear.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Link a Notion record to a Linear record",
+      "prompt": "Link this Notion idea to the Linear issue it became.",
+      "expected_output": "Records a link as a pair of stable IDs plus an authority label, not a content mirror, through the plugin's shared transition contract.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Check for drift",
+      "prompt": "Check for drift between Notion and Linear on the CSV export work.",
+      "expected_output": "Classifies the result as exactly one of the six defined drift states (never leaves it ambiguous without an Unknown classification), and does not propose resolving by newest timestamp.",
+      "files": []
+    }
+  ]
+}

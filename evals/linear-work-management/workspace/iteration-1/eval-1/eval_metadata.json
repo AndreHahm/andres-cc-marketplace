@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {"text": "Output previews the Issue (title, description) before proposing to create it", "type": "presence", "target": "outputs/"},
+    {"text": "Output states creation requires the live approval gate", "type": "quality", "target": "outputs/"},
+    {"text": "Output does not derive priority/owner from unstated Notion content without approval", "type": "functionality", "target": "outputs/"}
+  ]
+}

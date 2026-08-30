@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output identifies this as a Decision record with decision-state, not the shared status field", "passed": false, "evidence": "No structured Decision record was created; referenced an existing design doc instead"},
+    {"text": "Decision defaults to 'proposed' state, not 'accepted', absent an explicit accept instruction", "passed": false, "evidence": "Not applicable — no record created, so no state was set at all"},
+    {"text": "Output states Accept/Supersede/Reverse each require the live approval gate", "passed": false, "evidence": "No mention of any approval gate or state machine"},
+    {"text": "Output does not describe overwriting or deleting any prior Decision content", "passed": true, "evidence": "Nothing was written or overwritten"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 1, "pass_rate": 0.25}
+}

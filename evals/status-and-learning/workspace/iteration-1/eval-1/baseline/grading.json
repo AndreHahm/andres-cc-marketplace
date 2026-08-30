@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output reads Linear facts before drafting the summary", "passed": false, "evidence": "No attempt to read Linear at all; asked for the source of truth generically"},
+    {"text": "Summary is explicitly dated and labeled as a snapshot, not live state", "passed": false, "evidence": "Provided a fill-in template, not an actual dated snapshot"},
+    {"text": "Output states approval is required before writing to Notion", "passed": false, "evidence": "No approval-gate awareness — didn't fabricate, but also never framed the task as needing one"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 0, "pass_rate": 0.0}
+}

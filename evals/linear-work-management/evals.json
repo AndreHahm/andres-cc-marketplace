@@ -1,0 +1,21 @@
+{
+  "skill_name": "linear-work-management",
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "description": "Read and update accepted Goals, Roadmaps, Projects, Milestones, and Issues in Linear.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Create a Linear Issue",
+      "prompt": "Create a Linear issue for adding CSV export to the transition history feature.",
+      "expected_output": "Previews the Issue (title, description) before creating it, states creation requires the live approval gate, and does not derive priority/owner from any Notion content without approval.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Check project status",
+      "prompt": "Check the status of the Q3 roadmap project in Linear.",
+      "expected_output": "Treats this as a read requiring no approval, resolves the target by stable ID rather than assuming a unique name match, and reports status without applying any pending change it happens to notice.",
+      "files": []
+    }
+  ]
+}

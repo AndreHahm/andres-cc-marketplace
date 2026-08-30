@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output reads the source Decision before proposing Linear structure", "passed": true, "evidence": "Read source before drafting"},
+    {"text": "Proposed hierarchy does not exceed what the Decision itself implies", "passed": true, "evidence": "Scoped to one Issue per the mapping reference's 'usually an Issue' guidance for an accepted Decision"},
+    {"text": "Output records or mentions the reciprocal link step after creation", "passed": true, "evidence": "Included recording the reciprocal link via work-linking in the proposed batch"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
