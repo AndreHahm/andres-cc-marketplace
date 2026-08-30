@@ -130,22 +130,57 @@ jobs:
           # period, and each PATCH call needs a network round-trip to complete within it.
           trap 'finalize_check_run "${FINAL_CONCLUSION:-cancelled}"' EXIT INT TERM
 
+          # Guard the resolved HEAD_SHA before it's ever sliced for signal 2's
+          # $sha_prefix below -- an empty or malformed value would otherwise
+          # fail *open*: an empty ${HEAD_SHA:0:7} makes jq's `contains("")`
+          # vacuously true for every comment body, and the literal string
+          # "null" (a `jq -r` miss on the issue_comment path) would match any
+          # comment mentioning that word (security-reviewer finding m1).
+          # Placed after the trap above (not before) so a malformed SHA still
+          # finalizes the check-run instead of orphaning it `in_progress`.
+          case "$HEAD_SHA" in
+            [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;;
+            *)
+              echo "::error::Unexpected head SHA '${HEAD_SHA}' -- expected a hex commit SHA."
+              finalize_check_run failure
+              exit 1
+              ;;
+          esac
+
           echo "Waiting for Codex to review commit ${HEAD_SHA}..."
 
-          # A clean (no-findings) Codex review has no review object and no
-          # commit-scoped signal at all -- it only shows up as a "+1"
-          # reaction on the PR issue, which carries no commit SHA at all (a
-          # structural GitHub API limitation, not something a smarter
-          # timestamp check can fully close). Anchoring to the triggering
-          # event's own timestamp reduces, but cannot eliminate, the risk of
-          # misattributing a slow, still-in-flight review of an earlier
-          # commit to the current one -- see docs/await-codex-review.md's
-          # Result Semantics section for the exact race this can't rule out.
-          # Sleep at the top of each iteration (skipped on the first) so the
-          # loop's very last action before giving up is always a check, not
-          # a sleep -- otherwise a review/reaction arriving during the final
-          # sleep is never observed, even though it lands within the
-          # documented 30-minute window.
+          # Three signals, checked in decreasing order of reliability. Only
+          # the first (a formal submitted review) carries an exact commit
+          # SHA. A re-triggered round (an "@codex review" comment, as
+          # opposed to the PR's own first, automatic review) has been
+          # observed to answer with a plain top-level PR comment instead of
+          # a submitted review object at all -- so signal 1 alone is not
+          # reliable for any round after the first. Signal 2 (a
+          # "Reviewed commit: `<sha>`" comment, which Codex's connector
+          # includes in every response we've observed, review or plain
+          # comment alike) restores a commit-SHA correlation for that case.
+          # Signal 3 (a bare "+1" reaction, Codex's response to a genuinely
+          # clean review with nothing else to say) is the last resort: it
+          # carries no commit SHA at all (a structural GitHub API
+          # limitation, not something a smarter timestamp check can fully
+          # close) -- found live, 2026-08-30: a "+1" reaction that
+          # unambiguously satisfied this exact timestamp check (confirmed
+          # after the fact, replayed verbatim against the same live data)
+          # was never observed by 61 consecutive polls spanning the full
+          # 30-minute window, pointing at a GitHub-side read-visibility gap
+          # specific to this endpoint/call path rather than a logic bug --
+          # signal 2 exists precisely so a genuine response doesn't depend
+          # solely on that endpoint being reliably observable. Anchoring
+          # every signal to the triggering event's own timestamp reduces,
+          # but cannot eliminate, the risk of misattributing a slow,
+          # still-in-flight review of an earlier commit to the current one
+          # -- see docs/await-codex-review.md's Result Semantics section for
+          # the exact race this can't rule out. Sleep at the top of each
+          # iteration (skipped on the first) so the loop's very last action
+          # before giving up is always a check, not a sleep -- otherwise a
+          # review/comment/reaction arriving during the final sleep is never
+          # observed, even though it lands within the documented 30-minute
+          # window.
           for attempt in $(seq 1 61); do
             if [ "$attempt" -gt 1 ]; then
               sleep 30
@@ -168,6 +203,40 @@ jobs:
               )
             ' <<< "$reviews" >/dev/null; then
               echo "Codex review received for ${HEAD_SHA}."
+              finalize_check_run success
+              exit 0
+            fi
+
+            if ! comments="$(
+              gh api \
+                --paginate \
+                "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments"
+            )"; then
+              echo "Attempt ${attempt}/61: gh api request failed, retrying."
+              continue
+            fi
+
+            # Require the SHA prefix to appear shortly after the "Reviewed
+            # commit" label, not merely anywhere in the same body -- two
+            # independent `contains` checks would also accept a comment
+            # whose label refers to an *earlier* commit while the current
+            # head SHA happens to appear elsewhere in the same body (a
+            # quoted diff hunk, a permalink), re-importing the exact
+            # stale-in-flight-review misattribution risk this signal exists
+            # to close (security-reviewer finding M1). `index()` returns the
+            # first match's offset (or null); no regex, so the hex
+            # `$sha_prefix` needs no escaping either way.
+            if jq -s -e --arg event_time "$EVENT_TIME" --arg sha_prefix "${HEAD_SHA:0:7}" '
+              add | any(
+                .[];
+                .user.login == "chatgpt-codex-connector[bot]"
+                and .created_at >= $event_time
+                and ((.body | index("Reviewed commit")) as $i1
+                     | (.body | index($sha_prefix)) as $i2
+                     | $i1 != null and $i2 != null and ($i2 - $i1) >= 0 and ($i2 - $i1) <= 20)
+              )
+            ' <<< "$comments" >/dev/null; then
+              echo "Codex commented reviewing ${HEAD_SHA} at or after this push."
               finalize_check_run success
               exit 0
             fi

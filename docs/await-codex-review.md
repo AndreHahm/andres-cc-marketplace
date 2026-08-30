@@ -15,14 +15,18 @@ the pull request: the pull request is opened non-draft (`opened`), a draft pull 
 ready for review (`ready_for_review`), or someone posts an explicit `@codex review` comment
 (`issue_comment`) — never on a plain `synchronize` push by itself, since the connector no longer
 auto-reviews every push (see "Trigger scope" below for why this changed). Its `Await Codex review`
-job stays in progress until either GitHub reports a submitted
-review from `chatgpt-codex-connector[bot]` for the pull request's current head commit (a
-commit-exact signal), or the connector posts a `+1` reaction on the pull request at or after this
-push (its no-findings signal — confirmed live, 2026-08-17: a clean review produces no review
-object and no commit-scoped signal at all, only an issue-level reaction with **no commit ID**,
-so this second path is a best-effort match, not a commit-exact one — see "Result semantics"
-below). It fails if neither appears within 30 minutes (job `timeout-minutes: 33` gives that
-failure message headroom over GitHub's own hard job-timeout cancellation).
+job stays in progress until one of three things happens: GitHub reports a submitted review from
+`chatgpt-codex-connector[bot]` for the pull request's current head commit (a commit-exact signal);
+the connector posts a plain top-level PR comment containing a `Reviewed commit: <sha>` reference to
+the current head, shortly after the label text (its response to a re-triggered round, which has
+been observed to come back as a comment rather than a submitted review — confirmed live,
+2026-08-30, see "Result semantics" below); or the connector posts a `+1` reaction on the pull
+request at or after this push (its no-findings signal — confirmed live, 2026-08-17: a clean review
+produces no review object and no commit-scoped signal at all, only an issue-level reaction with
+**no commit ID**, so this third path is a best-effort match, not a commit-exact one — see "Result
+semantics" below). It fails if none of the three appears within 30 minutes (job
+`timeout-minutes: 33` gives that failure message headroom over GitHub's own hard job-timeout
+cancellation).
 
 This is an observation wrapper around the third-party reviewer. It does not start Codex and cannot
 distinguish an active review from a queued, missed, or unavailable one.
@@ -36,24 +40,33 @@ distinguish an active review from a queued, missed, or unavailable one.
    `issue_comment`, since that event carries no pull-request sub-object). A plain `synchronize`
    push is deliberately **not** a trigger — see "Trigger scope" below.
 2. Requests `contents: read`, `pull-requests: read`, `issues: read` (the last is needed to read the
-   connector's no-findings reaction, and to read PR state for an `issue_comment` trigger), and
-   `checks: write` (needed for point 6 below) — no checkout, third-party action, custom token, or
-   repository secret is used.
+   connector's comments, its no-findings reaction, and to read PR state for an `issue_comment`
+   trigger), and `checks: write` (needed for point 6 below) — no checkout, third-party action,
+   custom token, or repository secret is used.
 3. Uses one concurrency group per pull request (`codex-review-<PR number>`, plus a run-id-unique
    suffix for an `issue_comment` event the job's own `if:` will skip — see below) and cancels a
    previous still-running instance of this workflow for the same pull request when a new triggering
    event (not just any new commit — see point 1) arrives.
-4. Polls two signals every 30 seconds, both fully paginated: GitHub's pull-request reviews
-   endpoint (`gh api .../pulls/<PR>/reviews`), and the pull request's reactions endpoint
+4. Polls three signals every 30 seconds, all fully paginated: GitHub's pull-request reviews
+   endpoint (`gh api .../pulls/<PR>/reviews`), the pull request's own comments endpoint
+   (`gh api .../issues/<PR>/comments`), and the pull request's reactions endpoint
    (`gh api .../issues/<PR>/reactions`).
-5. Accepts either a review whose author is `chatgpt-codex-connector[bot]` and whose `commit_id`
-   equals the current pull request head SHA, or a `+1` reaction from `chatgpt-codex-connector[bot]`
-   whose `created_at` is at or after the triggering event's own timestamp — `pull_request.updated_at`
-   for a `pull_request` event, or the comment's own `created_at` for an `issue_comment` event —
-   captured once, at trigger time, before this job even starts. Anchoring to the event's own
-   timestamp (rather than a snapshot taken once this job happens to run) means a reaction the
-   connector posts before this job starts polling still counts, while a stale reaction from an
-   earlier commit still doesn't.
+5. Accepts a review whose author is `chatgpt-codex-connector[bot]` and whose `commit_id` equals the
+   current pull request head SHA (commit-exact); or a PR comment from `chatgpt-codex-connector[bot]`
+   posted at or after the triggering event's own timestamp whose body contains `Reviewed commit`
+   with the current head SHA's first 7 hex characters appearing within 20 characters of that label
+   (a bounded-adjacency match, not a bare co-occurrence check — two independent substring checks
+   would also accept a body whose label refers to an *earlier* commit while the current head SHA
+   happens to appear elsewhere in the same comment, e.g. a quoted diff hunk or permalink); or a `+1`
+   reaction from `chatgpt-codex-connector[bot]` whose `created_at` is at or after the triggering
+   event's own timestamp. The triggering event's own timestamp is `pull_request.updated_at` for a
+   `pull_request` event, or the comment's own `created_at` for an `issue_comment` event — captured
+   once, at trigger time, before this job even starts. Anchoring every signal to the event's own
+   timestamp (rather than a snapshot taken once this job happens to run) means a comment or reaction
+   the connector posts before this job starts polling still counts, while a stale one from an
+   earlier commit still doesn't. The resolved head SHA is validated as a hex commit SHA before any
+   of this runs — an empty or malformed value would otherwise make the comment-signal's substring
+   checks vacuously true for any comment mentioning the label at all.
 6. For an `issue_comment` trigger, explicitly creates and later finalizes a check-run against the
    pull request's real head SHA via the Checks API (`POST`/`PATCH .../check-runs`), rather than
    relying on the job's own implicit status. `issue_comment` events check out and report their
@@ -99,10 +112,21 @@ check's existing visibility-only, non-required status. Revisit if that turns out
 
 ## Result semantics
 
-A successful check means one of two things, with different confidence:
+A successful check means one of three things, with different confidence:
 
 - **Review-object match (commit-exact, high confidence):** Codex submitted a review — clean or
   with findings — whose `commit_id` equals the current head SHA. This is a certain match.
+- **Comment match (SHA-referenced, moderate confidence):** Codex posted a plain top-level PR
+  comment, at or after this push's own timestamp, containing a `Reviewed commit` label with the
+  current head SHA's first 7 hex characters within 20 characters of it. This references the
+  correct commit by name, but is a text match against a third-party bot's own free-form comment
+  formatting rather than a structured API field — less certain than the review-object match, but
+  meaningfully stronger than the reaction match below, since it actually names the commit. **Added
+  2026-08-30** after this exact gap caused a real, extended false-negative (see below): Codex's
+  response to a re-triggered round (an `@codex review` comment, as opposed to the pull request's
+  own first, automatic review) came back as a plain comment rather than a submitted review object
+  at all, leaving only the reaction-match signal below to catch it — and that signal failed to,
+  for the entire 30-minute window, on data later confirmed to satisfy its own matching condition.
 - **Reaction match (best-effort, not commit-exact):** Codex posted a `+1` reaction at or after
   this push's own timestamp. This does **not** prove the reaction was for the current commit
   specifically — GitHub reactions carry no commit ID at all, which is a structural limitation of
@@ -112,6 +136,19 @@ A successful check means one of two things, with different confidence:
   the newer commit's own event timestamp and be misattributed to it. The check accepts this
   tradeoff for visibility-only use; it is a real reason **not** to promote this check to a
   required status check without accepting that occasional false positive.
+
+**Confirmed live, 2026-08-30, PR #250:** a re-triggered round's `+1` reaction — later verified,
+after the fact, to satisfy the reaction-match condition above exactly (`created_at` at or after the
+triggering comment's own timestamp, correct author) — was never observed across 61 consecutive
+polls spanning the full 30-minute window, even though an interactive `gh api` call against the same
+endpoint saw it immediately, several minutes before the job itself gave up. The job's own resolved
+values (head SHA, event timestamp) and matching logic were independently replayed against the live
+data afterward and found correct; the check still failed. This points at a GitHub-side read
+visibility gap specific to the polling job's own call path, not a logic defect in this workflow —
+but since the connector's response to the same re-trigger also included a comment naming the commit
+directly, adding the comment-match signal above gives a second, independent path to the same
+result, so a future occurrence of this same visibility gap doesn't depend on the reaction endpoint
+alone.
 
 A failed check means no matching review or reaction was observed before the timeout. It does not
 prove Codex failed; the review may have been delayed, omitted, or represented through a different
@@ -135,10 +172,11 @@ findings-review event. That specific scenario still hasn't been observed live.
 
 ## Recovering a stuck check
 
-A distinct failure mode from both signals above, confirmed live on PR #50 (2026-08-17): Codex finished
-the review on its own dashboard (chatgpt.com/codex) and the connector never posted a review object *or*
-a `+1` reaction to GitHub within the 30-minute window — a GitHub-side write-back gap, not a delay in
-either signal this workflow polls for. The check fails as designed in this case; nothing here is a bug.
+A distinct failure mode from all three signals above, confirmed live on PR #50 (2026-08-17): Codex
+finished the review on its own dashboard (chatgpt.com/codex) and the connector never posted a review
+object, a matching comment, *or* a `+1` reaction to GitHub within the 30-minute window — a GitHub-side
+write-back gap, not a delay in any signal this workflow polls for. The check fails as designed in this
+case; nothing here is a bug.
 
 This workflow deliberately does not attempt to recover from that gap itself (see "Out of scope" below —
 detecting or retrying is not this job's responsibility). Recovery is a separate, human-gated skill,
@@ -170,10 +208,11 @@ Confirmed live, 2026-08-17: a review with findings appears in the pull-request r
 with `user.login` equal to `chatgpt-codex-connector[bot]` and `commit_id` equal to the reviewed
 pull request head SHA — a commit-exact, reliable signal. A clean review instead produces no
 review object at all — only a `+1` reaction on the pull request issue, with no commit correlation
-GitHub's API can provide. The workflow polls both signals (see "Workflow contract" above), but the
-reaction path can only ever be a best-effort match, per "Result semantics" above — this is a
-permanent characteristic of using reactions this way, not something further observation will
-resolve.
+GitHub's API can provide. The workflow polls three signals (see "Workflow contract" above); the
+comment-match signal names the commit directly but is a text match against free-form bot
+formatting rather than a structured field, and the reaction path can only ever be a best-effort
+match, per "Result semantics" above — this is a permanent characteristic of using reactions this
+way, not something further observation will resolve.
 
 Before making this check required, weigh that tradeoff deliberately: a required check inherits the
 reaction path's occasional false-positive risk (a clean review of a stale commit misattributed to
