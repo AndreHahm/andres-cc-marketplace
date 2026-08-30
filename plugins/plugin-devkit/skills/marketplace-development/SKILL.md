@@ -11,19 +11,23 @@ description: >-
   For plugins that already have plugin.json, plugin-development handles marketplace publishing.
 allowed-tools: Read Write Glob Bash(scripts/check_marketplace.sh:*) Bash(jq:*) Bash(python3:*) Bash(find:*) Bash(claude:*) Bash(git:*)
 # R19 exception (see .claude/marketplace-sync.json's divergence_exceptions): the command paths below
-# intentionally differ from the .claude/ mirror copy of this file. Official Claude Code docs state
-# hook handlers "run in the current directory" (the live session cwd, not the skill's own directory),
-# so a bare relative path is unsafe here — ${CLAUDE_PROJECT_DIR} (documented as stable regardless of
-# cwd) with each copy's own correct path from the project root is used instead.
+# intentionally differ from the .claude/ mirror copy of this file. This copy is the one distributed
+# via the marketplace and installed into other users' own projects, where ${CLAUDE_PROJECT_DIR} would
+# resolve to *their* project root, not this repo -- a hardcoded plugins/plugin-devkit/... segment
+# would never exist there. ${CLAUDE_PLUGIN_ROOT} (which tracks wherever this plugin is actually
+# installed, in any project) is used here instead, matching this skill's pre-existing, real-plugin
+# behavior (see plugin-rulebook's own git-kit/analysis-kit/etc. precedent for this same pattern). The
+# .claude/ mirror copy is never distributed -- it exists only for in-repo dogfooding before packaging
+# -- so it can safely use ${CLAUDE_PROJECT_DIR}, which reliably resolves to this exact repo there.
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "${CLAUDE_PROJECT_DIR}/plugins/plugin-devkit/skills/marketplace-development/hooks/post_edit_validate.sh"
+          command: "${CLAUDE_PLUGIN_ROOT}/skills/marketplace-development/hooks/post_edit_validate.sh"
           timeout: 30
         - type: command
-          command: "${CLAUDE_PROJECT_DIR}/plugins/plugin-devkit/skills/marketplace-development/hooks/post_edit_sync_check.sh"
+          command: "${CLAUDE_PLUGIN_ROOT}/skills/marketplace-development/hooks/post_edit_sync_check.sh"
           timeout: 10
 ---
 

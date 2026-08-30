@@ -11,10 +11,12 @@ description: >-
   For plugins that already have plugin.json, plugin-development handles marketplace publishing.
 allowed-tools: Read Write Glob Bash(scripts/check_marketplace.sh:*) Bash(jq:*) Bash(python3:*) Bash(find:*) Bash(claude:*) Bash(git:*)
 # R19 exception (see .claude/marketplace-sync.json's divergence_exceptions): the command paths below
-# intentionally differ from the plugin-devkit canonical copy of this file. Official Claude Code docs
-# state hook handlers "run in the current directory" (the live session cwd, not the skill's own
-# directory), so a bare relative path is unsafe here — ${CLAUDE_PROJECT_DIR} (documented as stable
-# regardless of cwd) with each copy's own correct path from the project root is used instead.
+# intentionally differ from the plugin-devkit canonical copy of this file. This .claude/ mirror copy
+# is never distributed -- it exists only for in-repo dogfooding before packaging -- so it uses
+# ${CLAUDE_PROJECT_DIR} with this repo's own path, which reliably resolves here. The canonical
+# plugins/plugin-devkit/ copy is the one distributed via the marketplace and installed into other
+# users' own projects, where ${CLAUDE_PROJECT_DIR} would resolve to *their* project root, not this
+# repo -- so it uses ${CLAUDE_PLUGIN_ROOT} instead (tracks wherever the plugin is actually installed).
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
