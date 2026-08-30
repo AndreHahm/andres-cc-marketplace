@@ -83,7 +83,7 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
      marker write before every page's call, not just the first (matching `handling-review-findings`'s own
      documented marker-timing discipline for this identical query shape):
      ```
-     gh api graphql -F owner="{owner}" -F name="{repo}" -F number={number} -f cursor=null -f query='
+     gh api graphql -F owner="{owner}" -F name="{repo}" -F number={number} -F cursor=null -f query='
      query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
        repository(owner: $owner, name: $name) {
          pullRequest(number: $number) {
@@ -97,9 +97,13 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
      '
      ```
      (`{owner}/{repo}` from step 1's resolved `url`; `{number}` from step 1's already-fetched `number`
-     field.) Sum `nodes` entries where `isResolved` is `false` across every page — on each subsequent
-     call, replace `-f cursor=null` with `-f cursor="<endCursor>"` (the previous page's `pageInfo.endCursor`
-     value, quoted) — looping while `pageInfo.hasNextPage` is `true`; a single `first: 100` page silently
+     field.) The first call uses `-F cursor=null` — `-F`/`--field` is required here, not `-f`/`--raw-field`,
+     because `-f` only ever sends a string parameter (`gh api --help`), so `-f cursor=null` would send the
+     literal four-character string `"null"` rather than a real GraphQL `null`; `-F` converts the bare
+     literal `null` to the correct JSON type. Sum `nodes` entries where `isResolved` is `false` across
+     every page — on each subsequent call, replace `-F cursor=null` with `-f cursor="<endCursor>"` (the
+     previous page's `pageInfo.endCursor` value, a real string this time, so `-f` is correct there) —
+     looping while `pageInfo.hasNextPage` is `true`; a single `first: 100` page silently
      misses any thread beyond the 100th on a PR with more review threads than that. This is a coarse count, not a triage —
      it says how many threads remain open, not which findings they contain or how severe they are; see
      Boundaries for how this differs from `handling-review-findings`'s job. A non-zero count never stops
