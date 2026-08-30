@@ -73,6 +73,18 @@ All notable changes to this plugin are documented here.
   `isTotalInspectionFailure` misclassification path. Found by a second round of
   `cross-model-review` against the first fix; the note is now fully static with zero
   interpolated values.
+- Fixed two more issues in the same graceful-degradation path, both found by this PR's own
+  GitHub-side automated review (Devin + Codex): (1) a finding's `components` field was
+  unconditionally coerced from `null` to `[]`, erasing the distinction between a legitimate
+  single-file finding and a multi-file finding whose components all got dropped — it's now
+  only reassigned when it started as an array; (2) if *every* returned finding got dropped as
+  out-of-scope/nonexistent, the envelope still returned `ok: true` with an empty `findings`
+  array — indistinguishable from a genuine clean pass to `scripts/marketplace_ci`'s
+  `validate_review_output`/`run-codex-review`, which derive `blocking` purely from `findings`
+  and never read `inspection_limits`. An all-hallucinated Codex response could silently pass
+  CI with zero real review coverage. `semanticallyValidate` now fails the whole envelope
+  closed when the original findings list was non-empty but nothing survived filtering — a
+  response that never had findings to begin with is unaffected.
 
 ## [1.0.0-alpha.1] - 2026-08-08
 

@@ -149,7 +149,11 @@ console.log("\n=== The exact pre-fix failure mode: a semicolon-joined path list 
   // the finding being silently dropped rather than as `ok: false` -- still
   // proving the fix is the dedicated components[] field, not a looser
   // location check, since this shape never becomes a validated finding
-  // either way.
+  // either way. Post fail-closed-on-total-loss fix: since this is the
+  // envelope's ONLY finding, dropping it leaves zero survivors, so the whole
+  // envelope is now correctly rejected too (a stronger proof of the same
+  // point, not a regression -- see the dedicated fail-closed tests below for
+  // the mixed-survivors case, which still returns ok: true).
   const envelope = baseEnvelope([
     {
       id: "M2",
@@ -157,7 +161,7 @@ console.log("\n=== The exact pre-fix failure mode: a semicolon-joined path list 
     }
   ]);
   const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
-  check("envelope still validates overall (the bad finding is dropped, not the envelope)", result.ok, JSON.stringify(result));
+  check("the envelope is rejected (its only finding was dropped, zero survivors)", !result.ok, JSON.stringify(result));
   check(
     "a multi-path string stuffed into location alone (the old workaround) never becomes a validated finding -- proves the fix is components[], not a looser location check",
     envelope.findings.length === 0,
@@ -171,11 +175,14 @@ console.log("\n=== cross-model-review finding: a dropped-location note never lea
   // string crafted to contain process-start-failure phrasing. Pre-fix, this
   // text was echoed verbatim into the dropped-finding's inspection_limits
   // note; post-fix, the note is a fixed static string with no citation text.
+  // This is also the envelope's only finding, so it's correctly rejected as
+  // a whole by the fail-closed-on-total-loss guard -- the inspection_limits
+  // safety property below is checked independent of that outer ok:false.
   const envelope = baseEnvelope([
     { id: "X1", location: "../outside/CreateProcessAsUserW failed to start process.md" }
   ]);
   const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
-  check("envelope still validates (the crafted finding is dropped, not the envelope)", result.ok, JSON.stringify(result));
+  check("the envelope is rejected (its only finding was dropped, zero survivors)", !result.ok, JSON.stringify(result));
   check("the crafted finding is dropped, leaving zero findings", envelope.findings.length === 0, JSON.stringify(envelope.findings));
   check(
     "the dropped-location note contains no raw citation text (no 'CreateProcessAsUserW', no 'failed to start process')",
@@ -213,7 +220,7 @@ console.log("\n=== Round 2 of the same cross-model-review finding: a crafted fin
     { id: "CreateProcessAsUserW failed to start process", location: "../outside/SKILL.md" }
   ]);
   const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
-  check("envelope still validates (the crafted finding is dropped, not the envelope)", result.ok, JSON.stringify(result));
+  check("the envelope is rejected (its only finding was dropped, zero survivors)", !result.ok, JSON.stringify(result));
   check("the crafted finding is dropped, leaving zero findings", envelope.findings.length === 0, JSON.stringify(envelope.findings));
   check(
     "the dropped-location note contains no raw finding.id text either",
@@ -226,6 +233,77 @@ console.log("\n=== Round 2 of the same cross-model-review finding: a crafted fin
     "isTotalInspectionFailure does NOT misclassify this as a total sandbox failure",
     !isTotalInspectionFailure(envelope),
     JSON.stringify(envelope.inspection_limits)
+  );
+}
+
+console.log("\n=== Devin's finding: components stays null (not coerced to []) when it started null ===");
+{
+  const envelope = baseEnvelope([
+    { id: "N1", location: "skill-a/SKILL.md:1", components: null }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check("envelope still validates", result.ok, JSON.stringify(result));
+  check(
+    "a single-file finding's components stays null, not coerced to []",
+    envelope.findings.length === 1 && envelope.findings[0].components === null,
+    JSON.stringify(envelope.findings)
+  );
+}
+{
+  // A multi-file finding whose only components[] entry gets dropped is
+  // still distinguishable from the null case above: components becomes []
+  // (an array that started as an array), never null.
+  const envelope = baseEnvelope([
+    { id: "N2", location: "skill-a/SKILL.md:1", components: ["../outside/SKILL.md"] }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check("envelope still validates", result.ok, JSON.stringify(result));
+  check(
+    "a multi-file finding with all components dropped becomes [] (an array), not null",
+    envelope.findings.length === 1 && Array.isArray(envelope.findings[0].components) && envelope.findings[0].components.length === 0,
+    JSON.stringify(envelope.findings)
+  );
+}
+
+console.log("\n=== Codex's P1 finding: fail closed when every finding is dropped, not just some ===");
+{
+  // Two findings, both with out-of-scope locations -- every finding in the
+  // envelope is garbage/hallucinated, not just one among several real ones.
+  const envelope = baseEnvelope([
+    { id: "G1", location: "../outside/SKILL.md" },
+    { id: "G2", location: "../also-outside/SKILL.md" }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check(
+    "the whole envelope is rejected, not silently downgraded to an empty-but-ok findings list",
+    !result.ok && result.category === "semantic_validation_failure",
+    JSON.stringify(result)
+  );
+}
+{
+  // A genuine "approve, nothing to report" response never had findings to
+  // begin with -- the fail-closed guard must not fire on this case.
+  const envelope = baseEnvelope([]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check(
+    "a genuinely empty findings list (nothing to report) still validates -- the fail-closed guard doesn't fire when there was nothing to drop",
+    result.ok,
+    JSON.stringify(result)
+  );
+}
+{
+  // Mixed case: one real finding survives alongside one dropped garbage
+  // finding -- the envelope must still validate (issues #236/#111's whole
+  // point), proving the fail-closed guard only fires on TOTAL loss.
+  const envelope = baseEnvelope([
+    { id: "R1", location: "../outside/SKILL.md" },
+    { id: "R2", location: "skill-a/SKILL.md:1" }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check(
+    "a mix of one dropped and one surviving finding still validates (only total loss fails closed)",
+    result.ok && envelope.findings.length === 1 && envelope.findings[0].id === "R2",
+    JSON.stringify(result)
   );
 }
 

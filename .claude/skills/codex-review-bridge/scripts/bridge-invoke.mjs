@@ -312,11 +312,22 @@ export function isTotalInspectionFailure(envelope) {
 // `component` but still interpolated `finding.id`, missing that it's just
 // as attacker-controlled) -- so a crafted citation or finding id can't
 // smuggle process-start-failure-shaped text into a field main()'s
-// isTotalInspectionFailure() pattern-matches on -- so the caller isn't left
-// with a silently empty findings list looking like a clean pass. Mutates
-// `envelope` in place (rather than returning a new object) so both this
-// file's own `main()` and `guarded-dispatch.mjs`'s import of this same
-// function keep working from `result.data` unchanged after a call.
+// isTotalInspectionFailure() pattern-matches on. A finding's `components`
+// stays `null` when it started `null` (a legitimate single-file finding,
+// per ENVELOPE_SCHEMA) rather than being coerced to `[]`, which would erase
+// the distinction from a multi-file finding whose components all got
+// dropped (found by Devin's automated PR review). And if EVERY originally-
+// returned finding gets dropped, this function fails the whole envelope
+// closed rather than returning `ok: true` with an empty `findings` array --
+// that shape is indistinguishable from a genuine "nothing to report" clean
+// pass to a downstream consumer that only reads `findings`, never
+// `inspection_limits` (scripts/marketplace_ci/review.py and __main__.py both
+// do exactly this), so an all-hallucinated Codex response would otherwise
+// silently pass CI with zero real review coverage (found by Codex's
+// automated PR review, a P1 finding). Mutates `envelope` in place (rather
+// than returning a new object) so both this file's own `main()` and
+// `guarded-dispatch.mjs`'s import of this same function keep working from
+// `result.data` unchanged after a call.
 export function semanticallyValidate(envelope, { targetPaths, dispatchId, reviewerType, repoRoot }) {
   if (envelope.dispatch.id !== dispatchId || envelope.dispatch.reviewer !== reviewerType) {
     return { ok: false, category: "semantic_validation_failure", detail: "dispatch id/reviewer mismatch" };
@@ -324,6 +335,7 @@ export function semanticallyValidate(envelope, { targetPaths, dispatchId, review
   const seenIds = new Set();
   const keptFindings = [];
   const droppedNotes = [];
+  const hadFindings = envelope.findings.length > 0;
   for (const finding of envelope.findings) {
     if (seenIds.has(finding.id)) {
       return { ok: false, category: "semantic_validation_failure", detail: `duplicate finding id ${finding.id}` };
@@ -348,12 +360,42 @@ export function semanticallyValidate(envelope, { targetPaths, dispatchId, review
         droppedNotes.push("a finding's components[] entry was dropped: out-of-scope or nonexistent citation");
       }
     }
-    finding.components = keptComponents;
+    // Only reassign `components` when it was actually an array to begin with --
+    // a finding whose `components` was legitimately `null` (a single-file
+    // finding, per ENVELOPE_SCHEMA's `components: { type: ["array", "null"] }`)
+    // must stay `null`, not silently become `[]`, or a consumer loses the
+    // ability to tell "no components by design" from "components existed but
+    // every one was dropped" (found by cross-model-review / Devin's review).
+    if (Array.isArray(finding.components)) {
+      finding.components = keptComponents;
+    }
     keptFindings.push(finding);
   }
   envelope.findings = keptFindings;
   if (droppedNotes.length > 0) {
     envelope.inspection_limits = [...(envelope.inspection_limits ?? []), ...droppedNotes];
+  }
+  // If the envelope originally had findings but every one was dropped as
+  // out-of-scope/nonexistent, this is indistinguishable from a hallucinated
+  // or garbage response with zero real review coverage -- fail closed
+  // (reject the whole envelope) instead of returning `ok: true` with an
+  // empty `findings` array, which looks exactly like a genuine "nothing to
+  // report" clean pass. This matters because the downstream marketplace-ci
+  // consumer (scripts/marketplace_ci/review.py's validate_review_output,
+  // scripts/marketplace_ci/__main__.py's run-codex-review) derives its
+  // `blocking` decision purely from `findings` and never reads
+  // `inspection_limits` at all -- without this check, an all-hallucinated
+  // Codex response would silently pass CI with zero review coverage instead
+  // of failing loudly the way it did before issues #236/#111's fix (found by
+  // Codex's automated PR review, a P1 "fail closed" finding on this PR).
+  // A response that never had any findings to begin with (a genuine "approve,
+  // nothing wrong" pass) is unaffected -- `hadFindings` is false in that case.
+  if (hadFindings && keptFindings.length === 0) {
+    return {
+      ok: false,
+      category: "semantic_validation_failure",
+      detail: "every returned finding cited an out-of-scope or nonexistent path -- no valid review coverage survived"
+    };
   }
   return { ok: true };
 }
