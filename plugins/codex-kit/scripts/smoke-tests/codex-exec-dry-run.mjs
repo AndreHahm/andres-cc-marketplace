@@ -202,6 +202,27 @@ console.log("\n=== runCodexExec({ dryRun: true }): resolves and redacts, never s
   }
 }
 
+console.log("\n=== runCodexExec({ dryRun: true }): omitting cwd entirely never crashes (round-2 PR review, Codex) ===");
+{
+  // runCodexExec's own signature has no default for `cwd` -- omitting it is
+  // a documented, legitimate call shape (see its JSDoc). path.resolve(cwd,
+  // ...) inside resolveDryRunInvocation previously threw a TypeError on
+  // `undefined` here, outside any try/catch, bypassing finish()'s cleanup
+  // and leaking the scratch schema directory -- exactly the case a caller
+  // relying on the documented "cwd defaults to process.cwd()" contract
+  // would hit. A real (non-dry-run) spawn never had this gap: Node's own
+  // spawn({cwd: undefined}) just inherits the parent's cwd.
+  const result = await runCodexExec({
+    prompt: "test",
+    schema,
+    sandbox: "read-only",
+    dispatchId: "smoke-dry-run-omitted-cwd",
+    dryRun: true
+  });
+  check("omitting cwd never throws -- returns a normal result instead", result.ok === true, JSON.stringify(result));
+  check("wouldRun.cwd defaults to process.cwd(), matching real spawn's own omitted-cwd behavior", result.ok === true && result.wouldRun && result.wouldRun.cwd === process.cwd(), JSON.stringify(result.wouldRun));
+}
+
 console.log("\n=== runCodexExec({ dryRun: true }): still reports CLI_UNAVAILABLE when codex isn't on PATH ===");
 {
   const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-exec-dry-run-empty-"));

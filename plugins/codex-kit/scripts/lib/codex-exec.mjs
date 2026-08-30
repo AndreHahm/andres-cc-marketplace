@@ -417,7 +417,20 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
     }
 
     if (dryRun) {
-      const dryInvocation = resolveDryRunInvocation("codex", args, cwd);
+      // Default to process.cwd(), matching what a real (non-dry-run) spawn
+      // does when `cwd` is omitted (buildSpawnInvocation passes `cwd:
+      // undefined` straight through as a spawn option, which Node treats as
+      // "inherit the parent's cwd"). runCodexExec's own signature has no
+      // default for `cwd` -- omitting it is a documented, legitimate call
+      // shape (see this function's JSDoc). Without this, path.resolve(cwd,
+      // ...) below throws synchronously on `undefined` (live-flagged, round
+      // 2 of PR review): the throw happens outside any try/catch, so it
+      // never reaches finish()'s own cleanup -- the scratch schema
+      // directory this function already created is left behind, and the
+      // caller sees a generic top-level non_zero_exit instead of a properly
+      // attributed typed failure.
+      const resolvedCwd = cwd || process.cwd();
+      const dryInvocation = resolveDryRunInvocation("codex", args, resolvedCwd);
       if (!dryInvocation.resolved) {
         if (dryInvocation.reason === "unsafe_argument") {
           return finish(typedFailure(FAILURE_CATEGORIES.NON_ZERO_EXIT, dryInvocation.detail));
@@ -430,7 +443,7 @@ export function runCodexExec({ prompt, schema, timeoutMs = 240000, cwd, sandbox,
         wouldRun: {
           command: dryInvocation.command,
           args: dryInvocation.args,
-          cwd,
+          cwd: resolvedCwd,
           sandbox,
           model: model || null,
           timeoutMs,
