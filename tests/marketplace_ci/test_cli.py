@@ -15,6 +15,8 @@ def _write_registry(repo, **kwargs):
             "agents": kwargs.get("agents", []),
         },
     }
+    if "divergence_exceptions" in kwargs:
+        payload["divergence_exceptions"] = kwargs["divergence_exceptions"]
     registry_path = repo / ".claude" / "marketplace-sync.json"
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     registry_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -44,6 +46,27 @@ def test_sync_then_check_plugin_mirrors_passes(monkeypatch, repo):
     assert main(["sync-plugin-mirrors"]) == 0
     assert main(["check-plugin-mirrors"]) == 0
     assert (repo / ".claude" / "skills" / "demo" / "SKILL.md").exists()
+
+
+def test_check_plugin_mirrors_passes_with_only_warn_actions(monkeypatch, repo):
+    # Regression guard: a "warn"-only plan (a divergence-excepted destination that's
+    # missing, or intentionally differs from its canonical source) must exit 0 -- a
+    # real production case (this repo's own marketplace-development/SKILL.md exception)
+    # was regressing every CI run before this fix, since _handle_check_plugin_mirrors
+    # returned 1 for ANY non-empty plan.actions, discarding _report's has_problem signal.
+    _write_registry(
+        repo,
+        plugin_mirrors=["sample-kit"],
+        divergence_exceptions=[
+            {
+                "source": "plugins/sample-kit/skills/demo/SKILL.md",
+                "dest": ".claude/skills/demo/SKILL.md",
+                "reason": "test: excepted destination not created yet",
+            }
+        ],
+    )
+    monkeypatch.chdir(repo)
+    assert main(["check-plugin-mirrors"]) == 0
 
 
 def test_check_codex_exports_blocks_legacy_command_export(monkeypatch, repo):
