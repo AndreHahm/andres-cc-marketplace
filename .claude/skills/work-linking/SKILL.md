@@ -6,7 +6,7 @@ description: >-
   Linear record, check for drift between Notion and Linear, or repair a broken/stale link. Repairs
   only the bounded non-authoritative copy or link — never chooses by newest timestamp, and never
   creates a reverse-write loop against either system's own authority.
-allowed-tools: Read, Skill
+allowed-tools: Read, Skill, AskUserQuestion
 ---
 
 # Work Linking
@@ -18,15 +18,30 @@ importantly, owns noticing when they've gone stale or wrong.
 
 This skill has no Notion/Linear connector access of its own — every read of either system's
 current state, and every repair write, goes through `notion-knowledge-management` or
-`linear-work-management`, the same as every other cross-system skill in this plugin. A repair
-applies through whichever of the two owns the non-authoritative field being fixed (see Repair
-below) — this skill never calls a connector directly.
+`linear-work-management`. The selection rule is which system owns the fact in question: a
+Notion-side field (knowledge, rationale) goes through `notion-knowledge-management`; a Linear-side
+field (execution state) goes through `linear-work-management`. A repair applies through whichever
+of the two owns the non-authoritative field being fixed (see Repair below) — this skill never
+calls a connector directly.
+
+## When to Use
+
+Creating a cross-system link for an already-promoted record, checking for drift, or repairing a
+broken/stale link.
+
+## When NOT to Use
+
+- Promoting new Notion knowledge into Linear (creating new work, not linking existing records) →
+  `idea-to-implementation`.
+
+See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
 ## Linking
 
 A link is a pair of stable IDs plus an authority label (which system owns the fact the link is
-about) — never a content mirror. Record links through the plugin's shared transition contract so a
-later drift check has something to compare against.
+about) — never a content mirror. Record links through the plugin's shared transition contract (not
+yet built in this Wave 1 scaffold; see the plugin README's Status section) so a later drift check
+has something to compare against.
 
 ## Drift Classification
 
@@ -45,9 +60,9 @@ of:
 ## Repair
 
 Repair touches only the **non-authoritative** side of a broken/stale link — never the system that
-owns the fact in question (per this plugin's Authority Model: Notion owns knowledge, Linear owns
-execution). A repair that would change consequential state (not just a link/reference field)
-requires the same live approval gate as any other material change.
+owns the fact in question (Notion owns knowledge, Linear owns execution). A repair that would
+change consequential state (not just a link/reference field) requires the same live approval gate
+as any other material change, obtained via `AskUserQuestion`.
 
 **Never choose by newest timestamp.** A later edit is not automatically the correct one — Linear's
 execution state is authoritative over execution facts regardless of when Notion was last touched,
@@ -86,6 +101,8 @@ repair pass is needed.
 
 **Verify it does NOT activate on:**
 - "promote this idea to Linear" (creating new work, not linking existing records) → `idea-to-implementation`
+
+**Last dated run record:** evals/work-linking/workspace/iteration-1/ (2026-08-30)
 
 **Quality gates:**
 - [ ] Drift is always classified as exactly one of the six defined states, never left ambiguous

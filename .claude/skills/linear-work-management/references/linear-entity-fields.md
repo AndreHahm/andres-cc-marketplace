@@ -1,7 +1,9 @@
 # Linear Entity Fields
 
 Five entity types this skill owns. Each row below lists the fields beyond the shared identity
-(stable ID, `transition-id`, `notion-link`) that this specific entity type carries.
+(stable ID, `transition-id`) that this specific entity type carries — `notion-link` is not a
+shared field; only Goal carries it (see its own table below), since it's the only entity type
+promotion from Notion produces directly.
 
 ## Goal
 

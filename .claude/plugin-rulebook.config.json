@@ -5,7 +5,7 @@
   "rules": {
     "R23_external_reference_policy": {
       "config": {
-        "whitelist": ["tessl", "codacy", "coderabbit", "qodo", "codex", "devin", "windsurf", "cascade", "jetbrains", "antigravity", "gemini", "github", "cursor", "qwen", "bfg-repo-cleaner", "asana", "jira", "linear", "serena", "googleapis", "gstatic", "sheetjs", "anthropics", "openai", "google", "microsoft", "anthropics/claude-plugins-official", "wayne930242", "wayne930242/Reflexive-Claude-Code", "reflexive-claude-code", "neolabhq", "neolabhq/context-engineering-kit", "context-engineering-kit", "fernandezbaptiste", "fernandezbaptiste/claude-code-skills", "claude-code-skills", "epicenterhq", "epicenterhq/epicenter", "epicenter", "gsd", "gg-sad", "openspec", "speckit", "bmad", "datatracker.ietf.org", "chatgpt.com"],
+        "whitelist": ["tessl", "codacy", "coderabbit", "qodo", "codex", "devin", "windsurf", "cascade", "jetbrains", "antigravity", "gemini", "github", "cursor", "qwen", "bfg-repo-cleaner", "asana", "jira", "linear", "notion", "serena", "googleapis", "gstatic", "sheetjs", "anthropics", "openai", "google", "microsoft", "anthropics/claude-plugins-official", "wayne930242", "wayne930242/Reflexive-Claude-Code", "reflexive-claude-code", "neolabhq", "neolabhq/context-engineering-kit", "context-engineering-kit", "fernandezbaptiste", "fernandezbaptiste/claude-code-skills", "claude-code-skills", "epicenterhq", "epicenterhq/epicenter", "epicenter", "gsd", "gg-sad", "openspec", "speckit", "bmad", "datatracker.ietf.org", "chatgpt.com"],
         "blacklist": ["rcc", "daymade", "daymade-docs", "daymade-skills"],
         "excluded_paths": [
           "skills/skill-security/references/api-whitelist.md",

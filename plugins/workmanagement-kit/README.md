@@ -1,9 +1,9 @@
 # workmanagement-kit
 
 The sole Notion/Linear access point for this repository. Notion owns knowledge and intent
-(Ideas, Decisions, proposed Goals, research, reports, learning); Linear owns accepted strategy and
-execution (Goals, Roadmaps, Projects, Milestones, Issues). Claude Code is the only agent that
-mutates either system; Codex is a secondary, read-only reviewer.
+(Ideas, Decisions, proposed Goals, Notes, Research, Reports, and Outcome/Learning records); Linear
+owns accepted strategy and execution (Goals, Roadmaps, Projects, Milestones, Issues). Claude Code
+is the only agent that mutates either system; Codex is a secondary, read-only reviewer.
 
 No other plugin in this repository implements its own Notion or Linear connector. A plugin whose
 own workflow produces something worth storing in Notion or acting on in Linear (e.g. an output
@@ -51,8 +51,9 @@ This plugin depends on `codex-kit` for the live Codex review path.
 
 Install from this marketplace the same way as any other plugin in this repository (see the
 repository's own installation instructions). `codex-kit` must also be installed for the live
-Codex review path to function; without it, a review is disclosed as unavailable rather than
-silently skipped.
+Codex review path to function; without it, a review must be disclosed as unavailable rather than
+silently skipped — this is a requirement on the not-yet-built bridge-caller script (see Status),
+not yet an implemented behavior of this plugin today.
 
 ## Status
 
@@ -61,9 +62,17 @@ later, additive Git/GitHub lifecycle bridge). Live Notion/Linear mutation requir
 Setup steps described in this plugin's design documents to be completed (connector installation,
 workspace/team scoping, test scopes) before first live use.
 
-Two further items are still open before this plugin is fully live:
+Items still open before this plugin is fully live:
+- **Foundation contracts are not built yet.** The shared host profile, transition contract, and
+  versioned configuration that every skill's own file cites (connector scope resolution, transition
+  recording, stable-ID storage) do not exist yet anywhere in this plugin. Every skill that
+  references them discloses this inline; no write may proceed on the assumption that these
+  artifacts already back it.
 - The Codex bridge-caller script that dispatches `work-transition-reviewer`/
   `work-intake-classifier` live is not yet built; both agents already work standalone via the
-  `.codex/agents` export.
-- `plugin-integration-intake`'s trust-boundary gate has not yet had its required
-  `security-reviewer` pass (see that skill's own file for the specific checklist item).
+  `.codex/agents` export. Once built, it must disclose a Codex-unavailable review as unavailable
+  rather than silently skipping it.
+- `plugin-integration-intake`'s trust-boundary gate had its first `security-reviewer` pass during
+  this plugin's `plugin-lifecycle-downstream` QA run (2026-08-30); the Critical and Major findings
+  from that pass are fixed in that skill's own file. Re-run the pass again before this gate is
+  wired to a live connector.

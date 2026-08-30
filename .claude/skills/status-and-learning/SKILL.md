@@ -6,7 +6,7 @@ description: >-
   portfolio status, or capture what was learned from a completed piece of work — not to disposition
   open follow-up items (see open-item-management for that). Never runs automatically or
   continuously — every summary is a deliberate, approved snapshot, not a live sync.
-allowed-tools: Read, Skill
+allowed-tools: Read, Skill, AskUserQuestion
 ---
 
 # Status and Learning
@@ -16,21 +16,44 @@ what that execution looked like at some moment. This skill is the only bridge fr
 into a Notion record, and it never runs in the background — every summary is a single, deliberate,
 approved write.
 
-## Procedure
+## When to Use
+
+Producing a dated Linear-to-Notion status snapshot, or capturing an outcome/learning after a piece
+of work completes — this skill is the front door for outcome/learning capture, even though
+`notion-knowledge-management` executes the resulting write.
+
+## When NOT to Use
+
+- A standalone knowledge capture with no completed Linear work behind it (e.g. "capture this as an
+  idea") → `notion-knowledge-management` directly.
+- Dispositioning open follow-up items from a completed piece of work → `open-item-management`.
+- Changing Linear state itself (not just reading it for a summary) → `linear-work-management`.
+
+See Testing & Validation below for the concrete trigger phrases this section summarizes.
+
+## Quick Start
 
 1. Read the relevant Linear facts via `linear-work-management` (a Milestone's status, a Project's
    Issue completion rate, whatever the summary is actually about).
 2. Produce a dated summary that is explicitly labeled as a snapshot, not live state — the reader
-   must never be able to mistake this Notion record for something that updates itself.
+   must never be able to mistake this Notion record for something that updates itself. Keep it
+   concise and outcome-focused (see Confirmation and Safety) — never a restatement of every
+   Issue's status.
 3. Preview the summary/outcome/deviation/learning content for approval.
-4. On approval, write it via `notion-knowledge-management`.
+4. On approval (via `AskUserQuestion`), write it via `notion-knowledge-management`.
 5. Read back both the Linear source (confirm nothing changed mid-summary) and the new Notion
-   record, and record the transition.
+   record, and record the transition through the plugin's shared transition contract (not yet
+   built in this Wave 1 scaffold; see the plugin README's Status section).
 
 ## Confirmation and Safety
 
 - **Approval required:** every write to Notion — a summary is a material knowledge-capture action,
-  not a read.
+  not a read. Approval is obtained via `AskUserQuestion`, presenting the previewed content for
+  confirmation before the write.
+- **Scope constraint, not just a style preference:** the summary must stay concise and outcome-
+  focused — never a restatement of every Issue's status. A summary that just mirrors the Project
+  is not adding knowledge value over reading Linear directly, and risks going stale the moment it's
+  written.
 - **Never do automatically:** schedule or repeat this on any cadence, or treat a summary as
   something that needs to stay in sync with Linear afterward — it is a snapshot, permanently dated
   to when it was taken.
@@ -41,9 +64,6 @@ approved write.
 
 ## Gotchas
 
-- **"Summarize progress" is not "mirror the Project."** Keep the summary concise and outcome-
-  focused; a summary that just restates every Issue's status is not adding knowledge value over
-  reading Linear directly, and risks going stale the moment it's written.
 - **This skill captures the outcome, not the open follow-ups.** A completed piece of work's
   remaining open questions/decisions/follow-ups are `open-item-management`'s job — if asked to
   "wrap up" a piece of work, expect both skills to run, not just this one.
@@ -53,10 +73,15 @@ approved write.
 **Verify this skill activates on:**
 - "summarize progress on this project to Notion"
 - "capture what we learned from this"
+- "capture this outcome"
 
 **Verify it does NOT activate on:**
 - "disposition the open questions from this report" → `open-item-management`
 - "close this Linear issue" → `linear-work-management`
+- "capture this as an idea" (no completed Linear work behind it) → `notion-knowledge-management`
+  directly
+
+**Last dated run record:** evals/status-and-learning/workspace/iteration-1/ (2026-08-30)
 
 **Quality gates:**
 - [ ] Every summary is explicitly dated and labeled as a snapshot, never implied to be live.
