@@ -118,15 +118,21 @@ A successful check means one of three things, with different confidence:
   with findings — whose `commit_id` equals the current head SHA. This is a certain match.
 - **Comment match (SHA-referenced, moderate confidence):** Codex posted a plain top-level PR
   comment, at or after this push's own timestamp, containing a `Reviewed commit` label with the
-  current head SHA's first 7 hex characters within 20 characters of it. This references the
-  correct commit by name, but is a text match against a third-party bot's own free-form comment
-  formatting rather than a structured API field — less certain than the review-object match, but
-  meaningfully stronger than the reaction match below, since it actually names the commit. **Added
-  2026-08-30** after this exact gap caused a real, extended false-negative (see below): Codex's
-  response to a re-triggered round (an `@codex review` comment, as opposed to the pull request's
-  own first, automatic review) came back as a plain comment rather than a submitted review object
-  at all, leaving only the reaction-match signal below to catch it — and that signal failed to,
-  for the entire 30-minute window, on data later confirmed to satisfy its own matching condition.
+  current head SHA's first 7 hex characters within 20 characters of *some* occurrence of that
+  label — checked across every occurrence of both in the body, not just the first of each. (An
+  earlier version of this check compared only the first occurrence of each, which could
+  false-negative on a comment that legitimately mentions the label text once in prose or a quoted
+  diff before its real, adjacent commit-footer pair later in the body — found live by Codex's own
+  automated review of this exact change, on this exact file, whose own comments and this doc's own
+  prose now repeat the literal label text multiple times.) This references the correct commit by
+  name, but is a text match against a third-party bot's own free-form comment formatting rather
+  than a structured API field — less certain than the review-object match, but meaningfully
+  stronger than the reaction match below, since it actually names the commit. **Added 2026-08-30**
+  after this exact gap caused a real, extended false-negative (see below): Codex's response to a
+  re-triggered round (an `@codex review` comment, as opposed to the pull request's own first,
+  automatic review) came back as a plain comment rather than a submitted review object at all,
+  leaving only the reaction-match signal below to catch it — and that signal failed to, for the
+  entire 30-minute window, on data later confirmed to satisfy its own matching condition.
 - **Reaction match (best-effort, not commit-exact):** Codex posted a `+1` reaction at or after
   this push's own timestamp. This does **not** prove the reaction was for the current commit
   specifically — GitHub reactions carry no commit ID at all, which is a structural limitation of

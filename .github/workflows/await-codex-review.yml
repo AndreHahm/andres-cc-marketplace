@@ -216,24 +216,30 @@ jobs:
               continue
             fi
 
-            # Require the SHA prefix to appear shortly after the "Reviewed
-            # commit" label, not merely anywhere in the same body -- two
-            # independent `contains` checks would also accept a comment
-            # whose label refers to an *earlier* commit while the current
-            # head SHA happens to appear elsewhere in the same body (a
-            # quoted diff hunk, a permalink), re-importing the exact
-            # stale-in-flight-review misattribution risk this signal exists
-            # to close (security-reviewer finding M1). `index()` returns the
-            # first match's offset (or null); no regex, so the hex
-            # `$sha_prefix` needs no escaping either way.
+            # Require the SHA prefix to appear shortly after *some*
+            # occurrence of the "Reviewed commit" label -- checking only the
+            # *first* occurrence of each (via `index()`) can false-negative
+            # on a comment that legitimately mentions the label text earlier
+            # (in prose, or a quoted diff) before its real, adjacent
+            # commit-footer pair later in the same body: the first-vs-first
+            # distance can exceed the window even though a later label/SHA
+            # pair is correctly adjacent (found live by Codex's own
+            # automated PR review, on this exact PR, reviewing this exact
+            # file -- which itself now contains the literal label text
+            # multiple times in its own comments and docs, making this
+            # false-negative shape a near-certainty for future rounds if
+            # left as first-occurrence-only). `match(...; "g")` collects
+            # every occurrence's offset instead; any qualifying pair passes.
+            # No regex escaping needed either way -- "Reviewed commit" and
+            # the hex `$sha_prefix` both contain no regex metacharacters.
             if jq -s -e --arg event_time "$EVENT_TIME" --arg sha_prefix "${HEAD_SHA:0:7}" '
               add | any(
                 .[];
                 .user.login == "chatgpt-codex-connector[bot]"
                 and .created_at >= $event_time
-                and ((.body | index("Reviewed commit")) as $i1
-                     | (.body | index($sha_prefix)) as $i2
-                     | $i1 != null and $i2 != null and ($i2 - $i1) >= 0 and ($i2 - $i1) <= 20)
+                and ((.body | [match("Reviewed commit"; "g")] | map(.offset)) as $labels
+                     | (.body | [match($sha_prefix; "g")] | map(.offset)) as $shas
+                     | any($labels[]; . as $l | any($shas[]; . as $s | ($s - $l) >= 0 and ($s - $l) <= 20)))
               )
             ' <<< "$comments" >/dev/null; then
               echo "Codex commented reviewing ${HEAD_SHA} at or after this push."
