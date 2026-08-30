@@ -318,7 +318,8 @@ export function semanticallyValidate(envelope, { targetPaths, dispatchId, review
 }
 
 async function main() {
-  const options = parseArgs(process.argv.slice(2));
+  const rawArgv = process.argv.slice(2);
+  const options = parseArgs(rawArgv);
   const { "reviewer-type": reviewerType, "instruction-file": instructionFile, "target-paths": targetPathsRaw, "execution-profile": executionProfile, "dispatch-id": dispatchId, cwd = process.cwd() } = options;
 
   // Explicit value ("--dry-run true"), not a bare boolean flag: parseArgs
@@ -327,7 +328,58 @@ async function main() {
   // before another flag would silently eat that flag's own name as its
   // value and desync the rest of parsing. Matching the file's existing
   // --flag value convention sidesteps that instead of changing the parser.
-  const dryRun = options["dry-run"] === "true";
+  //
+  // Fail closed on a malformed value instead of silently falling through to
+  // a real dispatch (security review, live-flagged by Devin and Codex): a
+  // typo'd value ("--dry-run ture") or a bare trailing "--dry-run" (which
+  // parseArgs above resolves to options["dry-run"] === undefined, identical
+  // to the flag never being passed at all) both used to compare false to
+  // "true" and proceed as an ordinary real dispatch with no error -- for
+  // this bridge that's read-only, so lower stakes, but the identical
+  // pattern in codex-windows-guardrails' guarded-dispatch.mjs means the
+  // same typo there silently launches unsandboxed danger-full-access.
+  //
+  // Match the flag NAME in raw argv, not options["dry-run"]'s parsed value
+  // and not an exact-string rawArgv match -- a second-round security review
+  // (Critical) found the first version's exact-match `rawArgv.includes(
+  // "--dry-run")` still missed the equally-plausible GNU `--dry-run=true`
+  // form entirely: parseArgs keys on the WHOLE token after "--" with no "="
+  // splitting, so that token becomes options["dry-run=true"], leaving
+  // options["dry-run"] undefined and the exact-string includes() check
+  // false -- both silently producing dryRun=false and, on the guardrails
+  // sibling, a real unsandboxed dispatch. toLowerCase() also catches a
+  // case-variant token (--DRY-RUN) the same way. Reject more than one
+  // occurrence outright too (`--dry-run true --dry-run false` last-wins
+  // being ambiguous is itself a bug class this gate exists to close, not
+  // something to silently resolve one way or the other).
+  const dryRunTokens = rawArgv.filter((a) => {
+    const lower = a.toLowerCase();
+    return lower === "--dry-run" || lower.startsWith("--dry-run=");
+  });
+  if (dryRunTokens.length > 1) {
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "--dry-run must not be given more than once" }));
+    process.exit(1);
+  }
+  const dryRunRaw = options["dry-run"];
+  if (dryRunTokens.length === 1 && dryRunRaw !== "true" && dryRunRaw !== "false") {
+    // Only the space-separated form ("--dry-run true") is supported -- the
+    // "=" form is rejected here too (it never reaches options["dry-run"] at
+    // all, so dryRunRaw reads as undefined even though a value was typed).
+    // redactSecrets + a length cap match this file's own established
+    // convention for echoing caller-supplied CLI input back in a typed
+    // failure (see the --target-paths entry-validation error below, and
+    // codex-exec.mjs's own redactSecrets use on a failure's stderr detail)
+    // -- a mis-ordered command line could otherwise land an arbitrary,
+    // possibly credential-shaped token in this position.
+    // String(), not JSON.stringify(): JSON.stringify(undefined) returns the
+    // *value* undefined (not the string "undefined"), which would crash
+    // redactSecrets' own String.replace() call the moment dryRunRaw is
+    // undefined -- exactly the bare-trailing-flag and "=" cases this check
+    // exists to catch (caught live while verifying this fix).
+    console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: `--dry-run requires an explicit space-separated value of "true" or "false" (e.g. --dry-run true; --dry-run=<value> is not supported) -- got: ${redactSecrets(String(dryRunRaw)).slice(0, 200)}` }));
+    process.exit(1);
+  }
+  const dryRun = dryRunRaw === "true";
 
   if (!reviewerType || !instructionFile || !targetPathsRaw || !executionProfile || !dispatchId) {
     console.error(JSON.stringify({ ok: false, category: "non_zero_exit", detail: "missing required --reviewer-type/--instruction-file/--target-paths/--execution-profile/--dispatch-id" }));

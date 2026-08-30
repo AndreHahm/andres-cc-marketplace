@@ -296,10 +296,39 @@ function resolveDryRunInvocation(command, args, cwd, platform = process.platform
   if (platform === "win32") {
     return buildSpawnInvocation(command, args, { cwd, stdio: ["pipe", "pipe", "pipe"] }, platform);
   }
-  const pathDirs = (process.env.PATH || "").split(path.delimiter).filter(Boolean);
+  // POSIX PATH search mirrors execvp()'s own semantics, which is what a real
+  // (non-dry-run) spawn({cwd}) ultimately resolves through: an empty PATH
+  // entry (a leading/trailing/doubled ":") means "search the current
+  // directory", and a relative entry resolves against the CHILD's cwd, not
+  // this resolving process's own -- a real spawn chdir's into `cwd` before
+  // execvp's own PATH search ever runs. The previous version dropped empty
+  // entries via .filter(Boolean) and joined a relative `dir` with
+  // path.join()+fs.accessSync(), which Node always resolves against
+  // process.cwd(), never an arbitrary `cwd` parameter -- both diverged from
+  // real dispatch behavior, live-flagged independently by Devin, Codex (with
+  // a concrete PATH="." repro), and CodeRabbit (citing Node's own documented
+  // child_process PATH/cwd semantics). path.resolve(cwd, dir || ".", command)
+  // fixes both: an absolute `dir` still wins outright (path.resolve stops at
+  // the last absolute segment), while a relative or empty `dir` resolves
+  // against `cwd`.
+  //
+  // Known, disclosed residual limitation: this does not replicate the OS's
+  // own PATH-unset fallback search path (e.g. /usr/bin:/bin on Linux) for
+  // the case where process.env.PATH is entirely absent -- that default is
+  // platform-specific and not exposed by Node's stdlib, and neither
+  // reviewer gave a concrete repro for it (unlike the relative/cwd-mismatch
+  // case above). An unset PATH here searches only `cwd` itself, which can
+  // diverge from a real dispatch's OS-level default in that narrow case.
+  const pathDirs = (process.env.PATH || "").split(path.delimiter);
   for (const dir of pathDirs) {
-    const candidate = path.join(dir, command);
+    const candidate = path.resolve(cwd, dir || ".", command);
     try {
+      // isFile() first: X_OK alone only checks permission bits, not file
+      // type -- a directory literally named "codex" with the execute bit
+      // set (routine, since directories need it for traversal) would
+      // otherwise pass this check and be reported as a resolved, invokable
+      // command (Devin).
+      if (!fs.statSync(candidate).isFile()) continue;
       fs.accessSync(candidate, fs.constants.X_OK);
       return { command: candidate, args, options: { cwd }, resolved: true };
     } catch {

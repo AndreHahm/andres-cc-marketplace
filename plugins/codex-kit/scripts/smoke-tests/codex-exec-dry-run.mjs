@@ -80,6 +80,87 @@ console.log("\n=== resolveDryRunInvocation: non-win32 branch finds an executable
   }
 }
 
+console.log("\n=== resolveDryRunInvocation: a relative PATH entry resolves against the child cwd, not this process's cwd (Devin/Codex/CodeRabbit) ===");
+{
+  // Two distinct directories: the stub lives only in `childCwd`. A real
+  // spawn({cwd: childCwd}) chdir's into childCwd before execvp's own PATH
+  // search runs, so a relative PATH entry there means relative to childCwd
+  // -- never to whatever directory this test-runner process itself happens
+  // to be in. The previous version resolved a relative `dir` via
+  // path.join()+fs.accessSync(), which Node always resolves against
+  // process.cwd(), so this exact case previously reported not_found even
+  // though a real dispatch would have found it (Codex's live PATH="." repro).
+  const childCwd = fs.mkdtempSync(path.join(os.tmpdir(), "codex-exec-dry-run-childcwd-"));
+  const savedPath = process.env.PATH;
+  const stubPath = path.join(childCwd, "codex");
+  try {
+    fs.writeFileSync(stubPath, "#!/bin/sh\necho stub\n");
+    fs.chmodSync(stubPath, 0o755);
+    process.env.PATH = ".";
+
+    const resolved = resolveDryRunInvocation("codex", ["exec"], childCwd, "linux");
+    check(
+      "a relative '.' PATH entry resolves against the requested cwd, not process.cwd()",
+      resolved.resolved === true && resolved.command === stubPath,
+      JSON.stringify(resolved)
+    );
+  } finally {
+    restoreEnv("PATH", savedPath);
+    fs.rmSync(childCwd, { recursive: true, force: true });
+  }
+}
+
+console.log("\n=== resolveDryRunInvocation: an empty PATH entry means 'search the current directory' (POSIX execvp semantics) ===");
+{
+  const childCwd = fs.mkdtempSync(path.join(os.tmpdir(), "codex-exec-dry-run-emptypath-"));
+  const savedPath = process.env.PATH;
+  const stubPath = path.join(childCwd, "codex");
+  try {
+    fs.writeFileSync(stubPath, "#!/bin/sh\necho stub\n");
+    fs.chmodSync(stubPath, 0o755);
+    // A leading/trailing/doubled ":" in PATH produces an empty split
+    // component -- the previous version's .filter(Boolean) dropped these
+    // entirely, silently skipping the "search cwd" directory execvp treats
+    // an empty component as meaning.
+    process.env.PATH = "";
+
+    const resolved = resolveDryRunInvocation("codex", ["exec"], childCwd, "linux");
+    check(
+      "an empty PATH entry resolves against the requested cwd",
+      resolved.resolved === true && resolved.command === stubPath,
+      JSON.stringify(resolved)
+    );
+  } finally {
+    restoreEnv("PATH", savedPath);
+    fs.rmSync(childCwd, { recursive: true, force: true });
+  }
+}
+
+console.log("\n=== resolveDryRunInvocation: a directory named 'codex' with the execute bit set is not treated as resolved (Devin) ===");
+{
+  // X_OK alone only checks permission bits, not file type -- a directory
+  // needs its own execute bit for traversal, so an ordinary directory
+  // literally named "codex" passes fs.accessSync(candidate, X_OK) even
+  // though it obviously can't be exec'd as a command.
+  const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-exec-dry-run-dirtrap-"));
+  const savedPath = process.env.PATH;
+  const trapDir = path.join(scratchDir, "codex");
+  try {
+    fs.mkdirSync(trapDir);
+    process.env.PATH = scratchDir;
+
+    const resolved = resolveDryRunInvocation("codex", ["exec"], scratchDir, "linux");
+    check(
+      "a directory named 'codex' is skipped, not reported as resolved",
+      resolved.resolved === false && resolved.reason === "not_found",
+      JSON.stringify(resolved)
+    );
+  } finally {
+    restoreEnv("PATH", savedPath);
+    fs.rmSync(scratchDir, { recursive: true, force: true });
+  }
+}
+
 console.log("\n=== runCodexExec({ dryRun: true }): resolves and redacts, never spawns ===");
 {
   const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-exec-dry-run-"));
@@ -113,7 +194,7 @@ console.log("\n=== runCodexExec({ dryRun: true }): resolves and redacts, never s
     check("dry run reports dryRun: true", result.dryRun === true, JSON.stringify(result));
     check("wouldRun resolves to the stub on PATH", result.wouldRun && (result.wouldRun.command === stubPath || result.wouldRun.args.some((a) => String(a).includes(stubName))), JSON.stringify(result.wouldRun));
     check("wouldRun.prompt redacts the secret-shaped token", result.wouldRun && !result.wouldRun.prompt.includes("AKIA1234567890ABCDEF"), result.wouldRun && result.wouldRun.prompt);
-    check("wouldRun carries the real sandbox/dispatchId/promptLength", result.wouldRun.sandbox === "read-only" && result.wouldRun.dispatchId === "smoke-dry-run" && typeof result.wouldRun.promptLength === "number");
+    check("wouldRun carries the real sandbox/dispatchId/promptLength", result.ok === true && result.wouldRun && result.wouldRun.sandbox === "read-only" && result.wouldRun.dispatchId === "smoke-dry-run" && typeof result.wouldRun.promptLength === "number", JSON.stringify(result));
     check("the stub was never actually spawned", !fs.existsSync(sentinelFile));
   } finally {
     restoreEnv("PATH", savedPath);
@@ -147,17 +228,39 @@ console.log("\n=== runCodexExec({ dryRun: true }): still reports CLI_UNAVAILABLE
 
 console.log("\n=== runCodexExec({ dryRun: true }): scratch schema dir is cleaned up, not left behind ===");
 {
-  const result = await runCodexExec({
-    prompt: "test",
-    schema,
-    sandbox: "read-only",
-    cwd: process.cwd(),
-    dispatchId: "smoke-dry-run-cleanup",
-    dryRun: true
-  });
-  const leftoverDirs = fs.readdirSync(os.tmpdir()).filter((name) => name.includes("codex-kit-exec-smoke-dry-run-cleanup"));
-  check("dry run resolved successfully (precondition for the cleanup check below)", result.ok === true, JSON.stringify(result));
-  check("no scratch directory survives a dry run", leftoverDirs.length === 0, JSON.stringify(leftoverDirs));
+  // Hermetic stub, same pattern as the "resolves and redacts" block above --
+  // this block previously relied on the real system PATH, so it only passed
+  // on a machine with `codex` actually installed (Devin, Codex, and
+  // CodeRabbit all independently flagged this; Codex reproduced a 12/13
+  // failure with exit 1 on a machine without it).
+  const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-exec-dry-run-"));
+  const savedPath = process.env.PATH;
+  const stubName = process.platform === "win32" ? "codex.cmd" : "codex";
+  const stubPath = path.join(scratchDir, stubName);
+  try {
+    if (process.platform === "win32") {
+      fs.writeFileSync(stubPath, "@echo off\r\n");
+    } else {
+      fs.writeFileSync(stubPath, "#!/bin/sh\n");
+      fs.chmodSync(stubPath, 0o755);
+    }
+    process.env.PATH = scratchDir + path.delimiter + (savedPath || "");
+
+    const result = await runCodexExec({
+      prompt: "test",
+      schema,
+      sandbox: "read-only",
+      cwd: scratchDir,
+      dispatchId: "smoke-dry-run-cleanup",
+      dryRun: true
+    });
+    const leftoverDirs = fs.readdirSync(os.tmpdir()).filter((name) => name.includes("codex-kit-exec-smoke-dry-run-cleanup"));
+    check("dry run resolved successfully (precondition for the cleanup check below)", result.ok === true, JSON.stringify(result));
+    check("no scratch directory survives a dry run", leftoverDirs.length === 0, JSON.stringify(leftoverDirs));
+  } finally {
+    restoreEnv("PATH", savedPath);
+    fs.rmSync(scratchDir, { recursive: true, force: true });
+  }
 }
 
 console.log(`\n=== Results: ${pass} passed, ${fail} failed ===`);
