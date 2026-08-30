@@ -399,6 +399,24 @@ input and, where meaningful, a blocked-path input) rather than just one. `script
 type — e.g. `plugin-lifecycle-downstream`'s optional Deep Test step — doesn't have to parse
 the human-readable text output.
 
+**Verify this skill activates on:**
+- "add a hook to this plugin" / "write hooks.json"
+- "implement PreToolUse validation to block dangerous commands"
+- "auto-format on every file write" / "enforce completion standards with a Stop hook"
+- "load session context at startup" / "automate a response to a Claude Code event"
+
+**Verify it does NOT activate on:**
+- "just run this once" → a slash command, not a hook
+- "change a global config setting" → edit `settings.json` directly instead
+- "review this existing hook's quality/safety before I ship it" → the `hook-reviewer` agent instead
+
+**No `evals/hook-development/evals.json`:** this is an occasional dev-authoring skill (hook
+scaffolding/validation), not a frequently-relied-on or behavior-critical one per
+`.claude/rules/require-tests-for-behavior-changes.md`'s own category split — the Quality gates
+checklist above plus `scripts/validate-hook-schema.sh`/`scripts/test-hook.sh`'s automated,
+deterministic checks (run against the actual hook being authored, not a fixed fixture) are the
+testing mechanism that rule permits for "most other cases," rather than a blind-comparison eval.
+
 ---
 
 ## Additional Resources

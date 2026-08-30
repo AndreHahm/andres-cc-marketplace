@@ -379,6 +379,25 @@ After creating or modifying marketplace.json:
 - [ ] New plugins use `version: "1.0.0"`, changed plugins have version bumped
 - [ ] `strict: false` on every plugin entry (no plugin.json in repo)
 
+**Verify this skill activates on:**
+- "create marketplace.json for this skills repo"
+- "add these skills to the existing marketplace catalog"
+- "bump the plugin version after this SKILL.md change"
+- "why is `claude plugin validate`/install failing"
+- "prepare a PR so this repo installs via `claude plugin install`"
+
+**Verify it does NOT activate on:**
+- "this plugin already has a plugin.json, publish it" → `plugin-development` instead
+- "update the marketplace database" / "check plugin inventories for drift" → `marketplace-inventory` instead
+- "these skills are local-only, not for distribution" → out of scope entirely
+
+**No `evals/marketplace-development/evals.json`:** this is an occasional dev-authoring skill
+(marketplace scaffolding/validation), not a frequently-relied-on or behavior-critical one per
+`.claude/rules/require-tests-for-behavior-changes.md`'s own category split — the Quality gates
+checklist above plus `scripts/check_marketplace.sh`'s automated 4-check validator (exercised live
+against this repo's own real marketplace.json every time the skill runs) is the testing mechanism
+that rule permits for "most other cases," rather than a blind-comparison eval.
+
 ---
 
 ## Reference Guide
