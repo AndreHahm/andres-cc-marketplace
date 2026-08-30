@@ -176,29 +176,34 @@ ${CLAUDE_PROJECT_DIR}     # Project root directory
 ${CLAUDE_CODE_REMOTE}     # "true" if running in web environment
 ```
 
-**Never use `${CLAUDE_PLUGIN_ROOT}` or a bare relative path (e.g. `./scripts/foo.sh`) here — use
-`${CLAUDE_PROJECT_DIR}` with the full path from the project root instead.** Two independent, confirmed
-problems rule out the alternatives:
+**Never use a bare relative path (e.g. `./scripts/foo.sh`) here — it is session-cwd-relative, not
+skill-directory-relative, and therefore unsafe.** Official Claude Code hooks documentation states hook
+handlers "run in the current directory" with no exception carved out for skill-frontmatter hooks, and
+separately confirms that directory tracks the live session (it moves when Claude runs `cd`, and follows
+Claude into a worktree). The one official example using a bare relative path
+(`./scripts/security-check.sh`) only works if the session's cwd happens to already be the skill's own
+directory at the moment the hook fires — not a safe assumption to build a skill on.
 
-- **`${CLAUDE_PLUGIN_ROOT}` is not confirmed available inside a SKILL.md/agent frontmatter-embedded
-  `hooks:` block.** Official docs document it for a plugin's own `hooks/hooks.json` and for a skill's
-  markdown content/`allowed-tools` — never for the frontmatter `hooks:` block itself. For a
-  project-level skill (one with no enclosing plugin, e.g. `.claude/skills/<name>/`), a real bug
-  confirmed `${CLAUDE_PLUGIN_ROOT}` resolves unpredictably rather than staying cleanly undefined — it
-  expanded to the skill's own directory, causing a duplicated-path failure when the usual
-  `skills/<name>/` segment convention (needed for `${CLAUDE_PLUGIN_ROOT}` elsewhere in a real plugin)
-  was also applied.
-- **A bare relative path is not skill-directory-relative — it's session-cwd-relative, and therefore
-  unsafe.** Official Claude Code hooks documentation states hook handlers "run in the current
-  directory" with no exception carved out for skill-frontmatter hooks, and separately confirms that
-  directory tracks the live session (it moves when Claude runs `cd`, and follows Claude into a
-  worktree). The one official example using a bare relative path (`./scripts/security-check.sh`) only
-  works if the session's cwd happens to already be the skill's own directory at the moment the hook
-  fires — not a safe assumption to build a skill on. `${CLAUDE_PROJECT_DIR}` is the one variable
-  explicitly documented as stable regardless of cwd — use it with the explicit path from the project
-  root to wherever this skill actually lives (e.g.
-  `${CLAUDE_PROJECT_DIR}/.claude/skills/my-skill/scripts/foo.sh` for a project-level skill, or
-  `${CLAUDE_PROJECT_DIR}/plugins/my-plugin/skills/my-skill/scripts/foo.sh` for a plugin-nested one).
+**Which variable to use instead depends on whether this skill will ever be distributed/installed into
+someone else's project:**
+
+- **Project-level skill, never distributed** (no enclosing plugin, e.g. `.claude/skills/<name>/`, used
+  only within this one repo): use `${CLAUDE_PROJECT_DIR}` with the explicit full path from the project
+  root (e.g. `${CLAUDE_PROJECT_DIR}/.claude/skills/my-skill/scripts/foo.sh`). `${CLAUDE_PLUGIN_ROOT}` is
+  not confirmed available inside a frontmatter `hooks:` block at all, and is confirmed broken for
+  exactly this case — a real bug showed it resolving to the skill's own directory instead of staying
+  cleanly undefined, causing a duplicated-path failure when the usual `skills/<name>/` segment
+  convention (needed for `${CLAUDE_PLUGIN_ROOT}` elsewhere in a real plugin) was also applied.
+- **Plugin-nested skill meant for distribution** (has an enclosing plugin, will be installed into other
+  users' own projects via the marketplace): use `${CLAUDE_PLUGIN_ROOT}/skills/my-skill/scripts/foo.sh`
+  instead — **not** `${CLAUDE_PROJECT_DIR}`. `${CLAUDE_PROJECT_DIR}` resolves to whatever project the
+  *installing user* has open, not to this plugin's own source repo — a path like
+  `${CLAUDE_PROJECT_DIR}/plugins/my-plugin/skills/my-skill/scripts/foo.sh` would never exist in a real
+  end user's project (their project doesn't contain this plugin's own source tree; the plugin gets
+  installed to a separate cache location instead). `${CLAUDE_PLUGIN_ROOT}` is the only variable actually
+  designed to track wherever a plugin is installed, in any project — unconfirmed by official docs for
+  the frontmatter `hooks:` context specifically, but the only real option and consistent with this
+  variable's established plugin-root resolution elsewhere in a real plugin.
 
 ### CLAUDE_CODE_REMOTE Example
 

@@ -3,8 +3,9 @@
 How to hook into Model Context Protocol (MCP) tools using special naming patterns, and how to use an MCP tool as a hook's action via the `mcp_tool` hook type.
 
 Every `${CLAUDE_PLUGIN_ROOT}` example below is for a `hooks/hooks.json`/`.claude/hooks.json` command
-hook. In a skill/agent frontmatter-embedded `hooks:` block, use `${CLAUDE_PROJECT_DIR}` with the full
-path from the project root instead — never a bare relative path, never `${CLAUDE_PLUGIN_ROOT}` — see
+hook. In a skill/agent frontmatter-embedded `hooks:` block, never use a bare relative path — use
+`${CLAUDE_PROJECT_DIR}` with the full path for a never-distributed project-level skill, or
+`${CLAUDE_PLUGIN_ROOT}` for a plugin-nested skill meant for distribution — see
 `references/component-scoped-hooks.md`.
 
 **Two distinct things share the "MCP" name here — don't confuse them:**
