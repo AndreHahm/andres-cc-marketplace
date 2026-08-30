@@ -508,6 +508,41 @@ def check_step2_advisory_failure_handling():
     )
 
 
+def check_r30_scenarios_extracted():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    start = text.find("\n## Testing & Validation\n")
+    if start == -1:
+        return False, "'## Testing & Validation' section not found"
+    end = text.find("\n## ", start + 1)
+    section = text[start : end if end != -1 else len(text)]
+    if "references/test-scenarios.md" not in section:
+        return (
+            False,
+            "Testing & Validation no longer points at references/test-scenarios.md -- the R30 "
+            "scenario-walkthrough extraction may have been reverted",
+        )
+    if "Verify step 7's remote-branch-deletion fallback" in section:
+        return (
+            False,
+            "Testing & Validation still contains the full remote-branch-deletion scenario "
+            "walkthrough inline -- it belongs in references/test-scenarios.md per R30",
+        )
+    ref_path = SKILL_DIR / "references" / "test-scenarios.md"
+    if not ref_path.exists():
+        return False, "references/test-scenarios.md does not exist"
+    ref_text = ref_path.read_text(encoding="utf-8")
+    if "Verify step 7's remote-branch-deletion fallback" not in ref_text:
+        return (
+            False,
+            "references/test-scenarios.md doesn't contain the remote-branch-deletion scenario "
+            "walkthrough -- extraction may be incomplete",
+        )
+    return (
+        True,
+        "R30 scenario walkthroughs are extracted to references/test-scenarios.md, not inline",
+    )
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -529,6 +564,7 @@ CHECKS = [
     check_boundaries_graphql_grant_disclosure,
     check_boundaries_rest_grants_method_unrestricted_disclosure,
     check_step2_advisory_failure_handling,
+    check_r30_scenarios_extracted,
     check_step5_states_advisory_disclosures,
 ]
 
