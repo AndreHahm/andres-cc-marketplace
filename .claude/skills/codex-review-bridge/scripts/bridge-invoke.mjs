@@ -305,8 +305,12 @@ export function isTotalInspectionFailure(envelope) {
 // dropped (its primary citation is invalid), while a finding whose
 // `location` is fine but one `components[]` entry fails just has that
 // entry removed, keeping the finding itself. Every drop is recorded in
-// `envelope.inspection_limits` -- as a fixed, static note text, never the raw
-// `finding.location`/`component` string itself, so a crafted citation can't
+// `envelope.inspection_limits` -- as a fully static note text, with NO
+// interpolated value at all, not even `finding.id` (also model-controlled,
+// unconstrained `type: "string"` in ENVELOPE_SCHEMA -- round 2 of a
+// cross-model-review fix: round 1 stopped interpolating `location`/
+// `component` but still interpolated `finding.id`, missing that it's just
+// as attacker-controlled) -- so a crafted citation or finding id can't
 // smuggle process-start-failure-shaped text into a field main()'s
 // isTotalInspectionFailure() pattern-matches on -- so the caller isn't left
 // with a silently empty findings list looking like a clean pass. Mutates
@@ -333,7 +337,7 @@ export function semanticallyValidate(envelope, { targetPaths, dispatchId, review
       // containing "CreateProcessAsUserW") would otherwise let a dropped
       // out-of-scope citation misclassify as a total sandbox failure and trigger
       // the resolver's danger-full-access fallback (found by cross-model-review).
-      droppedNotes.push(`finding ${finding.id} dropped: location cites an out-of-scope or nonexistent path`);
+      droppedNotes.push("a finding was dropped: location cites an out-of-scope or nonexistent path");
       continue;
     }
     const keptComponents = [];
@@ -341,7 +345,7 @@ export function semanticallyValidate(envelope, { targetPaths, dispatchId, review
       if (locateInSemanticScope(targetPaths, component, repoRoot)) {
         keptComponents.push(component);
       } else {
-        droppedNotes.push(`finding ${finding.id}: dropped an out-of-scope or nonexistent components[] citation`);
+        droppedNotes.push("a finding's components[] entry was dropped: out-of-scope or nonexistent citation");
       }
     }
     finding.components = keptComponents;

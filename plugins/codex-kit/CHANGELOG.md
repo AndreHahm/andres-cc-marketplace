@@ -66,6 +66,13 @@ All notable changes to this plugin are documented here.
   `danger-full-access` fallback (found by `cross-model-review`, live-verified against the
   actual call order in `main()`). The note is now a fixed, static string with no
   citation text embedded.
+- Fixed the above fix's own residual gap: the "fixed, static" note still interpolated
+  `finding.id`, which is just as model-controlled and unconstrained (`type: "string"`,
+  no pattern) as the `location`/`component` text the first fix removed — a crafted `id`
+  containing the same process-start-failure phrasing reopened the identical
+  `isTotalInspectionFailure` misclassification path. Found by a second round of
+  `cross-model-review` against the first fix; the note is now fully static with zero
+  interpolated values.
 
 ## [1.0.0-alpha.1] - 2026-08-08
 

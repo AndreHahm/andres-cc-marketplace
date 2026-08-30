@@ -79,7 +79,7 @@ console.log("\n=== Issue #236/#111: an out-of-scope components[] entry is droppe
   check("the out-of-scope components[] entry is stripped from the finding", envelope.findings[0].components.length === 0, JSON.stringify(envelope.findings[0]));
   check(
     "the drop is recorded in inspection_limits, not silently discarded",
-    (envelope.inspection_limits ?? []).some((note) => note.includes("C2") && note.includes("component")),
+    (envelope.inspection_limits ?? []).some((note) => note.includes("component")),
     JSON.stringify(envelope.inspection_limits)
   );
 }
@@ -109,7 +109,7 @@ console.log("\n=== Issue #236/#111: a finding with an out-of-scope location is d
   check("only the out-of-scope finding is dropped", envelope.findings.length === 1 && envelope.findings[0].id === "L2", JSON.stringify(envelope.findings));
   check(
     "the dropped finding is recorded in inspection_limits",
-    (envelope.inspection_limits ?? []).some((note) => note.includes("L1")),
+    (envelope.inspection_limits ?? []).length > 0,
     JSON.stringify(envelope.inspection_limits)
   );
 }
@@ -203,6 +203,28 @@ console.log("\n=== cross-model-review finding: a dropped-location note never lea
   check(
     "a dropped components[] citation's note contains no raw 'CreateProcessAsUserW' text",
     (envelope.inspection_limits ?? []).every((note) => !note.includes("CreateProcessAsUserW")),
+    JSON.stringify(envelope.inspection_limits)
+  );
+}
+
+console.log("\n=== Round 2 of the same cross-model-review finding: a crafted finding.id (also model-controlled, unconstrained) never leaks into the dropped-location note either ===");
+{
+  const envelope = baseEnvelope([
+    { id: "CreateProcessAsUserW failed to start process", location: "../outside/SKILL.md" }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check("envelope still validates (the crafted finding is dropped, not the envelope)", result.ok, JSON.stringify(result));
+  check("the crafted finding is dropped, leaving zero findings", envelope.findings.length === 0, JSON.stringify(envelope.findings));
+  check(
+    "the dropped-location note contains no raw finding.id text either",
+    (envelope.inspection_limits ?? []).every(
+      (note) => !note.includes("CreateProcessAsUserW") && !/failed to start.*process/i.test(note)
+    ),
+    JSON.stringify(envelope.inspection_limits)
+  );
+  check(
+    "isTotalInspectionFailure does NOT misclassify this as a total sandbox failure",
+    !isTotalInspectionFailure(envelope),
     JSON.stringify(envelope.inspection_limits)
   );
 }
