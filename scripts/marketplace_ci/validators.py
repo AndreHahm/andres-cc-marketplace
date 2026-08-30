@@ -196,6 +196,7 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
     claude_root = repo / ".claude"
     plugins_root = repo / "plugins"
     messages: list[str] = []
+    divergence_exceptions = {(exc.source, exc.dest) for exc in registry.divergence_exceptions}
 
     def check_pair(rel_source: str, rel_dest: str, *, is_agent: bool = False) -> None:
         # Exact match against the staged path set -- not a directory-prefix
@@ -212,6 +213,11 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
                 f"{rel_dest}: canonical source is staged but the generated "
                 "counterpart was not staged"
             )
+            return
+        if (rel_source, rel_dest) in divergence_exceptions:
+            # Whole-file exception (see DivergenceException docstring) -- both
+            # sides being staged is still required above; only the byte-equality
+            # check below is skipped.
             return
         staged_dest_blob = git_state.read_index(PurePosixPath(rel_dest))
         expected = (

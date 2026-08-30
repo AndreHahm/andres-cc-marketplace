@@ -3,8 +3,9 @@
 Full field reference and example configuration for each hook action type. For which type to pick, see the "Type decision" table in `SKILL.md`'s Hook Types section. For the `mcp_tool` type specifically, see `references/mcp-tools.md` — it has its own dedicated, more detailed reference.
 
 The `${CLAUDE_PLUGIN_ROOT}` example below is for a `hooks/hooks.json`/`.claude/hooks.json` command
-hook. In a skill/agent frontmatter-embedded `hooks:` block, use a relative path or
-`${CLAUDE_PROJECT_DIR}` instead — see `references/component-scoped-hooks.md`.
+hook. In a skill/agent frontmatter-embedded `hooks:` block, use `${CLAUDE_PROJECT_DIR}` with the full
+path from the project root instead — never a bare relative path, never `${CLAUDE_PLUGIN_ROOT}` — see
+`references/component-scoped-hooks.md`.
 
 ## Prompt-Based (Recommended)
 

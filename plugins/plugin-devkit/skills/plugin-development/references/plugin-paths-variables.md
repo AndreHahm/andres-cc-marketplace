@@ -148,10 +148,11 @@ python ~/.claude/skills/my-plugin/mcp_servers/file_handler.py
 #### Skill/Agent Frontmatter Hooks Example (caveat)
 
 `${CLAUDE_PLUGIN_ROOT}` above is documented for a plugin's own `hooks/hooks.json`. It is not confirmed
-available inside a SKILL.md/agent frontmatter-embedded `hooks:` block specifically — see
+available inside a SKILL.md/agent frontmatter-embedded `hooks:` block specifically, and a bare relative
+path is unsafe there too (hook handlers run in the session's cwd, not the skill's own directory) — see
 `hook-development/references/component-scoped-hooks.md`'s "Environment Variables Available" section for
 the confirmed-broken case (a project-level skill, no enclosing plugin) and the recommended fix
-(a relative path or `${CLAUDE_PROJECT_DIR}` with the full path instead).
+(`${CLAUDE_PROJECT_DIR}` with the full path from the project root).
 
 #### LSP Server Example
 

@@ -11,5 +11,12 @@
       "subagent-reviewer",
       "smoke-tester"
     ]
-  }
+  },
+  "divergence_exceptions": [
+    {
+      "source": "plugins/plugin-devkit/skills/marketplace-development/SKILL.md",
+      "dest": ".claude/skills/marketplace-development/SKILL.md",
+      "reason": "Frontmatter hooks: block's command paths are necessarily copy-specific (${CLAUDE_PROJECT_DIR} plus each copy's own path from the project root) -- a bare relative path is unsafe (hook handlers run in the session's cwd, not the skill's own directory), and ${CLAUDE_PLUGIN_ROOT} is unconfirmed/broken for the .claude/ mirror's project-level context. Whole-file exception: only this hooks: block differs between the two copies, everything else stays identical."
+    }
+  ]
 }

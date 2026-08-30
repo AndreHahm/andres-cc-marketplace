@@ -10,15 +10,20 @@ description: >-
   for a skills collection, or wants a skills repo installable via `claude plugin install`.
   For plugins that already have plugin.json, plugin-development handles marketplace publishing.
 allowed-tools: Read Write Glob Bash(scripts/check_marketplace.sh:*) Bash(jq:*) Bash(python3:*) Bash(find:*) Bash(claude:*) Bash(git:*)
+# R19 exception (see .claude/marketplace-sync.json's divergence_exceptions): the command paths below
+# intentionally differ from the .claude/ mirror copy of this file. Official Claude Code docs state
+# hook handlers "run in the current directory" (the live session cwd, not the skill's own directory),
+# so a bare relative path is unsafe here — ${CLAUDE_PROJECT_DIR} (documented as stable regardless of
+# cwd) with each copy's own correct path from the project root is used instead.
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "./hooks/post_edit_validate.sh"
+          command: "${CLAUDE_PROJECT_DIR}/plugins/plugin-devkit/skills/marketplace-development/hooks/post_edit_validate.sh"
           timeout: 30
         - type: command
-          command: "./hooks/post_edit_sync_check.sh"
+          command: "${CLAUDE_PROJECT_DIR}/plugins/plugin-devkit/skills/marketplace-development/hooks/post_edit_sync_check.sh"
           timeout: 10
 ---
 

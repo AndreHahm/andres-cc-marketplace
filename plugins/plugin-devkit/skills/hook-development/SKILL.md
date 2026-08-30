@@ -292,9 +292,13 @@ Available in a `hooks/hooks.json`/`.claude/hooks.json` command hook:
 | `$CLAUDE_CODE_REMOTE` | Set if running in remote context |
 
 **A skill/agent frontmatter-embedded `hooks:` block is different:** `$CLAUDE_PLUGIN_ROOT` is not
-confirmed available there, and is confirmed broken for a project-level skill (no enclosing plugin) —
-see `references/component-scoped-hooks.md`'s "Environment Variables Available" section for the
-confirmed-working alternative (a relative path, or `$CLAUDE_PROJECT_DIR` with the full path).
+confirmed available there, and is confirmed broken for a project-level skill (no enclosing plugin).
+**Never use a bare relative path either** — official docs state hook handlers "run in the current
+directory," i.e. the live session cwd (which tracks `cd`/worktree changes), not the skill's own
+directory, so a bare relative path resolves unpredictably depending on where Claude happens to be when
+the hook fires. Use `$CLAUDE_PROJECT_DIR` with the full path from the project root instead — it's
+documented as stable regardless of cwd. See `references/component-scoped-hooks.md`'s "Environment
+Variables Available" section for the full reasoning.
 
 ---
 

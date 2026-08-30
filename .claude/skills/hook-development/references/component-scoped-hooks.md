@@ -44,13 +44,13 @@ hooks:
     - matcher: "^Bash$"
       hooks:
         - type: command
-          command: "./scripts/validate.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/validate.sh"
           timeout: 2000
   PostToolUse:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./scripts/format.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/format.sh"
           timeout: 2000
 ---
 ```
@@ -70,7 +70,7 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./scripts/prettier.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/prettier.sh"
           timeout: 2000
           onError: "warn"
 ---
@@ -94,7 +94,7 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./scripts/run-linter.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/run-linter.sh"
           timeout: 3000
 ---
 ```
@@ -114,13 +114,13 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./scripts/security-check.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/security-check.sh"
           timeout: 2000
   PostToolUse:
     - matcher: "^Bash$"
       hooks:
         - type: command
-          command: "./scripts/log-exec.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/log-exec.sh"
           timeout: 1000
 ---
 ```
@@ -159,7 +159,7 @@ hooks:
     - matcher: "^Bash$"
       hooks:
         - type: command
-          command: "./scripts/init-db.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/init-db.sh"
           once: true
           timeout: 5000
 ---
@@ -176,17 +176,29 @@ ${CLAUDE_PROJECT_DIR}     # Project root directory
 ${CLAUDE_CODE_REMOTE}     # "true" if running in web environment
 ```
 
-**`${CLAUDE_PLUGIN_ROOT}` is not confirmed available inside a SKILL.md/agent frontmatter-embedded
-`hooks:` block.** Official docs document it for a plugin's own `hooks/hooks.json` and for a skill's
-markdown content/`allowed-tools` — never for the frontmatter `hooks:` block itself, and the official
-skill-hooks example uses a bare relative path (`./scripts/security-check.sh`) instead. For a
-project-level skill (one with no enclosing plugin, e.g. `.claude/skills/<name>/`), a real bug confirmed
-`${CLAUDE_PLUGIN_ROOT}` resolves unpredictably rather than staying cleanly undefined — it expanded to
-the skill's own directory, causing a duplicated-path failure when the usual `skills/<name>/` segment
-convention (needed for `${CLAUDE_PLUGIN_ROOT}` elsewhere in a real plugin) was also applied. Use a
-relative path (matching the official example above) or `${CLAUDE_PROJECT_DIR}` with the full path from
-the project root — never `${CLAUDE_PLUGIN_ROOT}` — for a hook command inside a skill/agent's own
-frontmatter.
+**Never use `${CLAUDE_PLUGIN_ROOT}` or a bare relative path (e.g. `./scripts/foo.sh`) here — use
+`${CLAUDE_PROJECT_DIR}` with the full path from the project root instead.** Two independent, confirmed
+problems rule out the alternatives:
+
+- **`${CLAUDE_PLUGIN_ROOT}` is not confirmed available inside a SKILL.md/agent frontmatter-embedded
+  `hooks:` block.** Official docs document it for a plugin's own `hooks/hooks.json` and for a skill's
+  markdown content/`allowed-tools` — never for the frontmatter `hooks:` block itself. For a
+  project-level skill (one with no enclosing plugin, e.g. `.claude/skills/<name>/`), a real bug
+  confirmed `${CLAUDE_PLUGIN_ROOT}` resolves unpredictably rather than staying cleanly undefined — it
+  expanded to the skill's own directory, causing a duplicated-path failure when the usual
+  `skills/<name>/` segment convention (needed for `${CLAUDE_PLUGIN_ROOT}` elsewhere in a real plugin)
+  was also applied.
+- **A bare relative path is not skill-directory-relative — it's session-cwd-relative, and therefore
+  unsafe.** Official Claude Code hooks documentation states hook handlers "run in the current
+  directory" with no exception carved out for skill-frontmatter hooks, and separately confirms that
+  directory tracks the live session (it moves when Claude runs `cd`, and follows Claude into a
+  worktree). The one official example using a bare relative path (`./scripts/security-check.sh`) only
+  works if the session's cwd happens to already be the skill's own directory at the moment the hook
+  fires — not a safe assumption to build a skill on. `${CLAUDE_PROJECT_DIR}` is the one variable
+  explicitly documented as stable regardless of cwd — use it with the explicit path from the project
+  root to wherever this skill actually lives (e.g.
+  `${CLAUDE_PROJECT_DIR}/.claude/skills/my-skill/scripts/foo.sh` for a project-level skill, or
+  `${CLAUDE_PROJECT_DIR}/plugins/my-plugin/skills/my-skill/scripts/foo.sh` for a plugin-nested one).
 
 ### CLAUDE_CODE_REMOTE Example
 
@@ -256,14 +268,14 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./scripts/check-formatters.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/check-formatters.sh"
           once: true
           timeout: 2000
   PostToolUse:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./scripts/format.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/format.sh"
           timeout: 3000
 ---
 
@@ -281,7 +293,7 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./scripts/run-tests.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/run-tests.sh"
           timeout: 15000
           onError: "warn"
   Stop:
@@ -305,7 +317,7 @@ hooks:
     - matcher: "^Bash$"
       hooks:
         - type: command
-          command: "./scripts/audit-bash.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/audit-bash.sh"
           timeout: 2000
 ---
 ```

@@ -9,8 +9,9 @@ from pathlib import Path
 
 SUPPORTED_VERSION = 1
 _NAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-_TOP_LEVEL_KEYS = {"version", "plugin_mirrors", "codex_exports"}
+_TOP_LEVEL_KEYS = {"version", "plugin_mirrors", "codex_exports", "divergence_exceptions"}
 _CODEX_EXPORT_KEYS = {"skills", "agents"}
+_DIVERGENCE_EXCEPTION_KEYS = {"source", "dest", "reason"}
 
 
 class RegistryError(ValueError):
@@ -42,11 +43,26 @@ class RemovalSet:
 
 
 @dataclass(frozen=True)
+class DivergenceException:
+    """A mirror/canonical pair explicitly permitted to differ in staged content.
+
+    Whole-file, not line-level: `check_staged_parity` only ever compares full file
+    content, so excepting a pair here drops parity checking for the *entire* file,
+    not just the specific lines that need to diverge. Keep `reason` specific enough
+    that a future reader can tell whether the exception is still needed."""
+
+    source: str
+    dest: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class Registry:
     version: int
     plugin_mirrors: tuple[str, ...]
     skills: tuple[str, ...]
     agents: tuple[str, ...]
+    divergence_exceptions: tuple[DivergenceException, ...] = ()
 
     @staticmethod
     def empty() -> Registry:
@@ -111,8 +127,40 @@ class Registry:
         )
         _validate_unique(agents, kind="codex_exports.agents")
 
+        raw_divergence_exceptions = raw.get("divergence_exceptions", [])
+        if not isinstance(raw_divergence_exceptions, list):
+            raise RegistryError(f"{source}: divergence_exceptions must be a list")
+        divergence_exceptions = []
+        for entry in raw_divergence_exceptions:
+            if not isinstance(entry, dict):
+                raise RegistryError(f"{source}: divergence_exceptions entry must be an object")
+            unknown_keys = set(entry) - _DIVERGENCE_EXCEPTION_KEYS
+            if unknown_keys:
+                raise RegistryError(
+                    f"{source}: unknown divergence_exceptions key(s): {sorted(unknown_keys)}"
+                )
+            missing_keys = _DIVERGENCE_EXCEPTION_KEYS - set(entry)
+            if missing_keys:
+                raise RegistryError(
+                    f"{source}: divergence_exceptions entry missing key(s): {sorted(missing_keys)}"
+                )
+            for key in ("source", "dest", "reason"):
+                if not isinstance(entry[key], str) or not entry[key].strip():
+                    raise RegistryError(
+                        f"{source}: divergence_exceptions entry {key!r} must be a non-empty string"
+                    )
+            divergence_exceptions.append(
+                DivergenceException(
+                    source=entry["source"], dest=entry["dest"], reason=entry["reason"]
+                )
+            )
+
         return Registry(
-            version=version, plugin_mirrors=plugin_mirrors, skills=skills, agents=agents
+            version=version,
+            plugin_mirrors=plugin_mirrors,
+            skills=skills,
+            agents=agents,
+            divergence_exceptions=tuple(divergence_exceptions),
         )
 
     def removed_since(self, previous: Registry) -> RemovalSet:
