@@ -391,12 +391,10 @@ After creating or modifying marketplace.json:
 - "update the marketplace database" / "check plugin inventories for drift" → `marketplace-inventory` instead
 - "these skills are local-only, not for distribution" → out of scope entirely
 
-**No `evals/marketplace-development/evals.json`:** this is an occasional dev-authoring skill
-(marketplace scaffolding/validation), not a frequently-relied-on or behavior-critical one per
-`.claude/rules/require-tests-for-behavior-changes.md`'s own category split — the Quality gates
-checklist above plus `scripts/check_marketplace.sh`'s automated 4-check validator (exercised live
-against this repo's own real marketplace.json every time the skill runs) is the testing mechanism
-that rule permits for "most other cases," rather than a blind-comparison eval.
+**Last dated run record:** 2026-08-30, `evals/marketplace-development/` — 3/3 scenarios,
+11/11 assertions passed (Quick Workflow, `with_skill` only — see `evals/marketplace-development/evals.json`).
+1 of 5 declared trigger scenarios isn't yet exercised by an eval (preparing a PR for distribution) —
+see `evals.json`'s `testing_validation_coverage` field.
 
 ---
 

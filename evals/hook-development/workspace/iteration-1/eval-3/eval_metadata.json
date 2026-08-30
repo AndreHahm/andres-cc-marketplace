@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/hook-development/SKILL.md",
+  "assertions": [
+    {"text": "Identifies the wrong hooks.json location (.claude-plugin/ vs hooks/ at plugin root)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Identifies the stdin-vs-env-var mistake for reading $FILE_PATH", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

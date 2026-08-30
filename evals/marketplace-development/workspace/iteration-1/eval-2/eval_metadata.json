@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-development/SKILL.md",
+  "assertions": [
+    {"text": "Identifies the $schema field as invalid/rejected by claude plugin validate", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Identifies metadata.homepage as a non-existent field (not in the 3 valid metadata fields)", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Provides corrected JSON with both issues fixed", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

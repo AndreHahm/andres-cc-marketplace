@@ -410,12 +410,10 @@ the human-readable text output.
 - "change a global config setting" → edit `settings.json` directly instead
 - "review this existing hook's quality/safety before I ship it" → the `hook-reviewer` agent instead
 
-**No `evals/hook-development/evals.json`:** this is an occasional dev-authoring skill (hook
-scaffolding/validation), not a frequently-relied-on or behavior-critical one per
-`.claude/rules/require-tests-for-behavior-changes.md`'s own category split — the Quality gates
-checklist above plus `scripts/validate-hook-schema.sh`/`scripts/test-hook.sh`'s automated,
-deterministic checks (run against the actual hook being authored, not a fixed fixture) are the
-testing mechanism that rule permits for "most other cases," rather than a blind-comparison eval.
+**Last dated run record:** 2026-08-30, `evals/hook-development/` — 3/3 scenarios,
+8/8 assertions passed (Quick Workflow, `with_skill` only — see `evals/hook-development/evals.json`).
+2 of 4 declared trigger scenarios aren't yet exercised by an eval (auto-format-on-write, session-context
+loading) — see `evals.json`'s `testing_validation_coverage` field.
 
 ---
 

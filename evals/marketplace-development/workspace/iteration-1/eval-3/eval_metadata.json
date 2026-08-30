@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-development/SKILL.md",
+  "assertions": [
+    {"text": "Adds \"new-helper\" to the plugin's skills array", "type": "presence", "target": "outputs/ directory"},
+    {"text": "Explicitly bumps the version field from 1.2.0 to a higher value", "type": "functionality", "target": "outputs/ directory"},
+    {"text": "Explains that the version bump matters because cached installs won't get the update otherwise", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "skill_name": "marketplace-development",
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-development/SKILL.md",
+  "description": "Converts a Claude Code skills repository into an official plugin marketplace by generating a validated, install-tested .claude-plugin/marketplace.json.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Create marketplace.json for a new skills repo",
+      "prompt": "I have a repo with a skills/ directory containing several SKILL.md files but no marketplace.json yet. Write the .claude-plugin/marketplace.json that would register this as a single-skill plugin for the skill at skills/example-tool/SKILL.md (name: example-tool, description: 'Does an example thing'). Show me the exact JSON you'd write and explain your field choices.",
+      "expected_output": "A marketplace.json with no $schema field, metadata containing only description/version/pluginRoot, strict: false, source pointing directly at the skill directory (not skills: [\"./\"]), and version \"1.0.0\" for the new plugin entry.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Debug a claude plugin validate failure",
+      "prompt": "My marketplace.json has this plugin entry and `claude plugin validate` fails: {\"name\": \"my-tool\", \"source\": \"./my-tool\", \"strict\": false, \"$schema\": \"https://schemas.anthropic.com/marketplace.json\", \"metadata\": {\"homepage\": \"https://example.com\"}}. What's wrong and how do I fix it?",
+      "expected_output": "Correctly identifies both the rejected $schema field and the non-existent metadata.homepage field (metadata only has description/version/pluginRoot) as the causes, and gives the corrected JSON.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "Add a skill to an existing marketplace and bump version",
+      "prompt": "I just added a new skill directory skills/new-helper/ to my skills repo, which already has a working marketplace.json for a suite plugin at ./tools (with a skills array). The plugin's current version in marketplace.json is \"1.2.0\". What do I need to change in marketplace.json?",
+      "expected_output": "Adds \"new-helper\" to the plugin's skills array and explicitly calls out bumping the plugin's version field (e.g. to 1.3.0) so users on the old cached version receive the update — doesn't just add the skill entry silently.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 5,
+    "declared_scenarios_covered": 4,
+    "uncovered": ["prepare a PR so this repo installs via `claude plugin install`"]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Identifies the $schema field as invalid/rejected by claude plugin validate", "passed": true, "evidence": "'this is what's actually failing validation... Unrecognized key: \"$schema\"... It has to be removed entirely'"},
+    {"text": "Identifies metadata.homepage as a non-existent field (not in the 3 valid metadata fields)", "passed": true, "evidence": "'The metadata object only supports three fields: description, version, and pluginRoot. homepage isn't one of them.'"},
+    {"text": "Provides corrected JSON with both issues fixed", "passed": true, "evidence": "Fixed entry JSON block with neither $schema nor metadata.homepage present"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

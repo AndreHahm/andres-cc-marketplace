@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/marketplace-development/SKILL.md",
+  "assertions": [
+    {"text": "Output does not include a $schema field", "type": "presence", "target": "outputs/ directory"},
+    {"text": "metadata object contains only description/version/pluginRoot fields, no metadata.homepage", "type": "structure", "target": "outputs/ directory"},
+    {"text": "strict: false is set on the plugin entry", "type": "presence", "target": "outputs/ directory"},
+    {"text": "source points directly at the skill directory (not skills: [\"./\"])", "type": "structure", "target": "outputs/ directory"},
+    {"text": "New plugin entry uses version \"1.0.0\"", "type": "presence", "target": "outputs/ directory"}
+  ]
+}
