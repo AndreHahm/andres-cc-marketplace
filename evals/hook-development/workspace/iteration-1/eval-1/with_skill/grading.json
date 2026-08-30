@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Command path does not contain ${CLAUDE_PLUGIN_ROOT}", "passed": true, "evidence": "command: \"./hooks/check.sh\" -- no CLAUDE_PLUGIN_ROOT reference anywhere in the output"},
+    {"text": "Command path uses a bare relative path or ${CLAUDE_PROJECT_DIR} with the full path instead", "passed": true, "evidence": "Uses \"./hooks/check.sh\", explicitly reasoned: 'not $CLAUDE_PLUGIN_ROOT (unavailable/broken for a project-level skill with no enclosing plugin)'"},
+    {"text": "hooks: block uses correct nested PostToolUse -> matcher -> hooks array structure", "passed": true, "evidence": "YAML block shows hooks: -> PostToolUse: -> matcher + nested hooks: [...] array"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

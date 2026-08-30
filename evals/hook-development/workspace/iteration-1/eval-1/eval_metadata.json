@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/plugin-devkit/skills/hook-development/SKILL.md",
+  "assertions": [
+    {"text": "Command path does not contain ${CLAUDE_PLUGIN_ROOT}", "type": "structure", "target": "outputs/ directory"},
+    {"text": "Command path uses a bare relative path or ${CLAUDE_PROJECT_DIR} with the full path instead", "type": "structure", "target": "outputs/ directory"},
+    {"text": "hooks: block uses correct nested PostToolUse -> matcher -> hooks array structure", "type": "structure", "target": "outputs/ directory"}
+  ]
+}

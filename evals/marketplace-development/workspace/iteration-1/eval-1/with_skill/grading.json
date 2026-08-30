@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output does not include a $schema field", "passed": true, "evidence": "No $schema key anywhere in the JSON; explicitly noted: 'No $schema field — the skill states this is rejected outright by claude plugin validate, so it's omitted unconditionally.'"},
+    {"text": "metadata object contains only description/version/pluginRoot fields, no metadata.homepage", "passed": true, "evidence": "No metadata block at all; explicitly explained: 'Also explicitly not included: metadata.homepage — the skill flags this as accepted-but-not-in-spec, so it should never be written.'"},
+    {"text": "strict: false is set on the plugin entry", "passed": true, "evidence": "\"strict\": false in the JSON, explained: 'required because there is no plugin.json anywhere in this repo'"},
+    {"text": "source points directly at the skill directory (not skills: [\"./\"])", "passed": true, "evidence": "\"source\": \"./skills/example-tool\", no skills field; explained: 'because source already points directly at the one skill directory, auto-discovery picks it up'"},
+    {"text": "New plugin entry uses version \"1.0.0\"", "passed": true, "evidence": "\"version\": \"1.0.0\" in the JSON"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}
