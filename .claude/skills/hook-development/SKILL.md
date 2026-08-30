@@ -282,14 +282,25 @@ Matchers are **case-sensitive**. Events that match on something other than tool 
 
 ## Environment Variables
 
-Available in all command hooks:
+Available in a `hooks/hooks.json`/`.claude/hooks.json` command hook:
 
 | Variable | Description |
 |---|---|
 | `$CLAUDE_PROJECT_DIR` | Project root path |
-| `$CLAUDE_PLUGIN_ROOT` | Plugin installation dir — use for all portable file references |
+| `$CLAUDE_PLUGIN_ROOT` | Plugin installation dir — use for portable file references in `hooks.json` |
 | `$CLAUDE_ENV_FILE` | **SessionStart only** — append `export VAR=val` here to persist env vars for the session |
 | `$CLAUDE_CODE_REMOTE` | Set if running in remote context |
+
+**A skill/agent frontmatter-embedded `hooks:` block is different — never use a bare relative path.**
+Official docs state hook handlers "run in the current directory," i.e. the live session cwd (which
+tracks `cd`/worktree changes), not the skill's own directory, so a bare relative path resolves
+unpredictably depending on where Claude happens to be when the hook fires. Which variable to use
+instead depends on distribution: `$CLAUDE_PROJECT_DIR` with the full path for a project-level skill
+never distributed elsewhere (`$CLAUDE_PLUGIN_ROOT` is confirmed broken there — no enclosing plugin to
+resolve against); `$CLAUDE_PLUGIN_ROOT` for a plugin-nested skill meant for distribution (a real
+end-user's `$CLAUDE_PROJECT_DIR` won't contain this plugin's own source tree). See
+`references/component-scoped-hooks.md`'s "Environment Variables Available" section for the full
+reasoning.
 
 ---
 
@@ -336,6 +347,9 @@ Full semantics and JSON schemas: `references/exit-code-behavior.md`, `references
 
 ## Implementation Workflow
 
+For a `hooks/hooks.json`/`.claude/hooks.json` hook. For a skill/agent frontmatter-embedded `hooks:`
+block instead, see `references/component-scoped-hooks.md` — step 7 below does not apply there.
+
 1. **Detect project type** — check for `.claude-plugin/plugin.json` to pick correct hooks file location
 2. **Auto-detect tooling** to suggest relevant hooks:
    - `tsconfig.json` → PostToolUse type-check hook
@@ -347,7 +361,7 @@ Full semantics and JSON schemas: `references/exit-code-behavior.md`, `references
 4. **Choose hook type** — prompt (flexible), agent (requires file inspection), command (deterministic)
 5. **Write configuration** — ensure nested `"hooks": [...]` array is present
 6. **For command hooks** — read all data from stdin (`INPUT=$(cat)`)
-7. **Use `${CLAUDE_PLUGIN_ROOT}`** for all file references
+7. **Use `${CLAUDE_PLUGIN_ROOT}`** for all file references (this step is `hooks.json`-specific — see the note above)
 8. **Add `stop_hook_active` guard** to all Stop/SubagentStop hooks
 9. **Validate configuration** — `scripts/validate-hook-schema.sh hooks/hooks.json`
 10. **Lint scripts** — `shellcheck scripts/my-hook.sh`
@@ -390,6 +404,22 @@ input and, where meaningful, a blocked-path input) rather than just one. `script
 `exit_code`/`classification`/`output`) so a caller aggregating results across every event
 type — e.g. `plugin-lifecycle-downstream`'s optional Deep Test step — doesn't have to parse
 the human-readable text output.
+
+**Verify this skill activates on:**
+- "add a hook to this plugin" / "write hooks.json"
+- "implement PreToolUse validation to block dangerous commands"
+- "auto-format on every file write" / "enforce completion standards with a Stop hook"
+- "load session context at startup" / "automate a response to a Claude Code event"
+
+**Verify it does NOT activate on:**
+- "just run this once" → a slash command, not a hook
+- "change a global config setting" → edit `settings.json` directly instead
+- "review this existing hook's quality/safety before I ship it" → the `hook-reviewer` agent instead
+
+**Last dated run record:** 2026-08-30, `evals/hook-development/` — 3/3 scenarios,
+8/8 assertions passed (Quick Workflow, `with_skill` only — see `evals/hook-development/evals.json`).
+2 of 4 declared trigger scenarios aren't yet exercised by an eval (auto-format-on-write, session-context
+loading) — see `evals.json`'s `testing_validation_coverage` field.
 
 ---
 

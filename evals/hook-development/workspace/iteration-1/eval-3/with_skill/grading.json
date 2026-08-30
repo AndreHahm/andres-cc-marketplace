@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Identifies the wrong hooks.json location (.claude-plugin/ vs hooks/ at plugin root)", "passed": true, "evidence": "'.claude-plugin/ is reserved for plugin.json only. Your hooks.json must live at hooks/hooks.json'"},
+    {"text": "Identifies the stdin-vs-env-var mistake for reading $FILE_PATH", "passed": true, "evidence": "'Claude Code does not inject event data... as environment variables... all event data is passed as a single JSON blob on stdin'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

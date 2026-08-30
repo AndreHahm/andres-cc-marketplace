@@ -35,6 +35,14 @@ Instead of registering hooks globally in settings files or plugins, component-sc
 
 Hooks in a skill's SKILL.md frontmatter activate only when that skill is triggered.
 
+**A note on the `${CLAUDE_PROJECT_DIR}` examples below:** every example on this page uses
+`${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/...` for brevity, which is only correct for a
+project-level skill never meant for distribution. A skill nested inside a plugin that *will* be
+distributed needs `${CLAUDE_PLUGIN_ROOT}` instead — see
+[Environment Variables Available](#environment-variables-available) below, specifically the
+"Which variable to use instead" guidance, before copying any example on this page into a distributed
+plugin's own skill.
+
 ```yaml
 ---
 name: my-skill
@@ -44,13 +52,13 @@ hooks:
     - matcher: "^Bash$"
       hooks:
         - type: command
-          command: "./scripts/validate.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/validate.sh"
           timeout: 2000
   PostToolUse:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./scripts/format.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/format.sh"
           timeout: 2000
 ---
 ```
@@ -70,7 +78,7 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/prettier.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/prettier.sh"
           timeout: 2000
           onError: "warn"
 ---
@@ -94,7 +102,7 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./scripts/run-linter.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/run-linter.sh"
           timeout: 3000
 ---
 ```
@@ -114,13 +122,13 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "./scripts/security-check.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/security-check.sh"
           timeout: 2000
   PostToolUse:
     - matcher: "^Bash$"
       hooks:
         - type: command
-          command: "./scripts/log-exec.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/log-exec.sh"
           timeout: 1000
 ---
 ```
@@ -159,7 +167,7 @@ hooks:
     - matcher: "^Bash$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/init-db.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/init-db.sh"
           once: true
           timeout: 5000
 ---
@@ -169,13 +177,41 @@ First time any Bash tool is used in this skill, init-db.sh runs. On subsequent u
 
 ## Environment Variables Available
 
-**All component-scoped hooks have access to:**
+**Reliably available to component-scoped hooks:**
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}     # Plugin root directory
 ${CLAUDE_PROJECT_DIR}     # Project root directory
 ${CLAUDE_CODE_REMOTE}     # "true" if running in web environment
 ```
+
+**Never use a bare relative path (e.g. `./scripts/foo.sh`) here — it is session-cwd-relative, not
+skill-directory-relative, and therefore unsafe.** Official Claude Code hooks documentation states hook
+handlers "run in the current directory" with no exception carved out for skill-frontmatter hooks, and
+separately confirms that directory tracks the live session (it moves when Claude runs `cd`, and follows
+Claude into a worktree). The one official example using a bare relative path
+(`./scripts/security-check.sh`) only works if the session's cwd happens to already be the skill's own
+directory at the moment the hook fires — not a safe assumption to build a skill on.
+
+**Which variable to use instead depends on whether this skill will ever be distributed/installed into
+someone else's project:**
+
+- **Project-level skill, never distributed** (no enclosing plugin, e.g. `.claude/skills/<name>/`, used
+  only within this one repo): use `${CLAUDE_PROJECT_DIR}` with the explicit full path from the project
+  root (e.g. `${CLAUDE_PROJECT_DIR}/.claude/skills/my-skill/scripts/foo.sh`). `${CLAUDE_PLUGIN_ROOT}` is
+  not confirmed available inside a frontmatter `hooks:` block at all, and is confirmed broken for
+  exactly this case — a real bug showed it resolving to the skill's own directory instead of staying
+  cleanly undefined, causing a duplicated-path failure when the usual `skills/<name>/` segment
+  convention (needed for `${CLAUDE_PLUGIN_ROOT}` elsewhere in a real plugin) was also applied.
+- **Plugin-nested skill meant for distribution** (has an enclosing plugin, will be installed into other
+  users' own projects via the marketplace): use `${CLAUDE_PLUGIN_ROOT}/skills/my-skill/scripts/foo.sh`
+  instead — **not** `${CLAUDE_PROJECT_DIR}`. `${CLAUDE_PROJECT_DIR}` resolves to whatever project the
+  *installing user* has open, not to this plugin's own source repo — a path like
+  `${CLAUDE_PROJECT_DIR}/plugins/my-plugin/skills/my-skill/scripts/foo.sh` would never exist in a real
+  end user's project (their project doesn't contain this plugin's own source tree; the plugin gets
+  installed to a separate cache location instead). `${CLAUDE_PLUGIN_ROOT}` is the only variable actually
+  designed to track wherever a plugin is installed, in any project — unconfirmed by official docs for
+  the frontmatter `hooks:` context specifically, but the only real option and consistent with this
+  variable's established plugin-root resolution elsewhere in a real plugin.
 
 ### CLAUDE_CODE_REMOTE Example
 
@@ -245,14 +281,14 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/check-formatters.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/check-formatters.sh"
           once: true
           timeout: 2000
   PostToolUse:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/format.sh"
           timeout: 3000
 ---
 
@@ -270,7 +306,7 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/run-tests.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/run-tests.sh"
           timeout: 15000
           onError: "warn"
   Stop:
@@ -294,7 +330,7 @@ hooks:
     - matcher: "^Bash$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/audit-bash.sh"
+          command: "${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/audit-bash.sh"
           timeout: 2000
 ---
 ```

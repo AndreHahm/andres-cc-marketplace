@@ -25,7 +25,7 @@ class SyncError(RuntimeError):
 
 @dataclass(frozen=True)
 class SyncAction:
-    operation: str  # "create" | "update" | "delete" | "warn" | "collision"
+    operation: str  # "create" | "update" | "delete" | "warn" | "missing_excepted" | "collision"
     source: Path | None
     destination: Path
     reason: str
@@ -85,6 +85,8 @@ def plan_plugin_sync(
     plugins_root = repo / "plugins"
     claude_root = repo / ".claude"
 
+    divergence_exceptions = {(exc.source, exc.dest) for exc in registry.divergence_exceptions}
+
     destinations: dict[Path, list[Path]] = {}
 
     def register(source: Path, relative_from: Path) -> None:
@@ -116,6 +118,7 @@ def plan_plugin_sync(
             delete_destinations[dest] = source_file
 
     actions: list[SyncAction] = []
+    matched_exceptions: set[tuple[str, str]] = set()
 
     for dest, sources in sorted(destinations.items()):
         if len(sources) > 1:
@@ -130,8 +133,37 @@ def plan_plugin_sync(
             continue
         source = sources[0]
         source_bytes = source.read_bytes()
+        rel_source = source.relative_to(repo).as_posix()
+        rel_dest = dest.relative_to(repo).as_posix()
+        exception_key = (rel_source, rel_dest)
+        is_excepted = exception_key in divergence_exceptions
+        if is_excepted:
+            matched_exceptions.add(exception_key)
         if dest.exists():
             if dest.read_bytes() == source_bytes:
+                continue
+            if is_excepted:
+                # Whole-file exception (see registry.DivergenceException docstring) --
+                # this destination is allowed to differ from its canonical source, so
+                # never schedule a sync action that would overwrite it. Surfaced as an
+                # informational "warn" (not a silent no-op) so the active divergence
+                # stays visible on every check/check-all run, rather than requiring a
+                # human to remember to manually re-compare -- mitigates the "unrelated
+                # drift can hide indefinitely behind a whole-file exception" risk that
+                # is otherwise inherent to a whole-file (not line-level) exception.
+                actions.append(
+                    SyncAction(
+                        operation="warn",
+                        source=None,
+                        destination=dest,
+                        reason=(
+                            "intentionally divergent from its canonical source per a "
+                            "declared divergence_exceptions entry -- re-confirm the "
+                            "divergence is still only the documented, expected "
+                            "difference, not unrelated drift"
+                        ),
+                    )
+                )
                 continue
             actions.append(
                 SyncAction(
@@ -139,6 +171,31 @@ def plan_plugin_sync(
                     source=source,
                     destination=dest,
                     reason="content differs from canonical source",
+                )
+            )
+        elif is_excepted:
+            # The canonical source's own bytes are, by definition, wrong for this
+            # destination (that's the entire reason the exception exists) -- never
+            # auto-create it from the canonical source. But a *missing* destination is
+            # not the same risk as a *differing* one: the exception permits divergent
+            # CONTENT, never absence, so this stays a blocking "missing_excepted"
+            # action (not "warn") -- `apply_sync_plan` never executes it either way
+            # (its create/update/delete dispatch doesn't recognize this operation), so
+            # this can never auto-write anything; only the exit-code/reporting
+            # treatment differs from "warn". Devin's original finding asked for
+            # exactly this: "emit a blocking/manual-repair action instead of creating
+            # a broken mirror."
+            actions.append(
+                SyncAction(
+                    operation="missing_excepted",
+                    source=None,
+                    destination=dest,
+                    reason=(
+                        "missing from destination, but excepted from canonical sync "
+                        "(divergence_exceptions) -- recreating from the canonical source "
+                        "would be incorrect; reconstruct this file's intended "
+                        "destination-specific content manually"
+                    ),
                 )
             )
         else:
@@ -150,6 +207,28 @@ def plan_plugin_sync(
                     reason="missing from destination",
                 )
             )
+
+    # A declared exception whose (source, dest) never matched any real, registered
+    # mirror pair above is dead configuration -- most likely a typo in
+    # divergence_exceptions itself -- and the mirror pair it was actually meant to
+    # protect is left unprotected. Surfaced as "warn" so it's visible on every
+    # check/check-all run without blocking the commit.
+    for exc in sorted(registry.divergence_exceptions, key=lambda e: (e.source, e.dest)):
+        if (exc.source, exc.dest) in matched_exceptions:
+            continue
+        actions.append(
+            SyncAction(
+                operation="warn",
+                source=None,
+                destination=(repo / exc.dest).resolve(),
+                reason=(
+                    f"divergence_exceptions entry (source={exc.source!r}, "
+                    f"dest={exc.dest!r}) does not match any registered mirror pair -- "
+                    "likely a typo; this exception protects nothing, and its intended "
+                    "pair (if any) is left unprotected"
+                ),
+            )
+        )
 
     for dest, source in sorted(delete_destinations.items()):
         actions.append(
@@ -275,7 +354,9 @@ def apply_sync_plan(plan: SyncPlan) -> SyncResult:
         elif action.operation == "delete":
             action.destination.unlink(missing_ok=True)
             applied.append(action)
-        # "warn" actions are informational only; never executed.
+        # "warn" and "missing_excepted" actions are never executed -- the former is
+        # purely informational, the latter is a blocking signal that still must
+        # never auto-write incorrect (canonical-source) bytes to the destination.
 
     return SyncResult(applied=tuple(applied))
 

@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/plugin-devkit/skills/hook-development/SKILL.md",
+  "assertions": [
+    {"text": "Nested hooks: [...] array present inside each matcher entry (not the flat/missing-array form)", "type": "structure", "target": "outputs/ directory"},
+    {"text": "Command path uses ${CLAUDE_PLUGIN_ROOT}/scripts/guard-bash.sh", "type": "presence", "target": "outputs/ directory"},
+    {"text": "Guidance states the script reads event data from stdin as JSON, not environment variable substitution", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

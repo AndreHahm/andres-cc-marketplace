@@ -1,0 +1,36 @@
+{
+  "skill_name": "hook-development",
+  "skill_path": "plugins/plugin-devkit/skills/hook-development/SKILL.md",
+  "description": "Creates and configures event-driven hooks in Claude Code plugins: hooks.json structure, hook types, all hook events, stdin parsing, exit-code semantics, and production validation.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Skill-frontmatter-embedded hooks: block, path reference",
+      "prompt": "I'm writing a new skill at .claude/skills/my-validator/SKILL.md (a project-level skill, not part of any plugin). I want its own YAML frontmatter to declare a PostToolUse hook that runs a script at .claude/skills/my-validator/hooks/check.sh after every Write/Edit. Write the exact frontmatter hooks: block, including the command path.",
+      "expected_output": "The command path does NOT use ${CLAUDE_PLUGIN_ROOT} (unconfirmed/broken for a project-level skill's frontmatter-embedded hooks) and does NOT use a bare relative path like ./hooks/check.sh (hook handlers run in the session's cwd, not the skill's own directory, so a bare relative path is unsafe). It uses ${CLAUDE_PROJECT_DIR}/.claude/skills/my-validator/hooks/check.sh -- the full, explicit path from the project root.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "hooks/hooks.json PreToolUse block on dangerous bash",
+      "prompt": "Write a hooks/hooks.json for my plugin (has .claude-plugin/plugin.json) that runs scripts/guard-bash.sh before every Bash tool call, blocking the command if it's dangerous. The script lives at scripts/guard-bash.sh inside the plugin.",
+      "expected_output": "Correct nested hooks: { EventName: [{ matcher, hooks: [...] }] } structure (not the flat/missing-array form), command path uses ${CLAUDE_PLUGIN_ROOT}/scripts/guard-bash.sh (correct here — this is a real plugin-level hooks.json, not a frontmatter-embedded hook), and the script reads stdin JSON rather than expecting environment variable substitution.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "Debug a hook that isn't firing",
+      "prompt": "I put my hooks.json at .claude-plugin/hooks.json inside my plugin, and wrote a PostToolUse hook that reads $FILE_PATH as an environment variable inside the script. It never fires / never gets the right data. What's wrong?",
+      "expected_output": "Identifies both bugs: hooks.json belongs at <plugin-root>/hooks/hooks.json, not inside .claude-plugin/ (which only holds plugin.json); and command hooks must read event data from stdin as JSON, not from an environment variable substitution like $FILE_PATH.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 4,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "auto-format on every file write / enforce completion standards with a Stop hook",
+      "load session context at startup / automate a response to a Claude Code event"
+    ]
+  }
+}

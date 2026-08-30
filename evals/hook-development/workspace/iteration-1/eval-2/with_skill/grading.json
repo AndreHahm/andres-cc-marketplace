@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Nested hooks: [...] array present inside each matcher entry (not the flat/missing-array form)", "passed": true, "evidence": "JSON shows PreToolUse -> [{ matcher, hooks: [{ type, command, timeout }] }]"},
+    {"text": "Command path uses ${CLAUDE_PLUGIN_ROOT}/scripts/guard-bash.sh", "passed": true, "evidence": "\"command\": \"${CLAUDE_PLUGIN_ROOT}/scripts/guard-bash.sh\" -- correct, this is a real plugin hooks.json context"},
+    {"text": "Guidance states the script reads event data from stdin as JSON, not environment variable substitution", "passed": true, "evidence": "'Read the event data from stdin as JSON (not environment variables -- this is the #1 reason command hooks silently do nothing)'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

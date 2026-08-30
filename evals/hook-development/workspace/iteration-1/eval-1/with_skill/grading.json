@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Command path does not contain ${CLAUDE_PLUGIN_ROOT}", "passed": true, "evidence": "command: \"${CLAUDE_PROJECT_DIR}/.claude/skills/my-validator/hooks/check.sh\" -- no CLAUDE_PLUGIN_ROOT reference anywhere in the output"},
+    {"text": "Command path does not use a bare relative path (e.g. ./hooks/check.sh) -- uses ${CLAUDE_PROJECT_DIR} with the full explicit path from the project root instead", "passed": true, "evidence": "Uses \"${CLAUDE_PROJECT_DIR}/.claude/skills/my-validator/hooks/check.sh\"; explicitly reasoned: 'A bare relative path (e.g. ./hooks/check.sh or hooks/check.sh) must also not be used, since hook handlers run in the live session's current working directory, not the skill's own directory.'"},
+    {"text": "hooks: block uses correct nested PostToolUse -> matcher -> hooks array structure", "passed": true, "evidence": "YAML block shows hooks: -> PostToolUse: -> matcher + nested hooks: [...] array"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

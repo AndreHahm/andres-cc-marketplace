@@ -1,0 +1,31 @@
+{
+  "eval_id": 8,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs the merge-commit count check (gh api repos/{owner}/{repo}/pulls/<number>/commits, counting entries with more than one parent) before ever calling gh pr merge --rebase",
+      "passed": true,
+      "evidence": "'since the merge-commit count is 1 (non-zero), the skill never attempts gh pr merge --rebase' -- count checked first."
+    },
+    {
+      "text": "Since the count is non-zero, asks via AskUserQuestion for an alternate strategy (Merge or Squash) instead of attempting --rebase",
+      "passed": true,
+      "evidence": "'asks via AskUserQuestion to choose \"Merge (keeps the merge commit)\" or \"Squash...\"'."
+    },
+    {
+      "text": "States why: GitHub's rebase-and-merge rejects a branch containing an existing merge commit",
+      "passed": true,
+      "evidence": "Referenced step 7(a)'s own stated rationale for the pre-check directly."
+    },
+    {
+      "text": "Does not wait for a live gh pr merge --rebase rejection before asking",
+      "passed": true,
+      "evidence": "'the skill never attempts gh pr merge --rebase' before asking -- proactive, not reactive."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States feature+api passes headRefName validation",
+      "passed": true,
+      "evidence": "'(a) feature+api -- Passes (letters + +, both allowed)'."
+    },
+    {
+      "text": "States user@topic/release=next passes headRefName validation",
+      "passed": true,
+      "evidence": "'(b) user@topic/release=next -- Passes (letters, @, /, =, all explicitly allowed)'."
+    },
+    {
+      "text": "States feat/x;rm -rf / fails validation and the skill stops rather than proceeding to any later use of headRefName",
+      "passed": true,
+      "evidence": "'(c) feat/x;rm -rf / -- Fails... stops execution at step 1 immediately... never proceeds to interpolate that value into any later Bash/gh command'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -67,12 +67,28 @@ the first failure:
    validates the result against `codex-review-bridge`'s own exported `ENVELOPE_SCHEMA` and
    `semanticallyValidate` — reused directly, not duplicated. See `references/preflight-checks.md`
    for exactly what each check verifies and `references/dispatch.md` for the exec/validation step.
+   With `--dry-run true` (an explicit value, not a bare flag — see Dry-run mode below), steps 0-4
+   still run for real and can still reject the call; this step resolves the actual `codex` invocation
+   without ever spawning it.
 6. **Output**: the identical validated envelope shape `codex-review-bridge` returns on success, or a
    typed failure on stdout/stderr with a non-zero exit — same contract, so a caller's existing
    Adapter logic doesn't need a second code path.
 
 The caller's own provenance must record `isolation_strength: best_effort_guardrails` for a dispatch
 that went through this skill — never `os_isolated`.
+
+## Dry-run mode
+
+Add `--dry-run true` to validate this script's *entire* guard chain — policy-enabled check,
+repository-boundary check, whole-repo secret scan, instruction-containment check, and prompt
+assembly/neutralization — and confirm the real `codex` invocation resolves, without ever granting
+real `danger-full-access` execution. This is the one dispatch path with no sandbox at all, so a dry
+run is the only way to prove every guard still fires correctly and inspect the exact assembled prompt
+without risking an actual unrestricted run. Every guard still runs for real: a dry run against a
+repository containing a secret-named file, or with guardrails disabled, still fails exactly the same
+way a live dispatch would — only step 5's actual `codex` call is skipped once every other check has
+already passed. See `scripts/lib/codex-exec.mjs`'s `runCodexExec` `dryRun` option for the shared
+implementation (also used by `codex-review-bridge`'s own `--dry-run true`).
 
 ## When to Use
 
@@ -139,6 +155,15 @@ provenance field imply otherwise.
 - A secret file reached only through a file symlink (the symlink's own name is innocuous, its real
   target's name matches a secret pattern) — verified live: rejected with `secret_file_in_scope`,
   caught via the resolved target's basename, not the symlink's own name.
+- `--dry-run true` — verified live against a clean synthetic repo: policy/boundary/secret-scan/
+  instruction-containment checks and prompt assembly all run for real, the real `codex` invocation
+  resolves (Windows shim path confirmed), and no process is spawned; a dirty repo (a secret-named
+  file in scope) still fails the same way under `--dry-run` as it does live.
+- `--dry-run` given a malformed value (`--dry-run ture`, or a bare trailing `--dry-run` with no
+  value) — verified live: rejected with `invalid_arguments` before any dispatch is attempted, never
+  silently falling through to a real, unsandboxed `danger-full-access` execution (live PR-review
+  finding, Devin 🟥/Codex P1 — this is the one dispatch path where that fallthrough is most
+  dangerous, since there's no sandbox at all to fall back on).
 
 **Current test coverage:**
 - `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (20 scenarios, run from
@@ -148,10 +173,17 @@ provenance field imply otherwise.
   see `plugins/codex-kit/README.md`'s Known Limitations and `CONTRIBUTING.md` for how this compares
   to its codex-kit siblings: `codex-review-bridge` has partial live coverage (3 of 4 evals), the
   other 9 have structural grading only, not a live run).
-- **Not yet exercised end-to-end:** the enabled `danger-full-access` dispatch path itself — every
-  scenario above tests the disabled-by-default short-circuit or a pre-flight refusal, never a real
-  `codex exec` call under `danger-full-access`. The feature ships disabled by default; enabling it
-  and running that path live was out of scope for this skill's build and remains an open item.
+- `scripts/smoke-tests/codex-exec-dry-run.mjs` (18 assertions, shared with `codex-review-bridge` since
+  both call the same `scripts/lib/codex-exec.mjs`) — directly exercises `runCodexExec`'s `dryRun`
+  option this skill's own `--dry-run true` relies on: real invocation resolution (win32 and POSIX,
+  including relative/empty PATH entries resolved against the requested `cwd` and a directory named
+  `codex` correctly rejected), redaction, and confirmed-no-spawn via a real executable stub.
+- **Not yet exercised end-to-end:** an actual live `codex exec` process spawned under
+  `danger-full-access` — every scenario above tests the disabled-by-default short-circuit, a
+  pre-flight refusal, or (as of `--dry-run true`) the full guard chain plus invocation resolution
+  with no process ever spawned. Enabling the feature and running a real, spawning dispatch live was
+  out of scope for this skill's build and remains an open item; `--dry-run true` narrows that gap
+  (everything up to the spawn is now live-verified) but does not close it.
 
 **Quality gates:**
 - [ ] Never claims or documents sandbox-equivalence, anywhere its output is surfaced
@@ -183,3 +215,9 @@ provenance field imply otherwise.
       `"danger-full-access"` script-side — never trusted as the model's own self-report
 - [ ] A `target-paths` entry containing a prompt tag-closing character or newline is always rejected
       before it reaches the prompt
+- [ ] A malformed `--dry-run` value (a typo, or a bare trailing flag with no value) is always
+      rejected with `invalid_arguments` — never silently interpreted as `false` and allowed to fall
+      through to a real `danger-full-access` dispatch
+- [ ] `--dry-run true` never spawns `codex` — every guard (policy-enabled, boundary, secret-scan,
+      instruction-containment) still runs for real and can still reject the call before invocation
+      resolution is ever attempted

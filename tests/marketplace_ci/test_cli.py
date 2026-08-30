@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 import pytest
 
@@ -14,9 +15,17 @@ def _write_registry(repo, **kwargs):
             "agents": kwargs.get("agents", []),
         },
     }
+    if "divergence_exceptions" in kwargs:
+        payload["divergence_exceptions"] = kwargs["divergence_exceptions"]
     registry_path = repo / ".claude" / "marketplace-sync.json"
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     registry_path.write_text(json.dumps(payload), encoding="utf-8")
+    # check_staged_parity reads the registry from the Git index, never disk -- stage it
+    # here so callers using a real git_repo see it the same way a commit would. A no-op,
+    # tolerated failure for the plain `repo` fixture (no `.git` at all).
+    subprocess.run(
+        ["git", "add", "-f", ".claude/marketplace-sync.json"], cwd=repo, capture_output=True
+    )
     return registry_path
 
 
@@ -37,6 +46,51 @@ def test_sync_then_check_plugin_mirrors_passes(monkeypatch, repo):
     assert main(["sync-plugin-mirrors"]) == 0
     assert main(["check-plugin-mirrors"]) == 0
     assert (repo / ".claude" / "skills" / "demo" / "SKILL.md").exists()
+
+
+def test_check_plugin_mirrors_passes_with_only_warn_actions(monkeypatch, repo):
+    # Regression guard: a "warn"-only plan (a divergence-excepted destination that
+    # *exists* but intentionally differs from its canonical source) must exit 0 -- a
+    # real production case (this repo's own marketplace-development/SKILL.md exception)
+    # was regressing every CI run before this fix, since _handle_check_plugin_mirrors
+    # returned 1 for ANY non-empty plan.actions, discarding _report's has_problem signal.
+    # (A *missing* excepted destination is a distinct, still-blocking case -- see
+    # test_check_plugin_mirrors_still_blocks_on_missing_excepted_destination below.)
+    _write_registry(
+        repo,
+        plugin_mirrors=["sample-kit"],
+        divergence_exceptions=[
+            {
+                "source": "plugins/sample-kit/skills/demo/SKILL.md",
+                "dest": ".claude/skills/demo/SKILL.md",
+                "reason": "test: intentionally divergent for a documented reason",
+            }
+        ],
+    )
+    (repo / ".claude" / "skills" / "demo").mkdir(parents=True, exist_ok=True)
+    (repo / ".claude" / "skills" / "demo" / "SKILL.md").write_text(
+        "genuinely different mirror content", encoding="utf-8"
+    )
+    monkeypatch.chdir(repo)
+    assert main(["check-plugin-mirrors"]) == 0
+
+
+def test_check_plugin_mirrors_still_blocks_on_missing_excepted_destination(monkeypatch, repo):
+    # Codex-found follow-up: the exception permits divergent CONTENT, never absence --
+    # a missing excepted destination must still fail check-plugin-mirrors.
+    _write_registry(
+        repo,
+        plugin_mirrors=["sample-kit"],
+        divergence_exceptions=[
+            {
+                "source": "plugins/sample-kit/skills/demo/SKILL.md",
+                "dest": ".claude/skills/demo/SKILL.md",
+                "reason": "test: excepted destination not created yet",
+            }
+        ],
+    )
+    monkeypatch.chdir(repo)
+    assert main(["check-plugin-mirrors"]) == 1
 
 
 def test_check_codex_exports_blocks_legacy_command_export(monkeypatch, repo):

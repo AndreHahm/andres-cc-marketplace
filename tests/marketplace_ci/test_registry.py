@@ -125,3 +125,88 @@ def test_empty_registry_has_no_members():
     assert registry.plugin_mirrors == ()
     assert registry.skills == ()
     assert registry.agents == ()
+    assert registry.divergence_exceptions == ()
+
+
+def test_registry_loads_divergence_exceptions(tmp_path):
+    path = tmp_path / "marketplace-sync.json"
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "plugin_mirrors": [],
+                "codex_exports": {},
+                "divergence_exceptions": [
+                    {
+                        "source": "plugins/x/skills/y/SKILL.md",
+                        "dest": ".claude/skills/y/SKILL.md",
+                        "reason": "documented reason",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    registry = Registry.load(path)
+    assert len(registry.divergence_exceptions) == 1
+    exc = registry.divergence_exceptions[0]
+    assert exc.source == "plugins/x/skills/y/SKILL.md"
+    assert exc.dest == ".claude/skills/y/SKILL.md"
+    assert exc.reason == "documented reason"
+
+
+def test_registry_rejects_divergence_exception_missing_reason(tmp_path):
+    path = tmp_path / "marketplace-sync.json"
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "plugin_mirrors": [],
+                "codex_exports": {},
+                "divergence_exceptions": [
+                    {"source": "a", "dest": "b"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(RegistryError, match="missing key"):
+        Registry.load(path)
+
+
+def test_registry_rejects_divergence_exception_empty_reason(tmp_path):
+    path = tmp_path / "marketplace-sync.json"
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "plugin_mirrors": [],
+                "codex_exports": {},
+                "divergence_exceptions": [
+                    {"source": "a", "dest": "b", "reason": "   "},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(RegistryError, match="non-empty string"):
+        Registry.load(path)
+
+
+def test_registry_rejects_divergence_exception_unknown_key(tmp_path):
+    path = tmp_path / "marketplace-sync.json"
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "plugin_mirrors": [],
+                "codex_exports": {},
+                "divergence_exceptions": [
+                    {"source": "a", "dest": "b", "reason": "r", "extra": "nope"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(RegistryError, match="unknown divergence_exceptions key"):
+        Registry.load(path)

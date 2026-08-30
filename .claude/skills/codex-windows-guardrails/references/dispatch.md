@@ -19,7 +19,10 @@ runs the actual Codex call. This is where the bypass-not-modify decision from Se
   the two input guards that CLI performed on values that still reach the same sinks here, found by
   Self-Review's second pass and fixed by exporting the guard instead of re-deriving it.
 - `runCodexExec` — `codex-kit`'s shared exec primitive (`scripts/lib/codex-exec.mjs`), documented as
-  reusable by any codex-kit component, not owned by the bridge.
+  reusable by any codex-kit component, not owned by the bridge. `guarded-dispatch.mjs` passes its own
+  `--dry-run true` straight through as `runCodexExec`'s `dryRun` option — see `SKILL.md`'s "Dry-run
+  mode" section; every check above this section still runs for real under a dry run, only this exec
+  step's actual `codex` call is short-circuited.
 
 ## Deliberately NOT reused: `bridge-invoke.mjs`'s own `main()`/CLI entry point
 

@@ -182,12 +182,17 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
     problem when the *filesystem* disagrees, which is exactly the case an
     unstaged-but-already-correct destination does not trigger.
     """
-    registry_path = repo / ".claude" / "marketplace-sync.json"
-    if not registry_path.is_file():
+    git_state = GitState(repo=repo)
+    registry_blob = git_state.read_index(PurePosixPath(".claude/marketplace-sync.json"))
+    if registry_blob is None:
         return HookCheckResult(exit_code=0)
 
-    registry = Registry.load(registry_path)
-    git_state = GitState(repo=repo)
+    # Index-only, matching this function's own contract: an exception added to the
+    # working-tree copy of marketplace-sync.json but never staged must never be
+    # honored here -- it isn't part of what's actually about to be committed.
+    registry = Registry.loads(
+        registry_blob.decode("utf-8"), source=".claude/marketplace-sync.json (staged)"
+    )
     staged = git_state.staged_paths()
     staged_new_paths = {cp.new_path for cp in staged if cp.new_path is not None}
     if not staged_new_paths:
@@ -196,8 +201,11 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
     claude_root = repo / ".claude"
     plugins_root = repo / "plugins"
     messages: list[str] = []
+    divergence_exceptions = {(exc.source, exc.dest) for exc in registry.divergence_exceptions}
 
-    def check_pair(rel_source: str, rel_dest: str, *, is_agent: bool = False) -> None:
+    def check_pair(
+        rel_source: str, rel_dest: str, *, is_agent: bool = False, honor_exceptions: bool = False
+    ) -> None:
         # Exact match against the staged path set -- not a directory-prefix
         # key -- so that staging one file in a skill (e.g. SKILL.md) never
         # requires an untouched sibling (e.g. references/*.md) to also be
@@ -212,6 +220,17 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
                 f"{rel_dest}: canonical source is staged but the generated "
                 "counterpart was not staged"
             )
+            return
+        # honor_exceptions is only ever true for the plugin-mirror loop below --
+        # divergence_exceptions is a plan_plugin_sync concept with no equivalent in
+        # plan_exports, which has zero knowledge of exceptions. Honoring one here for
+        # a skill/agent export pair would let check-all --staged pass a stale export
+        # that the real, non-staged check-codex-exports (plan_exports) always rejects
+        # -- exactly the inconsistency this scoping prevents.
+        if honor_exceptions and (rel_source, rel_dest) in divergence_exceptions:
+            # Whole-file exception (see DivergenceException docstring) -- both
+            # sides being staged is still required above; only the byte-equality
+            # check below is skipped.
             return
         staged_dest_blob = git_state.read_index(PurePosixPath(rel_dest))
         expected = (
@@ -233,7 +252,7 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
             rel_dest = (
                 (claude_root / source_file.relative_to(plugin_root)).relative_to(repo).as_posix()
             )
-            check_pair(rel_source, rel_dest)
+            check_pair(rel_source, rel_dest, honor_exceptions=True)
 
     for skill_name in registry.skills:
         source_dir = claude_root / "skills" / skill_name

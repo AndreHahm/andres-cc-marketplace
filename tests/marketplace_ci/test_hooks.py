@@ -13,9 +13,19 @@ def _write_registry(repo, **kwargs):
             "agents": kwargs.get("agents", []),
         },
     }
+    if "divergence_exceptions" in kwargs:
+        payload["divergence_exceptions"] = kwargs["divergence_exceptions"]
     registry_path = repo / ".claude" / "marketplace-sync.json"
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     registry_path.write_text(json.dumps(payload), encoding="utf-8")
+    # check_staged_parity reads the registry from the Git index (staged content), never disk --
+    # stage it here so every caller's registry is visible the same way a real commit would see it.
+    subprocess.run(
+        ["git", "add", "-f", ".claude/marketplace-sync.json"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
 
 
 def test_unstaged_repair_does_not_satisfy_staged_parity(git_repo):
@@ -38,6 +48,84 @@ def test_staged_mirror_matching_content_satisfies_parity(git_repo):
 def test_staged_mirror_with_wrong_content_fails_parity(git_repo):
     _write_registry(git_repo.root, plugin_mirrors=["sample-kit"])
     git_repo.stage("plugins/sample-kit/skills/demo/SKILL.md", "new")
+    git_repo.stage(".claude/skills/demo/SKILL.md", "stale content, never updated")
+    result = check_staged_parity(git_repo.root)
+    assert result.exit_code == 1
+
+
+def test_divergence_exception_skips_content_check_when_both_staged(git_repo):
+    _write_registry(
+        git_repo.root,
+        plugin_mirrors=["sample-kit"],
+        divergence_exceptions=[
+            {
+                "source": "plugins/sample-kit/skills/demo/SKILL.md",
+                "dest": ".claude/skills/demo/SKILL.md",
+                "reason": "test: intentionally divergent for a documented reason",
+            }
+        ],
+    )
+    git_repo.stage("plugins/sample-kit/skills/demo/SKILL.md", "canonical content")
+    git_repo.stage(".claude/skills/demo/SKILL.md", "genuinely different mirror content")
+    result = check_staged_parity(git_repo.root)
+    assert result.exit_code == 0
+
+
+def test_divergence_exception_still_requires_dest_staged(git_repo):
+    _write_registry(
+        git_repo.root,
+        plugin_mirrors=["sample-kit"],
+        divergence_exceptions=[
+            {
+                "source": "plugins/sample-kit/skills/demo/SKILL.md",
+                "dest": ".claude/skills/demo/SKILL.md",
+                "reason": "test: intentionally divergent for a documented reason",
+            }
+        ],
+    )
+    git_repo.stage("plugins/sample-kit/skills/demo/SKILL.md", "canonical content")
+    result = check_staged_parity(git_repo.root)
+    assert result.exit_code == 1
+    assert any("canonical source is staged but" in m for m in result.messages)
+
+
+def test_divergence_exception_does_not_apply_to_export_pair(git_repo):
+    # Codex-found gap: divergence_exceptions is a plan_plugin_sync concept with no
+    # equivalent in plan_exports (skill/agent exports to .agents/.codex have zero
+    # knowledge of the registry field). An exception declared with an export
+    # destination must never be honored here -- it would let check-all --staged pass
+    # a stale export the real, non-staged check-codex-exports always rejects.
+    _write_registry(
+        git_repo.root,
+        skills=["export-demo"],
+        divergence_exceptions=[
+            {
+                "source": ".claude/skills/export-demo/SKILL.md",
+                "dest": ".agents/skills/export-demo/SKILL.md",
+                "reason": "test: an export pair, not a plugin-mirror pair",
+            }
+        ],
+    )
+    git_repo.stage(".claude/skills/export-demo/SKILL.md", "canonical content")
+    git_repo.stage(".agents/skills/export-demo/SKILL.md", "stale content, never updated")
+    result = check_staged_parity(git_repo.root)
+    assert result.exit_code == 1
+    assert any("staged content does not match" in m for m in result.messages)
+
+
+def test_divergence_exception_does_not_apply_to_a_different_pair(git_repo):
+    _write_registry(
+        git_repo.root,
+        plugin_mirrors=["sample-kit"],
+        divergence_exceptions=[
+            {
+                "source": "plugins/sample-kit/skills/other/SKILL.md",
+                "dest": ".claude/skills/other/SKILL.md",
+                "reason": "test: exception scoped to a different pair entirely",
+            }
+        ],
+    )
+    git_repo.stage("plugins/sample-kit/skills/demo/SKILL.md", "canonical content")
     git_repo.stage(".claude/skills/demo/SKILL.md", "stale content, never updated")
     result = check_staged_parity(git_repo.root)
     assert result.exit_code == 1

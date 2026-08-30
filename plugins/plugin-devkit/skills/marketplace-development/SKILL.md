@@ -10,6 +10,15 @@ description: >-
   for a skills collection, or wants a skills repo installable via `claude plugin install`.
   For plugins that already have plugin.json, plugin-development handles marketplace publishing.
 allowed-tools: Read Write Glob Bash(scripts/check_marketplace.sh:*) Bash(jq:*) Bash(python3:*) Bash(find:*) Bash(claude:*) Bash(git:*)
+# R19 exception (see .claude/marketplace-sync.json's divergence_exceptions): the command paths below
+# intentionally differ from the .claude/ mirror copy of this file. This copy is the one distributed
+# via the marketplace and installed into other users' own projects, where ${CLAUDE_PROJECT_DIR} would
+# resolve to *their* project root, not this repo -- a hardcoded plugins/plugin-devkit/... segment
+# would never exist there. ${CLAUDE_PLUGIN_ROOT} (which tracks wherever this plugin is actually
+# installed, in any project) is used here instead, matching this skill's pre-existing, real-plugin
+# behavior (see plugin-rulebook's own git-kit/analysis-kit/etc. precedent for this same pattern). The
+# .claude/ mirror copy is never distributed -- it exists only for in-repo dogfooding before packaging
+# -- so it can safely use ${CLAUDE_PROJECT_DIR}, which reliably resolves to this exact repo there.
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
@@ -378,6 +387,23 @@ After creating or modifying marketplace.json:
 - [ ] No `$schema` field, no `metadata.homepage` field
 - [ ] New plugins use `version: "1.0.0"`, changed plugins have version bumped
 - [ ] `strict: false` on every plugin entry (no plugin.json in repo)
+
+**Verify this skill activates on:**
+- "create marketplace.json for this skills repo"
+- "add these skills to the existing marketplace catalog"
+- "bump the plugin version after this SKILL.md change"
+- "why is `claude plugin validate`/install failing"
+- "prepare a PR so this repo installs via `claude plugin install`"
+
+**Verify it does NOT activate on:**
+- "this plugin already has a plugin.json, publish it" → `plugin-development` instead
+- "update the marketplace database" / "check plugin inventories for drift" → `marketplace-inventory` instead
+- "these skills are local-only, not for distribution" → out of scope entirely
+
+**Last dated run record:** 2026-08-30, `evals/marketplace-development/` — 3/3 scenarios,
+11/11 assertions passed (Quick Workflow, `with_skill` only — see `evals/marketplace-development/evals.json`).
+1 of 5 declared trigger scenarios isn't yet exercised by an eval (preparing a PR for distribution) —
+see `evals.json`'s `testing_validation_coverage` field.
 
 ---
 

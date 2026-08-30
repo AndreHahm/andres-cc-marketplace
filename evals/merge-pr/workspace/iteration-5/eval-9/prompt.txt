@@ -1,0 +1,3 @@
+This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.
+
+You are at step 7. `pr_merge_type` (from step 6) is `SQUASH` -- this was the configured setting from the start, not a strategy chosen via the rebase pre-check or a rejection fallback. You are given, as a fact for this exercise, that this PR has 12 commits. Before you run `gh pr merge <n> --squash`, what do you do? Write your answer to `outputs/answer.md`.

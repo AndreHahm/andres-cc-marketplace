@@ -52,6 +52,22 @@ All notable changes to this plugin are documented here.
 - `codex-audit-loop` and `codex-peer-review` each gained a real live `skill-tester`
   baseline-comparison run (both clearly beat baseline), upgrading this plugin's
   live-eval-coverage count from 2 to 4 of its 11 skills.
+- Added a `dryRun` option to the shared `runCodexExec` primitive (`scripts/lib/codex-exec.mjs`),
+  exposed as `--dry-run true` on both of its current callers (`codex-review-bridge`'s
+  `bridge-invoke.mjs`, `codex-windows-guardrails`' `guarded-dispatch.mjs`). Every pre-flight guard
+  still runs for real and can still reject the call; only the final `codex` invocation is
+  short-circuited after resolving it (Windows shim resolution, or a new POSIX PATH/executable check),
+  so a caller can validate its arguments, containment checks, and exact assembled prompt without
+  spending a real Codex call or, for guardrails' `danger-full-access` path, granting any real
+  unsandboxed execution. Live PR review (Devin/Codex/CodeRabbit) found and fixed three issues before
+  merge: the POSIX PATH resolution didn't match real `spawn`'s own semantics for relative/empty PATH
+  entries or reject a directory named `codex`; and `--dry-run` given a malformed value (a typo, or a
+  bare flag with no value) silently fell through to a real dispatch instead of failing closed — the
+  most serious of the three, since for guardrails that means real unsandboxed execution on a typo. A
+  round-2 review pass then found the PATH-resolution fix itself introduced a regression: omitting
+  `cwd` entirely (a documented, legitimate `runCodexExec` call shape) crashed with a `TypeError`
+  outside any cleanup path, instead of defaulting to `process.cwd()` the way a real dispatch already
+  does.
 - Fixed `bridge-invoke.mjs`'s `semanticallyValidate` discarding an entire returned envelope
   over a single out-of-scope/nonexistent `location`/`components[]` citation (issues
   #236/#111) — it now drops just the affected finding (or, for a `components`-only miss,
