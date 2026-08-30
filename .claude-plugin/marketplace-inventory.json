@@ -242,8 +242,45 @@
           "valid_to": null
         }
       ]
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "domains": [],
+      "functional_role": null,
+      "id": "plugin_39dae8d5",
+      "name": "workmanagement-kit",
+      "naming_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "name": "workmanagement-kit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "source": "./plugins/workmanagement-kit",
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            ".claude-plugin/marketplace.json"
+          ],
+          "reason": "Discovered by marketplace-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ]
     }
   ],
   "schema_version": "1.0.0",
-  "updated_on": "2026-08-29"
+  "updated_on": "2026-08-30"
 }
