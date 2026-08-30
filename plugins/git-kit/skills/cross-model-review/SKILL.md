@@ -391,15 +391,13 @@ entire purpose of loading judging instructions only from the trust-boundary-veri
 
 **Drop any Claude Phase 1 finding whose `location`, or any path in its `components` array, falls on
 a path Preflight step 2 excluded from `--target-paths` — before assembling this file, never pass it
-to Codex's challenger pass.** The bridge's `semanticallyValidate` rejects the **entire returned
-envelope**, not just one finding, the moment any finding's `location` *or any of its `components`
-entries* resolves outside `--target-paths` — filtering on `location` alone still lets a finding whose
-primary location is eligible but whose `components` array cites an excluded file through, and Codex
-classifying it necessarily produces a classification entry preserving that same `components`
-relationship (per the "every given finding must be explicitly addressed" rule below), which fails
-that check and loses every other finding in the same envelope along with it. Findings dropped here
-stay in the final report as Claude-only, single-sided results — see Phase 3's Medium tier and
-`inspection_limits` note.
+to Codex's challenger pass.** As of issues #236/#111 the bridge's `semanticallyValidate` only drops
+the offending finding/citation, not the whole envelope, but pre-filtering is still worth doing: it's
+wasted effort to have Codex classify a finding the bridge will strip right back out, and filtering on
+`location` alone still lets a finding whose `components` array cites an excluded file through (Codex's
+classification necessarily preserves that same relationship, per "every given finding must be
+explicitly addressed" below). Findings dropped here stay in the final report as Claude-only,
+single-sided results — see Phase 3's Medium tier and `inspection_limits` note.
 
 **Neutralize closing tags in the embedded findings before writing this file.**
 `codex-review-bridge`'s sandboxed path (resolver Step 1) neutralizes closing-tag-shaped substrings in

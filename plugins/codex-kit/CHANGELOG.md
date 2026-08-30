@@ -52,6 +52,13 @@ All notable changes to this plugin are documented here.
 - `codex-audit-loop` and `codex-peer-review` each gained a real live `skill-tester`
   baseline-comparison run (both clearly beat baseline), upgrading this plugin's
   live-eval-coverage count from 2 to 4 of its 11 skills.
+- Fixed `bridge-invoke.mjs`'s `semanticallyValidate` discarding an entire returned envelope
+  over a single out-of-scope/nonexistent `location`/`components[]` citation (issues
+  #236/#111) — it now drops just the affected finding (or, for a `components`-only miss,
+  just that citation) and records the drop in `inspection_limits`, so `cross-model-review`'s
+  resolver no longer falls back to single-model mode over one plausible, otherwise-valid
+  finding. A `dispatch.id`/`dispatch.reviewer` mismatch or a duplicate finding id still
+  reject the whole envelope, unchanged.
 
 ## [1.0.0-alpha.1] - 2026-08-08
 

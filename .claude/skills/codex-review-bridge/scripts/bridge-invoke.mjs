@@ -295,24 +295,51 @@ export function isTotalInspectionFailure(envelope) {
   return envelope.inspection_limits.some((note) => TOTAL_INSPECTION_FAILURE_PATTERN.test(String(note)));
 }
 
+// Issues #236/#111: an out-of-scope/nonexistent citation degrades gracefully
+// instead of rejecting the whole envelope. `dispatch.id`/`dispatch.reviewer`
+// mismatch and a duplicate finding id are protocol-integrity problems (the
+// response may not even be authentically from this dispatch) and still fail
+// the entire envelope, unchanged. A scope/existence problem is different: it
+// is a property of one finding's citation, not of the envelope as a whole,
+// so only that citation is affected -- a finding whose `location` fails is
+// dropped (its primary citation is invalid), while a finding whose
+// `location` is fine but one `components[]` entry fails just has that
+// entry removed, keeping the finding itself. Every drop is recorded in
+// `envelope.inspection_limits` so the caller isn't left with a silently
+// empty findings list looking like a clean pass. Mutates `envelope` in
+// place (rather than returning a new object) so both this file's own
+// `main()` and `guarded-dispatch.mjs`'s import of this same function keep
+// working from `result.data` unchanged after a call.
 export function semanticallyValidate(envelope, { targetPaths, dispatchId, reviewerType, repoRoot }) {
   if (envelope.dispatch.id !== dispatchId || envelope.dispatch.reviewer !== reviewerType) {
     return { ok: false, category: "semantic_validation_failure", detail: "dispatch id/reviewer mismatch" };
   }
   const seenIds = new Set();
+  const keptFindings = [];
+  const droppedNotes = [];
   for (const finding of envelope.findings) {
     if (seenIds.has(finding.id)) {
       return { ok: false, category: "semantic_validation_failure", detail: `duplicate finding id ${finding.id}` };
     }
     seenIds.add(finding.id);
     if (!locateInSemanticScope(targetPaths, finding.location, repoRoot)) {
-      return { ok: false, category: "semantic_validation_failure", detail: `finding ${finding.id} cites an out-of-scope or nonexistent path: ${finding.location}` };
+      droppedNotes.push(`finding ${finding.id} dropped: cites an out-of-scope or nonexistent path: ${finding.location}`);
+      continue;
     }
+    const keptComponents = [];
     for (const component of finding.components ?? []) {
-      if (!locateInSemanticScope(targetPaths, component, repoRoot)) {
-        return { ok: false, category: "semantic_validation_failure", detail: `finding ${finding.id} cites an out-of-scope or nonexistent component: ${component}` };
+      if (locateInSemanticScope(targetPaths, component, repoRoot)) {
+        keptComponents.push(component);
+      } else {
+        droppedNotes.push(`finding ${finding.id}: dropped out-of-scope or nonexistent component citation: ${component}`);
       }
     }
+    finding.components = keptComponents;
+    keptFindings.push(finding);
+  }
+  envelope.findings = keptFindings;
+  if (droppedNotes.length > 0) {
+    envelope.inspection_limits = [...(envelope.inspection_limits ?? []), ...droppedNotes];
   }
   return { ok: true };
 }

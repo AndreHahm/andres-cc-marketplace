@@ -64,38 +64,73 @@ console.log("=== A finding with a valid components[] entry (both in-scope) passe
   check("validation passes when both location and components[] resolve in-scope", result.ok, JSON.stringify(result));
 }
 
-console.log("\n=== A finding with an out-of-scope components[] entry is rejected ===");
+console.log("\n=== Issue #236/#111: an out-of-scope components[] entry is dropped, not the whole envelope ===");
 {
-  const result = semanticallyValidate(
-    baseEnvelope([
-      {
-        id: "C2",
-        location: "skill-a/SKILL.md:1",
-        components: ["../outside/SKILL.md"]
-      }
-    ]),
-    { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot }
-  );
+  const envelope = baseEnvelope([
+    {
+      id: "C2",
+      location: "skill-a/SKILL.md:1",
+      components: ["../outside/SKILL.md"]
+    }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check("envelope still validates (ok: true)", result.ok, JSON.stringify(result));
+  check("the finding itself survives", envelope.findings.length === 1 && envelope.findings[0].id === "C2", JSON.stringify(envelope.findings));
+  check("the out-of-scope components[] entry is stripped from the finding", envelope.findings[0].components.length === 0, JSON.stringify(envelope.findings[0]));
   check(
-    "rejected with a components-specific error message, not the generic location one",
-    !result.ok && result.detail.includes("nonexistent component"),
-    JSON.stringify(result)
+    "the drop is recorded in inspection_limits, not silently discarded",
+    (envelope.inspection_limits ?? []).some((note) => note.includes("C2") && note.includes("component")),
+    JSON.stringify(envelope.inspection_limits)
   );
 }
 
-console.log("\n=== A finding with a nonexistent components[] entry is rejected ===");
+console.log("\n=== Issue #236/#111: a nonexistent components[] entry is dropped the same way ===");
+{
+  const envelope = baseEnvelope([
+    {
+      id: "C3",
+      location: "skill-a/SKILL.md:1",
+      components: ["skill-b/DOES-NOT-EXIST.md"]
+    }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check("envelope still validates when a components[] entry doesn't exist on disk", result.ok, JSON.stringify(result));
+  check("the finding survives with the bad component stripped", envelope.findings.length === 1 && envelope.findings[0].components.length === 0, JSON.stringify(envelope.findings));
+}
+
+console.log("\n=== Issue #236/#111: a finding with an out-of-scope location is dropped, but sibling findings survive ===");
+{
+  const envelope = baseEnvelope([
+    { id: "L1", location: "../outside/SKILL.md" },
+    { id: "L2", location: "skill-a/SKILL.md:1" }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check("envelope still validates when one finding's location is out-of-scope", result.ok, JSON.stringify(result));
+  check("only the out-of-scope finding is dropped", envelope.findings.length === 1 && envelope.findings[0].id === "L2", JSON.stringify(envelope.findings));
+  check(
+    "the dropped finding is recorded in inspection_limits",
+    (envelope.inspection_limits ?? []).some((note) => note.includes("L1")),
+    JSON.stringify(envelope.inspection_limits)
+  );
+}
+
+console.log("\n=== Protocol-integrity failures still reject the entire envelope ===");
+{
+  const result = semanticallyValidate(
+    baseEnvelope([{ id: "D1", location: "skill-a/SKILL.md:1" }]),
+    { targetPaths, dispatchId: "smoke-test", reviewerType: "wrong-reviewer", repoRoot }
+  );
+  check("a dispatch.reviewer mismatch still rejects the whole envelope", !result.ok, JSON.stringify(result));
+}
 {
   const result = semanticallyValidate(
     baseEnvelope([
-      {
-        id: "C3",
-        location: "skill-a/SKILL.md:1",
-        components: ["skill-b/DOES-NOT-EXIST.md"]
-      }
+      { id: "DUP", location: "skill-a/SKILL.md:1" },
+      { id: "DUP", location: "skill-b/SKILL.md:1" }
     ]),
     { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot }
   );
-  check("rejected when a components[] entry doesn't exist on disk", !result.ok, JSON.stringify(result));
+  check("a duplicate finding id still rejects the whole envelope", !result.ok, JSON.stringify(result));
 }
 
 console.log("\n=== components[] is optional -- a finding with only location still validates ===");
@@ -107,21 +142,26 @@ console.log("\n=== components[] is optional -- a finding with only location stil
   check("omitting components[] entirely still passes (backward compatible)", result.ok, JSON.stringify(result));
 }
 
-console.log("\n=== The exact pre-fix failure mode: a semicolon-joined path list crammed into location alone still fails ===");
+console.log("\n=== The exact pre-fix failure mode: a semicolon-joined path list crammed into location alone still never validates as a real finding ===");
 {
-  const result = semanticallyValidate(
-    baseEnvelope([
-      {
-        id: "M2",
-        location: "scoped component set: skill-a/SKILL.md; skill-b/SKILL.md"
-      }
-    ]),
-    { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot }
-  );
+  // Post issues #236/#111: an invalid `location` no longer fails the whole
+  // envelope (see the drop-not-reject tests above), so this now surfaces as
+  // the finding being silently dropped rather than as `ok: false` -- still
+  // proving the fix is the dedicated components[] field, not a looser
+  // location check, since this shape never becomes a validated finding
+  // either way.
+  const envelope = baseEnvelope([
+    {
+      id: "M2",
+      location: "scoped component set: skill-a/SKILL.md; skill-b/SKILL.md"
+    }
+  ]);
+  const result = semanticallyValidate(envelope, { targetPaths, dispatchId: "smoke-test", reviewerType: "dependency-reviewer", repoRoot });
+  check("envelope still validates overall (the bad finding is dropped, not the envelope)", result.ok, JSON.stringify(result));
   check(
-    "a multi-path string stuffed into location alone (the old workaround) is still correctly rejected -- proves the fix is components[], not a looser location check",
-    !result.ok,
-    JSON.stringify(result)
+    "a multi-path string stuffed into location alone (the old workaround) never becomes a validated finding -- proves the fix is components[], not a looser location check",
+    envelope.findings.length === 0,
+    JSON.stringify(envelope.findings)
   );
 }
 

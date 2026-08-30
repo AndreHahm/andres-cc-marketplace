@@ -68,9 +68,11 @@ activation. This file holds the deeper concrete-scenario and quality-gate checkl
     intent-adds it before the diff is built, so it appears in `git diff` output as a full addition
     instead of the run reporting "nothing to review."
 18. A changed path is a symlink whose target resolves outside `$REPO_ROOT` → Preflight step 2 excludes
-    it from `--target-paths` (via `realpath`) before any dispatch attempt, instead of the dispatcher's
-    own containment check rejecting the whole envelope and forcing an unnecessary single-model
-    fallback over one file; Claude's own native review still covers it.
+    it from `--target-paths` (via `realpath`) before any dispatch attempt, rather than relying on the
+    dispatcher's own containment check to drop the resulting citation after the fact (per issues
+    #236/#111, that check now only drops the one affected finding/citation, not the whole envelope —
+    Preflight exclusion is still preferred since it also stops the symlink's content from being sent
+    to Codex at all, not just its citation from surviving); Claude's own native review still covers it.
 19. `codex-kit` is genuinely not installed (single-model mode) → Claude's native pass still produces
     a correctly-shaped envelope using `review.md`'s self-contained field summary, without needing to
     read `envelope-schema.md` (which doesn't exist in this scenario since git-kit doesn't bundle it).
