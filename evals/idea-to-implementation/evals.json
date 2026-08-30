@@ -1,0 +1,21 @@
+{
+  "skill_name": "idea-to-implementation",
+  "skill_path": "plugins/workmanagement-kit/skills/idea-to-implementation/SKILL.md",
+  "description": "Deliberately promote accepted Notion knowledge into a linked Linear hierarchy, with one batch approval.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Promote an Idea to Linear",
+      "prompt": "Promote this idea to Linear: the CSV export idea we captured earlier in Notion.",
+      "expected_output": "Reads the source Idea, drafts the exact proposed Linear hierarchy (likely a single Issue for a narrow idea like this), presents it as one preview, and states it needs one batch approval before creating anything.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Accept a Decision into execution",
+      "prompt": "Turn this accepted decision into tracked work: adopt the read-only mirror design for promptlibrary-kit.",
+      "expected_output": "Reads the source Decision, proposes the Linear hierarchy implied by it, and does not silently expand scope beyond what the Decision itself calls for.",
+      "files": []
+    }
+  ]
+}

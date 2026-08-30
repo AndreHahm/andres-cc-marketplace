@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output rejects the payload as unknown source", "passed": true, "evidence": "Verified against every real installed plugin's plugin.json and correctly rejected 'totally-made-up-plugin' as unknown"},
+    {"text": "Output never builds a preview or reaches an approval step for this payload", "passed": true, "evidence": "Rejected at validation, before any preview/approval"},
+    {"text": "Output returns a structured handoff rather than guessing at the real source", "passed": true, "evidence": "Also independently caught malformed content (missing summary) as a second reason; returned a structured handoff"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

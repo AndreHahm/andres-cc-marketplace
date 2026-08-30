@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output describes a link as stable IDs plus an authority label, not a content mirror", "passed": true, "evidence": "Identified the pair by stable ID/cross-reference evidence, classified the actual state (Partial result) rather than mirroring content"},
+    {"text": "Output mentions recording the link through the plugin's shared transition contract", "passed": true, "evidence": "Reported the intended transition-recording step rather than performing an unapproved write via the unscoped connector"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

@@ -1,0 +1,21 @@
+{
+  "skill_name": "plugin-integration-intake",
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "description": "Sole host-invoked entry point for another plugin's own workflow to submit content for Notion or Linear storage or action.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Valid cross-plugin submission",
+      "prompt": "Another plugin's workflow (source_plugin: analysis-kit, source_skill: running-a-full-retrospective) submits: {\"content\": {\"title\": \"Q3 Retrospective\", \"summary\": \"Three-sentence summary.\", \"body\": \"Full report content.\"}, \"target_system\": \"notion\", \"suggested_mapping\": {\"notion_database\": \"Reports\", \"rationale\": \"completed retrospective report\"}}. Process this submission.",
+      "expected_output": "Validates the payload (real installed source plugin, complete Report shape with title+summary+body, unambiguous target), builds a preview identical in form to a direct user capture, and states this requires fresh live approval regardless of the calling plugin's own prior approval.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Invalid submission — unknown source",
+      "prompt": "Another plugin's workflow (source_plugin: totally-made-up-plugin, source_skill: some-skill) submits: {\"content\": {\"title\": \"Test\", \"body\": \"Test content\"}, \"target_system\": \"notion\", \"suggested_mapping\": {\"notion_database\": \"Reports\", \"rationale\": \"test\"}}. Process this submission.",
+      "expected_output": "Rejects this as unknown source (and independently as malformed content, since a Report requires summary too) before ever building a preview, and returns a structured handoff rather than guessing.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output validates source_plugin, content shape, and target mapping before building a preview", "passed": true, "evidence": "Validated schema structurally and treated the suggested mapping as advisory rather than authoritative, similar spirit to the skill"},
+    {"text": "Preview is identical in form to a direct user-initiated capture, not a summary of caller intent", "passed": false, "evidence": "No actual preview built — proposed a verify-then-write plan and a structured contract response instead"},
+    {"text": "Output states this requires fresh live approval regardless of any prior approval the calling plugin had", "passed": false, "evidence": "No 'fresh approval regardless of prior approval' framing — no awareness of this specific plugin-integration-intake rule"},
+    {"text": "Output records the transition tagged with the source plugin's identity", "passed": false, "evidence": "No plugin-specific transition contract awareness"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 1, "pass_rate": 0.25}
+}

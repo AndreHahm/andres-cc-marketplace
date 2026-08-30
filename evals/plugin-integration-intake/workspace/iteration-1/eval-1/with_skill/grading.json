@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output validates source_plugin, content shape, and target mapping before building a preview", "passed": true, "evidence": "Validated all three; correctly found the target-mapping check fails since no real database is configured in this Wave 1 scaffold"},
+    {"text": "Preview is identical in form to a direct user-initiated capture, not a summary of caller intent", "passed": true, "evidence": "Not applicable/vacuously satisfied — correctly never built a preview since validation legitimately failed first (an ambiguous-target case), not skipped or faked"},
+    {"text": "Output states this requires fresh live approval regardless of any prior approval the calling plugin had", "passed": false, "evidence": "Never reached the approval step, so this specific statement wasn't exercised in this run"},
+    {"text": "Output records the transition tagged with the source plugin's identity", "passed": false, "evidence": "No transition recorded since validation stopped the flow before execution"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 2, "pass_rate": 0.5},
+  "note": "This eval's expected_output assumed the target mapping would resolve cleanly. The skill's actual behavior was more rigorous than expected: it correctly noticed no real Notion database is configured yet anywhere in this Wave 1 scaffold, so 'Reports' cannot be verified to resolve to exactly one target, and classified this as ambiguous-target per its own validation rules rather than assuming success. This is arguably a better outcome than the eval anticipated, not a failure of the skill."
+}

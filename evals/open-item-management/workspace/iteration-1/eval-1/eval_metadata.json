@@ -1,0 +1,8 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/open-item-management/SKILL.md",
+  "assertions": [
+    {"text": "Output classifies each item as exactly one of resolved / retained knowledge / Decision needed / actionable work", "type": "structure", "target": "outputs/"},
+    {"text": "Output does not treat every item as automatically actionable", "type": "quality", "target": "outputs/"}
+  ]
+}

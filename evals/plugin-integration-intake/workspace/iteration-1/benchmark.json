@@ -1,0 +1,62 @@
+{
+  "skill_name": "plugin-integration-intake",
+  "iteration": 1,
+  "timestamp": "2026-08-30T21:32:16+02:00",
+  "evals": [
+    {
+      "eval_id": 1,
+      "with_skill": {
+        "pass_rate": 0.5,
+        "assertions_passed": 2,
+        "assertions_total": 4,
+        "avg_tokens": 42000,
+        "avg_duration_ms": 95000
+      },
+      "baseline": {
+        "pass_rate": 0.25,
+        "assertions_passed": 1,
+        "assertions_total": 4,
+        "avg_tokens": 9500,
+        "avg_duration_ms": 45000
+      },
+      "delta": {
+        "pass_rate": 0.25,
+        "tokens": 32500,
+        "duration_ms": 50000
+      }
+    },
+    {
+      "eval_id": 2,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 9500,
+        "avg_duration_ms": 42000
+      },
+      "baseline": {
+        "pass_rate": 0.67,
+        "assertions_passed": 2,
+        "assertions_total": 3,
+        "avg_tokens": 3200,
+        "avg_duration_ms": 25000
+      },
+      "delta": {
+        "pass_rate": 0.33,
+        "tokens": 6300,
+        "duration_ms": 17000
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 0.75,
+    "baseline_avg_pass_rate": 0.46,
+    "improvement": 0.29,
+    "avg_tokens_with_skill": 25750,
+    "avg_tokens_baseline": 6350,
+    "token_cost": 19400,
+    "avg_duration_ms_with_skill": 68500,
+    "avg_duration_ms_baseline": 35000,
+    "duration_cost_ms": 33500
+  }
+}

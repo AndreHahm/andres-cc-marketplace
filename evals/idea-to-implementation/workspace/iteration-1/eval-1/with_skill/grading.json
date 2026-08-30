@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output reads the source Idea before drafting anything", "passed": true, "evidence": "Read Notion idea, checked Linear for existing matches before drafting"},
+    {"text": "Output presents the full proposed Linear hierarchy as one preview, not per-record", "passed": true, "evidence": "Presented adoption of existing AND-5 plus link/transition as one batch preview"},
+    {"text": "Output states one batch approval is needed before creating anything", "passed": true, "evidence": "Explicitly stopped for approval; nothing created/linked/written yet"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

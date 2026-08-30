@@ -1,0 +1,62 @@
+{
+  "skill_name": "linear-work-management",
+  "iteration": 1,
+  "timestamp": "2026-08-30T21:32:16+02:00",
+  "evals": [
+    {
+      "eval_id": 1,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 9500,
+        "avg_duration_ms": 42000
+      },
+      "baseline": {
+        "pass_rate": 0.33,
+        "assertions_passed": 1,
+        "assertions_total": 3,
+        "avg_tokens": 26000,
+        "avg_duration_ms": 75000
+      },
+      "delta": {
+        "pass_rate": 0.67,
+        "tokens": -16500,
+        "duration_ms": -33000
+      }
+    },
+    {
+      "eval_id": 2,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 9500,
+        "avg_duration_ms": 42000
+      },
+      "baseline": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 9500,
+        "avg_duration_ms": 42000
+      },
+      "delta": {
+        "pass_rate": 0.0,
+        "tokens": 0,
+        "duration_ms": 0
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.665,
+    "improvement": 0.335,
+    "avg_tokens_with_skill": 9500,
+    "avg_tokens_baseline": 17750,
+    "token_cost": -8250,
+    "avg_duration_ms_with_skill": 42000,
+    "avg_duration_ms_baseline": 58500,
+    "duration_cost_ms": -16500
+  }
+}

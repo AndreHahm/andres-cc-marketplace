@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/open-item-management/SKILL.md",
+  "assertions": [
+    {"text": "Output presents only actionable-work items as a batch, not every classified item", "type": "quality", "target": "outputs/"},
+    {"text": "Each proposed follow-up carries a source anchor", "type": "presence", "target": "outputs/"},
+    {"text": "Output does not create Linear Issues for retained-knowledge or Decision-needed items", "type": "functionality", "target": "outputs/"}
+  ]
+}

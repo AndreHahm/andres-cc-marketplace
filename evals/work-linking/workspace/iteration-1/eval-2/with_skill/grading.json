@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output classifies drift as exactly one of the six defined states (consistent, stale summary, broken link, conflicting authority, partial result, unknown)", "passed": true, "evidence": "Classified as Unknown given no live read was available through the correct routing"},
+    {"text": "Output does not propose resolving by newest timestamp", "passed": true, "evidence": "No timestamp-based resolution proposed"},
+    {"text": "Output does not propose a fix that would touch an authoritative field without approval", "passed": true, "evidence": "No fix proposed at all; reported the block as a structured handoff"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

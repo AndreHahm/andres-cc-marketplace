@@ -1,0 +1,21 @@
+{
+  "skill_name": "status-and-learning",
+  "skill_path": "plugins/workmanagement-kit/skills/status-and-learning/SKILL.md",
+  "description": "Produce a dated, explicitly non-live Linear-to-Notion progress summary, or capture an outcome/learning after work completes.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Summarize progress to Notion",
+      "prompt": "Summarize progress on the CSV export project to Notion.",
+      "expected_output": "Reads Linear facts, produces a summary explicitly dated and labeled as a snapshot (not live), and states approval is required before writing to Notion.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Capture a learning",
+      "prompt": "Capture what we learned from shipping the CSV export feature.",
+      "expected_output": "Distinguishes this from open-item disposition (correctly defers unresolved follow-ups to open-item-management rather than trying to handle them itself), and captures a concise outcome/learning rather than a full transcript.",
+      "files": []
+    }
+  ]
+}

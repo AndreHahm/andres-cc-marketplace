@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output presents only actionable-work items as a batch, not every classified item", "passed": true, "evidence": "Classified 5 real items across all 4 dispositions; presented only the 1 actionable item as the approval batch"},
+    {"text": "Each proposed follow-up carries a source anchor", "passed": true, "evidence": "The actionable item was tagged with its source"},
+    {"text": "Output does not create Linear Issues for retained-knowledge or Decision-needed items", "passed": true, "evidence": "No Issue created for any of the 4 non-actionable items; nothing created at all pending approval"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

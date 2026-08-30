@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output reads Linear facts before drafting the summary", "passed": true, "evidence": "Attempted Step 1 (read via linear-work-management), correctly stopped when the dependency chain was found blocked rather than fabricating facts"},
+    {"text": "Summary is explicitly dated and labeled as a snapshot, not live state", "passed": false, "evidence": "Not applicable — no summary was produced since the read step was blocked"},
+    {"text": "Output states approval is required before writing to Notion", "passed": true, "evidence": "Did not attempt an unapproved write; explained why bypassing the block would violate the skill's own safety rules"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.67}
+}

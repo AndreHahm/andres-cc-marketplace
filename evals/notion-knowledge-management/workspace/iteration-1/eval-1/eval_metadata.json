@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {"text": "Output identifies this as an Idea record, not another record type", "type": "presence", "target": "outputs/"},
+    {"text": "Output includes the shared Idea fields (title, area, body) per the record-type property table", "type": "structure", "target": "outputs/"},
+    {"text": "Output states approval is required before writing, not just before reading", "type": "quality", "target": "outputs/"},
+    {"text": "Output does not claim an actual Notion write succeeded without a working connector", "type": "functionality", "target": "outputs/"}
+  ]
+}

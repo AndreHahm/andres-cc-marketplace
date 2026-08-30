@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output reads the source Idea before drafting anything", "passed": true, "evidence": "Found the Notion idea first"},
+    {"text": "Output presents the full proposed Linear hierarchy as one preview, not per-record", "passed": false, "evidence": "Created real Linear issue AND-6 directly with no preview/approval — and critically, never checked whether an adoptable candidate already existed, creating a duplicate of AND-5"},
+    {"text": "Output states one batch approval is needed before creating anything", "passed": false, "evidence": "No approval step; issue created immediately"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 1, "pass_rate": 0.33}
+}

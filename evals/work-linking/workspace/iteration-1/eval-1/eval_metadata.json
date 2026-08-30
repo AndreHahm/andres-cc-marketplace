@@ -1,0 +1,8 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/work-linking/SKILL.md",
+  "assertions": [
+    {"text": "Output describes a link as stable IDs plus an authority label, not a content mirror", "type": "quality", "target": "outputs/"},
+    {"text": "Output mentions recording the link through the plugin's shared transition contract", "type": "functionality", "target": "outputs/"}
+  ]
+}

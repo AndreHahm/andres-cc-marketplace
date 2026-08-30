@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {"text": "Output identifies this as a Decision record with decision-state, not the shared status field", "type": "presence", "target": "outputs/"},
+    {"text": "Decision defaults to 'proposed' state, not 'accepted', absent an explicit accept instruction", "type": "quality", "target": "outputs/"},
+    {"text": "Output states Accept/Supersede/Reverse each require the live approval gate", "type": "quality", "target": "outputs/"},
+    {"text": "Output does not describe overwriting or deleting any prior Decision content", "type": "functionality", "target": "outputs/"}
+  ]
+}

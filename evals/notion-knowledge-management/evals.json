@@ -1,0 +1,21 @@
+{
+  "skill_name": "notion-knowledge-management",
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "description": "Capture, read, and manage Ideas, Decisions, proposed Goals, Notes, Research, Reports, Outcomes, and Learning in Notion.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Capture an Idea",
+      "prompt": "Capture this as an idea in Notion: we should let users export their transition history as a CSV.",
+      "expected_output": "Builds an Idea record per the record-type property table (title, area, body, shared fields), previews it, states that approval is required before writing, and does not claim to have actually written to Notion without a working connector.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Record a Decision",
+      "prompt": "Record a decision: we're going with the read-only mirror design for promptlibrary-kit's in-repo copy, not dual-write.",
+      "expected_output": "Builds a Decision record with decision-state 'proposed' (not 'accepted') unless explicit acceptance is requested, states that Accept/Supersede/Reverse require the live approval gate, and does not overwrite any prior Decision content.",
+      "files": []
+    }
+  ]
+}

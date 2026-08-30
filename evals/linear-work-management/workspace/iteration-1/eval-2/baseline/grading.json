@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output treats this as a read requiring no approval", "passed": true, "evidence": "Performed a straightforward read, no approval needed or claimed"},
+    {"text": "Output resolves the target by stable ID reasoning, not an assumed unique name match", "passed": true, "evidence": "Searched broadly (name, keyword, unfiltered) rather than guessing a match"},
+    {"text": "Output does not apply any pending change while just checking status", "passed": true, "evidence": "Read-only; no changes applied"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

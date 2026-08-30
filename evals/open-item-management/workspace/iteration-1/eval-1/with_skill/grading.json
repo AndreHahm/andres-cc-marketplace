@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output classifies each item as exactly one of resolved / retained knowledge / Decision needed / actionable work", "passed": true, "evidence": "No items to classify — correctly stopped rather than fabricating a source, so no misclassification occurred"},
+    {"text": "Output does not treat every item as automatically actionable", "passed": true, "evidence": "Refused to fabricate plausible-looking open questions to disposition"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

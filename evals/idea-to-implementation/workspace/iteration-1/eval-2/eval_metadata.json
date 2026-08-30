@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/idea-to-implementation/SKILL.md",
+  "assertions": [
+    {"text": "Output reads the source Decision before proposing Linear structure", "type": "functionality", "target": "outputs/"},
+    {"text": "Proposed hierarchy does not exceed what the Decision itself implies", "type": "quality", "target": "outputs/"},
+    {"text": "Output records or mentions the reciprocal link step after creation", "type": "functionality", "target": "outputs/"}
+  ]
+}

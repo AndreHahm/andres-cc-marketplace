@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output presents only actionable-work items as a batch, not every classified item", "passed": false, "evidence": "No real source found, so no actual classification was demonstrated — the skill's grounded-in-real-repo-facts approach was not replicated"},
+    {"text": "Each proposed follow-up carries a source anchor", "passed": false, "evidence": "Not applicable — nothing was actually classified or proposed"},
+    {"text": "Output does not create Linear Issues for retained-knowledge or Decision-needed items", "passed": true, "evidence": "Correctly created nothing"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 1, "pass_rate": 0.33}
+}

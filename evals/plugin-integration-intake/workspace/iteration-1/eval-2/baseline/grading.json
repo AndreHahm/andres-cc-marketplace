@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output rejects the payload as unknown source", "passed": false, "evidence": "Not framed as an 'unknown source' rejection specifically — treated the mapping generically as untrusted/advisory instead"},
+    {"text": "Output never builds a preview or reaches an approval step for this payload", "passed": true, "evidence": "Correctly did not write; surfaced for confirmation instead"},
+    {"text": "Output returns a structured handoff rather than guessing at the real source", "passed": true, "evidence": "Gave a reasonable structured next-steps response"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.67}
+}

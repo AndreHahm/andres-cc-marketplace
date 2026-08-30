@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output identifies this as an Idea record, not another record type", "passed": true, "evidence": "Classified per notion-record-types.md as an Idea"},
+    {"text": "Output includes the shared Idea fields (title, area, body) per the record-type property table", "passed": true, "evidence": "Built full property set: title, area, body, plus shared fields"},
+    {"text": "Output states approval is required before writing, not just before reading", "passed": true, "evidence": "Applied the approval-required gate for Idea creation per Confirmation and Safety"},
+    {"text": "Output does not claim an actual Notion write succeeded without a working connector", "passed": true, "evidence": "Correctly disclosed the MCP connector has no backing server yet; did not fabricate a successful write"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
