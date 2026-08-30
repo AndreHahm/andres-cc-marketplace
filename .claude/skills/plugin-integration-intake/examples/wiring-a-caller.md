@@ -27,20 +27,28 @@ asks the host to invoke `plugin-integration-intake` with a structured payload:
 }
 ```
 
+`"Reports"` above is illustrative shorthand for readability — a real `notion_database`/
+`linear_target` value is always a stable ID, never a display name (see `linear-entity-fields.md`'s
+Cross-Entity Rules; the same rule applies on the Notion side). `content` above also omits the
+shared record properties (`source`, `related-record`, `authority`, `transition-id`, `status`,
+`owner`, `date`) that every Notion record carries — the caller never supplies these;
+`notion-knowledge-management` populates them itself when it executes the write in step 5 below.
+
 `analysis-kit`'s own skill has no further involvement past this point — it does not see the
 approval prompt, does not know whether the user approves or rejects it, and does not receive
 confirmation of the write beyond whatever the host chooses to relay back to it.
 
 ## What `plugin-integration-intake` does with this
 
-This walks through the same numbered Procedure as the parent SKILL.md — step 2's three validation
+This walks through the same numbered Quick Start as the parent SKILL.md — step 2's three validation
 checks are broken out below as 2a/2b/2c for illustration, since this example shows each check's
 concrete result rather than the general rule:
 
 1. Receives the payload above.
 2. Validates it:
-   - **2a.** `source_plugin: "analysis-kit"` against the installed plugin list — it is a real,
-     installed plugin, so this passes.
+   - **2a.** `source_plugin: "analysis-kit"` checked against the installed plugin list (an
+     existence check on the claim, not authentication of the sender — see SKILL.md's Trust Model)
+     — it is a real, installed plugin, so this passes.
    - **2b.** `content` against the Report record shape (`title`, `summary`, and `body` all present,
      no unrecognized fields) — this passes.
    - **2c.** `suggested_mapping` resolves to exactly one Notion database (`Reports`) — this passes,
@@ -53,7 +61,8 @@ concrete result rather than the general rule:
    user sees and approves this specific Notion write independently.
 5. On approval, writes via `notion-knowledge-management` and reads the result back.
 6. Records the transition tagged with both the new Notion record and `source_plugin:
-   "analysis-kit"`.
+   "analysis-kit"`, through the plugin's shared transition contract — not yet built in this
+   Wave 1 scaffold; see the plugin README's Status section.
 
 ## What Would Happen on a Bad Payload
 
