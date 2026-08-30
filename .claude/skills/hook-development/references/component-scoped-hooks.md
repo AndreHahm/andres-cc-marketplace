@@ -35,6 +35,14 @@ Instead of registering hooks globally in settings files or plugins, component-sc
 
 Hooks in a skill's SKILL.md frontmatter activate only when that skill is triggered.
 
+**A note on the `${CLAUDE_PROJECT_DIR}` examples below:** every example on this page uses
+`${CLAUDE_PROJECT_DIR}/<path-to-this-component>/scripts/...` for brevity, which is only correct for a
+project-level skill never meant for distribution. A skill nested inside a plugin that *will* be
+distributed needs `${CLAUDE_PLUGIN_ROOT}` instead — see
+[Environment Variables Available](#environment-variables-available) below, specifically the
+"Which variable to use instead" guidance, before copying any example on this page into a distributed
+plugin's own skill.
+
 ```yaml
 ---
 name: my-skill

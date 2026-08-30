@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 import pytest
 
@@ -17,6 +18,12 @@ def _write_registry(repo, **kwargs):
     registry_path = repo / ".claude" / "marketplace-sync.json"
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     registry_path.write_text(json.dumps(payload), encoding="utf-8")
+    # check_staged_parity reads the registry from the Git index, never disk -- stage it
+    # here so callers using a real git_repo see it the same way a commit would. A no-op,
+    # tolerated failure for the plain `repo` fixture (no `.git` at all).
+    subprocess.run(
+        ["git", "add", "-f", ".claude/marketplace-sync.json"], cwd=repo, capture_output=True
+    )
     return registry_path
 
 
