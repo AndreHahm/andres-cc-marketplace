@@ -49,7 +49,15 @@ class DivergenceException:
     Whole-file, not line-level: `check_staged_parity` only ever compares full file
     content, so excepting a pair here drops parity checking for the *entire* file,
     not just the specific lines that need to diverge. Keep `reason` specific enough
-    that a future reader can tell whether the exception is still needed."""
+    that a future reader can tell whether the exception is still needed.
+
+    Two mitigations against this whole-file scope hiding unrelated drift or a typo'd
+    entry (both live in `sync.plan_plugin_sync`, not here): an active, differing
+    exception is surfaced as an informational "warn" action on every check/check-all
+    run (never silent) so a human periodically re-confirms the divergence is still
+    just the documented, expected difference; and a declared (source, dest) pair that
+    never matches a real, registered mirror pair is itself surfaced as "warn" (dead
+    configuration, most likely a typo, leaving its intended pair unprotected)."""
 
     source: str
     dest: str
