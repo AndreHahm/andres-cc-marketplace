@@ -479,7 +479,8 @@ async function main() {
     return;
   }
 
-  const args = parseArgs(process.argv.slice(2));
+  const rawArgv = process.argv.slice(2);
+  const args = parseArgs(rawArgv);
   const required = ["reviewer-type", "instruction-file", "target-paths", "dispatch-id", "repo-root"];
   for (const key of required) {
     if (!args[key]) {
@@ -500,7 +501,58 @@ async function main() {
   // so proving the whole guard chain still fires correctly, and seeing the
   // exact assembled prompt, without ever granting real danger-full-access
   // execution, is what a dry run is for here.
-  const dryRun = args["dry-run"] === "true";
+  //
+  // Fail closed on a malformed value instead of silently launching a real
+  // danger-full-access dispatch (security review, live-flagged by Devin
+  // (🟥) and Codex (P1)): a typo'd value ("--dry-run ture") or a bare
+  // trailing "--dry-run" (parseArgs resolves either to
+  // args["dry-run"] === undefined, identical to the flag never being passed
+  // at all) both used to compare false to "true" and proceed straight to a
+  // real, unsandboxed exec once every preceding guard passed -- exactly the
+  // execution a caller reaching for --dry-run was trying to avoid.
+  //
+  // Match the flag NAME in raw argv, not args["dry-run"]'s parsed value and
+  // not an exact-string rawArgv match -- a second-round security review
+  // (Critical) found the first version's exact-match rawArgv.includes(
+  // "--dry-run") still missed the equally-plausible GNU "--dry-run=true"
+  // form entirely: parseArgs keys on the WHOLE token after "--" with no "="
+  // splitting, so that token becomes args["dry-run=true"], leaving
+  // args["dry-run"] undefined and the exact-string includes() check false
+  // -- both silently producing dryRun=false and a real unsandboxed dispatch
+  // on this specific path, the one with no sandbox at all. toLowerCase()
+  // also catches a case-variant token (--DRY-RUN) the same way. Reject more
+  // than one occurrence outright too (`--dry-run true --dry-run false`
+  // last-wins being ambiguous is itself a bug class this gate exists to
+  // close, not something to silently resolve one way or the other).
+  const dryRunTokens = rawArgv.filter((a) => {
+    const lower = a.toLowerCase();
+    return lower === "--dry-run" || lower.startsWith("--dry-run=");
+  });
+  if (dryRunTokens.length > 1) {
+    fail("invalid_arguments", "--dry-run must not be given more than once");
+    return;
+  }
+  const dryRunRaw = args["dry-run"];
+  if (dryRunTokens.length === 1 && dryRunRaw !== "true" && dryRunRaw !== "false") {
+    // Only the space-separated form ("--dry-run true") is supported -- the
+    // "=" form is rejected here too (it never reaches args["dry-run"] at
+    // all, so dryRunRaw reads as undefined even though a value was typed).
+    // redactSecrets + a length cap match this file's own established
+    // convention for bounding what a caller-supplied failure detail can
+    // carry (see the truncation applied to a real danger-full-access run's
+    // own failure detail just below in main(), and codex-exec.mjs's own
+    // redactSecrets use on a failure's stderr detail) -- a mis-ordered
+    // command line could otherwise land an arbitrary, possibly
+    // credential-shaped token in this position.
+    // String(), not JSON.stringify(): JSON.stringify(undefined) returns the
+    // *value* undefined (not the string "undefined"), which would crash
+    // redactSecrets' own String.replace() call the moment dryRunRaw is
+    // undefined -- exactly the bare-trailing-flag and "=" cases this check
+    // exists to catch (caught live while verifying this fix).
+    fail("invalid_arguments", `--dry-run requires an explicit space-separated value of "true" or "false" (e.g. --dry-run true; --dry-run=<value> is not supported) -- got: ${redactSecrets(String(dryRunRaw)).slice(0, 200)}`);
+    return;
+  }
+  const dryRun = dryRunRaw === "true";
 
   const { "reviewer-type": reviewerType, "instruction-file": instructionFile, "dispatch-id": dispatchId, "repo-root": repoRoot } = args;
 

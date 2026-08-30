@@ -59,7 +59,11 @@ All notable changes to this plugin are documented here.
   short-circuited after resolving it (Windows shim resolution, or a new POSIX PATH/executable check),
   so a caller can validate its arguments, containment checks, and exact assembled prompt without
   spending a real Codex call or, for guardrails' `danger-full-access` path, granting any real
-  unsandboxed execution.
+  unsandboxed execution. Live PR review (Devin/Codex/CodeRabbit) found and fixed three issues before
+  merge: the POSIX PATH resolution didn't match real `spawn`'s own semantics for relative/empty PATH
+  entries or reject a directory named `codex`; and `--dry-run` given a malformed value (a typo, or a
+  bare flag with no value) silently fell through to a real dispatch instead of failing closed — the
+  most serious of the three, since for guardrails that means real unsandboxed execution on a typo.
 
 ## [1.0.0-alpha.1] - 2026-08-08
 

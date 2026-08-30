@@ -79,6 +79,31 @@ function runDispatch(repoRoot, targetPaths, instructionFile, dispatchId = "smoke
   }
 }
 
+// Same fixed argument shape as runDispatch, plus whatever extra raw tokens
+// the caller wants appended -- used below to exercise the --dry-run gate's
+// own malformed-value shapes directly through the real CLI, not just
+// through runCodexExec's own dryRun option.
+function runDispatchRaw(repoRoot, targetPaths, instructionFile, dispatchId, extraArgs) {
+  try {
+    const stdout = execFileSync(
+      "node",
+      [
+        GUARDED_DISPATCH,
+        "--reviewer-type", "test-reviewer",
+        "--instruction-file", instructionFile,
+        "--target-paths", targetPaths,
+        "--dispatch-id", dispatchId,
+        "--repo-root", repoRoot,
+        ...extraArgs
+      ],
+      { encoding: "utf8" }
+    );
+    return JSON.parse(stdout);
+  } catch (e) {
+    return JSON.parse(e.stdout.toString());
+  }
+}
+
 const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "codex-windows-guardrails-smoke-"));
 git(["init", "-q"], repoRoot);
 fs.writeFileSync(path.join(repoRoot, "target.md"), "content");
@@ -705,6 +730,58 @@ console.log("\n=== Prompt-injection guard on instructionBody (source-level, not 
     "the import-guard check fails on a tampered copy with neutralizeClosingTags removed",
     /import\s*{[^}]*\bneutralizeClosingTags\b[^}]*}\s*from\s*["'][^"']*bridge-invoke\.mjs["']/.test(tampered) === false
   );
+}
+
+console.log("\n=== --dry-run gate: every malformed shape is rejected BEFORE the config/enabled check ever runs (security review, live-flagged by Devin/Codex, then a second round found the equals-form/case-variant/duplicate gaps in the first fix) ===");
+{
+  // This fixture's own repoRoot never enables windows_guardrails (see the
+  // "disabled by default" scenario elsewhere in this file) -- reaching the
+  // --dry-run-specific rejection below, rather than guardrails_disabled,
+  // is itself proof this gate runs before config resolution, not just that
+  // it rejects in isolation.
+  const typo = runDispatchRaw(repoRoot, "target.md", instructionFile, "smoke-dryrun-typo", ["--dry-run", "ture"]);
+  check(
+    "a typo'd value ('ture') is rejected with invalid_arguments, not silently treated as false",
+    typo.ok === false && typo.category === "invalid_arguments" && /--dry-run requires an explicit/.test(typo.detail),
+    JSON.stringify(typo)
+  );
+
+  const bareTrailing = runDispatchRaw(repoRoot, "target.md", instructionFile, "smoke-dryrun-bare", ["--dry-run"]);
+  check(
+    "a bare trailing --dry-run (no value) is rejected, not silently treated as omitted",
+    bareTrailing.ok === false && bareTrailing.category === "invalid_arguments" && /--dry-run requires an explicit/.test(bareTrailing.detail),
+    JSON.stringify(bareTrailing)
+  );
+
+  const equalsForm = runDispatchRaw(repoRoot, "target.md", instructionFile, "smoke-dryrun-equals", ["--dry-run=true"]);
+  check(
+    "the GNU '--dry-run=true' form is rejected, not silently parsed as an unrelated key and ignored",
+    equalsForm.ok === false && equalsForm.category === "invalid_arguments" && /--dry-run requires an explicit/.test(equalsForm.detail),
+    JSON.stringify(equalsForm)
+  );
+
+  const duplicate = runDispatchRaw(repoRoot, "target.md", instructionFile, "smoke-dryrun-dup", ["--dry-run", "true", "--dry-run", "false"]);
+  check(
+    "a duplicated --dry-run flag is rejected outright, never resolved last-wins",
+    duplicate.ok === false && duplicate.category === "invalid_arguments" && /must not be given more than once/.test(duplicate.detail),
+    JSON.stringify(duplicate)
+  );
+
+  // Deliberately no "omitting --dry-run falls through to guardrails_disabled"
+  // assertion here: this file's shared repoRoot fixture is left with
+  // windows_guardrails enabled by an EARLIER scenario ("Untracked local
+  // override (enabled: true) is honored" above writes the override file and
+  // later only `git rm --cached`s it, never deleting it from disk or
+  // resetting `enabled` back to false) -- an incident during this fix's own
+  // verification found that assumption wrong the hard way: the equivalent
+  // check here actually reached and completed a REAL, unsandboxed
+  // danger-full-access Codex dispatch against this fixture, because
+  // guardrails were still enabled by the time this block ran. Every
+  // scenario above this one already exercises "omit --dry-run" implicitly
+  // (none of them pass it), so this assertion added no unique coverage for
+  // what it risked. The root state-leak itself is a separate, pre-existing
+  // fixture-isolation gap in this file, not something this fix's own tests
+  // should paper over by guessing at a reset step.
 }
 
 console.log(`\n=== Results: ${pass} passed, ${fail} failed, ${skip} skipped ===`);

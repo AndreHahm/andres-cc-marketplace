@@ -159,6 +159,11 @@ provenance field imply otherwise.
   instruction-containment checks and prompt assembly all run for real, the real `codex` invocation
   resolves (Windows shim path confirmed), and no process is spawned; a dirty repo (a secret-named
   file in scope) still fails the same way under `--dry-run` as it does live.
+- `--dry-run` given a malformed value (`--dry-run ture`, or a bare trailing `--dry-run` with no
+  value) — verified live: rejected with `invalid_arguments` before any dispatch is attempted, never
+  silently falling through to a real, unsandboxed `danger-full-access` execution (live PR-review
+  finding, Devin 🟥/Codex P1 — this is the one dispatch path where that fallthrough is most
+  dangerous, since there's no sandbox at all to fall back on).
 
 **Current test coverage:**
 - `scripts/smoke-tests/codex-windows-guardrails-preflight.mjs` (20 scenarios, run from
@@ -168,10 +173,11 @@ provenance field imply otherwise.
   see `plugins/codex-kit/README.md`'s Known Limitations and `CONTRIBUTING.md` for how this compares
   to its codex-kit siblings: `codex-review-bridge` has partial live coverage (3 of 4 evals), the
   other 9 have structural grading only, not a live run).
-- `scripts/smoke-tests/codex-exec-dry-run.mjs` (13 assertions, shared with `codex-review-bridge` since
+- `scripts/smoke-tests/codex-exec-dry-run.mjs` (16 assertions, shared with `codex-review-bridge` since
   both call the same `scripts/lib/codex-exec.mjs`) — directly exercises `runCodexExec`'s `dryRun`
-  option this skill's own `--dry-run true` relies on: real invocation resolution (win32 and POSIX),
-  redaction, and confirmed-no-spawn via a real executable stub.
+  option this skill's own `--dry-run true` relies on: real invocation resolution (win32 and POSIX,
+  including relative/empty PATH entries resolved against the requested `cwd` and a directory named
+  `codex` correctly rejected), redaction, and confirmed-no-spawn via a real executable stub.
 - **Not yet exercised end-to-end:** an actual live `codex exec` process spawned under
   `danger-full-access` — every scenario above tests the disabled-by-default short-circuit, a
   pre-flight refusal, or (as of `--dry-run true`) the full guard chain plus invocation resolution
@@ -209,6 +215,9 @@ provenance field imply otherwise.
       `"danger-full-access"` script-side — never trusted as the model's own self-report
 - [ ] A `target-paths` entry containing a prompt tag-closing character or newline is always rejected
       before it reaches the prompt
+- [ ] A malformed `--dry-run` value (a typo, or a bare trailing flag with no value) is always
+      rejected with `invalid_arguments` — never silently interpreted as `false` and allowed to fall
+      through to a real `danger-full-access` dispatch
 - [ ] `--dry-run true` never spawns `codex` — every guard (policy-enabled, boundary, secret-scan,
       instruction-containment) still runs for real and can still reject the call before invocation
       resolution is ever attempted
