@@ -173,7 +173,7 @@ provenance field imply otherwise.
   see `plugins/codex-kit/README.md`'s Known Limitations and `CONTRIBUTING.md` for how this compares
   to its codex-kit siblings: `codex-review-bridge` has partial live coverage (3 of 4 evals), the
   other 9 have structural grading only, not a live run).
-- `scripts/smoke-tests/codex-exec-dry-run.mjs` (16 assertions, shared with `codex-review-bridge` since
+- `scripts/smoke-tests/codex-exec-dry-run.mjs` (18 assertions, shared with `codex-review-bridge` since
   both call the same `scripts/lib/codex-exec.mjs`) — directly exercises `runCodexExec`'s `dryRun`
   option this skill's own `--dry-run true` relies on: real invocation resolution (win32 and POSIX,
   including relative/empty PATH entries resolved against the requested `cwd` and a directory named

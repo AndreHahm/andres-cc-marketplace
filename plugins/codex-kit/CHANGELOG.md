@@ -63,7 +63,11 @@ All notable changes to this plugin are documented here.
   merge: the POSIX PATH resolution didn't match real `spawn`'s own semantics for relative/empty PATH
   entries or reject a directory named `codex`; and `--dry-run` given a malformed value (a typo, or a
   bare flag with no value) silently fell through to a real dispatch instead of failing closed — the
-  most serious of the three, since for guardrails that means real unsandboxed execution on a typo.
+  most serious of the three, since for guardrails that means real unsandboxed execution on a typo. A
+  round-2 review pass then found the PATH-resolution fix itself introduced a regression: omitting
+  `cwd` entirely (a documented, legitimate `runCodexExec` call shape) crashed with a `TypeError`
+  outside any cleanup path, instead of defaulting to `process.cwd()` the way a real dispatch already
+  does.
 
 ## [1.0.0-alpha.1] - 2026-08-08
 
