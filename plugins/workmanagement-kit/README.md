@@ -41,8 +41,9 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
   workflow uses to submit content for Notion/Linear storage or action, under the same live
   approval gate as a direct user request.
 - **`work-transition-reviewer`** and **`work-intake-classifier`** — read-only Codex reviewer
-  personas, deployed both live (via `codex-kit`'s `codex-review-bridge`) and standalone (via the
-  `.claude/agents` → `.codex/agents` export for direct Codex CLI use).
+  personas. The standalone path (via the `.claude/agents` → `.codex/agents` export for direct
+  Codex CLI use) is available now; the live path via `codex-kit`'s `codex-review-bridge` requires
+  this plugin's own bridge-caller script, not yet built (see Status).
 
 This plugin depends on `codex-kit` for the live Codex review path.
 
@@ -59,3 +60,10 @@ This is Wave 1 of a two-wave design (Wave 1: Notion/Linear foundation; Wave 2, n
 later, additive Git/GitHub lifecycle bridge). Live Notion/Linear mutation requires the Foundational
 Setup steps described in this plugin's design documents to be completed (connector installation,
 workspace/team scoping, test scopes) before first live use.
+
+Two further items are still open before this plugin is fully live:
+- The Codex bridge-caller script that dispatches `work-transition-reviewer`/
+  `work-intake-classifier` live is not yet built; both agents already work standalone via the
+  `.codex/agents` export.
+- `plugin-integration-intake`'s trust-boundary gate has not yet had its required
+  `security-reviewer` pass (see that skill's own file for the specific checklist item).
