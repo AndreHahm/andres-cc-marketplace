@@ -379,6 +379,96 @@ def check_step2_refetch_on_rerun():
     )
 
 
+def check_step2_out_of_sync_disclosure():
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "Out-of-sync with base" not in step2:
+        return False, "step 2 no longer documents the out-of-sync-with-base disclosure"
+    if "compare/<baseRefName>...<headRefName>" not in step2:
+        return False, "step 2 no longer names the compare-endpoint call for the out-of-sync check"
+    if "skip entirely when `isCrossRepository` is `true`" not in step2:
+        return (
+            False,
+            "step 2's out-of-sync check no longer states it's skipped (and disclosed as skipped) "
+            "for fork PRs -- comparing a fork's head ref by name against this repo risks resolving "
+            "a same-named but unrelated branch",
+        )
+    return True, "step 2 documents the out-of-sync-with-base disclosure, gated on isCrossRepository"
+
+
+def check_step2_unresolved_threads_disclosure():
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "Unresolved review threads" not in step2:
+        return False, "step 2 no longer documents the unresolved-review-threads disclosure"
+    if "reviewThreads" not in step2 or "isResolved" not in step2:
+        return False, "step 2 no longer names the reviewThreads/isResolved GraphQL query"
+    if "gh-pr-review merge-pr" not in step2:
+        return (
+            False,
+            "step 2's unresolved-review-threads check no longer writes the gh-pr-review marker "
+            "before its gh api graphql call -- guard-raw-pr-review.sh hard-blocks graphql "
+            "without it",
+        )
+    if "hasNextPage" not in step2:
+        return (
+            False,
+            "step 2's unresolved-review-threads check no longer paginates the reviewThreads query",
+        )
+    return (
+        True,
+        "step 2 documents the unresolved-review-threads disclosure, its marker write, and "
+        "pagination",
+    )
+
+
+def check_step5_states_advisory_disclosures():
+    step5 = _get_step_text(5)
+    if step5 is None:
+        return False, "step 5 ('## Instructions') not found"
+    if "advisory disclosures" not in step5:
+        return (
+            False,
+            "step 5's confirmation no longer states it surfaces step 2's advisory disclosures "
+            "(commits behind base, unresolved review threads)",
+        )
+    if "even when both are zero" not in step5:
+        return (
+            False,
+            "step 5 no longer states the advisory disclosures are shown even when zero -- a "
+            "clean result must never be silently omitted, same discipline as the squash disclosure",
+        )
+    return True, "step 5's confirmation states it always surfaces both advisory disclosures"
+
+
+def check_boundaries_graphql_grant_disclosure():
+    text = SKILL_MD.read_text(encoding="utf-8")
+    start = text.find("\n## Boundaries\n")
+    if start == -1:
+        return False, "'## Boundaries' section not found"
+    end = text.find("\n## ", start + 1)
+    boundaries = text[start : end if end != -1 else len(text)]
+    if "mergePullRequest" not in boundaries or "deleteRef" not in boundaries:
+        return (
+            False,
+            "Boundaries no longer discloses that Bash(gh api graphql:*) grants the entire "
+            "GraphQL surface including mutations this skill never intends (security-reviewer M1)",
+        )
+    if "never substitutes for step 7(b)" not in boundaries:
+        return (
+            False,
+            "Boundaries no longer states a GraphQL call never substitutes for step 7(b)'s "
+            "marker-gated merge or step 5's confirmation",
+        )
+    return (
+        True,
+        "Boundaries discloses the graphql grant's full surface and its non-substitution for "
+        "merging",
+    )
+
+
 CHECKS = [
     check_frontmatter,
     check_referenced_files,
@@ -395,6 +485,10 @@ CHECKS = [
     check_step7_rejection_fallback,
     check_step1_owner_repo_from_pr_url,
     check_step2_refetch_on_rerun,
+    check_step2_out_of_sync_disclosure,
+    check_step2_unresolved_threads_disclosure,
+    check_boundaries_graphql_grant_disclosure,
+    check_step5_states_advisory_disclosures,
 ]
 
 
