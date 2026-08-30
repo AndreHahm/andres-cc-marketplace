@@ -35,6 +35,53 @@ def test_removed_plugin_prunes_destinations_from_previous_registry(repo, registr
     assert any(action.operation == "delete" for action in plan.actions)
 
 
+def test_divergent_mirror_without_exception_is_scheduled_for_update(repo, registry_for):
+    # Regression guard: proves the exception in the next test actually changes behavior,
+    # rather than the destination never having been flagged as drifted in the first place.
+    (repo / ".claude" / "skills" / "demo").mkdir(parents=True, exist_ok=True)
+    (repo / ".claude" / "skills" / "demo" / "SKILL.md").write_text(
+        "genuinely different mirror content", encoding="utf-8"
+    )
+    plan = plan_plugin_sync(repo, registry_for("sample-kit"), previous=None, bootstrap=False)
+    updates = {
+        action.destination.relative_to(repo).as_posix()
+        for action in plan.actions
+        if action.operation == "update"
+    }
+    assert ".claude/skills/demo/SKILL.md" in updates
+
+
+def test_divergence_exception_prevents_post_edit_sync_from_overwriting_mirror(repo):
+    # This is the Codex-found gap this test closes: check_staged_parity respecting the
+    # exception isn't enough on its own -- plan_plugin_sync (run on every watched edit via
+    # run_post_edit, independent of any commit-time check) must respect it too, or the very
+    # next unrelated edit silently overwrites the intentionally-divergent mirror.
+    from scripts.marketplace_ci.registry import DivergenceException, Registry
+
+    (repo / ".claude" / "skills" / "demo").mkdir(parents=True, exist_ok=True)
+    (repo / ".claude" / "skills" / "demo" / "SKILL.md").write_text(
+        "genuinely different mirror content", encoding="utf-8"
+    )
+    registry = Registry(
+        version=1,
+        plugin_mirrors=("sample-kit",),
+        skills=(),
+        agents=(),
+        divergence_exceptions=(
+            DivergenceException(
+                source="plugins/sample-kit/skills/demo/SKILL.md",
+                dest=".claude/skills/demo/SKILL.md",
+                reason="test: intentionally divergent for a documented reason",
+            ),
+        ),
+    )
+    plan = plan_plugin_sync(repo, registry, previous=None, bootstrap=False)
+    destinations_with_actions = {
+        action.destination.relative_to(repo).as_posix() for action in plan.actions
+    }
+    assert ".claude/skills/demo/SKILL.md" not in destinations_with_actions
+
+
 def test_two_plugins_hooks_json_concatenate_without_collision(repo, registry_for):
     plan = plan_hooks_merge(
         repo, registry_for("sample-kit", "sample-kit-two"), repo_hooks_path=FIXTURE_REPO_HOOKS

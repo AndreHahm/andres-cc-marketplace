@@ -85,6 +85,8 @@ def plan_plugin_sync(
     plugins_root = repo / "plugins"
     claude_root = repo / ".claude"
 
+    divergence_exceptions = {(exc.source, exc.dest) for exc in registry.divergence_exceptions}
+
     destinations: dict[Path, list[Path]] = {}
 
     def register(source: Path, relative_from: Path) -> None:
@@ -132,6 +134,13 @@ def plan_plugin_sync(
         source_bytes = source.read_bytes()
         if dest.exists():
             if dest.read_bytes() == source_bytes:
+                continue
+            rel_source = source.relative_to(repo).as_posix()
+            rel_dest = dest.relative_to(repo).as_posix()
+            if (rel_source, rel_dest) in divergence_exceptions:
+                # Whole-file exception (see registry.DivergenceException docstring) --
+                # this destination is allowed to differ from its canonical source, so
+                # never schedule a sync action that would overwrite it.
                 continue
             actions.append(
                 SyncAction(
