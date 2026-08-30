@@ -1,0 +1,378 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": "2026-08-30",
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "idea-to-execution-promotion",
+      "functional_role": "workflow",
+      "id": "component_bd74e0ae",
+      "name": "idea-to-implementation",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/idea-to-implementation"
+          ],
+          "name": "idea-to-implementation",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/idea-to-implementation",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/idea-to-implementation"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-08-30",
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "linear-integration",
+      "functional_role": "integration",
+      "id": "component_0ad61679",
+      "name": "linear-work-management",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/linear-work-management"
+          ],
+          "name": "linear-work-management",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/linear-work-management",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/linear-work-management"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-08-30",
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "notion-integration",
+      "functional_role": "integration",
+      "id": "component_468828b5",
+      "name": "notion-knowledge-management",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/notion-knowledge-management"
+          ],
+          "name": "notion-knowledge-management",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/notion-knowledge-management",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/notion-knowledge-management"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-08-30",
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "open-item-tracking",
+      "functional_role": "workflow",
+      "id": "component_66f5e2f1",
+      "name": "open-item-management",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/open-item-management"
+          ],
+          "name": "open-item-management",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/open-item-management",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/open-item-management"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-08-30",
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "cross-plugin-intake",
+      "functional_role": "integration",
+      "id": "component_4352d732",
+      "name": "plugin-integration-intake",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/plugin-integration-intake"
+          ],
+          "name": "plugin-integration-intake",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/plugin-integration-intake",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/plugin-integration-intake"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-08-30",
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "status-reporting",
+      "functional_role": "workflow",
+      "id": "component_47bd67f0",
+      "name": "status-and-learning",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/status-and-learning"
+          ],
+          "name": "status-and-learning",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/status-and-learning",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/status-and-learning"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-08-30",
+      "details": {
+        "schema": "skill"
+      },
+      "domain": "cross-system-linking",
+      "functional_role": "workflow",
+      "id": "component_f7dee39d",
+      "name": "work-linking",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/work-linking"
+          ],
+          "name": "work-linking",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/work-linking",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/work-linking"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-08-30",
+      "details": {
+        "schema": "agent"
+      },
+      "domain": "cross-plugin-intake",
+      "functional_role": "validator",
+      "id": "component_e379a7bc",
+      "name": "work-intake-classifier",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/work-intake-classifier.md"
+          ],
+          "name": "work-intake-classifier",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/work-intake-classifier.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/work-intake-classifier.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": "2026-08-30",
+      "details": {
+        "schema": "agent"
+      },
+      "domain": "transition-review",
+      "functional_role": "reviewer",
+      "id": "component_41ff3eb4",
+      "name": "work-transition-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/work-transition-reviewer.md"
+          ],
+          "name": "work-transition-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/work-transition-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/work-transition-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-08-30",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin_39dae8d5",
+  "plugin_name": "workmanagement-kit",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-08-30"
+}
