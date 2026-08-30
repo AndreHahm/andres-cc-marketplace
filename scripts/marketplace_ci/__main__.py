@@ -117,8 +117,10 @@ def _handle_check_plugin_mirrors(args: argparse.Namespace) -> int:
     if not plan.actions:
         print("check-plugin-mirrors: OK")
         return 0
-    _report("mirrors", plan.actions, repo)
-    return 1
+    has_problem = _report("mirrors", plan.actions, repo)
+    if not has_problem:
+        print("check-plugin-mirrors: OK (informational warnings only)")
+    return 1 if has_problem else 0
 
 
 def _handle_sync_plugin_mirrors(args: argparse.Namespace) -> int:
@@ -169,8 +171,10 @@ def _handle_check_codex_exports(args: argparse.Namespace) -> int:
     if not plan.actions:
         print("check-codex-exports: OK")
         return 0
-    _report("exports", plan.actions, repo)
-    return 1
+    has_problem = _report("exports", plan.actions, repo)
+    if not has_problem:
+        print("check-codex-exports: OK (informational warnings only)")
+    return 1 if has_problem else 0
 
 
 def _handle_convert_codex_exports(args: argparse.Namespace) -> int:
