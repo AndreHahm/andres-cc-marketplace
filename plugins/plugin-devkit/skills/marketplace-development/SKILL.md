@@ -15,10 +15,10 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/skills/marketplace-development/hooks/post_edit_validate.sh"
+          command: "./hooks/post_edit_validate.sh"
           timeout: 30
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/skills/marketplace-development/hooks/post_edit_sync_check.sh"
+          command: "./hooks/post_edit_sync_check.sh"
           timeout: 10
 ---
 

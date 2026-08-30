@@ -70,7 +70,7 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/prettier.sh"
+          command: "./scripts/prettier.sh"
           timeout: 2000
           onError: "warn"
 ---
@@ -159,7 +159,7 @@ hooks:
     - matcher: "^Bash$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/init-db.sh"
+          command: "./scripts/init-db.sh"
           once: true
           timeout: 5000
 ---
@@ -169,13 +169,24 @@ First time any Bash tool is used in this skill, init-db.sh runs. On subsequent u
 
 ## Environment Variables Available
 
-**All component-scoped hooks have access to:**
+**Reliably available to component-scoped hooks:**
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}     # Plugin root directory
 ${CLAUDE_PROJECT_DIR}     # Project root directory
 ${CLAUDE_CODE_REMOTE}     # "true" if running in web environment
 ```
+
+**`${CLAUDE_PLUGIN_ROOT}` is not confirmed available inside a SKILL.md/agent frontmatter-embedded
+`hooks:` block.** Official docs document it for a plugin's own `hooks/hooks.json` and for a skill's
+markdown content/`allowed-tools` — never for the frontmatter `hooks:` block itself, and the official
+skill-hooks example uses a bare relative path (`./scripts/security-check.sh`) instead. For a
+project-level skill (one with no enclosing plugin, e.g. `.claude/skills/<name>/`), a real bug confirmed
+`${CLAUDE_PLUGIN_ROOT}` resolves unpredictably rather than staying cleanly undefined — it expanded to
+the skill's own directory, causing a duplicated-path failure when the usual `skills/<name>/` segment
+convention (needed for `${CLAUDE_PLUGIN_ROOT}` elsewhere in a real plugin) was also applied. Use a
+relative path (matching the official example above) or `${CLAUDE_PROJECT_DIR}` with the full path from
+the project root — never `${CLAUDE_PLUGIN_ROOT}` — for a hook command inside a skill/agent's own
+frontmatter.
 
 ### CLAUDE_CODE_REMOTE Example
 
@@ -245,14 +256,14 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/check-formatters.sh"
+          command: "./scripts/check-formatters.sh"
           once: true
           timeout: 2000
   PostToolUse:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh"
+          command: "./scripts/format.sh"
           timeout: 3000
 ---
 
@@ -270,7 +281,7 @@ hooks:
     - matcher: "^(Write|Edit)$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/run-tests.sh"
+          command: "./scripts/run-tests.sh"
           timeout: 15000
           onError: "warn"
   Stop:
@@ -294,7 +305,7 @@ hooks:
     - matcher: "^Bash$"
       hooks:
         - type: command
-          command: "${CLAUDE_PLUGIN_ROOT}/scripts/audit-bash.sh"
+          command: "./scripts/audit-bash.sh"
           timeout: 2000
 ---
 ```
