@@ -47,7 +47,7 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
      - **missing** — no entry for that context's `name` (CheckRun) or `context` (StatusContext) string appears in `statusCheckRollup` at all, or a `StatusContext` entry with `state: EXPECTED` — not the same as **pending**, since nothing has actually started running for the current head commit.
 
      Every required context must classify as **passing**. **Exception, only when `--bypass-codex-review "<reason>"` was given**: if the *only* non-passing required context is `Publish Codex policy result` (the marketplace CI job that gates on Codex delta review — see `docs/ci.md` for the current required-check-name list), treat status checks as provisionally satisfied and continue to step 3 rather than stopping here; record that this PR is in the bypass path. If any *other* required context is non-passing, or if `Publish Codex policy result` already classifies as passing (nothing to bypass), the exception doesn't apply — fall through to the normal all-must-pass behavior above.
-   - **No outstanding change requests**: for each reviewer's *latest* review in `reviews`, none may be in `CHANGES_REQUESTED` state (a later `APPROVED` review from the same person supersedes an earlier `CHANGES_REQUESTED`). This is a coarser, independent check from `explain-pr-changes`' own review-comment-resolution-gate (which tracks resolving individual comments while *updating* a PR's description) — this check only asks "is there a standing objection," not "has every comment been individually triaged." Don't conflate the two or try to reuse one's logic for the other.
+   - **No outstanding change requests**: for each reviewer's *latest* review in `reviews`, none may be in `CHANGES_REQUESTED` state (a later `APPROVED` review from the same person supersedes an earlier `CHANGES_REQUESTED`). This is a coarser, independent check from `explain-pr-changes`' own review-comment-resolution-gate (which tracks resolving individual comments while *updating* a PR's description) — this check only asks "is there a standing objection," not "has every comment been individually triaged." Don't conflate the two or try to reuse one's logic for the other. **Not the same as** the unresolved-review-thread *advisory disclosure* below — this bullet is a required, blocking gate on review *state*; that one is a non-blocking *count* of open inline threads, and a PR can pass this bullet cleanly while still carrying unresolved threads.
 
    If any check fails and no bypass exception applies, tell the user exactly which context(s), which state (failing/pending/missing), and why (e.g. "1 required context missing: Fork PR (unsupported) — never ran for the current head commit", "2 required contexts still pending: lint, test", or "review from @alice requests changes"). Stop here — do not proceed to the rights check on a not-ready PR.
 
@@ -69,7 +69,9 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
      on the remote, which they always do for an open PR). A non-zero result means the branch is behind its
      base by that many commits — informational only, since GitHub's own `REBASE`/`SQUASH` merge already
      handles a stale branch mechanically at step 7; `/sync-branch` (`git-rebase-sync`) is the tool to
-     actually resync the branch, not this skill.
+     actually resync the branch, not this skill. **If this call fails for any reason**, state at step 5
+     that the count could not be determined — never report it as `0`, which would read as "confirmed
+     in sync" rather than "unknown."
    - **Unresolved review threads**: count inline review-comment threads not yet marked resolved. There is
      no REST field for this at all — live-verified against this repository's own PR #179:
      `gh api repos/{owner}/{repo}/pulls/<number>/comments`'s response carries no `resolved`/`is_resolved`
@@ -102,7 +104,10 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
      it says how many threads remain open, not which findings they contain or how severe they are; see
      Boundaries for how this differs from `handling-review-findings`'s job. A non-zero count never stops
      this skill — it's disclosed at step 5 so the user isn't led to believe "no outstanding
-     `CHANGES_REQUESTED`" means "no open findings."
+     `CHANGES_REQUESTED`" means "no open findings." **If any page of this query fails**, state at step 5
+     that the count could not be determined — never report it as `0`, which would read as "confirmed no
+     open threads" rather than "unknown" (the same discipline the out-of-sync-with-base check above
+     applies to its own failure case).
 3. **Merge-rights check** (only runs once the PR is confirmed ready, or provisionally ready via the step-2 bypass exception): follow the 3-tier procedure in `references/merge-rights-check.md` exactly — do not improvise a shortcut. It ends in either `MERGE ALLOWED` or `MERGE NOT ALLOWED` (with the specific reason). If `MERGE NOT ALLOWED` because `.github/CODEOWNERS` is missing, ask via `AskUserQuestion` whether to invoke `Skill(git-kit:manage-codeowners)` now to bootstrap one; otherwise (any other `MERGE NOT ALLOWED` reason) tell the user which tier failed and stop. **This check always runs before any bypass attestation** — merge rights are never granted on the strength of a bypass; a bypass only ever substitutes for the Codex-review status check, never for merge-rights.
 4. **Bypass attestation, wait, and re-verify** (only when step 2 flagged this PR as being on the bypass path — skip this step entirely otherwise, proceeding directly to step 5):
    a. Resolve the head SHA (`gh pr view $ARGUMENTS --json headRefOid --jq '.headRefOid'`) and the current authenticated actor (`gh api user --jq '.login'`). Re-verify the actor's live merge-capable permission (`write`/`maintain`/`admin`) — step 3 already confirmed this actor has merge rights, so this is the same check, not a new one; if it somehow fails here, stop and report rather than attesting.
@@ -133,7 +138,7 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
 ## Boundaries
 
 - Never auto-merges. The confirm step (5) always runs, regardless of any setting or bypass.
-- Never touches CODEOWNERS content or branch protection rules — step 2 reads the base branch's required-check list, but never creates, edits, or removes a branch-protection rule; strictly read-only against both. If CODEOWNERS needs to change, that's `manage-codeowners`'s job.
+- Never touches CODEOWNERS content or branch protection rules — step 2's documented steps only ever read the base branch's required-check list and the compare endpoint; none of this skill's own instructions create, edit, or remove a branch-protection rule. If CODEOWNERS needs to change, that's `manage-codeowners`'s job.
 - The merge-rights check runs inline in this skill — it is not a separate dispatched skill or agent, and it does not use or maintain any locally-cached collaborator-permission file; the collaborator-permission check is always a live API call.
 - Does not resolve review comments or generate a changeset summary — that's `explain-pr-changes`'s job. This skill's only relationship to review state is the coarse "no outstanding CHANGES_REQUESTED" gate in step 2.
 - Does not triage which review findings get fixed, filed, or declined — that's `handling-review-findings`'s job, upstream of this skill. This skill's own review-state check (step 2) is a coarse pass/fail gate, not a decision about individual findings; a deferred Critical/Major finding must be named explicitly when this skill is invoked, per that skill's own disclosure step. Step 2's unresolved-review-thread disclosure is the same kind of coarse signal — a count, never a list of findings, their content, or their severity.
@@ -147,6 +152,12 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
   alone bounds this. In particular, a GraphQL call never substitutes for step 7(b)'s marker-gated
   `gh pr merge` or step 5's explicit confirmation — this skill's only sanctioned path to actually merging
   a PR is step 7's own `gh pr merge` command, regardless of what the GraphQL grant could technically reach.
+- `Bash(gh api repos/*/branches/*/protection:*)`, `Bash(gh api repos/*/compare/*:*)`,
+  `Bash(gh api repos/*/pulls/*/commits:*)`, `Bash(gh api repos/*/labels/*:*)`, and
+  `Bash(gh api repos/*/collaborators/*/permission:*)` are all method-unrestricted, same reasoning as the
+  `graphql` grant above — `gh api`'s scoping syntax can't separate a GET from a PUT/DELETE on the same
+  endpoint path. The actual bound is the documented step that uses each one (all five are only ever
+  invoked with a bare GET in this skill's own instructions), not the grant itself.
 
 ## Testing & Validation
 
@@ -247,13 +258,15 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
 - [ ] Step 2's unresolved-review-thread loop always continues while `pageInfo.hasNextPage` is `true` — never treats the first page as the complete count
 - [ ] Step 5's confirmation always states both advisory disclosures explicitly, even when both are zero — never silently omitted just because there's nothing to warn about
 
-**Last dated run record:** 2026-08-27, `evals/merge-pr/` — eval-7/8/9: 4/4 assertions passed each (all
-`with_skill`, via `skill-tester`'s blind-comparison harness), covering step 2's four-state classification
-and step 7's rebase/squash logic. Predates issues #153/#160's two advisory disclosures added above — those
-are covered instead by `scripts/smoke_test.py`'s structural checks (re-run and passing after this edit)
-plus live verification of the actual `gh api compare`/`gh api graphql reviewThreads` calls against real
-PRs in this repository, not a fresh `skill-tester` run — see `evals/merge-pr/evals.json` for the existing
-scenario definitions.
+**Last dated run record:** 2026-08-30, `evals/merge-pr/workspace/iteration-5/` — all 9 existing eval
+scenarios re-run against the post-#153/#160 SKILL.md (Quick Workflow, `with_skill` only, via
+`skill-tester`): 9/9 passed, 0 regressions — confirms the two new advisory disclosures didn't change
+any of the file's pre-existing documented behavior. None of the 9 scenarios exercise the new
+out-of-sync-with-base/unresolved-review-thread checks themselves (evals.json hasn't been extended with
+new scenarios for them yet); those are covered instead by `scripts/smoke_test.py`'s structural checks
+(21 checks, all passing) plus live verification of the actual `gh api compare`/`gh api graphql
+reviewThreads` calls against real PRs and branches in this repository — see `evals/merge-pr/evals.json`
+for the existing scenario definitions.
 
 ## Reference Guide
 

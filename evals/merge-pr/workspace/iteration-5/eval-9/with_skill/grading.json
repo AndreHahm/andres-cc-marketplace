@@ -1,0 +1,31 @@
+{
+  "eval_id": 9,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States the tradeoff disclosure fires even though pr_merge_type was already SQUASH from the start, not just when squash is reached via the rebase pre-check or rejection fallback",
+      "passed": true,
+      "evidence": "'step 7(b)/(c) require that the squash-tradeoff disclosure fires unconditionally... explicitly including the case where SQUASH was already the configured default'."
+    },
+    {
+      "text": "States how many commits will collapse into one (via gh pr view --json commits --jq '.commits | length')",
+      "passed": true,
+      "evidence": "'state that 12 commits will collapse into one commit on the base branch'."
+    },
+    {
+      "text": "States that individual fix-round/review-commit granularity is lost on the base branch",
+      "passed": true,
+      "evidence": "'individual fix-round/review-commit granularity will be lost'."
+    },
+    {
+      "text": "States this disclosure happens before the --squash merge command runs, not after",
+      "passed": true,
+      "evidence": "'before calling gh pr merge, I state...  then write the marker... run gh pr merge <n> --squash'."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

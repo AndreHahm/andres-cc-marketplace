@@ -1,0 +1,5 @@
+This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/API calls -- describe exactly what you would do instead, and write your answer to a file.
+
+You are at step 7 of your own procedure. `merge_auto_delete_branch` is `true`. You ran `gh pr merge 142 --rebase --delete-branch`; it exited non-zero with local stderr `fatal: 'main' is already used by worktree '/repo'`. You then check `gh pr view 142 --json state,mergeCommit` and confirm `state` is `MERGED`. `headRefName` (from step 1) is `feat/some-feature`.
+
+Describe every check you perform next, in order, and what you do if the remote branch turns out to still exist. Write your answer to `outputs/procedure.md`.

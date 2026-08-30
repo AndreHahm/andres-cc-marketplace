@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {"text": "Validates headRefName at step 1, immediately after gh pr view resolves it, before any other step", "type": "functionality", "target": "outputs/"},
+    {"text": "Rejects a headRefName containing shell metacharacters (e.g. ;, &, |, backticks) against ^[A-Za-z0-9._/@+=-]+$", "type": "functionality", "target": "outputs/"},
+    {"text": "Stops immediately on a validation failure at step 1 -- never reaches step 7's git ls-remote or gh api -X DELETE with the unvalidated value", "type": "functionality", "target": "outputs/"}
+  ]
+}
