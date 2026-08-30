@@ -89,6 +89,30 @@ def test_divergence_exception_still_requires_dest_staged(git_repo):
     assert any("canonical source is staged but" in m for m in result.messages)
 
 
+def test_divergence_exception_does_not_apply_to_export_pair(git_repo):
+    # Codex-found gap: divergence_exceptions is a plan_plugin_sync concept with no
+    # equivalent in plan_exports (skill/agent exports to .agents/.codex have zero
+    # knowledge of the registry field). An exception declared with an export
+    # destination must never be honored here -- it would let check-all --staged pass
+    # a stale export the real, non-staged check-codex-exports always rejects.
+    _write_registry(
+        git_repo.root,
+        skills=["export-demo"],
+        divergence_exceptions=[
+            {
+                "source": ".claude/skills/export-demo/SKILL.md",
+                "dest": ".agents/skills/export-demo/SKILL.md",
+                "reason": "test: an export pair, not a plugin-mirror pair",
+            }
+        ],
+    )
+    git_repo.stage(".claude/skills/export-demo/SKILL.md", "canonical content")
+    git_repo.stage(".agents/skills/export-demo/SKILL.md", "stale content, never updated")
+    result = check_staged_parity(git_repo.root)
+    assert result.exit_code == 1
+    assert any("staged content does not match" in m for m in result.messages)
+
+
 def test_divergence_exception_does_not_apply_to_a_different_pair(git_repo):
     _write_registry(
         git_repo.root,

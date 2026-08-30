@@ -25,7 +25,7 @@ class SyncError(RuntimeError):
 
 @dataclass(frozen=True)
 class SyncAction:
-    operation: str  # "create" | "update" | "delete" | "warn" | "collision"
+    operation: str  # "create" | "update" | "delete" | "warn" | "missing_excepted" | "collision"
     source: Path | None
     destination: Path
     reason: str
@@ -176,11 +176,18 @@ def plan_plugin_sync(
         elif is_excepted:
             # The canonical source's own bytes are, by definition, wrong for this
             # destination (that's the entire reason the exception exists) -- never
-            # auto-create it from the canonical source. Surface a warning instead of
-            # silently producing a mirror with incorrect content.
+            # auto-create it from the canonical source. But a *missing* destination is
+            # not the same risk as a *differing* one: the exception permits divergent
+            # CONTENT, never absence, so this stays a blocking "missing_excepted"
+            # action (not "warn") -- `apply_sync_plan` never executes it either way
+            # (its create/update/delete dispatch doesn't recognize this operation), so
+            # this can never auto-write anything; only the exit-code/reporting
+            # treatment differs from "warn". Devin's original finding asked for
+            # exactly this: "emit a blocking/manual-repair action instead of creating
+            # a broken mirror."
             actions.append(
                 SyncAction(
-                    operation="warn",
+                    operation="missing_excepted",
                     source=None,
                     destination=dest,
                     reason=(
@@ -347,7 +354,9 @@ def apply_sync_plan(plan: SyncPlan) -> SyncResult:
         elif action.operation == "delete":
             action.destination.unlink(missing_ok=True)
             applied.append(action)
-        # "warn" actions are informational only; never executed.
+        # "warn" and "missing_excepted" actions are never executed -- the former is
+        # purely informational, the latter is a blocking signal that still must
+        # never auto-write incorrect (canonical-source) bytes to the destination.
 
     return SyncResult(applied=tuple(applied))
 

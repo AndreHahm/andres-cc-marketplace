@@ -92,10 +92,13 @@ def test_divergence_exception_prevents_post_edit_sync_from_overwriting_mirror(re
     ).read_text() == "genuinely different mirror content"
 
 
-def test_divergence_exception_warns_instead_of_creating_missing_destination(repo):
-    # Devin-found gap: an excepted destination that doesn't exist yet (not just mismatched)
-    # must never be silently created from the canonical source's own bytes -- those bytes are,
-    # by definition, wrong for this destination. Must produce a "warn" action, not "create".
+def test_divergence_exception_missing_destination_stays_blocking(repo):
+    # Devin's original finding: an excepted destination that doesn't exist yet (not just
+    # mismatched) must never be silently created from the canonical source's own bytes --
+    # those bytes are, by definition, wrong for this destination. Must produce a distinct,
+    # blocking "missing_excepted" action, never "create" -- and, per Codex's follow-up
+    # finding on the same case, never a non-blocking "warn" either: the exception permits
+    # divergent CONTENT, never absence, so a missing destination stays a real problem.
     from scripts.marketplace_ci.registry import DivergenceException, Registry
 
     registry = Registry(
@@ -118,7 +121,7 @@ def test_divergence_exception_warns_instead_of_creating_missing_destination(repo
         if action.destination.relative_to(repo).as_posix() == ".claude/skills/demo/SKILL.md"
     ]
     assert len(matching) == 1
-    assert matching[0].operation == "warn"
+    assert matching[0].operation == "missing_excepted"
     assert not (repo / ".claude" / "skills" / "demo" / "SKILL.md").exists()
 
 

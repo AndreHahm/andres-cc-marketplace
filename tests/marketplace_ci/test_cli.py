@@ -49,11 +49,35 @@ def test_sync_then_check_plugin_mirrors_passes(monkeypatch, repo):
 
 
 def test_check_plugin_mirrors_passes_with_only_warn_actions(monkeypatch, repo):
-    # Regression guard: a "warn"-only plan (a divergence-excepted destination that's
-    # missing, or intentionally differs from its canonical source) must exit 0 -- a
+    # Regression guard: a "warn"-only plan (a divergence-excepted destination that
+    # *exists* but intentionally differs from its canonical source) must exit 0 -- a
     # real production case (this repo's own marketplace-development/SKILL.md exception)
     # was regressing every CI run before this fix, since _handle_check_plugin_mirrors
     # returned 1 for ANY non-empty plan.actions, discarding _report's has_problem signal.
+    # (A *missing* excepted destination is a distinct, still-blocking case -- see
+    # test_check_plugin_mirrors_still_blocks_on_missing_excepted_destination below.)
+    _write_registry(
+        repo,
+        plugin_mirrors=["sample-kit"],
+        divergence_exceptions=[
+            {
+                "source": "plugins/sample-kit/skills/demo/SKILL.md",
+                "dest": ".claude/skills/demo/SKILL.md",
+                "reason": "test: intentionally divergent for a documented reason",
+            }
+        ],
+    )
+    (repo / ".claude" / "skills" / "demo").mkdir(parents=True, exist_ok=True)
+    (repo / ".claude" / "skills" / "demo" / "SKILL.md").write_text(
+        "genuinely different mirror content", encoding="utf-8"
+    )
+    monkeypatch.chdir(repo)
+    assert main(["check-plugin-mirrors"]) == 0
+
+
+def test_check_plugin_mirrors_still_blocks_on_missing_excepted_destination(monkeypatch, repo):
+    # Codex-found follow-up: the exception permits divergent CONTENT, never absence --
+    # a missing excepted destination must still fail check-plugin-mirrors.
     _write_registry(
         repo,
         plugin_mirrors=["sample-kit"],
@@ -66,7 +90,7 @@ def test_check_plugin_mirrors_passes_with_only_warn_actions(monkeypatch, repo):
         ],
     )
     monkeypatch.chdir(repo)
-    assert main(["check-plugin-mirrors"]) == 0
+    assert main(["check-plugin-mirrors"]) == 1
 
 
 def test_check_codex_exports_blocks_legacy_command_export(monkeypatch, repo):

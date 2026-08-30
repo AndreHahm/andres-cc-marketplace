@@ -51,13 +51,23 @@ class DivergenceException:
     not just the specific lines that need to diverge. Keep `reason` specific enough
     that a future reader can tell whether the exception is still needed.
 
+    Scoped to registered `plugin_mirrors` pairs only -- `plan_exports` (skill/agent
+    exports to `.agents/`/`.codex/`) has no concept of this registry field at all, so
+    `check_staged_parity` only ever honors an entry here for the plugin-mirror pair it
+    was declared for (`honor_exceptions=True`, passed only from that loop); a
+    (source, dest) pair naming an export destination is never excepted, since honoring
+    it would let the fast staged check pass a stale export the real, non-staged
+    `check-codex-exports` always rejects.
+
     Two mitigations against this whole-file scope hiding unrelated drift or a typo'd
     entry (both live in `sync.plan_plugin_sync`, not here): an active, differing
     exception is surfaced as an informational "warn" action on every check/check-all
     run (never silent) so a human periodically re-confirms the divergence is still
     just the documented, expected difference; and a declared (source, dest) pair that
     never matches a real, registered mirror pair is itself surfaced as "warn" (dead
-    configuration, most likely a typo, leaving its intended pair unprotected)."""
+    configuration, most likely a typo, leaving its intended pair unprotected). A
+    *missing* excepted destination is a distinct, blocking "missing_excepted" action,
+    never "warn" -- the exception permits divergent content, never absence."""
 
     source: str
     dest: str
