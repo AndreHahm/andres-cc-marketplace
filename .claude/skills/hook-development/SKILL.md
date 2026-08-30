@@ -282,14 +282,19 @@ Matchers are **case-sensitive**. Events that match on something other than tool 
 
 ## Environment Variables
 
-Available in all command hooks:
+Available in a `hooks/hooks.json`/`.claude/hooks.json` command hook:
 
 | Variable | Description |
 |---|---|
 | `$CLAUDE_PROJECT_DIR` | Project root path |
-| `$CLAUDE_PLUGIN_ROOT` | Plugin installation dir — use for all portable file references |
+| `$CLAUDE_PLUGIN_ROOT` | Plugin installation dir — use for portable file references in `hooks.json` |
 | `$CLAUDE_ENV_FILE` | **SessionStart only** — append `export VAR=val` here to persist env vars for the session |
 | `$CLAUDE_CODE_REMOTE` | Set if running in remote context |
+
+**A skill/agent frontmatter-embedded `hooks:` block is different:** `$CLAUDE_PLUGIN_ROOT` is not
+confirmed available there, and is confirmed broken for a project-level skill (no enclosing plugin) —
+see `references/component-scoped-hooks.md`'s "Environment Variables Available" section for the
+confirmed-working alternative (a relative path, or `$CLAUDE_PROJECT_DIR` with the full path).
 
 ---
 
@@ -336,6 +341,9 @@ Full semantics and JSON schemas: `references/exit-code-behavior.md`, `references
 
 ## Implementation Workflow
 
+For a `hooks/hooks.json`/`.claude/hooks.json` hook. For a skill/agent frontmatter-embedded `hooks:`
+block instead, see `references/component-scoped-hooks.md` — step 7 below does not apply there.
+
 1. **Detect project type** — check for `.claude-plugin/plugin.json` to pick correct hooks file location
 2. **Auto-detect tooling** to suggest relevant hooks:
    - `tsconfig.json` → PostToolUse type-check hook
@@ -347,7 +355,7 @@ Full semantics and JSON schemas: `references/exit-code-behavior.md`, `references
 4. **Choose hook type** — prompt (flexible), agent (requires file inspection), command (deterministic)
 5. **Write configuration** — ensure nested `"hooks": [...]` array is present
 6. **For command hooks** — read all data from stdin (`INPUT=$(cat)`)
-7. **Use `${CLAUDE_PLUGIN_ROOT}`** for all file references
+7. **Use `${CLAUDE_PLUGIN_ROOT}`** for all file references (this step is `hooks.json`-specific — see the note above)
 8. **Add `stop_hook_active` guard** to all Stop/SubagentStop hooks
 9. **Validate configuration** — `scripts/validate-hook-schema.sh hooks/hooks.json`
 10. **Lint scripts** — `shellcheck scripts/my-hook.sh`
