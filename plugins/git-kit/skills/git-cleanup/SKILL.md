@@ -126,7 +126,7 @@ Is branch merged into default branch?
 | LOCAL_WORK | Untracked branch with unique commits | Keep |
 | SYNCED_WITH_REMOTE | Up to date with remote | Keep |
 | STALE_REMOTE_ONLY | No local branch; remote branch's own PR is live-confirmed `MERGED` (Phase 3.5) | `gh api -X DELETE` |
-| STALE_REBASE_BACKUP_TAG | Leftover `git-rebase-sync` pre-rebase tag; originating branch is gone or merged (Phase 3.6) | `git tag -d` |
+| STALE_REBASE_BACKUP_TAG | Leftover `git-rebase-sync` pre-rebase tag; originating branch is gone or merged AND the tag's own commit is verified reachable from the default branch (Phase 3.6) | `git tag -d` |
 
 ### Phase 3.5: Remote Branch Fallback (stale `origin/<branch>` after merge)
 

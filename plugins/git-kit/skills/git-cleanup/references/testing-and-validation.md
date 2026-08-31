@@ -74,6 +74,20 @@ to exercise):**
       Claude Phase 2, 2026-08-31: `git check-ref-format --allow-onelevel` accepts a tag name containing
       shell metacharacters, e.g. `` `$(id)-rebase-backup-20260831-120000` ``, live-verified as a legal git
       ref)
+- [ ] The Category Definitions quick-reference table's `STALE_REBASE_BACKUP_TAG` row states the
+      reachability condition explicitly, not just "branch gone or merged" — a reader skimming only the
+      table (not Phase 3.6's own prose) must not be able to reconstruct the pre-fix, unsafe rule
+      (found by Codex's automated PR review on PR #262, 2026-08-31: the table's own text contradicted
+      Phase 3.6's actual, more restrictive rule)
+- [ ] `phase1-analysis.sh`'s `default_branch` resolution always falls back to `main` when
+      `origin/HEAD` has no symbolic-ref set, even though `sed` exits 0 on empty stdin (so a bare
+      `... || echo "main"` never fires its fallback) — live-verified against a repo with no origin
+      remote configured at all: before the fix, `default_branch` resolved to the empty string and
+      every rebase-backup tag was misreported as unreachable ("reachable from : NO"); after the fix,
+      the same repo correctly reports "reachable from main: yes"
+      (found by Devin's automated PR review on PR #262, 2026-08-31 — a pre-existing gap in this
+      script's default-branch resolution, surfaced because Phase 3.6's new reachability check is the
+      first caller whose behavior actually depends on `$default_branch` never being empty)
 
 **Live results, 2026-08-31:** ran the updated `phase1-analysis.sh` against a throwaway scratch repo with
 five rebase-backup tags: one whose branch was merged (without rebasing) and then deleted (correctly
@@ -87,6 +101,12 @@ rebase-then-merge case is caught even though the branch itself genuinely shows a
 matched the intended Phase 3.6 categorization with no false positives or negatives. Separately,
 `git check-ref-format --allow-onelevel '$(id)-rebase-backup-20260831-123456'` was run live and confirmed
 git accepts that string as a legal tag name, validating the ref-name safety check added above.
+
+**Live results, 2026-08-31 (post-PR-review fixes):** re-ran against a sixth scratch repo with no origin
+remote configured at all — before the `default_branch` fallback fix, every tag was misreported as
+unreachable ("reachable from : NO", empty default-branch name visible in the output); after the fix,
+the same repo correctly resolves to `main` and reports "reachable from main: yes". Re-ran the original
+five-scenario repo afterward too, confirming no regression from the fallback fix.
 
 **Verify Phase 3.5's remote-branch fallback (verified live, 2026-08-16, against two real stale remote
 branches in this repository — `feat/plugin-auditor-codex-integration` (PR #41) and
