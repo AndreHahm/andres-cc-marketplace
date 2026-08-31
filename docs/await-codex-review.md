@@ -34,7 +34,9 @@ distinguish an active review from a queued, missed, or unavailable one.
 ## Workflow contract
 
 1. Runs on `pull_request` events `opened` and `ready_for_review`, and on `issue_comment` events
-   (`created`) whose body contains `@codex review` or `@codex full review` and whose issue is actually a pull request
+   (`created`) whose body contains `@codex review` or `@codex full review`, whose commenter is not
+   `chatgpt-codex-connector[bot]` itself (added 2026-08-31 — see point 7 below for why), and whose
+   issue is actually a pull request
    (`github.event.issue.pull_request` present) — skipping the job while the pull request is a
    draft (checked directly from the event for `pull_request`; re-fetched live via `gh api` for
    `issue_comment`, since that event carries no pull-request sub-object). A plain `synchronize`
@@ -87,7 +89,13 @@ distinguish an active review from a queued, missed, or unavailable one.
    otherwise cancel a legitimately in-progress wait via `cancel-in-progress`, only to have its own
    job then skipped. The concurrency group (point 3) isolates this: a comment the job's own `if:`
    is about to skip gets a unique, one-off group suffix (this run's own `github.run_id`) instead of
-   sharing the real group, so it can never collide with — or cancel — an actual wait.
+   sharing the real group, so it can never collide with — or cancel — an actual wait. **A comment
+   from `chatgpt-codex-connector[bot]` itself is always treated as one the job's own `if:` will
+   skip, regardless of its body text** (added 2026-08-31, PR #257 round 2): the connector's own
+   replies routinely quote a trigger phrase back verbatim (e.g. summarizing "documents `@codex full
+   review` as a trigger"), which would otherwise match point 1's phrase check and cancel a genuine
+   in-progress wait to start a pointless second one — confirmed live as a real incident on this same
+   PR before this exclusion existed.
 
 ## Trigger scope
 
@@ -99,16 +107,22 @@ explicit `@codex review` comment to re-trigger a review. `synchronize` firing th
 every subsequent push produced a guaranteed ~30-minute timeout on a check nobody could act on
 without knowing to manually comment `@codex review` first. The trigger list above was narrowed to
 match the connector's actual current re-trigger conditions, plus the new `issue_comment` trigger so
-that manual `@codex review` comment itself starts a fresh wait.
+that manual `@codex review` comment itself starts a fresh wait. `@codex full review` (added
+2026-08-31) is this workflow's own second recognized trigger phrase alongside `@codex review`,
+matching the codex reviewer's `full_review_trigger` config value (`git-kit.settings.json`'s
+`review_findings_reviewers`) — both phrases start a fresh wait the same way.
 
 `reopened` was dropped along with `synchronize` (not just narrowed to the other two) — the
 connector's own documented triggers are "opening a PR, marking a draft ready, or [the `@codex
 review`] comment" (see `codex-review-recovery`'s SKILL.md), which does not include reopening a
 closed pull request.
 
-**Not decided by this change:** whether the `issue_comment` trigger should also filter by comment
-author (e.g. only PR collaborators, not any commenter) — left unrestricted for now, matching this
-check's existing visibility-only, non-required status. Revisit if that turns out to cause noise.
+**Partially decided, 2026-08-31 (PR #257 round 2):** the `issue_comment` trigger now excludes exactly
+one author — `chatgpt-codex-connector[bot]` itself, to stop its own trigger-phrase echoes from
+self-retriggering this workflow (see "Workflow contract" point 7 above). **Still not decided:**
+whether to filter by comment author more broadly (e.g. only PR collaborators, not any commenter) —
+left unrestricted for everyone else, matching this check's existing visibility-only, non-required
+status. Revisit if that turns out to cause noise.
 
 ## Result semantics
 
