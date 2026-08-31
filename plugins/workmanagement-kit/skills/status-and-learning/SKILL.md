@@ -48,16 +48,17 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    re-preview/re-approve it rather than writing the one that was just approved — a summary approved
    against now-stale facts is not the same as a summary approved against what's actually true right
    now. Only proceed to the write once this re-check confirms nothing changed.
-5. Write it via `notion-knowledge-management` — the write itself carries this transition's own
-   transition-id-tagged properties per `../../FOUNDATION_CONTRACTS.md`'s Transition Contract, plus
-   whatever `verification_evidence` the previous write to this record produced, if any.
+5. Write it via `notion-knowledge-management` — this creates a new record, so per
+   `../../FOUNDATION_CONTRACTS.md`'s creation-write exception, the create itself carries none of
+   the Transition Contract's fields yet (the new record's own stable ID doesn't exist until the
+   create response returns).
 6. Read back the new Notion record (the Linear side was already re-confirmed fresh in step 4, not a
    separate check to repeat here) to confirm the write succeeded. A summary/outcome record is
-   permanently dated and never revisited afterward (see Confirmation and Safety), so this write is
-   almost always the record's terminal write — record this read-back's own evidence per
-   `FOUNDATION_CONTRACTS.md`'s terminal-write exception (one additional metadata-only write solely
-   to carry this write's `verification_evidence`), not deferred to a next write that likely never
-   comes.
+   permanently dated and never revisited afterward (see Confirmation and Safety), so this record's
+   transition is recorded via one metadata-only follow-up write per `FOUNDATION_CONTRACTS.md`'s
+   terminal-write exception — carrying this create's own `transition_id`/`operation_id`/
+   `affected_record`/`source_plugin`, with `verification_evidence` set to `null` (nothing precedes
+   the create).
 
 ## Confirmation and Safety
 

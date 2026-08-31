@@ -58,9 +58,9 @@ or removed after preview) needs a fresh approval, not an extension of the old on
    without it when unavailable.
 5. On approval (via `AskUserQuestion`), create/adopt the Linear hierarchy via
    `linear-work-management`, one record at a time, in dependency order (a Milestone before the
-   Issues under it, etc.) — each write carries its own transition-id-tagged properties per
-   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract as part of that write itself, not a
-   separate step after it (see that contract's next-write convention).
+   Issues under it, etc.) — each write records its own transition per
+   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract (its next-write convention for an adopted
+   record, its creation-write exception for a newly created one).
 6. Read every created/adopted record back through `linear-work-management` before considering the
    promotion complete.
 7. Record the reciprocal link (stable IDs both directions) via `work-linking`.
