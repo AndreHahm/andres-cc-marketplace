@@ -24,17 +24,19 @@ pass again before this gate is wired to a live connector.
 
 ## Trust Model — Read Before Modifying This File
 
-**The `source_plugin` field is caller-asserted, not host-attested.** This skill's step 2 check is
-an **existence check**, not identity authentication: it confirms `source_plugin` names a real,
-currently-installed plugin in this repository — it does **not** confirm that plugin actually sent
-the payload. Any caller can set `source_plugin` to any real installed plugin's name and pass this
-check. Two consequences follow directly from this: the recorded transition's plugin attribution
-(step 6) reflects a caller-supplied claim, not a verified sender; and the approval preview a human
-judges (step 4) carries a source label this gate cannot substantiate on its own. If a future
-version of this skill's host integration provides an out-of-band, host-attested caller identity,
-that value — not the payload's own `source_plugin` field — becomes the one this gate checks and
-records; until then, treat every submission's stated source as a claim worth logging and
-existence-checking, never as a verified fact.
+**The `source_plugin`/`source_skill` fields are caller-asserted, not host-attested.** This skill's
+step 2 check is an **existence check**, not identity authentication: it confirms `source_plugin`
+names a real, currently-installed plugin in this repository, and that `source_skill` names a real
+skill (a directory containing a `SKILL.md`) inside that specific plugin — it does **not** confirm
+that plugin or skill actually sent the payload. Any caller can set either field to any real
+installed plugin/skill name and pass this check. Two consequences follow directly from this: the
+recorded transition's plugin attribution (step 6) reflects a caller-supplied claim, not a verified
+sender; and the approval preview a human judges (step 4) carries a source label this gate cannot
+substantiate on its own. If a future version of this skill's host integration provides an
+out-of-band, host-attested caller identity, that value — not the payload's own `source_plugin`/
+`source_skill` fields — becomes the one this gate checks and records; until then, treat every
+submission's stated source as a claim worth logging and existence-checking, never as a verified
+fact.
 
 ## Why the fresh-approval rule is absolute
 
@@ -65,9 +67,12 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
    - **Unknown source** (the claimed `source_plugin` doesn't name a real, currently-installed
      plugin — checked via `Glob` against this repository's `plugins/*/.claude-plugin/plugin.json`
      manifests, comparing against each manifest's own `name` field, never a directory name, which
-     can legitimately differ from it) → structured handoff, never a guess at who the real sender
-     might be. This is an existence check on the claim, not an authentication of the sender — see
-     Trust Model above.
+     can legitimately differ from it — **or** the claimed `source_skill` doesn't name a real skill
+     inside that specific plugin — checked via `Glob` against
+     `plugins/<claimed-source_plugin>/skills/<claimed-source_skill>/SKILL.md`, only after
+     `source_plugin` itself has already resolved) → structured handoff, never a guess at who the
+     real sender might be. This is an existence check on the claim, not an authentication of the
+     sender — see Trust Model above.
    - **Malformed content** (missing required fields, wrong type) → structured handoff.
    - **Ambiguous target** (the suggested mapping doesn't clearly resolve to one Notion database/
      page or one Linear entity) → structured handoff, never an inferred pick. Optional: for a
