@@ -3,7 +3,10 @@
   "notion": {
     "production_workspace_id": null,
     "test_workspace_id": null,
-    "databases": {}
+    "databases": {
+      "test": {},
+      "prod": {}
+    }
   },
   "linear": {
     "organization_id": null,
