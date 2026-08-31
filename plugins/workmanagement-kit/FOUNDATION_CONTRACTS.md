@@ -202,13 +202,24 @@ all.
 Immediately after the create response returns, read the new record back to confirm it — this
 read-back **is** the create's own `verification_evidence`, produced by the ordinary next-write
 convention exactly as it would be for any other write; it is not `null`, since the create is a real
-preceding write with real evidence, not an absence of one. The skill's very next write to that
-record embeds the CREATE's own transition in full — `transition_id`/`operation_id`/
-`affected_record`/`source_plugin` describing the create, plus that same read-back as
-`verification_evidence` — the same next-write convention above, anchored at a record's first write
-instead of its Nth. If nothing else is scheduled to write to the new record, the terminal-write
-exception's own exemption applies to this same follow-up write: it needs no further write of its
-own to record its own read-back — a plain confirming read is enough.
+preceding write with real evidence, not an absence of one. **The skill's very next write to that
+record is now an ordinary write to an existing record — it embeds its own `transition_id`/
+`operation_id`/`affected_record`/`source_plugin`, describing itself, exactly like any other write
+under the ordinary next-write convention** (never the create's own transition_id — the create's
+identity as a transition, beyond the read-back evidence it produced, is not separately retained;
+this is the same single-snapshot limitation already disclosed for every other write, tracked as
+issue #260, not a new gap this exception introduces). That write's `verification_evidence` carries
+the create's own read-back, per the ordinary next-write convention.
+
+**This matters when the record's next write is materially significant in its own right** — e.g.
+`idea-to-implementation`'s reciprocal-link write, not a bookkeeping-only follow-up: that write's own
+transition (identifying *that* write) is what gets embedded, never the create's. If that same write
+also turns out to be the record's terminal write (nothing else planned), the terminal-write
+exception's own exemption applies to it as usual — it needs no further write of its own to record
+its own read-back, a plain confirming read is enough — but its `verification_evidence` field still
+correctly carries the *create's* evidence (per the paragraph above), not its own; its own read-back
+is what the exemption excuses it from needing to record further, exactly as the terminal-write
+exception already describes for any other write.
 
 ## Disposition Record (`disposition-history`)
 
@@ -238,15 +249,18 @@ potentially from more than one pass over time.
 }
 ```
 
-- `item_id` must be stable across passes, not just within the one that produced it — derive it from
-  the item's own **full stated content as enumerated** (including whatever section/context precedes
-  it in the source), not an isolated text fragment, and never from a positional index. A later
-  re-run over the same source needs `item_id` to recognize an item it already dispositioned, which a
-  shifting positional index cannot support. Deriving from the fuller enumerated context (not just a
-  short excerpt) makes a collision between two genuinely different items in the same source
-  practically negligible, but doesn't make it impossible — if two items in the same pass still
-  produce an identical `item_id`, this is a structured handoff: surface the ambiguity to the user
-  rather than silently merging them or arbitrarily assigning the collision to one.
+- `item_id` must be stable across passes, not just within the one that produced it — derive it
+  **only from the item's own stated text**, never from surrounding section/context (context can
+  change between passes for reasons unrelated to this item — a heading edit, a neighboring item
+  added or removed — which would silently change the derived ID and break re-run matching even
+  though the item itself didn't change) and never from a positional index, which has the same
+  instability. A later re-run over the same source needs `item_id` to recognize an item it already
+  dispositioned, which only the item's own unchanged text can reliably support. This does allow a
+  genuine collision — two different items in the same source whose stated text happens to be
+  byte-identical — but that's the correct trade-off: stability across passes is the property this
+  field exists for; collision is the rarer failure mode. When it happens, this is a structured
+  handoff: surface the ambiguity to the user rather than silently merging the items or arbitrarily
+  assigning the collision to one.
 - `disposition` uses this hyphenated form; a consuming skill's own prose (e.g.
   `open-item-management`'s "retained knowledge", "Decision needed") maps directly to it — same four
   outcomes, just written for readability in prose versus this schema.

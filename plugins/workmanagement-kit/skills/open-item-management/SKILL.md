@@ -46,7 +46,13 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    follow-up or a duplicate `disposition-history` entry for it), unless the user explicitly asks to
    reconsider that specific item, in which case this pass appends a **new** entry with that item's
    same `item_id` rather than editing the existing one (per `../../FOUNDATION_CONTRACTS.md`'s
-   Disposition Record). An item can also already have a follow-up Issue (findable via that Issue's own
+   Disposition Record). **Before reconsidering an item whose most recent prior entry was
+   actionable-work with a non-null `linked_record`, read that Issue back.** If it still exists and is
+   usable, and the reconsidered disposition is still actionable-work, reuse that same Issue — this
+   pass never creates a second one for it in steps 4-5, only the new `disposition-history` entry's
+   note/context changes. If that Issue can no longer be read back or isn't usable, this is a
+   structured handoff to the user rather than silently creating a replacement or silently dropping
+   the item. An item can also already have a follow-up Issue (findable via that Issue's own
    `open-item-source.item_id`, which matches this item's own `item_id`) with no matching
    `disposition-history` entry yet — this means a prior pass's step 6 was declined or failed after
    step 5 already created it (see the Partial failure note below). If the lookup positively confirms
@@ -62,7 +68,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    follow-up candidate).
 4. Present only the actionable-work items as a batch of proposed Linear follow-ups, each with its
    source anchor (which Report/Decision/item it came from) — never present every classified item as
-   if it needs a Linear Issue.
+   if it needs a Linear Issue. A reconsidered item reusing an existing Issue (step 2) is not part of
+   this new-creation batch.
 5. On batch approval (via `AskUserQuestion`), create the approved follow-ups via
    `linear-work-management`, setting each new Issue's own `open-item-source` field
    (`{system, stable_id, item_id}` — `stable_id` for this pass's source record, `item_id` for the

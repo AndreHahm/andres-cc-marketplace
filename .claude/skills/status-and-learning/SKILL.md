@@ -57,11 +57,12 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    own `verification_evidence`. A summary/outcome record is permanently dated and never revisited
    afterward (see Confirmation and Safety), so this record's transition is recorded via one
    metadata-only follow-up write per `FOUNDATION_CONTRACTS.md`'s creation-write and terminal-write
-   exceptions together — carrying this create's own `transition_id`/`operation_id`/
-   `affected_record`/`source_plugin`, plus this same read-back as `verification_evidence` (not
-   `null` — the create is a real preceding write with real evidence). That follow-up write needs no
-   further write of its own to record its own read-back, per the terminal-write exception's
-   exemption.
+   exceptions together — that write carries **its own** fresh `transition_id`/`operation_id`/
+   `affected_record`/`source_plugin` (never the create's — the create's own transition identity
+   isn't separately retained, per the creation-write exception), with the create's own read-back as
+   its `verification_evidence` (not `null` — the create is a real preceding write with real
+   evidence). That follow-up write needs no further write of its own to record its own read-back,
+   per the terminal-write exception's exemption.
 
 ## Confirmation and Safety
 
