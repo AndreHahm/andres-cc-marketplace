@@ -166,9 +166,10 @@ Before creating a PR, check for uncommitted changes:
 1. Push the current branch to remote if it isn't already there: `git push -u origin <branch>` (`gh pr create` requires the branch to exist on the remote)
 
 2. Prepare your PR description following the resolved PR template (see Resolve PR Template above).
-   **Never write a literal `@<word>` mention-shaped token (e.g. `@codex review`, `@codex full review`,
-   `@coderabbitai review`) in the title or body** — see the "No literal bot-mention text" Best Practice
-   below for why and how to phrase it instead.
+   **Never spell out a bot's own review-trigger mention (e.g. `@codex review`, `@codex full review`,
+   `@coderabbitai review`) literally in the title or body** — an ordinary `@username`/`@team` mention
+   notifying a human collaborator is fine; see the "No literal bot-trigger mentions" Best Practice
+   below for the distinction and why.
 
 3. **Ask draft vs. ready-to-merge**: use `AskUserQuestion` — "Create this PR as a draft, or ready-to-merge?" with options "Draft (default)" and "Ready-to-merge". Don't assume draft silently; the user may want to skip the draft step entirely (e.g. a small, already-reviewed change). Record the answer as the `--draft` decision for the next step.
 
@@ -256,20 +257,23 @@ Before creating a PR, check for uncommitted changes:
    - `--draft` in the command when the answer is draft
    - Convert to ready for review later using `gh pr ready`
 
-6. **No literal bot-mention text**: never write a literal `@<word>` mention-shaped token (e.g.
-   `@codex review`, `@codex full review`, `@coderabbitai review`) in a PR title or body. GitHub's
-   automated review bots (Codex's connector, CodeRabbit, etc.) scan raw PR text for these patterns —
-   backtick/code-span wrapping does not protect against this. Confirmed live, PR #257, 2026-08-31: a
-   PR title and body that spelled out `@codex full review` literally (describing a fix that added
-   recognition for that exact trigger phrase to a workflow) caused Codex's connector to read the PR as
-   a task addressed to it rather than a diff to review — it attempted out-of-band work instead of
-   reviewing, and its own reply comment then self-retriggered the target workflow's wait-loop by
-   containing that same substring. Amending the PR title (and the underlying commit message — see
-   `commit`'s matching Best Practice) to describe the phrase in prose instead of reproducing it
-   literally resolved it: a subsequent manual `@codex review` comment triggered a normal review and
-   the check passed. The actual code/docs a PR touches can still contain the real string; only the
-   PR's own title/body should avoid it — same rule `commit` applies to the commit message, extended
-   here since Codex's automated review reads both.
+6. **No literal bot-trigger mentions**: never write a literal mention-shaped token addressed to an
+   automated review bot (e.g. `@codex review`, `@codex full review`, `@coderabbitai review`, or any
+   `@<bot-account>` handle immediately followed by a command-like word) in a PR title or body.
+   **This does not forbid an ordinary `@username`/`@team` mention used to notify a human
+   collaborator** (e.g. requesting a reviewer) — GitHub's automated review bots (Codex's connector,
+   CodeRabbit, etc.) scan raw PR text for bot-command-shaped patterns specifically, not for a bare
+   human mention, and backtick/code-span wrapping does not protect against this. Confirmed live, PR
+   #257, 2026-08-31: a PR title and body that spelled out `@codex full review` literally (describing
+   a fix that added recognition for that exact trigger phrase to a workflow) caused Codex's connector
+   to read the PR as a task addressed to it rather than a diff to review — it attempted out-of-band
+   work instead of reviewing, and its own reply comment then self-retriggered the target workflow's
+   wait-loop by containing that same substring. Amending the PR title (and the underlying commit
+   message — see `commit`'s matching Best Practice) to describe the phrase in prose instead of
+   reproducing it literally resolved it: a subsequent manual `@codex review` comment triggered a
+   normal review and the check passed. The actual code/docs a PR touches can still contain the real
+   string; only the PR's own title/body should avoid the bot-trigger form — same rule `commit`
+   applies to the commit message, extended here since Codex's automated review reads both.
 
 ### Common Mistakes to Avoid
 
@@ -436,9 +440,11 @@ loop.
       same issue reference
 - [ ] PR titles and descriptions are always in English, matching the template's exact section headers —
       never a custom section not in the resolved template
-- [ ] PR titles and descriptions never contain a literal `@<word>` mention-shaped token, even when the
-      PR itself is about a bot's own trigger-phrase syntax (e.g. adding `@codex full review`
-      recognition to a workflow) — the phrase is described in prose instead of reproduced literally
+- [ ] PR titles and descriptions never contain a literal bot-trigger mention (e.g. `@codex review`,
+      `@codex full review`), even when the PR itself is about a bot's own trigger-phrase syntax (e.g.
+      adding `@codex full review` recognition to a workflow) — the phrase is described in prose
+      instead of reproduced literally; an ordinary `@username`/`@team` mention notifying a human
+      collaborator is not affected by this check
 - [ ] `--bypass-codex-review` with an empty or missing reason is always rejected before any comment or
       label action — never silently attested with a blank reason
 - [ ] The attestation comment body is always built via `jq -n --arg` (or equivalent safe construction),
@@ -470,11 +476,13 @@ exercised as the active path (the primary `gh api user` lookup succeeded) — an
 authenticated user and owner are the same account, a real divergence between primary and fallback still
 isn't covered; a multi-maintainer repo would be needed to observe that.
 
-**Best Practice 6 (no literal bot-mention text) — incident source, 2026-08-31, PR #257:** see `commit`'s
-matching Testing & Validation entry for the full incident narrative — the PR title carried the same
-literal `@codex full review` text as the commit message that caused it. No fresh `skill-tester` eval
-re-run for this edit (prose guidance, no executable logic to simulate); verified by re-observing PR
-#257's real GitHub Actions run history after retitling.
+**Best Practice 6 (no literal bot-trigger mentions) — incident source, 2026-08-31, PR #257:** see
+`commit`'s matching Testing & Validation entry for the full incident narrative — the PR title carried
+the same literal `@codex full review` text as the commit message that caused it, and that same entry
+also covers round 2 (an independent Codex review caught the first version of this fix banning *any*
+`@<word>` mention, narrowed to bot-trigger-shaped mentions with an explicit human-mention carve-out).
+No fresh `skill-tester` eval re-run for this edit (prose guidance, no executable logic to simulate);
+verified by re-observing PR #257's real GitHub Actions run history after retitling.
 
 ## Related Documentation
 

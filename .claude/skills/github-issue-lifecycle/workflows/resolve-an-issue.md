@@ -54,9 +54,10 @@ two-step comment-then-close form, not `gh issue close --comment`'s single-comman
 independently checkable: the comment must exist as its own action, not implicit in a close flag. Step 5
 (Reopen) below follows the same deliberate two-step divergence. Before posting either comment, re-check
 the text for anything that should be redacted (emails, tokens, hostnames, session IDs, absolute local
-paths — `github-issue-creator`'s own canonical redaction list) **and for any literal `@<word>`
-mention-shaped token that should have been phrased in prose instead** (SKILL.md's "Outbound text must
-also avoid literal bot-mention syntax" note) — a resolution comment is just as public
+paths — `github-issue-creator`'s own canonical redaction list) **and for any literal bot-trigger
+mention that should have been phrased in prose instead** (SKILL.md's "Outbound text must also avoid
+literal bot-trigger mentions" note — an ordinary `@username`/`@team` mention notifying a human
+collaborator is fine and needs no redaction) — a resolution comment is just as public
 and permanent as the issue body itself. If `gh issue comment`/`gh issue close`
 fails, report the error and do not proceed as if the step succeeded.
 
