@@ -87,7 +87,13 @@ specific, not a fact about the plugin).
   physical Notion workspace (isolation then comes from separate databases within that shared
   workspace, not from separate workspace IDs) — a single-level flat map cannot represent both
   environments' database IDs at once, since a record-type key alone doesn't say which environment's
-  database it resolves to.
+  database it resolves to. **Naming note:** `databases`' `test`/`prod` keys and the sibling
+  `test_workspace_id`/`production_workspace_id` fields name two independent concepts (which database
+  a record type resolves to, vs. which Notion workspace scope is approved) that happen to share the
+  same environment vocabulary (`test`/`prod` vs. `test_workspace_id`/`production_workspace_id`) —
+  any future resolver code reading both must not assume a shared literal string; translate
+  `production_workspace_id`'s `production` to `databases`' `prod` key explicitly rather than deriving
+  one name from the other.
 - `test_workspace_id` / `test_team_id` — the isolated test locations Bootstrap also resolves,
   per its own "resolve the production and an isolated test location" instruction.
 
