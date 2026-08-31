@@ -1,6 +1,6 @@
 # Test Scenarios
 
-Full 25-scenario test walkthrough for `plugin-grader`, extracted from `SKILL.md`'s own
+Full 29-scenario test walkthrough for `plugin-grader`, extracted from `SKILL.md`'s own
 `## Testing & Validation` section per `plugin-rulebook`'s R30 (content beyond R29's required
 trigger-example lists and pass-criteria checklist must move to `references/` or `evals.json`, not stay
 inline in `SKILL.md`).
@@ -15,7 +15,15 @@ report imported cleanly into the marketplace-level rollup. `scripts/smoke_test.p
 after the SKILL.md edit (frontmatter/Bash-grant consistency, including the two new grants). Scenarios
 14-14h below are design-review-verified against this real run and two rounds of `cross-model-review`
 (which found and fixed the plugin-mode partial-existence gap, the under-disclosed consent question, and
-the plugin-mode partial-completion disclosure gap), not yet covered by a persisted `skill-tester` eval.
+the plugin-mode partial-completion disclosure gap). Scenarios 14i-14k were added after PR #271's own
+Codex and Devin review rounds found that Step 8 offered (and, in evidence-only mode, could actually
+attempt) an import that either couldn't succeed (a refusal has no score to import) or violated
+`plugin-lifecycle-downstream` Phase 11's own no-plugin-mutation contract, plus a hardcoded
+`plugins/<name>/` path assumption that breaks for a target resolved outside this marketplace's own
+layout — fixed by excluding evidence-only mode from Step 8 entirely and resolving the plugin directory
+from Step 1's own resolution instead of a reconstructed string. See `evals/plugin-grader/evals.json`
+for scenarios 14, 14a-14k as structured eval entries (added in the same PR round) — not yet run through
+a full `skill-tester` baseline-vs-with_skill comparison pass.
 
 1. **Single skill, clean** — grade a skill with no findings from any dispatched reviewer; confirm all 12 dimensions score 10 and `final_score` is 10.0 with no gates
 2. **Rule compliance gate** — grade a target with a known REQUIRED rule violation; confirm Gate A fires and `final_score` is capped at 6.0
@@ -43,3 +51,6 @@ the plugin-mode partial-completion disclosure gap), not yet covered by a persist
 14f. **Offer Inventory Import, plugin mode, partial existence** — grade a whole plugin whose own `plugin-inventory.json` exists but the repo has no `marketplace-inventory.json` yet (or vice versa); confirm the question discloses which half will run before asking, and confirm only the sub-step whose target file exists is attempted — never an unconditional attempt against the missing one, and never a script failure with no prior disclosure
 14g. **Offer Inventory Import, plugin-mode question discloses scope** — grade a whole plugin with 3 components, both target files present; confirm the `AskUserQuestion` text itself states the component count and mentions the plugin rollup, not the bare component-mode phrasing reused verbatim
 14h. **Offer Inventory Import, plugin mode, partial-completion failure** — construct a plugin-mode grade where one component's `(name, type)` has no matching record in `plugin-inventory.json` (a stale inventory) while the others do; confirm the components before the failing one are reported as successfully imported, the failing one's error is surfaced separately, and the rollup step's own run/skip status is stated — never a single collapsed pass/fail line that hides which components actually got written
+14i. **Offer Inventory Import, evidence-only mode never runs** — invoke evidence-only mode (as `plugin-lifecycle-downstream`'s Phase 11 would) and produce a normal scored report; confirm Step 8 is skipped entirely — no existence check, no `AskUserQuestion`, no write, no narrative note about missing inventory — since Phase 11's own contract forbids modifying the plugin during that phase
+14j. **Offer Inventory Import, evidence-only refusal never reaches Step 8** — invoke evidence-only mode with missing/stale required evidence, producing a refusal-shaped report (no `final_score`/`graded_at`); confirm Step 8 is skipped for the same reason as 14i (mode exclusion), not because of a separate "is this report scored" check — there is no such check, since evidence-only mode never reaches this step at all
+14k. **Offer Inventory Import, target resolved outside the marketplace layout** — grade a component/plugin whose target resolves to a directory not under this repo's own `plugins/<name>/` (a path-resolved target per Step 1's own Usage section); confirm the existence check Globs the *actual resolved* plugin directory's `.claude-plugin/plugin-inventory.json`, not a `plugins/<name>/`-shaped string reconstructed from the target's bare name — a real inventory file at the resolved location must be found, not silently reported as missing
