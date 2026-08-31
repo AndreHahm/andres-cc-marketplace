@@ -85,6 +85,17 @@ for tag in $(git tag -l '*-rebase-backup-*'); do
       fi
     else
       echo "branch status: no longer exists locally"
+      # The branch's own deletion was never verified by this run -- it may
+      # have been force-deleted outside git-cleanup's own SAFE_TO_DELETE/
+      # SQUASH_MERGED evidence trail, which would leave this tag as the only
+      # remaining reachable copy of whatever commits it holds. Check ancestry
+      # directly rather than trusting "branch is gone" as a proxy for "work
+      # is preserved elsewhere" -- these are not the same fact.
+      if git merge-base --is-ancestor "$tag" "$default_branch" 2>/dev/null; then
+        echo "reachable from $default_branch: yes"
+      else
+        echo "reachable from $default_branch: NO -- this tag may be the only remaining copy of its commits"
+      fi
     fi
   fi
 done
