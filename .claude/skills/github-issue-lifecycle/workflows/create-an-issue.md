@@ -17,8 +17,9 @@ stop here and point at it instead of filing a new issue.
 
 Required once Step 1 confirms no duplicate exists. Invoke `Skill(git-kit:github-issue-creator)` with
 the raw notes/logs/screenshots, **explicitly instructing it as part of this invocation to never write a
-literal `@<word>` mention-shaped token (e.g. `@codex review`, `@coderabbitai review`) in the drafted
-title or body** — see SKILL.md's "Outbound text must also avoid literal bot-mention syntax" note for
+literal bot-trigger mention (e.g. `@codex review`, `@coderabbitai review`) in the drafted title or
+body — an ordinary `@username`/`@team` mention notifying a human collaborator is fine** — see
+SKILL.md's "Outbound text must also avoid literal bot-trigger mentions" note for the distinction and
 why. That skill produces a local markdown draft under `issues/` — it has no `gh` access and does not
 file anything live itself.
 
@@ -28,9 +29,10 @@ Once the draft is approved, file it for real: `gh issue create --title "<title>"
 <draft-path>`. This is this skill's own responsibility, not `github-issue-creator`'s (see that skill's
 own "Not for filing directly on GitHub" note). Before filing, re-check the draft for anything that
 should have been redacted (emails, tokens, hostnames, session IDs, absolute local paths —
-`github-issue-creator`'s own canonical redaction list) **and for any literal `@<word>` mention-shaped
-token in the title or body that should have been phrased in prose instead** (SKILL.md's "Outbound text
-must also avoid literal bot-mention syntax" note) — since this step is what actually makes the content
+`github-issue-creator`'s own canonical redaction list) **and for any literal bot-trigger mention in
+the title or body that should have been phrased in prose instead** (SKILL.md's "Outbound text must
+also avoid literal bot-trigger mentions" note — an ordinary `@username`/`@team` mention notifying a
+human collaborator is fine and needs no redaction) — since this step is what actually makes the content
 public and permanent. If `gh issue create` fails (rate limit, permission error, network
 failure), report the error and do not proceed as if the issue was filed.
 
