@@ -41,6 +41,11 @@ Recommendation: Delete all 4 (work is in main)
 |--------|--------|
 | wip/new-feature | 5 unpushed commits |
 
+**Stale rebase-backup tag (originating branch gone or merged)**
+| Tag | Branch | Branch Status |
+|-----|--------|----------------|
+| feat/old-feature-rebase-backup-20260701-093000 | feat/old-feature | no longer exists locally |
+
 ### Worktrees
 | Path | Branch | Status |
 |------|--------|--------|
@@ -65,5 +70,6 @@ These changes will be LOST if you remove this worktree.
 - 1 squash-merged branch - safe to delete
 - 1 needs review
 - 1 to keep
+- 1 stale rebase-backup tag - safe to delete
 
 Which would you like to clean up?

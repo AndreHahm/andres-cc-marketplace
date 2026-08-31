@@ -60,3 +60,31 @@ comm -23 \
   <(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin \
     | grep -vE "^HEAD$|$protected" | sort -u) \
   <(git branch --format='%(refname:short)' | sort -u)
+
+# Leftover git-rebase-sync pre-rebase safety tags (local-only, never pushed --
+# see that skill's own Step 3: `git tag -a {branch}-rebase-backup-{timestamp}
+# -m "pre-rebase backup" HEAD`). Nothing ever deletes these afterward, so they
+# accumulate indefinitely. Only a tag matching the exact naming convention --
+# a branch name, then "-rebase-backup-", then the literal
+# `date +%Y%m%d-%H%M%S` shape (8-digit date, 6-digit time) -- is treated as
+# one of these, so an unrelated tag that merely contains that substring isn't
+# swept in by accident. For each match, report the derived branch name and
+# its current status so the skill's own Phase 3.6 can decide whether the tag
+# is safe to delete -- this script only gathers facts, it never categorizes.
+echo "=== Rebase-backup tags ==="
+for tag in $(git tag -l '*-rebase-backup-*'); do
+  if [[ "$tag" =~ ^(.+)-rebase-backup-[0-9]{8}-[0-9]{6}$ ]]; then
+    branch="${BASH_REMATCH[1]}"
+    echo "--- $tag (branch: $branch) ---"
+    if git show-ref --verify --quiet "refs/heads/$branch"; then
+      if git branch --merged "$default_branch" --format='%(refname:short)' \
+        | grep -qxF "$branch"; then
+        echo "branch status: exists, merged into $default_branch"
+      else
+        echo "branch status: exists, not merged into $default_branch"
+      fi
+    else
+      echo "branch status: no longer exists locally"
+    fi
+  fi
+done
