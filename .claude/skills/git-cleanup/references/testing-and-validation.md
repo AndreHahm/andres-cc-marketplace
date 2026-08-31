@@ -91,6 +91,16 @@ to exercise):**
       (or the snapshot was already consumed) → "no candidate list found -- run --list first"; a
       non-digit index → "is not a positive integer"; an out-of-range index → "one or more requested
       indices are out of range" — all live-verified
+- [ ] Each tag's safety is re-verified immediately before deletion, not just trusted from the `--list`
+      snapshot — the snapshot only protects index-to-tag mapping against drift, not the tag's own state;
+      a tag force-moved after `--list` runs is skipped at delete time with "no longer verified safe to
+      delete", not silently deleted
+      (found by `cross-model-review` round 5 on PR #262, both models independently — Codex Phase 1 raised
+      it, Codex's own Phase 2 pass re-derived it independently before seeing Claude's input, and Claude's
+      Phase 2 pass confirmed it, citing this repo's own
+      `.claude/rules/recheck-state-before-side-effecting-action.md`; live-verified: force-moved a listed
+      tag to an unreachable commit via `git tag -f` between `--list` and delete, confirmed the delete call
+      now skips it and reports why, and the tag survives)
 - [ ] The Category Definitions quick-reference table's `STALE_REBASE_BACKUP_TAG` row states the
       reachability condition explicitly, not just "branch gone or merged" — a reader skimming only the
       table (not Phase 3.6's own prose) must not be able to reconstruct the pre-fix, unsafe rule

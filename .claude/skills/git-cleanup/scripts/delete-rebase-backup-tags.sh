@@ -34,30 +34,42 @@ default_branch=$(git symbolic-ref refs/remotes/origin/HEAD \
   2>/dev/null | sed 's@^refs/remotes/origin/@@')
 default_branch="${default_branch:-main}"
 
-# Independently re-derives which rebase-backup tags are safe to delete --
-# same rule Phase 3.6 documents (branch gone or merged AND the tag's own
-# commit reachable from the default branch), recomputed fresh here rather
-# than trusting an earlier read, per
-# .claude/rules/recheck-state-before-side-effecting-action.md.
+# Single source of truth for the safe-to-delete predicate (branch gone or
+# merged AND the tag's own commit reachable from the default branch) -- used
+# both by --list (to build the candidate snapshot) and, separately, by the
+# delete loop below (to re-verify each tag immediately before deleting it).
+# Re-checking here rather than trusting the snapshot's mere presence closes a
+# TOCTOU gap found by cross-model-review (round 5, PR #262): between --list
+# and the actual delete call, the tag could be force-moved to a different
+# commit, or $default_branch itself could advance -- per
+# .claude/rules/recheck-state-before-side-effecting-action.md, a stale read
+# must never feed directly into a destructive action.
+is_tag_safe_to_delete() {
+  local tag="$1"
+  if [[ "$tag" =~ ^(.+)-rebase-backup-[0-9]{8}-[0-9]{6}$ ]]; then
+    local branch="${BASH_REMATCH[1]}"
+    local branch_gone=false
+    local branch_merged=false
+    if git show-ref --verify --quiet "refs/heads/$branch"; then
+      if git branch --merged "$default_branch" --format='%(refname:short)' \
+        | grep -qxF "$branch"; then
+        branch_merged=true
+      fi
+    else
+      branch_gone=true
+    fi
+    if $branch_gone || $branch_merged; then
+      git merge-base --is-ancestor "$tag" "$default_branch" 2>/dev/null
+      return $?
+    fi
+  fi
+  return 1
+}
+
 list_deletable() {
   for tag in $(git tag -l '*-rebase-backup-*'); do
-    if [[ "$tag" =~ ^(.+)-rebase-backup-[0-9]{8}-[0-9]{6}$ ]]; then
-      branch="${BASH_REMATCH[1]}"
-      branch_gone=false
-      branch_merged=false
-      if git show-ref --verify --quiet "refs/heads/$branch"; then
-        if git branch --merged "$default_branch" --format='%(refname:short)' \
-          | grep -qxF "$branch"; then
-          branch_merged=true
-        fi
-      else
-        branch_gone=true
-      fi
-      if $branch_gone || $branch_merged; then
-        if git merge-base --is-ancestor "$tag" "$default_branch" 2>/dev/null; then
-          printf '%s\0' "$tag"
-        fi
-      fi
+    if is_tag_safe_to_delete "$tag"; then
+      printf '%s\0' "$tag"
     fi
   done
 }
@@ -115,6 +127,14 @@ fi
 # from the snapshot file, never text the model composed into this command.
 failed=0
 for tag in "${matched[@]}"; do
+  # Re-verify immediately before deleting, not just at --list time -- the
+  # tag could have been force-moved, or $default_branch could have advanced,
+  # in the time since --list ran (see the predicate's own comment above).
+  if ! is_tag_safe_to_delete "$tag"; then
+    echo "Skipped '$tag': no longer verified safe to delete -- repo state changed since --list (the tag may have moved, been removed, or $default_branch advanced); run --list again and retry" >&2
+    failed=1
+    continue
+  fi
   if git tag -d -- "$tag"; then
     :
   else
