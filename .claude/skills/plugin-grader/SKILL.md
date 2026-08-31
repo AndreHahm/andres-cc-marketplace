@@ -16,7 +16,7 @@ description: >-
   `plugin-lifecycle-downstream`'s Grading phase scores pre-gathered evidence
   instead, with no dispatch of its own.
 argument-hint: "[target]"
-allowed-tools: Read Grep Glob Agent Skill Write Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-grader/scripts/compute_score.py:*) Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-grader/scripts/smoke_test.py:*) Bash(date:*)
+allowed-tools: Read Grep Glob Agent Skill Write Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-grader/scripts/compute_score.py:*) Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-grader/scripts/smoke_test.py:*) Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py:*) Bash(python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py:*) Bash(date:*)
 ---
 
 # Plugin Grader
@@ -31,7 +31,9 @@ Orchestrates this plugin's existing reviewer agents into one weighted, gated, 0-
 4. **Score dimensions and compute** — map findings to the rubric, run `scripts/compute_score.py`
 5. **Build SWOT + prioritized next steps** — `references/swot-and-next-steps.md`
 6. **Write the JSON report** — `.claude/output/plugin-grader/<target>-<timestamp>.json`
-7. **Present a narrative summary** in chat, then offer `enhancement-suggestor` as a follow-up
+7. **Present a narrative summary** in chat
+8. **Offer to import the score** into `plugin-inventory` (and `marketplace-inventory` for a plugin-mode rollup) — `AskUserQuestion`, never silent
+9. **Offer `enhancement-suggestor`** as a follow-up
 
 ## When to Use
 
@@ -49,12 +51,16 @@ Orchestrates this plugin's existing reviewer agents into one weighted, gated, 0-
 - A full WHAT/WHY/HOW implementation plan for the findings — use `enhancement-suggestor` (offered automatically as this skill's own Suggested Next Step)
 - A retrospective on how a component *behaved this session* — use `analyzing-sessions`; this skill grades static current-state quality, not session behavior
 - A side-by-side comparison of two components — use `plugin-comparison`
-- Recording, saving, or importing an already-completed score into a tracked component/plugin database —
-  use `plugin-inventory` (single plugin) or `marketplace-inventory` (whole marketplace) instead; this
-  skill only ever *computes* a fresh `final_score`/`plugin_final_score`, it never writes to
-  `plugin-inventory.json`/`marketplace-inventory.json` itself. If the request is phrased as
-  "record"/"save"/"update the database with" a grade rather than "grade"/"score"/"rank" the target
-  itself, defer to the inventory skill's own `import-grading` mode
+- Recording, saving, or importing an *already-completed* score into a tracked component/plugin database,
+  with no fresh grade wanted — invoke `plugin-inventory`'s (single plugin) or `marketplace-inventory`'s
+  (whole marketplace) own `import-grading` mode directly instead; this skill never computes or
+  reinterprets a score for that mode, it only ever *computes* a fresh `final_score`/`plugin_final_score`.
+  This skill still never writes to `plugin-inventory.json`/`marketplace-inventory.json` itself — Step 8
+  (Offer Inventory Import) only ever *offers*, via `AskUserQuestion`, to hand its own just-written report
+  to the inventory skill's `import-grading` mode, which owns the actual write. If the request is phrased
+  as "record"/"save"/"update the database with" a grade rather than "grade"/"score"/"rank" the target
+  itself, and no fresh grade is wanted, defer to the inventory skill directly instead of re-grading just
+  to reach the same offer
 
 ## Usage
 
@@ -169,7 +175,65 @@ Per `references/swot-and-next-steps.md` — every SWOT entry must trace to a spe
 
 In chat (not a separate file): a dimension score table, any `gates_applied` with their reasons, the final score, the SWOT, and the prioritized next steps — a readable rendering of the JSON just written, not a re-derivation of it.
 
-### 8. Suggested Next Step
+### 8. Offer Inventory Import
+
+Both modes, right after Step 7's narrative summary. This step only ever *offers* the import — the
+actual write is `plugin-inventory`'s/`marketplace-inventory`'s own `import-grading` mode, invoked here as
+a direct scoped `Bash` call (no `Skill` dispatch needed for a single deterministic script command),
+never this skill computing or reinterpreting the score itself.
+
+**Existence check first.** `Glob` for the target plugin's own
+`plugins/<plugin>/.claude-plugin/plugin-inventory.json` (component mode: the plugin owning the graded
+component; plugin mode: the graded plugin itself) and — plugin mode only —
+`.claude-plugin/marketplace-inventory.json` at the repo root. If neither exists, state in the narrative
+summary that no tracked inventory exists yet to import into (point at `plugin-inventory`'s own `build`
+mode, per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`) and skip the rest
+of this step entirely — never ask the question below when its only possible outcome is a script failure
+against a missing file.
+
+**Ask once, never silent.** If at least one target exists, ask via `AskUserQuestion`: "Import this grade
+into `<target>`'s tracked inventory?" — options "Yes — import (Recommended)" / "No — skip". This mirrors
+Step 9's own `enhancement-suggestor` offer, and the "no silent writes" convention
+`.claude/rules/require-inventory-updates-for-new-plugins-and-components.md` already establishes for
+`plugin-inventory`/`marketplace-inventory`'s own `bootstrap` mode — a score import is exactly as much a
+real write as a bootstrap is, and gets the same explicit-approval treatment, never folded silently into
+"grading is done."
+
+**If yes, component mode** (one import, using Step 6's just-written report path as `<report_path>`):
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py import-grading <plugin_dir> <inventory_path> <report_path> <target> <target_type>
+```
+
+**If yes, plugin mode** (both levels — the plugin rollup into `marketplace-inventory.json`, and every
+graded component's own score into that plugin's `plugin-inventory.json`). The single combined report
+Step 6 wrote nests each component's full standalone-shaped report object under its own `components`
+key (per `references/output-schema.md`'s Plugin Mode section) — `import-grading` needs a `report_path`
+whose *top-level* `target`/`target_type`/`final_score` match one component, so extract each entry and
+write it back out as its own file before importing it, rather than pointing `import-grading` at the
+combined report directly (its top-level `target_type` is `"plugin"`, which would only ever match a
+whole-plugin import):
+
+1. For each component in the written report's `components` object, write that nested object verbatim
+   (unchanged — it already carries its own `target`/`target_type`/`graded_at`/`final_score`/`dimensions`/
+   `gates_applied`) to `.claude/output/plugin-grader/<component-name>-<same-timestamp-as-Step-6>.json`,
+   then:
+   ```bash
+   python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py import-grading <plugin_dir> <inventory_path> <extracted_component_report_path> <component_name> <component_type>
+   ```
+2. Then, once, the plugin rollup itself:
+   ```bash
+   python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py import-grading <repo_root> <inventory_path> <report_path> <target> plugin
+   ```
+
+**Report the real outcome, not an assumed one.** Each command's own JSON output states
+`quality_score_appended`/`security_score_appended` — read these and report both back to the user, rather
+than presenting a `false` (already-imported, same report hash — a legitimate no-op, not an error) as if
+new history had landed. `import-grading` itself rejects a target/type mismatch, a malformed report, or an
+ambiguous same-`(name, type)` lookup with a clear `SystemExit` error before any write — surface that
+error to the user verbatim if it happens, rather than retrying or silently working around it.
+
+### 9. Suggested Next Step
 
 If `prioritized_next_steps` is non-empty, ask with `AskUserQuestion`: "Run `enhancement-suggestor` against this grading report for a full classified WHAT/WHY/HOW action plan?" — options "Yes — run enhancement-suggestor" / "No — skip for now". If yes, invoke the `enhancement-suggestor` agent (via `Agent`) against the written report path. Never invoke it without asking first.
 
@@ -178,6 +242,17 @@ If `prioritized_next_steps` is non-empty, ask with `AskUserQuestion`: "Run `enha
 See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` input/output, and the richer final report written to disk).
 
 ## Testing & Validation
+
+**Last dated run record:** `.claude/output/plugin-grader/example-plugin-2026-08-31T16-02-07Z.md` — the
+two new script invocations Step 8 relies on (`plugin-inventory.py import-grading` and
+`marketplace-inventory.py import-grading`) were live-dry-run against a scratch copy of `example-plugin`'s
+real `plugin-inventory.json` and the repo's real `marketplace-inventory.json`: a synthetic component-mode
+report imported cleanly (`quality_score_appended`/`security_score_appended` both `true`), a same-report
+re-import correctly reported both as `false` (scenario 14d's no-op case), and a synthetic plugin-mode
+report imported cleanly into the marketplace-level rollup. `scripts/smoke_test.py` re-run and passing
+after the SKILL.md edit (frontmatter/Bash-grant consistency, including the two new grants). Scenarios
+14-14e above are design-review-verified against this real run, not yet covered by a persisted
+`skill-tester` eval.
 
 1. **Single skill, clean** — grade a skill with no findings from any dispatched reviewer; confirm all 12 dimensions score 10 and `final_score` is 10.0 with no gates
 2. **Rule compliance gate** — grade a target with a known REQUIRED rule violation; confirm Gate A fires and `final_score` is capped at 6.0
@@ -196,6 +271,24 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 11. **All components N/A** — every component's `safety_risk_handling` is `is_na: true`; confirm `plugin_security_score` is `10.0` (matching the existing N/A-defaults-to-10 rule), not `null`
 12. **No security-scorable components** — a plugin whose components all have a `final_score` (quality is gradeable) but none has a `safety_risk_handling` dimension to report (e.g. every component is a type this skill can't assess for security); `component_scores` is still populated, only `component_security_scores` is omitted. Confirm `plugin_security_score` is `null` with a stated reason in `notes.security_score_unavailable_reason`, not a fabricated value. (A plugin with zero gradeable components at all is a different, harder failure — `compute_score.py --rollup` raises on an empty `component_scores`, since there is nothing to roll up; that case is reported as a refusal, not a `null` score.)
 13. **Schema-version field presence** — confirm a freshly-generated report (either mode) always carries `grader_schema_version: "1.1.0"`, and that a pre-existing report with no `grader_schema_version` key at all is distinguishable by that field's absence alone
+14. **Offer Inventory Import, no inventory exists** — grade a target whose plugin has no `plugin-inventory.json` yet (and, in plugin mode, no `marketplace-inventory.json`); confirm the offer is skipped outright (no `AskUserQuestion` fired) and the gap is stated plainly in the narrative summary instead
+14a. **Offer Inventory Import, component mode, accepted** — grade a single component whose plugin already has a `plugin-inventory.json`; accept the offer; confirm exactly one `plugin-inventory import-grading` call runs against the just-written report path, and both `quality_score_appended`/`security_score_appended` are reported back to the user
+14b. **Offer Inventory Import, declined** — decline the offer at either mode; confirm no `Bash` call to either inventory script is made
+14c. **Offer Inventory Import, plugin mode, accepted** — grade a whole plugin with 3 components, all already tracked in that plugin's `plugin-inventory.json`; accept the offer; confirm 3 per-component `plugin-inventory import-grading` calls run (each against a freshly extracted single-component report file, never the combined plugin-mode report), plus exactly one `marketplace-inventory import-grading` call for the plugin rollup
+14d. **Offer Inventory Import, re-grading an unchanged component** — run scenario 14a twice in a row against an unchanged target; confirm the second run's `quality_score_appended`/`security_score_appended` are both reported as `false` (a legitimate no-op — same report hash already imported) rather than presented as if new history landed
+14e. **Offer Inventory Import, import-grading rejects the report** — construct a target/type mismatch between the grading target and the inventory record it's imported against; confirm the script's `SystemExit` error is surfaced to the user verbatim, and no partial write occurs
+
+**Verify this skill activates on:**
+- "grade this plugin"
+- "rank this skill from 1 to 10"
+- "score this Claude Code plugin"
+- "rate this skill and suggest improvements"
+- "grade this rule"
+
+**Verify it does NOT activate on:**
+- "review this skill" with no scoring cue → the type-matched reviewer (`skill-reviewer`, `subagent-reviewer`, etc.) directly, per the Precedence bullet above
+- "compare these two skills" → `plugin-comparison`
+- "record this grade in the inventory" / "import the latest score" with no fresh grade wanted → `plugin-inventory`/`marketplace-inventory`'s own `import-grading` mode directly, not a re-grade through this skill
 
 **Quality gates:**
 - [ ] `scripts/compute_score.py` is always invoked for the weighted sum and gate math — never hand-computed
@@ -203,7 +296,11 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 - [ ] Gate D always emits the literal `"Missing verification."` comment when `testing` scores 0.0 — never a paraphrase
 - [ ] Standalone mode never dispatches a reviewer agent directly — always goes through `plugin-auditor`, which itself never sends all five type-matched `*-reviewer` agents for a single target
 - [ ] The written report path is always under `.claude/output/plugin-grader/`
-- [ ] The Step 8 `enhancement-suggestor` offer uses `AskUserQuestion` and is never auto-invoked
+- [ ] The Step 9 `enhancement-suggestor` offer uses `AskUserQuestion` and is never auto-invoked
+- [ ] Step 8's inventory-import offer always checks the target inventory file(s) exist before asking — never fires `AskUserQuestion` when the only possible outcome is a missing-file script failure
+- [ ] Step 8 never writes to `plugin-inventory.json`/`marketplace-inventory.json` without an explicit "Yes" answer first — no silent import, ever
+- [ ] Plugin-mode import never points `plugin-inventory import-grading` at the combined plugin-mode report file directly — each component's score is always extracted to its own standalone-shaped report file first
+- [ ] Step 8 always reports each import's real `quality_score_appended`/`security_score_appended` result — a no-op duplicate (`false`) is never presented as if new history landed
 - [ ] A staging-mirror duplicate (`.claude/` vs `plugins/plugin-devkit/`) is noted, not treated as an error
 - [ ] Fast mode is never presented as equivalent-fidelity to a full grade
 - [ ] Evidence-only mode never dispatches `plugin-auditor`, a reviewer agent, or a test — it only ever reads supplied evidence
@@ -229,4 +326,6 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 | `assets/example-output-plugin.json` | An abridged plugin-mode worked example, focused on the top-level `grader_schema_version`/`plugin_security_score`/`plugin_security_gates_applied` fields — each nested component entry deliberately shows only `safety_risk_handling`, not the full 12-dimension shape (see `assets/example-output.json` for a complete component-mode report) |
 | `plugin-auditor` skill | Step 3 — dispatched for fresh evidence in standalone mode, or supplies pre-gathered evidence consumed in evidence-only mode |
 | `plugin-rulebook-checker` agent | Rule Compliance dimension's signal source, via `plugin-auditor`'s own dispatch |
-| `enhancement-suggestor` agent | Turns the written report's `prioritized_next_steps` into a full WHAT/WHY/HOW plan (Step 8) |
+| `plugin-inventory` skill | Step 8 (Offer Inventory Import) — component-level import target, and plugin mode's per-component imports; see `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md` |
+| `marketplace-inventory` skill | Step 8 (Offer Inventory Import) — plugin-mode rollup import target |
+| `enhancement-suggestor` agent | Turns the written report's `prioritized_next_steps` into a full WHAT/WHY/HOW plan (Step 9) |
