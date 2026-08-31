@@ -211,7 +211,7 @@ Before creating a PR, check for uncommitted changes:
    gh pr create --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main --assignee <login>
    ```
 
-5. **Optional Codex-review bypass attestation** (only when invoked with `--bypass-codex-review "<reason>"`): a non-empty reason is required — if the flag is present with an empty or missing reason, reject it and stop before creating any attestation (the PR itself, already created in step 4, is unaffected). Otherwise, after the PR exists:
+5. **Optional Codex-review bypass attestation** (only when invoked with `--bypass-codex-review "<reason>"`): a non-empty reason is required — if the flag is present with an empty or missing reason, reject it and stop before creating any attestation (the PR itself, already created in step 4, is unaffected). **The reason text also gets posted verbatim to this PR as a comment (step d below) — check it for a literal bot-trigger mention the same way step 2's title/body check does, and reject it the same way as an empty reason if one is found**, asking for a rephrased reason instead of proceeding: a reason that happens to spell out a bot's own review-trigger mention (e.g. `@codex review`) would reproduce the exact self-retrigger risk this skill's "No literal bot-trigger mentions" Best Practice exists to prevent, just through this flag's own text instead of the drafted title/body (found by Codex's own automated review of this exact change, PR #258, 2026-08-31). Otherwise, after the PR exists:
    a. Resolve the current head SHA: `gh pr view <number> --json headRefOid --jq '.headRefOid'`.
    b. Resolve the current authenticated actor: `gh api user --jq '.login'`.
    c. Verify live merge-capable permission (`write`, `maintain`, or `admin`) for that actor on this repo: `gh api repos/{owner}/{repo}/collaborators/{actor}/permission --jq '.permission'`. If insufficient, **stop here and report the bypass was not attested** — the PR remains created, but state plainly that the Codex-review gate is still active because this actor lacks merge-capable permission.
@@ -259,21 +259,13 @@ Before creating a PR, check for uncommitted changes:
 
 6. **No literal bot-trigger mentions**: never write a literal mention-shaped token addressed to an
    automated review bot (e.g. `@codex review`, `@codex full review`, `@coderabbitai review`, or any
-   `@<bot-account>` handle immediately followed by a command-like word) in a PR title or body.
-   **This does not forbid an ordinary `@username`/`@team` mention used to notify a human
-   collaborator** (e.g. requesting a reviewer) — GitHub's automated review bots (Codex's connector,
-   CodeRabbit, etc.) scan raw PR text for bot-command-shaped patterns specifically, not for a bare
-   human mention, and backtick/code-span wrapping does not protect against this. Confirmed live, PR
-   #257, 2026-08-31: a PR title and body that spelled out `@codex full review` literally (describing
-   a fix that added recognition for that exact trigger phrase to a workflow) caused Codex's connector
-   to read the PR as a task addressed to it rather than a diff to review — it attempted out-of-band
-   work instead of reviewing, and its own reply comment then self-retriggered the target workflow's
-   wait-loop by containing that same substring. Amending the PR title (and the underlying commit
-   message — see `commit`'s matching Best Practice) to describe the phrase in prose instead of
-   reproducing it literally resolved it: a subsequent manual `@codex review` comment triggered a
-   normal review and the check passed. The actual code/docs a PR touches can still contain the real
-   string; only the PR's own title/body should avoid the bot-trigger form — same rule `commit`
-   applies to the commit message, extended here since Codex's automated review reads both.
+   `@<bot-account>` handle immediately followed by a command-like word) in a PR title or body — this
+   does not forbid an ordinary `@username`/`@team` mention used to notify a human collaborator (e.g.
+   requesting a reviewer). GitHub's automated review bots scan raw PR text for bot-command-shaped
+   patterns specifically, not for a bare human mention, and backtick/code-span wrapping does not
+   protect against this. The actual code/docs a PR touches can still contain the real string; only the
+   PR's own title/body should avoid the bot-trigger form. See
+   `references/bot-trigger-mention-incident.md` for the full incident this generalizes from.
 
 ### Common Mistakes to Avoid
 
@@ -386,6 +378,9 @@ loop.
   reason text), `codex-review-bypassed` label applied, success reported
 - `--bypass-codex-review` given with an empty or missing reason → rejected before posting any comment or
   applying any label; the already-created PR is unaffected
+- `--bypass-codex-review` given a reason containing a literal bot-trigger mention (e.g. `@codex review`)
+  → rejected the same way as an empty reason, before posting any comment; the reason's own text never
+  reaches `gh pr comment` unchecked
 - Actor lacks live merge-capable permission → attestation not posted, failure reported plainly, PR still
   exists
 - `codex-review-bypassed` label doesn't exist in the repo yet → reported as a bypass-attestation failure,
@@ -447,6 +442,8 @@ loop.
       collaborator is not affected by this check
 - [ ] `--bypass-codex-review` with an empty or missing reason is always rejected before any comment or
       label action — never silently attested with a blank reason
+- [ ] `--bypass-codex-review`'s reason text is always checked for a literal bot-trigger mention before
+      step 5d posts it — rejected the same way as an empty reason if one is found, never posted verbatim
 - [ ] The attestation comment body is always built via `jq -n --arg` (or equivalent safe construction),
       never by interpolating the reason text directly into a shell string
 - [ ] A failed attestation attempt (insufficient permission, missing label) is always reported as a
@@ -476,13 +473,11 @@ exercised as the active path (the primary `gh api user` lookup succeeded) — an
 authenticated user and owner are the same account, a real divergence between primary and fallback still
 isn't covered; a multi-maintainer repo would be needed to observe that.
 
-**Best Practice 6 (no literal bot-trigger mentions) — incident source, 2026-08-31, PR #257:** see
-`commit`'s matching Testing & Validation entry for the full incident narrative — the PR title carried
-the same literal `@codex full review` text as the commit message that caused it, and that same entry
-also covers round 2 (an independent Codex review caught the first version of this fix banning *any*
-`@<word>` mention, narrowed to bot-trigger-shaped mentions with an explicit human-mention carve-out).
-No fresh `skill-tester` eval re-run for this edit (prose guidance, no executable logic to simulate);
-verified by re-observing PR #257's real GitHub Actions run history after retitling.
+**Best Practice 6 and step 5's reason check (no literal bot-trigger mentions) — 3 rounds, PR #257/#258,
+2026-08-31:** see `references/bot-trigger-mention-incident.md` for the full narrative (rounds 1-2 from
+PR #257, round 3's two findings — the bypass-reason gap and this file's own R13 line-count fix — from
+Codex and Devin's automated review of PR #258 itself). No fresh `skill-tester` eval re-run for any
+round; each was verified by re-observing the real PR/GitHub Actions state after applying it.
 
 ## Related Documentation
 

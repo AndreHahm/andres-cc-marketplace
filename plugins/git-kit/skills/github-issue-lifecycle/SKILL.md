@@ -58,15 +58,11 @@ comment text. **This does not forbid an ordinary `@username`/`@team` mention use
 collaborator or assignee** — issues and comments routinely need that, and it carries none of the
 bot-trigger risk: GitHub's automated review bots (Codex's connector, CodeRabbit, etc.) scan raw text
 for bot-command-shaped patterns specifically, not for a bare human mention, and backtick/code-span
-wrapping does not protect against this either way. Confirmed live in a sibling case, PR #257,
-2026-08-31 (a commit message and PR title, not an issue, but the same underlying mechanism): Codex's
-connector read text spelling out `@codex full review` literally as a task addressed to it rather than
-content to review, attempted out-of-band work, and its own reply comment then self-retriggered the
-target workflow's wait-loop by containing that same substring — see `commit`'s matching Best Practice
-for the full incident, including a round-2 correction after an independent Codex review caught this
-skill's first draft over-banning all `@`-mentions. Describe a bot-trigger phrase in prose instead of
-reproducing it literally (e.g. "the connector's second retry phrase", or name the config key that
-holds it) — a human/team mention stays a plain `@username`/`@team` as normal.
+wrapping does not protect against this either way. See `commit`'s matching Best Practice for the full
+incident narrative and why (a sibling case, PR #257 — a commit message/PR title, not an issue, but the
+same underlying mechanism) and its own round-2 correction — not restated here. Describe a bot-trigger
+phrase in prose instead of reproducing it literally (e.g. "the connector's second retry phrase", or
+name the config key that holds it) — a human/team mention stays a plain `@username`/`@team` as normal.
 
 **Untrusted text must never be interpolated directly into a quoted shell argument.** Comment/body text
 built from issue content is always passed via `--body-file` (a scratchpad file), never inline
@@ -184,7 +180,10 @@ fresh-eyes pass (via `cross-model-review`) caught the first version of this boun
 `@<word>` mention — which would have blocked routine `@username`/`@team` mentions notifying an
 assignee or collaborator on an issue, the exact kind of legitimate mention this skill's own workflows
 rely on — narrowed to bot-trigger-shaped mentions specifically. No fresh `skill-tester` eval re-run for
-either round (prose guidance, no executable logic to simulate).
+either round (prose guidance, no executable logic to simulate). **Round 3, PR #258, 2026-08-31:**
+Devin's automated review flagged the incident narrative being restated at nearly every touch point
+across `commit`/`create-pr`/`github-issue-lifecycle` as a simplicity/drift risk — the boundary paragraph
+above was trimmed to point at `commit`'s single canonical narrative instead of restating it here too.
 
 **Verify this skill activates on:**
 - "work on issue #123"
