@@ -1,15 +1,19 @@
 # Intake Payload Schema
 
 The structured payload a calling plugin's own workflow hands to `plugin-integration-intake` via
-the host. This is the payload's logical shape, machine-enforced at the envelope level by
+the host. This is the payload's logical shape, defined at the envelope level by
 `assets/intake-payload.schema.json` (Draft 2020-12, `additionalProperties: false` on the envelope
-and on `suggested_mapping`). That schema deliberately does **not** fully encode `content`'s
-per-`target_system` shape — only `type: object, minProperties: 1` — to avoid restating the full
-per-record-type field list a third time (see `content` shape below for why the reference files
-stay the actual source of truth for that part). This reference document is still the authoritative
-statement of the fields and validation rules a caller must satisfy overall; the schema file
-mechanically catches a malformed envelope before this skill's own procedure (see SKILL.md) runs
-the parts a static schema can't express (the existence check, the ambiguous-target check).
+and on `suggested_mapping`). **No script, hook, or MCP tool currently invokes that schema at
+runtime** — until such an invocation is wired in, it mechanically enforces nothing on its own;
+today, envelope validation happens only through SKILL.md step 2's own procedure (the model
+reasoning through these rules directly) or an ad-hoc check run by hand. That schema deliberately
+does **not** fully encode `content`'s per-`target_system` shape — only `type: object,
+minProperties: 1` — to avoid restating the full per-record-type field list a third time (see
+`content` shape below for why the reference files stay the actual source of truth for that part).
+This reference document is still the authoritative statement of the fields and validation rules a
+caller must satisfy overall; the schema file is a machine-checkable definition of the envelope
+shape, and SKILL.md step 2 is what actually applies it — both the envelope rules and the parts a
+static schema can't express (the existence check, the ambiguous-target check).
 
 ## Fields
 

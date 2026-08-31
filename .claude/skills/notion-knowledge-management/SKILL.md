@@ -9,7 +9,7 @@ description: >-
   the content. Reads, classification, and previews need no approval; all material record creation,
   Decision state changes, and Goal proposals require the plugin's live approval gate, with no
   exception for a record that looks low-risk or purely archival.
-allowed-tools: Read, AskUserQuestion, mcp__workmanagement-kit__notion_read, mcp__workmanagement-kit__notion_write
+allowed-tools: Read, AskUserQuestion, Bash(git ls-files:*), mcp__workmanagement-kit__notion_read, mcp__workmanagement-kit__notion_write
 ---
 
 # Notion Knowledge Management
@@ -67,7 +67,11 @@ check those before calling the connector even when the connector tool itself is 
 file ships with every operation defaulting to `support_status: "unconfigured"`** — an installation
 makes it functional via `.claude/workmanagement-kit.local.json` during Foundational Setup (see the
 plugin README's Status section); until an operation's `support_status` reads `verified`, no write
-may proceed on the assumption that a sanctioning check happened.
+may proceed on the assumption that a sanctioning check happened. **Before honoring that override
+file's contents at all**, run the tracked-vs-untracked trust check `FOUNDATION_CONTRACTS.md`'s Local
+Override section defines (`Bash(git ls-files:*)` is granted in this file's own `allowed-tools`
+specifically so this check is actually runnable, not just documented) — a tracked copy falls back
+to the shipped `unconfigured` defaults, never the override's claims.
 
 The `mcp__workmanagement-kit__notion_read`/`notion_write` tools in this file's own `allowed-tools`
 have no backing MCP server configuration yet — that's pending Foundational Setup (connector
