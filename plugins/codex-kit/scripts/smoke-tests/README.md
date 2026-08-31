@@ -1,6 +1,6 @@
 # Smoke Tests
 
-Persistent, dependency-free Node scripts verifying specific behavior fixes in codex-kit. Each file targets one component and exits `0` on all-pass, `1` on any failure — no test framework required.
+Persistent, mostly dependency-free Node scripts verifying specific behavior fixes in codex-kit. Each file targets one component and exits `0` on all-pass, `1` on any failure — no test framework required. The one exception is `codex-exec-live-roundtrip.mjs`, which requires a real, authenticated `codex` CLI and consumes API quota when it runs live (see its own row below and "When to re-run").
 
 Run from `plugins/codex-kit/`:
 
