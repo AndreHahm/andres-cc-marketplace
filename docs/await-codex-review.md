@@ -12,8 +12,8 @@ see "Adoption modes" below.
 
 The workflow starts only when Codex's own auto-review connector would actually be asked to look at
 the pull request: the pull request is opened non-draft (`opened`), a draft pull request is marked
-ready for review (`ready_for_review`), or someone posts an explicit `@codex review` comment
-(`issue_comment`) — never on a plain `synchronize` push by itself, since the connector no longer
+ready for review (`ready_for_review`), or someone posts an explicit `@codex review` or
+`@codex full review` comment (`issue_comment`) — never on a plain `synchronize` push by itself, since the connector no longer
 auto-reviews every push (see "Trigger scope" below for why this changed). Its `Await Codex review`
 job stays in progress until one of three things happens: GitHub reports a submitted review from
 `chatgpt-codex-connector[bot]` for the pull request's current head commit (a commit-exact signal);
@@ -34,7 +34,7 @@ distinguish an active review from a queued, missed, or unavailable one.
 ## Workflow contract
 
 1. Runs on `pull_request` events `opened` and `ready_for_review`, and on `issue_comment` events
-   (`created`) whose body contains `@codex review` and whose issue is actually a pull request
+   (`created`) whose body contains `@codex review` or `@codex full review` and whose issue is actually a pull request
    (`github.event.issue.pull_request` present) — skipping the job while the pull request is a
    draft (checked directly from the event for `pull_request`; re-fetched live via `gh api` for
    `issue_comment`, since that event carries no pull-request sub-object). A plain `synchronize`
@@ -203,7 +203,7 @@ author, is not something a human can spoof from the GitHub UI, by design.
 ## Adoption modes
 
 Currently visibility-only: the check runs per the trigger scope above (opened non-draft, marked
-ready for review, or an `@codex review` comment) but is not required by branch protection. Making `Await Codex review` a required status check is a real option — a
+ready for review, or an `@codex review`/`@codex full review` comment) but is not required by branch protection. Making `Await Codex review` a required status check is a real option — a
 missing or late external review would block merging after the workflow times out — but it comes
 with a real, structural tradeoff, not just a pending-validation item; see "Validation before
 requiring this check" below before deciding.
