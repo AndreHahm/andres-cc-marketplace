@@ -40,11 +40,11 @@
   "allOf": [
     {
       "if": {"properties": {"target_system": {"const": "notion"}}, "required": ["target_system"]},
-      "then": {"properties": {"suggested_mapping": {"required": ["notion_database"]}}}
+      "then": {"properties": {"suggested_mapping": {"required": ["notion_database"], "not": {"required": ["linear_target"]}}}}
     },
     {
       "if": {"properties": {"target_system": {"const": "linear"}}, "required": ["target_system"]},
-      "then": {"properties": {"suggested_mapping": {"required": ["linear_target"]}}}
+      "then": {"properties": {"suggested_mapping": {"required": ["linear_target"], "not": {"required": ["notion_database"]}}}}
     }
   ]
 }

@@ -2,8 +2,13 @@
 
 Five entity types this skill owns. Each row below lists the fields beyond the shared identity
 (stable ID, `transition-id`) that this specific entity type carries — `notion-link` is not a
-shared field; only Goal carries it (see its own table below), since it's the only entity type
-promotion from Notion produces directly.
+shared field; only Goal, Project/Initiative, and Issue carry it (see their own tables below),
+since those are the entity types `idea-to-implementation`'s own promotion mapping actually
+targets (see `promotion-hierarchy-mapping.md`'s Typical Mappings table — an Idea typically
+promotes to an Issue or a small Project, not a Goal; a proposed Goal promotes to a Goal). Roadmap
+and Milestone are never promotion targets in their own right — they're intermediate hierarchy
+placements a promotion may also touch, not something Notion knowledge is promoted *into* — so
+neither carries `notion-link`.
 
 ## Goal
 
@@ -32,6 +37,7 @@ promotion from Notion produces directly.
 | `team` | Yes | Owning Linear team |
 | `target-date` | No | Expected completion |
 | `contained-milestones` | No | Stable IDs of Milestones under this Project |
+| `notion-link` | No | The Idea or accepted Decision record this was promoted from, if promoted via `idea-to-implementation` |
 
 ## Milestone
 
@@ -53,13 +59,14 @@ promotion from Notion produces directly.
 | `dependencies` | No | Other Issues this one depends on or blocks |
 | `cycle` | No | The Linear cycle this Issue is scheduled in |
 | `status` | Yes | Linear's own workflow status (team-configured) |
+| `notion-link` | No | The Idea or accepted Decision record this was promoted from, if promoted via `idea-to-implementation` — the required reciprocal half of `work-linking`'s stable-ID pair for this plugin's most common promotion path |
 
 ## Cross-Entity Rules
 
 - `title` is required on every entity — it is the primary human-readable identifier shown in
   previews and approval prompts.
-- Any field named `contained-*`/`dependencies`/`related-*` stores stable IDs only, never display
-  names — see SKILL.md's "never infer a target from a display name" rule.
+- Any field named `contained-*`/`dependencies`/`related-*`/`notion-link` stores stable IDs only,
+  never display names — see SKILL.md's "never infer a target from a display name" rule.
 - `status` values are team-configured in Linear itself, not a fixed enum this skill defines — read
   the team's actual configured statuses before proposing a status change rather than assuming a
   generic set (e.g. "Done") exists.
