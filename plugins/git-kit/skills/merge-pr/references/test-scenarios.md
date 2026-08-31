@@ -36,26 +36,44 @@ R29's own three required inline subsections, the trigger-phrase lists and `Quali
 - The branch-protection required-check list and `statusCheckRollup` disagree in count (a context required by branch protection has zero matching rollup entries) → the context is still individually classified **missing**, not silently dropped from the readiness report
 - The branch-protection REST call itself fails (no protection configured, insufficient permission, transient API error) → stop and report that the required-check list could not be resolved; never fall back to `gh pr checks`'s bare output to satisfy the gate
 
-**Verify step 2's two advisory disclosures never block readiness and are always surfaced at step 5:**
-- Branch is 0 commits behind base, `isCrossRepository` is `false` → `behind_by` resolves to `0`; step 5
-  still states "0 commits behind base" explicitly, never omitted just because it's clean
+**Verify step 2's no-merge-conflicts and not-behind-base checks are required, blocking gates:**
+- `mergeable` resolves to `MERGEABLE` → the check passes silently, no interruption
+- `mergeable` resolves to `CONFLICTING` → step 2 stops, reports the PR has merge conflicts with
+  `<baseRefName>`, and points at `resolving-merge-conflicts` — never proceeds to the rights check
+- `mergeable` resolves to `UNKNOWN` → step 2 polls `gh pr view $ARGUMENTS --json mergeable` until it
+  reaches a terminal value; if it's still `UNKNOWN` after polling, step 2 stops and reports mergeability
+  could not be determined — never silently treated as `MERGEABLE`
+- A re-run (step 4(e) or step 7(d)) re-fetches `mergeable` fresh rather than reusing step 1's original
+  fetch — a conflict that appeared after step 1 (e.g. a new commit landed on the base branch) is caught
+  before merging
+- Branch is 0 commits behind base, `isCrossRepository` is `false` → `behind_by` resolves to `0`; the
+  check passes silently, no interruption
 - Branch is N commits behind base (N > 0), `isCrossRepository` is `false` → step 2 computes the real
-  count via the compare endpoint; readiness is unaffected (no stop, no bypass needed); step 5 states the
-  exact count
-- `isCrossRepository` is `true` → the compare-endpoint call never runs at all; step 5 states the check
-  was skipped for that reason, not silently omitted
+  count via the compare endpoint, stops, reports the exact count, and points at `/sync-branch` — never
+  proceeds to the rights check on a stale branch
+- `isCrossRepository` is `true` → the compare-endpoint call never runs at all; the check is treated as
+  passing and step 5 states explicitly that it was skipped for that reason, not silently omitted
+- The compare-endpoint call fails for any reason → step 2 stops and reports the in-sync state could not
+  be confirmed — never treated as passing
+
+**Verify step 2's two advisory disclosures never block readiness and are always surfaced at step 5:**
+- `mergeStateStatus` resolves to `CLEAN` → step 5 still states the raw value explicitly, never omitted
+  just because it's clean
+- `mergeStateStatus` resolves to `BLOCKED`, `DIRTY`, `BEHIND`, `UNSTABLE`, or `HAS_HOOKS` while this
+  skill's own required checks above all pass → the disclosure surfaces the disagreement; readiness is
+  unaffected (no stop, no bypass needed) — this value is informational only, never a gate on its own
 - PR has zero review threads, or every thread is resolved → the `reviewThreads` count resolves to `0`;
   step 5 still states "0 unresolved review threads" explicitly
 - PR has N unresolved review threads across more than one GraphQL page (> 100 total threads) → the loop
   continues while `pageInfo.hasNextPage` is `true`, summing `isResolved: false` nodes across every page,
   not just the first
-- Either disclosure is non-zero → readiness still reaches step 5's confirmation normally; neither
-  disclosure ever causes step 2 to stop the way a failing required check does
+- Either disclosure is non-zero/non-clean → readiness still reaches step 5's confirmation normally;
+  neither disclosure ever causes step 2 to stop the way a failing required check does
 - The `reviewThreads` query's own marker write (`gh-pr-review`) is immediately followed by the `gh api
   graphql` call on every page, including the second and later pages of a paginated result — never reused
   from an earlier page's marker
-- Either the compare call or a page of the `reviewThreads` query fails → step 5 states the corresponding
-  disclosure as "could not be determined," never silently as `0`
+- The `reviewThreads` query fails on any page → step 5 states the disclosure as "could not be
+  determined," never silently as `0`
 
 **Verify step 7's rebase-compatibility pre-check, squash-tradeoff disclosure, and rejection fallback:**
 - `pr_merge_type` is `REBASE`, the PR's commit history contains zero merge commits → step 7(a)'s pre-check finds a zero count and proceeds straight to `gh pr merge --rebase` with no `AskUserQuestion` interruption
