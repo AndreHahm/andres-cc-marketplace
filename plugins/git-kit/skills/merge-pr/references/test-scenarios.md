@@ -125,3 +125,9 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - `pr_merge_type` is already `SQUASH` (no rebase pre-check involved) → step 7(c)'s disclosure still fires; it is never conditioned on having reached squash via (a) or (d)
 - `pr_merge_type` is `REBASE`, step 7(a)'s pre-check finds zero merge commits, but `gh pr merge --rebase` fails live anyway (history changed after the pre-check) → step 7(d) asks for an alternate strategy, never silently retries with a different flag
 - Step 7(d)'s fallback fires → the *full* step-2 readiness check re-runs before retrying, not just a bare re-attempt of the merge command; if the re-check now fails (e.g. a required check regressed while the user was being asked), report why and stop rather than retrying
+
+**Verify step 7(b)'s final readiness recheck fires on every path (Devin's review of PR #269, 2026-08-31):**
+- Normal path, no bypass, no rejection fallback → step 2 passed once, step 5 confirmed, but before step 7(b) writes the marker it re-runs the full step-2 readiness check one more time — this is new behavior, not merely step 4(e)/7(d)'s existing reruns
+- The final recheck fails (e.g. a required status check regressed, or the branch fell behind base, during step 5's confirmation delay) → step 7(b) stops and reports why, never writes the marker, never attempts `gh pr merge`
+- Bypass path → step 4(e) already reran step 2 once; step 7(b)'s final recheck still runs again immediately before the marker/merge command, since step 5's confirmation happens after step 4(e), not before it
+- The final recheck passes → step 7(b) proceeds to write the marker and merge exactly as before this fix
