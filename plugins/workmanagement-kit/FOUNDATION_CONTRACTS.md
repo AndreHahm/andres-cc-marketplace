@@ -64,7 +64,10 @@ specific, not a fact about the plugin).
   "notion": {
     "production_workspace_id": null,
     "test_workspace_id": null,
-    "databases": {}
+    "databases": {
+      "test": {},
+      "prod": {}
+    }
   },
   "linear": {
     "organization_id": null,
@@ -74,9 +77,17 @@ specific, not a fact about the plugin).
 }
 ```
 
-- `notion.databases` — a map from Notion record type (`idea`, `decision`, `proposed-goal`, `note`,
-  `research`, `report`, `outcome-learning`) to that type's resolved database ID, populated
-  incrementally as Bootstrap resolves each type — never required to be fully populated at once.
+- `notion.databases` — an object with exactly two keys, `test` and `prod`, each itself a map from
+  Notion record type (`idea`, `decision`, `proposed-goal`, `note`, `research`, `report`,
+  `outcome-learning`) to that type's resolved database ID **for that environment**, populated
+  incrementally as Bootstrap resolves each type — never required to be fully populated at once, and
+  the two environments' maps are populated independently (resolving `test.idea` implies nothing
+  about whether `prod.idea` is resolved yet). Both environments need their own resolved database ID
+  per record type even when `production_workspace_id` and `test_workspace_id` happen to be the same
+  physical Notion workspace (isolation then comes from separate databases within that shared
+  workspace, not from separate workspace IDs) — a single-level flat map cannot represent both
+  environments' database IDs at once, since a record-type key alone doesn't say which environment's
+  database it resolves to.
 - `test_workspace_id` / `test_team_id` — the isolated test locations Bootstrap also resolves,
   per its own "resolve the production and an isolated test location" instruction.
 
@@ -315,3 +326,8 @@ write, not a separate one.
   of its own creation write) so a follow-up keeps a persisted source link even if the separately-
   approved Disposition Record write is later declined or fails — found by cross-model review on
   this same issue's fix.
+- 2026-08-31 — `notion.databases` reshaped from a single flat record-type-to-ID map into
+  `{test: {...}, prod: {...}}`, each nested map keyed by record type — the flat map had no way to
+  represent both environments' resolved database IDs at once. Found live during Foundational Setup
+  (`.draft/prompts/workmanagement-kit/foundation-setup-wave1.md`): Bootstrap resolved 7 test + 7
+  prod database IDs, and the previously-documented flat shape could only hold one set.
