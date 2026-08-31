@@ -33,14 +33,19 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
 1. **Resolve the PR**: **Validate the PR-reference portion of `$ARGUMENTS` first**, before it is used in any command below: it must be empty (no PR given — operate on the current branch's PR), digits-only, or a `https://github.com/<owner>/<repo>/pull/<n>` URL — reject anything else and stop, rather than interpolating an unvalidated string into `gh pr view`/`gh pr merge`/`gh pr edit`/`gh pr comment`, including the one irreversible action this skill takes (step 7(b)'s `gh pr merge`). The separate `--bypass-codex-review "<reason>"` portion, when present, is handled independently and never reaches a command line directly — it only ever flows through `jq -n --arg` at step 4(b), matching that step's existing discipline. **Convention for every `$ARGUMENTS` reference in a command example, here and everywhere later in this skill**: once validated, it denotes only the isolated PR-reference portion — never the full raw argument text, which may also contain the `--bypass-codex-review "<reason>"` flag this paragraph just excluded. Then: `gh pr view $ARGUMENTS --json number,isDraft,headRefName,baseRefName,isCrossRepository,files,reviews,statusCheckRollup,mergeable,mergeStateStatus,url`. If this fails (no PR found), tell the user and stop. **Derive `{owner}/{repo}` from this call's own `url` field** (a PR's URL is always `https://github.com/<owner>/<repo>/pull/<n>` for the repository the PR actually belongs to — the base repository, regardless of where the head branch lives) — never from a separate `gh repo view`, which resolves to the current checkout's own repository and is wrong whenever `$ARGUMENTS` named a PR in a different repository than this checkout (`gh repo view --help`: "With no argument, the repository for the current directory is displayed"). Step 2's branch-protection call uses this resolved value. **Validate `headRefName` and `baseRefName` immediately, before either is used anywhere else in this skill**: both must match `^[A-Za-z0-9._/@+=-]+$` — if either doesn't, stop and tell the user rather than proceeding (git allows `;&|$` backticks/parens in ref names, which could otherwise reach a shell context unsafely the first time either value is interpolated into any `Bash` command — `headRefName` in the read-only `git ls-remote` check in step 7, `baseRefName` in step 2's branch-protection REST call). `baseRefName` carries the identical risk shape as `headRefName`: both are ref names fetched from the same API call, and both are later interpolated into a `Bash` command. This allowlist is deliberately narrower than `git check-ref-format`'s own rules -- empirically verified: `git check-ref-format` accepts `;`, `&`, `|`, `$`, backticks, parens, and other shell metacharacters as valid ref-name characters, so validating against Git's own ref syntax alone would not exclude them -- but wider than plain `[A-Za-z0-9._/-]`, which rejected some genuinely valid and shell-safe branch names (`feature+api`, `user@topic`, `release=next`); `@`, `+`, and `=` are both Git-valid and carry no special meaning to the shell, so they're safe to admit alongside the original set. This is a one-time gate at the source, not re-validated at each later use site.
 2. **Readiness checks** — all five must pass. **When this step is being re-run** (step 4(e) or step
    7(d)'s "re-run the full step-2 readiness check"), first re-fetch fresh data —
-   `gh pr view $ARGUMENTS --json isDraft,reviews,statusCheckRollup,mergeable,mergeStateStatus` — and
-   classify against that, never against step 1's original fetch from earlier in this run: the whole
-   point of a recheck immediately before a side-effecting action (per
+   `gh pr view $ARGUMENTS --json isDraft,reviews,statusCheckRollup,mergeable,mergeStateStatus,headRefName,baseRefName,isCrossRepository`
+   — and classify against that, never against step 1's original fetch from earlier in this run: the
+   whole point of a recheck immediately before a side-effecting action (per
    `.claude/rules/recheck-state-before-side-effecting-action.md`) is catching a regression that happened
    *during* the delay since step 1, which reclassifying the same stale snapshot can never do — this
-   includes a merge conflict that appeared, or the branch falling further behind base, after step 1's
-   original fetch. (On the first, non-re-run pass through this step, step 1's fetch is already current,
-   so no separate re-fetch is needed here.)
+   includes a merge conflict that appeared, the branch falling further behind base, or the PR's base
+   branch itself being retargeted, after step 1's original fetch (cross-model-review, 2026-08-31, round
+   3: `headRefName`/`baseRefName`/`isCrossRepository` weren't in the original rerun-fetch field list,
+   so the branch-protection lookup and the not-behind-base check below would silently validate against
+   a stale base branch if it changed mid-run — re-validate the refreshed `headRefName`/`baseRefName`
+   against `^[A-Za-z0-9._/@+=-]+$` immediately after this re-fetch, the same gate step 1 applies to its
+   own first fetch, before either is used in any later call this rerun makes). (On the first, non-re-run
+   pass through this step, step 1's fetch is already current, so no separate re-fetch is needed here.)
    - **Not draft**: `isDraft` must be `false`.
    - **Status checks (four-state, cross-referenced against the base branch's required-check list)**: resolve the base branch's real required-check list via the REST branch-protection endpoint — `gh api repos/{owner}/{repo}/branches/<baseRefName>/protection --jq '.required_status_checks.contexts'` (`{owner}/{repo}` from step 1's resolved `url` field, not a fresh `gh repo view` — see step 1's note on why; `baseRefName` from step 1; live-verified this returns the identical context list a GraphQL `branchProtectionRule.requiredStatusCheckContexts` query would — REST is used here, not GraphQL: `guard-raw-pr-review.sh` denies every `gh api graphql` call absent a fresh `gh-pr-review` marker, and this skill only writes that marker immediately before the narrow, single-purpose `reviewThreads` lookup below (its own advisory disclosure) — reusing it here would mean an extra marker write for a call this step doesn't otherwise need, with no benefit over the REST endpoint already in place) — never trust `gh pr checks $ARGUMENTS`'s bare output as the complete picture: it can silently omit a required context that simply hasn't run yet for the current head commit, a live-reproduced gap, not a hypothetical (see `.claude/rules/verify-tool-behavior-before-instructing.md`). **If this call fails for any reason** (no branch protection configured on the base branch, insufficient permission, a transient API error), stop and report that the required-check list could not be resolved — never fall back to `gh pr checks`'s bare output to satisfy this gate, since that's exactly the incompleteness this check exists to catch. Classify every context named in that required-check list against step 1's already-fetched `statusCheckRollup` into exactly one of four states, never collapsing any into another:
      - **passing** — a `CheckRun` entry with `status: COMPLETED` and `conclusion` of `SUCCESS`/`NEUTRAL`/`SKIPPED`, or a `StatusContext` entry with `state: SUCCESS`.
@@ -50,10 +55,29 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
 
      Every required context must classify as **passing**. **Exception, only when `--bypass-codex-review "<reason>"` was given**: if the *only* non-passing required context is `Publish Codex policy result` (the marketplace CI job that gates on Codex delta review — see `docs/ci.md` for the current required-check-name list), treat status checks as provisionally satisfied and continue to step 3 rather than stopping here; record that this PR is in the bypass path. If any *other* required context is non-passing, or if `Publish Codex policy result` already classifies as passing (nothing to bypass), the exception doesn't apply — fall through to the normal all-must-pass behavior above.
    - **No outstanding change requests**: for each reviewer's *latest* review in `reviews`, none may be in `CHANGES_REQUESTED` state (a later `APPROVED` review from the same person supersedes an earlier `CHANGES_REQUESTED`). This is a coarser, independent check from `explain-pr-changes`' own review-comment-resolution-gate (which tracks resolving individual comments while *updating* a PR's description) — this check only asks "is there a standing objection," not "has every comment been individually triaged." Don't conflate the two or try to reuse one's logic for the other. **Not the same as** the unresolved-review-thread *advisory disclosure* below — this bullet is a required, blocking gate on review *state*; that one is a non-blocking *count* of open inline threads, and a PR can pass this bullet cleanly while still carrying unresolved threads.
-   - **No merge conflicts**: resolve `mergeable` from the already-fetched (or freshly re-fetched, on a rerun) PR data. Live-verified via GraphQL introspection (`__type(name: "MergeableState")`) — this is a 3-value enum: `MERGEABLE`, `CONFLICTING`, or `UNKNOWN` ("the mergeability of the pull request is still being calculated" — not "no conflict"). Must resolve to `MERGEABLE`. If `UNKNOWN`, poll `gh pr view $ARGUMENTS --json mergeable` until it reaches a terminal value (`MERGEABLE` or `CONFLICTING`), the same polling discipline step 4(d) already uses for a re-triggered check's terminal state — never treat `UNKNOWN` as passing. If it's still `UNKNOWN` after polling, stop and report that mergeability could not be determined. If `CONFLICTING`, stop and report that the PR has merge conflicts with `<baseRefName>`. This skill detects the conflict remotely, via GitHub's own computed field, and never fetches or merges locally itself — `resolving-merge-conflicts`'s own precondition is a local working tree already showing unmerged paths (`git status`), not a remote signal alone, so pointing at it bare would hand the user a skill with nothing to act on yet. Tell the user how to reproduce the conflict locally first, branching on `isCrossRepository` (from step 1) — a fork PR's `headRefName` is not a branch on this repository's own `origin` remote, the same fork-ref risk the not-behind-base bullet below and step 7's branch-deletion handling both already guard against (cross-model-review, 2026-08-31): if `isCrossRepository` is `false`, fetch `<headRefName>` and `<baseRefName>`, check out `<headRefName>`, then attempt `git merge origin/<baseRefName>`; if `isCrossRepository` is `true`, fetch GitHub's synthetic per-PR ref instead — `git fetch origin pull/<number>/head:<local-branch-name>` (`<number>` from step 1's already-fetched `number` field; `<local-branch-name>` any convenient local name, e.g. `pr-<number>`), check out `<local-branch-name>`, then attempt `git merge origin/<baseRefName>` — matching `git-worktrees`' own documented convention for fetching a fork PR's commits, in its `references/` directory's `cherry-pick-resolution.md` file. Only once `git status` actually shows unmerged paths, either way, run `resolving-merge-conflicts` to resolve them.
+   - **No merge conflicts**: resolve `mergeable` from the already-fetched (or freshly re-fetched, on a rerun) PR data. Live-verified via GraphQL introspection (`__type(name: "MergeableState")`) — this is a 3-value enum: `MERGEABLE`, `CONFLICTING`, or `UNKNOWN` ("the mergeability of the pull request is still being calculated" — not "no conflict"). Must resolve to `MERGEABLE`. If `UNKNOWN`, poll `gh pr view $ARGUMENTS --json mergeable` up to 5 times, a few seconds apart, until it reaches a terminal value (`MERGEABLE` or `CONFLICTING`) — bounded, unlike step 4(d)'s own open-ended "poll until terminal" wording for a re-triggered check, since this is a first-pass readiness check with no external re-trigger event to wait on (cross-model-review, 2026-08-31: an unbounded poll here has no reachable stop condition if GitHub's computation stays `UNKNOWN`) — never treat `UNKNOWN` as passing. If it's still `UNKNOWN` after the 5th poll, stop and report that mergeability could not be determined. If `CONFLICTING`, stop and report that the PR has merge conflicts with `<baseRefName>`. This skill detects the conflict remotely, via GitHub's own computed field, and never fetches or merges locally itself — `resolving-merge-conflicts`'s own precondition is a local working tree already showing unmerged paths (`git status`), not a remote signal alone, so pointing at it bare would hand the user a skill with nothing to act on yet. Tell the user how to reproduce the conflict locally first, always fetching from an explicit
+`https://github.com/{owner}/{repo}.git` URL built from step 1's already-resolved `{owner}/{repo}` —
+never a bare `origin`, which only happens to point at the PR's own repository when the current local
+checkout is of that same repository; step 1 explicitly supports checking a PR the current checkout
+isn't even a clone of ("a maintainer without the PR's branch checked out can still use this skill on
+someone else's PR"), and `origin` in that case points somewhere else entirely (cross-model-review,
+2026-08-31, round 3: found only after the round-2 fork-PR fix above still assumed `origin` was
+correct). Then branch on `isCrossRepository` (from step 1) purely to pick which ref to ask for — a
+fork PR's `headRefName` isn't a ref this explicit URL exposes directly by that name either, the same
+risk the not-behind-base bullet below and step 7's branch-deletion handling already name. Either way,
+fetch both the head and base into local branches with an explicit refspec destination (a bare fetch
+with no destination only updates `FETCH_HEAD`, not a ref `git merge` can name directly) — if
+`isCrossRepository` is `false`: `git fetch https://github.com/{owner}/{repo}.git <headRefName>:pr-head <baseRefName>:pr-base`,
+check out `pr-head`, then attempt `git merge pr-base`; if `isCrossRepository` is `true`: fetch GitHub's
+synthetic per-PR ref for the head instead of `<headRefName>` — `git fetch
+https://github.com/{owner}/{repo}.git pull/<number>/head:pr-head <baseRefName>:pr-base` (`<number>`
+from step 1's already-fetched `number` field), check out `pr-head`, then attempt `git merge pr-base` —
+matching `git-worktrees`' own documented convention for fetching a fork PR's commits, in its
+`references/` directory's `cherry-pick-resolution.md` file. Only once `git status` actually shows
+unmerged paths, either way, run `resolving-merge-conflicts` to resolve them.
    - **Not behind base** (required, blocking gate — even though GitHub's own `REBASE`/`SQUASH` merge can absorb a stale branch mechanically at step 7, this skill requires the branch be explicitly synced first rather than merging it stale). Resolves differently depending on `isCrossRepository`, since comparing a fork's head branch against this repository's own base branch by name risks silently resolving the wrong ref if a same-named branch happens to exist here too — the same risk step 7's fork handling already names for branch deletion:
      - **`isCrossRepository` is `false`**: `gh api repos/{owner}/{repo}/compare/<baseRefName>...<headRefName> --jq '.behind_by'` (`{owner}/{repo}` from step 1's resolved `url`; `baseRefName`/`headRefName` already validated at step 1 — live-verified this endpoint resolves branch names directly, not just SHAs, as long as both exist on the remote, which they always do for an open PR). Must resolve to `0`. A non-zero result means the branch is behind its base by that many commits. If non-zero, stop and tell the user how many commits behind, and point at `/sync-branch` (`git-rebase-sync`) to resync — never proceed to the rights check on an out-of-sync branch. **If this call fails for any reason**, stop and report that the in-sync state could not be confirmed — never treat a failed call as passing.
-     - **`isCrossRepository` is `true`** (fork PR): the compare-endpoint call above is unsafe to run by branch name for the same reason it's unsafe for step 7's branch deletion, so it never runs here — but unconditionally treating a fork PR as passing this gate would silently exempt an entire, common class of PRs from the blocking requirement this bullet exists to enforce (cross-model-review, 2026-08-31: found independently by both reviewers). Use `mergeStateStatus` instead (already fetched alongside `mergeable` — no separate call, and no ref-name ambiguity, since GitHub computes this server-side): if `UNKNOWN`, poll `gh pr view $ARGUMENTS --json mergeStateStatus` until it reaches a terminal value, the same polling discipline the no-merge-conflicts check above already uses — never treat `UNKNOWN` as passing. If it's still `UNKNOWN` after polling, stop and report that the fork branch's in-sync state could not be determined. If the terminal value is `BEHIND`, treat this the same as a non-zero `behind_by`: stop and tell the user the fork branch is behind `<baseRefName>` per GitHub's own `mergeStateStatus`, and ask the contributor to update their branch — this skill has no local git access to push to a fork's branch, so `/sync-branch` doesn't apply here the way it does for a same-repository PR. Any other terminal value is treated as passing for this specific gate; state explicitly that the exact commit-behind count is unavailable for fork PRs (unlike the precise count the non-fork path reports), never silently reported as `0`.
+     - **`isCrossRepository` is `true`** (fork PR): the compare-endpoint call above is unsafe to run by branch name for the same reason it's unsafe for step 7's branch deletion, so it never runs here — but unconditionally treating a fork PR as passing this gate would silently exempt an entire, common class of PRs from the blocking requirement this bullet exists to enforce (cross-model-review, 2026-08-31: found independently by both reviewers). Use `mergeStateStatus` instead (already fetched alongside `mergeable` — no separate call, and no ref-name ambiguity, since GitHub computes this server-side): if `UNKNOWN`, poll `gh pr view $ARGUMENTS --json mergeStateStatus` up to 5 times, a few seconds apart, until it reaches a terminal value — the same bounded polling discipline the no-merge-conflicts check above already uses — never treat `UNKNOWN` as passing. If it's still `UNKNOWN` after the 5th poll, stop and report that the fork branch's in-sync state could not be determined. If the terminal value is `BEHIND`, treat this the same as a non-zero `behind_by`: stop and tell the user the fork branch is behind `<baseRefName>` per GitHub's own `mergeStateStatus`, and ask the contributor to update their branch — this skill has no local git access to push to a fork's branch, so `/sync-branch` doesn't apply here the way it does for a same-repository PR. Any other terminal value is treated as passing for this specific gate; state explicitly that the exact commit-behind count is unavailable for fork PRs (unlike the precise count the non-fork path reports), never silently reported as `0`.
 
    If any check fails and no bypass exception applies, tell the user exactly which check failed, its state, and why (e.g. "1 required context missing: Fork PR (unsupported) — never ran for the current head commit", "2 required contexts still pending: lint, test", "review from @alice requests changes", "PR has merge conflicts with main — GitHub reports mergeable: CONFLICTING", or "branch is 3 commits behind main — run /sync-branch before merging"). Stop here — do not proceed to the rights check on a not-ready PR.
 
@@ -67,9 +91,12 @@ is. Triggers: "is this PR ready to merge", "can I merge this", "merge PR #N", or
    silently, the same discipline step 7(c)'s squash-tradeoff disclosure already uses):
    - **GitHub's own merge-state summary (`mergeStateStatus`)**: disclose the raw value from the
      already-fetched (or freshly re-fetched) PR data. Live-verified via GraphQL introspection
-     (`__type(name: "MergeStateStatus")`) — this is a 7-value enum: `CLEAN`, `DIRTY`, `BLOCKED`,
-     `BEHIND`, `UNSTABLE`, `HAS_HOOKS`, `UNKNOWN` (no `DRAFT` value — the not-draft state is already
-     checked separately above via `isDraft`). This is GitHub's own aggregate read of mergeability,
+     (`__type(name: "MergeStateStatus")`) — 7 active values: `CLEAN`, `DIRTY`, `BLOCKED`, `BEHIND`,
+     `UNSTABLE`, `HAS_HOOKS`, `UNKNOWN`. A `DRAFT` member also exists in the schema but is marked
+     `isDeprecated: true` (GitHub's own deprecation reason: "removed... `isDraft` should be used
+     instead," scheduled for removal 2021-01-01 UTC) — the not-draft state is already checked
+     separately above via `isDraft`, so this skill never needs to branch on it here either way. This
+     is GitHub's own aggregate read of mergeability,
      computed independently of this skill's own explicit checks above — informational only, since this
      skill's own checks (not-draft, status checks, no-changes-requested, no-conflicts, not-behind-base)
      are what actually gate step 5's confirmation, not this value. Surfaced so a value that disagrees
@@ -211,7 +238,7 @@ disclosures, and step 7's rebase/squash logic.
 - [ ] Step 2's not-behind-base check is a required, blocking gate (not merely disclosed) for non-cross-repository PRs — a non-zero `behind_by` always stops the flow before the rights check, never just gets surfaced at step 5 and waved through
 - [ ] Step 2's not-behind-base check never runs the compare-endpoint call when `isCrossRepository` is `true` — uses `mergeStateStatus` instead (a `BEHIND` terminal value blocks the same as a non-zero `behind_by`), never silently treats a fork PR as passing without checking it
 - [ ] Step 2's not-behind-base fork-PR path never treats `mergeStateStatus: UNKNOWN` as passing — it polls until terminal, same discipline as the no-merge-conflicts check, and stops if it's still `UNKNOWN` after polling
-- [ ] Step 2's no-merge-conflicts local-reproduction guidance always branches on `isCrossRepository` — a fork PR's instructions always use `git fetch origin pull/<number>/head:<local-branch-name>`, never the same-repository `git fetch origin <headRefName>` form, which fails against a fork's branch
+- [ ] Step 2's no-merge-conflicts local-reproduction guidance always branches on `isCrossRepository` — a fork PR's instructions always use GitHub's synthetic `pull/<number>/head` ref for the head, never a same-repository-style `<headRefName>` fetch, which fails against a fork's branch
 - [ ] Step 2's no-merge-conflicts check always resolves `mergeable` to a terminal value (`MERGEABLE` or `CONFLICTING`) before proceeding — `UNKNOWN` is polled until terminal, never treated as passing
 - [ ] Step 1's initial fetch and step 2's rerun re-fetch both request `mergeable`/`mergeStateStatus` — a conflict or merge-state regression that appears after step 1's original fetch is always caught before merging, never missed because the field wasn't re-fetched
 - [ ] Step 2's unresolved-review-thread check always writes a fresh `gh-pr-review` marker immediately before *every* `gh api graphql` call, including each page of a paginated loop — never reuses a marker across two calls
@@ -220,38 +247,45 @@ disclosures, and step 7's rebase/squash logic.
 - [ ] `--bypass-codex-review` never skips the no-merge-conflicts or not-behind-base checks — both stay required and blocking regardless of the bypass flag
 - [ ] Step 3 and `references/merge-rights-check.md`'s Tiers 1 and 3 always reuse step 1's resolved `{owner}/{repo}` — never re-derive it via a fresh `gh repo view`, which would silently target the current checkout's own repository instead of the PR's actual one for a cross-repo `$ARGUMENTS`
 - [ ] Step 2's no-merge-conflicts stop message always tells the user how to reproduce the conflict locally before pointing at `resolving-merge-conflicts` — never points at it bare, since that skill's own precondition (`git status` showing unmerged paths) doesn't exist yet from GitHub's remote `mergeable` signal alone
+- [ ] Both new `UNKNOWN`-polling paths (no-merge-conflicts' `mergeable`, not-behind-base's fork-PR `mergeStateStatus`) are bounded to 5 attempts — never an open-ended poll with no reachable stop condition if GitHub's computation stays `UNKNOWN`
+- [ ] Step 2's rerun re-fetch always includes `headRefName`/`baseRefName`/`isCrossRepository` alongside the readiness-check fields, and re-validates the refreshed ref names — never reclassifies against step 1's now-possibly-stale ref values if the PR's base branch was retargeted mid-run
+- [ ] Step 2's no-merge-conflicts local-reproduction guidance always fetches from an explicit `https://github.com/{owner}/{repo}.git` URL (step 1's resolved value) — never a bare `origin`, which is only correct when the current local checkout happens to be a clone of the PR's own repository
 
-**Last dated run record:** 2026-08-31, three rounds in one session. **Round 1** added step 2's
-no-merge-conflicts and not-behind-base required checks (the latter promoted from an advisory
-disclosure) and the mergeStateStatus advisory disclosure. Both new GraphQL enums (`MergeableState`,
-`MergeStateStatus`) were live-verified via `gh api graphql` introspection (`__type(name: "...")`)
-against this repository before being written into the skill — `MergeableState` is
-`MERGEABLE`/`CONFLICTING`/`UNKNOWN`; `MergeStateStatus` is
-`CLEAN`/`DIRTY`/`BLOCKED`/`BEHIND`/`UNSTABLE`/`HAS_HOOKS`/`UNKNOWN` (no `DRAFT` value, contrary to some
-older documentation). **Round 2**: a same-day `skill-reviewer` pass (score 84, Pass) found two Major
-findings, both fixed: **M1** — `references/merge-rights-check.md`'s Tiers 1 and 3 independently
-re-derived `{owner}/{repo}` via a fresh `gh repo view` instead of reusing step 1's already-resolved
-value, the exact bug step 1/step 2 already guard against and issue #216 had fixed only at step 1/2,
-never in the reference file step 3 delegates to; **M2** — the no-merge-conflicts stop message pointed
-bare at `resolving-merge-conflicts`, whose own precondition (`git status` showing unmerged paths) a
-remote-only `mergeable: CONFLICTING` signal doesn't produce. This round was also verified with a
-`skill-tester` Quick Workflow eval — 4 new scenarios (ids 10-13, `evals/merge-pr/evals.json`) covering
-the no-merge-conflicts/not-behind-base/mergeStateStatus checks and the M1 owner/repo reuse fix: 15/15
-assertions passed (`workspace/iteration-6/`). **Round 3**: a pre-PR `cross-model-review` pass (Claude +
-Codex) found two more Major findings, both High-confidence (independently raised by both reviewers, or
-raised by one and confirmed by the other's cross-examination pass) and both fixed: neither the
-no-merge-conflicts reproduction guidance nor the not-behind-base check accounted for `isCrossRepository`
-— a fork PR's `headRefName` isn't fetchable from `origin` by name (no-merge-conflicts's reproduction
-steps now branch on it, using GitHub's `pull/<number>/head` ref for forks), and a fork PR was silently
-exempted from the not-behind-base blocking gate entirely (now uses the already-fetched
-`mergeStateStatus` field — `BEHIND` blocks the same as a non-zero `behind_by` — since it's
-server-computed with no ref-name-ambiguity risk, unlike the compare endpoint). `scripts/smoke_test.py`
-was extended across all three rounds: 4 checks (Round 1) + 2 checks (Round 2) + updates to the Round
-1/2 checks' own text assertions (Round 3, no new check functions — Round 3 changed prose the existing
-checks already scan) = 27 checks total, all passing on both the canonical and `.claude/` mirror copies.
-No open PR existed in this repository at any point to exercise the fork-PR paths against a live PR
-end-to-end; `evals.json`'s 4 new scenarios (Round 2) don't cover the Round 3 fork-PR branches either —
-see `references/test-scenarios.md` for the scenario walkthroughs a future eval run should add.
+**Last dated run record:** 2026-08-31. Added step 2's no-merge-conflicts and not-behind-base required
+checks (the latter promoted from an advisory disclosure) and the mergeStateStatus advisory disclosure.
+Both new GraphQL enums were live-verified via `gh api graphql` introspection (`__type(name: "...")`,
+`includeDeprecated: true`) against this repository: `MergeableState` is
+`MERGEABLE`/`CONFLICTING`/`UNKNOWN`; `MergeStateStatus` has 7 active values
+(`CLEAN`/`DIRTY`/`BLOCKED`/`BEHIND`/`UNSTABLE`/`HAS_HOOKS`/`UNKNOWN`) plus a `DRAFT` member GitHub's
+schema still carries but marks `isDeprecated: true` (superseded by `isDraft`, which this skill already
+checks separately). Two review passes followed, each finding real gaps, all fixed in this same commit
+history: a `skill-reviewer` pass (score 84) found `references/merge-rights-check.md` re-deriving
+`{owner}/{repo}` via a fresh `gh repo view` instead of reusing step 1's resolved value (the exact bug
+issue #216 had fixed only at step 1/2, never in this reference file), and the no-merge-conflicts stop
+message pointing bare at `resolving-merge-conflicts` with no local-reproduction guidance. A subsequent
+`cross-model-review` pass (Claude + Codex, re-run repeatedly against the growing diff — this skill's
+own `create-pr` gate requires a fresh pass after every accepted fix, until one comes back clean) found,
+across its rounds: neither new check branched on `isCrossRepository` (a fork PR's `headRefName` isn't
+fetchable from `origin` by name; a fork PR was silently exempted from the not-behind-base blocking gate
+entirely) — fixed using GitHub's `pull/<number>/head` ref and the already-fetched `mergeStateStatus`
+field respectively; an overstated "no `DRAFT` value" claim and a stale pre-fix scenario left in
+`references/test-scenarios.md`; both new `UNKNOWN`-polling paths having no bound on how many times to
+retry; step 2's rerun re-fetch omitting `headRefName`/`baseRefName`/`isCrossRepository`, so a PR's base
+branch being retargeted mid-run would silently validate against a stale base; and — found only after the
+fork-PR fix above shipped — the reproduction guidance still fetching from a bare `origin`, which is only
+correct when the current local checkout happens to be a clone of the PR's own repository, not when
+`$ARGUMENTS` names a PR step 1 explicitly supports checking without one (now fetches from an explicit
+`https://github.com/{owner}/{repo}.git` URL instead, for both the same-repository and fork-PR cases).
+`scripts/smoke_test.py` has 29 checks, all passing on both the canonical and `.claude/` mirror copies.
+Verified with two `skill-tester` Quick Workflow evals — 6 new scenarios (ids 10-15,
+`evals/merge-pr/evals.json`, `workspace/iteration-6/` and `iteration-7/`): 23/23 assertions passed, but
+evals 10 and 14's own prompt/expected_output text were subsequently updated to match the
+explicit-URL fix above *after* that grading ran — their recorded PASS results reflect the pre-fix
+wording, not this final version; a re-grade is still owed (see `evals.json`'s own
+`testing_validation_coverage` note). No open PR existed in this repository at any point to exercise any
+of this end-to-end; see `references/test-scenarios.md` for further walkthroughs and `evals.json`'s own
+`testing_validation_coverage` field for what else remains uncovered (mostly the bypass-attestation
+flow).
 
 ## Reference Guide
 

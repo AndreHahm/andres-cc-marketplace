@@ -411,18 +411,20 @@ def check_step2_no_merge_conflicts_fork_branching():
     # cross-model-review (2026-08-31): both reviewers independently found the reproduction
     # guidance assumed headRefName is fetchable from origin, which fails for a fork PR --
     # isCrossRepository must branch the guidance, using GitHub's synthetic pull/<number>/head ref
-    # for forks.
+    # for forks. Round 3's own Phase 2 found the same guidance also assumed bare `origin` was the
+    # PR's own repo at all, which is false whenever $ARGUMENTS names a PR in a different repository
+    # than the current checkout -- fixed to always fetch from an explicit {owner}/{repo} URL.
     step2 = _get_step_text(2)
     if step2 is None:
         return False, "step 2 ('## Instructions') not found"
-    if "branching on `isCrossRepository`" not in step2:
+    if "https://github.com/{owner}/{repo}.git" not in step2:
         return (
             False,
-            "step 2's no-merge-conflicts reproduction guidance no longer branches on "
-            "isCrossRepository -- a fork PR's headRefName isn't fetchable from origin by name "
-            "(cross-model-review finding)",
+            "step 2's no-merge-conflicts reproduction guidance no longer fetches from an explicit "
+            "{owner}/{repo} URL -- a bare `origin` only happens to be correct when the current "
+            "checkout is of the PR's own repository (cross-model-review finding, round 3)",
         )
-    if "pull/<number>/head:<local-branch-name>" not in step2:
+    if "pull/<number>/head:pr-head" not in step2:
         return (
             False,
             "step 2's no-merge-conflicts fork-PR reproduction path no longer names GitHub's "
@@ -430,8 +432,9 @@ def check_step2_no_merge_conflicts_fork_branching():
         )
     return (
         True,
-        "step 2's no-merge-conflicts reproduction guidance branches on isCrossRepository, using "
-        "GitHub's synthetic pull/<number>/head ref for fork PRs",
+        "step 2's no-merge-conflicts reproduction guidance branches on isCrossRepository and "
+        "always fetches from an explicit {owner}/{repo} URL, using GitHub's synthetic "
+        "pull/<number>/head ref for fork PRs",
     )
 
 
@@ -448,7 +451,7 @@ def check_step2_no_merge_conflicts_reproduction_steps():
             "step 2's no-merge-conflicts check no longer states it only detects the conflict "
             "remotely and never fetches/merges locally itself",
         )
-    if "git merge origin/<baseRefName>" not in step2:
+    if "git merge pr-base" not in step2:
         return (
             False,
             "step 2's no-merge-conflicts check no longer tells the user how to reproduce the "
@@ -480,6 +483,33 @@ def check_step2_refetch_on_rerun():
         True,
         "step 2 documents re-fetching fresh PR data before reclassifying on a re-run "
         "(step 4(e)/7(d))",
+    )
+
+
+def check_step2_rerun_refetches_ref_fields():
+    # cross-model-review (2026-08-31, round 3): the rerun re-fetch omitted
+    # headRefName/baseRefName/isCrossRepository -- a base-branch retarget mid-run would leave the
+    # branch-protection lookup and not-behind-base check silently validating against a stale base.
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "mergeStateStatus,headRefName,baseRefName,isCrossRepository" not in step2:
+        return (
+            False,
+            "step 2's rerun re-fetch no longer requests headRefName/baseRefName/isCrossRepository "
+            "-- a base-branch retarget mid-run would go undetected on a recheck "
+            "(cross-model-review finding)",
+        )
+    if "re-validate the refreshed" not in step2:
+        return (
+            False,
+            "step 2's rerun re-fetch no longer re-validates the refreshed headRefName/baseRefName "
+            "against the ref-name allowlist before using them",
+        )
+    return (
+        True,
+        "step 2's rerun re-fetch refreshes and re-validates "
+        "headRefName/baseRefName/isCrossRepository, not just the readiness-check fields",
     )
 
 
@@ -772,6 +802,7 @@ CHECKS = [
     check_step2_no_merge_conflicts_reproduction_steps,
     check_step2_no_merge_conflicts_fork_branching,
     check_step2_refetch_on_rerun,
+    check_step2_rerun_refetches_ref_fields,
     check_step2_not_behind_base_required,
     check_step2_no_merge_conflicts_check,
     check_step2_mergestate_summary_disclosure,

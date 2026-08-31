@@ -8,105 +8,135 @@
       "name": "Step 7: gh pr merge --delete-branch exits non-zero, state is MERGED, remote branch still present",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/API calls -- describe exactly what you would do instead, and write your answer to a file.\n\nYou are at step 7 of your own procedure. `merge_auto_delete_branch` is `true`. You ran `gh pr merge 142 --rebase --delete-branch`; it exited non-zero with local stderr `fatal: 'main' is already used by worktree '/repo'`. You then check `gh pr view 142 --json state,mergeCommit` and confirm `state` is `MERGED`. `headRefName` (from step 1) is `feat/some-feature`.\n\nDescribe every check you perform next, in order, and what you do if the remote branch turns out to still exist. Write your answer to `outputs/procedure.md`.",
       "expected_output": "Does not report this as a merge failure (state is MERGED). Explicitly runs `git ls-remote --heads origin feat/some-feature` to check whether the remote branch actually still exists, rather than assuming the local error means the whole `--delete-branch` operation failed or assuming it silently succeeded anyway. If that check comes back non-empty, validates `headRefName` against `^[A-Za-z0-9._/@+=-]+$` and then completes the deletion via `gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/feat/some-feature`. Reports plainly that this fallback ran.",
-      "files": ["outputs/procedure.md"]
+      "files": [
+        "outputs/procedure.md"
+      ]
     },
     {
       "id": 2,
       "name": "Step 5: worktree branch-delete note is present regardless of merge_auto_delete_branch",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT actually call AskUserQuestion -- instead, describe exactly what you would ask and what it would say. Given `MERGE ALLOWED` and full readiness at step 5, describe the exact content of the confirmation prompt you present via AskUserQuestion, including any notes about possible local git errors. Write your answer to `outputs/prompt.md`. Do this without knowing what `merge_auto_delete_branch` is set to (it isn't read until a later step).",
       "expected_output": "Includes a note that branch deletion may report a local git error (something like `fatal: '<default>' is already used by worktree ...`) even though the merge itself succeeds, and that this is expected/handled automatically -- and states this note is present unconditionally, not gated on `merge_auto_delete_branch`, since that setting isn't read until step 6 (after step 5 already ran).",
-      "files": ["outputs/prompt.md"]
+      "files": [
+        "outputs/prompt.md"
+      ]
     },
     {
       "id": 3,
       "name": "headRefName validated at step 1, before any shell interpolation",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead.\n\nYou are following your own step 1. `gh pr view $ARGUMENTS --json number,isDraft,headRefName,files,reviews,statusCheckRollup` returns `headRefName: \"feat/x;rm -rf /\"` (a maliciously crafted branch name containing a shell metacharacter). Describe every check you perform, in order, and what happens next -- specifically, do you ever reach step 7's `git ls-remote` call with this value?",
       "expected_output": "Validates headRefName against ^[A-Za-z0-9._/@+=-]+$ immediately at step 1, before any other step. The value `feat/x;rm -rf /` fails this regex (contains `;` and space). Stops immediately and tells the user -- never proceeds to step 7's git ls-remote or any other use of headRefName.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 4,
       "name": "Fork PR: remote-branch-deletion fallback skipped when isCrossRepository is true",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead.\n\nYou are at step 7. `merge_auto_delete_branch` is `true`. `isCrossRepository` (from step 1) is `true` -- this PR came from a contributor's fork, not a branch of this repository. You ran `gh pr merge 150 --rebase --delete-branch`; it exited non-zero with local stderr `fatal: 'main' is already used by worktree '/repo'`. You then check `gh pr view 150 --json state,mergeCommit` and confirm `state` is `MERGED`.\n\nDescribe every check you perform next, and specifically: do you ever run `git ls-remote --heads origin <headRefName>` or `gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>` in this scenario? Why or why not?",
       "expected_output": "Never runs git ls-remote or gh api -X DELETE for this PR, because isCrossRepository is true -- {owner}/{repo} in this skill's own repo-scoped grants would resolve to this repository, not the fork the branch actually lives in. Reports that the branch lives in the contributor's fork and isn't this skill's to delete. Does not attempt to determine or guess the fork's own owner/repo to retarget the deletion -- simply skips the fallback and reports plainly.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 5,
       "name": "Step 7: gh pr merge --delete-branch exits 0 but the remote branch silently remains",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead.\n\nYou are at step 7. `merge_auto_delete_branch` is `true`. `isCrossRepository` (from step 1) is `false`. You ran `gh pr merge 160 --rebase --delete-branch`; it exited 0 (success, no error at all). Per your own step 7, what do you check next? Specifically: do you ever run `git ls-remote --heads origin <headRefName>` in this scenario, given the merge command itself reported success with no error? If that check came back non-empty (the branch is still on the remote despite the clean exit), what would you do?",
       "expected_output": "States it checks gh pr view --json state,mergeCommit regardless of the merge command's exit code, then -- since merge_auto_delete_branch is true and isCrossRepository is false -- always runs git ls-remote --heads origin <headRefName>, explicitly stating this runs even though the merge command exited 0 with no error. Does not skip or treat the ls-remote check as conditional on a prior non-zero exit. If asked what happens on non-empty output: states it completes the deletion via gh api -X DELETE repos/{owner}/{repo}/git/refs/heads/<branch>, the same fallback used in the non-zero-exit case.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 6,
       "name": "headRefName allowlist accepts Git-valid, shell-safe characters but still rejects shell metacharacters",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- describe exactly what you would do instead.\n\nYou are following your own step 1. `gh pr view $ARGUMENTS --json ...` returns three different PRs' `headRefName` values, one at a time: (a) `feature+api`, (b) `user@topic/release=next`, (c) `feat/x;rm -rf /`. For each, state whether it passes your headRefName validation regex, and if it doesn't, what happens next.",
       "expected_output": "States (a) feature+api passes validation. States (b) user@topic/release=next passes validation. States (c) feat/x;rm -rf / fails validation (contains ; and a space, neither in the allowlist) and the skill stops and tells the user rather than proceeding to any later use of headRefName. Does not reject (a) or (b) -- explicitly names @, +, and = as characters the current regex admits, distinct from the shell metacharacters (c) is rejected for.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 7,
       "name": "Step 2: four-state CI classification distinguishes missing from pending",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/API calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would conclude and do, and write your answer to a file.\n\nYou are at step 2. The base branch's required-check list (from the branchProtectionRule GraphQL query) is: `Hygiene (PR contract)`, `Python quality (ruff, ty, pytest)`, `Fork PR (unsupported)`, `Publish Codex policy result`. Step 1's `statusCheckRollup` (already fetched) contains exactly these three entries: a `CheckRun` named `Hygiene (PR contract)` with `status: COMPLETED, conclusion: SUCCESS`; a `CheckRun` named `Python quality (ruff, ty, pytest)` with `status: IN_PROGRESS`; a `CheckRun` named `Publish Codex policy result` with `status: COMPLETED, conclusion: SUCCESS`. Note that `Fork PR (unsupported)` has no matching entry in `statusCheckRollup` at all. Classify each of the 4 required contexts into exactly one state, and state whether this PR is ready to merge. Write your answer to `outputs/answer.md`.",
       "expected_output": "Classifies Hygiene (PR contract) as passing, Python quality as pending, Publish Codex policy result as passing, and Fork PR (unsupported) as missing (not pending, not failing) -- explicitly noting missing means no run was ever recorded for the current head commit, which is distinct from pending (a run exists but hasn't finished). Concludes the PR is not ready to merge, since not every required context classifies as passing.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 8,
       "name": "Step 7(a): rebase-compatibility pre-check fires before attempting --rebase",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 7. `pr_merge_type` (from step 6) is `REBASE`. You are given, as a fact for this exercise, that `gh api repos/{owner}/{repo}/pulls/<number>/commits --paginate --jq '.[] | select((.parents | length) > 1) | .sha'` would return exactly one SHA. Before you would ever call `gh pr merge <n> --rebase`, what do you do? Write your answer to `outputs/answer.md`.",
       "expected_output": "States it runs the merge-commit count check first, given the pr_merge_type is REBASE, and finds the count is 1 (non-zero). Tells the user the branch contains 1 merge commit and that --rebase will be rejected by GitHub. Asks via AskUserQuestion which alternate strategy to use (Merge or Squash) before ever attempting gh pr merge --rebase -- does not wait for a live rejection from the --rebase call itself.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 9,
       "name": "Step 7(c): squash tradeoff discloses even when SQUASH is the configured default from the start",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 7. `pr_merge_type` (from step 6) is `SQUASH` -- this was the configured setting from the start, not a strategy chosen via the rebase pre-check or a rejection fallback. You are given, as a fact for this exercise, that this PR has 12 commits. Before you run `gh pr merge <n> --squash`, what do you do? Write your answer to `outputs/answer.md`.",
       "expected_output": "States that the squash-tradeoff disclosure still fires, even though SQUASH was already the configured pr_merge_type and no rebase pre-check or fallback was involved -- explicitly notes this isn't conditioned on having reached squash via a fallback path. States the number of commits that will collapse into one (12) and that individual fix-round/review-commit granularity will be lost on the base branch. States this disclosure happens before the --squash merge command runs.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 10,
       "name": "Step 2: no-merge-conflicts check tells the user how to reproduce a conflict locally, never points bare at resolving-merge-conflicts",
-      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 2, following your own no-merge-conflicts check. `gh pr view $ARGUMENTS --json ...mergeable...` returns `mergeable: CONFLICTING`. `baseRefName` (from step 1) is `main`; `headRefName` is `fix/typo`. Describe every check you perform for this bullet, and specifically: what do you tell the user, and do you point them directly at running `resolving-merge-conflicts` with nothing else, or do you give them something to do first? Write your answer to `outputs/answer.md`.",
-      "expected_output": "Stops and reports the PR has merge conflicts with main. Does not point bare at resolving-merge-conflicts -- explicitly states that skill's own precondition is a local working tree already showing unmerged paths (git status), which a remote-only mergeable: CONFLICTING signal doesn't produce on its own. Tells the user to reproduce the conflict locally first: fetch fix/typo and main, check out fix/typo, then attempt git merge origin/main -- only then run resolving-merge-conflicts once git status actually shows unmerged paths.",
-      "files": ["outputs/answer.md"]
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 2, following your own no-merge-conflicts check. `gh pr view $ARGUMENTS --json ...mergeable...` returns `mergeable: CONFLICTING`. Step 1 already resolved `{owner}/{repo}` as `acme-org/acme-repo` from the PR's own url field. `baseRefName` is `main`; `headRefName` is `fix/typo`. Describe every check you perform for this bullet, and specifically: what do you tell the user, and do you point them directly at running `resolving-merge-conflicts` with nothing else, or do you give them something to do first? Write your answer to `outputs/answer.md`.",
+      "expected_output": "Stops and reports the PR has merge conflicts with main. Does not point bare at resolving-merge-conflicts -- explicitly states that skill's own precondition is a local working tree already showing unmerged paths (git status), which a remote-only mergeable: CONFLICTING signal doesn't produce on its own. Tells the user to reproduce the conflict locally first, fetching from an explicit https://github.com/acme-org/acme-repo.git URL (step 1's resolved owner/repo) rather than a bare origin, which only happens to be correct when the current checkout is of that same repository: git fetch https://github.com/acme-org/acme-repo.git fix/typo:pr-head main:pr-base, check out pr-head, then attempt git merge pr-base -- only then run resolving-merge-conflicts once git status actually shows unmerged paths.",
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 11,
       "name": "Step 2: not-behind-base is a required blocking gate, not merely disclosed",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 2, following your own not-behind-base check. `isCrossRepository` (from step 1) is `false`. `baseRefName` is `main`; `headRefName` is `feat/thing`. `gh api repos/{owner}/{repo}/compare/main...feat/thing --jq '.behind_by'` returns `4`. Describe what you conclude, whether readiness passes, and what you tell the user. Do you proceed to the merge-rights check (step 3), or stop? Write your answer to `outputs/answer.md`.",
       "expected_output": "States the branch is 4 commits behind main. Since not-behind-base is now a required, blocking check (not merely advisory/disclosed), states it stops here and does NOT proceed to step 3's merge-rights check. Tells the user how many commits behind and points at /sync-branch (git-rebase-sync) to resync. Does not treat this as merely informational or something to disclose at step 5 while still proceeding.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 12,
       "name": "Step 2: mergeStateStatus is an advisory disclosure that never blocks readiness on its own",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 2. All five required checks (not draft, status checks, no changes requested, no merge conflicts, not behind base) have already passed. `mergeStateStatus` (already fetched alongside `mergeable`) is `BLOCKED`. Does this block readiness or stop the flow? What do you do with this value? Write your answer to `outputs/answer.md`.",
       "expected_output": "States mergeStateStatus is an advisory disclosure only -- since all five required checks already passed, a BLOCKED mergeStateStatus value does NOT stop the flow or block readiness on its own. States it surfaces this value explicitly at step 5's confirmation as informational, noting it may disagree with this skill's own passing checks, but proceeds to step 3 (merge-rights check) and eventually step 5 rather than treating BLOCKED as a gate.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 13,
       "name": "Step 3: merge-rights check reuses step 1's resolved {owner}/{repo}, never a fresh gh repo view",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are following your own step 3 (merge-rights check), delegating to references/merge-rights-check.md's 3-tier procedure. `$ARGUMENTS` named a PR whose `url` field (already resolved at step 1) is `https://github.com/acme-org/acme-repo/pull/42` -- but the current local checkout's own remote is a completely different repository, `andrehahm/andres-cc-marketplace`. Tier 1 needs to compare the current actor's login against the repo owner. Which repository's owner do you compare against: `acme-org` (from the PR's own resolved url), or whatever `gh repo view` would report for the current checkout? Write your answer to `outputs/answer.md`.",
       "expected_output": "States it compares against acme-org -- the owner from step 1's already-resolved {owner}/{repo} (the PR's own url field) -- never a fresh gh repo view call, which would incorrectly resolve to andrehahm/andres-cc-marketplace (the current checkout's own repository), not the repository the PR under review actually belongs to. States this applies to Tier 3's collaborator-permission call too, using the same PR-resolved {owner}/{repo}.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 14,
       "name": "Step 2: no-merge-conflicts fork-PR reproduction uses GitHub's pull/<number>/head ref, not the fork's branch name against origin",
-      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 2, following your own no-merge-conflicts check. `gh pr view $ARGUMENTS --json ...mergeable...` returns `mergeable: CONFLICTING`. `isCrossRepository` (from step 1) is `true` -- this PR comes from a contributor's fork. `number` (from step 1) is `88`. `headRefName` is `contributor-branch`; `baseRefName` is `main`. Describe exactly how you tell the user to reproduce this conflict locally -- specifically, do you tell them to run `git fetch origin contributor-branch`, or something else? Write your answer to `outputs/answer.md`.",
-      "expected_output": "Does NOT tell the user to run `git fetch origin contributor-branch` -- explicitly states that fails/resolves wrong since the fork's branch isn't on this repository's own origin remote. Instead uses GitHub's synthetic per-PR ref: `git fetch origin pull/88/head:<local-branch-name>` (using the PR number 88), checks out that local branch, then attempts `git merge origin/main`. Only once `git status` shows unmerged paths does it point at `resolving-merge-conflicts`.",
-      "files": ["outputs/answer.md"]
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 2, following your own no-merge-conflicts check. `gh pr view $ARGUMENTS --json ...mergeable...` returns `mergeable: CONFLICTING`. `isCrossRepository` (from step 1) is `true` -- this PR comes from a contributor's fork. Step 1 already resolved `{owner}/{repo}` as `acme-org/acme-repo` from the PR's own url field. `number` (from step 1) is `88`. `headRefName` is `contributor-branch`; `baseRefName` is `main`. Describe exactly how you tell the user to reproduce this conflict locally -- specifically, do you tell them to run `git fetch origin contributor-branch`, or something else? Write your answer to `outputs/answer.md`.",
+      "expected_output": "Does NOT tell the user to run `git fetch origin contributor-branch` -- explicitly states that fails/resolves wrong both because the fork's branch isn't on this repository's own origin remote AND because origin itself may not even be the PR's own repository (acme-org/acme-repo). Instead fetches from an explicit https://github.com/acme-org/acme-repo.git URL using GitHub's synthetic per-PR ref for the head: git fetch https://github.com/acme-org/acme-repo.git pull/88/head:pr-head main:pr-base, checks out pr-head, then attempts git merge pr-base. Only once git status shows unmerged paths does it point at resolving-merge-conflicts.",
+      "files": [
+        "outputs/answer.md"
+      ]
     },
     {
       "id": 15,
       "name": "Step 2: not-behind-base fork-PR path uses mergeStateStatus (BEHIND blocks), never unconditionally passes",
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 2, following your own not-behind-base check. `isCrossRepository` (from step 1) is `true` -- this PR comes from a contributor's fork. `mergeStateStatus` (already fetched alongside `mergeable`) is `BEHIND`. Does this check block readiness? What do you tell the user, and do you point them at `/sync-branch`? Write your answer to `outputs/answer.md`.",
       "expected_output": "States the compare-endpoint call is never run for this fork PR (unsafe to run by branch name), but does NOT unconditionally treat the fork PR as passing either. Uses the already-fetched `mergeStateStatus` value instead: since it's `BEHIND`, treats this the same as a non-zero `behind_by` -- stops and reports the fork branch is behind `main` per GitHub's own `mergeStateStatus`. Does NOT point at `/sync-branch` -- explicitly states this skill has no local git access to push to a fork's branch, so instead asks the contributor to update their branch.",
-      "files": ["outputs/answer.md"]
+      "files": [
+        "outputs/answer.md"
+      ]
     }
   ],
   "testing_validation_coverage": {
@@ -133,6 +163,6 @@
       "Step 5's confirmation always states both advisory disclosures explicitly, even when the thread count is zero and the merge-state value is CLEAN",
       "--bypass-codex-review never skips the no-merge-conflicts or not-behind-base checks"
     ],
-    "note": "Eval 1 covers 'Step 7 never assumes the remote branch is gone...'. Eval 2 covers 'Step 5's worktree branch-delete note is always present...'. Eval 3 covers 'headRefName is always validated...at step 1'. Eval 4 covers 'Step 7's remote-branch-deletion fallback...never runs when isCrossRepository is true'. Evals 5 and 6 deepen coverage of eval 1's and eval 3's gates respectively rather than mapping to new declared checklist items -- not counted separately against declared_scenarios_total. Eval 7 covers both 'Step 2's four-state classification never collapses missing into pending or failing' and 'Step 2 always resolves the required-check list from the branch-protection REST endpoint' (the same query resolves both). Eval 8 covers 'Step 7(a)'s rebase-compatibility pre-check always runs before the first gh pr merge --rebase attempt'. Eval 9 covers 'Step 7(c)'s squash-tradeoff disclosure always fires...regardless of whether squash was the configured default'. Eval 10 covers 'Step 2's no-merge-conflicts stop message always tells the user how to reproduce the conflict locally before pointing at resolving-merge-conflicts' (skill-reviewer M2 fix; same-repository path). Eval 11 covers 'Step 2's not-behind-base check is a required, blocking gate (not merely disclosed)' (non-cross-repository path). Eval 12 covers the mergeStateStatus half of 'Step 2's unresolved-review-thread and merge-state-summary disclosures never block readiness'. Eval 13 covers 'Step 3 and references/merge-rights-check.md's Tiers 1 and 3 always reuse step 1's resolved {owner}/{repo}' (skill-reviewer M1 fix). Eval 14 (added 2026-08-31, iteration-7) covers 'Step 2's no-merge-conflicts local-reproduction guidance always branches on isCrossRepository' (cross-model-review finding, the fork-PR path of eval 10's same check). Eval 15 covers 'Step 2's not-behind-base check never runs the compare-endpoint call when isCrossRepository is true -- uses mergeStateStatus instead' (cross-model-review finding, the fork-PR path of eval 11's same check; BEHIND-blocks case only, not the UNKNOWN-polling sub-case). declared_scenarios_total rose from 31 to 33 in this session's third round (net +2: one stale item split into two, one new item added for the no-merge-conflicts fork branch) -- the 19 remaining uncovered items are unchanged in kind from before this round, mostly the bypass-attestation flow (steps 3-4/8) plus a handful of narrower sub-cases (UNKNOWN-polling paths, graphql pagination/marker mechanics) that these 15 evals didn't happen to exercise."
+    "note": "Eval 1 covers 'Step 7 never assumes the remote branch is gone...'. Eval 2 covers 'Step 5's worktree branch-delete note is always present...'. Eval 3 covers 'headRefName is always validated...at step 1'. Eval 4 covers 'Step 7's remote-branch-deletion fallback...never runs when isCrossRepository is true'. Evals 5 and 6 deepen coverage of eval 1's and eval 3's gates respectively rather than mapping to new declared checklist items -- not counted separately against declared_scenarios_total. Eval 7 covers both 'Step 2's four-state classification never collapses missing into pending or failing' and 'Step 2 always resolves the required-check list from the branch-protection REST endpoint' (the same query resolves both). Eval 8 covers 'Step 7(a)'s rebase-compatibility pre-check always runs before the first gh pr merge --rebase attempt'. Eval 9 covers 'Step 7(c)'s squash-tradeoff disclosure always fires...regardless of whether squash was the configured default'. Eval 10 covers 'Step 2's no-merge-conflicts stop message always tells the user how to reproduce the conflict locally before pointing at resolving-merge-conflicts' (skill-reviewer M2 fix; same-repository path). Eval 11 covers 'Step 2's not-behind-base check is a required, blocking gate (not merely disclosed)' (non-cross-repository path). Eval 12 covers the mergeStateStatus half of 'Step 2's unresolved-review-thread and merge-state-summary disclosures never block readiness'. Eval 13 covers 'Step 3 and references/merge-rights-check.md's Tiers 1 and 3 always reuse step 1's resolved {owner}/{repo}' (skill-reviewer M1 fix). Eval 14 (added 2026-08-31, iteration-7) covers 'Step 2's no-merge-conflicts local-reproduction guidance always branches on isCrossRepository' (cross-model-review finding, the fork-PR path of eval 10's same check). Eval 15 covers 'Step 2's not-behind-base check never runs the compare-endpoint call when isCrossRepository is true -- uses mergeStateStatus instead' (cross-model-review finding, the fork-PR path of eval 11's same check; BEHIND-blocks case only, not the UNKNOWN-polling sub-case). declared_scenarios_total rose from 31 to 33 in this session's third round (net +2: one stale item split into two, one new item added for the no-merge-conflicts fork branch) -- the 19 remaining uncovered items are unchanged in kind from before this round, mostly the bypass-attestation flow (steps 3-4/8) plus a handful of narrower sub-cases (UNKNOWN-polling paths, graphql pagination/marker mechanics) that these 15 evals didn't happen to exercise. DISCLOSURE (2026-08-31, post-grading edit): evals 10 and 14's prompt/expected_output text were updated after their with_skill grading already passed, to match a subsequent cross-model-review round-3 fix (fetching from an explicit {owner}/{repo}.git URL instead of a bare origin, since origin only happens to be the PR's own repository when the current checkout is of that same repo) -- their recorded PASS results (grading.json in workspace/iteration-6/ and iteration-7/) reflect the pre-fix instruction text, not this final version; a re-grade against the current SKILL.md wording is still owed for full current-behavior confidence."
   }
 }
