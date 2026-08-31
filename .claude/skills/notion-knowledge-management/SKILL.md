@@ -92,9 +92,12 @@ that could silently drift apart.
 
 ## Decision State Machine
 
-Decisions carry a state distinct from other record types: `proposed → accepted / superseded /
-reversed`, tracked in the `decision-state` property (see `references/notion-record-types.md`) —
-**not** the shared `status` property every record type also carries. For a Decision record,
+Decisions carry a state distinct from other record types, tracked in the `decision-state` property
+(see `references/notion-record-types.md`) — **not** the shared `status` property every record type
+also carries. **The valid transitions are `proposed → accepted`, then `accepted → superseded` or
+`accepted → reversed`** — Supersede and Reverse apply only to an already-*accepted* Decision, never
+to one still in `proposed` state; there is nothing yet in effect to supersede or reverse until a
+Decision has actually been accepted. For a Decision record,
 `decision-state` is the only authoritative state; the shared `status` field is not separately
 tracked for Decisions, avoiding two fields that could silently drift apart. `Propose`, `Accept`,
 `Supersede`, and `Reverse` are all consequential — each requires the live approval gate, consistent
