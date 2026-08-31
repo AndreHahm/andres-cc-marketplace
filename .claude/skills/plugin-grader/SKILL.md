@@ -235,6 +235,16 @@ which would only ever match a whole-plugin import):
    If `plugin_inventory_exists` is `false`, skip this sub-step entirely and note in the outcome report
    (below) that per-component import was skipped for that reason — never attempt it against a path that
    the existence check already found missing.
+
+   **This loop is not one atomic operation — each call is its own independent write.** Each individual
+   `import-grading` invocation is atomic on its own (it locks, reads, and rejects a missing/ambiguous
+   record with a clean error before writing anything for *that* call), but nothing ties the N calls in
+   this loop together as a single transaction. If a stale `plugin-inventory.json` is missing a record
+   for a component graded later than the plugin's last `check`/`bootstrap`, an early component in the
+   loop can succeed and write its `scoring_history` entry before a later one fails — track which
+   components succeeded and which failed/were skipped as the loop runs, and report that full breakdown
+   to the user (see "Report the real outcome" below) rather than letting one failing call's error read
+   as if nothing in this plugin-mode import happened at all.
 2. **Only if `marketplace_inventory_exists`:** once, the plugin rollup itself:
    ```bash
    python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py import-grading <repo_root> <inventory_path> <report_path> <target> plugin
@@ -246,7 +256,11 @@ which would only ever match a whole-plugin import):
 than presenting a `false` (already-imported, same report hash — a legitimate no-op, not an error) as if
 new history had landed. `import-grading` itself rejects a target/type mismatch, a malformed report, or an
 ambiguous same-`(name, type)` lookup with a clear `SystemExit` error before any write — surface that
-error to the user verbatim if it happens, rather than retrying or silently working around it.
+error to the user verbatim if it happens, rather than retrying or silently working around it. **In plugin
+mode specifically**, if the per-component loop above fails partway through, report which components
+already succeeded (with their `quality_score_appended`/`security_score_appended` results) separately from
+which one failed and why, and whether the rollup step even ran — never collapse a partial-completion
+result into a single pass/fail line.
 
 ### 9. Suggested Next Step
 
@@ -258,42 +272,11 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 
 ## Testing & Validation
 
-**Last dated run record:** `.claude/output/plugin-grader/example-plugin-2026-08-31T16-02-07Z.md` — the
-two new script invocations Step 8 relies on (`plugin-inventory.py import-grading` and
-`marketplace-inventory.py import-grading`) were live-dry-run against a scratch copy of `example-plugin`'s
-real `plugin-inventory.json` and the repo's real `marketplace-inventory.json`: a synthetic component-mode
-report imported cleanly (`quality_score_appended`/`security_score_appended` both `true`), a same-report
-re-import correctly reported both as `false` (scenario 14d's no-op case), and a synthetic plugin-mode
-report imported cleanly into the marketplace-level rollup. `scripts/smoke_test.py` re-run and passing
-after the SKILL.md edit (frontmatter/Bash-grant consistency, including the two new grants). Scenarios
-14-14e above are design-review-verified against this real run, not yet covered by a persisted
-`skill-tester` eval.
-
-1. **Single skill, clean** — grade a skill with no findings from any dispatched reviewer; confirm all 12 dimensions score 10 and `final_score` is 10.0 with no gates
-2. **Rule compliance gate** — grade a target with a known REQUIRED rule violation; confirm Gate A fires and `final_score` is capped at 6.0
-2a. **Safety gate** — grade a target with a Critical `safety_risk_handling` finding (e.g. `Bash(*)`); confirm Gate C fires and `final_score` is capped at 4.0, even when every other dimension scores 10
-2b. **Testing gate** — grade a target with `testing == 0.0` (no `evals/`, no Testing & Validation section of its own); confirm Gate D fires, `final_score` is capped at 8.0, and the output includes the literal comment `"Missing verification."` exactly as `gates-and-rollup.md` specifies
-3. **Gate stacking** — construct an input triggering both Gate A and Gate B; confirm `final_score` uses the *lower* of the two caps (5.0), not the first one found. Also confirm stacking Gate B and Gate C uses 4.0 (the lower of the two), since Gate C is now the lowest cap of the four
-4. **N/A dimension** — grade a component with no `scripts/`; confirm `robustness` scores 10 with `is_na: true`, not excluded from the weighted sum
-5. **Plugin rollup with one broken component** — construct component scores where one is < 3; confirm Gate P3 fires and `weakest_component` is reported even though the mean looks acceptable
-6. **Fast mode** — confirm the Fast-mode flag reaches `plugin-auditor`, `scripts-reviewer`/`consistency-reviewer`/`security-reviewer` are skipped, and `notes.inspection_limits` states this
-7. **Self-check** — `scripts/smoke_test.py` passes (this skill's own persisted smoke test), re-run after any SKILL.md edit
-8. **Evidence-only mode, missing evidence → refusal** (new, M3) — invoke evidence-only mode with a scope manifest naming a component that has no corresponding report in the supplied evidence bundle; confirm scoring is refused (not silently skipped or scored as if clean) per `references/output-schema.md`'s refusal shape, and confirm no `plugin-auditor`/reviewer/test dispatch was attempted
-8a. **Evidence-only mode, stale evidence → qualified score** — supply evidence whose `current_commit` doesn't match the scope manifest's; confirm the score is returned qualified, with `notes.inspection_limits` stating the staleness, not refused outright and not silently ignored
-8b. **Evidence-only mode, complete and fresh → identical scoring** — supply a complete, fresh evidence bundle for a target already graded via standalone mode in scenario 1; confirm the two runs produce the same `final_score`/`gates_applied` (the dispatch mechanism differs, the scoring doesn't)
-9. **Plugin security rollup, clean** — every component scores `safety_risk_handling: 10`; confirm `plugin_security_score` is `10.0` with no gate
-10. **Gate P4 fires** — one component scores `safety_risk_handling: 2.0`; confirm `plugin_security_score` is capped at `4.0` even though the mean of all components would be higher, and confirm `plugin_final_score` is unaffected (Gate P4 never caps it)
-11. **All components N/A** — every component's `safety_risk_handling` is `is_na: true`; confirm `plugin_security_score` is `10.0` (matching the existing N/A-defaults-to-10 rule), not `null`
-12. **No security-scorable components** — a plugin whose components all have a `final_score` (quality is gradeable) but none has a `safety_risk_handling` dimension to report (e.g. every component is a type this skill can't assess for security); `component_scores` is still populated, only `component_security_scores` is omitted. Confirm `plugin_security_score` is `null` with a stated reason in `notes.security_score_unavailable_reason`, not a fabricated value. (A plugin with zero gradeable components at all is a different, harder failure — `compute_score.py --rollup` raises on an empty `component_scores`, since there is nothing to roll up; that case is reported as a refusal, not a `null` score.)
-13. **Schema-version field presence** — confirm a freshly-generated report (either mode) always carries `grader_schema_version: "1.1.0"`, and that a pre-existing report with no `grader_schema_version` key at all is distinguishable by that field's absence alone
-14. **Offer Inventory Import, no inventory exists** — grade a target whose plugin has no `plugin-inventory.json` yet (and, in plugin mode, no `marketplace-inventory.json`); confirm the offer is skipped outright (no `AskUserQuestion` fired) and the gap is stated plainly in the narrative summary instead
-14a. **Offer Inventory Import, component mode, accepted** — grade a single component whose plugin already has a `plugin-inventory.json`; accept the offer; confirm exactly one `plugin-inventory import-grading` call runs against the just-written report path, and both `quality_score_appended`/`security_score_appended` are reported back to the user
-14b. **Offer Inventory Import, declined** — decline the offer at either mode; confirm no `Bash` call to either inventory script is made
-14c. **Offer Inventory Import, plugin mode, accepted** — grade a whole plugin with 3 components, all already tracked in that plugin's `plugin-inventory.json`; accept the offer; confirm 3 per-component `plugin-inventory import-grading` calls run (each against a freshly extracted single-component report file, never the combined plugin-mode report), plus exactly one `marketplace-inventory import-grading` call for the plugin rollup
-14d. **Offer Inventory Import, re-grading an unchanged component** — run scenario 14a twice in a row against an unchanged target; confirm the second run's `quality_score_appended`/`security_score_appended` are both reported as `false` (a legitimate no-op — same report hash already imported) rather than presented as if new history landed
-14e. **Offer Inventory Import, import-grading rejects the report** — construct a target/type mismatch between the grading target and the inventory record it's imported against; confirm the script's `SystemExit` error is surfaced to the user verbatim, and no partial write occurs
-14f. **Offer Inventory Import, plugin mode, partial existence** — grade a whole plugin whose own `plugin-inventory.json` exists but the repo has no `marketplace-inventory.json` yet (or vice versa); confirm the question discloses which half will run before asking, and confirm only the sub-step whose target file exists is attempted — never an unconditional attempt against the missing one, and never a script failure with no prior disclosure
-14g. **Offer Inventory Import, plugin-mode question discloses scope** — grade a whole plugin with 3 components, both target files present; confirm the `AskUserQuestion` text itself states the component count and mentions the plugin rollup, not the bare component-mode phrasing reused verbatim
+**Last dated run record and full scenario walkthrough:** see `references/test-scenarios.md` — extracted
+per `plugin-rulebook`'s R30 (content beyond R29's required trigger-example lists and pass-criteria
+checklist must move to `references/` or `evals.json`, not stay inline in `SKILL.md`). 25 numbered
+scenarios (1 through 14h) cover every behavior described above, including this session's two
+`cross-model-review` rounds.
 
 **Verify this skill activates on:**
 - "grade this plugin"
@@ -320,6 +303,7 @@ after the SKILL.md edit (frontmatter/Bash-grant consistency, including the two n
 - [ ] Step 8 never writes to `plugin-inventory.json`/`marketplace-inventory.json` without an explicit "Yes" answer first — no silent import, ever
 - [ ] Plugin-mode import never points `plugin-inventory import-grading` at the combined plugin-mode report file directly — each component's score is always extracted to its own standalone-shaped report file first
 - [ ] Step 8 always reports each import's real `quality_score_appended`/`security_score_appended` result — a no-op duplicate (`false`) is never presented as if new history landed
+- [ ] A partial failure in plugin mode's per-component loop always reports which components already succeeded, separately from the failing one's error — never collapsed into a single pass/fail line that hides a partial-completion write
 - [ ] A staging-mirror duplicate (`.claude/` vs `plugins/plugin-devkit/`) is noted, not treated as an error
 - [ ] Fast mode is never presented as equivalent-fidelity to a full grade
 - [ ] Evidence-only mode never dispatches `plugin-auditor`, a reviewer agent, or a test — it only ever reads supplied evidence
@@ -339,6 +323,7 @@ after the SKILL.md edit (frontmatter/Bash-grant consistency, including the two n
 | `references/gates-and-rollup.md` | Exact hard-gate math, stacking rule, and whole-plugin rollup formula |
 | `references/output-schema.md` | JSON shapes for the script's input/output and the final written report |
 | `references/swot-and-next-steps.md` | Score-driven SWOT derivation and prioritized-next-steps ranking |
+| `references/test-scenarios.md` | Full 25-scenario test walkthrough and last dated run record, extracted from `SKILL.md` per R30 |
 | `scripts/compute_score.py` | Deterministic weighted-sum and gate-application script — the only source of truth for this arithmetic |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run before packaging or after any SKILL.md edit |
 | `assets/example-output.json` | A complete worked example of the final report JSON (component mode) |
