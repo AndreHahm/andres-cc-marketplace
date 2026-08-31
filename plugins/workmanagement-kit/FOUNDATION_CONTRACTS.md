@@ -224,6 +224,17 @@ potentially from more than one pass over time.
   `open-item-management`'s own second, separate approval gate) — this contract defines the stored
   shape only, not the approval requirement.
 
+**Companion field — `open-item-source` (on the follow-up Issue, not the source record):** a
+Disposition Record entry's `linked_record` lives on the *source* record and is only set once the
+full disposition write above completes — if that write is declined or fails after a follow-up
+Issue was already created, the Issue itself would otherwise carry no persisted link back to its
+source at all, with no way to repair it (Issue supports no delete operation). `open-item-source`
+closes that gap: a lightweight `{"system": "notion | linear", "stable_id": "string"}` reference set
+directly on the Issue as part of its own creation write (see `linear-entity-fields.md`'s Issue
+table), independent of whether the full Disposition Record write ever happens. It needs no approval
+beyond whatever already gates the Issue's own creation — it is part of that same write, not a
+separate one.
+
 ## Change Log
 
 - 2026-08-31 — Initial version. Host profile and versioned configuration ship with `unconfigured`/
@@ -241,3 +252,7 @@ potentially from more than one pass over time.
   (`disposition-history`) for multi-item batch outcomes against one source record. Clarified that
   cross-system links are represented by the already-shipped `notion-link`/`linear-link` entity
   fields, not this contract. Closes GitHub issue #254.
+- 2026-08-31 — Added the `open-item-source` companion field (on the follow-up Issue, set as part
+  of its own creation write) so a follow-up keeps a persisted source link even if the separately-
+  approved Disposition Record write is later declined or fails — found by cross-model review on
+  this same issue's fix.
