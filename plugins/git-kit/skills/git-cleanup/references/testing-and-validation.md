@@ -28,6 +28,31 @@
 - [ ] Safety Rule 5's "dirty" always includes gitignored content, not just tracked/untracked-but-not-ignored
       changes
 
+**Verify Phase 3.6's rebase-backup tag cleanup (live-verified, 2026-08-31, against a scratch repo built
+specifically for this — not this repository's own history, since it has no real `*-rebase-backup-*` tags
+to exercise):**
+- [ ] `phase1-analysis.sh`'s tag enumeration only matches a tag fitting the exact
+      `{branch}-rebase-backup-{8-digit-date}-{6-digit-time}` shape — a tag that merely contains the
+      substring `-rebase-backup-` without the trailing digit-shape is never swept in
+- [ ] A tag whose derived branch no longer exists locally is reported "no longer exists locally" and is a
+      `STALE_REBASE_BACKUP_TAG` candidate
+- [ ] A tag whose derived branch still exists and is merged into the default branch is reported "exists,
+      merged into `<default>`" and is a `STALE_REBASE_BACKUP_TAG` candidate
+- [ ] A tag whose derived branch still exists and is NOT merged is reported "exists, not merged into
+      `<default>`" and is never proposed for deletion — Phase 3.6 leaves it alone regardless of the tag's
+      own age
+- [ ] `git tag -d` is called directly, with no marker-handshake write beforehand — confirmed
+      `guard-raw-destructive-cleanup.sh` only matches `git branch -D`/`worktree remove --force`, never
+      `git tag -d`
+- [ ] Gate 1/Gate 2 list stale rebase-backup tags as their own category, distinct from branch and
+      stale-remote-branch categories, never silently merged into either
+
+**Live results, 2026-08-31:** ran the updated `phase1-analysis.sh` against a throwaway scratch repo with
+three rebase-backup tags: one whose branch was merged and then deleted (correctly reported "no longer
+exists locally"), one whose branch was merged but kept (correctly reported "exists, merged into main"),
+and one whose branch is still active/unmerged (correctly reported "exists, not merged into main"). All
+three matched the intended Phase 3.6 categorization with no false positives or negatives.
+
 **Verify Phase 3.5's remote-branch fallback (verified live, 2026-08-16, against two real stale remote
 branches in this repository — `feat/plugin-auditor-codex-integration` (PR #41) and
 `fix/sync-claude-mirror` (PR #20), both merged PRs whose remote branch survived the merge because a

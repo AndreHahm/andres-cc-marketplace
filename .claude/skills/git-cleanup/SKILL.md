@@ -3,7 +3,7 @@ name: git-cleanup
 description: >-
   Safely analyzes and cleans up local git branches and worktrees by categorizing them as merged, squash-merged, superseded, or active work.
 disable-model-invocation: true
-allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/phase1-analysis.sh:*), Read, Grep
+allowed-tools: Bash(git branch:*), Bash(git worktree:*), Bash(git fetch:*), Bash(git log:*), Bash(git status:*), Bash(git symbolic-ref:*), Bash(git -C:*), Bash(git tag:*), Bash(gh pr view:*), Bash(gh repo view:*), Bash(gh api -X DELETE repos/*/git/refs/heads/*:*), Bash(*/git-kit/scripts/write-git-kit-marker.sh:*), Bash(*/git-kit/skills/git-cleanup/scripts/phase1-analysis.sh:*), Read, Grep
 ---
 
 # Git Cleanup
@@ -52,7 +52,7 @@ specifically to `[gone]` branches within Phase 2/3.
 
 ### Phase 1: Comprehensive Analysis
 
-Gather ALL information upfront before any categorization. Run `"${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/phase1-analysis.sh"` directly via `Bash` — it resolves the default branch, lists local branches and worktrees, fetches/prunes, gets merged-branch and recent PR-merge history, and for each non-protected branch (protected names excluded via the script's own `grep -vE` filter) reports unmerged and unpushed commits plus whether its `origin/<branch>` counterpart still exists. It also lists remote-only branches with no local counterpart at all (candidates for Phase 3.5's fallback). Read its output rather than re-deriving these git calls by hand.
+Gather ALL information upfront before any categorization. Run `"${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/phase1-analysis.sh"` directly via `Bash` — it resolves the default branch, lists local branches and worktrees, fetches/prunes, gets merged-branch and recent PR-merge history, and for each non-protected branch (protected names excluded via the script's own `grep -vE` filter) reports unmerged and unpushed commits plus whether its `origin/<branch>` counterpart still exists. It also lists remote-only branches with no local counterpart at all (candidates for Phase 3.5's fallback), and every local `*-rebase-backup-*` tag left over from `git-rebase-sync`'s pre-rebase safety backup, alongside its derived branch name and that branch's current status (candidates for Phase 3.6's cleanup). Read its output rather than re-deriving these git calls by hand.
 
 **Note on branch names:** Git branch names can contain characters that break shell expansion. Always quote `"$branch"` in commands.
 
@@ -126,6 +126,7 @@ Is branch merged into default branch?
 | LOCAL_WORK | Untracked branch with unique commits | Keep |
 | SYNCED_WITH_REMOTE | Up to date with remote | Keep |
 | STALE_REMOTE_ONLY | No local branch; remote branch's own PR is live-confirmed `MERGED` (Phase 3.5) | `gh api -X DELETE` |
+| STALE_REBASE_BACKUP_TAG | Leftover `git-rebase-sync` pre-rebase tag; originating branch is gone or merged (Phase 3.6) | `git tag -d` |
 
 ### Phase 3.5: Remote Branch Fallback (stale `origin/<branch>` after merge)
 
@@ -154,6 +155,28 @@ existence alone:**
    all — leaves that branch untouched entirely, not even flagged for review.** This is what keeps this
    phase a narrow repair for one specific known failure mode rather than general remote branch management:
    a branch with no merged PR evidence is out of scope, full stop.
+
+### Phase 3.6: Rebase-Backup Tag Cleanup (leftover `git-rebase-sync` safety tags)
+
+**Why this exists:** `git-rebase-sync`'s Step 3 creates a local-only, never-pushed annotated tag
+(`{branch}-rebase-backup-{timestamp}`) immediately before every rebase, as a recovery point if the rebase
+goes wrong. Nothing in that skill — or anywhere else in git-kit — ever deletes these tags afterward, so
+they accumulate indefinitely once the branch they were protecting is long gone or merged.
+
+Phase 1's own tag enumeration (`=== Rebase-backup tags ===`) already lists every tag matching the exact
+`{branch}-rebase-backup-{8-digit-date}-{6-digit-time}` shape, alongside its derived branch name and that
+branch's current status. Categorize each one from that output — no extra git calls needed here:
+
+- **Branch no longer exists locally** → `STALE_REBASE_BACKUP_TAG`, safe to delete — the backup outlived
+  the branch it was protecting.
+- **Branch exists, merged into the default branch** → `STALE_REBASE_BACKUP_TAG`, safe to delete — the
+  branch itself is already safe to delete, so its backup tag is redundant.
+- **Branch exists, not merged** → leave the tag alone. The branch may still need this recovery point,
+  and the tag being merely old is not evidence otherwise (see Rationalizations below).
+
+Fold the result into Gate 1 as its own list, the same way Phase 3.5's stale remote branches get their own
+list — never silently merge it into the branch categories above, since a tag isn't a branch and
+`git tag -d` isn't `git branch -d`/`-D`.
 
 ### Phase 4: Dirty State Detection
 
@@ -212,7 +235,7 @@ worktree in the analysis rather than only discovering it when the removal comman
 Present everything in ONE comprehensive view. Group related branches together. See `assets/analysis-report-template.md` for the full example layout (related branch groups, individual branch categories, worktrees, and summary).
 
 Use AskUserQuestion with clear options:
-- Delete all recommended (groups + merged + squash-merged + stale remote-only)
+- Delete all recommended (groups + merged + squash-merged + stale remote-only + stale rebase-backup tags)
 - Delete specific groups/categories
 - Let me pick individual branches
 
@@ -242,6 +265,9 @@ git worktree remove ../proj-auth
 # Stale remote branches (Phase 3.5 — PR confirmed MERGED via gh pr view)
 gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/feat/old-worktree-feature
 
+# Stale rebase-backup tags (Phase 3.6 — originating branch is gone or merged)
+git tag -d feat/gone-branch-rebase-backup-20260701-093000
+
 Confirm? (yes/no)
 ```
 
@@ -267,6 +293,7 @@ git worktree unlock ../proj-auth
 "${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git worktree remove ../proj-auth
 gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/feat/old-worktree-feature
+git tag -d feat/gone-branch-rebase-backup-20260701-093000
 ```
 
 If a deletion fails, report the error and continue with remaining deletions. If `git worktree remove`
@@ -283,6 +310,11 @@ shell context unsafely; if a name fails this check, skip it and report why rathe
 call. Resolve `<owner>/<repo>` via `gh repo view --json nameWithOwner --jq .nameWithOwner` once per run,
 not once per branch.
 
+**Stale rebase-backup tags (Phase 3.6):** no marker write needed — `git tag -d` isn't guarded by
+`guard-raw-destructive-cleanup.sh` (that hook only matches `git branch -D`/`worktree remove --force`), and
+deleting a tag never touches a protected branch name in the first place. `git tag -d <tag>` is safe to run
+directly, one call per tag, so a partial failure part-way through still lets the rest proceed.
+
 ### Phase 6: Report
 
 ```markdown
@@ -297,6 +329,7 @@ not once per branch.
 - feat/api-final
 - Worktree: ../proj-auth
 - Remote branch (stale, Phase 3.5): feat/old-worktree-feature
+- Rebase-backup tag (stale, Phase 3.6): feat/gone-branch-rebase-backup-20260701-093000
 
 ### Remaining (4 branches)
 | Branch | Status |
@@ -327,6 +360,10 @@ not once per branch.
    deletes `origin/<branch>` when `gh pr view <branch>` confirms `state: MERGED` at the time of the
    check, not from "no local branch" or "not in Phase 1's merged list" alone - an open PR, a closed
    (unmerged) PR, or no PR at all always leaves that branch untouched
+9. **Never delete a rebase-backup tag whose originating branch is still active** - Phase 3.6 only
+   proposes a `*-rebase-backup-*` tag for deletion when its derived branch no longer exists locally or is
+   already merged into the default branch - an unmerged, still-active branch's backup tag is always left
+   alone, regardless of the tag's own age
 
 ## Rationalizations to Reject
 
@@ -343,6 +380,7 @@ These are common shortcuts that lead to data loss. Reject them:
 | "The branch has commits not in main, so it has unpushed work" | "Not in main" ≠ "not pushed". A branch can be synced with its remote but not merged to main. Always check `git log origin/<branch>..<branch>`. |
 | "It's gitignored, so it's not important" | Gitignored means *not in git history* — it is often the only copy of a `.env`, a local override, or uncommitted scratch output. Absence from git is not evidence of unimportance. |
 | "This remote branch has no local copy, so its PR must be merged and it's safe to delete" | No local copy only means nobody has it checked out here — it could be an open PR someone else is working on, or a branch with no PR at all. Phase 3.5 always confirms `state: MERGED` live via `gh pr view` before ever proposing deletion. |
+| "This rebase-backup tag is old, it's probably safe to delete" | Age alone says nothing about whether the branch it protects is still active — a long-running feature branch can be rebased repeatedly with none of its backup tags becoming safe to delete. Phase 3.6 only proposes deletion once the derived branch is confirmed gone or merged. |
 
 ## Testing & Validation
 
