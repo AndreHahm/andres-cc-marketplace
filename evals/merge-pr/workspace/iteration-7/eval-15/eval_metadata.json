@@ -1,0 +1,26 @@
+{
+  "eval_id": 15,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "States the compare-endpoint call is never run for this fork PR",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Does NOT unconditionally treat the fork PR as passing -- uses mergeStateStatus instead",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Since mergeStateStatus is BEHIND, treats this as a blocking failure the same as a non-zero behind_by -- stops and reports it",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Does NOT point at /sync-branch -- explicitly states no local git access to push to a fork's branch, asks the contributor to update their branch instead",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

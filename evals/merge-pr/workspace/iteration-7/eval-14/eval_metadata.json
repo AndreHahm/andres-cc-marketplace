@@ -1,0 +1,26 @@
+{
+  "eval_id": 14,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Does NOT tell the user to run git fetch origin contributor-branch (the same-repository form)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Uses GitHub's synthetic per-PR ref: git fetch origin pull/88/head:<local-branch-name>",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Checks out the fetched local branch, then attempts git merge origin/main",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "States why the same-repository form fails/is wrong for a fork PR (the fork's branch isn't on this repository's own origin remote)",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}
