@@ -2,9 +2,14 @@
 # Phase 1 comprehensive analysis for git-cleanup.
 # Gather ALL information upfront before any categorization.
 
-# Get default branch name
+# Get default branch name. Not `... || echo "main"` -- `sed` exits 0 even on
+# empty stdin (no origin/HEAD symref set), so the `||` fallback never fires
+# and default_branch silently resolves to an empty string, corrupting every
+# later git call that takes it as a revision argument (found by Devin's
+# review of PR #262, live-verified against a repo with no origin remote).
 default_branch=$(git symbolic-ref refs/remotes/origin/HEAD \
-  2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+  2>/dev/null | sed 's@^refs/remotes/origin/@@')
+default_branch="${default_branch:-main}"
 
 # Protected branches - never analyze or delete
 protected='^(main|master|develop|release/.*)$'
