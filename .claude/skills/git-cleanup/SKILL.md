@@ -176,7 +176,10 @@ branch's current status. Categorize each one from that output — no extra git c
 
 Fold the result into Gate 1 as its own list, the same way Phase 3.5's stale remote branches get their own
 list — never silently merge it into the branch categories above, since a tag isn't a branch and
-`git tag -d` isn't `git branch -d`/`-D`.
+`git tag -d` isn't `git branch -d`/`-D`. **Before including a tag in this list, validate its full name
+against `^[A-Za-z0-9._/-]+$`** (see Phase 5's Execute section for why — a git-legal tag name can contain
+shell metacharacters) — a name that fails this check is never surfaced at Gate 1, not just skipped at
+execution time.
 
 ### Phase 4: Dirty State Detection
 
@@ -265,8 +268,8 @@ git worktree remove ../proj-auth
 # Stale remote branches (Phase 3.5 — PR confirmed MERGED via gh pr view)
 gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/feat/old-worktree-feature
 
-# Stale rebase-backup tags (Phase 3.6 — originating branch is gone or merged)
-git tag -d feat/gone-branch-rebase-backup-20260701-093000
+# Stale rebase-backup tags (Phase 3.6 — originating branch is gone or merged, name validated)
+git tag -d -- feat/gone-branch-rebase-backup-20260701-093000
 
 Confirm? (yes/no)
 ```
@@ -293,7 +296,7 @@ git worktree unlock ../proj-auth
 "${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-cleanup-destructive git-cleanup
 git worktree remove ../proj-auth
 gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/feat/old-worktree-feature
-git tag -d feat/gone-branch-rebase-backup-20260701-093000
+git tag -d -- feat/gone-branch-rebase-backup-20260701-093000
 ```
 
 If a deletion fails, report the error and continue with remaining deletions. If `git worktree remove`
@@ -312,8 +315,15 @@ not once per branch.
 
 **Stale rebase-backup tags (Phase 3.6):** no marker write needed — `git tag -d` isn't guarded by
 `guard-raw-destructive-cleanup.sh` (that hook only matches `git branch -D`/`worktree remove --force`), and
-deleting a tag never touches a protected branch name in the first place. `git tag -d <tag>` is safe to run
-directly, one call per tag, so a partial failure part-way through still lets the rest proceed.
+deleting a tag never touches a protected branch name in the first place. **Before proposing or executing
+any tag deletion, validate the full tag name against `^[A-Za-z0-9._/-]+$`** — the same safety check Phase
+3.5 already applies before its `gh api -X DELETE` call, since a git tag name is legal with shell
+metacharacters a naive interpolation would execute (e.g. `` `$(cmd)-rebase-backup-20260831-120000` `` is a
+git-accepted tag name — `git check-ref-format` confirms it — that would run `cmd` if composed unsafely
+into a shell command); if a name fails this check, skip it and report why rather than ever including it in
+Gate 1/Gate 2 or attempting deletion. Once validated, run `git tag -d -- "$tag"` — the `--` end-of-options
+marker is defense in depth, not a substitute for the validation above — one call per tag, so a partial
+failure part-way through still lets the rest proceed.
 
 ### Phase 6: Report
 
@@ -364,6 +374,10 @@ directly, one call per tag, so a partial failure part-way through still lets the
    proposes a `*-rebase-backup-*` tag for deletion when its derived branch no longer exists locally or is
    already merged into the default branch - an unmerged, still-active branch's backup tag is always left
    alone, regardless of the tag's own age
+10. **Never interpolate an unvalidated tag name into a shell command** - a git tag name is legal with
+    shell metacharacters (`git check-ref-format` accepts e.g. `` `$(cmd)-rebase-backup-20260831-120000` ``),
+    so every candidate is checked against `^[A-Za-z0-9._/-]+$` before it's ever surfaced at Gate 1 or
+    passed to `git tag -d`, the same safety check Phase 3.5 already applies to remote branch names
 
 ## Rationalizations to Reject
 
