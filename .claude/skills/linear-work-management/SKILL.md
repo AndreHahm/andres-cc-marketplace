@@ -86,7 +86,7 @@ yet, or the name doesn't match) — never silently create a new entity to fill t
 - **No approval needed:** reading any entity, checking status, listing Issues/Milestones under a
   Project, previewing what a change would look like before applying it.
 - **Approval required:** any material priority, owner, scope, date, status, or closure change; any
-  Roadmap/Project/Issue creation; any refinement whose derived priority or scope came from Notion
+  Goal/Roadmap/Project/Milestone/Issue creation; any refinement whose derived priority or scope came from Notion
   or other external content rather than the user's own direct instruction — even when the
   suggestion looks obviously right, it still needs the same live approval a direct request would.
   Approval is obtained via `AskUserQuestion`, presenting the previewed change for confirmation
