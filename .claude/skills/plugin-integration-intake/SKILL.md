@@ -174,5 +174,5 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
 | Resource | Purpose |
 |---|---|
 | `references/intake-payload-schema.md` | Exact required/optional payload fields and validation rules |
-| `assets/intake-payload.schema.json` | Machine-checkable JSON Schema enforcing the envelope (not `content`'s per-type shape — see the reference above) |
+| `assets/intake-payload.schema.json` | Machine-checkable JSON Schema defining the envelope (not `content`'s per-type shape — see the reference above); not yet invoked by any runtime component, see `intake-payload-schema.md`'s own intro |
 | `examples/wiring-a-caller.md` | Worked example of another plugin author's own skill calling into this one |

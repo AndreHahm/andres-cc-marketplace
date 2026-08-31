@@ -7,7 +7,7 @@ description: >-
   status/closure on accepted work. Reads and status checks need no approval; material
   priority/owner/scope/date/status/closure changes require the plugin's live approval gate, and
   refinement never derives priority from Notion or other external content without it.
-allowed-tools: Read, AskUserQuestion, mcp__workmanagement-kit__linear_read, mcp__workmanagement-kit__linear_write
+allowed-tools: Read, AskUserQuestion, Bash(git ls-files:*), mcp__workmanagement-kit__linear_read, mcp__workmanagement-kit__linear_write
 ---
 
 # Linear Work Management
@@ -65,7 +65,12 @@ Notion side, **tool presence is never proof of permission** — check the host p
 succeed. **This file ships with every operation defaulting to `support_status: "unconfigured"`** —
 an installation makes it functional via `.claude/workmanagement-kit.local.json` during Foundational
 Setup (see the plugin README's Status section); until an operation's `support_status` reads
-`verified`, no write may proceed on the assumption that a sanctioning check happened.
+`verified`, no write may proceed on the assumption that a sanctioning check happened. **Before
+honoring that override file's contents at all**, run the tracked-vs-untracked trust check
+`FOUNDATION_CONTRACTS.md`'s Local Override section defines (`Bash(git ls-files:*)` is granted in
+this file's own `allowed-tools` specifically so this check is actually runnable, not just
+documented) — a tracked copy falls back to the shipped `unconfigured` defaults, never the
+override's claims.
 
 ## Entity Model
 
