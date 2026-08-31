@@ -58,12 +58,12 @@ or removed after preview) needs a fresh approval, not an extension of the old on
    without it when unavailable.
 5. On approval (via `AskUserQuestion`), create/adopt the Linear hierarchy via
    `linear-work-management`, one record at a time, in dependency order (a Milestone before the
-   Issues under it, etc.).
+   Issues under it, etc.) — each write carries its own transition-id-tagged properties per
+   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract as part of that write itself, not a
+   separate step after it (see that contract's next-write convention).
 6. Read every created/adopted record back through `linear-work-management` before considering the
    promotion complete.
 7. Record the reciprocal link (stable IDs both directions) via `work-linking`.
-8. Record the promotion transition through the plugin's shared transition contract (see
-   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract section).
 
 ## Confirmation and Safety
 
@@ -111,7 +111,8 @@ or removed after preview) needs a fresh approval, not an extension of the old on
 **Quality gates:**
 - [ ] The full proposed hierarchy is previewed and approved as one batch, never partially.
 - [ ] Every created/adopted Linear record is read back before the promotion is considered complete.
-- [ ] The reciprocal link is recorded via `work-linking` before the transition is recorded.
+- [ ] Every created/adopted Linear record's write carries its own transition-id-tagged properties
+      as part of that write, and the reciprocal link is recorded via `work-linking` after read-back.
 
 ## Reference Guide
 

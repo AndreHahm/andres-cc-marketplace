@@ -38,9 +38,21 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 ## Linking
 
-A link is a pair of stable IDs plus an authority label (which system owns the fact the link is
-about) — never a content mirror. Record links per `../../FOUNDATION_CONTRACTS.md`'s Transition
-Contract schema so a later drift check has something to compare against.
+A link is the reciprocal pair of stable IDs stored directly on each side's own record — the
+Linear-side entity's `notion-link` field and the Notion-side record's `linear-link` field (see
+`../linear-work-management/references/linear-entity-fields.md` and
+`../notion-knowledge-management/references/notion-record-types.md` for exactly which record types
+carry each) — never a content mirror. Each half is set via its own ordinary single-record write
+through `notion-knowledge-management`/`linear-work-management`, recorded per
+`../../FOUNDATION_CONTRACTS.md`'s Transition Contract like any other write; that contract has no
+dedicated field for a link pair itself, since a link pair is two independent single-record writes,
+not one write's own evidence — the two `*-link` fields, once both are set, are what a later drift
+check compares against.
+
+The "authority label" (which system owns the fact) is not separate per-link data — it follows this
+plugin's fixed Notion-owns-knowledge / Linear-owns-execution split (see
+`notion-knowledge-management/SKILL.md` and `linear-work-management/SKILL.md`), which is what Drift
+Classification and Repair (both below) consult.
 
 ## Drift Classification
 
@@ -101,7 +113,10 @@ repair pass is needed.
 **Verify it does NOT activate on:**
 - "promote this idea to Linear" (creating new work, not linking existing records) → `idea-to-implementation`
 
-**Last dated run record:** evals/work-linking/workspace/iteration-1/ (2026-08-30)
+**Last dated run record:** evals/work-linking/workspace/iteration-1/ (2026-08-30) — `evals.json`'s
+expected_output was updated 2026-08-31 for the Transition Contract redesign (issue #254); a live
+`skill-tester` re-run awaits Foundational Setup (connectors aren't wired yet, see README's Status
+section).
 
 **Quality gates:**
 - [ ] Drift is always classified as exactly one of the six defined states, never left ambiguous

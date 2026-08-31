@@ -14,7 +14,7 @@
       "id": 2,
       "name": "Disposition follow-ups from a decision",
       "prompt": "Disposition the follow-ups from the read-only-mirror design decision.",
-      "expected_output": "Presents only the actionable-work items as a batch for approval, each with a source anchor, and does not silently create Linear Issues for retained-knowledge or Decision-needed items.",
+      "expected_output": "Presents only the actionable-work items as a batch for approval, each with a source anchor, and does not silently create Linear Issues for retained-knowledge or Decision-needed items. Records every item's disposition as its own entry appended to the source record's disposition-history property, not overwriting prior entries.",
       "files": []
     }
   ]

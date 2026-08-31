@@ -25,6 +25,8 @@ Decision State Machine section — see SKILL.md) that this specific type require
 | `decision-state` | Yes | `proposed` / `accepted` / `superseded` / `reversed` — see SKILL.md's Decision State Machine |
 | `supersedes` / `superseded-by` | No | Set only on the superseding/superseded pair |
 | `related-artifact` | No | Idea, Report, or other record this Decision responds to |
+| `linear-link` | No | Populated by `work-linking` after `idea-to-implementation` promotes this Decision |
+| `disposition-history` | No | Array of per-item outcomes recorded by `open-item-management` when this Decision is the open-item source; accumulates, never overwritten — see `../../../FOUNDATION_CONTRACTS.md`'s Disposition Record |
 
 ## Proposed Goal
 
@@ -34,6 +36,7 @@ Decision State Machine section — see SKILL.md) that this specific type require
 | `description` | Yes | What the Goal is and why it matters |
 | `related-decision` | No | The Decision (if any) that motivated this Goal |
 | `readiness-notes` | No | Open questions/dependencies before this could be accepted into Linear |
+| `linear-link` | No | Populated by `work-linking` after `idea-to-implementation` promotes this proposed Goal |
 
 ## Note
 
@@ -60,6 +63,7 @@ Decision State Machine section — see SKILL.md) that this specific type require
 | `summary` | Yes | Executive summary of the report's content |
 | `body` | Yes | Full report content |
 | `open-items` | No | Enumerated follow-ups — feeds `open-item-management` |
+| `disposition-history` | No | Array of per-item outcomes recorded by `open-item-management` when this Report is the open-item source; accumulates, never overwritten — see `../../../FOUNDATION_CONTRACTS.md`'s Disposition Record |
 
 ## Outcome / Learning
 
@@ -77,3 +81,5 @@ Decision State Machine section — see SKILL.md) that this specific type require
   previews and approval prompts.
 - `related-record`/`related-*` fields always store a stable ID, never a display name.
 - No type in this table supports a delete operation — see SKILL.md's Gotchas.
+- `disposition-history` is append-only — a dispositioning pass adds entries, it never replaces or
+  reorders the array.

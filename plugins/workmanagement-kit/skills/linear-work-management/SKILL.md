@@ -38,9 +38,12 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    below).
 2. Resolve the target entity by stable ID — never by display name when more than one match exists.
 3. For a write: preview the change, get live approval via `AskUserQuestion` if it's material (see
-   Confirmation and Safety), then write and read back.
-4. Record the resulting transition through the plugin's shared transition contract (see
-   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract section).
+   Confirmation and Safety), then write it — including this write's own transition-id-tagged
+   properties per the plugin's shared transition contract (`../../FOUNDATION_CONTRACTS.md`'s
+   Transition Contract section): this write's own `transition_id`/`operation_id`/`affected_record`/
+   `source_plugin`, plus whatever `verification_evidence` the previous write to this record produced.
+   These properties are part of the write itself, not a separate step after it. Then read back —
+   that read-back's own evidence is what the *next* write to this record will carry.
 
 The `mcp__workmanagement-kit__linear_read`/`linear_write` tools in this file's own `allowed-tools`
 have no backing MCP server configuration yet — that's pending Foundational Setup; see the plugin
@@ -89,7 +92,11 @@ yet, or the name doesn't match) — never silently create a new entity to fill t
 ## Confirmation and Safety
 
 - **No approval needed:** reading any entity, checking status, listing Issues/Milestones under a
-  Project, previewing what a change would look like before applying it.
+  Project, previewing what a change would look like before applying it; the terminal-write
+  metadata write that records a prior write's `verification_evidence` when no further write to
+  that record is planned (`FOUNDATION_CONTRACTS.md`'s terminal-write exception) — it changes only
+  the evidence field, not the entity's actual content, and the write it confirms was already
+  approved.
 - **Approval required:** any material priority, owner, scope, date, status, or closure change; any
   Goal/Roadmap/Project/Milestone/Issue creation; any refinement whose derived priority or scope came from Notion
   or other external content rather than the user's own direct instruction — even when the
@@ -112,9 +119,11 @@ yet, or the name doesn't match) — never silently create a new entity to fill t
 Every write is followed by an authoritative read of the resulting state — never assume success
 from a non-error connector response alone. Record the resulting transition per
 `FOUNDATION_CONTRACTS.md`'s Transition Contract schema, embedded in the record's own
-`transition-id`-tagged properties. On timeout or an unknown result, read current state before any
-retry — a blind retry against an Issue that already updated risks a duplicate or conflicting
-change.
+`transition-id`-tagged properties — following that contract's next-write convention for
+`verification_evidence` (this write's own evidence lands on whichever write to this record comes
+next, not this one; see the terminal-write exception there for a record's last write). On timeout or
+an unknown result, read current state before any retry — a blind retry against an Issue that already
+updated risks a duplicate or conflicting change.
 
 ## Gotchas
 

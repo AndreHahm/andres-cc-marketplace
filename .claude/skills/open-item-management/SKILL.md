@@ -2,12 +2,12 @@
 name: open-item-management
 description: >-
   Revalidate and disposition open questions, decisions, and follow-ups surfaced from a Notion
-  Report, Decision, or completed work — classify each as resolved, retained knowledge, a Decision
-  still needed, or actionable Linear work, then create approved follow-ups in a single batch. Use
-  when asked to revalidate open questions, disposition follow-ups from a report, or process
-  remaining open items after a piece of work completes — not to capture the outcome/learning
+  Report, Decision, or a completed Linear Issue — classify each as resolved, retained knowledge, a
+  Decision still needed, or actionable Linear work, then create approved follow-ups in a single
+  batch. Use when asked to revalidate open questions, disposition follow-ups from a report, or
+  process remaining open items after a Linear Issue completes — not to capture the outcome/learning
   itself (see status-and-learning for that). Not every open question becomes a Linear Issue.
-allowed-tools: Read, Skill(notion-knowledge-management), Skill(linear-work-management), Skill(work-linking), AskUserQuestion
+allowed-tools: Read, Skill(notion-knowledge-management), Skill(linear-work-management), AskUserQuestion
 ---
 
 # Open Item Management
@@ -20,7 +20,7 @@ against current state, then let the user decide its disposition.
 ## When to Use
 
 Revalidating and dispositioning open questions/follow-ups surfaced from a Notion Report/Decision or
-a just-completed piece of work.
+a completed Linear Issue.
 
 ## When NOT to Use
 
@@ -33,8 +33,10 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 ## Quick Start
 
 1. Read the source and enumerate its open items — a Notion Report/Decision via
-   `notion-knowledge-management`, or a just-completed piece of work's Linear state via
-   `linear-work-management` (whichever system the source actually lives in).
+   `notion-knowledge-management`, or a completed Issue's Linear state via `linear-work-management`
+   (whichever system the source actually lives in). These three record types (Report, Decision,
+   Issue) are the only ones that carry `disposition-history`, per
+   `../../FOUNDATION_CONTRACTS.md`'s Disposition Record.
 2. Revalidate each item against current state — an item raised weeks ago may already be resolved,
    moot, or superseded. Don't just replay the original list unchecked. Re-read via whichever of
    `notion-knowledge-management`/`linear-work-management` owns the item's current state.
@@ -46,14 +48,21 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    source anchor (which Report/Decision/item it came from) — never present every classified item as
    if it needs a Linear Issue.
 5. On batch approval (via `AskUserQuestion`), create the approved follow-ups via
-   `linear-work-management`, read each one back before considering it created, and link each back
-   to its source via `work-linking`.
+   `linear-work-management`, read each one back before considering it created. Each follow-up's
+   link back to its source is recorded as that item's own `linked_record` field in step 6's
+   Disposition Record entry, not via `work-linking` — this isn't a promotion (see `work-linking`'s
+   own scope), so it uses the Disposition Record's own link field rather than `work-linking`'s
+   `notion-link`/`linear-link` pair.
 6. Present the full disposition set for every item (including the ones that weren't promoted, and
    why) for approval via `AskUserQuestion` — a second, separate approval from step 5's, since this
-   writes to the source record itself. On approval, record it so the source record shows what
-   happened to each open item, not just the ones that became work — per
-   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract schema, embedded in the source record's
-   own `transition-id`-tagged properties.
+   writes to the source record itself. On approval, record it through the plugin's shared
+   disposition record — per `../../FOUNDATION_CONTRACTS.md`'s Disposition Record schema, appended
+   to the source record's own `disposition-history` property (one entry per item, accumulating
+   across passes — never overwritten), so it shows what happened to each open item, not just the
+   ones that became work. The write itself still gets an ordinary Transition Contract entry
+   (`affected_record` = the source record) per that contract's next-write convention; only the
+   per-item outcomes use the Disposition Record's array shape instead of the Transition Contract's
+   single-valued fields.
 
 ## The core guardrail
 
@@ -85,6 +94,11 @@ even under pressure to "just track everything."
 
 - **A single source can produce items with different dispositions in the same pass** — don't force
   a uniform outcome (e.g. "the whole report is resolved") when individual items genuinely differ.
+- **Only a Notion Report has an explicit `open-items` field enumerating its own follow-ups.** A
+  Decision's or a completed Issue's open items are read directly from its own content/comments
+  during steps 1-2, not from a dedicated enumeration field — `disposition-history` (where
+  dispositions get recorded) exists on all three source types, but the *source list* of items only
+  has a structured field on Report.
 
 ## Testing & Validation
 
@@ -96,7 +110,10 @@ even under pressure to "just track everything."
 - "capture what we learned from this" → `status-and-learning`
 - "promote this idea to Linear" → `idea-to-implementation`
 
-**Last dated run record:** evals/open-item-management/workspace/iteration-1/ (2026-08-30)
+**Last dated run record:** evals/open-item-management/workspace/iteration-1/ (2026-08-30) —
+`evals.json`'s expected_output was updated 2026-08-31 for the Disposition Record redesign (issue
+#254); a live `skill-tester` re-run awaits Foundational Setup (connectors aren't wired yet, see
+README's Status section).
 
 **Quality gates:**
 - [ ] Every item gets one of exactly four dispositions; none is silently dropped or left unclassified.
