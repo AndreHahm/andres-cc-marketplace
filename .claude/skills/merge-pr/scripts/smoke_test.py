@@ -2,7 +2,9 @@
 """Persisted smoke test for merge-pr: frontmatter validity, referenced-file
 existence, Bash-scope grant usage, step-header sequencing, step 7's
 remote-branch-deletion verification fallback, step 5's unconditional
-worktree branch-delete note, step 2's four-state CI classification, and
+worktree branch-delete note, step 2's four-state CI classification,
+step 2's required no-merge-conflicts and not-behind-base gates plus its
+advisory mergeStateStatus/unresolved-review-thread disclosures, and
 step 7(a)/(c)/(d)'s rebase pre-check / squash disclosure / rejection
 fallback -- structural checks only, since this is a conversational,
 AskUserQuestion-driven skill with no executable logic of its own to
@@ -379,22 +381,123 @@ def check_step2_refetch_on_rerun():
     )
 
 
-def check_step2_out_of_sync_disclosure():
+def check_step2_not_behind_base_required():
     step2 = _get_step_text(2)
     if step2 is None:
         return False, "step 2 ('## Instructions') not found"
-    if "Out-of-sync with base" not in step2:
-        return False, "step 2 no longer documents the out-of-sync-with-base disclosure"
+    if "Not behind base" not in step2:
+        return False, "step 2 no longer documents the not-behind-base required check"
     if "compare/<baseRefName>...<headRefName>" not in step2:
-        return False, "step 2 no longer names the compare-endpoint call for the out-of-sync check"
+        return (
+            False,
+            "step 2 no longer names the compare-endpoint call for the not-behind-base check",
+        )
     if "skip entirely when `isCrossRepository` is `true`" not in step2:
         return (
             False,
-            "step 2's out-of-sync check no longer states it's skipped (and disclosed as skipped) "
-            "for fork PRs -- comparing a fork's head ref by name against this repo risks resolving "
-            "a same-named but unrelated branch",
+            "step 2's not-behind-base check no longer states it's skipped (and disclosed as "
+            "skipped) for fork PRs -- comparing a fork's head ref by name against this repo risks "
+            "resolving a same-named but unrelated branch",
         )
-    return True, "step 2 documents the out-of-sync-with-base disclosure, gated on isCrossRepository"
+    if "required, blocking gate" not in step2:
+        return (
+            False,
+            "step 2's not-behind-base check no longer states it's a required, blocking gate -- it "
+            "may have regressed back to advisory-only",
+        )
+    if "could not be confirmed" not in step2:
+        return (
+            False,
+            "step 2's not-behind-base check no longer states a failed compare-endpoint call is "
+            "reported as 'could not be confirmed' rather than silently treated as passing",
+        )
+    return (
+        True,
+        "step 2 documents the not-behind-base check as a required blocking gate, gated on "
+        "isCrossRepository",
+    )
+
+
+def check_step2_no_merge_conflicts_check():
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "No merge conflicts" not in step2:
+        return False, "step 2 no longer documents the no-merge-conflicts required check"
+    if "MergeableState" not in step2 or "CONFLICTING" not in step2 or "UNKNOWN" not in step2:
+        return (
+            False,
+            "step 2's no-merge-conflicts check no longer names the live-verified MergeableState "
+            "enum (MERGEABLE/CONFLICTING/UNKNOWN)",
+        )
+    if "poll `gh pr view $ARGUMENTS --json mergeable`" not in step2:
+        return (
+            False,
+            "step 2's no-merge-conflicts check no longer polls on an UNKNOWN mergeable value -- an "
+            "in-progress GitHub computation could be silently treated as passing",
+        )
+    if "resolving-merge-conflicts" not in step2:
+        return (
+            False,
+            "step 2's no-merge-conflicts check no longer points at resolving-merge-conflicts on a "
+            "real conflict",
+        )
+    return (
+        True,
+        "step 2 documents the no-merge-conflicts check with the verified MergeableState enum, "
+        "UNKNOWN polling, and a pointer to resolving-merge-conflicts",
+    )
+
+
+def check_step2_mergestate_summary_disclosure():
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "GitHub's own merge-state summary" not in step2:
+        return False, "step 2 no longer documents the mergeStateStatus advisory disclosure"
+    if "MergeStateStatus" not in step2:
+        return False, "step 2 no longer names the live-verified MergeStateStatus enum"
+    for value in ("CLEAN", "DIRTY", "BLOCKED", "BEHIND", "UNSTABLE", "HAS_HOOKS"):
+        if value not in step2:
+            return (
+                False,
+                f"step 2's mergeStateStatus disclosure no longer lists the {value!r} enum value",
+            )
+    if "Never blocks readiness" not in step2:
+        return (
+            False,
+            "step 2's mergeStateStatus disclosure no longer states it never blocks readiness on "
+            "its own",
+        )
+    return (
+        True,
+        "step 2 documents the mergeStateStatus advisory disclosure with the verified 7-value enum "
+        "and its non-blocking status",
+    )
+
+
+def check_step1_fetches_mergeable_fields():
+    step1 = _get_step_text(1)
+    step2 = _get_step_text(2)
+    if step1 is None or step2 is None:
+        return False, "step 1 or step 2 ('## Instructions') not found"
+    if "mergeable,mergeStateStatus,url" not in step1:
+        return (
+            False,
+            "step 1's initial gh pr view fetch no longer requests mergeable/mergeStateStatus -- "
+            "the new required/advisory checks below have no data to classify against",
+        )
+    if "statusCheckRollup,mergeable,mergeStateStatus" not in step2:
+        return (
+            False,
+            "step 2's rerun re-fetch no longer requests mergeable/mergeStateStatus -- a conflict "
+            "or merge-state regression after step 1 would go undetected on a recheck",
+        )
+    return (
+        True,
+        "step 1's initial fetch and step 2's rerun re-fetch both request "
+        "mergeable/mergeStateStatus",
+    )
 
 
 def check_step2_unresolved_threads_disclosure():
@@ -432,12 +535,12 @@ def check_step5_states_advisory_disclosures():
         return (
             False,
             "step 5's confirmation no longer states it surfaces step 2's advisory disclosures "
-            "(commits behind base, unresolved review threads)",
+            "(mergeStateStatus, unresolved review threads)",
         )
-    if "even when both are zero" not in step5:
+    if "thread count is zero and the merge-state value is `CLEAN`" not in step5:
         return (
             False,
-            "step 5 no longer states the advisory disclosures are shown even when zero -- a "
+            "step 5 no longer states the advisory disclosures are shown even when clean -- a "
             "clean result must never be silently omitted, same discipline as the squash disclosure",
         )
     return True, "step 5's confirmation states it always surfaces both advisory disclosures"
@@ -487,24 +590,26 @@ def check_boundaries_rest_grants_method_unrestricted_disclosure():
 
 
 def check_step2_advisory_failure_handling():
+    # Only unresolved-review-threads still has an independent live-call failure mode among the
+    # advisory disclosures -- mergeStateStatus is read from the same already-fetched gh pr view
+    # data as everything else, so its own failure is already covered by step 1/2's fetch-failure
+    # handling, not a separate clause here. not-behind-base moved to a required check (verified
+    # separately by check_step2_not_behind_base_required) and uses "could not be confirmed"
+    # instead, matching required-check phrasing elsewhere in step 2.
     step2 = _get_step_text(2)
     if step2 is None:
         return False, "step 2 ('## Instructions') not found"
     if "could not be determined" not in step2:
         return (
             False,
-            "step 2's advisory disclosures no longer state a failed call is reported as "
-            "'could not be determined' rather than silently as 0 (security-reviewer M2)",
-        )
-    if step2.count("could not be determined") < 2:
-        return (
-            False,
-            "step 2's failure-handling clause is missing from one of the two advisory disclosures "
-            "-- both out-of-sync-with-base and unresolved-review-threads need their own",
+            "step 2's unresolved-review-threads disclosure no longer states a failed call is "
+            "reported as 'could not be determined' rather than silently as 0 "
+            "(security-reviewer M2)",
         )
     return (
         True,
-        "both advisory disclosures state a failed call is reported as undetermined, never as 0",
+        "the unresolved-review-threads disclosure states a failed call is reported as "
+        "undetermined, never as 0",
     )
 
 
@@ -559,7 +664,10 @@ CHECKS = [
     check_step7_rejection_fallback,
     check_step1_owner_repo_from_pr_url,
     check_step2_refetch_on_rerun,
-    check_step2_out_of_sync_disclosure,
+    check_step2_not_behind_base_required,
+    check_step2_no_merge_conflicts_check,
+    check_step2_mergestate_summary_disclosure,
+    check_step1_fetches_mergeable_fields,
     check_step2_unresolved_threads_disclosure,
     check_boundaries_graphql_grant_disclosure,
     check_boundaries_rest_grants_method_unrestricted_disclosure,
