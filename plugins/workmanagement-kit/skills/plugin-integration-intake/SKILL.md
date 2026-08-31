@@ -85,10 +85,9 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
 5. On approval, execute through `notion-knowledge-management` or `linear-work-management` (never
    a connector call of this skill's own) and read the result back.
 6. Record the resulting transition tagged with **both** the target record and the claimed source
-   plugin's identity (a caller-supplied claim, per Trust Model above — not a verified sender)
-   through the plugin's shared transition contract (not yet built in this Wave 1 scaffold; see the
-   plugin README's Status section), so an audit later can trace exactly which plugin's claim
-   caused which write.
+   plugin's identity (a caller-supplied claim, per Trust Model above — not a verified sender) per
+   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract `source_plugin` field, so an audit later
+   can trace exactly which plugin's claim caused which write.
 
 ## Confirmation and Safety
 

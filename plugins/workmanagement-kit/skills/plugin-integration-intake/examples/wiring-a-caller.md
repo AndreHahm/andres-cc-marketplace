@@ -61,8 +61,7 @@ concrete result rather than the general rule:
    user sees and approves this specific Notion write independently.
 5. On approval, writes via `notion-knowledge-management` and reads the result back.
 6. Records the transition tagged with both the new Notion record and `source_plugin:
-   "analysis-kit"`, through the plugin's shared transition contract — not yet built in this
-   Wave 1 scaffold; see the plugin README's Status section.
+   "analysis-kit"`, per `../../../FOUNDATION_CONTRACTS.md`'s Transition Contract schema.
 
 ## What Would Happen on a Bad Payload
 

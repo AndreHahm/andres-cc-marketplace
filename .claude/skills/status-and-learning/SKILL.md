@@ -42,8 +42,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 3. Preview the summary/outcome/deviation/learning content for approval.
 4. On approval (via `AskUserQuestion`), write it via `notion-knowledge-management`.
 5. Read back both the Linear source (confirm nothing changed mid-summary) and the new Notion
-   record, and record the transition through the plugin's shared transition contract (not yet
-   built in this Wave 1 scaffold; see the plugin README's Status section).
+   record, and record the transition per `../../FOUNDATION_CONTRACTS.md`'s Transition Contract
+   section.
 
 ## Confirmation and Safety
 

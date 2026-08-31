@@ -39,9 +39,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 ## Linking
 
 A link is a pair of stable IDs plus an authority label (which system owns the fact the link is
-about) — never a content mirror. Record links through the plugin's shared transition contract (not
-yet built in this Wave 1 scaffold; see the plugin README's Status section) so a later drift check
-has something to compare against.
+about) — never a content mirror. Record links per `../../FOUNDATION_CONTRACTS.md`'s Transition
+Contract schema so a later drift check has something to compare against.
 
 ## Drift Classification
 

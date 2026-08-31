@@ -39,14 +39,14 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 ## Quick Start
 
-1. Resolve the connector through the plugin's shared host profile (see below — not yet built in
-   this Wave 1 scaffold; see the plugin README's Status section).
+1. Resolve the connector through the plugin's shared host profile (`../../host-profile.json`, see
+   below).
 2. Read the relevant record(s), if any exist, via the Notion connector.
 3. For a write: build the record per `references/notion-record-types.md`'s property table for its
    type, preview it, get live approval via `AskUserQuestion` (see Confirmation and Safety), then
    write and read back.
-4. Record the resulting transition through the plugin's shared transition contract (not yet built
-   in this Wave 1 scaffold; see the plugin README's Status section).
+4. Record the resulting transition through the plugin's shared transition contract (see
+   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract section).
 
 ## Why this exists
 
@@ -58,15 +58,16 @@ across every workflow gets the same approval discipline and the same durable rec
 ## Resolving the connector
 
 Before any read or write, resolve the logical operation through the plugin's shared, versioned
-host profile (owned by this plugin, not this skill) — it maps `notion.read`/`notion.write` to the
-installed connector, the active service identity, and the approved workspace/database scope.
-**Tool presence in this session is never proof of permission or scope** — the host profile's own
-`support_status`/`verified_at` fields are the only thing that confirms a read or write is actually
-sanctioned, so check those before calling the connector even when the connector tool itself is
-callable. **This host profile does not exist yet in this Wave 1 scaffold** — it is one of the
-foundation contracts named in the plugin README's Status section, not yet a concrete file anywhere
-in this plugin. Until it exists, no write may proceed on the assumption that a sanctioning check
-happened.
+host profile (`host-profile.json` at the plugin root, schema documented in
+`FOUNDATION_CONTRACTS.md`) — it maps `notion.read`/`notion.write` to the installed connector, the
+active service identity, and the approved workspace/database scope. **Tool presence in this
+session is never proof of permission or scope** — the host profile's own `support_status`/
+`verified_at` fields are the only thing that confirms a read or write is actually sanctioned, so
+check those before calling the connector even when the connector tool itself is callable. **This
+file ships with every operation defaulting to `support_status: "unconfigured"`** — an installation
+makes it functional via `.claude/workmanagement-kit.local.json` during Foundational Setup (see the
+plugin README's Status section); until an operation's `support_status` reads `verified`, no write
+may proceed on the assumption that a sanctioning check happened.
 
 The `mcp__workmanagement-kit__notion_read`/`notion_write` tools in this file's own `allowed-tools`
 have no backing MCP server configuration yet — that's pending Foundational Setup (connector
@@ -144,17 +145,18 @@ The first time this plugin operates against a Notion workspace, resolve the prod
 isolated test location using stable IDs (never a display name — two databases can share a name).
 Read existing structures first and present reuse/create/adopt choices; get plan-level approval for
 the exact bounded changes before creating anything. Store the resulting stable IDs in the plugin's
-versioned configuration, not in this skill's own state — this configuration artifact does not
-exist yet in this Wave 1 scaffold (see the plugin README's Status section).
+versioned configuration (`versioned-configuration.json` at the plugin root, schema documented in
+`FOUNDATION_CONTRACTS.md`) via `.claude/workmanagement-kit.local.json`'s override, not in this
+skill's own state.
 
 ## Read-Back and Transitions
 
 Every write is followed by an authoritative read of what was actually stored — never assume a
 write succeeded because the connector call returned without error. Record the resulting transition
-(operation ID, transition ID, affected record, verification evidence) through the plugin's shared
-transition contract (not yet built in this Wave 1 scaffold; see the plugin README's Status
-section). A timeout or unknown result triggers a read of current state before any retry — never
-blindly repeat a write that might have partially succeeded.
+(operation ID, transition ID, affected record, verification evidence) per `FOUNDATION_CONTRACTS.md`'s
+Transition Contract schema, embedded in the record's own `transition-id`-tagged properties. A
+timeout or unknown result triggers a read of current state before any retry — never blindly repeat
+a write that might have partially succeeded.
 
 ## Gotchas
 

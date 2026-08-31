@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "notion": {
+    "production_workspace_id": null,
+    "test_workspace_id": null,
+    "databases": {}
+  },
+  "linear": {
+    "organization_id": null,
+    "production_team_id": null,
+    "test_team_id": null
+  }
+}
