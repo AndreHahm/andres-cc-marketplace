@@ -4,6 +4,7 @@ All notable changes to this plugin are documented here.
 
 ## [Unreleased]
 
+- Added `codex-exec-live-roundtrip.mjs`, a new persisted smoke test that calls `runCodexExec` against the real, authenticated `codex` binary and asserts a schema-conformant response — every prior smoke test proved codex-kit's own scaffolding without ever completing a live `codex exec` round-trip (`running-a-full-retrospective:M7`). SKIPs cleanly via `runCodexExec`'s own `CLI_UNAVAILABLE`/`AUTH_UNAVAILABLE` categories in an environment with no live, logged-in `codex` CLI.
 - Added `codex-windows-guardrails`, a new skill providing best-effort guardrails (pre-flight
   repository-boundary/secret-file/instruction-containment checks plus an instructed, not enforced,
   dangerous-command allowlist) so a caller (`plugin-auditor`'s optional Codex backend) can attempt
