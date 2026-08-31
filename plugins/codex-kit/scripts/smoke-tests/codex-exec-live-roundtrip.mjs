@@ -75,44 +75,59 @@ const prompt = [
 console.log("=== Live codex exec round-trip (real binary, real API call) ===");
 
 const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "codex-kit-live-smoke-"));
-// codex refuses to run outside a trusted (git) directory unless the caller
-// passes --skip-git-repo-check, which runCodexExec deliberately never sets
-// (confirmed live, 2026-08-18: a bare tmp dir fails fast with "Not inside a
-// trusted directory"). A throwaway git repo inside the scratch dir satisfies
-// that check without depending on -- or touching -- this repo's own git state.
-execFileSync("git", ["init", "-q"], { cwd: scratchDir, stdio: ["ignore", "ignore", "ignore"] });
 
 try {
-  const result = await runCodexExec({
-    prompt,
-    schema,
-    sandbox: "read-only",
-    cwd: scratchDir,
-    timeoutMs: 90000,
-    dispatchId: "smoke-live-roundtrip"
-  });
-
-  if (result.ok) {
-    check("runCodexExec resolves ok:true against the real binary", true);
-    check(
-      "response JSON matches the requested schema and ack value",
-      result.data && result.data.ack === ACK_VALUE,
-      JSON.stringify(result.data)
-    );
-  } else if (
-    result.category === FAILURE_CATEGORIES.CLI_UNAVAILABLE ||
-    result.category === FAILURE_CATEGORIES.AUTH_UNAVAILABLE
-  ) {
+  // codex refuses to run outside a trusted (git) directory unless the caller
+  // passes --skip-git-repo-check, which runCodexExec deliberately never sets
+  // (confirmed live, 2026-08-18: a bare tmp dir fails fast with "Not inside a
+  // trusted directory"). A throwaway git repo inside the scratch dir satisfies
+  // that check without depending on -- or touching -- this repo's own git state.
+  // Kept inside this try (not before it) so a missing/failing git is a clean
+  // SKIP with scratchDir still removed by the finally below, not an uncaught
+  // crash that also leaks the temp directory.
+  let gitAvailable = true;
+  try {
+    execFileSync("git", ["init", "-q"], { cwd: scratchDir, stdio: ["ignore", "ignore", "ignore"] });
+  } catch (err) {
+    gitAvailable = false;
     skipScenario(
       "live codex exec round-trip",
-      `no live, authenticated codex CLI in this environment (${result.category}): ${result.detail}`
+      `git is unavailable, required to satisfy codex's trusted-directory check: ${err.message}`
     );
-  } else {
-    check(
-      "live codex exec round-trip",
-      false,
-      `unexpected failure category ${result.category}: ${result.detail}`
-    );
+  }
+
+  if (gitAvailable) {
+    const result = await runCodexExec({
+      prompt,
+      schema,
+      sandbox: "read-only",
+      cwd: scratchDir,
+      timeoutMs: 90000,
+      dispatchId: "smoke-live-roundtrip"
+    });
+
+    if (result.ok) {
+      check("runCodexExec resolves ok:true against the real binary", true);
+      check(
+        "response JSON matches the requested schema and ack value",
+        result.data && result.data.ack === ACK_VALUE,
+        JSON.stringify(result.data)
+      );
+    } else if (
+      result.category === FAILURE_CATEGORIES.CLI_UNAVAILABLE ||
+      result.category === FAILURE_CATEGORIES.AUTH_UNAVAILABLE
+    ) {
+      skipScenario(
+        "live codex exec round-trip",
+        `no live, authenticated codex CLI in this environment (${result.category}): ${result.detail}`
+      );
+    } else {
+      check(
+        "live codex exec round-trip",
+        false,
+        `unexpected failure category ${result.category}: ${result.detail}`
+      );
+    }
   }
 } finally {
   fs.rmSync(scratchDir, { recursive: true, force: true });
