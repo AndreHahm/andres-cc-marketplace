@@ -62,18 +62,35 @@ to exercise):**
       `<default>`" and is never proposed for deletion, with no reachability check run at all — Phase 3.6
       leaves it alone regardless of the tag's own age, and the extra `git merge-base` call is skipped
       entirely for this case since the outcome doesn't depend on it
-- [ ] `git tag -d` is called directly, with no marker-handshake write beforehand — confirmed
-      `guard-raw-destructive-cleanup.sh` only matches `git branch -D`/`worktree remove --force`, never
-      `git tag -d`
+- [ ] `delete-rebase-backup-tags.sh`'s own internal `git tag -d --` call runs with no marker-handshake
+      write beforehand — confirmed `guard-raw-destructive-cleanup.sh` only matches
+      `git branch -D`/`worktree remove --force`, never `git tag -d`
 - [ ] Gate 1/Gate 2 list stale rebase-backup tags as their own category, distinct from branch and
       stale-remote-branch categories, never silently merged into either
-- [ ] The ref-name safety check (`^[A-Za-z0-9._/-]+$`) always runs before a tag is surfaced at Gate 1 or
-      passed to `git tag -d`, matching Phase 3.5's identical check before `gh api -X DELETE` — a tag name
-      failing this check is skipped and reported, never included in a deletion command
+- [ ] Deletion always goes through `delete-rebase-backup-tags.sh`'s index-only interface — the agent
+      never types a tag name into any command, including as a script argument; a character-class
+      validation on an agent-composed value was tried first and found both unsafe in principle (no class
+      is both shell-safe and complete against every git-legal name) and, separately, incomplete in
+      practice (`^[A-Za-z0-9._/-]+$` rejected legitimate branches like `feat/c++`)
       (found by `cross-model-review`, Codex Phase 1 + Codex Phase 2's own independent re-derivation +
-      Claude Phase 2, 2026-08-31: `git check-ref-format --allow-onelevel` accepts a tag name containing
-      shell metacharacters, e.g. `` `$(id)-rebase-backup-20260831-120000` ``, live-verified as a legal git
-      ref)
+      Claude Phase 2 for the injection risk, 2026-08-31: `git check-ref-format --allow-onelevel` accepts
+      a tag name containing shell metacharacters, e.g. `` `$(id)-rebase-backup-20260831-120000` ``,
+      live-verified as a legal git ref; then Codex's round-2 PR review for the completeness gap the
+      narrower regex introduced, live-verified with `git check-ref-format --branch 'feat/c++'` and
+      `feat/x=y,z@w`, both legal)
+- [ ] `delete-rebase-backup-tags.sh --list` independently re-derives the deletable-tag set itself
+      (branch gone or merged AND reachable), never trusting Phase 3.6's earlier read of the same facts —
+      live-verified against a scratch repo with 3 tags (one safely deletable on an ordinary branch, one
+      safely deletable on a branch with special characters `feat/c++`, one NOT deletable because its
+      branch is still active): `--list` correctly included both deletable tags (including the
+      special-character one) and excluded the active one
+- [ ] Deleting by index removes exactly the intended tag and leaves the rest untouched — live-verified
+      deleting index 1 twice in sequence (`feat/c++`'s tag, then the plain one) against the same 3-tag
+      scratch repo, confirming only the active branch's tag survived
+- [ ] The script's error paths match `stage-selected-files.sh`'s own conventions: no `--list` run yet
+      (or the snapshot was already consumed) → "no candidate list found -- run --list first"; a
+      non-digit index → "is not a positive integer"; an out-of-range index → "one or more requested
+      indices are out of range" — all live-verified
 - [ ] The Category Definitions quick-reference table's `STALE_REBASE_BACKUP_TAG` row states the
       reachability condition explicitly, not just "branch gone or merged" — a reader skimming only the
       table (not Phase 3.6's own prose) must not be able to reconstruct the pre-fix, unsafe rule
