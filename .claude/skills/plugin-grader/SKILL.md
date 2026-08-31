@@ -182,22 +182,33 @@ actual write is `plugin-inventory`'s/`marketplace-inventory`'s own `import-gradi
 a direct scoped `Bash` call (no `Skill` dispatch needed for a single deterministic script command),
 never this skill computing or reinterpreting the score itself.
 
-**Existence check first.** `Glob` for the target plugin's own
-`plugins/<plugin>/.claude-plugin/plugin-inventory.json` (component mode: the plugin owning the graded
-component; plugin mode: the graded plugin itself) and — plugin mode only —
-`.claude-plugin/marketplace-inventory.json` at the repo root. If neither exists, state in the narrative
-summary that no tracked inventory exists yet to import into (point at `plugin-inventory`'s own `build`
-mode, per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`) and skip the rest
-of this step entirely — never ask the question below when its only possible outcome is a script failure
-against a missing file.
+**Existence check first — track each target independently, never as one combined "at least one"
+flag.** `Glob` for the target plugin's own `plugins/<plugin>/.claude-plugin/plugin-inventory.json`
+(component mode: the plugin owning the graded component; plugin mode: the graded plugin itself) and —
+plugin mode only — `.claude-plugin/marketplace-inventory.json` at the repo root. Record each result
+separately (`plugin_inventory_exists` / `marketplace_inventory_exists`) — the two checks gate two
+*independent* writes below, and collapsing them into a single "at least one exists" flag is exactly what
+let a plugin-mode run with only one of the two files present reach an unconditional attempt against the
+missing one in an earlier version of this step. If neither exists, state in the narrative summary that no
+tracked inventory exists yet to import into (point at `plugin-inventory`'s own `build` mode, per
+`.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`) and skip the rest of this
+step entirely — never ask the question below when its only possible outcome is a script failure against a
+missing file.
 
-**Ask once, never silent.** If at least one target exists, ask via `AskUserQuestion`: "Import this grade
-into `<target>`'s tracked inventory?" — options "Yes — import (Recommended)" / "No — skip". This mirrors
-Step 9's own `enhancement-suggestor` offer, and the "no silent writes" convention
-`.claude/rules/require-inventory-updates-for-new-plugins-and-components.md` already establishes for
-`plugin-inventory`/`marketplace-inventory`'s own `bootstrap` mode — a score import is exactly as much a
-real write as a bootstrap is, and gets the same explicit-approval treatment, never folded silently into
-"grading is done."
+**Ask once, never silent — and state the real scope in the question itself.** If at least one target
+exists, ask via `AskUserQuestion`. Component mode: "Import this grade into `<target>`'s tracked
+inventory?" — options "Yes — import (Recommended)" / "No — skip". Plugin mode: state the actual write
+count so "yes" is informed consent for what it really authorizes, not a generic phrase reused across a
+very different scope — e.g. "Import this grade — `<N>` component score(s) plus the plugin rollup — into
+the tracked inventory?" where `<N>` is the count of components that both were graded **and** have
+`plugin_inventory_exists: true` (never include a component whose target inventory doesn't exist in that
+count); if `marketplace_inventory_exists` is `false`, say so in the same question instead of silently
+implying the rollup will happen ("... plus the plugin rollup, but marketplace-inventory.json doesn't
+exist yet so the rollup will be skipped"). This mirrors Step 9's own `enhancement-suggestor` offer, and
+the "no silent writes" convention `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`
+already establishes for `plugin-inventory`/`marketplace-inventory`'s own `bootstrap` mode — a score
+import is exactly as much a real write as a bootstrap is, and gets the same explicit-approval treatment,
+never folded silently into "grading is done."
 
 **If yes, component mode** (one import, using Step 6's just-written report path as `<report_path>`):
 
@@ -205,26 +216,30 @@ real write as a bootstrap is, and gets the same explicit-approval treatment, nev
 python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py import-grading <plugin_dir> <inventory_path> <report_path> <target> <target_type>
 ```
 
-**If yes, plugin mode** (both levels — the plugin rollup into `marketplace-inventory.json`, and every
-graded component's own score into that plugin's `plugin-inventory.json`). The single combined report
-Step 6 wrote nests each component's full standalone-shaped report object under its own `components`
-key (per `references/output-schema.md`'s Plugin Mode section) — `import-grading` needs a `report_path`
-whose *top-level* `target`/`target_type`/`final_score` match one component, so extract each entry and
-write it back out as its own file before importing it, rather than pointing `import-grading` at the
-combined report directly (its top-level `target_type` is `"plugin"`, which would only ever match a
-whole-plugin import):
+**If yes, plugin mode** (each of the two levels below runs only when its own existence check above
+found the target file — never unconditionally; the question just asked already disclosed which parts
+apply). The single combined report Step 6 wrote nests each component's full standalone-shaped report
+object under its own `components` key (per `references/output-schema.md`'s Plugin Mode section) —
+`import-grading` needs a `report_path` whose *top-level* `target`/`target_type`/`final_score` match one
+component, so extract each entry and write it back out as its own file before importing it, rather than
+pointing `import-grading` at the combined report directly (its top-level `target_type` is `"plugin"`,
+which would only ever match a whole-plugin import):
 
-1. For each component in the written report's `components` object, write that nested object verbatim
-   (unchanged — it already carries its own `target`/`target_type`/`graded_at`/`final_score`/`dimensions`/
-   `gates_applied`) to `.claude/output/plugin-grader/<component-name>-<same-timestamp-as-Step-6>.json`,
-   then:
+1. **Only if `plugin_inventory_exists`:** for each component in the written report's `components`
+   object, write that nested object verbatim (unchanged — it already carries its own
+   `target`/`target_type`/`graded_at`/`final_score`/`dimensions`/`gates_applied`) to
+   `.claude/output/plugin-grader/<component-name>-<same-timestamp-as-Step-6>.json`, then:
    ```bash
    python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py import-grading <plugin_dir> <inventory_path> <extracted_component_report_path> <component_name> <component_type>
    ```
-2. Then, once, the plugin rollup itself:
+   If `plugin_inventory_exists` is `false`, skip this sub-step entirely and note in the outcome report
+   (below) that per-component import was skipped for that reason — never attempt it against a path that
+   the existence check already found missing.
+2. **Only if `marketplace_inventory_exists`:** once, the plugin rollup itself:
    ```bash
    python ${CLAUDE_PLUGIN_ROOT}/skills/marketplace-inventory/scripts/marketplace-inventory.py import-grading <repo_root> <inventory_path> <report_path> <target> plugin
    ```
+   If `marketplace_inventory_exists` is `false`, skip this sub-step entirely and note it the same way.
 
 **Report the real outcome, not an assumed one.** Each command's own JSON output states
 `quality_score_appended`/`security_score_appended` — read these and report both back to the user, rather
@@ -277,6 +292,8 @@ after the SKILL.md edit (frontmatter/Bash-grant consistency, including the two n
 14c. **Offer Inventory Import, plugin mode, accepted** — grade a whole plugin with 3 components, all already tracked in that plugin's `plugin-inventory.json`; accept the offer; confirm 3 per-component `plugin-inventory import-grading` calls run (each against a freshly extracted single-component report file, never the combined plugin-mode report), plus exactly one `marketplace-inventory import-grading` call for the plugin rollup
 14d. **Offer Inventory Import, re-grading an unchanged component** — run scenario 14a twice in a row against an unchanged target; confirm the second run's `quality_score_appended`/`security_score_appended` are both reported as `false` (a legitimate no-op — same report hash already imported) rather than presented as if new history landed
 14e. **Offer Inventory Import, import-grading rejects the report** — construct a target/type mismatch between the grading target and the inventory record it's imported against; confirm the script's `SystemExit` error is surfaced to the user verbatim, and no partial write occurs
+14f. **Offer Inventory Import, plugin mode, partial existence** — grade a whole plugin whose own `plugin-inventory.json` exists but the repo has no `marketplace-inventory.json` yet (or vice versa); confirm the question discloses which half will run before asking, and confirm only the sub-step whose target file exists is attempted — never an unconditional attempt against the missing one, and never a script failure with no prior disclosure
+14g. **Offer Inventory Import, plugin-mode question discloses scope** — grade a whole plugin with 3 components, both target files present; confirm the `AskUserQuestion` text itself states the component count and mentions the plugin rollup, not the bare component-mode phrasing reused verbatim
 
 **Verify this skill activates on:**
 - "grade this plugin"
@@ -298,6 +315,8 @@ after the SKILL.md edit (frontmatter/Bash-grant consistency, including the two n
 - [ ] The written report path is always under `.claude/output/plugin-grader/`
 - [ ] The Step 9 `enhancement-suggestor` offer uses `AskUserQuestion` and is never auto-invoked
 - [ ] Step 8's inventory-import offer always checks the target inventory file(s) exist before asking — never fires `AskUserQuestion` when the only possible outcome is a missing-file script failure
+- [ ] Step 8 tracks `plugin_inventory_exists`/`marketplace_inventory_exists` independently — plugin mode never attempts a sub-step whose own target file doesn't exist, even when the other one does
+- [ ] Step 8's plugin-mode question always states the real write scope (component count, and whether the rollup will run) — never the bare component-mode phrasing reused verbatim for a different scope
 - [ ] Step 8 never writes to `plugin-inventory.json`/`marketplace-inventory.json` without an explicit "Yes" answer first — no silent import, ever
 - [ ] Plugin-mode import never points `plugin-inventory import-grading` at the combined plugin-mode report file directly — each component's score is always extracted to its own standalone-shaped report file first
 - [ ] Step 8 always reports each import's real `quality_score_appended`/`security_score_appended` result — a no-op duplicate (`false`) is never presented as if new history landed
