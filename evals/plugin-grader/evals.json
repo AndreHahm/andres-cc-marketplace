@@ -121,6 +121,90 @@
       "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. Per SKILL.md Step 6 and output-schema.md's Schema Versioning section, what value does grader_schema_version carry in a freshly-generated report (either mode), and how does a consumer distinguish a genuinely pre-1.1.0 report from one where this field was simply forgotten?",
       "expected_output": "Every freshly-generated report (standalone or evidence-only) always carries grader_schema_version: \"1.1.0\" -- there is no other value a current run can produce. A report written before this field existed has no grader_schema_version key at all; that absence (not a stale/older value like \"1.0.0\", since no version ever shipped under that name) is the only signal a consumer reads as 'pre-1.1.0, predates the security-score prerequisite.'",
       "files": []
+    },
+    {
+      "id": 18,
+      "name": "Offer Inventory Import -- no inventory exists, skip outright",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. Per plugin-grader SKILL.md's Step 8 ('Offer Inventory Import'), a standalone-mode component grade just finished for a plugin that has neither plugins/<plugin>/.claude-plugin/plugin-inventory.json nor (irrelevant here, component mode) a marketplace-inventory.json. What does Step 8 do?",
+      "expected_output": "Step 8's existence check finds no target inventory file. It states in the narrative summary that no tracked inventory exists yet to import into (pointing at plugin-inventory's own build mode), and skips the rest of the step entirely -- no AskUserQuestion is ever fired, since its only possible outcome would be a missing-file script failure.",
+      "files": []
+    },
+    {
+      "id": 19,
+      "name": "Offer Inventory Import -- component mode, accepted",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. A standalone-mode component grade for skill 'example-skill' in plugin 'example-plugin' just wrote its report to .claude/output/plugin-grader/example-skill-2026-01-01T00-00-00Z.json. example-plugin/.claude-plugin/plugin-inventory.json exists. The user answers 'Yes' to Step 8's AskUserQuestion offer. Per SKILL.md, what exact command runs, and what must be reported back to the user afterward?",
+      "expected_output": "Exactly one command: python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py import-grading plugins/example-plugin plugins/example-plugin/.claude-plugin/plugin-inventory.json .claude/output/plugin-grader/example-skill-2026-01-01T00-00-00Z.json example-skill skill (component_type resolved from the target's actual type). The command's own JSON output (quality_score_appended/security_score_appended) must be read and reported back to the user -- a false value must never be presented as if new history landed, since it can legitimately mean an already-imported duplicate.",
+      "files": []
+    },
+    {
+      "id": 20,
+      "name": "Offer Inventory Import -- declined, no write attempted",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. Same setup as the component-mode-accepted scenario, but the user answers 'No -- skip' to Step 8's offer. What happens?",
+      "expected_output": "No Bash call to either plugin-inventory.py or marketplace-inventory.py is made. Step 8 ends there; the grading run's own written report is unaffected.",
+      "files": []
+    },
+    {
+      "id": 21,
+      "name": "Offer Inventory Import -- plugin mode, accepted, 3 components",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. A standalone-mode plugin-mode grade for a 3-component plugin just wrote a combined report nesting each component's own report under a top-level 'components' key, per output-schema.md's Plugin Mode section. Both plugins/<plugin>/.claude-plugin/plugin-inventory.json and the repo's marketplace-inventory.json already exist. The user accepts Step 8's offer. Exactly how many import-grading commands run, against what report files, and why can't plugin-inventory import-grading be pointed directly at the combined report Step 6 wrote?",
+      "expected_output": "4 total commands: 3 per-component 'python .../plugin-inventory.py import-grading' calls, each against a freshly extracted single-component JSON file written from that component's own nested 'components.<name>' object (never the combined report directly, since import-grading needs a report whose top-level target/target_type/final_score match one component, and the combined report's own top-level target_type is 'plugin'), plus exactly 1 'python .../marketplace-inventory.py import-grading ... plugin' call for the rollup, using the original combined report path directly (its top-level target_type IS 'plugin', which matches what marketplace-inventory's import-grading expects).",
+      "files": []
+    },
+    {
+      "id": 22,
+      "name": "Offer Inventory Import -- re-importing the same report is a no-op, re-grading is NOT",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. Per plugin-grader SKILL.md Step 8 and plugin-inventory's own import-grading dedup logic (keyed on report_sha256, a hash of the whole report file), explain the difference in outcome between (a) running import-grading twice against the exact same, unchanged report file, versus (b) running plugin-grader a second time against an unchanged target and then importing that new report.",
+      "expected_output": "(a) is a legitimate no-op: the second import-grading call reports quality_score_appended/security_score_appended both false, since the report_sha256 matches an already-imported entry -- this must be reported to the user as a duplicate, never presented as if new history landed. (b) is NOT a no-op: Step 6 always stamps a fresh graded_at timestamp on every grading run, so the second grade's report has a different report_sha256 even if the target and final_score are identical -- it would append as a genuinely new scoring_history event, not dedupe.",
+      "files": []
+    },
+    {
+      "id": 23,
+      "name": "Offer Inventory Import -- import-grading rejects a malformed/mismatched report",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. Per plugin-grader SKILL.md Step 8's 'Report the real outcome' paragraph and plugin-inventory's own Failure Handling section, what happens if the graded target/type doesn't match the inventory record being imported against, or the report is otherwise malformed?",
+      "expected_output": "import-grading rejects the import with a clear SystemExit error before any write occurs (the target/type/graded_at validation happens before the inventory file is ever touched). Step 8 must surface that error to the user verbatim -- never retry it or silently work around it, and never present a partial or fabricated result.",
+      "files": []
+    },
+    {
+      "id": 24,
+      "name": "Offer Inventory Import -- plugin mode, partial existence",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. A plugin-mode grade's plugin has an existing plugins/<plugin>/.claude-plugin/plugin-inventory.json, but the repo has no marketplace-inventory.json yet. Per Step 8's per-target existence tracking (plugin_inventory_exists / marketplace_inventory_exists tracked independently), what does the AskUserQuestion offer say, and which sub-steps actually run if the user accepts?",
+      "expected_output": "The question discloses the real scope before asking -- stating that the plugin rollup will be skipped since marketplace-inventory.json doesn't exist yet, alongside the component count that WILL be imported. If accepted, only the per-component plugin-inventory import-grading calls run (gated on plugin_inventory_exists: true); the marketplace-inventory rollup call is skipped entirely (gated on marketplace_inventory_exists: false) -- never an unconditional attempt against the missing marketplace file.",
+      "files": []
+    },
+    {
+      "id": 25,
+      "name": "Offer Inventory Import -- plugin-mode question discloses real write scope",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. A plugin-mode grade for a 3-component plugin has both plugin-inventory.json and marketplace-inventory.json already present. Per Step 8, what exact AskUserQuestion text should be shown to the user, and why can't the bare component-mode phrasing ('Import this grade into <target>'s tracked inventory?') be reused verbatim here?",
+      "expected_output": "The question must state the real write count -- e.g. 'Import this grade -- 3 component score(s) plus the plugin rollup -- into the tracked inventory?' -- since accepting the bare component-mode phrasing in plugin mode would authorize 4 separate writes (3 component imports + 1 rollup) across two different tracked files without the user having been told that scope, undermining the gate's own stated informed-consent purpose.",
+      "files": []
+    },
+    {
+      "id": 26,
+      "name": "Offer Inventory Import -- plugin mode, partial-completion failure disclosure",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. A plugin-mode grade's per-component import loop is running against a stale plugins/<plugin>/.claude-plugin/plugin-inventory.json: components A and B already have matching records and import successfully, but component C (graded after the plugin's last plugin-inventory check/bootstrap) has no matching (name, type) record, so its import-grading call fails with a SystemExit. Per Step 8's 'This loop is not one atomic operation' and 'Report the real outcome' paragraphs, what must be reported to the user, and why is presenting only C's error insufficient?",
+      "expected_output": "Each import-grading call is independently atomic (it locks, reads, and rejects before writing for that call), but nothing ties the whole per-component loop together as one transaction -- so A and B's imports already succeeded (with their own quality_score_appended/security_score_appended results) by the time C fails. The report to the user must state which components already succeeded, separately from C's own failure and its error text, and whether the marketplace rollup step even ran -- presenting only C's error would misrepresent a partial-completion state as if nothing in the plugin-mode import happened at all.",
+      "files": []
+    },
+    {
+      "id": 27,
+      "name": "Offer Inventory Import -- evidence-only mode never runs Step 8 (scored report)",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. plugin-lifecycle-downstream's Phase 11 invokes plugin-grader in evidence-only mode and gets back a normal, fully-scored report (final_score/plugin_final_score present, no refusal). Per Step 8's own 'Standalone mode only' opening paragraph and Phase 11's own contract in run-qa-pipeline.md (score computation 'without... modifying the plugin'), what does Step 8 do here?",
+      "expected_output": "Step 8 is skipped entirely -- no existence check, no AskUserQuestion, no write, not even the 'no tracked inventory exists' narrative note. This is unconditional on the mode being evidence_only, regardless of whether the report is fully scored -- the exclusion is by mode, not by whether an import would technically succeed, since an inventory import is exactly the kind of plugin-modifying write Phase 11's own contract forbids.",
+      "files": []
+    },
+    {
+      "id": 28,
+      "name": "Offer Inventory Import -- evidence-only refusal never reaches Step 8 (same root cause as scored case)",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. Same as the evidence-only-scored scenario, but this time evidence-only mode refuses to score (missing/stale required evidence), producing a refusal-shaped report per output-schema.md with no final_score/plugin_final_score/graded_at at all. Does Step 8 need a separate 'is this report actually scored' check to handle this case correctly, or does the existing mode-exclusion already cover it?",
+      "expected_output": "No separate check is needed. The existing mode-exclusion (Step 8 never runs in evidence-only mode, full stop) already covers this -- since evidence-only mode is excluded outright regardless of whether it produced a refusal, a qualified score, or a full score, a refused report never reaches Step 8 to begin with. A report-validity check would be redundant with, not an alternative to, the mode exclusion.",
+      "files": []
+    },
+    {
+      "id": 29,
+      "name": "Offer Inventory Import -- target resolved outside the marketplace's own plugins/ layout",
+      "prompt": "Do NOT dispatch any Agent()/Skill() calls -- reasoning-only. A standalone-mode grade's target resolved (per Step 1's own 'a component name/path resolvable via Glob') to a plugin directory NOT under this repo's plugins/<name>/ layout -- e.g. a path-resolved external plugin whose own .claude-plugin/plugin-inventory.json sits directly under that resolved directory. Per Step 8's existence-check paragraph, how must the Glob pattern be constructed, and what would go wrong if it weren't?",
+      "expected_output": "The existence check must Glob the resolved plugin directory's own .claude-plugin/plugin-inventory.json -- the same directory Step 1 actually resolved the target against -- never a plugins/<name>/-shaped string reconstructed from the target's bare name. If it used the hardcoded plugins/<name>/ template instead, a real inventory file at the resolved (non-marketplace) location would be missed, the existence check would wrongly report no inventory exists, and the import offer would be silently suppressed even though a valid target for it exists.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

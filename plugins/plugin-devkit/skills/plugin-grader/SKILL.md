@@ -32,7 +32,7 @@ Orchestrates this plugin's existing reviewer agents into one weighted, gated, 0-
 5. **Build SWOT + prioritized next steps** — `references/swot-and-next-steps.md`
 6. **Write the JSON report** — `.claude/output/plugin-grader/<target>-<timestamp>.json`
 7. **Present a narrative summary** in chat
-8. **Offer to import the score** into `plugin-inventory` (and `marketplace-inventory` for a plugin-mode rollup) — `AskUserQuestion`, never silent
+8. **Offer to import the score** into `plugin-inventory` (and `marketplace-inventory` for a plugin-mode rollup) — standalone mode only, `AskUserQuestion`, never silent
 9. **Offer `enhancement-suggestor`** as a follow-up
 
 ## When to Use
@@ -177,20 +177,40 @@ In chat (not a separate file): a dimension score table, any `gates_applied` with
 
 ### 8. Offer Inventory Import
 
-Both modes, right after Step 7's narrative summary. This step only ever *offers* the import — the
-actual write is `plugin-inventory`'s/`marketplace-inventory`'s own `import-grading` mode, invoked here as
-a direct scoped `Bash` call (no `Skill` dispatch needed for a single deterministic script command),
-never this skill computing or reinterpreting the score itself.
+**Standalone mode only — never evidence-only mode, and never partially.** Right after Step 7's
+narrative summary, in standalone mode only. Evidence-only mode exists specifically for
+`plugin-lifecycle-downstream`'s Phase 11 (Grading) — that phase's own contract
+(`plugin-lifecycle-downstream/workflows/run-qa-pipeline.md`'s Phase 11 Actions) requires computing the
+score "without dispatching `plugin-auditor`, any reviewer, or **modifying the plugin**." An inventory
+import is exactly that kind of write (`plugin-inventory.json`/`marketplace-inventory.json` both live
+inside the target plugin's own `.claude-plugin/` directory), so this step must never offer or execute
+one while running inside evidence-only mode — skip it entirely: no existence check, no
+`AskUserQuestion`, no write, not even the "no tracked inventory exists" narrative note below. This also
+covers evidence-only mode's own refusal/qualified-score outcomes (`references/output-schema.md`'s
+refusal shape has no `final_score`/`plugin_final_score`/`graded_at` at all) without a separate check —
+since evidence-only mode is excluded outright, a refused or qualified report never reaches this step to
+begin with. Downstream's own Phase 12 (Handoff Finalization) already owns that pipeline's inventory
+sync, per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md` — this step is
+never the mechanism for it. This step only ever *offers* the import in standalone mode — the actual
+write is `plugin-inventory`'s/`marketplace-inventory`'s own `import-grading` mode, invoked here as a
+direct scoped `Bash` call (no `Skill` dispatch needed for a single deterministic script command), never
+this skill computing or reinterpreting the score itself.
 
-**Existence check first — track each target independently, never as one combined "at least one"
-flag.** `Glob` for the target plugin's own `plugins/<plugin>/.claude-plugin/plugin-inventory.json`
-(component mode: the plugin owning the graded component; plugin mode: the graded plugin itself) and —
-plugin mode only — `.claude-plugin/marketplace-inventory.json` at the repo root. Record each result
-separately (`plugin_inventory_exists` / `marketplace_inventory_exists`) — the two checks gate two
-*independent* writes below, and collapsing them into a single "at least one exists" flag is exactly what
-let a plugin-mode run with only one of the two files present reach an unconditional attempt against the
-missing one in an earlier version of this step. If neither exists, state in the narrative summary that no
-tracked inventory exists yet to import into (point at `plugin-inventory`'s own `build` mode, per
+**Existence check first — resolve the plugin directory Step 1 actually found, never a hardcoded
+`plugins/` prefix; and track each target independently, never as one combined "at least one" flag.**
+`Glob` for the resolved plugin directory's own `.claude-plugin/plugin-inventory.json` — the same
+directory Step 1 resolved the target against (component mode: the plugin owning the graded component;
+plugin mode: the graded plugin itself). In this marketplace's own layout that directory is
+`plugins/<plugin>/`, but never assume that specific prefix — Step 1's own Usage section already accepts
+"a component name/path," so a target resolved to a directory outside `plugins/` must still have its
+*actual* resolved directory Globbed here, not a `plugins/<name>/`-shaped string reconstructed from the
+target's bare name. Also Glob — plugin mode only — `.claude-plugin/marketplace-inventory.json` at the
+repo root. Record each result separately (`plugin_inventory_exists` / `marketplace_inventory_exists`) —
+the two checks gate two *independent* writes below, and collapsing them into a single "at least one
+exists" flag is exactly what let a plugin-mode run with only one of the two files present reach an
+unconditional attempt against the missing one in an earlier version of this step. If neither exists,
+state in the narrative summary that no tracked inventory exists yet to import into (point at
+`plugin-inventory`'s own `build` mode, per
 `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`) and skip the rest of this
 step entirely — never ask the question below when its only possible outcome is a script failure against a
 missing file.
@@ -274,9 +294,9 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 
 **Last dated run record and full scenario walkthrough:** see `references/test-scenarios.md` — extracted
 per `plugin-rulebook`'s R30 (content beyond R29's required trigger-example lists and pass-criteria
-checklist must move to `references/` or `evals.json`, not stay inline in `SKILL.md`). 25 numbered
-scenarios (1 through 14h) cover every behavior described above, including this session's two
-`cross-model-review` rounds.
+checklist must move to `references/` or `evals.json`, not stay inline in `SKILL.md`). 29 numbered
+scenarios (1 through 14k) cover every behavior described above, including this session's two
+`cross-model-review` rounds and PR #271's own Codex/Devin review round.
 
 **Verify this skill activates on:**
 - "grade this plugin"
@@ -297,6 +317,8 @@ scenarios (1 through 14h) cover every behavior described above, including this s
 - [ ] Standalone mode never dispatches a reviewer agent directly — always goes through `plugin-auditor`, which itself never sends all five type-matched `*-reviewer` agents for a single target
 - [ ] The written report path is always under `.claude/output/plugin-grader/`
 - [ ] The Step 9 `enhancement-suggestor` offer uses `AskUserQuestion` and is never auto-invoked
+- [ ] Step 8 never runs in evidence-only mode — no existence check, no `AskUserQuestion`, no write, no narrative note; this includes a refused or qualified evidence-only report, which never reaches Step 8 at all since the mode itself is excluded
+- [ ] Step 8's existence check always Globs the plugin directory Step 1 actually resolved — never a `plugins/<name>/`-shaped string reconstructed from the target's bare name
 - [ ] Step 8's inventory-import offer always checks the target inventory file(s) exist before asking — never fires `AskUserQuestion` when the only possible outcome is a missing-file script failure
 - [ ] Step 8 tracks `plugin_inventory_exists`/`marketplace_inventory_exists` independently — plugin mode never attempts a sub-step whose own target file doesn't exist, even when the other one does
 - [ ] Step 8's plugin-mode question always states the real write scope (component count, and whether the rollup will run) — never the bare component-mode phrasing reused verbatim for a different scope
@@ -323,7 +345,7 @@ scenarios (1 through 14h) cover every behavior described above, including this s
 | `references/gates-and-rollup.md` | Exact hard-gate math, stacking rule, and whole-plugin rollup formula |
 | `references/output-schema.md` | JSON shapes for the script's input/output and the final written report |
 | `references/swot-and-next-steps.md` | Score-driven SWOT derivation and prioritized-next-steps ranking |
-| `references/test-scenarios.md` | Full 25-scenario test walkthrough and last dated run record, extracted from `SKILL.md` per R30 |
+| `references/test-scenarios.md` | Full 29-scenario test walkthrough and last dated run record, extracted from `SKILL.md` per R30 |
 | `scripts/compute_score.py` | Deterministic weighted-sum and gate-application script — the only source of truth for this arithmetic |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run before packaging or after any SKILL.md edit |
 | `assets/example-output.json` | A complete worked example of the final report JSON (component mode) |
@@ -332,4 +354,5 @@ scenarios (1 through 14h) cover every behavior described above, including this s
 | `plugin-rulebook-checker` agent | Rule Compliance dimension's signal source, via `plugin-auditor`'s own dispatch |
 | `plugin-inventory` skill | Step 8 (Offer Inventory Import) — component-level import target, and plugin mode's per-component imports; see `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md` |
 | `marketplace-inventory` skill | Step 8 (Offer Inventory Import) — plugin-mode rollup import target |
+| `plugin-lifecycle-downstream/workflows/run-qa-pipeline.md` | Phase 11's own no-plugin-mutation contract — the reason Step 8 excludes evidence-only mode entirely |
 | `enhancement-suggestor` agent | Turns the written report's `prioritized_next_steps` into a full WHAT/WHY/HOW plan (Step 9) |
