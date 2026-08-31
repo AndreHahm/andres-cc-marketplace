@@ -7,7 +7,7 @@ description: >-
   when asked to revalidate open questions, disposition follow-ups from a report, or process
   remaining open items after a piece of work completes — not to capture the outcome/learning
   itself (see status-and-learning for that). Not every open question becomes a Linear Issue.
-allowed-tools: Read, Skill, AskUserQuestion
+allowed-tools: Read, Skill(notion-knowledge-management), Skill(linear-work-management), Skill(work-linking), AskUserQuestion
 ---
 
 # Open Item Management
@@ -49,7 +49,9 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    `linear-work-management`, read each one back before considering it created, and link each back
    to its source via `work-linking`.
 6. Record the disposition of every item (including the ones that weren't promoted) so the source
-   record shows what happened to each open item, not just the ones that became work.
+   record shows what happened to each open item, not just the ones that became work — per
+   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract schema, embedded in the source record's
+   own `transition-id`-tagged properties.
 
 ## The core guardrail
 

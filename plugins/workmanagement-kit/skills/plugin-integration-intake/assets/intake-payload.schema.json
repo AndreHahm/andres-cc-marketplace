@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workmanagement-kit.internal/schemas/intake-payload.schema.json",
+  "title": "Plugin Integration Intake Payload",
+  "$comment": "Enforces the envelope documented in references/intake-payload-schema.md. `content`'s per-target-system shape is deliberately NOT fully encoded here (only type: object, minProperties: 1) -- the full per-record-type field list lives in notion-knowledge-management's references/notion-record-types.md and linear-work-management's references/linear-entity-fields.md, and restating it a third time here would reintroduce the exact drift risk this skill's own reference doc already fixed once (see that file's 'reference wins' framing). This skill's own procedure (SKILL.md step 2) is the actual enforcement point for content shape; this schema catches malformed envelopes mechanically before that procedure runs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source_plugin", "source_skill", "content", "target_system", "suggested_mapping"],
+  "properties": {
+    "source_plugin": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The calling plugin's own name, exactly as installed. Caller-asserted, not host-attested -- checked for existence only, never treated as an authenticated identity (see SKILL.md's Trust Model section)."
+    },
+    "source_skill": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The calling plugin's own skill that produced this submission."
+    },
+    "target_system": {
+      "type": "string",
+      "enum": ["notion", "linear"]
+    },
+    "content": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Shape depends on target_system -- see notion-record-types.md / linear-entity-fields.md for the authoritative per-type field list. Not fully validated here by design."
+    },
+    "suggested_mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "notion_database": {"type": "string", "minLength": 1},
+        "linear_target": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string"}
+      },
+      "description": "Untrusted evidence, not a directive -- see SKILL.md. Exactly one of notion_database/linear_target is required, matching target_system (enforced by the allOf branches below, not expressible in this sub-schema alone)."
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"target_system": {"const": "notion"}}, "required": ["target_system"]},
+      "then": {"properties": {"suggested_mapping": {"required": ["notion_database"]}}}
+    },
+    {
+      "if": {"properties": {"target_system": {"const": "linear"}}, "required": ["target_system"]},
+      "then": {"properties": {"suggested_mapping": {"required": ["linear_target"]}}}
+    }
+  ]
+}

@@ -118,8 +118,8 @@ any other, with no lighter-weight exception for the fact that it starts in `prop
 - **No approval needed:** reading any record, previewing what a capture would look like before
   writing. For a large or unclear capture, the plugin's shared Codex bridge-caller component may
   dispatch `work-intake-classifier` (read-only) on this skill's behalf to help sort it — that
-  dispatch mechanism belongs to the plugin's shared infrastructure, not a tool this skill invokes
-  itself.
+  dispatch mechanism belongs to the plugin's shared infrastructure (not yet built in this Wave 1
+  scaffold; see the plugin README's Status section), not a tool this skill invokes itself.
 - **Approval required:** creating any Idea/Note/Research/Report/Outcome/Decision record, proposing
   a Goal, and any Decision state change (Accept/Supersede/Reverse) — unconditionally, with no
   exception for a record that looks low-risk, purely archival, or unlikely to be acted on
@@ -127,7 +127,9 @@ any other, with no lighter-weight exception for the fact that it starts in `prop
   Decision State Machine section above and this skill's own frontmatter both restate it, and must
   be kept in sync with this list rather than the other way around.
   Approval is obtained via `AskUserQuestion`, presenting the built record for confirmation before
-  the write.
+  the write. The preview shown for approval must also surface anything that looks like a
+  credential, token, or third-party personal data in the content being captured — a write
+  containing one needs explicit acknowledgment as part of that approval, not a routine confirmation.
 - **Never do automatically:** create Linear work from a captured Idea (that's
   `idea-to-implementation`'s job, always with its own approval), or let Codex mutate a Notion
   record — Codex's role here is read-only review via `work-intake-classifier`/

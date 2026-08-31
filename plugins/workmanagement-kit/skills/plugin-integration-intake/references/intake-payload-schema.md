@@ -1,15 +1,15 @@
 # Intake Payload Schema
 
 The structured payload a calling plugin's own workflow hands to `plugin-integration-intake` via
-the host. This is the payload's logical shape. **A concrete JSON Schema file enforcing this shape
-does not exist yet** — no `assets/`/`schemas/` directory exists anywhere in this plugin as of this
-Wave 1 scaffold (see the plugin README's Status section, which names the foundation contracts —
-host profile, transition contract, versioned configuration — as not-yet-built; this payload schema
-file is the same category of not-yet-built artifact, not separately listed there). Until that
-schema file is implemented at the plugin's schema layer alongside its other versioned contracts,
-this reference is the sole authoritative statement of the fields and validation rules a caller
-must satisfy, enforced by this skill's own procedure (see SKILL.md) rather than by machine-checked
-schema validation.
+the host. This is the payload's logical shape, machine-enforced at the envelope level by
+`assets/intake-payload.schema.json` (Draft 2020-12, `additionalProperties: false` on the envelope
+and on `suggested_mapping`). That schema deliberately does **not** fully encode `content`'s
+per-`target_system` shape — only `type: object, minProperties: 1` — to avoid restating the full
+per-record-type field list a third time (see `content` shape below for why the reference files
+stay the actual source of truth for that part). This reference document is still the authoritative
+statement of the fields and validation rules a caller must satisfy overall; the schema file
+mechanically catches a malformed envelope before this skill's own procedure (see SKILL.md) runs
+the parts a static schema can't express (the existence check, the ambiguous-target check).
 
 ## Fields
 
