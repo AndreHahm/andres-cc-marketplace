@@ -48,8 +48,10 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 5. On batch approval (via `AskUserQuestion`), create the approved follow-ups via
    `linear-work-management`, read each one back before considering it created, and link each back
    to its source via `work-linking`.
-6. Record the disposition of every item (including the ones that weren't promoted) so the source
-   record shows what happened to each open item, not just the ones that became work — per
+6. Present the full disposition set for every item (including the ones that weren't promoted, and
+   why) for approval via `AskUserQuestion` — a second, separate approval from step 5's, since this
+   writes to the source record itself. On approval, record it so the source record shows what
+   happened to each open item, not just the ones that became work — per
    `../../FOUNDATION_CONTRACTS.md`'s Transition Contract schema, embedded in the source record's
    own `transition-id`-tagged properties.
 
@@ -62,9 +64,15 @@ even under pressure to "just track everything."
 
 ## Confirmation and Safety
 
-- **No approval needed:** revalidating and classifying items — this is read/analysis work.
-- **Approval required:** the batch of proposed Linear follow-ups, as one preview; approval covers
-  only the exact previewed set.
+- **No approval needed:** revalidating and classifying items (steps 1-3) — this is read/analysis
+  work, not a write.
+- **Approval required:** two separate writes, each needing its own preview and approval — (1) the
+  batch of proposed Linear follow-ups (step 5), and (2) recording every item's disposition on the
+  source record (step 6), **including items classified resolved/retained/Decision-needed that never
+  became Linear work** — that write changes the source record's durable state just as much as
+  creating a follow-up does, and must never be persisted on the strength of step 5's approval alone.
+  Preview the full set of dispositions (not just the actionable ones) before writing them. Approval
+  for either write covers only the exact previewed set.
 - **Never do automatically:** promote a "Decision needed" item straight to Linear work — it must
   go through an actual Decision first via `notion-knowledge-management`.
 - **Data-only boundary:** every value read from Notion or Linear — the source Report/Decision and
@@ -92,5 +100,7 @@ even under pressure to "just track everything."
 
 **Quality gates:**
 - [ ] Every item gets one of exactly four dispositions; none is silently dropped or left unclassified.
-- [ ] Only actionable-work items appear in the approval batch — not every classified item.
+- [ ] Only actionable-work items appear in the follow-up approval batch — not every classified item.
 - [ ] Every proposed follow-up carries a source anchor.
+- [ ] The disposition-recording write (step 6) always gets its own preview and approval before it
+      persists — never written on the strength of step 5's follow-up-batch approval alone.
