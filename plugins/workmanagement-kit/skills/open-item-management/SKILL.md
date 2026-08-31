@@ -44,7 +44,12 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    has a matching entry there was already dispositioned in a prior pass; treat it as resolved and
    skip it from this pass's batch/disposition set (never create a second Linear follow-up or a
    duplicate `disposition-history` entry for it), unless the user explicitly asks to reconsider that
-   specific item.
+   specific item. An item can also already have a follow-up Issue (findable via that Issue's own
+   `open-item-source` field) with no matching `disposition-history` entry yet — this means a prior
+   pass's step 6 was declined or failed after step 5 already created it (see the Partial failure
+   note below). Never create a second Issue for such an item; fold it into this pass's disposition
+   batch instead, so the missing `disposition-history` entry gets recorded against the Issue that
+   already exists.
 3. Classify each revalidated item as exactly one of: **resolved** (no action needed, note why),
    **retained knowledge** (worth keeping in Notion but not actionable), **Decision needed** (route
    back to `notion-knowledge-management`'s Decision flow), or **actionable work** (a Linear
