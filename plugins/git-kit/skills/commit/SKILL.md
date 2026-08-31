@@ -450,23 +450,20 @@ staged correctly with no code execution; out-of-range/non-digit arguments correc
       actually repairs and stages the right subset in this repository (not yet exercised end-to-end;
       Task 12's rollout PR is the first real opportunity)
 
-**Step 13 (no literal bot-trigger mentions) — incident source, 2026-08-31, PR #257:** the original
-commit message and PR title for a fix adding `@codex full review` recognition to
-`await-codex-review.yml` spelled that phrase out literally. Codex's own automated PR review connector
-read the title/message as a task addressed to it rather than a diff to review, attempted out-of-band
-work (a claimed commit and PR that never actually landed in the repo) instead of reviewing, and its own
-reply comment then self-retriggered `await-codex-review.yml`'s wait-loop by containing that same
-`@codex review` substring — verified from the actual GitHub Actions run history (a
-`pull_request`-triggered wait was cancelled by a new `issue_comment`-triggered run whose trigger comment
-was Codex's own). Amending the commit message and PR title to describe the phrase in prose instead of
-reproducing it literally resolved it: a subsequent manual `@codex review` comment triggered a normal
-review and the check passed in ~3 minutes. Fixed by adding this Best Practice, the step 13 instruction,
-and the quality-gate checkbox above — no fresh `skill-tester` eval re-run (the fix is prose guidance
-with no executable logic to simulate; verified by re-observing the real GitHub Actions run history for
-PR #257 after applying it). **Round 2, same date:** an independent Codex fresh-eyes pass (via
-`cross-model-review`) caught the first version of this fix banning *any* `@<word>` mention outright,
-which would also have blocked an ordinary `@username`/`@team` mention notifying a human collaborator —
-narrowed to bot-trigger-shaped mentions specifically, with the human-mention carve-out stated explicitly
-above.
+**Step 13 (no literal bot-trigger mentions) — incident source, 2026-08-31, PR #257:** see the matching
+Best Practice above for the full incident narrative (a commit message/PR title spelling out the trigger
+phrase caused Codex's connector to misread the PR as a task addressed to it and self-retrigger the
+target workflow) — not restated here to avoid the exact content-drift risk a second full copy would
+create. Verified by re-observing the real GitHub Actions run history for PR #257 after retitling; no
+fresh `skill-tester` eval re-run (prose guidance, no executable logic to simulate). **Round 2, same
+date:** an independent Codex fresh-eyes pass (via `cross-model-review`) caught the first version of this
+fix banning *any* `@<word>` mention outright, which would also have blocked an ordinary
+`@username`/`@team` mention notifying a human collaborator — narrowed to bot-trigger-shaped mentions
+specifically, with the carve-out stated above. **Round 3, PR #258, 2026-08-31:** Devin's automated
+review of this exact change flagged the incident narrative being restated at nearly every touch point
+across these three skills as a simplicity/drift risk (per this repo's own `AGENTS.md`/`CLAUDE.md`
+guidance) — this entry was trimmed in response, keeping one canonical narrative (the Best Practice
+above) and letting every other reference here and in `create-pr`/`github-issue-lifecycle` point back to
+it instead of re-narrating.
 
 A `skill-tester` blind-comparison eval is the heavier alternative `require-tests-for-behavior-changes.md` names first, but `commit` is a `model: haiku`, heavily interactive skill built around several `AskUserQuestion` steps — an awkward fit for blind A/B comparison. This checklist, plus `check_staged_parity`'s own deterministic test suite for step 8's actual repair logic, is the pragmatic mechanism the rule explicitly permits instead ("a documented Testing & Validation section... concrete scenarios, pass/fail criteria").
