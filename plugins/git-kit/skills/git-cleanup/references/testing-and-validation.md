@@ -46,12 +46,21 @@ to exercise):**
       `git tag -d`
 - [ ] Gate 1/Gate 2 list stale rebase-backup tags as their own category, distinct from branch and
       stale-remote-branch categories, never silently merged into either
+- [ ] The ref-name safety check (`^[A-Za-z0-9._/-]+$`) always runs before a tag is surfaced at Gate 1 or
+      passed to `git tag -d`, matching Phase 3.5's identical check before `gh api -X DELETE` — a tag name
+      failing this check is skipped and reported, never included in a deletion command
+      (found by `cross-model-review`, Codex Phase 1 + Codex Phase 2's own independent re-derivation +
+      Claude Phase 2, 2026-08-31: `git check-ref-format --allow-onelevel` accepts a tag name containing
+      shell metacharacters, e.g. `` `$(id)-rebase-backup-20260831-120000` ``, live-verified as a legal git
+      ref)
 
 **Live results, 2026-08-31:** ran the updated `phase1-analysis.sh` against a throwaway scratch repo with
 three rebase-backup tags: one whose branch was merged and then deleted (correctly reported "no longer
 exists locally"), one whose branch was merged but kept (correctly reported "exists, merged into main"),
 and one whose branch is still active/unmerged (correctly reported "exists, not merged into main"). All
-three matched the intended Phase 3.6 categorization with no false positives or negatives.
+three matched the intended Phase 3.6 categorization with no false positives or negatives. Separately,
+`git check-ref-format --allow-onelevel '$(id)-rebase-backup-20260831-123456'` was run live and confirmed
+git accepts that string as a legal tag name, validating the ref-name safety check added above.
 
 **Verify Phase 3.5's remote-branch fallback (verified live, 2026-08-16, against two real stale remote
 branches in this repository — `feat/plugin-auditor-codex-integration` (PR #41) and
