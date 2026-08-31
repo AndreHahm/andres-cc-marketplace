@@ -94,8 +94,8 @@ with a real, specific writeup.
 -
 
 ## Follow-up work still open
-- [ ] 
-- [ ] 
+- [ ]
+- [ ]
 
 ## Reusable takeaways for the next export-shaped feature
 -

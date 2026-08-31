@@ -85,7 +85,10 @@ rather than a clean validation error.
 Every record shares: `source` (what produced it — a user request, another plugin via
 `plugin-integration-intake`, or a prior record), `related-record` (links to other Notion/Linear
 records), `authority` (always `notion` for records this skill owns), `transition-id` (the
-recorded transition this write produced), `status`, `owner`, and `date`.
+recorded transition this write produced), `owner`, and `date` — plus `status`, **except on a
+Decision record**, where `decision-state` (see Decision State Machine below) is the sole
+authoritative state and the shared `status` field is not separately tracked, to avoid two fields
+that could silently drift apart.
 
 ## Decision State Machine
 

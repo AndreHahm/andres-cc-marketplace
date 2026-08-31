@@ -9,13 +9,13 @@
   "properties": {
     "source_plugin": {
       "type": "string",
-      "minLength": 1,
-      "description": "The calling plugin's own name, exactly as installed. Caller-asserted, not host-attested -- checked for existence only, never treated as an authenticated identity (see SKILL.md's Trust Model section)."
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "The calling plugin's own name, exactly as installed. Caller-asserted, not host-attested -- checked for existence only, never treated as an authenticated identity (see SKILL.md's Trust Model section). Kebab-case allowlist, not just non-empty -- SKILL.md's step 2 uses this value inside a Glob pattern, where an unconstrained string (glob metacharacters, path separators) would defeat the existence check this schema is meant to gate before that procedure ever runs."
     },
     "source_skill": {
       "type": "string",
-      "minLength": 1,
-      "description": "The calling plugin's own skill that produced this submission."
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "The calling plugin's own skill that produced this submission. Same kebab-case allowlist and rationale as source_plugin."
     },
     "target_system": {
       "type": "string",

@@ -39,11 +39,19 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    must never be able to mistake this Notion record for something that updates itself. Keep it
    concise and outcome-focused (see Confirmation and Safety) — never a restatement of every
    Issue's status.
-3. Preview the summary/outcome/deviation/learning content for approval.
-4. On approval (via `AskUserQuestion`), write it via `notion-knowledge-management`.
-5. Read back both the Linear source (confirm nothing changed mid-summary) and the new Notion
-   record, and record the transition per `../../FOUNDATION_CONTRACTS.md`'s Transition Contract
-   section.
+3. Preview the summary/outcome/deviation/learning content for approval, then get approval (via
+   `AskUserQuestion`).
+4. **Immediately before the write — not earlier — re-read the same Linear facts from step 1 and
+   compare against what was previewed and approved.** Time passes between step 1's read and this
+   point (drafting, preview, waiting on approval), and Linear is live state that can change in that
+   window. If anything relevant changed, stop: rebuild the summary against the current facts and
+   re-preview/re-approve it rather than writing the one that was just approved — a summary approved
+   against now-stale facts is not the same as a summary approved against what's actually true right
+   now. Only proceed to the write once this re-check confirms nothing changed.
+5. Write it via `notion-knowledge-management`.
+6. Read back the new Notion record (the Linear side was already re-confirmed fresh in step 4, not a
+   separate check to repeat here) and record the transition per
+   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract section.
 
 ## Confirmation and Safety
 

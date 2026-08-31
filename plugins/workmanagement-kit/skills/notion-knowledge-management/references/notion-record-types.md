@@ -1,8 +1,9 @@
 # Notion Record Types
 
 Seven record types this skill owns. Each row below lists the properties beyond the shared set
-(`source`, `related-record`, `authority`, `transition-id`, `status`, `owner`, `date` — see
-SKILL.md) that this specific type requires or supports.
+(`source`, `related-record`, `authority`, `transition-id`, `owner`, `date`, and `status` — except
+on Decision, where `decision-state` is the sole authoritative state instead, see SKILL.md's
+Decision State Machine section — see SKILL.md) that this specific type requires or supports.
 
 ## Idea
 
