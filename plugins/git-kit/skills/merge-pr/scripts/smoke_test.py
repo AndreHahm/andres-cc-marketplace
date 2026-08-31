@@ -4,8 +4,11 @@ existence, Bash-scope grant usage, step-header sequencing, step 7's
 remote-branch-deletion verification fallback, step 5's unconditional
 worktree branch-delete note, step 2's four-state CI classification,
 step 2's required no-merge-conflicts and not-behind-base gates plus its
-advisory mergeStateStatus/unresolved-review-thread disclosures, and
-step 7(a)/(c)/(d)'s rebase pre-check / squash disclosure / rejection
+advisory mergeStateStatus/unresolved-review-thread disclosures, step 3's
+and references/merge-rights-check.md's shared reuse of step 1's resolved
+{owner}/{repo} (never a fresh gh repo view), step 2's no-merge-conflicts
+local-reproduction guidance before pointing at resolving-merge-conflicts,
+and step 7(a)/(c)/(d)'s rebase pre-check / squash disclosure / rejection
 fallback -- structural checks only, since this is a conversational,
 AskUserQuestion-driven skill with no executable logic of its own to
 simulate."""
@@ -359,6 +362,75 @@ def check_step1_owner_repo_from_pr_url():
     )
 
 
+def check_step3_and_merge_rights_reuse_owner_repo():
+    # skill-reviewer M1 (2026-08-31): references/merge-rights-check.md's Tier 1/Tier 3
+    # independently re-derived {owner}/{repo} via a fresh `gh repo view`, the exact bug
+    # step 1/step 2 already guard against -- wrong whenever the merge-rights check runs
+    # against a PR in a different repository than the current checkout.
+    step3 = _get_step_text(3)
+    if step3 is None:
+        return False, "step 3 ('## Instructions') not found"
+    if "step 1's already-resolved `{owner}/{repo}`" not in step3:
+        return (
+            False,
+            "step 3 no longer states it passes step 1's resolved {owner}/{repo} into "
+            "references/merge-rights-check.md",
+        )
+    rights_path = SKILL_DIR / "references" / "merge-rights-check.md"
+    if not rights_path.exists():
+        return False, "references/merge-rights-check.md does not exist"
+    rights_text = rights_path.read_text(encoding="utf-8")
+    # Only an actual invocation (inside a fenced code block) is banned -- explanatory prose
+    # naming "gh repo view" as the thing NOT to do (mirroring SKILL.md step 1's own
+    # explanation) legitimately mentions the string outside a code fence and must not
+    # false-match.
+    code_blocks = re.findall(r"```(?:bash)?\n(.*?)```", rights_text, re.DOTALL)
+    if any("gh repo view" in block for block in code_blocks):
+        return (
+            False,
+            "references/merge-rights-check.md still invokes gh repo view in a code block -- this "
+            "re-derives {owner}/{repo} against the current checkout's own repo instead of "
+            "reusing step 1's resolved value (skill-reviewer M1)",
+        )
+    if "step 1's resolved value" not in rights_text:
+        return (
+            False,
+            "references/merge-rights-check.md no longer states it reuses step 1's resolved "
+            "{owner}/{repo} value",
+        )
+    return (
+        True,
+        "step 3 and references/merge-rights-check.md both reuse step 1's resolved {owner}/{repo}, "
+        "never a fresh gh repo view",
+    )
+
+
+def check_step2_no_merge_conflicts_reproduction_steps():
+    # skill-reviewer M2 (2026-08-31): the no-merge-conflicts stop message pointed bare at
+    # resolving-merge-conflicts, whose own precondition (git status showing unmerged paths) a
+    # remote-only `mergeable: CONFLICTING` signal doesn't produce.
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "never fetches or merges locally itself" not in step2:
+        return (
+            False,
+            "step 2's no-merge-conflicts check no longer states it only detects the conflict "
+            "remotely and never fetches/merges locally itself",
+        )
+    if "git merge origin/<baseRefName>" not in step2:
+        return (
+            False,
+            "step 2's no-merge-conflicts check no longer tells the user how to reproduce the "
+            "conflict locally before resolving-merge-conflicts applies (skill-reviewer M2)",
+        )
+    return (
+        True,
+        "step 2's no-merge-conflicts check tells the user how to reproduce the conflict locally "
+        "before pointing at resolving-merge-conflicts",
+    )
+
+
 def check_step2_refetch_on_rerun():
     step2 = _get_step_text(2)
     if step2 is None:
@@ -663,6 +735,8 @@ CHECKS = [
     check_step7_squash_disclosure,
     check_step7_rejection_fallback,
     check_step1_owner_repo_from_pr_url,
+    check_step3_and_merge_rights_reuse_owner_repo,
+    check_step2_no_merge_conflicts_reproduction_steps,
     check_step2_refetch_on_rerun,
     check_step2_not_behind_base_required,
     check_step2_no_merge_conflicts_check,

@@ -2,14 +2,15 @@
 
 Three tiers, checked in order. Stop at the first one that resolves the decision — do not run later tiers once an earlier one has decided the outcome.
 
+**`{owner}/{repo}` is always the value SKILL.md's step 1 already resolved from the PR's own `url` field — never re-derive it here via a fresh `gh repo view`.** `gh repo view` with no argument resolves to the current checkout's own repository (`gh repo view --help`: "With no argument, the repository for the current directory is displayed"), which is wrong whenever this procedure is checking a PR in a different repository than the current checkout — the exact scenario SKILL.md's step 1 calls out ("a maintainer without the PR's branch checked out can still use this skill on someone else's PR"). Every `{owner}`/`{repo}` reference below means step 1's already-resolved value.
+
 ## Tier 1: Repo owner
 
 ```bash
 gh api user --jq '.login'
-gh repo view --json owner --jq '.owner.login'
 ```
 
-If the two match (case-insensitive), the result is `MERGE ALLOWED` — skip Tiers 2-3 entirely.
+Compare against `{owner}` (step 1's resolved value, not a fresh `gh repo view`). If the two match (case-insensitive), the result is `MERGE ALLOWED` — skip Tiers 2-3 entirely.
 
 ## Tier 2: CODEOWNERS match
 
@@ -29,7 +30,7 @@ If Tier 2 matched:
 gh api repos/{owner}/{repo}/collaborators/{username}/permission --jq '.permission'
 ```
 
-(Get `{owner}/{repo}` from `gh repo view --json nameWithOwner --jq .nameWithOwner`; `{username}` from `gh api user --jq .login`.)
+(`{owner}/{repo}` from step 1's resolved value, not a fresh `gh repo view --json nameWithOwner`; `{username}` from `gh api user --jq .login`.)
 
 If the result is `admin`, `maintain`, or `write` → `MERGE ALLOWED`. Anything else (`read`, `triage`, or the call failing because the user isn't a collaborator at all) → `MERGE NOT ALLOWED`, reason: "matched CODEOWNERS but doesn't have write/maintain/admin permission on this repo."
 

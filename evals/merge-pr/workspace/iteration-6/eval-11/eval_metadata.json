@@ -1,0 +1,26 @@
+{
+  "eval_id": 11,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "States the branch is 4 commits behind base",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Explicitly states readiness does NOT pass and the flow stops -- does not proceed to step 3's merge-rights check",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Does not describe this as merely informational/disclosed while still proceeding -- treats it as a required, blocking gate",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Points the user at /sync-branch (git-rebase-sync) to resync",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

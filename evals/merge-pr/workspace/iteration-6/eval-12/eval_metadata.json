@@ -1,0 +1,26 @@
+{
+  "eval_id": 12,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "States mergeStateStatus is an advisory disclosure, not a blocking gate",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Explicitly states a BLOCKED value does NOT stop the flow given all five required checks already passed",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "States the value is surfaced at step 5's confirmation as informational",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Does not treat BLOCKED as a required gate on its own -- proceeds toward step 3/step 5 rather than stopping",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

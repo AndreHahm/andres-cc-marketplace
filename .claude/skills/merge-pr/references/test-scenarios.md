@@ -55,6 +55,21 @@ R29's own three required inline subsections, the trigger-phrase lists and `Quali
   passing and step 5 states explicitly that it was skipped for that reason, not silently omitted
 - The compare-endpoint call fails for any reason → step 2 stops and reports the in-sync state could not
   be confirmed — never treated as passing
+- `mergeable` resolves to `CONFLICTING` → step 2 tells the user how to reproduce the conflict locally
+  (fetch `<headRefName>`/`<baseRefName>`, check out `<headRefName>`, attempt
+  `git merge origin/<baseRefName>`) before pointing at `resolving-merge-conflicts` — never points at
+  that skill bare, since its own precondition (`git status` showing unmerged paths) doesn't exist yet
+  from a remote-only signal alone (skill-reviewer M2, 2026-08-31)
+
+**Verify step 3 and `references/merge-rights-check.md` reuse step 1's resolved `{owner}/{repo}`, never
+a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
+- `$ARGUMENTS` names a PR in a different repository than the current checkout → Tier 1's actor-vs-owner
+  comparison and Tier 3's collaborator-permission call both use step 1's `{owner}`/`{repo}` (resolved
+  from the PR's own `url` field) — never a bare `gh repo view`, which would silently resolve to the
+  current checkout's own repository instead
+- The current checkout happens to share the same owner/repo as the PR being checked → behavior is
+  unchanged either way, since step 1's resolved value and a fresh `gh repo view` would coincidentally
+  agree — this scenario exists only to confirm the fix doesn't regress the common case
 
 **Verify step 2's two advisory disclosures never block readiness and are always surfaced at step 5:**
 - `mergeStateStatus` resolves to `CLEAN` → step 5 still states the raw value explicitly, never omitted

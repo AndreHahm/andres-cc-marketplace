@@ -1,0 +1,31 @@
+{
+  "eval_id": 11,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States the branch is 4 commits behind base",
+      "passed": true,
+      "evidence": "\"feat/thing is 4 commits behind main\""
+    },
+    {
+      "text": "Explicitly states readiness does NOT pass and the flow stops -- does not proceed to step 3's merge-rights check",
+      "passed": true,
+      "evidence": "\"Readiness: FAILS...I stop here and do not proceed to step 3 (the merge-rights check)\""
+    },
+    {
+      "text": "Does not describe this as merely informational/disclosed while still proceeding -- treats it as a required, blocking gate",
+      "passed": true,
+      "evidence": "\"this is a required, blocking gate...it does not get waived just because a rebase/squash merge could technically absorb the drift at merge time\""
+    },
+    {
+      "text": "Points the user at /sync-branch (git-rebase-sync) to resync",
+      "passed": true,
+      "evidence": "\"Recommended next step: resync the branch using /sync-branch (the git-rebase-sync skill)\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": 10,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reports the PR has merge conflicts with the base branch (main)",
+      "passed": true,
+      "evidence": "\"This PR (`fix/typo` → `main`) has merge conflicts with `main` and can't be merged as-is. GitHub reports `mergeable: CONFLICTING`.\""
+    },
+    {
+      "text": "Explicitly stops rather than proceeding to step 3 (merge-rights check)",
+      "passed": true,
+      "evidence": "\"stop the readiness evaluation entirely -- do not proceed to check 'not behind base,' and do not proceed to step 3 (the merge-rights check). A not-ready PR never reaches the rights check.\""
+    },
+    {
+      "text": "States resolving-merge-conflicts' own precondition (git status showing unmerged paths) doesn't exist yet from a remote-only mergeable: CONFLICTING signal -- does not point at it bare",
+      "passed": true,
+      "evidence": "\"resolving-merge-conflicts's own precondition is a local working tree already showing unmerged paths...not a remote signal alone. Handing the user that skill immediately, with nothing else, would point them at a skill that has nothing to act on yet\""
+    },
+    {
+      "text": "Describes local-reproduction steps (fetch headRefName and baseRefName, check out headRefName, attempt a local merge against baseRefName) before pointing at resolving-merge-conflicts",
+      "passed": true,
+      "evidence": "\"Fetch both branches: git fetch origin fix/typo main. Check out the PR branch: git checkout fix/typo. Attempt the merge to surface the conflict locally: git merge origin/main. Once git status shows unmerged paths, run the resolving-merge-conflicts skill\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
