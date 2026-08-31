@@ -45,11 +45,11 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    skip it from this pass's batch/disposition set (never create a second Linear follow-up or a
    duplicate `disposition-history` entry for it), unless the user explicitly asks to reconsider that
    specific item. An item can also already have a follow-up Issue (findable via that Issue's own
-   `open-item-source` field) with no matching `disposition-history` entry yet — this means a prior
-   pass's step 6 was declined or failed after step 5 already created it (see the Partial failure
-   note below). Never create a second Issue for such an item; fold it into this pass's disposition
-   batch instead, so the missing `disposition-history` entry gets recorded against the Issue that
-   already exists.
+   `open-item-source.item_id`, which matches this item's own `item_id`) with no matching
+   `disposition-history` entry yet — this means a prior pass's step 6 was declined or failed after
+   step 5 already created it (see the Partial failure note below). Never create a second Issue for
+   such an item; fold it into this pass's disposition batch instead, so the missing
+   `disposition-history` entry gets recorded against the Issue that already exists.
 3. Classify each revalidated item as exactly one of: **resolved** (no action needed, note why),
    **retained knowledge** (worth keeping in Notion but not actionable), **Decision needed** (route
    back to `notion-knowledge-management`'s Decision flow), or **actionable work** (a Linear
@@ -59,13 +59,14 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    if it needs a Linear Issue.
 5. On batch approval (via `AskUserQuestion`), create the approved follow-ups via
    `linear-work-management`, setting each new Issue's own `open-item-source` field
-   (`{system, stable_id}`) to point back at this pass's source record as part of that same creation
-   write — this persists even if step 6's approval below is later declined or its write fails. Read
-   each one back before considering it created. This isn't a promotion (see `work-linking`'s own
-   scope), so it's a direct field set via `linear-work-management`, not `work-linking`'s
-   `notion-link`/`linear-link` pair. Step 6's Disposition Record `linked_record` field (below)
-   records the same relationship from the source record's own side, once that separately-approved
-   write completes.
+   (`{system, stable_id, item_id}` — `stable_id` for this pass's source record, `item_id` for the
+   specific item this one Issue answers) as part of that same creation write — this persists even if
+   step 6's approval below is later declined or its write fails, and the `item_id` is what lets a
+   later pass tell multiple follow-ups from the same source apart. Read each one back before
+   considering it created. This isn't a promotion (see `work-linking`'s own scope), so it's a direct
+   field set via `linear-work-management`, not `work-linking`'s `notion-link`/`linear-link` pair.
+   Step 6's Disposition Record `linked_record` field (below) records the same relationship from the
+   source record's own side, once that separately-approved write completes.
 6. Present the full disposition set for every item (including the ones that weren't promoted, and
    why) for approval via `AskUserQuestion` — a second, separate approval from step 5's, since this
    writes to the source record itself. On approval, record it through the plugin's shared
@@ -120,6 +121,12 @@ even under pressure to "just track everything."
   during steps 1-2, not from a dedicated enumeration field — `disposition-history` (where
   dispositions get recorded) exists on all three source types, but the *source list* of items only
   has a structured field on Report.
+- **Finding an Issue by its `open-item-source` field (step 2's re-run check) is a known open
+  question, not yet a confirmed lookup pattern.** Whether the real Linear connector supports
+  querying by a custom field's value directly, versus needing this skill to search Issues under the
+  relevant team/project and filter by `open-item-source` from the read-back results, isn't settled
+  until Foundational Setup confirms real connector query capabilities (see README's Status section)
+  — resolve this concretely then, rather than assuming either shape now.
 
 ## Testing & Validation
 

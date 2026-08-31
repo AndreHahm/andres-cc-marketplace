@@ -38,12 +38,10 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    below).
 2. Resolve the target entity by stable ID — never by display name when more than one match exists.
 3. For a write: preview the change, get live approval via `AskUserQuestion` if it's material (see
-   Confirmation and Safety), then write it — including this write's own transition-id-tagged
-   properties per the plugin's shared transition contract (`../../FOUNDATION_CONTRACTS.md`'s
-   Transition Contract section): this write's own `transition_id`/`operation_id`/`affected_record`/
-   `source_plugin`, plus whatever `verification_evidence` the previous write to this record produced.
-   These properties are part of the write itself, not a separate step after it. Then read back —
-   that read-back's own evidence is what the *next* write to this record will carry.
+   Confirmation and Safety), then write it and read back — record this write's own transition per
+   the plugin's shared transition contract (`../../FOUNDATION_CONTRACTS.md`'s Transition Contract
+   section: its next-write convention for a write to an existing entity, or its creation-write
+   exception for one being created).
 
 The `mcp__workmanagement-kit__linear_read`/`linear_write` tools in this file's own `allowed-tools`
 have no backing MCP server configuration yet — that's pending Foundational Setup; see the plugin

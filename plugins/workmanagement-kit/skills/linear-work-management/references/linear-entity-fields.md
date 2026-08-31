@@ -61,7 +61,7 @@ neither carries `notion-link`.
 | `status` | Yes | Linear's own workflow status (team-configured) |
 | `notion-link` | No | The Idea or accepted Decision record this was promoted from, if promoted via `idea-to-implementation` — the required reciprocal half of `work-linking`'s stable-ID pair for this plugin's most common promotion path |
 | `disposition-history` | No | Array of per-item outcomes recorded by `open-item-management` when this Issue is the open-item source; accumulates, never overwritten — see `../../../FOUNDATION_CONTRACTS.md`'s Disposition Record |
-| `open-item-source` | No | `{system, stable_id}` reference back to the Report/Decision/Issue this follow-up was created from by `open-item-management`; set directly as part of this Issue's own creation write, independent of the source record's own `disposition-history` — see `../../../FOUNDATION_CONTRACTS.md`'s Disposition Record companion-field note |
+| `open-item-source` | No | `{system, stable_id, item_id}` reference back to the Report/Decision/Issue (`stable_id`) and specific open item within it (`item_id`) this follow-up was created from by `open-item-management`; set directly as part of this Issue's own creation write, independent of the source record's own `disposition-history` — see `../../../FOUNDATION_CONTRACTS.md`'s Disposition Record companion-field note |
 
 ## Cross-Entity Rules
 
@@ -72,8 +72,9 @@ neither carries `notion-link`.
   `linked_record` field inside a `disposition-history` entry (see `FOUNDATION_CONTRACTS.md`'s
   Disposition Record) is the same kind of stable-ID reference, scoped to that one array entry
   rather than the whole record. `open-item-source` is the same kind of reference in the opposite
-  direction (a stable ID back to the source), but carries its own `{system, stable_id}` shape
-  rather than a bare stable-ID string, since the source can be either Notion or Linear.
+  direction (a stable ID back to the source), but carries its own `{system, stable_id, item_id}`
+  shape rather than a bare stable-ID string, since the source can be either Notion or Linear and a
+  single source can produce more than one follow-up.
 - `status` values are team-configured in Linear itself, not a fixed enum this skill defines — read
   the team's actual configured statuses before proposing a status change rather than assuming a
   generic set (e.g. "Done") exists.

@@ -43,13 +43,10 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    below).
 2. Read the relevant record(s), if any exist, via the Notion connector.
 3. For a write: build the record per `references/notion-record-types.md`'s property table for its
-   type — including this write's own transition-id-tagged properties per the plugin's shared
-   transition contract (`../../FOUNDATION_CONTRACTS.md`'s Transition Contract section): this write's
-   own `transition_id`/`operation_id`/`affected_record`/`source_plugin`, plus whatever
-   `verification_evidence` the previous write to this record produced. These properties are part of
-   the write itself, not a separate step after it. Preview it, get live approval via
-   `AskUserQuestion` (see Confirmation and Safety), then write and read back — that read-back's own
-   evidence is what the *next* write to this record will carry.
+   type. Preview it, get live approval via `AskUserQuestion` (see Confirmation and Safety), then
+   write and read back — record this write's own transition per the plugin's shared transition
+   contract (`../../FOUNDATION_CONTRACTS.md`'s Transition Contract section, including its
+   creation-write exception, since most writes here create a new record rather than update one).
 
 ## Why this exists
 

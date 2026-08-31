@@ -181,6 +181,23 @@ evidence field, never the record's actual content, and the write it confirms was
 (or needed none, for a read-derived transition); a skill's own Confirmation and Safety section may
 say so explicitly, but the exemption holds either way.
 
+**Creation-write exception:** the next-write convention above assumes `affected_record.stable_id`
+is already known before the write starts — true for a write to an *existing* record, but not for
+the write that *creates* one: its stable ID is assigned by the connector's create response and does
+not exist before that response returns, so it cannot be embedded in that same create write's own
+properties. Since the Transition Contract's fields are embedded together as one unit (this file's
+own intro line, "the record's own `transition-id`-tagged properties"), a create write can't
+partially embed the three fields it does already know (`transition_id`, generated client-side;
+`source_plugin`, always known ahead of time; `operation_id`, if the connector supplies one as a
+client-side request ID) while leaving `affected_record` for later — the whole transition is
+deferred together. Immediately after the create response returns and read-back confirms the new
+record, the skill's very next write to that record embeds the CREATE's own transition in full
+(`transition_id`/`operation_id`/`affected_record`/`source_plugin`, with `verification_evidence` set
+to `null` since there is no still-earlier write to this record to describe) — the same next-write
+convention above, anchored at a record's first write instead of its Nth. If nothing else is
+scheduled to write to the new record, the terminal-write exception above applies to this follow-up
+write in the ordinary way.
+
 ## Disposition Record (`disposition-history`)
 
 A separate, repeatable mechanism for the case the Transition Contract above cannot represent: one
@@ -229,11 +246,15 @@ Disposition Record entry's `linked_record` lives on the *source* record and is o
 full disposition write above completes — if that write is declined or fails after a follow-up
 Issue was already created, the Issue itself would otherwise carry no persisted link back to its
 source at all, with no way to repair it (Issue supports no delete operation). `open-item-source`
-closes that gap: a lightweight `{"system": "notion | linear", "stable_id": "string"}` reference set
-directly on the Issue as part of its own creation write (see `linear-entity-fields.md`'s Issue
-table), independent of whether the full Disposition Record write ever happens. It needs no approval
-beyond whatever already gates the Issue's own creation — it is part of that same write, not a
-separate one.
+closes that gap: a lightweight `{"system": "notion | linear", "stable_id": "string", "item_id":
+"string"}` reference set directly on the Issue as part of its own creation write (see
+`linear-entity-fields.md`'s Issue table), independent of whether the full Disposition Record write
+ever happens. `stable_id` identifies the source *record*; `item_id` identifies the specific open
+item within it, using the identical value the Disposition Record entry for that item will use —
+without it, a source with more than one actionable item would produce several follow-up Issues that
+all carry the same `stable_id` and can't be told apart when recovering from a partial failure. It
+needs no approval beyond whatever already gates the Issue's own creation — it is part of that same
+write, not a separate one.
 
 ## Change Log
 
