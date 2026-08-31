@@ -76,21 +76,32 @@ for tag in $(git tag -l '*-rebase-backup-*'); do
   if [[ "$tag" =~ ^(.+)-rebase-backup-[0-9]{8}-[0-9]{6}$ ]]; then
     branch="${BASH_REMATCH[1]}"
     echo "--- $tag (branch: $branch) ---"
+    branch_gone=false
+    branch_merged=false
     if git show-ref --verify --quiet "refs/heads/$branch"; then
       if git branch --merged "$default_branch" --format='%(refname:short)' \
         | grep -qxF "$branch"; then
         echo "branch status: exists, merged into $default_branch"
+        branch_merged=true
       else
         echo "branch status: exists, not merged into $default_branch"
       fi
     else
       echo "branch status: no longer exists locally"
-      # The branch's own deletion was never verified by this run -- it may
-      # have been force-deleted outside git-cleanup's own SAFE_TO_DELETE/
-      # SQUASH_MERGED evidence trail, which would leave this tag as the only
-      # remaining reachable copy of whatever commits it holds. Check ancestry
-      # directly rather than trusting "branch is gone" as a proxy for "work
-      # is preserved elsewhere" -- these are not the same fact.
+      branch_gone=true
+    fi
+    # Reachability is checked whenever the branch is gone OR merged -- never
+    # skipped for the merged case. Rebasing rewrites commit SHAs, so a merged
+    # POST-rebase branch tip being an ancestor of $default_branch says nothing
+    # about whether the tag's own PRE-rebase commit is: live-verified, a
+    # rebase-then-merge sequence leaves `git branch --merged` reporting the
+    # branch as merged while `git merge-base --is-ancestor <pre-rebase-sha>
+    # $default_branch` still fails, since the tag's commit and the merged
+    # commit are different objects with different parent chains. Skipped only
+    # when the branch still exists and is NOT merged -- that's the one case
+    # already left alone regardless of reachability, so the extra git call
+    # would be wasted.
+    if $branch_gone || $branch_merged; then
       if git merge-base --is-ancestor "$tag" "$default_branch" 2>/dev/null; then
         echo "reachable from $default_branch: yes"
       else

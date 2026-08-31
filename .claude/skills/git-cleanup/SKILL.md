@@ -165,24 +165,26 @@ they accumulate indefinitely once the branch they were protecting is long gone o
 
 Phase 1's own tag enumeration (`=== Rebase-backup tags ===`) already lists every tag matching the exact
 `{branch}-rebase-backup-{8-digit-date}-{6-digit-time}` shape, alongside its derived branch name, that
-branch's current status, and — when the branch no longer exists locally — whether the tag's own commit is
+branch's current status, and — whenever the branch is gone OR merged — whether the tag's own commit is
 reachable from the default branch. Categorize each one from that output — no extra git calls needed here:
 
-- **Branch no longer exists locally, tag reachable from the default branch** → `STALE_REBASE_BACKUP_TAG`,
-  safe to delete — the tag's content already made it into the default branch by some path, so the tag is
-  redundant.
-- **Branch no longer exists locally, tag NOT reachable from the default branch** → **never categorize as
-  safe to delete.** The branch's own deletion was never verified by this run — it may have been
-  force-deleted outside this skill's own SAFE_TO_DELETE/SQUASH_MERGED evidence trail (e.g. manually, or by
-  a rebase that dropped/skipped a commit) — so this tag may be the *only* remaining reachable copy of
-  those commits. Leave it alone and report it under a distinct "needs review — unique history" note
-  outside the deletable list, the same treatment Phase 3's REMOTE_GONE category already gets for the
-  analogous branch-level case; never fold it into "delete all recommended."
-- **Branch exists, merged into the default branch** → `STALE_REBASE_BACKUP_TAG`, safe to delete — "merged"
-  already guarantees ancestry (unlike the branch-gone case above), so the branch itself is already safe to
-  delete and its backup tag is redundant.
-- **Branch exists, not merged** → leave the tag alone. The branch may still need this recovery point,
-  and the tag being merely old is not evidence otherwise (see Rationalizations below).
+- **Branch exists, not merged** → leave the tag alone, no reachability check needed. The branch may still
+  need this recovery point, and the tag being merely old is not evidence otherwise (see Rationalizations
+  below).
+- **Branch gone OR merged, tag reachable from the default branch** → `STALE_REBASE_BACKUP_TAG`, safe to
+  delete — the tag's own commit already made it into the default branch, so the tag is redundant.
+- **Branch gone OR merged, tag NOT reachable from the default branch** → **never categorize as safe to
+  delete**, regardless of which of the two the branch status is. Two independent reasons this happens, not
+  just one: (1) the branch's own deletion was never verified by this run — it may have been force-deleted
+  outside this skill's own SAFE_TO_DELETE/SQUASH_MERGED evidence trail; (2) **rebasing rewrites commit
+  SHAs** — a merged branch's current tip being an ancestor of the default branch says nothing about
+  whether the tag's own *pre-rebase* commit is, since the rebase created a new commit object with a
+  different parent chain (live-verified: a plain rebase-then-merge sequence leaves `git branch --merged`
+  reporting the branch merged while the pre-rebase tag's own SHA is still unreachable from the default
+  branch). Either way, this tag may be the *only* remaining reachable copy of its commits. Leave it alone
+  and report it under a distinct "needs review — unique history" note outside the deletable list, the same
+  treatment Phase 3's REMOTE_GONE category already gets for the analogous branch-level case; never fold it
+  into "delete all recommended."
 
 Fold the result into Gate 1 as its own list, the same way Phase 3.5's stale remote branches get their own
 list — never silently merge it into the branch categories above, since a tag isn't a branch and
@@ -384,12 +386,14 @@ failure part-way through still lets the rest proceed.
    proposes a `*-rebase-backup-*` tag for deletion when its derived branch no longer exists locally or is
    already merged into the default branch - an unmerged, still-active branch's backup tag is always left
    alone, regardless of the tag's own age
-10. **Never delete a rebase-backup tag whose branch is gone unless its content is verified reachable** -
-    "branch no longer exists locally" alone is not evidence the tag is redundant, since that branch's
-    deletion was never verified by this run; Phase 3.6 only proposes deletion in this case once
-    `git merge-base --is-ancestor` confirms the tag's own commit is reachable from the default branch -
-    an unreachable tag is reported separately as needing manual review, never included in "delete all
-    recommended"
+10. **Never delete a rebase-backup tag whose branch is gone or merged unless its content is verified
+    reachable** - neither "branch no longer exists locally" nor "branch is merged" is by itself evidence
+    the tag is redundant: the branch's deletion was never verified by this run in the gone case, and
+    rebasing rewrites commit SHAs in the merged case (a merged branch's current tip being an ancestor of
+    the default branch says nothing about whether the tag's own pre-rebase commit is) - Phase 3.6 only
+    proposes deletion in either case once `git merge-base --is-ancestor` confirms the tag's own commit is
+    reachable from the default branch - an unreachable tag is reported separately as needing manual
+    review, never included in "delete all recommended"
 11. **Never interpolate an unvalidated tag name into a shell command** - a git tag name is legal with
     shell metacharacters (`git check-ref-format` accepts e.g. `` `$(cmd)-rebase-backup-20260831-120000` ``),
     so every candidate is checked against `^[A-Za-z0-9._/-]+$` before it's ever surfaced at Gate 1 or
@@ -411,7 +415,8 @@ These are common shortcuts that lead to data loss. Reject them:
 | "It's gitignored, so it's not important" | Gitignored means *not in git history* — it is often the only copy of a `.env`, a local override, or uncommitted scratch output. Absence from git is not evidence of unimportance. |
 | "This remote branch has no local copy, so its PR must be merged and it's safe to delete" | No local copy only means nobody has it checked out here — it could be an open PR someone else is working on, or a branch with no PR at all. Phase 3.5 always confirms `state: MERGED` live via `gh pr view` before ever proposing deletion. |
 | "This rebase-backup tag is old, it's probably safe to delete" | Age alone says nothing about whether the branch it protects is still active — a long-running feature branch can be rebased repeatedly with none of its backup tags becoming safe to delete. Phase 3.6 only proposes deletion once the derived branch is confirmed gone or merged. |
-| "The branch is gone, so its backup tag must be redundant" | The branch's own deletion was never verified by this skill run — it may have been force-deleted outside git-cleanup's own evidence trail, or a rebase may have dropped a commit the tag still holds. Phase 3.6 always confirms the tag's commit is reachable from the default branch (`git merge-base --is-ancestor`) before proposing deletion in this case; an unreachable tag may be the only remaining copy of its commits. |
+| "The branch is gone, so its backup tag must be redundant" | The branch's own deletion was never verified by this skill run — it may have been force-deleted outside git-cleanup's own evidence trail. Phase 3.6 always confirms the tag's commit is reachable from the default branch (`git merge-base --is-ancestor`) before proposing deletion in this case; an unreachable tag may be the only remaining copy of its commits. |
+| "The branch is merged, so its backup tag must be redundant" | Rebasing rewrites commit SHAs — a merged branch's current tip being an ancestor of the default branch does not mean the tag's own pre-rebase commit is (live-verified: a plain rebase-then-merge sequence leaves the branch showing merged while the tag's exact commit stays unreachable). Phase 3.6 runs the same `git merge-base --is-ancestor` check for the merged case as for the branch-gone case — never skips it just because the branch itself is already known-safe to delete. |
 
 ## Testing & Validation
 

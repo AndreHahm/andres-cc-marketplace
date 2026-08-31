@@ -46,10 +46,11 @@ Recommendation: Delete all 4 (work is in main)
 |-----|--------|----------------|
 | feat/old-feature-rebase-backup-20260701-093000 | feat/old-feature | no longer exists locally; reachable from main: yes |
 
-**Needs Review (rebase-backup tag, branch gone, content NOT verified reachable)**
+**Needs Review (rebase-backup tag, branch gone or merged, content NOT verified reachable)**
 | Tag | Branch | Why it's not auto-deletable |
 |-----|--------|------------------------------|
 | feat/orphan-risk-rebase-backup-20260101-150000 | feat/orphan-risk | Branch no longer exists locally, and `git merge-base --is-ancestor` shows the tag's commit is NOT reachable from main — this tag may be the only remaining copy of that work |
+| feat/rebase-then-merge-rebase-backup-20260101-160000 | feat/rebase-then-merge | Branch shows merged, but the rebase rewrote its commits — the tag's own pre-rebase commit is NOT reachable from main |
 
 ### Worktrees
 | Path | Branch | Status |

@@ -45,11 +45,23 @@ to exercise):**
       real, severe data-loss risk distinct from the earlier injection finding; live-verified with a
       force-deleted, never-merged branch whose only surviving commit was confirmed reachable solely via
       its backup tag, via `git merge-base --is-ancestor <sha> main` returning false)
-- [ ] A tag whose derived branch still exists and is merged into the default branch is reported "exists,
-      merged into `<default>`" and is a `STALE_REBASE_BACKUP_TAG` candidate
+- [ ] A tag whose derived branch still exists, is merged into the default branch, AND whose own commit is
+      reachable from the default branch is reported "exists, merged into `<default>`" +
+      "reachable from `<default>`: yes" and is a `STALE_REBASE_BACKUP_TAG` candidate
+- [ ] A tag whose derived branch still exists, is merged into the default branch, but whose own commit is
+      NOT reachable from the default branch (a rebase-then-merge sequence, where the merged branch's tip
+      is a different commit object than the tag's pre-rebase commit) is reported "reachable from
+      `<default>`: NO" and is NEVER proposed for deletion — the reachability check always runs for the
+      merged case too, never skipped just because the branch itself is already known-safe to delete
+      (found by `cross-model-review`, Codex Phase 1 re-review after the first data-loss fix, 2026-08-31 —
+      the merged-branch case turned out to have the exact same flaw as the branch-gone case, just less
+      obvious since "merged" sounds like a stronger safety signal than it actually is here; live-verified
+      with a real rebase-then-merge sequence, confirming `git branch --merged` reports the branch merged
+      while `git merge-base --is-ancestor <pre-rebase-sha> main` still returns false)
 - [ ] A tag whose derived branch still exists and is NOT merged is reported "exists, not merged into
-      `<default>`" and is never proposed for deletion — Phase 3.6 leaves it alone regardless of the tag's
-      own age
+      `<default>`" and is never proposed for deletion, with no reachability check run at all — Phase 3.6
+      leaves it alone regardless of the tag's own age, and the extra `git merge-base` call is skipped
+      entirely for this case since the outcome doesn't depend on it
 - [ ] `git tag -d` is called directly, with no marker-handshake write beforehand — confirmed
       `guard-raw-destructive-cleanup.sh` only matches `git branch -D`/`worktree remove --force`, never
       `git tag -d`
@@ -64,13 +76,15 @@ to exercise):**
       ref)
 
 **Live results, 2026-08-31:** ran the updated `phase1-analysis.sh` against a throwaway scratch repo with
-four rebase-backup tags: one whose branch was merged and then deleted (correctly reported "no longer
-exists locally" + "reachable from main: yes"), one whose branch was merged but kept (correctly reported
-"exists, merged into main"), one whose branch is still active/unmerged (correctly reported "exists, not
-merged into main"), and one whose branch was force-deleted without ever merging (correctly reported "no
-longer exists locally" + "reachable from main: NO" — confirming this case is caught, not silently
-recommended for deletion). All four matched the intended Phase 3.6 categorization with no false positives
-or negatives. Separately,
+five rebase-backup tags: one whose branch was merged (without rebasing) and then deleted (correctly
+reported "no longer exists locally" + "reachable from main: yes"), one whose branch was merged (without
+rebasing) but kept (correctly reported "exists, merged into main" + "reachable from main: yes"), one whose
+branch is still active/unmerged (correctly reported "exists, not merged into main", no reachability check
+run), one whose branch was force-deleted without ever merging (correctly reported "no longer exists
+locally" + "reachable from main: NO"), and one whose branch was rebased onto an advanced `main` and then
+merged (correctly reported "exists, merged into main" + "reachable from main: NO" — confirming the
+rebase-then-merge case is caught even though the branch itself genuinely shows as merged). All five
+matched the intended Phase 3.6 categorization with no false positives or negatives. Separately,
 `git check-ref-format --allow-onelevel '$(id)-rebase-backup-20260831-123456'` was run live and confirmed
 git accepts that string as a legal tag name, validating the ref-name safety check added above.
 
