@@ -72,8 +72,8 @@ Setup (see the plugin README's Status section); until an operation's `support_st
 Five entity types, each with its own field set: Goals, Roadmaps, Projects/Initiatives,
 Milestones, and Issues. See `references/linear-entity-fields.md` for the full field table per type
 (owners, priorities, dependencies, cycles/dates, statuses, labels, transition IDs, and a Notion
-link on Goal only — not a field shared by all five types) — load it before creating or materially
-changing an entity type for the first time in a session.
+link on Goal, Project/Initiative, and Issue only — not a field shared by all five types) — load it
+before creating or materially changing an entity type for the first time in a session.
 
 **Never infer a target from a display name when more than one match exists.** Linear display
 names are not unique across teams/projects — resolve by stable ID, and if a name search returns

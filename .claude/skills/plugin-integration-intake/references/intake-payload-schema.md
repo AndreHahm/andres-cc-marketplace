@@ -48,12 +48,27 @@ the parts a static schema can't express (the existence check, the ambiguous-targ
 ## Validation Rules
 
 1. **Unknown source**: `source_plugin` must match a real, currently-installed plugin in this
-   repository, and `source_skill` must match a real skill (a directory containing a `SKILL.md`)
-   inside that specific plugin. Either value failing to resolve is rejected as unknown source.
-   **This is an existence check on the caller's claim, not authentication of the caller** —
-   `source_plugin`/`source_skill` are caller-asserted, not host-attested (see SKILL.md's Trust
-   Model section). Passing this check only means the claimed names are real; it does not confirm
-   that plugin/skill actually sent the payload.
+   repository's `plugins/` tree, and `source_skill` must match a real skill (a directory containing
+   a `SKILL.md`) inside that specific plugin's *actual* directory. Three steps, in order:
+   - Both `source_plugin` and `source_skill` must match the allowlist `^[a-z0-9][a-z0-9-]*$` in
+     full (this repository's own kebab-case naming convention), checked before either value is
+     used anywhere. **An allowlist, not a denylist of "bad" characters** — both values are later
+     used inside a `Glob` pattern, not a plain path, so a denylist of just `/`/`\`/`..` is not
+     sufficient: a glob metacharacter (`*`, `?`, `[`, `]`, `{`, `}`) is exactly as unsafe, since
+     e.g. `source_skill: "*"` would match *any* skill in the claimed plugin and pass an existence
+     check for a skill that was never actually named. The schema's own `pattern` constraint on
+     both fields enforces this mechanically before SKILL.md's procedure ever runs.
+   - `source_plugin` is compared against every manifest's own `name` field (never a directory
+     name, which can legitimately differ from it) via exact, case-sensitive, whole-string
+     equality — never a prefix/substring/fuzzy match. This comparison must match exactly one
+     manifest; zero or more than one match is unknown source.
+   - `source_skill` is then resolved against the *actual directory* of that one matched manifest
+     (never a directory built by concatenating the literal `source_plugin` string) — the match
+     must be exactly one hit, equal to the literal expected path.
+   Any step failing is rejected as unknown source. **This is an existence check on the caller's
+   claim, not authentication of the caller** — `source_plugin`/`source_skill` are caller-asserted,
+   not host-attested (see SKILL.md's Trust Model section). Passing this check only means the
+   claimed names are real; it does not confirm that plugin/skill actually sent the payload.
 2. **Malformed content**: `content` must match the shape required for its declared `target_system`
    (see above). A missing required field, or a field of the wrong type, is malformed content.
 3. **Ambiguous target**: `suggested_mapping` must resolve to exactly one Notion database/page or

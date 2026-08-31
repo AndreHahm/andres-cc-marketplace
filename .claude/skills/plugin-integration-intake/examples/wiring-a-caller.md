@@ -46,9 +46,12 @@ concrete result rather than the general rule:
 
 1. Receives the payload above.
 2. Validates it:
-   - **2a.** `source_plugin: "analysis-kit"` checked against the installed plugin list (an
-     existence check on the claim, not authentication of the sender — see SKILL.md's Trust Model)
-     — it is a real, installed plugin, so this passes.
+   - **2a.** `source_plugin: "analysis-kit"` and `source_skill: "running-a-full-retrospective"`
+     both match the kebab-case allowlist (an existence check on the claim, not authentication of
+     the sender — see SKILL.md's Trust Model). `source_plugin` matches exactly one installed
+     plugin's manifest `name`. `source_skill` then resolves against *that* matched plugin's actual
+     directory (`plugins/analysis-kit/skills/running-a-full-retrospective/SKILL.md`) — exactly one
+     hit, matching the expected literal path. All three checks pass.
    - **2b.** `content` against the Report record shape (`title`, `summary`, and `body` all present,
      no unrecognized fields) — this passes.
    - **2c.** `suggested_mapping` resolves to exactly one Notion database (`Reports`) — this passes,
@@ -69,3 +72,10 @@ If `analysis-kit`'s hypothetical skill instead submitted `source_plugin: "analys
 that isn't actually installed), the payload fails the unknown-source check and a structured
 handoff is returned to the caller — no preview is ever built, and no approval prompt is ever shown
 to the user for a submission from an unverifiable source.
+
+A crafted payload claiming `source_plugin: "analysis-kit"` (a real, installed plugin) with
+`source_skill: "../../workmanagement-kit/skills/plugin-integration-intake"` or `source_skill: "*"`
+fails at step 2a's allowlist check (`^[a-z0-9][a-z0-9-]*$`) before either value is ever used in a
+`Glob` pattern — the JSON Schema's own `pattern` constraint on both fields rejects it even earlier,
+before this skill's own procedure runs at all. Neither a path-traversal segment nor a glob
+metacharacter passes; both are equally rejected by the same allowlist, not by two separate checks.
