@@ -262,10 +262,35 @@
         }
       ],
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 9.9,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "report_path": "C:/Dev/Repos/andres-cc-marketplace/.claude/worktrees/workmanagement-kit-wave1-scaffold/.claude/output/plugin-grader/workmanagement-kit-2026-08-31T04-34-07Z.json",
+          "report_sha256": "0c6c290400514369ae3d9ced9d934da78a80318fd91079e35fc3a41df512f141",
+          "score": 9.9,
+          "target": "workmanagement-kit",
+          "target_type": "plugin"
+        }
+      ],
+      "security_score": 9.6,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "is_na": null,
+          "report_path": "C:/Dev/Repos/andres-cc-marketplace/.claude/worktrees/workmanagement-kit-wave1-scaffold/.claude/output/plugin-grader/workmanagement-kit-2026-08-31T04-34-07Z.json",
+          "report_sha256": "0c6c290400514369ae3d9ced9d934da78a80318fd91079e35fc3a41df512f141",
+          "security_score": 9.6,
+          "source_field": "plugin_security_score",
+          "target": "workmanagement-kit",
+          "target_type": "plugin"
+        }
+      ],
       "source": "./plugins/workmanagement-kit",
       "status": "active",
       "status_history": [
@@ -282,5 +307,5 @@
     }
   ],
   "schema_version": "1.0.0",
-  "updated_on": "2026-08-30"
+  "updated_on": "2026-08-31"
 }

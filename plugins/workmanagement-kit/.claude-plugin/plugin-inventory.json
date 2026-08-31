@@ -23,10 +23,35 @@
       ],
       "path": "skills/idea-to-implementation",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 9.9,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-idea-to-implementation.json",
+          "report_sha256": "06e1e51b6e0b32f81dee0966428c5bf4ead4fd702d15b3cf5427cc694807f400",
+          "score": 9.9,
+          "target": "idea-to-implementation",
+          "target_type": "skill"
+        }
+      ],
+      "security_score": 9.5,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "is_na": false,
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-idea-to-implementation.json",
+          "report_sha256": "06e1e51b6e0b32f81dee0966428c5bf4ead4fd702d15b3cf5427cc694807f400",
+          "security_score": 9.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "idea-to-implementation",
+          "target_type": "skill"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -64,10 +89,35 @@
       ],
       "path": "skills/linear-work-management",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 9.9,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-linear-work-management.json",
+          "report_sha256": "be465023c55507cbd7189441bd8c50128d165d14cf8da1227a09e4dee0c87048",
+          "score": 9.9,
+          "target": "linear-work-management",
+          "target_type": "skill"
+        }
+      ],
+      "security_score": 10.0,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "is_na": false,
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-linear-work-management.json",
+          "report_sha256": "be465023c55507cbd7189441bd8c50128d165d14cf8da1227a09e4dee0c87048",
+          "security_score": 10.0,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "linear-work-management",
+          "target_type": "skill"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -105,10 +155,35 @@
       ],
       "path": "skills/notion-knowledge-management",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 9.8,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-notion-knowledge-management.json",
+          "report_sha256": "6063ab641ae08db1f7fd7cfd6c3694c399e0961ee32a592c51f45d9b0dd907fb",
+          "score": 9.8,
+          "target": "notion-knowledge-management",
+          "target_type": "skill"
+        }
+      ],
+      "security_score": 9.5,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "is_na": false,
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-notion-knowledge-management.json",
+          "report_sha256": "6063ab641ae08db1f7fd7cfd6c3694c399e0961ee32a592c51f45d9b0dd907fb",
+          "security_score": 9.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "notion-knowledge-management",
+          "target_type": "skill"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -146,10 +221,35 @@
       ],
       "path": "skills/open-item-management",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 9.9,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-open-item-management.json",
+          "report_sha256": "0d2e5bf0af0165d48613d9354a5c5072f1ea7395e486b177828869156cebca03",
+          "score": 9.9,
+          "target": "open-item-management",
+          "target_type": "skill"
+        }
+      ],
+      "security_score": 9.5,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "is_na": false,
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-open-item-management.json",
+          "report_sha256": "0d2e5bf0af0165d48613d9354a5c5072f1ea7395e486b177828869156cebca03",
+          "security_score": 9.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "open-item-management",
+          "target_type": "skill"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -187,10 +287,35 @@
       ],
       "path": "skills/plugin-integration-intake",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 9.8,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-plugin-integration-intake.json",
+          "report_sha256": "1db8456342401a34553b06d5858889b18df2501217ffbfa3da871e48689ef5f3",
+          "score": 9.8,
+          "target": "plugin-integration-intake",
+          "target_type": "skill"
+        }
+      ],
+      "security_score": 9.0,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "is_na": false,
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-plugin-integration-intake.json",
+          "report_sha256": "1db8456342401a34553b06d5858889b18df2501217ffbfa3da871e48689ef5f3",
+          "security_score": 9.0,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "plugin-integration-intake",
+          "target_type": "skill"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -228,10 +353,35 @@
       ],
       "path": "skills/status-and-learning",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 9.9,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-status-and-learning.json",
+          "report_sha256": "7b76cee84f280a2b904baaa7fd85d9238a0f5b625c03e473bbe2059726ef5d04",
+          "score": 9.9,
+          "target": "status-and-learning",
+          "target_type": "skill"
+        }
+      ],
+      "security_score": 9.5,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "is_na": false,
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-status-and-learning.json",
+          "report_sha256": "7b76cee84f280a2b904baaa7fd85d9238a0f5b625c03e473bbe2059726ef5d04",
+          "security_score": 9.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "status-and-learning",
+          "target_type": "skill"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -269,10 +419,35 @@
       ],
       "path": "skills/work-linking",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 9.9,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-linking.json",
+          "report_sha256": "3136a111f10636d1e1cd6ae6b8511b92f0f417a972a58e5b4986172d0c970572",
+          "score": 9.9,
+          "target": "work-linking",
+          "target_type": "skill"
+        }
+      ],
+      "security_score": 9.5,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "is_na": false,
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-linking.json",
+          "report_sha256": "3136a111f10636d1e1cd6ae6b8511b92f0f417a972a58e5b4986172d0c970572",
+          "security_score": 9.5,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "work-linking",
+          "target_type": "skill"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -310,10 +485,35 @@
       ],
       "path": "agents/work-intake-classifier.md",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 10.0,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-intake-classifier.json",
+          "report_sha256": "87451d52e4d9bcb168e696c71d57026636c30c09b116f82cf4453418aca7b305",
+          "score": 10.0,
+          "target": "work-intake-classifier",
+          "target_type": "agent"
+        }
+      ],
+      "security_score": 10.0,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "is_na": false,
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-intake-classifier.json",
+          "report_sha256": "87451d52e4d9bcb168e696c71d57026636c30c09b116f82cf4453418aca7b305",
+          "security_score": 10.0,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "work-intake-classifier",
+          "target_type": "agent"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -351,10 +551,35 @@
       ],
       "path": "agents/work-transition-reviewer.md",
       "provenance": {},
-      "score": null,
-      "scoring_history": [],
-      "security_score": null,
-      "security_scoring_history": [],
+      "score": 10.0,
+      "scoring_history": [
+        {
+          "gates_applied": [],
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-transition-reviewer.json",
+          "report_sha256": "047b4b39c7065f28b99ad7565bcfeb8a40fda44a39d1112ccd6df54098346267",
+          "score": 10.0,
+          "target": "work-transition-reviewer",
+          "target_type": "agent"
+        }
+      ],
+      "security_score": 10.0,
+      "security_scoring_history": [
+        {
+          "graded_at": "2026-08-31T04:34:07Z",
+          "grader_schema_version": "1.1.0",
+          "imported_on": "2026-08-31",
+          "is_na": false,
+          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-transition-reviewer.json",
+          "report_sha256": "047b4b39c7065f28b99ad7565bcfeb8a40fda44a39d1112ccd6df54098346267",
+          "security_score": 10.0,
+          "source_field": "dimensions.safety_risk_handling.score",
+          "target": "work-transition-reviewer",
+          "target_type": "agent"
+        }
+      ],
       "status": "active",
       "status_history": [
         {
@@ -374,5 +599,5 @@
   "plugin_id": "plugin_39dae8d5",
   "plugin_name": "workmanagement-kit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-08-30"
+  "updated_on": "2026-08-31"
 }
