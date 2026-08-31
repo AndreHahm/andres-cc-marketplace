@@ -1,0 +1,21 @@
+{
+  "eval_id": 13,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "States it compares against acme-org (from step 1's resolved {owner}/{repo}), not the current checkout's own repository",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Explicitly states a fresh gh repo view is never used for this comparison",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "States the same PR-resolved {owner}/{repo} applies to Tier 3's collaborator-permission call too, not just Tier 1",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

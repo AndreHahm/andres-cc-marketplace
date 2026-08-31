@@ -65,11 +65,39 @@
       "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 7. `pr_merge_type` (from step 6) is `SQUASH` -- this was the configured setting from the start, not a strategy chosen via the rebase pre-check or a rejection fallback. You are given, as a fact for this exercise, that this PR has 12 commits. Before you run `gh pr merge <n> --squash`, what do you do? Write your answer to `outputs/answer.md`.",
       "expected_output": "States that the squash-tradeoff disclosure still fires, even though SQUASH was already the configured pr_merge_type and no rebase pre-check or fallback was involved -- explicitly notes this isn't conditioned on having reached squash via a fallback path. States the number of commits that will collapse into one (12) and that individual fix-round/review-commit granularity will be lost on the base branch. States this disclosure happens before the --squash merge command runs.",
       "files": ["outputs/answer.md"]
+    },
+    {
+      "id": 10,
+      "name": "Step 2: no-merge-conflicts check tells the user how to reproduce a conflict locally, never points bare at resolving-merge-conflicts",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 2, following your own no-merge-conflicts check. `gh pr view $ARGUMENTS --json ...mergeable...` returns `mergeable: CONFLICTING`. `baseRefName` (from step 1) is `main`; `headRefName` is `fix/typo`. Describe every check you perform for this bullet, and specifically: what do you tell the user, and do you point them directly at running `resolving-merge-conflicts` with nothing else, or do you give them something to do first? Write your answer to `outputs/answer.md`.",
+      "expected_output": "Stops and reports the PR has merge conflicts with main. Does not point bare at resolving-merge-conflicts -- explicitly states that skill's own precondition is a local working tree already showing unmerged paths (git status), which a remote-only mergeable: CONFLICTING signal doesn't produce on its own. Tells the user to reproduce the conflict locally first: fetch fix/typo and main, check out fix/typo, then attempt git merge origin/main -- only then run resolving-merge-conflicts once git status actually shows unmerged paths.",
+      "files": ["outputs/answer.md"]
+    },
+    {
+      "id": 11,
+      "name": "Step 2: not-behind-base is a required blocking gate, not merely disclosed",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 2, following your own not-behind-base check. `isCrossRepository` (from step 1) is `false`. `baseRefName` is `main`; `headRefName` is `feat/thing`. `gh api repos/{owner}/{repo}/compare/main...feat/thing --jq '.behind_by'` returns `4`. Describe what you conclude, whether readiness passes, and what you tell the user. Do you proceed to the merge-rights check (step 3), or stop? Write your answer to `outputs/answer.md`.",
+      "expected_output": "States the branch is 4 commits behind main. Since not-behind-base is now a required, blocking check (not merely advisory/disclosed), states it stops here and does NOT proceed to step 3's merge-rights check. Tells the user how many commits behind and points at /sync-branch (git-rebase-sync) to resync. Does not treat this as merely informational or something to disclose at step 5 while still proceeding.",
+      "files": ["outputs/answer.md"]
+    },
+    {
+      "id": 12,
+      "name": "Step 2: mergeStateStatus is an advisory disclosure that never blocks readiness on its own",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are at step 2. All five required checks (not draft, status checks, no changes requested, no merge conflicts, not behind base) have already passed. `mergeStateStatus` (already fetched alongside `mergeable`) is `BLOCKED`. Does this block readiness or stop the flow? What do you do with this value? Write your answer to `outputs/answer.md`.",
+      "expected_output": "States mergeStateStatus is an advisory disclosure only -- since all five required checks already passed, a BLOCKED mergeStateStatus value does NOT stop the flow or block readiness on its own. States it surfaces this value explicitly at step 5's confirmation as informational, noting it may disagree with this skill's own passing checks, but proceeds to step 3 (merge-rights check) and eventually step 5 rather than treating BLOCKED as a gate.",
+      "files": ["outputs/answer.md"]
+    },
+    {
+      "id": 13,
+      "name": "Step 3: merge-rights check reuses step 1's resolved {owner}/{repo}, never a fresh gh repo view",
+      "prompt": "This is a simulated exercise: there is no real GitHub PR to operate on, and you must NOT attempt any `gh`/`git` calls -- you are given the data those calls would have returned, as facts for this exercise. Describe what you would do, and write your answer to a file.\n\nYou are following your own step 3 (merge-rights check), delegating to references/merge-rights-check.md's 3-tier procedure. `$ARGUMENTS` named a PR whose `url` field (already resolved at step 1) is `https://github.com/acme-org/acme-repo/pull/42` -- but the current local checkout's own remote is a completely different repository, `andrehahm/andres-cc-marketplace`. Tier 1 needs to compare the current actor's login against the repo owner. Which repository's owner do you compare against: `acme-org` (from the PR's own resolved url), or whatever `gh repo view` would report for the current checkout? Write your answer to `outputs/answer.md`.",
+      "expected_output": "States it compares against acme-org -- the owner from step 1's already-resolved {owner}/{repo} (the PR's own url field) -- never a fresh gh repo view call, which would incorrectly resolve to andrehahm/andres-cc-marketplace (the current checkout's own repository), not the repository the PR under review actually belongs to. States this applies to Tier 3's collaborator-permission call too, using the same PR-resolved {owner}/{repo}.",
+      "files": ["outputs/answer.md"]
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 20,
-    "declared_scenarios_covered": 8,
+    "declared_scenarios_total": 31,
+    "declared_scenarios_covered": 12,
     "uncovered": [
       "Step 8 always uses AskUserQuestion -- never auto-invokes finishing-work unconditionally",
       "Step 8 only runs after step 7's merge actually succeeded",
@@ -77,13 +105,20 @@
       "The step-2 bypass exception only ever applies when Publish Codex policy result is the sole failing required check",
       "Step 3 (merge-rights) always runs before step 4's attestation, unconditionally",
       "The attestation comment body is always built via jq -n --arg, never by interpolating the reason text directly",
-      "$ARGUMENTS's PR-reference portion is always validated at step 1, before its first use in any gh command",
-      "Step 7(d)'s rejection fallback never retries gh pr merge with a different flag without asking and re-running the full step-2 check",
       "Step 4(d) always polls for the re-triggered check's terminal state",
       "Step 4(e) always reruns the full step-2 readiness check, not just the Codex check",
       "Step 5's explicit merge confirmation always runs, bypass or not",
-      "An empty or missing --bypass-codex-review reason is always treated as if the flag were never passed"
+      "An empty or missing --bypass-codex-review reason is always treated as if the flag were never passed",
+      "$ARGUMENTS's PR-reference portion is always validated at step 1, before its first use in any gh command",
+      "Step 7(d)'s rejection fallback never retries gh pr merge with a different flag without asking and re-running the full step-2 check",
+      "Step 2's not-behind-base check never runs the compare-endpoint call when isCrossRepository is true (eval 11 covers the blocking behavior, not the cross-repo-skip variant)",
+      "Step 2's no-merge-conflicts check always resolves mergeable to a terminal value -- UNKNOWN is polled until terminal (eval 10 covers the CONFLICTING case, not the UNKNOWN-polling path)",
+      "Step 1's initial fetch and step 2's rerun re-fetch both request mergeable/mergeStateStatus",
+      "Step 2's unresolved-review-thread check always writes a fresh gh-pr-review marker before every gh api graphql call",
+      "Step 2's unresolved-review-thread loop always continues while pageInfo.hasNextPage is true",
+      "Step 5's confirmation always states both advisory disclosures explicitly, even when the thread count is zero and the merge-state value is CLEAN",
+      "--bypass-codex-review never skips the no-merge-conflicts or not-behind-base checks"
     ],
-    "note": "Eval 1 covers 'Step 7 never assumes the remote branch is gone...'. Eval 2 covers 'Step 5's worktree branch-delete note is always present...'. Eval 3 covers 'headRefName is always validated...at step 1'. Eval 4 covers 'Step 7's remote-branch-deletion fallback...never runs when isCrossRepository is true'. Evals 5 and 6 (added for a round-2 Codex finding on PR #137) deepen coverage of eval 1's and eval 3's gates respectively rather than mapping to new declared checklist items -- not counted separately against declared_scenarios_total. Eval 7 (added this session) covers both 'Step 2's four-state classification never collapses missing into pending or failing' and 'Step 2 always resolves the required-check list from the branch-protection REST endpoint' (the same query resolves both). Eval 8 covers 'Step 7(a)'s rebase-compatibility pre-check always runs before the first gh pr merge --rebase attempt'. Eval 9 covers 'Step 7(c)'s squash-tradeoff disclosure always fires...regardless of whether squash was the configured default, chosen preemptively, or chosen reactively'. Two gates were added this session by a post-audit security fix ($ARGUMENTS validation at step 1; step 7(d)'s rejection-fallback re-check) and have no eval coverage yet, alongside the remaining 10 gates (mostly the bypass-attestation flow and steps 3-4/8) -- 12 gates total with no eval coverage yet."
+    "note": "Eval 1 covers 'Step 7 never assumes the remote branch is gone...'. Eval 2 covers 'Step 5's worktree branch-delete note is always present...'. Eval 3 covers 'headRefName is always validated...at step 1'. Eval 4 covers 'Step 7's remote-branch-deletion fallback...never runs when isCrossRepository is true'. Evals 5 and 6 deepen coverage of eval 1's and eval 3's gates respectively rather than mapping to new declared checklist items -- not counted separately against declared_scenarios_total. Eval 7 covers both 'Step 2's four-state classification never collapses missing into pending or failing' and 'Step 2 always resolves the required-check list from the branch-protection REST endpoint' (the same query resolves both). Eval 8 covers 'Step 7(a)'s rebase-compatibility pre-check always runs before the first gh pr merge --rebase attempt'. Eval 9 covers 'Step 7(c)'s squash-tradeoff disclosure always fires...regardless of whether squash was the configured default'. Eval 10 (added 2026-08-31, iteration-6) covers 'Step 2's no-merge-conflicts stop message always tells the user how to reproduce the conflict locally before pointing at resolving-merge-conflicts' (skill-reviewer M2 fix). Eval 11 covers 'Step 2's not-behind-base check is a required, blocking gate (not merely disclosed)'. Eval 12 covers the mergeStateStatus half of 'Step 2's unresolved-review-thread and merge-state-summary disclosures never block readiness'. Eval 13 covers 'Step 3 and references/merge-rights-check.md's Tiers 1 and 3 always reuse step 1's resolved {owner}/{repo}' (skill-reviewer M1 fix). declared_scenarios_total rose from 20 to 31 across this session's two rounds of SKILL.md changes (9 new checklist items added); the 19 remaining uncovered items are unchanged in kind from before this session -- mostly the bypass-attestation flow (steps 3-4/8) plus a handful of narrower sub-cases (UNKNOWN-polling path, cross-repo-skip variant, graphql pagination/marker mechanics) that this session's 4 new evals didn't happen to exercise."
   }
 }

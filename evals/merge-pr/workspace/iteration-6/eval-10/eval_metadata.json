@@ -1,0 +1,26 @@
+{
+  "eval_id": 10,
+  "skill_path": "plugins/git-kit/skills/merge-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reports the PR has merge conflicts with the base branch (main)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Explicitly stops rather than proceeding to step 3 (merge-rights check)",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "States resolving-merge-conflicts' own precondition (git status showing unmerged paths) doesn't exist yet from a remote-only mergeable: CONFLICTING signal alone -- does not point at it bare",
+      "type": "quality",
+      "target": "outputs/answer.md"
+    },
+    {
+      "text": "Describes local-reproduction steps (fetch headRefName and baseRefName, check out headRefName, attempt a local merge against baseRefName) before pointing at resolving-merge-conflicts",
+      "type": "functionality",
+      "target": "outputs/answer.md"
+    }
+  ]
+}

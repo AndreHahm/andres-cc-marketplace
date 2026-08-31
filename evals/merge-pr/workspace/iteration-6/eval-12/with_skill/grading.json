@@ -1,0 +1,31 @@
+{
+  "eval_id": 12,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States mergeStateStatus is an advisory disclosure, not a blocking gate",
+      "passed": true,
+      "evidence": "\"mergeStateStatus is one of two advisory disclosures, computed only once the five required checks above have already passed\""
+    },
+    {
+      "text": "Explicitly states a BLOCKED value does NOT stop the flow given all five required checks already passed",
+      "passed": true,
+      "evidence": "\"No -- it does not block readiness and does not stop the flow...Since all five passed, readiness is not re-litigated based on this value.\""
+    },
+    {
+      "text": "States the value is surfaced at step 5's confirmation as informational",
+      "passed": true,
+      "evidence": "\"Surface it explicitly at step 5's confirmation...Frame it as informational, not a verdict.\""
+    },
+    {
+      "text": "Does not treat BLOCKED as a required gate on its own -- proceeds toward step 3/step 5 rather than stopping",
+      "passed": true,
+      "evidence": "\"Do not stop the flow. Proceed past step 2 to the merge-rights check (step 3) as normal, since readiness is satisfied.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

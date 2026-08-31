@@ -1,0 +1,26 @@
+{
+  "eval_id": 13,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States it compares against acme-org (from step 1's resolved {owner}/{repo}), not the current checkout's own repository",
+      "passed": true,
+      "evidence": "\"Compare against acme-org -- the owner from the PR's own already-resolved url field from step 1. Do not use whatever gh repo view would report for the current checkout (andrehahm/andres-cc-marketplace).\""
+    },
+    {
+      "text": "Explicitly states a fresh gh repo view is never used for this comparison",
+      "passed": true,
+      "evidence": "\"never re-derive it here via a fresh gh repo view... Tier 1 itself says: 'Compare against {owner} (step 1's resolved value, not a fresh gh repo view).'\""
+    },
+    {
+      "text": "States the same PR-resolved {owner}/{repo} applies to Tier 3's collaborator-permission call too, not just Tier 1",
+      "passed": true,
+      "evidence": "\"proceed to Tier 2...and, if needed, Tier 3 (collaborator permission via gh api repos/acme-org/acme-repo/collaborators/{username}/permission) -- both of which also use acme-org/acme-repo, never the local checkout's repo.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
