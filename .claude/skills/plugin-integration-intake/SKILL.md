@@ -108,11 +108,14 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
    is no code path here that skips this step, regardless of the payload's own claimed urgency or
    the calling plugin's own approval history.
 5. On approval, execute through `notion-knowledge-management` or `linear-work-management` (never
-   a connector call of this skill's own) and read the result back.
-6. Record the resulting transition tagged with **both** the target record and the claimed source
-   plugin's identity (a caller-supplied claim, per Trust Model above — not a verified sender) per
-   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract `source_plugin` field, so an audit later
-   can trace exactly which plugin's claim caused which write.
+   a connector call of this skill's own) and read the result back. That delegated write already
+   carries its own transition-id-tagged properties as part of the write itself, per
+   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract — this skill's own contribution is the
+   `source_plugin` value passed into that write.
+6. That write's `source_plugin` value is the claimed source plugin's identity (a caller-supplied
+   claim, per Trust Model above — not a verified sender), tagged onto the target record alongside
+   the write's own `affected_record`, so an audit later can trace exactly which plugin's claim
+   caused which write.
 
 ## Confirmation and Safety
 

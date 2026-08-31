@@ -1,9 +1,10 @@
 # Foundation Contracts
 
-This plugin's skills share three contracts, referenced throughout as "the plugin's shared host
-profile," "the plugin's shared transition contract," and "the plugin's versioned configuration."
-This file is the single canonical definition of all three — every skill citing one of them points
-here, rather than each restating its own description (the exact drift risk R20 exists to catch).
+This plugin's skills share four contracts, referenced throughout as "the plugin's shared host
+profile," "the plugin's shared transition contract," "the plugin's versioned configuration," and (for
+`open-item-management` specifically) "the plugin's disposition record." This file is the single
+canonical definition of all four — every skill citing one of them points here, rather than each
+restating its own description (the exact drift risk R20 exists to catch).
 
 ## Host Profile (`host-profile.json`)
 
@@ -121,9 +122,16 @@ must fall back to the shipped `unconfigured` defaults, the same fail-closed disc
 
 ## Transition Contract
 
-The shape every skill's "record the resulting transition" step must produce, embedded as that
-record's own `transition-id`-tagged properties (see each Notion/Linear record type's shared-field
-list) — this is not a separate log file; the evidence lives inline on the record itself.
+The shape every skill's "record the resulting transition" step must produce for **a single write to
+a single record** — embedded as that record's own `transition-id`-tagged properties (see each
+Notion/Linear record type's shared-field list); this is not a separate log file, the evidence lives
+inline on the record itself. This contract represents exactly one write's own evidence and nothing
+more: it has no field for a cross-system link pair (see the already-shipped `notion-link`/
+`linear-link` entity fields, used directly by `work-linking`, for that) and no field for a batch of
+independent per-item outcomes against one source record (see Disposition Record below, used by
+`open-item-management`, for that) — forcing either shape into this schema's single-valued fields is
+exactly the gap GitHub issue #254 identified; both are handled by their own dedicated mechanism
+instead.
 
 **Schema:**
 
@@ -133,7 +141,7 @@ list) — this is not a separate log file; the evidence lives inline on the reco
   "operation_id": "string, the connector call's own operation/request ID, if the connector provides one, else null",
   "affected_record": {"system": "notion | linear", "stable_id": "string"},
   "source_plugin": "string, the plugin that caused this transition, or 'workmanagement-kit' for a direct user request",
-  "verification_evidence": "string, a description of the read-back that confirmed the write succeeded",
+  "verification_evidence": "string, a description of the read-back that confirmed the PRIOR write to this record succeeded, or null if this is the first write to this record — see 'Recording verification_evidence' below",
   "recorded_at": "ISO-8601 UTC timestamp"
 }
 ```
@@ -145,7 +153,76 @@ list) — this is not a separate log file; the evidence lives inline on the reco
   caller's claimed `source_plugin` value (caller-asserted, not host-attested — see that skill's own
   Trust Model section); for a direct user request, this is always `"workmanagement-kit"` itself.
 - `verification_evidence` — a human-readable description (e.g. `"read back via linear.read,
-  confirmed status=Done"`), not a raw connector response dump.
+  confirmed status=Done"`), not a raw connector response dump. Describes the read-back of the
+  record's *previous* write, not this one — see below for why.
+
+### Recording verification_evidence (the next-write convention)
+
+`verification_evidence` can only be known after its own write completes (the read-back that
+confirms it), but "the evidence lives inline on the record itself" means it must be embedded in a
+write, not floated in a separate log — a write can't embed evidence of its own success before it has
+happened. This plugin resolves that causality gap with a **next-write convention**: when a skill
+writes to a record for the Nth time, that write's own `transition_id`/`operation_id`/
+`affected_record`/`source_plugin` describe write N itself, while the `verification_evidence` field
+in that *same* write instead carries the read-back that already confirmed write N-1 succeeded
+(known before write N started, since the read-back happens immediately after N-1 completes and
+before N is even drafted). Write N's own verification_evidence is deferred the same way, to
+whatever write N+1 does.
+
+**Terminal-write exception:** if a record's write N is expected to be its last write (no write N+1
+is planned), write N's own verification_evidence has no future write to attach to. In that case, the
+skill performs one additional metadata-only write to the same record whose sole purpose is recording
+write N's verification_evidence. This metadata write is exempt from needing its own read-back
+recorded via a further write — doing so would recurse indefinitely — since it changes nothing but
+the evidence field itself; a plain read confirming the metadata write landed is enough. Every skill
+citing this contract's Read-Back and Transitions convention inherits this exception without needing
+to restate it. **This metadata write needs no fresh approval of its own** — it changes only the
+evidence field, never the record's actual content, and the write it confirms was already approved
+(or needed none, for a read-derived transition); a skill's own Confirmation and Safety section may
+say so explicitly, but the exemption holds either way.
+
+## Disposition Record (`disposition-history`)
+
+A separate, repeatable mechanism for the case the Transition Contract above cannot represent: one
+pass producing more than one independent outcome against a single source record (e.g.
+`open-item-management` dispositioning every open item from one Report/Decision/Issue in a single
+pass). The Transition Contract's fields are single-valued per write — a second item's outcome would
+simply overwrite the first's rather than accumulate — so this uses its own array-valued property
+instead.
+
+Stored as an array-valued `disposition-history` property directly on the source record (see the
+`disposition-history` row in `notion-record-types.md`'s Report/Decision tables and
+`linear-entity-fields.md`'s Issue table). Appended to on every dispositioning pass, never
+overwritten or replaced wholesale — a record accumulates one entry per item across its lifetime,
+potentially from more than one pass over time.
+
+**Schema (one array entry per item):**
+
+```json
+{
+  "item_id": "string, an identifier for this open item that stays stable ACROSS passes over the same source (e.g. a hash of the item's own stated content) — not just within the pass that produced it",
+  "disposition": "resolved | retained-knowledge | decision-needed | actionable-work",
+  "note": "string, human-readable reason/context for this disposition",
+  "linked_record": "string, stable ID of the Linear follow-up created for this item, or null (set only when disposition is actionable-work)",
+  "transition_id": "string, the Transition Contract transition_id of the write that appended this entry",
+  "recorded_at": "ISO-8601 UTC timestamp"
+}
+```
+
+- `item_id` must be stable across passes, not just within the one that produced it — derive it from
+  the item's own content (e.g. a hash of its stated text), never from a positional index. A later
+  re-run over the same source needs `item_id` to recognize an item it already dispositioned, which a
+  shifting positional index cannot support.
+- `disposition` uses this hyphenated form; a consuming skill's own prose (e.g.
+  `open-item-management`'s "retained knowledge", "Decision needed") maps directly to it — same four
+  outcomes, just written for readability in prose versus this schema.
+- The write that appends one or more Disposition Record entries is itself an ordinary single write
+  against the source record — it still gets its own ordinary Transition Contract entry
+  (`affected_record` = the source record), per the next-write convention above. Each entry's own
+  `transition_id` links back to that write's `transition_id`; it is not a transition of its own.
+- Approval for the write that appends these entries is owned by the consuming skill (e.g.
+  `open-item-management`'s own second, separate approval gate) — this contract defines the stored
+  shape only, not the approval requirement.
 
 ## Change Log
 
@@ -157,3 +234,10 @@ list) — this is not a separate log file; the evidence lives inline on the reco
   added the tracked-vs-untracked trust-boundary check this file's `support_status`/scope claims
   require before being honored — found by automated PR review, this file previously and incorrectly
   claimed no such check was needed.
+- 2026-08-31 — Transition Contract scoped explicitly to single-write evidence only, with a stated
+  next-write convention (plus a terminal-write exception) resolving the causality gap between
+  "verification_evidence describes a post-write read-back" and "the contract lives inline on the
+  same write it's evidence for." Added the new Disposition Record mechanism
+  (`disposition-history`) for multi-item batch outcomes against one source record. Clarified that
+  cross-system links are represented by the already-shipped `notion-link`/`linear-link` entity
+  fields, not this contract. Closes GitHub issue #254.

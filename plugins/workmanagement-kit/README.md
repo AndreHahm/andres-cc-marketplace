@@ -63,15 +63,19 @@ Setup steps described in this plugin's design documents to be completed (connect
 workspace/team scoping, test scopes) before first live use.
 
 Items still open before this plugin is fully live:
-- **Foundation contracts exist as schemas with safe defaults, not yet live.** The shared host
-  profile (`host-profile.json`) and versioned configuration (`versioned-configuration.json`) ship
-  at the plugin root with every operation defaulting to `unconfigured`/`null`; the transition
-  contract is documented in `FOUNDATION_CONTRACTS.md`. An installation activates them via
-  `.claude/workmanagement-kit.local.json` during Foundational Setup (connector installation,
-  workspace/team scoping, real stable IDs) — until then, no skill's write path may proceed on the
-  assumption that a sanctioning check actually passed. `plugin-integration-intake`'s own JSON
-  Schema (`skills/plugin-integration-intake/assets/intake-payload.schema.json`, distinct from
-  these three contracts) exists and defines the envelope's constraints, but nothing in this
+- **Two of the four foundation contracts ship as schemas with safe defaults, not yet live.** The
+  shared host profile (`host-profile.json`) and versioned configuration
+  (`versioned-configuration.json`) ship at the plugin root with every operation defaulting to
+  `unconfigured`/`null`, activated via `.claude/workmanagement-kit.local.json` during Foundational
+  Setup (connector installation, workspace/team scoping, real stable IDs) — until then, no skill's
+  write path may proceed on the assumption that a sanctioning check actually passed. The other two —
+  the transition contract and the disposition record, both documented in `FOUNDATION_CONTRACTS.md`
+  — are per-record write shapes, not standalone files with defaults; they become live the same
+  moment the host profile above does, since every write they describe already goes through that
+  same sanctioning check.
+  `plugin-integration-intake`'s own JSON Schema
+  (`skills/plugin-integration-intake/assets/intake-payload.schema.json`, distinct from these four
+  contracts) exists and defines the envelope's constraints, but nothing in this
   plugin currently invokes it programmatically — no script, hook, or MCP tool loads it at
   runtime yet. Until such an invocation exists, envelope validation happens only through
   `plugin-integration-intake`'s own step 2 procedure (the model reasoning through the schema's

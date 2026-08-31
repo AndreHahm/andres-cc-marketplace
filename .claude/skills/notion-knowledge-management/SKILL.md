@@ -43,10 +43,13 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    below).
 2. Read the relevant record(s), if any exist, via the Notion connector.
 3. For a write: build the record per `references/notion-record-types.md`'s property table for its
-   type, preview it, get live approval via `AskUserQuestion` (see Confirmation and Safety), then
-   write and read back.
-4. Record the resulting transition through the plugin's shared transition contract (see
-   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract section).
+   type — including this write's own transition-id-tagged properties per the plugin's shared
+   transition contract (`../../FOUNDATION_CONTRACTS.md`'s Transition Contract section): this write's
+   own `transition_id`/`operation_id`/`affected_record`/`source_plugin`, plus whatever
+   `verification_evidence` the previous write to this record produced. These properties are part of
+   the write itself, not a separate step after it. Preview it, get live approval via
+   `AskUserQuestion` (see Confirmation and Safety), then write and read back — that read-back's own
+   evidence is what the *next* write to this record will carry.
 
 ## Why this exists
 
@@ -126,7 +129,10 @@ any other, with no lighter-weight exception for the fact that it starts in `prop
 ## Confirmation and Safety
 
 - **No approval needed:** reading any record, previewing what a capture would look like before
-  writing. For a large or unclear capture, the plugin's shared Codex bridge-caller component may
+  writing; the terminal-write metadata write that records a prior write's `verification_evidence`
+  when no further write to that record is planned (`FOUNDATION_CONTRACTS.md`'s terminal-write
+  exception) — it changes only the evidence field, not the record's actual content, and the write it
+  confirms was already approved. For a large or unclear capture, the plugin's shared Codex bridge-caller component may
   dispatch `work-intake-classifier` (read-only) on this skill's behalf to help sort it — that
   dispatch mechanism belongs to the plugin's shared infrastructure (not yet built in this Wave 1
   scaffold; see the plugin README's Status section), not a tool this skill invokes itself.
@@ -165,10 +171,12 @@ skill's own state.
 
 Every write is followed by an authoritative read of what was actually stored — never assume a
 write succeeded because the connector call returned without error. Record the resulting transition
-(operation ID, transition ID, affected record, verification evidence) per `FOUNDATION_CONTRACTS.md`'s
-Transition Contract schema, embedded in the record's own `transition-id`-tagged properties. A
-timeout or unknown result triggers a read of current state before any retry — never blindly repeat
-a write that might have partially succeeded.
+per `FOUNDATION_CONTRACTS.md`'s Transition Contract schema, embedded in the record's own
+`transition-id`-tagged properties — following that contract's next-write convention for
+`verification_evidence` (this write's own evidence lands on whichever write to this record comes
+next, not this one; see the terminal-write exception there for a record's last write). A timeout or
+unknown result triggers a read of current state before any retry — never blindly repeat a write that
+might have partially succeeded.
 
 ## Gotchas
 

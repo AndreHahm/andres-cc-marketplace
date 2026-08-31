@@ -7,7 +7,7 @@
       "id": 1,
       "name": "Link a Notion record to a Linear record",
       "prompt": "Link this Notion idea to the Linear issue it became.",
-      "expected_output": "Records a link as a pair of stable IDs plus an authority label, not a content mirror, through the plugin's shared transition contract.",
+      "expected_output": "Records the link as the reciprocal notion-link/linear-link entity fields on each side's own record, not a content mirror and not stored in the transition contract itself.",
       "files": []
     },
     {

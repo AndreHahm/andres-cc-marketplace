@@ -48,16 +48,26 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    re-preview/re-approve it rather than writing the one that was just approved — a summary approved
    against now-stale facts is not the same as a summary approved against what's actually true right
    now. Only proceed to the write once this re-check confirms nothing changed.
-5. Write it via `notion-knowledge-management`.
+5. Write it via `notion-knowledge-management` — the write itself carries this transition's own
+   transition-id-tagged properties per `../../FOUNDATION_CONTRACTS.md`'s Transition Contract, plus
+   whatever `verification_evidence` the previous write to this record produced, if any.
 6. Read back the new Notion record (the Linear side was already re-confirmed fresh in step 4, not a
-   separate check to repeat here) and record the transition per
-   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract section.
+   separate check to repeat here) to confirm the write succeeded. A summary/outcome record is
+   permanently dated and never revisited afterward (see Confirmation and Safety), so this write is
+   almost always the record's terminal write — record this read-back's own evidence per
+   `FOUNDATION_CONTRACTS.md`'s terminal-write exception (one additional metadata-only write solely
+   to carry this write's `verification_evidence`), not deferred to a next write that likely never
+   comes.
 
 ## Confirmation and Safety
 
 - **Approval required:** every write to Notion — a summary is a material knowledge-capture action,
   not a read. Approval is obtained via `AskUserQuestion`, presenting the previewed content for
   confirmation before the write.
+- **No approval needed:** the terminal-write metadata write that records the snapshot write's own
+  `verification_evidence` (`FOUNDATION_CONTRACTS.md`'s terminal-write exception, which applies here
+  since a snapshot is not revisited) — it changes only the evidence field, not the snapshot's
+  content.
 - **Scope constraint, not just a style preference:** the summary must stay concise and outcome-
   focused — never a restatement of every Issue's status. A summary that just mirrors the Project
   is not adding knowledge value over reading Linear directly, and risks going stale the moment it's
