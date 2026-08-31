@@ -34,8 +34,17 @@ to exercise):**
 - [ ] `phase1-analysis.sh`'s tag enumeration only matches a tag fitting the exact
       `{branch}-rebase-backup-{8-digit-date}-{6-digit-time}` shape — a tag that merely contains the
       substring `-rebase-backup-` without the trailing digit-shape is never swept in
-- [ ] A tag whose derived branch no longer exists locally is reported "no longer exists locally" and is a
-      `STALE_REBASE_BACKUP_TAG` candidate
+- [ ] A tag whose derived branch no longer exists locally AND whose commit is reachable from the default
+      branch (`git merge-base --is-ancestor` succeeds) is reported "no longer exists locally" +
+      "reachable from `<default>`: yes" and is a `STALE_REBASE_BACKUP_TAG` candidate
+- [ ] A tag whose derived branch no longer exists locally AND whose commit is NOT reachable from the
+      default branch is reported "reachable from `<default>`: NO -- this tag may be the only remaining
+      copy of its commits" and is NEVER proposed for deletion — surfaced instead under a separate
+      "needs review — unique history" note, never folded into "delete all recommended"
+      (found by `cross-model-review`, Codex Phase 1 re-review after the injection fix, 2026-08-31 — a
+      real, severe data-loss risk distinct from the earlier injection finding; live-verified with a
+      force-deleted, never-merged branch whose only surviving commit was confirmed reachable solely via
+      its backup tag, via `git merge-base --is-ancestor <sha> main` returning false)
 - [ ] A tag whose derived branch still exists and is merged into the default branch is reported "exists,
       merged into `<default>`" and is a `STALE_REBASE_BACKUP_TAG` candidate
 - [ ] A tag whose derived branch still exists and is NOT merged is reported "exists, not merged into
@@ -55,10 +64,13 @@ to exercise):**
       ref)
 
 **Live results, 2026-08-31:** ran the updated `phase1-analysis.sh` against a throwaway scratch repo with
-three rebase-backup tags: one whose branch was merged and then deleted (correctly reported "no longer
-exists locally"), one whose branch was merged but kept (correctly reported "exists, merged into main"),
-and one whose branch is still active/unmerged (correctly reported "exists, not merged into main"). All
-three matched the intended Phase 3.6 categorization with no false positives or negatives. Separately,
+four rebase-backup tags: one whose branch was merged and then deleted (correctly reported "no longer
+exists locally" + "reachable from main: yes"), one whose branch was merged but kept (correctly reported
+"exists, merged into main"), one whose branch is still active/unmerged (correctly reported "exists, not
+merged into main"), and one whose branch was force-deleted without ever merging (correctly reported "no
+longer exists locally" + "reachable from main: NO" — confirming this case is caught, not silently
+recommended for deletion). All four matched the intended Phase 3.6 categorization with no false positives
+or negatives. Separately,
 `git check-ref-format --allow-onelevel '$(id)-rebase-backup-20260831-123456'` was run live and confirmed
 git accepts that string as a legal tag name, validating the ref-name safety check added above.
 

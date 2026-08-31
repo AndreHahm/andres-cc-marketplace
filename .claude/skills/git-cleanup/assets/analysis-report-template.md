@@ -41,10 +41,15 @@ Recommendation: Delete all 4 (work is in main)
 |--------|--------|
 | wip/new-feature | 5 unpushed commits |
 
-**Stale rebase-backup tag (originating branch gone or merged)**
+**Stale rebase-backup tag (originating branch gone or merged, content verified reachable)**
 | Tag | Branch | Branch Status |
 |-----|--------|----------------|
-| feat/old-feature-rebase-backup-20260701-093000 | feat/old-feature | no longer exists locally |
+| feat/old-feature-rebase-backup-20260701-093000 | feat/old-feature | no longer exists locally; reachable from main: yes |
+
+**Needs Review (rebase-backup tag, branch gone, content NOT verified reachable)**
+| Tag | Branch | Why it's not auto-deletable |
+|-----|--------|------------------------------|
+| feat/orphan-risk-rebase-backup-20260101-150000 | feat/orphan-risk | Branch no longer exists locally, and `git merge-base --is-ancestor` shows the tag's commit is NOT reachable from main — this tag may be the only remaining copy of that work |
 
 ### Worktrees
 | Path | Branch | Status |
