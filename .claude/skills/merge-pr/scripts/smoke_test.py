@@ -308,6 +308,39 @@ def check_step7_squash_disclosure():
     )
 
 
+def check_step7b_final_recheck_before_merge():
+    # Devin's review of PR #269 (2026-08-31): step 5's confirmation is a human AskUserQuestion of
+    # unknown duration, but nothing rechecked readiness between step 2 last passing and the actual
+    # gh pr merge call on the normal (non-bypass, non-retry) path -- only step 4(e)'s bypass rerun
+    # and step 7(d)'s rejection-fallback retry rechecked, never the first attempt itself.
+    step7 = _get_step_text(7)
+    if step7 is None:
+        return False, "step 7 ('## Instructions') not found"
+    if "Final recheck, marker, and merge command" not in step7:
+        return (
+            False,
+            "step 7(b) no longer documents a final readiness recheck before the marker/merge "
+            "command -- Devin's PR #269 finding may have regressed",
+        )
+    if "applies on every path, not just the rejection-fallback retry" not in step7:
+        return (
+            False,
+            "step 7(b)'s final recheck no longer states it applies unconditionally, not just to "
+            "the step 7(d) retry path",
+        )
+    if "do not write the marker or attempt to merge" not in step7:
+        return (
+            False,
+            "step 7(b)'s final recheck no longer states a failure stops before writing the marker "
+            "or attempting to merge",
+        )
+    return (
+        True,
+        "step 7(b) documents an unconditional final readiness recheck immediately before the "
+        "marker/merge command, covering the normal path Devin's PR #269 review found uncovered",
+    )
+
+
 def check_step7_rejection_fallback():
     step7 = _get_step_text(7)
     if step7 is None:
@@ -385,8 +418,10 @@ def check_step3_and_merge_rights_reuse_owner_repo():
     # Only an actual invocation (inside a fenced code block) is banned -- explanatory prose
     # naming "gh repo view" as the thing NOT to do (mirroring SKILL.md step 1's own
     # explanation) legitimately mentions the string outside a code fence and must not
-    # false-match.
-    code_blocks = re.findall(r"```(?:bash)?\n(.*?)```", rights_text, re.DOTALL)
+    # false-match. Match any fence info string (bash, sh, shell, or none) -- CodeRabbit
+    # (PR #269) found the original (?:bash)? form let a `sh`/`shell` fence bypass this check
+    # entirely, since it simply never matched into code_blocks at all.
+    code_blocks = re.findall(r"```[^\n]*\n(.*?)```", rights_text, re.DOTALL)
     if any("gh repo view" in block for block in code_blocks):
         return (
             False,
@@ -424,17 +459,24 @@ def check_step2_no_merge_conflicts_fork_branching():
             "{owner}/{repo} URL -- a bare `origin` only happens to be correct when the current "
             "checkout is of the PR's own repository (cross-model-review finding, round 3)",
         )
-    if "pull/<number>/head:pr-head" not in step2:
+    if "pull/<number>/head:pr-<number>-head" not in step2:
         return (
             False,
             "step 2's no-merge-conflicts fork-PR reproduction path no longer names GitHub's "
             "synthetic pull/<number>/head ref",
         )
+    if "pr-<number>-head" not in step2 or "pr-<number>-base" not in step2:
+        return (
+            False,
+            "step 2's no-merge-conflicts reproduction guidance no longer uses <number>-suffixed "
+            "local branch names -- a fixed pr-head/pr-base name risks colliding with a branch the "
+            "user already has locally (Devin's PR #269 finding)",
+        )
     return (
         True,
-        "step 2's no-merge-conflicts reproduction guidance branches on isCrossRepository and "
-        "always fetches from an explicit {owner}/{repo} URL, using GitHub's synthetic "
-        "pull/<number>/head ref for fork PRs",
+        "step 2's no-merge-conflicts reproduction guidance branches on isCrossRepository, always "
+        "fetches from an explicit {owner}/{repo} URL, uses GitHub's synthetic pull/<number>/head "
+        "ref for fork PRs, and uses <number>-suffixed local branch names to avoid collisions",
     )
 
 
@@ -451,7 +493,7 @@ def check_step2_no_merge_conflicts_reproduction_steps():
             "step 2's no-merge-conflicts check no longer states it only detects the conflict "
             "remotely and never fetches/merges locally itself",
         )
-    if "git merge pr-base" not in step2:
+    if "git merge pr-<number>-base" not in step2:
         return (
             False,
             "step 2's no-merge-conflicts check no longer tells the user how to reproduce the "
@@ -559,7 +601,8 @@ def check_step2_no_merge_conflicts_check():
         return False, "step 2 ('## Instructions') not found"
     if "No merge conflicts" not in step2:
         return False, "step 2 no longer documents the no-merge-conflicts required check"
-    if "MergeableState" not in step2 or "CONFLICTING" not in step2 or "UNKNOWN" not in step2:
+    required_mergeable = ("MergeableState", "MERGEABLE", "CONFLICTING", "UNKNOWN")
+    if any(token not in step2 for token in required_mergeable):
         return (
             False,
             "step 2's no-merge-conflicts check no longer names the live-verified MergeableState "
@@ -592,7 +635,7 @@ def check_step2_mergestate_summary_disclosure():
         return False, "step 2 no longer documents the mergeStateStatus advisory disclosure"
     if "MergeStateStatus" not in step2:
         return False, "step 2 no longer names the live-verified MergeStateStatus enum"
-    for value in ("CLEAN", "DIRTY", "BLOCKED", "BEHIND", "UNSTABLE", "HAS_HOOKS"):
+    for value in ("CLEAN", "DIRTY", "BLOCKED", "BEHIND", "UNSTABLE", "HAS_HOOKS", "UNKNOWN"):
         if value not in step2:
             return (
                 False,
@@ -796,6 +839,7 @@ CHECKS = [
     check_step2_four_state_classification,
     check_step7_rebase_precheck,
     check_step7_squash_disclosure,
+    check_step7b_final_recheck_before_merge,
     check_step7_rejection_fallback,
     check_step1_owner_repo_from_pr_url,
     check_step3_and_merge_rights_reuse_owner_repo,
