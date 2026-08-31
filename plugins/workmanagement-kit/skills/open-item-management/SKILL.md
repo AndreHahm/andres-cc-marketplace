@@ -40,11 +40,13 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 2. Revalidate each item against current state — an item raised weeks ago may already be resolved,
    moot, or superseded. Don't just replay the original list unchecked. Re-read via whichever of
    `notion-knowledge-management`/`linear-work-management` owns the item's current state. Also check
-   each item against the `disposition-history` read in step 1, by content — an item that already
-   has a matching entry there was already dispositioned in a prior pass; treat it as resolved and
-   skip it from this pass's batch/disposition set (never create a second Linear follow-up or a
-   duplicate `disposition-history` entry for it), unless the user explicitly asks to reconsider that
-   specific item. An item can also already have a follow-up Issue (findable via that Issue's own
+   each item against the `disposition-history` read in step 1, by content — an item whose *most
+   recent* entry there already covers it was already dispositioned in a prior pass; treat it as
+   resolved and skip it from this pass's batch/disposition set (never create a second Linear
+   follow-up or a duplicate `disposition-history` entry for it), unless the user explicitly asks to
+   reconsider that specific item, in which case this pass appends a **new** entry with that item's
+   same `item_id` rather than editing the existing one (per `../../FOUNDATION_CONTRACTS.md`'s
+   Disposition Record). An item can also already have a follow-up Issue (findable via that Issue's own
    `open-item-source.item_id`, which matches this item's own `item_id`) with no matching
    `disposition-history` entry yet — this means a prior pass's step 6 was declined or failed after
    step 5 already created it (see the Partial failure note below). If the lookup positively confirms

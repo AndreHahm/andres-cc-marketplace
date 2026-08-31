@@ -176,10 +176,16 @@ write N's verification_evidence. This metadata write is exempt from needing its 
 recorded via a further write — doing so would recurse indefinitely — since it changes nothing but
 the evidence field itself; a plain read confirming the metadata write landed is enough. Every skill
 citing this contract's Read-Back and Transitions convention inherits this exception without needing
-to restate it. **This metadata write needs no fresh approval of its own** — it changes only the
-evidence field, never the record's actual content, and the write it confirms was already approved
-(or needed none, for a read-derived transition); a skill's own Confirmation and Safety section may
-say so explicitly, but the exemption holds either way.
+to restate it. **This metadata write needs no fresh approval of its own by default** — it changes
+only the evidence field, never the record's actual content, and the write it confirms was already
+approved (or needed none, for a read-derived transition); a skill's own Confirmation and Safety
+section may say so explicitly, but the exemption holds either way. **This default yields to a
+consuming skill's own stricter, unconditional approval policy** — `plugin-integration-intake`'s own
+"every actual write... no exception for a 'low-risk' or 'read-only-looking' submission" rule is
+absolute by that skill's own design and is never relaxed by this exemption: a terminal metadata
+write recording the evidence of an intake-routed transition still goes through
+`plugin-integration-intake`'s live approval gate like any other write it causes, exactly as that
+skill's own Confirmation and Safety section already requires.
 
 **Creation-write exception:** the next-write convention above assumes `affected_record.stable_id`
 is already known before the write starts — true for a write to an *existing* record, but not for
@@ -233,12 +239,24 @@ potentially from more than one pass over time.
 ```
 
 - `item_id` must be stable across passes, not just within the one that produced it — derive it from
-  the item's own content (e.g. a hash of its stated text), never from a positional index. A later
+  the item's own **full stated content as enumerated** (including whatever section/context precedes
+  it in the source), not an isolated text fragment, and never from a positional index. A later
   re-run over the same source needs `item_id` to recognize an item it already dispositioned, which a
-  shifting positional index cannot support.
+  shifting positional index cannot support. Deriving from the fuller enumerated context (not just a
+  short excerpt) makes a collision between two genuinely different items in the same source
+  practically negligible, but doesn't make it impossible — if two items in the same pass still
+  produce an identical `item_id`, this is a structured handoff: surface the ambiguity to the user
+  rather than silently merging them or arbitrarily assigning the collision to one.
 - `disposition` uses this hyphenated form; a consuming skill's own prose (e.g.
   `open-item-management`'s "retained knowledge", "Decision needed") maps directly to it — same four
   outcomes, just written for readability in prose versus this schema.
+- **Reconsidering an already-dispositioned item** (a consuming skill's own flow may let the user
+  explicitly ask to revisit one) appends a **new** entry with the same `item_id`, never an edit to
+  the existing one — `disposition-history` stays append-only either way. The most recent entry for a
+  given `item_id` is that item's current, authoritative disposition; an earlier entry for the same
+  `item_id` is retained as history, not superseded in place. A consuming skill's own "does this item
+  already have a recorded disposition" check must compare against the *most recent* entry for that
+  `item_id`, not merely "any" entry, since a reconsidered item can have more than one.
 - The write that appends one or more Disposition Record entries is itself an ordinary single write
   against the source record — it still gets its own ordinary Transition Contract entry
   (`affected_record` = the source record), per the next-write convention above. Each entry's own

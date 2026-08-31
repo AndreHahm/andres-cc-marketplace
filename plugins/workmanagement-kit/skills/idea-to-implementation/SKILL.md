@@ -111,8 +111,11 @@ or removed after preview) needs a fresh approval, not an extension of the old on
 **Quality gates:**
 - [ ] The full proposed hierarchy is previewed and approved as one batch, never partially.
 - [ ] Every created/adopted Linear record is read back before the promotion is considered complete.
-- [ ] Every created/adopted Linear record's write carries its own transition-id-tagged properties
-      as part of that write, and the reciprocal link is recorded via `work-linking` after read-back.
+- [ ] Every created/adopted Linear record's write records its own transition per
+      `../../FOUNDATION_CONTRACTS.md`'s Transition Contract — its creation-write exception for a
+      newly created record (the transition is deferred to that record's next write, not carried in
+      the create itself), its ordinary next-write convention for an adopted one — and the reciprocal
+      link is recorded via `work-linking` after read-back.
 
 ## Reference Guide
 
