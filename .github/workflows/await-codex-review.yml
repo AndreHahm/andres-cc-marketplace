@@ -15,12 +15,12 @@ permissions:
 concurrency:
   # Workflow-level concurrency is evaluated at run-creation time, before the job's own `if:`
   # below ever runs -- so without the second `${{ }}` segment here, *any* issue_comment (not
-  # just an "@codex review" one) would enter this same group and cancel an in-progress
-  # pull_request-triggered wait via cancel-in-progress, only to have its own job skipped by
-  # the `if:` a moment later, leaving the check `cancelled` instead of pass/fail. Give a
-  # comment the job's own `if:` will skip a unique, one-off group (keyed on this run's own
-  # id) instead, so it can never collide with -- or cancel -- a real wait.
-  group: codex-review-${{ github.event.pull_request.number || github.event.issue.number }}-${{ (github.event_name == 'issue_comment' && !contains(github.event.comment.body, '@codex review')) && github.run_id || '' }}
+  # just an "@codex review" or "@codex full review" one) would enter this same group and
+  # cancel an in-progress pull_request-triggered wait via cancel-in-progress, only to have
+  # its own job skipped by the `if:` a moment later, leaving the check `cancelled` instead of
+  # pass/fail. Give a comment the job's own `if:` will skip a unique, one-off group (keyed on
+  # this run's own id) instead, so it can never collide with -- or cancel -- a real wait.
+  group: codex-review-${{ github.event.pull_request.number || github.event.issue.number }}-${{ (github.event_name == 'issue_comment' && !(contains(github.event.comment.body, '@codex review') || contains(github.event.comment.body, '@codex full review'))) && github.run_id || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -28,13 +28,13 @@ jobs:
     name: Await Codex review
     # Codex's own auto-review connector only re-triggers on: a PR opened
     # non-draft, a draft PR marked ready-for-review, or an explicit
-    # "@codex review" PR comment -- not on every synchronize push (see
-    # docs/await-codex-review.md). This job's own trigger scope mirrors
-    # that so the 30-minute wait-loop only starts when Codex was actually
-    # asked to look at this push.
+    # "@codex review" or "@codex full review" PR comment -- not on every
+    # synchronize push (see docs/await-codex-review.md). This job's own
+    # trigger scope mirrors that so the 30-minute wait-loop only starts
+    # when Codex was actually asked to look at this push.
     if: >-
       (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && contains(github.event.comment.body, '@codex review'))
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && (contains(github.event.comment.body, '@codex review') || contains(github.event.comment.body, '@codex full review')))
     runs-on: ubuntu-latest
     timeout-minutes: 33
     env:
