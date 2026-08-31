@@ -66,7 +66,9 @@ data-only boundary already treats as untrusted; interpolating it directly into a
 argument lets a crafted `$(...)`/backtick sequence execute — the same risk this repo's own `commit`
 skill guards against for staged filenames. Before posting, re-check the text for anything that should
 be redacted (emails, tokens, hostnames, session IDs, absolute local paths — `github-issue-creator`'s own
-canonical redaction list) — same discipline `github-issue-creator` applies when drafting, since a
+canonical redaction list) **and for any literal `@<word>` mention-shaped token that should have been
+phrased in prose instead** (SKILL.md's "Outbound text must also avoid literal bot-mention syntax" note)
+— same discipline `github-issue-creator` applies when drafting, since a
 comment is just as public and permanent as the issue body itself. When citing
 supporting evidence (run records, `scope.json`, retrospective docs), link the specific **repo-relative**
 file path in the comment, never an absolute local filesystem path — this repo's real issues commonly

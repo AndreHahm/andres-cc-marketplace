@@ -186,7 +186,7 @@ CRITICAL: Perform the following steps exactly as described:
     (dependency-ordered waves, acceptance checks, staging workflow) instead of re-deriving a split
     here. Continue `commit`'s own flow only for the single commit currently staged (or whatever subset
     the user chooses to keep in this commit).
-13. Creates a commit message for the currently staged changes using conventional commit format (no emoji — see Best Practices). Include a body when the reason isn't obvious from the diff alone (recommended, not required — see Best Practices). **Before presenting the message in step 14, count the body's own line count against `commit_body_max_lines` (default 5) and cut it to that limit if over — this check applies regardless of how large or multi-part the underlying diff is, and regardless of how detailed a summary of the same change was already given in this conversation; a large multi-fix batch still gets a WHY-only body, never an itemized per-file changelog.** Include a footer trailer only when it applies: a `BREAKING CHANGE:` trailer when the subject uses `!`, a `Refs:`/`Closes:` trailer when the conversation named a specific issue this commit relates to or resolves, and a `Related-PR:` trailer when the conversation named a specific related PR. Don't ask the user for footer content on every commit — only include a trailer when there's a concrete breaking change, issue, or PR already in view (see Commit Message Footer below).
+13. Creates a commit message for the currently staged changes using conventional commit format (no emoji — see Best Practices). **Never write a literal `@<word>` mention-shaped token (e.g. `@codex review`, `@codex full review`, `@coderabbitai review`) in the subject or body — see the "No literal bot-mention text" Best Practice below for why and how to phrase it instead.** Include a body when the reason isn't obvious from the diff alone (recommended, not required — see Best Practices). **Before presenting the message in step 14, count the body's own line count against `commit_body_max_lines` (default 5) and cut it to that limit if over — this check applies regardless of how large or multi-part the underlying diff is, and regardless of how detailed a summary of the same change was already given in this conversation; a large multi-fix batch still gets a WHY-only body, never an itemized per-file changelog.** Include a footer trailer only when it applies: a `BREAKING CHANGE:` trailer when the subject uses `!`, a `Refs:`/`Closes:` trailer when the conversation named a specific issue this commit relates to or resolves, and a `Related-PR:` trailer when the conversation named a specific related PR. Don't ask the user for footer content on every commit — only include a trailer when there's a concrete breaking change, issue, or PR already in view (see Commit Message Footer below).
 14. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly. **Immediately before running `git commit`** (right after confirmation, or right before committing directly when confirmation is off), run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` — this writes the marker git-kit's commit-guard hook requires; it must be written right before the commit, not earlier in this run, since the hook only accepts a marker up to 60 seconds old.
 15. **Amend**: if `--amend` was given, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` immediately before running it, then use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
 **Steps 16 and 17's numbers below are cited externally** — `plugins/git-kit/skills/create-pr/SKILL.md` names them by number in its own Pre-flight Checks instructions to `commit`. If either step is ever renumbered, update `create-pr`'s citations in the same change.
@@ -217,6 +217,19 @@ CRITICAL: Perform the following steps exactly as described:
 - **Audience**: describe the change in terms any repo reader understands — never a local-machine-specific path, a symptom as it appeared in one session's terminal, or context ("fixed the issue from my last session") that means nothing outside this one environment.
 - **Footer (optional)**: see Commit Message Footer below for the trailer format (breaking changes, related issues, related PRs)
 - **Emoji**: Do not use emoji in commit messages
+- **No literal bot-mention text**: never write a literal `@<word>` mention-shaped token (e.g.
+  `@codex review`, `@codex full review`, `@coderabbitai review`) in a commit subject or body.
+  GitHub's automated review bots (Codex's connector, CodeRabbit, etc.) scan raw commit/PR text for
+  these patterns — backtick/code-span wrapping does not protect against this. Confirmed live, PR
+  #257, 2026-08-31: a commit message and PR title that spelled out `@codex full review` literally
+  caused Codex's connector to read the text as a task addressed to it rather than a diff to
+  review — it attempted out-of-band work instead of reviewing, and its own reply comment then
+  self-retriggered `await-codex-review.yml`'s wait-loop by containing that same substring. Amending
+  the commit message and PR title to avoid the literal `@`-prefixed mention resolved it. When the
+  change is about such a phrase, describe it in prose instead of reproducing the literal string
+  (e.g. "the connector's second retry phrase", or name the config key that holds it) — the actual
+  functional code/docs the commit touches can still contain the real string; only the commit's own
+  subject/body should avoid it.
 
 ## Commit Message Footer
 
@@ -341,6 +354,9 @@ conversational, `AskUserQuestion`-driven skill with no other executable logic of
 - [ ] "Stop, test first" actually halts before any commit runs
 - [ ] Step 11's "multiple concerns?" signal fires without `commit` attempting to perform the split itself — step 12 always redirects to the `standalone-commits` skill rather than re-deriving a split
 - [ ] Generated commit messages never contain a local-machine-specific path, terminal-session symptom description, or session context — only content a reader of the shared repo history would understand
+- [ ] Generated commit messages never contain a literal `@<word>` mention-shaped token, even when the
+      diff itself is about a bot's own trigger-phrase syntax (e.g. adding `@codex full review`
+      recognition to a workflow) — the phrase is described in prose instead of reproduced literally
 - [ ] A request to commit while on `main`/`master` with nothing staged yet points at `starting-work`; step 3's own branch-creation fallback only fires for someone already mid-edit
 - [ ] When invoked as a nested dependency from `create-pr`'s Pre-flight Checks (told not to push on that run's behalf), step 16 always skips entirely — including its own push-confirmation `AskUserQuestion`, which is never asked and then overridden — regardless of `--push` or `commit_auto_push`; step 17's Auto-PR skip always applies together with it in that same case, never independently
 - [ ] Step 6's staging never composes a `git add <filename>` string from a working-tree filename —
@@ -428,5 +444,19 @@ staged correctly with no code execution; out-of-range/non-digit arguments correc
 - [ ] Live invocation: a real `commit` run against a deliberately drifted canonical file, confirming step 8
       actually repairs and stages the right subset in this repository (not yet exercised end-to-end;
       Task 12's rollout PR is the first real opportunity)
+
+**Step 13 (no literal bot-mention text) — incident source, 2026-08-31, PR #257:** the original commit
+message and PR title for a fix adding `@codex full review` recognition to `await-codex-review.yml`
+spelled that phrase out literally. Codex's own automated PR review connector read the title/message as
+a task addressed to it rather than a diff to review, attempted out-of-band work (a claimed commit and
+PR that never actually landed in the repo) instead of reviewing, and its own reply comment then
+self-retriggered `await-codex-review.yml`'s wait-loop by containing that same `@codex review` substring
+— verified from the actual GitHub Actions run history (a `pull_request`-triggered wait was cancelled by
+a new `issue_comment`-triggered run whose trigger comment was Codex's own). Amending the commit message
+and PR title to describe the phrase in prose instead of reproducing it literally resolved it: a
+subsequent manual `@codex review` comment triggered a normal review and the check passed in ~3 minutes.
+Fixed by adding this Best Practice, the step 13 instruction, and the quality-gate checkbox above — no
+fresh `skill-tester` eval re-run (the fix is prose guidance with no executable logic to simulate;
+verified by re-observing the real GitHub Actions run history for PR #257 after applying it).
 
 A `skill-tester` blind-comparison eval is the heavier alternative `require-tests-for-behavior-changes.md` names first, but `commit` is a `model: haiku`, heavily interactive skill built around several `AskUserQuestion` steps — an awkward fit for blind A/B comparison. This checklist, plus `check_staged_parity`'s own deterministic test suite for step 8's actual repair logic, is the pragmatic mechanism the rule explicitly permits instead ("a documented Testing & Validation section... concrete scenarios, pass/fail criteria").
