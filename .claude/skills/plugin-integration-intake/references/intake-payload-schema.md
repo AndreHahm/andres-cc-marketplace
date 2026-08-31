@@ -48,11 +48,12 @@ the parts a static schema can't express (the existence check, the ambiguous-targ
 ## Validation Rules
 
 1. **Unknown source**: `source_plugin` must match a real, currently-installed plugin in this
-   repository. A `source_plugin` value that doesn't resolve to an installed plugin is rejected as
-   unknown source. **This is an existence check on the caller's claim, not authentication of the
-   caller** — `source_plugin` is caller-asserted, not host-attested (see SKILL.md's Trust Model
-   section). Passing this check only means the claimed name is real; it does not confirm that
-   plugin actually sent the payload.
+   repository, and `source_skill` must match a real skill (a directory containing a `SKILL.md`)
+   inside that specific plugin. Either value failing to resolve is rejected as unknown source.
+   **This is an existence check on the caller's claim, not authentication of the caller** —
+   `source_plugin`/`source_skill` are caller-asserted, not host-attested (see SKILL.md's Trust
+   Model section). Passing this check only means the claimed names are real; it does not confirm
+   that plugin/skill actually sent the payload.
 2. **Malformed content**: `content` must match the shape required for its declared `target_system`
    (see above). A missing required field, or a field of the wrong type, is malformed content.
 3. **Ambiguous target**: `suggested_mapping` must resolve to exactly one Notion database/page or
