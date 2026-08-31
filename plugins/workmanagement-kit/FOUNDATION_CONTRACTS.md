@@ -141,7 +141,7 @@ instead.
   "operation_id": "string, the connector call's own operation/request ID, if the connector provides one, else null",
   "affected_record": {"system": "notion | linear", "stable_id": "string"},
   "source_plugin": "string, the plugin that caused this transition, or 'workmanagement-kit' for a direct user request",
-  "verification_evidence": "string, a description of the read-back that confirmed the PRIOR write to this record succeeded, or null if this is the first write to this record — see 'Recording verification_evidence' below",
+  "verification_evidence": "string, a description of the read-back that confirmed the PRIOR write to this record succeeded, or null if this plugin made no earlier write of its own to this record (e.g. adopting an already-existing record) — see 'Recording verification_evidence' below, including why a newly-created record's first transition-tagged write is NOT this null case",
   "recorded_at": "ISO-8601 UTC timestamp"
 }
 ```
@@ -190,13 +190,19 @@ own intro line, "the record's own `transition-id`-tagged properties"), a create 
 partially embed the three fields it does already know (`transition_id`, generated client-side;
 `source_plugin`, always known ahead of time; `operation_id`, if the connector supplies one as a
 client-side request ID) while leaving `affected_record` for later — the whole transition is
-deferred together. Immediately after the create response returns and read-back confirms the new
-record, the skill's very next write to that record embeds the CREATE's own transition in full
-(`transition_id`/`operation_id`/`affected_record`/`source_plugin`, with `verification_evidence` set
-to `null` since there is no still-earlier write to this record to describe) — the same next-write
-convention above, anchored at a record's first write instead of its Nth. If nothing else is
-scheduled to write to the new record, the terminal-write exception above applies to this follow-up
-write in the ordinary way.
+deferred together, and the create write itself carries none of the Transition Contract's fields at
+all.
+
+Immediately after the create response returns, read the new record back to confirm it — this
+read-back **is** the create's own `verification_evidence`, produced by the ordinary next-write
+convention exactly as it would be for any other write; it is not `null`, since the create is a real
+preceding write with real evidence, not an absence of one. The skill's very next write to that
+record embeds the CREATE's own transition in full — `transition_id`/`operation_id`/
+`affected_record`/`source_plugin` describing the create, plus that same read-back as
+`verification_evidence` — the same next-write convention above, anchored at a record's first write
+instead of its Nth. If nothing else is scheduled to write to the new record, the terminal-write
+exception's own exemption applies to this same follow-up write: it needs no further write of its
+own to record its own read-back — a plain confirming read is enough.
 
 ## Disposition Record (`disposition-history`)
 
