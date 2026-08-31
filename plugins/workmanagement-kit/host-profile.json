@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "operations": {
+    "notion.read": {
+      "support_status": "unconfigured",
+      "verified_at": null,
+      "connector": null,
+      "workspace_id": null
+    },
+    "notion.write": {
+      "support_status": "unconfigured",
+      "verified_at": null,
+      "connector": null,
+      "workspace_id": null
+    },
+    "linear.read": {
+      "support_status": "unconfigured",
+      "verified_at": null,
+      "connector": null,
+      "organization_id": null,
+      "team_ids": []
+    },
+    "linear.write": {
+      "support_status": "unconfigured",
+      "verified_at": null,
+      "connector": null,
+      "organization_id": null,
+      "team_ids": []
+    }
+  }
+}

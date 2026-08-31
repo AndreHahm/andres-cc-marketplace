@@ -62,8 +62,8 @@ or removed after preview) needs a fresh approval, not an extension of the old on
 6. Read every created/adopted record back through `linear-work-management` before considering the
    promotion complete.
 7. Record the reciprocal link (stable IDs both directions) via `work-linking`.
-8. Record the promotion transition through the plugin's shared transition contract (not yet built
-   in this Wave 1 scaffold; see the plugin README's Status section).
+8. Record the promotion transition through the plugin's shared transition contract (see
+   `../../FOUNDATION_CONTRACTS.md`'s Transition Contract section).
 
 ## Confirmation and Safety
 

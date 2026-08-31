@@ -63,11 +63,15 @@ Setup steps described in this plugin's design documents to be completed (connect
 workspace/team scoping, test scopes) before first live use.
 
 Items still open before this plugin is fully live:
-- **Foundation contracts are not built yet.** The shared host profile, transition contract, and
-  versioned configuration that every skill's own file cites (connector scope resolution, transition
-  recording, stable-ID storage) do not exist yet anywhere in this plugin. Every skill that
-  references them discloses this inline; no write may proceed on the assumption that these
-  artifacts already back it.
+- **Foundation contracts exist as schemas with safe defaults, not yet live.** The shared host
+  profile (`host-profile.json`) and versioned configuration (`versioned-configuration.json`) ship
+  at the plugin root with every operation defaulting to `unconfigured`/`null`; the transition
+  contract is documented in `FOUNDATION_CONTRACTS.md`. An installation activates them via
+  `.claude/workmanagement-kit.local.json` during Foundational Setup (connector installation,
+  workspace/team scoping, real stable IDs) — until then, no skill's write path may proceed on the
+  assumption that a sanctioning check actually passed. `plugin-integration-intake`'s own JSON
+  Schema payload validator (distinct from these three contracts) is a separate, still-not-built
+  artifact — see `intake-payload-schema.md`.
 - The Codex bridge-caller script that dispatches `work-transition-reviewer`/
   `work-intake-classifier` live is not yet built; both agents already work standalone via the
   `.codex/agents` export. Once built, it must disclose a Codex-unavailable review as unavailable
