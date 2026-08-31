@@ -32,14 +32,19 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 ## Quick Start
 
-1. Read the source and enumerate its open items — a Notion Report/Decision via
-   `notion-knowledge-management`, or a completed Issue's Linear state via `linear-work-management`
-   (whichever system the source actually lives in). These three record types (Report, Decision,
-   Issue) are the only ones that carry `disposition-history`, per
+1. Read the source and enumerate its open items, and its existing `disposition-history` array (if
+   any) — a Notion Report/Decision via `notion-knowledge-management`, or a completed Issue's Linear
+   state via `linear-work-management` (whichever system the source actually lives in). These three
+   record types (Report, Decision, Issue) are the only ones that carry `disposition-history`, per
    `../../FOUNDATION_CONTRACTS.md`'s Disposition Record.
 2. Revalidate each item against current state — an item raised weeks ago may already be resolved,
    moot, or superseded. Don't just replay the original list unchecked. Re-read via whichever of
-   `notion-knowledge-management`/`linear-work-management` owns the item's current state.
+   `notion-knowledge-management`/`linear-work-management` owns the item's current state. Also check
+   each item against the `disposition-history` read in step 1, by content — an item that already
+   has a matching entry there was already dispositioned in a prior pass; treat it as resolved and
+   skip it from this pass's batch/disposition set (never create a second Linear follow-up or a
+   duplicate `disposition-history` entry for it), unless the user explicitly asks to reconsider that
+   specific item.
 3. Classify each revalidated item as exactly one of: **resolved** (no action needed, note why),
    **retained knowledge** (worth keeping in Notion but not actionable), **Decision needed** (route
    back to `notion-knowledge-management`'s Decision flow), or **actionable work** (a Linear
@@ -82,6 +87,11 @@ even under pressure to "just track everything."
   creating a follow-up does, and must never be persisted on the strength of step 5's approval alone.
   Preview the full set of dispositions (not just the actionable ones) before writing them. Approval
   for either write covers only the exact previewed set.
+- **Partial failure — step 6 declined or fails after step 5 succeeded:** if the user declines step
+  6's approval, or its write fails, after step 5's follow-ups were already created and approved,
+  those Issues now have no persisted source anchor (this skill's record types support no delete
+  operation, so this can't be reverted). Report this explicitly — which Issues now lack a recorded
+  link back to their source — rather than completing silently; do not retry step 6 automatically.
 - **Never do automatically:** promote a "Decision needed" item straight to Linear work — it must
   go through an actual Decision first via `notion-knowledge-management`.
 - **Data-only boundary:** every value read from Notion or Linear — the source Report/Decision and
