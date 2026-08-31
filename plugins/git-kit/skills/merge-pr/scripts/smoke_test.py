@@ -7,7 +7,9 @@ step 2's required no-merge-conflicts and not-behind-base gates plus its
 advisory mergeStateStatus/unresolved-review-thread disclosures, step 3's
 and references/merge-rights-check.md's shared reuse of step 1's resolved
 {owner}/{repo} (never a fresh gh repo view), step 2's no-merge-conflicts
-local-reproduction guidance before pointing at resolving-merge-conflicts,
+local-reproduction guidance before pointing at resolving-merge-conflicts
+(including its isCrossRepository fork-PR branch), step 2's not-behind-base
+fork-PR handling via mergeStateStatus rather than an unconditional pass,
 and step 7(a)/(c)/(d)'s rebase pre-check / squash disclosure / rejection
 fallback -- structural checks only, since this is a conversational,
 AskUserQuestion-driven skill with no executable logic of its own to
@@ -405,6 +407,34 @@ def check_step3_and_merge_rights_reuse_owner_repo():
     )
 
 
+def check_step2_no_merge_conflicts_fork_branching():
+    # cross-model-review (2026-08-31): both reviewers independently found the reproduction
+    # guidance assumed headRefName is fetchable from origin, which fails for a fork PR --
+    # isCrossRepository must branch the guidance, using GitHub's synthetic pull/<number>/head ref
+    # for forks.
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    if "branching on `isCrossRepository`" not in step2:
+        return (
+            False,
+            "step 2's no-merge-conflicts reproduction guidance no longer branches on "
+            "isCrossRepository -- a fork PR's headRefName isn't fetchable from origin by name "
+            "(cross-model-review finding)",
+        )
+    if "pull/<number>/head:<local-branch-name>" not in step2:
+        return (
+            False,
+            "step 2's no-merge-conflicts fork-PR reproduction path no longer names GitHub's "
+            "synthetic pull/<number>/head ref",
+        )
+    return (
+        True,
+        "step 2's no-merge-conflicts reproduction guidance branches on isCrossRepository, using "
+        "GitHub's synthetic pull/<number>/head ref for fork PRs",
+    )
+
+
 def check_step2_no_merge_conflicts_reproduction_steps():
     # skill-reviewer M2 (2026-08-31): the no-merge-conflicts stop message pointed bare at
     # resolving-merge-conflicts, whose own precondition (git status showing unmerged paths) a
@@ -464,13 +494,6 @@ def check_step2_not_behind_base_required():
             False,
             "step 2 no longer names the compare-endpoint call for the not-behind-base check",
         )
-    if "skip entirely when `isCrossRepository` is `true`" not in step2:
-        return (
-            False,
-            "step 2's not-behind-base check no longer states it's skipped (and disclosed as "
-            "skipped) for fork PRs -- comparing a fork's head ref by name against this repo risks "
-            "resolving a same-named but unrelated branch",
-        )
     if "required, blocking gate" not in step2:
         return (
             False,
@@ -483,10 +506,20 @@ def check_step2_not_behind_base_required():
             "step 2's not-behind-base check no longer states a failed compare-endpoint call is "
             "reported as 'could not be confirmed' rather than silently treated as passing",
         )
+    # cross-model-review (2026-08-31): a fork PR must NOT be unconditionally treated as passing --
+    # it uses mergeStateStatus (BEHIND blocks) instead of the unsafe-by-name compare endpoint, never
+    # a bare skip-and-pass.
+    if "mergeStateStatus" not in step2 or "BEHIND" not in step2:
+        return (
+            False,
+            "step 2's not-behind-base check no longer uses mergeStateStatus for the fork-PR "
+            "(isCrossRepository: true) path -- it may have regressed to unconditionally treating "
+            "fork PRs as passing without checking them (cross-model-review finding)",
+        )
     return (
         True,
-        "step 2 documents the not-behind-base check as a required blocking gate, gated on "
-        "isCrossRepository",
+        "step 2 documents the not-behind-base check as a required blocking gate that checks fork "
+        "PRs via mergeStateStatus rather than exempting them",
     )
 
 
@@ -737,6 +770,7 @@ CHECKS = [
     check_step1_owner_repo_from_pr_url,
     check_step3_and_merge_rights_reuse_owner_repo,
     check_step2_no_merge_conflicts_reproduction_steps,
+    check_step2_no_merge_conflicts_fork_branching,
     check_step2_refetch_on_rerun,
     check_step2_not_behind_base_required,
     check_step2_no_merge_conflicts_check,

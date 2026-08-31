@@ -55,11 +55,29 @@ R29's own three required inline subsections, the trigger-phrase lists and `Quali
   passing and step 5 states explicitly that it was skipped for that reason, not silently omitted
 - The compare-endpoint call fails for any reason → step 2 stops and reports the in-sync state could not
   be confirmed — never treated as passing
-- `mergeable` resolves to `CONFLICTING` → step 2 tells the user how to reproduce the conflict locally
-  (fetch `<headRefName>`/`<baseRefName>`, check out `<headRefName>`, attempt
-  `git merge origin/<baseRefName>`) before pointing at `resolving-merge-conflicts` — never points at
-  that skill bare, since its own precondition (`git status` showing unmerged paths) doesn't exist yet
-  from a remote-only signal alone (skill-reviewer M2, 2026-08-31)
+- `mergeable` resolves to `CONFLICTING`, `isCrossRepository` is `false` → step 2 tells the user how to
+  reproduce the conflict locally (fetch `<headRefName>`/`<baseRefName>`, check out `<headRefName>`,
+  attempt `git merge origin/<baseRefName>`) before pointing at `resolving-merge-conflicts` — never
+  points at that skill bare, since its own precondition (`git status` showing unmerged paths) doesn't
+  exist yet from a remote-only signal alone (skill-reviewer M2, 2026-08-31)
+- `mergeable` resolves to `CONFLICTING`, `isCrossRepository` is `true` (a fork PR) → step 2 uses
+  GitHub's synthetic `pull/<number>/head` ref instead of `<headRefName>` (`git fetch origin
+  pull/<number>/head:<local-branch-name>`, checkout, then `git merge origin/<baseRefName>`) — never the
+  same-repository `git fetch origin <headRefName>` form, which fails since a fork's branch isn't on
+  this repository's own `origin` remote (cross-model-review, 2026-08-31 — found independently by both
+  Claude and Codex)
+- `isCrossRepository` is `true`, `mergeStateStatus` resolves to `BEHIND` → step 2's not-behind-base
+  check stops and reports the fork branch is behind base per GitHub's own `mergeStateStatus`, asks the
+  contributor to update their branch (never points at `/sync-branch`, since this skill has no local git
+  access to a fork's branch) — never silently treated as passing just because `isCrossRepository` is
+  `true` (cross-model-review, 2026-08-31 — Codex's Phase 1 finding, confirmed by Claude's Phase 2 pass)
+- `isCrossRepository` is `true`, `mergeStateStatus` resolves to `UNKNOWN` → step 2 polls
+  `gh pr view $ARGUMENTS --json mergeStateStatus` until terminal, same discipline as the
+  no-merge-conflicts check's `UNKNOWN` handling; if still `UNKNOWN` after polling, stops and reports the
+  fork branch's in-sync state could not be determined — never treated as passing
+- `isCrossRepository` is `true`, `mergeStateStatus` resolves to any value other than `BEHIND`/`UNKNOWN`
+  (e.g. `CLEAN`) → the not-behind-base check passes for this fork PR; step 5 states the exact
+  commit-behind count is unavailable for fork PRs, never silently reported as `0`
 
 **Verify step 3 and `references/merge-rights-check.md` reuse step 1's resolved `{owner}/{repo}`, never
 a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**

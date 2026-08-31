@@ -1,0 +1,31 @@
+{
+  "eval_id": 15,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States the compare-endpoint call is never run for this fork PR",
+      "passed": true,
+      "evidence": "\"we use mergeStateStatus from GitHub instead of running a local compare API call\""
+    },
+    {
+      "text": "Does NOT unconditionally treat the fork PR as passing -- uses mergeStateStatus instead",
+      "passed": true,
+      "evidence": "\"YES...The BEHIND status from mergeStateStatus is a blocking gate. The PR is not ready to merge.\""
+    },
+    {
+      "text": "Since mergeStateStatus is BEHIND, treats this as a blocking failure the same as a non-zero behind_by -- stops and reports it",
+      "passed": true,
+      "evidence": "\"BLOCKED -- Readiness check failed at 'Not behind base'. Do not proceed to other readiness checks or merge.\""
+    },
+    {
+      "text": "Does NOT point at /sync-branch -- explicitly states no local git access to push to a fork's branch, asks the contributor to update their branch instead",
+      "passed": true,
+      "evidence": "\"Do NOT point at /sync-branch -- the skill explicitly states: 'this skill has no local git access to push to a fork's branch'...direct the message to the contributor\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
