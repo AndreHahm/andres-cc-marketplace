@@ -6,7 +6,7 @@ description: >-
   covering the whole hierarchy. Use when asked to promote an idea to Linear, turn a decision into
   tracked work, accept a proposed Goal into execution, or create a Linear issue explicitly based on
   a named Notion source. Never runs automatically — Notion never creates Linear work on its own.
-allowed-tools: Read, Skill, AskUserQuestion
+allowed-tools: Read, Skill(notion-knowledge-management), Skill(linear-work-management), Skill(work-linking), AskUserQuestion
 ---
 
 # Idea to Implementation

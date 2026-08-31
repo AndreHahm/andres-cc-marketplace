@@ -6,7 +6,7 @@ description: >-
   portfolio status, or capture what was learned from a completed piece of work — not to disposition
   open follow-up items (see open-item-management for that). Never runs automatically or
   continuously — every summary is a deliberate, approved snapshot, not a live sync.
-allowed-tools: Read, Skill, AskUserQuestion
+allowed-tools: Read, Skill(notion-knowledge-management), Skill(linear-work-management), AskUserQuestion
 ---
 
 # Status and Learning

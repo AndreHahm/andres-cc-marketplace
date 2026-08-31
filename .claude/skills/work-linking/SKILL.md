@@ -6,7 +6,7 @@ description: >-
   Linear record, check for drift between Notion and Linear, or repair a broken/stale link. Repairs
   only the bounded non-authoritative copy or link — never chooses by newest timestamp, and never
   creates a reverse-write loop against either system's own authority.
-allowed-tools: Read, Skill, AskUserQuestion
+allowed-tools: Read, Skill(notion-knowledge-management), Skill(linear-work-management), AskUserQuestion
 ---
 
 # Work Linking

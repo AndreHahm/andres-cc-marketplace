@@ -70,8 +70,9 @@ Items still open before this plugin is fully live:
   `.claude/workmanagement-kit.local.json` during Foundational Setup (connector installation,
   workspace/team scoping, real stable IDs) — until then, no skill's write path may proceed on the
   assumption that a sanctioning check actually passed. `plugin-integration-intake`'s own JSON
-  Schema payload validator (distinct from these three contracts) is a separate, still-not-built
-  artifact — see `intake-payload-schema.md`.
+  Schema payload validator (`skills/plugin-integration-intake/assets/intake-payload.schema.json`,
+  distinct from these three contracts) is built and enforces the envelope; see
+  `intake-payload-schema.md` for what it does and deliberately does not validate.
 - The Codex bridge-caller script that dispatches `work-transition-reviewer`/
   `work-intake-classifier` live is not yet built; both agents already work standalone via the
   `.codex/agents` export. Once built, it must disclose a Codex-unavailable review as unavailable
