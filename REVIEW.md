@@ -4,14 +4,14 @@ What a reviewer — human or bot — should look for in a pull request against t
 
 This repository is a multi-plugin marketplace: each plugin under `plugins/<name>/` ships skills, agents, commands, hooks, and rules that other people's Claude Code sessions load and execute. A mistake in a plugin component ships behavior to strangers' agents; a mistake in the CI/review infrastructure is exploitable by a pull request. Both raise the stakes above an ordinary app repo.
 
-CI gates `Hygiene (PR contract)`, `Python quality (ruff, ty, pytest)`, `Marketplace mirror/export parity`, `Fork PR (unsupported — explicit terminal result)`, and `Publish Codex policy result` (see [`.github/workflows/marketplace-ci.yml`](../../.github/workflows/marketplace-ci.yml) and [`docs/ci.md`](../../docs/ci.md)). **This file deliberately covers only what those jobs cannot catch.** Don't ask a reviewer to re-run a machine. If something here becomes mechanically enforced, delete it.
+CI gates `Hygiene (PR contract)`, `Python quality (ruff, ty, pytest)`, `Marketplace mirror/export parity`, `Fork PR (unsupported — explicit terminal result)`, and `Publish Codex policy result` (see [`.github/workflows/marketplace-ci.yml`](.github/workflows/marketplace-ci.yml) and [`docs/ci.md`](docs/ci.md)). **This file deliberately covers only what those jobs cannot catch.** Don't ask a reviewer to re-run a machine. If something here becomes mechanically enforced, delete it.
 
 ## Reviewers and how to trigger them
 
 | Reviewer | Triggered by | What it owns |
 |---|---|---|
-| **Codex review (CI-dispatched)** | Automatic on same-repository PR open, synchronize, reopen, edit, and label events | The primary automated reviewer. Dispatches `plugin-rulebook-checker`, `dependency-reviewer`, `security-reviewer` (Delta Validate floor) plus `skill-reviewer`/`subagent-reviewer` (Delta Audit) via `codex-review-bridge`. See [`plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md`](../../plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md). |
-| **External `chatgpt-codex-connector[bot]`** | Automatic on non-draft open / ready-for-review; `@codex review` / `@codex full review` | A separate GitHub App reviewer. Visibility-only via `Await Codex review` (not a required check). See [`docs/await-codex-review.md`](../../docs/await-codex-review.md). |
+| **Codex review (CI-dispatched)** | Automatic on same-repository PR open, synchronize, reopen, edit, and label events | The primary automated reviewer. Dispatches `plugin-rulebook-checker`, `dependency-reviewer`, `security-reviewer` (Delta Validate floor) plus `skill-reviewer`/`subagent-reviewer` (Delta Audit) via `codex-review-bridge`. See [`plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md`](plugins/codex-kit/skills/plugin-marketplace-review/SKILL.md). |
+| **External `chatgpt-codex-connector[bot]`** | Automatic on non-draft open / ready-for-review; `@codex review` / `@codex full review` | A separate GitHub App reviewer. Visibility-only via `Await Codex review` (not a required check). See [`docs/await-codex-review.md`](docs/await-codex-review.md). |
 | **Devin review** | `/devin review` | Reads this `REVIEW.md` by default. |
 | **CodeRabbit** | `@coderabbitai review` / `@coderabbitai full review` | |
 | **Claude review** | `@claude` mention (per repo config) | |
@@ -21,7 +21,7 @@ Round budget and next-round triggering are owned by `handling-review-findings` (
 
 ## Severity and verdict
 
-Use this repository's shared four-tier scale ([`plugins/analysis-kit/references/severity-vocabulary.md`](../../plugins/analysis-kit/references/severity-vocabulary.md)):
+Use this repository's shared four-tier scale ([`plugins/analysis-kit/references/severity-vocabulary.md`](plugins/analysis-kit/references/severity-vocabulary.md)):
 
 | Tier | Meaning | Blocks merge? |
 |---|---|---|
@@ -49,7 +49,7 @@ A well-meaning workflow or Python change can undo a trust boundary without faili
 
 These are the product. A component change is reviewed the way you'd review a dependency — it's instructions an agent will follow.
 
-- **Naming: lowercase kebab-case, `^[a-z][a-z0-9-]+[a-z0-9]$`, 3–64 chars.** `name` field, directory, and reference files all match. Forbidden words in `name`: `anthropic`, `claude`. Plugin names use `<domain>-kit` or `<domain>-devkit` — exactly one hyphen, immediately before the suffix (see [`CLAUDE.md`](../../CLAUDE.md)). The `-kit`/`-devkit` suffix choice is not yet governed by a rulebook check (open item in [`plugin-rulebook/references/naming-conventions.md`](../../.claude/skills/plugin-rulebook/references/naming-conventions.md)) — flag a new plugin using a different suffix, but don't claim a rule enforces it.
+- **Naming: lowercase kebab-case, `^[a-z][a-z0-9-]+[a-z0-9]$`, 3–64 chars.** `name` field, directory, and reference files all match. Forbidden words in `name`: `anthropic`, `claude`. Plugin names use `<domain>-kit` or `<domain>-devkit` — exactly one hyphen, immediately before the suffix (see [`CLAUDE.md`](CLAUDE.md)). The `-kit`/`-devkit` suffix choice is not yet governed by a rulebook check (open item in [`plugin-rulebook/references/naming-conventions.md`](.claude/skills/plugin-rulebook/references/naming-conventions.md)) — flag a new plugin using a different suffix, but don't claim a rule enforces it.
 - **R1–R32 rulebook compliance** is checked by `plugin-rulebook-checker` in CI for changed components. Don't re-run it. *Do* flag a component that structurally mismatches its type's required shape (a rule needs Description/Incorrect/Correct, not numbered steps; a hook needs `hooks.json` with the right event) — that's a coherence issue the rulebook's formatting checks can miss.
 - **The multi-mirror/export convention.** The plugins registered in `.claude/marketplace-sync.json` use canonical `plugins/<name>/` sources with project `.claude/` and `.agents/` mirrors; selected Codex-facing skills and agents also have `.codex/` exports. `marketplace-parity` (CI) checks the declared mirrors and exports. A change to one declared copy with no matching change to the others is the tell — but if CI is green, the declared copies are in sync, so don't re-check; instead flag a new mirror/export convention that CI does not yet cover.
 - **A `SKILL.md` is instructions an agent will follow.** Review an added or updated skill and its `references/` for: instructions written against *assumed* tool behavior instead of *checked* behavior (the cross-PR meta-pattern below); an `allowed-tools` grant that doesn't cover every `Bash(...)`/`Skill(...)` call in the body; a `disable-model-invocation: true` skill that gained an execution grant it will never use in CI.
@@ -73,7 +73,7 @@ CI runs `ruff format --check`, `ruff check`, `ty check`, and `pytest -q` against
 
 ## The cross-PR meta-pattern (the single largest source of avoidable review rounds)
 
-**Writing an instruction, script, or workflow step against a *remembered or assumed* model of a tool/API/language's behavior instead of its actual, checked behavior.** Every PR reviewed so far has at least one finding of this shape (see [`.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`](../../.claude/THIRD_PARTY_REVIEW_LEARNINGS.md)). Before flagging — or before writing a fix — check the real source: the tool's own schema, `gh api --help`, a live one-off call, or the language's parser/stdlib instead of a hand-rolled approximation.
+**Writing an instruction, script, or workflow step against a *remembered or assumed* model of a tool/API/language's behavior instead of its actual, checked behavior.** Every PR reviewed so far has at least one finding of this shape (see [`.claude/THIRD_PARTY_REVIEW_LEARNINGS.md`](.claude/THIRD_PARTY_REVIEW_LEARNINGS.md)). Before flagging — or before writing a fix — check the real source: the tool's own schema, `gh api --help`, a live one-off call, or the language's parser/stdlib instead of a hand-rolled approximation.
 
 Recurring shapes to watch for in a diff:
 
