@@ -117,7 +117,7 @@ is_tag_content_reachable() {
   [ -z "$tag_commits" ] && return 1
   default_branch_patchids
   [ -z "$main_patchid_log" ] && return 1
-  local commit tag_diff pid candidates cand exact_match
+  local commit tag_diff pid candidates cand exact_match cc_diff cc_rc
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
     if git rev-parse --verify --quiet "$commit^2" >/dev/null 2>&1; then
@@ -130,7 +130,20 @@ is_tag_content_reachable() {
       # edit); an empty `--cc` diff means this merge contributes nothing new
       # beyond its parents, so skip it rather than treating it as
       # unverifiable.
-      if [ -z "$(git diff-tree --cc -p --no-commit-id -r --no-ext-diff --no-textconv "$commit")" ]; then
+      #
+      # Capture the exit status separately from stdout -- a `git diff-tree`
+      # failure (bad object, corrupted ref) also produces empty stdout
+      # (live-verified: exit 128, nothing on stdout, error on stderr), and
+      # `[ -z "$cc_diff" ]` alone can't tell that apart from a genuinely
+      # trivial merge. Every other empty-result check in this function
+      # already fails closed on empty data; this is the one place empty was
+      # instead read as a meaningful "safe to skip" signal, so it's the one
+      # place a failed command could get silently misread as that signal
+      # too (Codex fresh-eyes finding F1, cross-model-review round 3).
+      cc_diff=$(git diff-tree --cc -p --no-commit-id -r --no-ext-diff --no-textconv "$commit" 2>/dev/null)
+      cc_rc=$?
+      [ "$cc_rc" -ne 0 ] && return 1
+      if [ -z "$cc_diff" ]; then
         continue
       fi
       # A merge with real conflict-resolution content has no comparable
