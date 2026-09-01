@@ -175,9 +175,29 @@ Boundaries section.
 
 ## Full-mode escalation
 
-A PR touching a shared-governance path (the marketplace registry file, `marketplace.json`, or
-`plugin-rulebook`'s own `SKILL.md`) or an oversized dependency closure escalates `derive_review_scope`
-to `mode == "full"`. Both triggers now dispatch a defined, bounded reviewer set — a dependency-closure
+A PR touching a shared-governance path — the marketplace registry file, `marketplace.json`,
+`.claude/marketplace-sync.json`, the repo-specific `.claude/plugin-rulebook.config.json` override, or any
+of `plugin-rulebook`'s own content files a reviewer agent's instructions `Glob`/`Read` live from whatever
+checkout it's running in (the exact, current list is `review.py`'s own
+`_RULEBOOK_GOVERNANCE_RELATIVE_PATHS` — not repeated here, since re-stating it independently is exactly
+the kind of duplicate fact that drifts; each of those files escalates in **either** its canonical
+`plugins/plugin-devkit/skills/plugin-rulebook/` copy or its `.claude/skills/plugin-rulebook/`
+in-development mirror, via `_RULEBOOK_GOVERNANCE_ROOTS`) — or an oversized dependency closure escalates
+`derive_review_scope` to `mode == "full"`. Every one of those rulebook-content paths (not just `SKILL.md`,
+and not just the canonical copy) is an escalation trigger because a reviewer agent's own instructions
+read them live rather than from the validated base SHA — a PR editing only one of them, in only one
+location, would otherwise be judged against its own just-edited rule content (found live, PR #276; the
+mirror-copy half of this gap was worse than self-judging, since it got zero reviewers dispatched at all).
+A third tracked copy, `.agents/skills/plugin-rulebook/`, is a stale, unmaintained artifact from before
+`codex_exports.skills` was narrowed (not part of any active sync) — rather than escalating for content no
+agent should ever apply, every rulebook-consuming reviewer agent's own instructions explicitly refuse to
+load a `.agents/` copy at all, so its content is inert regardless of what it contains.
+`plugin-rulebook-checker`'s and `external-references-reviewer`'s shared R23 marketplace-auto-allow scan
+(`Glob("**/marketplace.json")`, both delegating to `external-reference-policy.md`'s own Detection
+Procedure so the exclusion can't drift between the two callers) excludes every match under `evals/`
+before applying the plugin-root-owner walk-up — those are test-fixture output, not real marketplace
+manifests, and would otherwise be a zero-reviewer path to smuggling an auto-allowed external reference
+past R23. Both triggers now dispatch a defined, bounded reviewer set — a dependency-closure
 overflow reuses delta's own baseline reviewers scoped to the full closure; a shared-governance-path
 change dispatches a small, fixed set targeted at that file (`plugin-rulebook-checker` +
 `consistency-reviewer` for a rulebook change, `plugin-validator` for a registry/manifest change) — never

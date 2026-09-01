@@ -59,7 +59,7 @@ Check the invocation context before starting:
 
 ## Step 2: Load Standards
 
-Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
+Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`. This can match more than one copy (`plugins/plugin-devkit/skills/...`, its `.claude/` in-development mirror, and a possibly-stale `.agents/` mirror not actively maintained in this repo) — always prefer the `plugins/*/skills/plugin-rulebook/SKILL.md` copy when multiple matches exist; never load a `.agents/` copy, since it is not guaranteed to reflect this file's current fix history.
 
 **If found:** read `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` plus `structured_output.per_agent_extensions.activation-reviewer` — used by Structured Output Mode (Step 7). Read `<plugin-rulebook-dir>/references/gitignore-exclusion.md` for the exclusion procedure used in Step 1.
 

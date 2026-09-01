@@ -111,11 +111,68 @@ LAUNCH_AUDIT_BY_COMPONENT_TYPE = {
     "agents": "subagent-reviewer",
 }
 
+# The rulebook-content files a reviewer agent's own instructions Glob/Read
+# live from whatever checkout it's running in -- never base-SHA-pinned the
+# way the instructions text itself is. Listed once here and reused to build
+# both the canonical plugins/ set and the .claude/ in-development-mirror set
+# below, so the two can never drift apart by one being updated without the
+# other (a security review found the .claude/ mirror copy, tracked and
+# git-editable independently of the canonical copy, was getting zero
+# reviewers dispatched at all when it was the only thing a PR touched --
+# worse than the original gap, since even an ordinary delta dispatch never
+# ran against it).
+#
+# Scoped to files whose consuming reviewer is actually in today's live
+# CI dispatch path (DELTA_VALIDATE's baseline, or LAUNCH_AUDIT_BY_COMPONENT_TYPE's
+# skill-reviewer/subagent-reviewer) -- a second security review pass also
+# named references/argument-consistency.md (command-reviewer),
+# references/language-rules.md (language-reviewer), and
+# references/compliance-report-example.md (external-references-reviewer) as
+# the same live-read pattern, but none of those three reviewers is
+# currently launch-dispatched by derive_review_scope at all, so there is no
+# live self-judging path through them today. Deliberately not added here;
+# add them (and their consumer to LAUNCH_AUDIT_BY_COMPONENT_TYPE / the
+# governance dispatch, as appropriate) together, in the same change, if
+# that reviewer is ever wired into automatic dispatch.
+_RULEBOOK_GOVERNANCE_RELATIVE_PATHS = (
+    "SKILL.md",
+    "assets/settings.json",
+    "references/compact-rule-checklist.md",
+    # Explicitly named as the live-read "source of truth" in
+    # external-references-reviewer's own instructions, and applied
+    # (never re-derived) by plugin-rulebook-checker's own Step 1.5.
+    "references/external-reference-policy.md",
+    # Live-read by every reviewer agent that excludes gitignored paths from
+    # its own scope -- a broadened exclusion pattern here could make every
+    # dispatched reviewer skip the very PR that broadened it.
+    "references/gitignore-exclusion.md",
+    # Controls the severity tier definitions skill-reviewer uses to grade
+    # its own findings -- a sharper self-judging surface than the others
+    # here, since it decides how severely a finding scores, not just what
+    # gets looked at. skill-reviewer is launch-dispatched today.
+    "references/size-rules.md",
+    # The shared Plugin-scope/CWD-scope file-enumeration definition
+    # consistency-reviewer (part of the rulebook governance dispatch
+    # itself) and completeness-reviewer/scripts-reviewer/language-reviewer
+    # use to decide which files are even in bounds for their own review.
+    "references/plugin-file-surface.md",
+)
+
+_RULEBOOK_GOVERNANCE_ROOTS = (
+    "plugins/plugin-devkit/skills/plugin-rulebook/",
+    ".claude/skills/plugin-rulebook/",
+)
+
 # "Shared marketplace governance" per design's escalation conditions: a
 # change to any of these always triggers full review, since their blast
 # radius isn't bounded by a single plugin's own delta.
 FULL_ESCALATION_PATHS = (
-    "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md",
+    *(
+        root + rel
+        for root in _RULEBOOK_GOVERNANCE_ROOTS
+        for rel in _RULEBOOK_GOVERNANCE_RELATIVE_PATHS
+    ),
+    ".claude/plugin-rulebook.config.json",
     ".claude-plugin/marketplace.json",
     ".claude/marketplace-sync.json",
 )
@@ -127,8 +184,20 @@ FULL_ESCALATION_PATHS = (
 # more than one, the union of their reviewer sets is dispatched.
 FULL_MODE_GOVERNANCE_REVIEWERS: dict[str, tuple[str, ...]] = {
     # The rulebook's own correctness, plus a check for stale duplicate-fact
-    # drift the edit may have introduced elsewhere (R20-style).
-    "plugins/plugin-devkit/skills/plugin-rulebook/SKILL.md": (
+    # drift the edit may have introduced elsewhere (R20-style). Same set for
+    # every one of the 5 governance files, in both the canonical plugins/
+    # copy and the .claude/ in-development mirror -- see
+    # _RULEBOOK_GOVERNANCE_RELATIVE_PATHS/_RULEBOOK_GOVERNANCE_ROOTS above
+    # for why a PR editing only one of these, in only one of the two
+    # locations, needs the identical dispatch.
+    **{
+        root + rel: ("plugin-rulebook-checker", "consistency-reviewer")
+        for root in _RULEBOOK_GOVERNANCE_ROOTS
+        for rel in _RULEBOOK_GOVERNANCE_RELATIVE_PATHS
+    },
+    # Same live-read gap, for the repo-specific R23 override plugin-rulebook-checker's
+    # own Step 1.4 merges on top of the plugin defaults.
+    ".claude/plugin-rulebook.config.json": (
         "plugin-rulebook-checker",
         "consistency-reviewer",
     ),
@@ -313,6 +382,15 @@ BYPASS_INELIGIBLE_PREFIXES = (
     "scripts/",
     ".codex/agents/",
     ".claude/rules/",
+    # The .claude/ in-development mirror of the rulebook skill is a real,
+    # independently git-editable copy -- not under plugins/, so it was
+    # falling through to light-mode/bypass-eligible (zero reviewers) if a PR
+    # touched only it. FULL_ESCALATION_PATHS above already forces mode="full"
+    # for its 5 specific governance files; this prefix is the belt-and-
+    # suspenders floor for every *other* file under this directory (e.g. a
+    # reference file not in that governance list), guaranteeing at least an
+    # ordinary delta dispatch rather than none.
+    ".claude/skills/plugin-rulebook/",
     "pyproject.toml",
     "uv.lock",
     # The other 2 of pr_policy.py's 3 _CODEOWNERS_CANDIDATES -- a PR adding
