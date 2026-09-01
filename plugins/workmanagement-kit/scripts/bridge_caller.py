@@ -82,6 +82,19 @@ def dispatch(
     plugin_root = Path(__file__).resolve().parent.parent
     root = Path(repo_root).resolve() if repo_root else repo_root_from(plugin_root)
     cwd_path = Path(cwd).resolve() if cwd else root
+    # relposix() below computes every path relative to `root`, but --cwd is
+    # what the dispatched Node process actually resolves relative paths
+    # against -- an independently-supplied --cwd that diverges from root
+    # would silently make every --target-paths/--instruction-file value
+    # wrong from that process's own perspective (found by cross-model review,
+    # GitHub issue #251's finalize session). Rejected here rather than
+    # supporting two independent roots, which nothing currently needs.
+    if cwd_path != root:
+        raise ValueError(
+            f"--cwd {cwd_path} must equal the resolved repo root {root} -- "
+            "every path this script computes is relative to root, not an "
+            "independently-configurable --cwd"
+        )
 
     agent_file = plugin_root / "agents" / f"{agent}.md"
     if not agent_file.is_file():
@@ -183,15 +196,28 @@ def main() -> None:
     parser.add_argument("--cwd")
     args = parser.parse_args()
 
-    result = dispatch(
-        agent=args.agent,
-        target_paths=[p for p in args.target_paths.split(",") if p],
-        dispatch_id=args.dispatch_id,
-        execution_profile=args.execution_profile,
-        dry_run=args.dry_run,
-        repo_root=args.repo_root,
-        cwd=args.cwd,
-    )
+    # Every one of dispatch()'s own precondition checks, and subprocess.run's
+    # own OSError (e.g. node missing/unlaunchable), previously propagated as
+    # an uncaught traceback instead of this script's documented dict/typed-
+    # failure return -- found live during this session's own C1-fix
+    # verification and by cross-model review (GitHub issue #251's finalize
+    # session). Caught here so every failure path returns the same shape.
+    try:
+        result = dispatch(
+            agent=args.agent,
+            target_paths=[p for p in args.target_paths.split(",") if p],
+            dispatch_id=args.dispatch_id,
+            execution_profile=args.execution_profile,
+            dry_run=args.dry_run,
+            repo_root=args.repo_root,
+            cwd=args.cwd,
+        )
+    except (ValueError, FileNotFoundError, OSError) as exc:
+        result = {
+            "ok": False,
+            "category": "bridge_caller_precondition_error",
+            "detail": str(exc),
+        }
     print(json.dumps(result, indent=2))
     sys.exit(1 if isinstance(result, dict) and result.get("ok") is False else 0)
 
