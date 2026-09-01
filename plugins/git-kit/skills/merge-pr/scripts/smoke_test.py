@@ -341,6 +341,126 @@ def check_step7b_final_recheck_before_merge():
     )
 
 
+def check_bypass_exception_single_use():
+    # Codex's review of PR #269 (2026-08-31): step 2's bypass exception is keyed only on whether
+    # --bypass-codex-review was given in $ARGUMENTS, with no state tracking of whether a genuine
+    # pass has already been achieved. Every rerun of "the full step-2 readiness check" (4(e), 7(b),
+    # 7(d)) must explicitly suppress the exception -- otherwise a new, never-attested commit landing
+    # during step 5's wait or steps 6-7(a) could silently ride through on a stale/spent bypass.
+    step2 = _get_step_text(2)
+    step4 = _get_step_text(4)
+    step7 = _get_step_text(7)
+    if step2 is None or step4 is None or step7 is None:
+        return False, "step 2, 4, or 7 ('## Instructions') not found"
+    if "applies only the first time step 2 runs within a single invocation" not in step2:
+        return (
+            False,
+            "step 2's bypass exception no longer states it applies only on the first pass -- a "
+            "rerun could silently re-grant an already-spent bypass to a changed head",
+        )
+    if "without step 2's own bypass exception this time" not in step4:
+        return (
+            False,
+            "step 4(e)'s rerun no longer explicitly suppresses step 2's bypass exception",
+        )
+    if step7.count("without step 2's own bypass exception") < 2:
+        return (
+            False,
+            "step 7(b)'s final recheck and/or step 7(d)'s rejection-fallback recheck no longer "
+            "explicitly suppress step 2's bypass exception (expected both to state this)",
+        )
+    return (
+        True,
+        "step 2's bypass exception is documented as single-use per invocation, and every rerun "
+        "(4(e), 7(b), 7(d)) explicitly suppresses it rather than silently re-applying it",
+    )
+
+
+def check_step2_rerun_enumeration_includes_7b():
+    # security-reviewer finding, PR #269, 2026-08-31 (Critical): step 7(b) was added as an
+    # unconditional pre-merge recheck this same session, but step 2's own "when this step is
+    # being re-run, first re-fetch fresh data" trigger only named step 4(e) and step 7(d) --
+    # leaving 7(b)'s recheck silently reclassifying step 1's stale snapshot instead of
+    # re-fetching, which would have made both step 7(b)'s own purpose and the bypass-exception
+    # fix (check_bypass_exception_single_use) no-ops on the normal (non-bypass, non-retry) path.
+    step2 = _get_step_text(2)
+    if step2 is None:
+        return False, "step 2 ('## Instructions') not found"
+    rerun_intro = step2.split("first re-fetch fresh data")[0]
+    if "step 7(b)" not in rerun_intro:
+        return (
+            False,
+            "step 2's 'when this step is being re-run' enumeration no longer names step "
+            "7(b) -- its final recheck would silently reclassify step 1's stale snapshot "
+            "instead of re-fetching",
+        )
+    return (
+        True,
+        "step 2's rerun enumeration names step 4(e), step 7(b), and step 7(d) -- every rerun point "
+        "re-fetches fresh data before reclassifying",
+    )
+
+
+def check_bypass_poll_uses_started_at_baseline():
+    # security-reviewer finding M1, PR #269, 2026-08-31 (Major): polling gh pr checks for "terminal
+    # state" alone can't tell the pre-label run's already-terminal FAILURE apart from the
+    # label-triggered re-run -- the bypass path is only entered when Publish Codex policy result is
+    # already non-passing, so an unqualified terminal-state poll returns immediately on the stale
+    # result and wrongly reports the bypass as failed before the real re-run even starts.
+    step4 = _get_step_text(4)
+    if step4 is None:
+        return False, "step 4 ('## Instructions') not found"
+    if "Capture the pre-label baseline" not in step4:
+        return (
+            False,
+            "step 4(c) no longer captures a pre-label startedAt baseline for Publish Codex policy "
+            "result before applying the label",
+        )
+    if "startedAt" not in step4 or "strictly later than" not in step4:
+        return (
+            False,
+            "step 4(d)'s poll no longer requires a startedAt strictly later than (c)'s baseline -- "
+            "it could accept the pre-label run's own already-terminal result",
+        )
+    if "bucket" not in step4:
+        return False, "step 4(d)'s poll no longer classifies via the bucket field (pass/fail)"
+    if "bound is exhausted" not in step4:
+        return False, "step 4(d)'s poll is no longer bounded to a fixed number of attempts"
+    return (
+        True,
+        "step 4(c) captures a pre-label startedAt baseline and step 4(d)'s poll requires a "
+        "strictly-later startedAt plus a terminal bucket, bounded, before accepting the result",
+    )
+
+
+def check_merge_binds_to_verified_head_sha():
+    # security-reviewer finding M2, PR #269, 2026-08-31 (Major): gh pr merge was never bound to
+    # the exact SHA the immediately-preceding recheck validated -- a push landing between the
+    # recheck and the merge call itself would still be merged unverified, the same TOCTOU gap
+    # the recheck exists to close.
+    step2 = _get_step_text(2)
+    step7 = _get_step_text(7)
+    if step2 is None or step7 is None:
+        return False, "step 2 or step 7 ('## Instructions') not found"
+    if "headRefOid" not in step2:
+        return (
+            False,
+            "step 2's rerun re-fetch no longer includes headRefOid -- step 7(b)/(d) have no "
+            "verified SHA to bind the merge command to",
+        )
+    if step7.count("--match-head-commit") < 2:
+        return (
+            False,
+            "step 7(b) and/or step 7(d) no longer pass --match-head-commit to gh pr merge -- the "
+            "merge is no longer bound to the SHA the immediately-preceding recheck just validated",
+        )
+    return (
+        True,
+        "step 2's rerun re-fetch includes headRefOid, and both step 7(b) and step 7(d) bind their "
+        "gh pr merge call to it via --match-head-commit",
+    )
+
+
 def check_step7_rejection_fallback():
     step7 = _get_step_text(7)
     if step7 is None:
@@ -840,6 +960,10 @@ CHECKS = [
     check_step7_rebase_precheck,
     check_step7_squash_disclosure,
     check_step7b_final_recheck_before_merge,
+    check_bypass_exception_single_use,
+    check_step2_rerun_enumeration_includes_7b,
+    check_bypass_poll_uses_started_at_baseline,
+    check_merge_binds_to_verified_head_sha,
     check_step7_rejection_fallback,
     check_step1_owner_repo_from_pr_url,
     check_step3_and_merge_rights_reuse_owner_repo,
