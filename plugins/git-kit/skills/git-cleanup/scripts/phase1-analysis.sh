@@ -66,6 +66,70 @@ comm -23 \
     | grep -vE "^HEAD$|$protected" | sort -u) \
   <(git branch --format='%(refname:short)' | sort -u)
 
+# Patch-id (content) index of every commit on $default_branch, built lazily
+# on first use and cached for the rest of this script run. A rebase-then-
+# merge sequence rewrites every commit's SHA but preserves each commit's own
+# diff content, so `git merge-base --is-ancestor` (object-identity based)
+# alone reports "not reachable" even when a tag's entire history genuinely
+# landed on $default_branch via rebase -- live-verified against this repo's
+# own PR #269 (feat/merge-pr-conflict-checks-rebase-backup-20260901-064237):
+# all 6 commits unique to the tag had an exact patch-id match on main,
+# despite every one having a different SHA post-rebase. Same two-signal
+# approach (identity first, content fallback) already reviewed and shipped
+# in remap-handoff-shas.py's own patch-id index, and mirrored in
+# delete-rebase-backup-tags.sh's own is_tag_content_reachable -- this
+# script's report must agree with what that script would actually delete.
+#
+# `default_branch_patchids` must be called bare (never as `$(...)`) --
+# command substitution forks a subshell, and an assignment to
+# $main_patchid_index made inside that subshell is discarded when it exits,
+# silently defeating the cache on every call (found by security-reviewer,
+# PR #269 follow-up; live-verified: this bug alone took a 22-tag sweep from
+# an expected ~2s to 80s, rebuilding the full-history index once per tag).
+#
+# `--no-ext-diff --no-textconv` here and on the per-commit check below
+# match delete-rebase-backup-tags.sh's own hardening -- see that script's
+# identical comment for the finding this addresses (M2) and for why the
+# index build keeps `git log -p`'s default pretty format rather than a
+# message-suppressed one (`--format=''` breaks patch-id's per-commit
+# boundary detection), while the per-commit check below still avoids
+# piping the commit message into patch-id at all, by construction.
+main_patchid_index=""
+
+default_branch_patchids() {
+  if [ -z "$main_patchid_index" ]; then
+    main_patchid_index=$(git log -p --no-ext-diff --no-textconv \
+      "$default_branch" -- 2>/dev/null \
+      | git patch-id --stable | awk '{print $1}' | sort -u)
+  fi
+}
+
+# Requires every commit unique to the tag (since its own merge-base with
+# $default_branch) to have a content-identical (patch-id) match somewhere in
+# $default_branch's full history -- a single unmatched commit keeps the tag
+# flagged unreachable, since it may be the only remaining copy of that one
+# commit's changes.
+is_tag_content_reachable() {
+  local tag="$1"
+  local mb
+  mb=$(git merge-base -- "$tag" "$default_branch" 2>/dev/null) || return 1
+  local tag_commits
+  tag_commits=$(git rev-list "$mb..$tag" 2>/dev/null)
+  [ -z "$tag_commits" ] && return 1
+  default_branch_patchids
+  [ -z "$main_patchid_index" ] && return 1
+  local commit pid
+  while IFS= read -r commit; do
+    [ -z "$commit" ] && continue
+    pid=$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$commit" \
+      | git patch-id --stable | awk '{print $1}')
+    if [ -z "$pid" ] || ! printf '%s\n' "$main_patchid_index" | grep -qxF "$pid"; then
+      return 1
+    fi
+  done <<< "$tag_commits"
+  return 0
+}
+
 # Leftover git-rebase-sync pre-rebase safety tags (local-only, never pushed --
 # see that skill's own Step 3: `git tag -a {branch}-rebase-backup-{timestamp}
 # -m "pre-rebase backup" HEAD`). Nothing ever deletes these afterward, so they
@@ -109,6 +173,8 @@ for tag in $(git tag -l '*-rebase-backup-*'); do
     if $branch_gone || $branch_merged; then
       if git merge-base --is-ancestor "$tag" "$default_branch" 2>/dev/null; then
         echo "reachable from $default_branch: yes"
+      elif is_tag_content_reachable "$tag"; then
+        echo "reachable from $default_branch: yes (content match after rebase -- commit SHA differs, diff content identical)"
       else
         echo "reachable from $default_branch: NO -- this tag may be the only remaining copy of its commits"
       fi
