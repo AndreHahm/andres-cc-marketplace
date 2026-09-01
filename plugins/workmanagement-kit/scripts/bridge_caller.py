@@ -245,7 +245,17 @@ def dispatch(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+    # exit_on_error=False: without it, an invalid --agent choice or a missing
+    # required option makes parse_args() print a raw argparse usage message
+    # to stderr and call sys.exit(2) directly -- bypassing this script's own
+    # documented typed-JSON-failure contract entirely, since that happens
+    # before the try/except below ever runs (found by CodeRabbit's PR #278
+    # review). With it, parse_args() raises argparse.ArgumentError instead,
+    # which is caught below like any other precondition failure. -h/--help
+    # is unaffected -- argparse's help action still calls sys.exit(0)
+    # directly regardless of this flag, which is the correct, expected
+    # behavior for --help, not a failure to convert.
+    parser = argparse.ArgumentParser(description=__doc__, exit_on_error=False)
     parser.add_argument("--agent", required=True, choices=sorted(AGENTS))
     parser.add_argument("--target-paths", required=True, help="comma-separated evidence paths")
     parser.add_argument("--dispatch-id", required=True)
@@ -253,15 +263,17 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--repo-root")
     parser.add_argument("--cwd")
-    args = parser.parse_args()
 
-    # Every one of dispatch()'s own precondition checks, and subprocess.run's
-    # own OSError (e.g. node missing/unlaunchable), previously propagated as
-    # an uncaught traceback instead of this script's documented dict/typed-
-    # failure return -- found live during this session's own C1-fix
-    # verification and by cross-model review (GitHub issue #251's finalize
-    # session). Caught here so every failure path returns the same shape.
+    # Every one of dispatch()'s own precondition checks, argument-parsing
+    # failures (see exit_on_error above), and subprocess.run's own OSError
+    # (e.g. node missing/unlaunchable), previously propagated as an uncaught
+    # traceback or a bare non-JSON exit instead of this script's documented
+    # dict/typed-failure return -- found live during this session's own
+    # C1-fix verification, by cross-model review, and by CodeRabbit's PR #278
+    # review (GitHub issue #251's finalize session). Caught here so every
+    # failure path returns the same shape.
     try:
+        args = parser.parse_args()
         result = dispatch(
             agent=args.agent,
             target_paths=[p for p in args.target_paths.split(",") if p],
@@ -271,7 +283,7 @@ def main() -> None:
             repo_root=args.repo_root,
             cwd=args.cwd,
         )
-    except (ValueError, FileNotFoundError, OSError) as exc:
+    except (ValueError, FileNotFoundError, OSError, argparse.ArgumentError) as exc:
         result = {
             "ok": False,
             "category": "bridge_caller_precondition_error",

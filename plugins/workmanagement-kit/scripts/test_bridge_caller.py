@@ -22,7 +22,9 @@ relative --target-paths resolving against the wrong cwd; and the full-review
 fix moving the scratch instruction file outside the repository entirely
 (round 2, full review -- a broad --target-paths value like the repo root
 itself used to always contain the old in-repo scratch dir, rejecting every
-such dispatch).
+such dispatch); and the round-2 CodeRabbit fix for an invalid --agent choice
+or a missing required option bypassing the typed-failure contract entirely
+via argparse's own direct sys.exit(2).
 """
 
 import json
@@ -327,13 +329,45 @@ def main():
         if scratch_leaks(tmp_env):
             failures.append("[stderr typed failure] instruction dir not cleaned up after failure")
 
+        # 9. Regression (CodeRabbit round 2): an invalid --agent choice used
+        # to bypass the typed-failure contract entirely (raw argparse usage
+        # text on stderr, bare exit(2), no JSON on stdout at all).
+        code, out, err = run(
+            [
+                "--agent",
+                "nonexistent-agent",
+                "--target-paths",
+                "x",
+                "--dispatch-id",
+                "t9",
+                "--execution-profile",
+                "read-only",
+            ]
+        )
+        payload = json.loads(out) if out.strip() else None
+        if code != 1 or not payload or "invalid choice" not in payload.get("detail", ""):
+            failures.append(
+                f"[invalid --agent] expected clean typed failure, "
+                f"got code={code} out={out!r} err={err!r}"
+            )
+
+        # 10. Regression (CodeRabbit round 2): a missing required option hit
+        # the same bypass as case 9 above.
+        code, out, err = run(["--agent", "work-transition-reviewer", "--target-paths", "x"])
+        payload = json.loads(out) if out.strip() else None
+        if code != 1 or not payload or "required" not in payload.get("detail", ""):
+            failures.append(
+                f"[missing required option] expected clean typed failure, "
+                f"got code={code} out={out!r} err={err!r}"
+            )
+
     if failures:
         print(f"FAIL: {len(failures)} case(s) failed")
         for f in failures:
             print(f"  - {f}")
         return 1
 
-    print("PASS: all 8 fixture cases behaved as expected")
+    print("PASS: all 10 fixture cases behaved as expected")
     return 0
 
 
