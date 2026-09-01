@@ -135,47 +135,55 @@ def dispatch(
     scratch_dir.mkdir(parents=True, exist_ok=True)
     instruction_file.write_text(body, encoding="utf-8")
 
-    bridge_script = (
-        root
-        / "plugins"
-        / "codex-kit"
-        / "skills"
-        / "codex-review-bridge"
-        / "scripts"
-        / "bridge-invoke.mjs"
-    )
-    if not bridge_script.is_file():
-        raise FileNotFoundError(bridge_script)
-
-    # bridge-invoke.mjs validates --target-paths/--instruction-file against
-    # ^[A-Za-z0-9._/-]+$ -- no backslash (Windows' native separator) and no
-    # colon (a Windows drive letter, e.g. "C:") are in that charset. An
-    # absolute Windows path fails this check either way it's rendered, so
-    # every path handed to the bridge must be relative to --cwd, using
-    # forward slashes.
-    def relposix(p: Path) -> str:
-        return p.relative_to(root).as_posix()
-
-    cmd = [
-        "node",
-        str(bridge_script),
-        "--reviewer-type",
-        agent,
-        "--instruction-file",
-        relposix(instruction_file.resolve()),
-        "--target-paths",
-        ",".join(relposix(tp) for tp in resolved_targets),
-        "--execution-profile",
-        execution_profile,
-        "--dispatch-id",
-        dispatch_id,
-        "--cwd",
-        cwd_path.as_posix(),
-    ]
-    if dry_run:
-        cmd += ["--dry-run", "true"]
-
+    # Everything from here on must run inside the try/finally below --
+    # instruction_file now exists on disk, and every remaining precondition
+    # check (the bridge_script existence check right below included) can
+    # still raise before dispatch ever happens. An earlier version only
+    # wrapped the subprocess.run call itself, so a missing bridge_script
+    # raised FileNotFoundError before the try block even started, leaking
+    # the instruction file on every such failure (found by Devin's PR #278
+    # round-2 review).
     try:
+        bridge_script = (
+            root
+            / "plugins"
+            / "codex-kit"
+            / "skills"
+            / "codex-review-bridge"
+            / "scripts"
+            / "bridge-invoke.mjs"
+        )
+        if not bridge_script.is_file():
+            raise FileNotFoundError(bridge_script)
+
+        # bridge-invoke.mjs validates --target-paths/--instruction-file
+        # against ^[A-Za-z0-9._/-]+$ -- no backslash (Windows' native
+        # separator) and no colon (a Windows drive letter, e.g. "C:") are in
+        # that charset. An absolute Windows path fails this check either way
+        # it's rendered, so every path handed to the bridge must be relative
+        # to --cwd, using forward slashes.
+        def relposix(p: Path) -> str:
+            return p.relative_to(root).as_posix()
+
+        cmd = [
+            "node",
+            str(bridge_script),
+            "--reviewer-type",
+            agent,
+            "--instruction-file",
+            relposix(instruction_file.resolve()),
+            "--target-paths",
+            ",".join(relposix(tp) for tp in resolved_targets),
+            "--execution-profile",
+            execution_profile,
+            "--dispatch-id",
+            dispatch_id,
+            "--cwd",
+            cwd_path.as_posix(),
+        ]
+        if dry_run:
+            cmd += ["--dry-run", "true"]
+
         # encoding="utf-8" is required explicitly -- subprocess.run's
         # text=True alone decodes with the platform's locale-preferred
         # encoding (cp1252 on a default Windows install, not UTF-8), which
