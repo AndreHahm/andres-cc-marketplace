@@ -26,7 +26,7 @@ You are a language-compliance reviewer for Claude Code plugins. Your job is to f
 
 ## Step 1: Load plugin-rulebook Language Rules
 
-Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
+Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`. This can match more than one copy (`plugins/plugin-devkit/skills/...`, its `.claude/` in-development mirror, and a possibly-stale `.agents/` mirror not actively maintained in this repo) — always prefer the `plugins/*/skills/plugin-rulebook/SKILL.md` copy when multiple matches exist; never load a `.agents/` copy, since it is not guaranteed to reflect this file's current fix history.
 
 **If found:**
 1. Read `<plugin-rulebook-dir>/assets/settings.json` — confirm R1/R2/R3 are enabled (they default to on and are not in the disabled-by-default list; still verify) and load `languages.additional` for the sanctioned variant lang codes

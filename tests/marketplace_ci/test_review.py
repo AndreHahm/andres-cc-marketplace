@@ -116,6 +116,100 @@ def test_rulebook_change_escalates_to_full(change, dependency_index):
     assert scope.audit == ("skill-reviewer",)
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "plugins/plugin-devkit/skills/plugin-rulebook/assets/settings.json",
+        "plugins/plugin-devkit/skills/plugin-rulebook/references/compact-rule-checklist.md",
+        "plugins/plugin-devkit/skills/plugin-rulebook/references/external-reference-policy.md",
+        "plugins/plugin-devkit/skills/plugin-rulebook/references/gitignore-exclusion.md",
+        "plugins/plugin-devkit/skills/plugin-rulebook/references/size-rules.md",
+        "plugins/plugin-devkit/skills/plugin-rulebook/references/plugin-file-surface.md",
+    ],
+)
+def test_rulebook_content_file_change_escalates_to_full(path, change, dependency_index):
+    """These are the files plugin-rulebook-checker's own developer_instructions
+    tell it to Glob/Read live from whatever checkout it's running in -- a PR
+    editing only one of these, without touching SKILL.md, must still escalate,
+    or the checker judges the PR against that PR's own just-edited rule
+    content (found live, PR #276 round 2, Codex's automated PR review)."""
+    scope = derive_review_scope([change(path)], dependency_index())
+    assert scope.mode == "full"
+    assert scope.validate == (
+        "consistency-reviewer",
+        "dependency-reviewer",
+        "plugin-rulebook-checker",
+        "security-reviewer",
+    )
+    # All four paths are still under plugins/plugin-devkit/skills/plugin-rulebook/,
+    # so they still earn the skill's own type-specific audit reviewer.
+    assert scope.audit == ("skill-reviewer",)
+    assert is_bypass_eligible(scope) is False
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".claude/skills/plugin-rulebook/SKILL.md",
+        ".claude/skills/plugin-rulebook/assets/settings.json",
+        ".claude/skills/plugin-rulebook/references/compact-rule-checklist.md",
+        ".claude/skills/plugin-rulebook/references/external-reference-policy.md",
+        ".claude/skills/plugin-rulebook/references/gitignore-exclusion.md",
+        ".claude/skills/plugin-rulebook/references/size-rules.md",
+        ".claude/skills/plugin-rulebook/references/plugin-file-surface.md",
+    ],
+)
+def test_rulebook_claude_mirror_change_escalates_to_full(path, change, dependency_index):
+    """The .claude/ in-development mirror of the rulebook skill is a real,
+    independently git-editable copy -- a security review found it was
+    getting ZERO reviewers dispatched (light mode, bypass-eligible) if it
+    was the only thing a PR touched, which is worse than the original gap
+    this file's other rulebook tests cover (that one at least got an
+    ordinary, self-judging delta dispatch)."""
+    scope = derive_review_scope([change(path)], dependency_index())
+    assert scope.mode == "full"
+    assert scope.validate == (
+        "consistency-reviewer",
+        "dependency-reviewer",
+        "plugin-rulebook-checker",
+        "security-reviewer",
+    )
+    # Not under plugins/, so no type-specific audit reviewer applies.
+    assert scope.audit == ()
+    assert is_bypass_eligible(scope) is False
+
+
+def test_rulebook_claude_mirror_other_file_still_gets_delta_not_light(change, dependency_index):
+    """Belt-and-suspenders floor: a .claude/skills/plugin-rulebook/ file NOT
+    in the governance list above (e.g. an ordinary reference file) must still
+    get at least an ordinary delta dispatch, never light-mode/bypass-eligible,
+    via BYPASS_INELIGIBLE_PREFIXES."""
+    scope = derive_review_scope(
+        [change(".claude/skills/plugin-rulebook/references/naming-conventions.md")],
+        dependency_index(),
+    )
+    assert scope.mode == "delta"
+    assert scope.validate == ("plugin-rulebook-checker", "dependency-reviewer", "security-reviewer")
+    assert is_bypass_eligible(scope) is False
+
+
+def test_rulebook_config_override_change_escalates_to_full(change, dependency_index):
+    """Same live-read gap as the paths above, for the repo-specific R23
+    override plugin-rulebook-checker's own Step 1.4 merges on top of the
+    plugin defaults."""
+    scope = derive_review_scope([change(".claude/plugin-rulebook.config.json")], dependency_index())
+    assert scope.mode == "full"
+    assert scope.validate == (
+        "consistency-reviewer",
+        "dependency-reviewer",
+        "plugin-rulebook-checker",
+        "security-reviewer",
+    )
+    # Not under plugins/, so no type-specific audit reviewer applies.
+    assert scope.audit == ()
+    assert is_bypass_eligible(scope) is False
+
+
 def test_marketplace_json_change_escalates_to_full_with_validator(change, dependency_index):
     scope = derive_review_scope([change(".claude-plugin/marketplace.json")], dependency_index())
     assert scope.mode == "full"

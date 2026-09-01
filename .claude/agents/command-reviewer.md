@@ -24,7 +24,7 @@ Check the invocation context before starting:
 
 ## Step 1: Load plugin-rulebook (if available)
 
-Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
+Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`. This can match more than one copy (`plugins/plugin-devkit/skills/...`, its `.claude/` in-development mirror, and a possibly-stale `.agents/` mirror not actively maintained in this repo) — always prefer the `plugins/*/skills/plugin-rulebook/SKILL.md` copy when multiple matches exist; never load a `.agents/` copy, since it is not guaranteed to reflect this file's current fix history.
 
 **If found:** read `<plugin-rulebook-dir>/assets/settings.json`. Commands share `allowed-tools`/`description`/`argument-hint` frontmatter with skills, so most rulebook rules apply directly, not just partially:
 

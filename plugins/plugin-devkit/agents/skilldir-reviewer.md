@@ -62,7 +62,7 @@ This agent reviews one skill at a time — for a whole-plugin sweep, invoke it o
 
 ## Step 2: Load plugin-rulebook
 
-Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
+Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`. This can match more than one copy (`plugins/plugin-devkit/skills/...`, its `.claude/` in-development mirror, and a possibly-stale `.agents/` mirror not actively maintained in this repo) — always prefer the `plugins/*/skills/plugin-rulebook/SKILL.md` copy when multiple matches exist; never load a `.agents/` copy, since it is not guaranteed to reflect this file's current fix history.
 
 **If found:** read `<plugin-rulebook-dir>/assets/settings.json`. Only the rules that generically apply to non-SKILL.md files are in scope here:
 

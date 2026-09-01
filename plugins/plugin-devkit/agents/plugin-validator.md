@@ -180,7 +180,7 @@ Location: [path]
 
 **Suggested next step:** if Overall Assessment is FAIL, or any Critical Issue exists, the calling context should ask the user via `AskUserQuestion` whether to run the `enhancement-suggestor` agent against this report for classified (complexity/risk/benefit) WHAT/WHY/HOW next-step suggestions — this agent does not invoke it itself.
 
-**Structured Output Mode:** when invoked in Structured output mode (see Invocation Modes), skip the narrative report above entirely and return YAML only — no prose outside the block. Load `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` first (`Glob("**/plugin-rulebook/SKILL.md")` to locate it; if not found, fall back to the hardcoded enum below):
+**Structured Output Mode:** when invoked in Structured output mode (see Invocation Modes), skip the narrative report above entirely and return YAML only — no prose outside the block. Load `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` first (`Glob("**/plugin-rulebook/SKILL.md")` to locate it — prefer the `plugins/*/skills/...` copy over its `.claude/` mirror when both match, never a possibly-stale `.agents/` copy; if not found, fall back to the hardcoded enum below):
 
 ```yaml
 version: "1.0"                   # evidence-schema.md version this document's shape conforms to
