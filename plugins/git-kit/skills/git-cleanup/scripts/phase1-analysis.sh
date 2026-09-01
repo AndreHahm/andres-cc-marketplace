@@ -130,6 +130,26 @@ is_tag_content_reachable() {
   local commit tag_diff pid candidates cand exact_match
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
+    if git rev-parse --verify --quiet "$commit^2" >/dev/null 2>&1; then
+      # Merge commit: plain `-p` (used below for every other commit) always
+      # shows no diff for a merge, which would otherwise fail the whole tag
+      # closed regardless of whether the merge actually introduced any
+      # unique content -- each parent's own changes are already walked
+      # separately as their own entries in this same rev-list. `--cc` shows
+      # only lines that differ from every parent (a real conflict-resolution
+      # edit); an empty `--cc` diff means this merge contributes nothing new
+      # beyond its parents, so skip it rather than treating it as
+      # unverifiable.
+      if [ -z "$(git diff-tree --cc -p --no-commit-id -r --no-ext-diff --no-textconv "$commit")" ]; then
+        continue
+      fi
+      # A merge with real conflict-resolution content has no comparable
+      # entry in $main_patchid_log -- that index is built from plain
+      # `git log -p`, which equally skips merge diffs, so there is nothing
+      # to match this content against. Fail closed rather than accepting
+      # unverified content.
+      return 1
+    fi
     tag_diff=$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$commit")
     pid=$(printf '%s\n' "$tag_diff" | git patch-id --stable | awk '{print $1}')
     [ -z "$pid" ] && return 1
