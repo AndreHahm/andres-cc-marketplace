@@ -149,13 +149,16 @@ Used by Service 2 (self-review) and Service 4 (self-evaluation) — both need th
    agent-cost-tracker.py estimate <agent-name>`, cached per name for this run (never
    re-shell per component instance).
 4. **Present the gate** — `AskUserQuestion`: "Scoped (N changed components, ~X tokens
-   est.) or Full (M components, ~Y tokens est., based on N prior observations)?" For the
-   five single-item Delta reviewers named in Step 5 below, count actual qualifying items
-   (edges/claims/sections), not components, when estimating their share of ~X/~Y — a
-   component with three qualifying claims dispatches that reviewer three times, not once.
-   Always recommend Scoped; Full is the explicit, cost-disclosed opt-in R26 requires. If no
-   historical estimate exists for a given agent, state that plainly rather than
-   fabricating a number.
+   est.) or Full (M components, ~Y tokens est., based on N prior observations)?" This
+   counts differently per estimate: for the five single-item Delta reviewers named in Step
+   5 below, count actual qualifying items (edges/claims/sections), not components, only
+   when estimating **~X (Scoped)** — a component with three qualifying claims dispatches
+   that reviewer three times in Scoped mode, not once. **~Y (Full)** never uses per-item
+   counting for these reviewers — Full mode runs each as one dispatch per reviewer for the
+   whole named set (Step 5's own Full-review dispatch shape), so estimate ~Y as one
+   dispatch per reviewer regardless of how many qualifying items exist. Always recommend
+   Scoped; Full is the explicit, cost-disclosed opt-in R26 requires. If no historical
+   estimate exists for a given agent, state that plainly rather than fabricating a number.
 5. **Dispatch only the in-scope set**, batched sensibly. This means different things by
    mode: a reviewer run in **Full review** mode against a named component set gets one
    dispatch for the whole set, not one per component. `external-references-reviewer` and

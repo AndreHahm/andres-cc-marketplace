@@ -145,7 +145,7 @@ already states this instead of re-deriving it.
 
 ### 4. Score Dimensions and Compute
 
-Map each finding's canonical severity (Critical/Major/Minor — already normalized from each source's native scale by `plugin-auditor`'s evidence bundle, in either mode) into the `dimensions` object per `references/rubric.md`. Assign `simplicity`, `testing`, `efficiency`, and `actionability` directly against their custom bands (also in `rubric.md`). Set `dimensions.content_quality.contradiction_found: true` if any finding flagged self-contradicting instructions.
+Map each finding's canonical severity (Critical/Major/Minor — already normalized from each source's native scale by `plugin-auditor`'s evidence bundle, in either mode) into the `dimensions` object per `references/rubric.md`. Assign `simplicity`, `testing`, `efficiency`, and `actionability` directly against their custom bands (also in `rubric.md`). Set `dimensions.content_quality.contradiction_found: true` if any finding flagged self-contradicting instructions — this includes any Critical or Major `authority-reviewer` finding (direct contradiction, circular authority claim, or broken claim target), per `rubric.md`'s Dimension 2 signal-source list.
 
 Write this as JSON per `references/output-schema.md`'s input shape, then run:
 

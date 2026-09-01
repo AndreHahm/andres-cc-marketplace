@@ -40,8 +40,14 @@ For a single component, dispatch in parallel:
 
 ## Plugin Mode
 
-Dispatch the component-mode set above per component (batched across all components), **plus**
-run once across the whole set (not once per component):
+Dispatch the component-mode set above per component (batched across all components) —
+**excluding `dependency-reviewer` and `authority-reviewer`**, whose per-component Full
+review can't detect anything their own Steps 4/5 contradiction/cycle checks are actually
+for (a graph built from one component's own edges only has nothing else to compare
+against), and whose only other real check (broken-target resolution) is already a strict
+subset of what the whole-plugin dispatch below covers — dispatching them per component
+here as well would invoke each one N+1 times for an N-component plugin with no added
+signal, **plus** run once across the whole set (not once per component):
 
 - `activation-reviewer` in whole-plugin mode → cross-component overlap findings
 - `consistency-reviewer` across all components → drift/duplication findings
@@ -59,7 +65,10 @@ span more than one plugin (e.g. a `changed`/`named` scope touching both `plugin-
 `codex-kit` on the same branch):
 
 1. **Per-component dispatch** — for each component in the list, dispatch the Component Mode
-   set above (same reviewers, same rules), batched across all components in parallel.
+   set above (same reviewers, same rules) — excluding `dependency-reviewer` and
+   `authority-reviewer`, same reasoning as Plugin Mode above: their per-component Full
+   review adds nothing the whole-scope dispatch below doesn't already cover — batched
+   across all components in parallel.
 2. **Whole-scope reviewers, run once across the entire named list** (not once per component,
    not once per plugin). Each of these already accepts an arbitrary named-component list per
    its own agent definition — a cross-plugin list is not a new capability for them, only for
