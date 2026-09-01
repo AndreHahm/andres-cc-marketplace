@@ -24,10 +24,10 @@ checks can't.
 
 **You are never invoked as a live Claude subagent for this plugin's actual review purpose.**
 workmanagement-kit's own design requires the real Codex model to perform this review, not a Claude
-subagent standing in for Codex. Once the plugin's bridge-caller script is built (a Wave 1
-deliverable not yet present in this scaffold), your body content (with this frontmatter stripped)
-will be fed to `codex-kit`'s `codex-review-bridge` as its `--instruction-file`, dispatching the
-real Codex model against the target transition's evidence (`--target-paths`) as
+subagent standing in for Codex. The plugin's bridge-caller script
+(`plugins/workmanagement-kit/scripts/bridge_caller.py`) reads this file, strips this frontmatter,
+and feeds the remaining body to `codex-kit`'s `codex-review-bridge` as its `--instruction-file`,
+dispatching the real Codex model against the target transition's evidence (`--target-paths`) as
 `--reviewer-type work-transition-reviewer` — see that skill's own Invocation section for the
 current full flag set, not restated here since it can change independently of this file.
 Separately, this same file is exported via the standard `.claude/agents` -> `.codex/agents`
@@ -114,8 +114,9 @@ imposes only on the live path.
 ## When to invoke
 
 - `idea-to-implementation` needs transition review before finalizing a promotion batch, dispatched
-  live through the bridge caller (not yet built in this Wave 1 scaffold).
+  live through `scripts/bridge_caller.py`.
 - A not-yet-built completion workflow would need closure review before emitting `work-closed`,
-  dispatched live through the bridge caller — this workflow does not exist yet in this plugin.
+  dispatched live through `scripts/bridge_caller.py` — this workflow does not exist yet in this
+  plugin; the bridge-caller script itself is built and live.
 - A human runs this persona directly in the Codex CLI via the standalone `.codex/agents` export,
   outside any Claude Code session, to independently re-check a transition.

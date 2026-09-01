@@ -7,7 +7,7 @@ description: >-
   status/closure on accepted work. Reads and status checks need no approval; material
   priority/owner/scope/date/status/closure changes require the plugin's live approval gate, and
   refinement never derives priority from Notion or other external content without it.
-allowed-tools: Read, AskUserQuestion, Bash(git ls-files:*), mcp__workmanagement-kit__linear_read, mcp__workmanagement-kit__linear_write
+allowed-tools: Read, AskUserQuestion, Bash(git ls-files:*), mcp__claude_ai_Linear__get_issue, mcp__claude_ai_Linear__save_issue, mcp__claude_ai_Linear__list_issues, mcp__claude_ai_Linear__get_project, mcp__claude_ai_Linear__save_project, mcp__claude_ai_Linear__list_projects, mcp__claude_ai_Linear__get_milestone, mcp__claude_ai_Linear__save_milestone, mcp__claude_ai_Linear__list_milestones, mcp__claude_ai_Linear__get_team, mcp__claude_ai_Linear__list_teams, mcp__claude_ai_Linear__get_issue_status, mcp__claude_ai_Linear__list_issue_statuses, mcp__claude_ai_Linear__list_cycles, mcp__claude_ai_Linear__list_issue_labels, mcp__claude_ai_Linear__create_issue_label
 ---
 
 # Linear Work Management
@@ -43,10 +43,24 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    section: its next-write convention for a write to an existing entity, or its creation-write
    exception for one being created).
 
-The `mcp__workmanagement-kit__linear_read`/`linear_write` tools in this file's own `allowed-tools`
-have no backing MCP server configuration yet — that's pending Foundational Setup; see the plugin
-README's Status section. This skill's design is otherwise complete and ready to wire up once that
-setup lands.
+This file's own `allowed-tools` names the real, currently-installed Linear connector's tool surface
+(`mcp__claude_ai_Linear__*`) directly — resolved during Foundational Setup, see the plugin README's
+Status section. This grant is coupled to this specific connector's tool names — a future
+installation using a different Linear MCP connector would need this list re-resolved against that
+connector's own tool surface, not assumed portable.
+
+**Known connector gap — Goal and Roadmap have no direct tool backing.** The real connector exposes
+Issue (`get_issue`/`save_issue`/`list_issues`), Project (`get_project`/`save_project`/
+`list_projects`), and Milestone (`get_milestone`/`save_milestone`/`list_milestones`) as real,
+queryable entities. Resolving scope and team-configured status (see Entity Model's "read the team's
+actual configured statuses" rule) uses `get_team`/`list_teams` and `get_issue_status`/
+`list_issue_statuses`; the Issue field table's `cycle` and `labels` fields use `list_cycles` and
+`list_issue_labels`/`create_issue_label` respectively. This connector has no equivalent tool for
+Goal or Roadmap (`references/linear-entity-fields.md`'s other two entity types) — there is no
+`get_goal`/`save_goal` or `get_roadmap`/`save_roadmap` on its tool surface today. Until that gap is
+resolved (a Linear API/connector limitation, not something this skill's own design can work around),
+a request to create or change a Goal or Roadmap is a structured handoff — state the gap explicitly
+rather than attempting a substitute write through Project/Issue.
 
 ## Why this exists
 

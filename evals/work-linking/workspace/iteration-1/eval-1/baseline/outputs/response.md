@@ -4,7 +4,7 @@
 https://app.notion.com/p/3ccce0610b0c8187b6e0db08a5ee6a0a
 
 **Linear issue it became:** AND-5, "Add CSV export to transition history"
-https://linear.app/andrehahm/issue/AND-5/add-csv-export-to-transition-history
+https://linear.app/example-workspace/issue/AND-5/add-csv-export-to-transition-history
 
 ## Why AND-5 (and not AND-6)
 
@@ -28,7 +28,7 @@ If AND-6 was intentionally meant to be the target instead, let me know and I'll 
 2. Searched Linear for matching issues ("export transition history CSV") and pulled full details
    for both AND-5 and AND-6 to determine which one is the real destination.
 3. Updated the Notion page's "Status" line to reference AND-5 by name and link:
-   `Idea — scoped into Linear: [AND-5 · Add CSV export to transition history](https://linear.app/andrehahm/issue/AND-5/add-csv-export-to-transition-history)`
+   `Idea — scoped into Linear: [AND-5 · Add CSV export to transition history](https://linear.app/example-workspace/issue/AND-5/add-csv-export-to-transition-history)`
 4. Added a link attachment on Linear issue AND-5 pointing back to the Notion page
    ("Notion idea: Export Transition History as CSV").
 

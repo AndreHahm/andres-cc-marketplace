@@ -24,8 +24,8 @@ Before drafting new structure, I checked Linear per the skill's "Adoption is not
 found a matching issue already on file:
 
 **AND-5 — "Add CSV export to transition history"**
-(`https://linear.app/andrehahm/issue/AND-5/add-csv-export-to-transition-history`)
-Team: AndreHahm · Status: Backlog · Label: Feature · No existing attachments/links to Notion.
+(`https://linear.app/example-workspace/issue/AND-5/add-csv-export-to-transition-history`)
+Team: ExampleTeam · Status: Backlog · Label: Feature · No existing attachments/links to Notion.
 
 This is the same idea (CSV export of transition history), so per the mapping reference (an Idea
 typically maps to a single Issue), the correct action is to **adopt AND-5, not create a duplicate

@@ -137,6 +137,18 @@ only case that may honor this file's overrides; tracked (exit 0) or unverifiable
 must fall back to the shipped `unconfigured` defaults, the same fail-closed discipline
 `git-kit`'s own `commit` skill uses for its trust check, never a two-way pass/fail collapse.
 
+**Redact real identifiers before persisting live-run output to a tracked location.** Once this
+file is activated for a real installation, its resolved workspace/organization/team/database IDs
+and any workspace-specific URL (e.g. `linear.app/<workspace-slug>/...`) are real, live-account
+identifiers — not credentials, but real enough to identify and locate the account. Any eval output,
+`.claude/output/` artifact, or other tracked file that narrates a live-connector run must have these
+values replaced with an obvious placeholder (e.g. `<redacted-team-id>`, `example-workspace`) before
+being committed — never persisted verbatim just because the run happened to be real. Found live: a
+prior session's `evals/linear-work-management/`, `evals/idea-to-implementation/`, and
+`evals/work-linking/` output files persisted this repo's own real Linear team ID, workspace slug,
+and account display name verbatim; redacted during `finalize-setup-connectivity.md`'s own security
+review (GitHub issue #251).
+
 ## Transition Contract
 
 The shape every skill's "record the resulting transition" step must produce for **a single write to

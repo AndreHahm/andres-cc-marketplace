@@ -41,9 +41,9 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
   workflow uses to submit content for Notion/Linear storage or action, under the same live
   approval gate as a direct user request.
 - **`work-transition-reviewer`** and **`work-intake-classifier`** — read-only Codex reviewer
-  personas. The standalone path (via the `.claude/agents` → `.codex/agents` export for direct
-  Codex CLI use) is available now; the live path via `codex-kit`'s `codex-review-bridge` requires
-  this plugin's own bridge-caller script, not yet built (see Status).
+  personas. Both the standalone path (via the `.claude/agents` → `.codex/agents` export for direct
+  Codex CLI use) and the live path (via this plugin's own `scripts/bridge_caller.py`, dispatching
+  through `codex-kit`'s `codex-review-bridge`) are built and live (see Status).
 
 This plugin depends on `codex-kit` for the live Codex review path.
 
@@ -51,9 +51,9 @@ This plugin depends on `codex-kit` for the live Codex review path.
 
 Install from this marketplace the same way as any other plugin in this repository (see the
 repository's own installation instructions). `codex-kit` must also be installed for the live
-Codex review path to function; without it, a review must be disclosed as unavailable rather than
-silently skipped — this is a requirement on the not-yet-built bridge-caller script (see Status),
-not yet an implemented behavior of this plugin today.
+Codex review path to function; without it (or on a Codex dispatch failure), `scripts/bridge_caller.py`
+returns the bridge's own typed failure rather than silently skipping the review — see Status for
+the script's current known reliability caveat on Windows.
 
 ## Status
 
@@ -63,15 +63,17 @@ Setup steps described in this plugin's design documents to be completed (connect
 workspace/team scoping, test scopes) before first live use.
 
 Items still open before this plugin is fully live:
-- **Two of the four foundation contracts ship as schemas with safe defaults, not yet live.** The
-  shared host profile (`host-profile.json`) and versioned configuration
-  (`versioned-configuration.json`) ship at the plugin root with every operation defaulting to
-  `unconfigured`/`null`, activated via `.claude/workmanagement-kit.local.json` during Foundational
-  Setup (connector installation, workspace/team scoping, real stable IDs) — until then, no skill's
-  write path may proceed on the assumption that a sanctioning check actually passed. The other two —
-  the transition contract and the disposition record, both documented in `FOUNDATION_CONTRACTS.md`
-  — are per-record write shapes, not standalone files with defaults; they become live the same
-  moment the host profile above does, since every write they describe already goes through that
+- **The shipped host profile and versioned configuration still ship as schemas with safe
+  defaults, unconfigured, by design.** `host-profile.json` and `versioned-configuration.json` at
+  the plugin root always default every operation to `unconfigured`/`null` — a real installation
+  activates them via its own gitignored `.claude/workmanagement-kit.local.json`, never by editing
+  the shipped files. This repository's own installation completed that activation live during
+  Foundational Setup (`.draft/prompts/workmanagement-kit/_done/foundation-setup-wave1.md`): all
+  four `notion.read`/`notion.write`/`linear.read`/`linear.write` operations are `verified` in this
+  repo's own local override, with real resolved Notion workspace/database IDs and a real Linear
+  organization/team ID. The transition contract and disposition record (both documented in
+  `FOUNDATION_CONTRACTS.md`) are per-record write shapes, not standalone files — they became live
+  the same moment the host profile did, since every write they describe already goes through that
   same sanctioning check.
   `plugin-integration-intake`'s own JSON Schema
   (`skills/plugin-integration-intake/assets/intake-payload.schema.json`, distinct from these four
@@ -81,10 +83,19 @@ Items still open before this plugin is fully live:
   `plugin-integration-intake`'s own step 2 procedure (the model reasoning through the schema's
   rules directly) or an ad-hoc check like `jsonschema` run by hand; see `intake-payload-schema.md`
   for what the schema defines and deliberately does not validate.
-- The Codex bridge-caller script that dispatches `work-transition-reviewer`/
-  `work-intake-classifier` live is not yet built; both agents already work standalone via the
-  `.codex/agents` export. Once built, it must disclose a Codex-unavailable review as unavailable
-  rather than silently skipping it.
+- **The Codex bridge-caller script (`scripts/bridge_caller.py`) that dispatches
+  `work-transition-reviewer`/`work-intake-classifier` live is built and has run live, for real,
+  against both agents** — see each agent's own body for its exact invocation. Known reliability
+  caveat: on Windows, `codex exec --sandbox read-only` (what `codex-review-bridge` always uses) is
+  intermittently flaky — one real dispatch during this script's own validation returned a
+  `Windows error 1920` filesystem-access failure that a retry of the identical call did not
+  reproduce. The script surfaces this as `bridge-invoke.mjs`'s own typed failure rather than
+  silently skipping the review; a caller invoking it on Windows should be prepared to retry once
+  before treating a failure as final. `linear-work-management`'s own SKILL.md separately documents
+  a **connector-coverage gap**, found while wiring this script: the real Linear connector exposes
+  Issue/Project/Milestone as real entities but has no `get_goal`/`save_goal` or
+  `get_roadmap`/`save_roadmap` tool — Goal and Roadmap (two of `linear-entity-fields.md`'s five
+  entity types) have no direct write path today.
 - `plugin-integration-intake`'s trust-boundary gate had its first `security-reviewer` pass during
   this plugin's `plugin-lifecycle-downstream` QA run (2026-08-30); the Critical and Major findings
   from that pass are fixed in that skill's own file. Re-run the pass again before this gate is

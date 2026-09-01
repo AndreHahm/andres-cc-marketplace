@@ -18,7 +18,7 @@ idea-to-issue pair rather than guessing.
   prioritized or scoped.*
 
 - **Linear Issue:** `AND-6` — "Export Transition History as CSV"
-  `https://linear.app/andrehahm/issue/AND-6/export-transition-history-as-csv`
+  `https://linear.app/example-workspace/issue/AND-6/export-transition-history-as-csv`
   Status: Backlog. Its description explicitly states: *"Originally captured in Notion:
   [https://app.notion.com/p/3ccce0610b0c8187b6e0db08a5ee6a0a]"* — the exact same page found above.
 

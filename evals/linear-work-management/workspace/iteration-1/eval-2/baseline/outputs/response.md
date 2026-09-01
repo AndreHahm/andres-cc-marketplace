@@ -3,8 +3,8 @@
 I checked your connected Linear workspace and could not find a project matching "Q3 roadmap."
 
 **What I checked:**
-- Connected workspace: `andrehahm` (https://linear.app/andrehahm)
-- Team found: `AndreHahm` (1 team, created 2026-04-09)
+- Connected workspace: `example-workspace` (https://linear.app/example-workspace)
+- Team found: `ExampleTeam` (1 team, created 2026-04-09)
 - Searched projects with query `"Q3 roadmap"` — 0 results
 - Searched projects with query `"roadmap"` — 0 results
 - Listed all projects in the workspace with no filter — 0 results
@@ -15,7 +15,7 @@ I checked your connected Linear workspace and could not find a project matching 
 3. It's tracked elsewhere (e.g., a different tool, or as issues/a document rather than a formal Linear "Project").
 
 **Suggested next steps:**
-- Confirm you're connected to the correct Linear workspace (only `andrehahm` is currently connected).
+- Confirm you're connected to the correct Linear workspace (only `example-workspace` is currently connected).
 - If the project has a different name (e.g., "Q3 2026 Roadmap," "Roadmap Q3," a codename), let me know and I can search again.
 - If it should exist, it may need to be created in Linear first.
 

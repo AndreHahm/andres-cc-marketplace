@@ -52,10 +52,10 @@ or removed after preview) needs a fresh approval, not an extension of the old on
 3. Present the full draft for approval — concise context and stable links only, never the source
    record's full content mirrored into Linear.
 4. Optional: for a large or ambiguous hierarchy, the plugin's shared Codex bridge-caller component
-   may dispatch `work-transition-reviewer` (read-only) to review the proposed transition before
-   finalization — that dispatch mechanism belongs to the plugin's shared infrastructure (not yet
-   built in this Wave 1 scaffold), not a tool this skill invokes itself; the promotion proceeds
-   without it when unavailable.
+   (`scripts/bridge_caller.py`, live) may dispatch `work-transition-reviewer` (read-only) to review
+   the proposed transition before finalization — that dispatch mechanism belongs to the plugin's
+   shared infrastructure, not a tool this skill invokes itself; the promotion proceeds without it
+   when unavailable.
 5. On approval (via `AskUserQuestion`), create/adopt the Linear hierarchy via
    `linear-work-management`, one record at a time, in dependency order (a Milestone before the
    Issues under it, etc.) — each write records its own transition per

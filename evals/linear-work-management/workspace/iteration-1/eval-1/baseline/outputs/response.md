@@ -3,16 +3,16 @@ Create a Linear issue for adding CSV export to the transition history feature.
 
 # What I did
 
-1. Listed Linear teams — found a single team, **AndreHahm** (id `a7270da5-1f7b-4215-88fa-5ea27341a021`).
+1. Listed Linear teams — found a single team, **ExampleTeam** (id `<redacted-team-id>`).
 2. Searched existing issues for "transition history" — no matches. The workspace only contains Linear's default onboarding issues (AND-1 through AND-4), so there was no existing "transition history" epic/project to attach this to or prior context to reuse.
 3. Checked available labels — `Bug`, `Feature`, `Improvement` — and chose `Feature`.
 4. Created the issue via `save_issue`.
 
 # Result
 
-**Issue created: [AND-5 — Add CSV export to transition history](https://linear.app/andrehahm/issue/AND-5/add-csv-export-to-transition-history)**
+**Issue created: [AND-5 — Add CSV export to transition history](https://linear.app/example-workspace/issue/AND-5/add-csv-export-to-transition-history)**
 
-- Team: AndreHahm
+- Team: ExampleTeam
 - Label: Feature
 - Status: Backlog
 - Priority: No priority (not specified in the request)
