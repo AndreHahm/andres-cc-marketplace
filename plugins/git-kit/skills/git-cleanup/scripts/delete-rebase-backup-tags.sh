@@ -34,8 +34,84 @@ default_branch=$(git symbolic-ref refs/remotes/origin/HEAD \
   2>/dev/null | sed 's@^refs/remotes/origin/@@')
 default_branch="${default_branch:-main}"
 
+# Patch-id (content) index of every commit on $default_branch, built lazily
+# on first use and cached for the rest of this script run (a fresh process
+# per invocation, so this never crosses the --list / delete TOCTOU boundary
+# described below). A rebase-then-merge sequence rewrites every commit's SHA
+# but preserves each commit's own diff content, so `git merge-base
+# --is-ancestor` (object-identity based) alone reports "not reachable" even
+# when a tag's entire history genuinely landed on $default_branch via
+# rebase -- live-verified against this repo's own PR #269
+# (feat/merge-pr-conflict-checks-rebase-backup-20260901-064237): all 6
+# commits unique to the tag had an exact patch-id match on main, despite
+# every one having a different SHA post-rebase. Same two-signal approach
+# (identity first, content fallback) already reviewed and shipped in
+# remap-handoff-shas.py's own patch-id index.
+#
+# `default_branch_patchids` must be called bare (never as `$(...)`) --
+# command substitution forks a subshell, and an assignment to
+# $main_patchid_index made inside that subshell is discarded when it exits,
+# silently defeating the cache on every call (found by security-reviewer,
+# PR #269 follow-up; live-verified: this bug alone took the 22-tag --list
+# run from an expected ~2s to 80s, rebuilding the full-history index once
+# per tag instead of once per script run).
+#
+# `--no-ext-diff --no-textconv` on both the index build and the per-commit
+# check below: without them, a repo-configured `diff.external` driver or a
+# `.gitattributes` textconv filter could substitute a lossy rendering for
+# real content on either side of a comparison, letting two genuinely
+# different blobs render identically and falsely match (security-reviewer,
+# M2).
+#
+# This index build keeps `git log -p`'s default pretty format (commit
+# header + full message + diff) rather than a message-suppressed one --
+# `--format=''` was tried and reverted: `git patch-id` splits a multi-commit
+# stream into per-commit patches using the "commit <sha>" header line that
+# format produces, and suppressing it collapses the entire branch history
+# into one giant patch-id instead of one per commit (live-verified: the
+# 667-commit index came back as a single id). The commit-message content
+# this format includes is not a live risk here regardless -- see the
+# per-commit check below, which avoids it by construction.
+main_patchid_index=""
+
+default_branch_patchids() {
+  if [ -z "$main_patchid_index" ]; then
+    main_patchid_index=$(git log -p --no-ext-diff --no-textconv \
+      "$default_branch" -- 2>/dev/null \
+      | git patch-id --stable | awk '{print $1}' | sort -u)
+  fi
+}
+
+# Content-based fallback for is_tag_safe_to_delete below. Requires every
+# commit unique to the tag (since its own merge-base with $default_branch)
+# to have a content-identical (patch-id) match somewhere in
+# $default_branch's full history -- a single unmatched commit keeps the tag
+# flagged unsafe, since it may be the only remaining copy of that one
+# commit's changes.
+is_tag_content_reachable() {
+  local tag="$1"
+  local mb
+  mb=$(git merge-base -- "$tag" "$default_branch" 2>/dev/null) || return 1
+  local tag_commits
+  tag_commits=$(git rev-list "$mb..$tag" 2>/dev/null)
+  [ -z "$tag_commits" ] && return 1
+  default_branch_patchids
+  [ -z "$main_patchid_index" ] && return 1
+  local commit pid
+  while IFS= read -r commit; do
+    [ -z "$commit" ] && continue
+    pid=$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$commit" \
+      | git patch-id --stable | awk '{print $1}')
+    if [ -z "$pid" ] || ! printf '%s\n' "$main_patchid_index" | grep -qxF "$pid"; then
+      return 1
+    fi
+  done <<< "$tag_commits"
+  return 0
+}
+
 # Single source of truth for the safe-to-delete predicate (branch gone or
-# merged AND the tag's own commit reachable from the default branch) -- used
+# merged AND the tag's own commit reachable from the default branch, by
+# identity or -- per is_tag_content_reachable above -- by content) -- used
 # both by --list (to build the candidate snapshot) and, separately, by the
 # delete loop below (to re-verify each tag immediately before deleting it).
 # Re-checking here rather than trusting the snapshot's mere presence closes a
@@ -59,7 +135,10 @@ is_tag_safe_to_delete() {
       branch_gone=true
     fi
     if $branch_gone || $branch_merged; then
-      git merge-base --is-ancestor "$tag" "$default_branch" 2>/dev/null
+      if git merge-base --is-ancestor "$tag" "$default_branch" 2>/dev/null; then
+        return 0
+      fi
+      is_tag_content_reachable "$tag"
       return $?
     fi
   fi
