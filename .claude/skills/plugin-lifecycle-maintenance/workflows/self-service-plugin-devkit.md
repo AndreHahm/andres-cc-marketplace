@@ -150,10 +150,13 @@ Used by Service 2 (self-review) and Service 4 (self-evaluation) — both need th
    recommend Scoped; Full is the explicit, cost-disclosed opt-in R26 requires. If no
    historical estimate exists for a given agent, state that plainly rather than
    fabricating a number.
-5. **Dispatch only the in-scope set**, batched sensibly — a reviewer agent that already
-   accepts a component *set* as its target (e.g. `consistency-reviewer`,
-   `dependency-reviewer`, `authority-reviewer`) gets one dispatch for the whole scoped
-   set, not one dispatch per component.
+5. **Dispatch only the in-scope set**, batched sensibly. This means different things by
+   mode: a reviewer run in **Full review** mode against a named component set gets one
+   dispatch for the whole set, not one per component. A reviewer whose Delta mode is
+   scoped to a single named item (`consistency-reviewer`, `dependency-reviewer`,
+   `authority-reviewer` — see Service 2's own wording above) instead gets one dispatch
+   per qualifying item the scope actually contains — never a single call handed the
+   whole set at once, which none of these three Delta modes accept.
 6. **Record actual usage afterward** — `agent-cost-tracker.py record <agent-name>
    <tokens> <duration_ms>` per completed dispatch, best-effort (per
    `plugin-rulebook/references/overhead-and-cost-rules.md`'s own convention — no hook can
