@@ -30,6 +30,9 @@ For a single component, dispatch in parallel:
 - `dependency-reviewer` — Full review, scoped to exactly this one component; use its Delta
   mode instead when the caller names exactly one new `Skill()`/`Agent()` edge just added, per
   its own Invocation Modes
+- `authority-reviewer` — Full review, scoped to exactly this one component; use its Delta
+  mode instead when the caller names exactly one specific precedence/authority claim just
+  added or changed, per its own Invocation Modes
 - `scripts-reviewer` — only if `scripts/` exists for the target
 - `hook-reviewer` — only if the target has hooks (a hook component, or a skill/agent
   declaring `hooks:` frontmatter)
@@ -44,6 +47,8 @@ run once across the whole set (not once per component):
 - `consistency-reviewer` across all components → drift/duplication findings
 - `dependency-reviewer` in whole-plugin mode (Full review, no named subset) → the graph-wide
   cycle/bidirectional/broken-target findings a per-component scoped call can't see
+- `authority-reviewer` in whole-plugin mode (Full review, no named subset) → the claim-graph-
+  wide contradiction/circularity/broken-target findings a per-component scoped call can't see
 - `plugin-validator` in its default Full-review mode → structural/manifest findings
 
 ## Scoped Mode
@@ -66,6 +71,9 @@ span more than one plugin (e.g. a `changed`/`named` scope touching both `plugin-
    - `dependency-reviewer` — Full review, named subset = the full cross-plugin component
      list (the graph-wide cycle/bidirectional/broken-target check, bounded to exactly this
      scope rather than an unbounded whole-plugin sweep)
+   - `authority-reviewer` — Full review, named subset = the full cross-plugin component list
+     (the claim-graph-wide contradiction/circularity/broken-target check, bounded to exactly
+     this scope rather than an unbounded whole-plugin sweep)
 3. **`plugin-validator`, once per distinct plugin touched.** `plugin-validator` validates one
    plugin's manifest and directory structure at a time — it has no cross-plugin mode. Group
    the component list by owning plugin (the `plugins/<name>/` path segment each component

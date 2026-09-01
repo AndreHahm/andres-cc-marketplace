@@ -88,9 +88,9 @@ below alongside `plugin-auditor`'s output, and any that remain blocking flow int
 already-gated Fix & Re-audit procedure like any other audit finding, never fixed inline
 here. On no, or when no in-scope skill has eval/smoke-test assets, proceed directly — this
 never runs by default. Then dispatch `plugin-auditor` over the declared scope — it
-dispatches `dependency-reviewer`, `consistency-reviewer`, `security-reviewer`,
-`plugin-validator` (whole-plugin), `plugin-rulebook-checker` (Structured output mode),
-`activation-reviewer`, `completeness-reviewer`, the type-matched `*-reviewer`, and
+dispatches `dependency-reviewer`, `authority-reviewer`, `consistency-reviewer`,
+`security-reviewer`, `plugin-validator` (whole-plugin), `plugin-rulebook-checker` (Structured
+output mode), `activation-reviewer`, `completeness-reviewer`, the type-matched `*-reviewer`, and
 `scripts-reviewer`/`hook-reviewer` where applicable, reusing Phase 3's
 `plugin-rulebook-checker`/`plugin-validator` results for scope already covered there instead
 of re-dispatching. Attribute findings — `plugin-auditor`'s and the Eval Pre-Check's FAILs

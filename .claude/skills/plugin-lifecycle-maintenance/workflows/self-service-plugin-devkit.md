@@ -64,8 +64,8 @@ Uses the "Shared: Cost-Gated Dispatch" procedure below. Target set: every review
 `skill-reviewer` + `skilldir-reviewer` if its references/scripts also changed; a changed
 agent → `subagent-reviewer`; a changed hook → `hook-reviewer`; a changed rule →
 `rule-reviewer`; cross-cutting agents — `consistency-reviewer`, `completeness-reviewer`,
-`dependency-reviewer`, `external-references-reviewer`, `permission-reviewer`,
-`security-reviewer` — in their Delta mode, scoped to the changed set). "Scoped" default =
+`dependency-reviewer`, `authority-reviewer`, `external-references-reviewer`,
+`permission-reviewer`, `security-reviewer` — in their Delta mode, scoped to the changed set). "Scoped" default =
 components changed since the last self-service run marker, or a caller-given git
 ref/date; "Full" = every plugin-devkit component × every applicable reviewer, always the
 explicit opt-in path. **Before a Full sweep enumerates its target set, exclude any path
@@ -75,7 +75,7 @@ sweep and bill for the intentionally-unfinished scaffolding under `.temp/`/`.dra
 alongside real components.
 
 **Overlap with Service 3 (Self-Validation):** this service's cross-cutting agent set
-(`dependency-reviewer`, `security-reviewer`, `consistency-reviewer`,
+(`dependency-reviewer`, `authority-reviewer`, `security-reviewer`, `consistency-reviewer`,
 `completeness-reviewer`, `hook-reviewer`, `skilldir-reviewer`, and the type-matched
 reviewer) substantially overlaps Service 3's own dispatch list (via `plugin-lifecycle-
 downstream`'s Phase 3/Phase 5). Running both back-to-back in the same
@@ -148,8 +148,8 @@ Used by Service 2 (self-review) and Service 4 (self-evaluation) — both need th
    fabricating a number.
 5. **Dispatch only the in-scope set**, batched sensibly — a reviewer agent that already
    accepts a component *set* as its target (e.g. `consistency-reviewer`,
-   `dependency-reviewer`) gets one dispatch for the whole scoped set, not one dispatch
-   per component.
+   `dependency-reviewer`, `authority-reviewer`) gets one dispatch for the whole scoped
+   set, not one dispatch per component.
 6. **Record actual usage afterward** — `agent-cost-tracker.py record <agent-name>
    <tokens> <duration_ms>` per completed dispatch, best-effort (per
    `plugin-rulebook/references/overhead-and-cost-rules.md`'s own convention — no hook can

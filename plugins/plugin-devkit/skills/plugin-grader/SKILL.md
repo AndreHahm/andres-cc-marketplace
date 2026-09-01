@@ -100,9 +100,9 @@ first — e.g. "Dispatching plugin-auditor for evidence gathering — this typic
 minutes..." — since it runs silently with no built-in progress streaming. `plugin-auditor` owns the
 actual reviewer fan-out and component-mode/plugin-mode dispatch rules (see
 `plugin-auditor/references/dispatch-table.md` — the type-matched `*-reviewer`, `completeness-reviewer`,
-`activation-reviewer`, `security-reviewer`, `dependency-reviewer`, `scripts-reviewer`,
-`hook-reviewer`, `plugin-rulebook-checker`, plus `consistency-reviewer`/`plugin-validator` in plugin
-mode) and returns a normalized evidence bundle per
+`activation-reviewer`, `security-reviewer`, `dependency-reviewer`, `authority-reviewer`,
+`scripts-reviewer`, `hook-reviewer`, `plugin-rulebook-checker`, plus
+`consistency-reviewer`/`plugin-validator` in plugin mode) and returns a normalized evidence bundle per
 `plugin-rulebook/references/evidence-schema.md`. If the caller (typically
 `plugin-lifecycle-downstream`, reusing its own Phase 3 Validate results) supplies pre-gathered
 `plugin-rulebook-checker`/`plugin-validator` findings for some or all of the target(s), pass those
