@@ -4,7 +4,7 @@ A comprehensive toolkit for developing Claude Code plugins — skills for buildi
 
 ## Overview
 
-`plugin-devkit` ships **40 skills**, **24 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
+`plugin-devkit` ships **40 skills**, **25 agents**, **19 commands**, and `PreToolUse`/`Stop`/`PostToolUse`/`PostToolUseFailure` hooks. Skills fall into six broad groups:
 
 | Group | Skills |
 |---|---|
@@ -102,7 +102,7 @@ cc --plugin-dir /path/to/plugin-devkit
 
 ## Agents
 
-Twenty-four specialized agents, seventeen of which are quality-gate reviewers cross-checked by `plugin-validator`:
+Twenty-five specialized agents, eighteen of which are quality-gate reviewers cross-checked by `plugin-validator`:
 
 | Agent | Purpose |
 |---|---|
@@ -125,6 +125,7 @@ Twenty-four specialized agents, seventeen of which are quality-gate reviewers cr
 | `dependency-reviewer` | Reviews the Skill()/Agent() call graph across components for circular/bidirectional dependencies and required-vs-optional classification |
 | `security-reviewer` | Audits a component for permission risk, prompt-injection surface, and PII/credential-leakage patterns beyond plugin-validator's basic check |
 | `permission-reviewer` | Computes a component's or plugin's effective permission by reconciling frontmatter against plugin-level settings.json/hook rules |
+| `authority-reviewer` | Reviews instruction precedence and conflict-authority claims across components — who wins when instructions conflict, circular/contradictory claims, broken cross-reference targets and one-sided canonical-source claims |
 | `agent-creator` | Generates new agent configurations from a described need |
 | `plugin-inspector` | Inspects a plugin or component and produces a structured capability portfolio |
 | `enhancement-suggestor` | Turns review/validation/comparison/test findings into a classified WHAT/WHY/HOW improvement plan |
