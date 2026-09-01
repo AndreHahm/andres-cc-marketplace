@@ -1,6 +1,6 @@
 # Test Scenarios
 
-Full 29-scenario test walkthrough for `plugin-grader`, extracted from `SKILL.md`'s own
+Full 31-scenario test walkthrough for `plugin-grader`, extracted from `SKILL.md`'s own
 `## Testing & Validation` section per `plugin-rulebook`'s R30 (content beyond R29's required
 trigger-example lists and pass-criteria checklist must move to `references/` or `evals.json`, not stay
 inline in `SKILL.md`).
@@ -21,9 +21,17 @@ attempt) an import that either couldn't succeed (a refusal has no score to impor
 `plugin-lifecycle-downstream` Phase 11's own no-plugin-mutation contract, plus a hardcoded
 `plugins/<name>/` path assumption that breaks for a target resolved outside this marketplace's own
 layout — fixed by excluding evidence-only mode from Step 8 entirely and resolving the plugin directory
-from Step 1's own resolution instead of a reconstructed string. See `evals/plugin-grader/evals.json`
-for scenarios 14, 14a-14k as structured eval entries (added in the same PR round) — not yet run through
-a full `skill-tester` baseline-vs-with_skill comparison pass.
+from Step 1's own resolution instead of a reconstructed string. Scenarios 14l-14m were added after a
+second Codex/Devin review round on the same PR found a real filename collision (a component sharing its
+own plugin's name would silently overwrite Step 6's combined report) and a real, pre-existing
+architectural gap (same-name-different-type components can silently lose a grade, since
+`references/output-schema.md`'s `components` shape is keyed by bare name only) — the collision was
+fixed by namespacing extracted files into their own subdirectory; the architectural gap is disclosed as
+a known limitation in Step 8's own text and tracked as
+[issue #274](https://github.com/AndreHahm/andres-cc-marketplace/issues/274) (too large for this PR's own
+scope). See `evals/plugin-grader/evals.json` for scenarios 14, 14a-14m
+as structured eval entries (added across both PR review rounds) — not yet run through a full
+`skill-tester` baseline-vs-with_skill comparison pass.
 
 1. **Single skill, clean** — grade a skill with no findings from any dispatched reviewer; confirm all 12 dimensions score 10 and `final_score` is 10.0 with no gates
 2. **Rule compliance gate** — grade a target with a known REQUIRED rule violation; confirm Gate A fires and `final_score` is capped at 6.0
@@ -54,3 +62,5 @@ a full `skill-tester` baseline-vs-with_skill comparison pass.
 14i. **Offer Inventory Import, evidence-only mode never runs** — invoke evidence-only mode (as `plugin-lifecycle-downstream`'s Phase 11 would) and produce a normal scored report; confirm Step 8 is skipped entirely — no existence check, no `AskUserQuestion`, no write, no narrative note about missing inventory — since Phase 11's own contract forbids modifying the plugin during that phase
 14j. **Offer Inventory Import, evidence-only refusal never reaches Step 8** — invoke evidence-only mode with missing/stale required evidence, producing a refusal-shaped report (no `final_score`/`graded_at`); confirm Step 8 is skipped for the same reason as 14i (mode exclusion), not because of a separate "is this report scored" check — there is no such check, since evidence-only mode never reaches this step at all
 14k. **Offer Inventory Import, target resolved outside the marketplace layout** — grade a component/plugin whose target resolves to a directory not under this repo's own `plugins/<name>/` (a path-resolved target per Step 1's own Usage section); confirm the existence check Globs the *actual resolved* plugin directory's `.claude-plugin/plugin-inventory.json`, not a `plugins/<name>/`-shaped string reconstructed from the target's bare name — a real inventory file at the resolved location must be found, not silently reported as missing
+14l. **Offer Inventory Import, plugin mode, component name equals plugin name** — grade a plugin whose own name matches one of its graded components' names exactly (e.g. plugin `foo` has a component also named `foo`); confirm the extracted per-component report is written to the `<target>-<timestamp>-components/` subdirectory, never a flat `<component-name>-<timestamp>.json` file that would collide byte-for-byte with Step 6's own combined-report filename — and confirm the combined report at `.claude/output/plugin-grader/<target>-<timestamp>.json` is still intact and readable when the marketplace rollup sub-step runs afterward
+14m. **Offer Inventory Import, plugin mode, same-name-different-type components** — grade a plugin with a skill and a command both named `docs`; confirm Step 8's own text discloses this as a known, undetectable-from-this-step limitation (Step 6's `components` object can only hold one report per bare name) rather than silently claiming both were imported when only one ever reached the written report
