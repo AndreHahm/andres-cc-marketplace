@@ -94,21 +94,30 @@ comm -23 \
 # message-suppressed one (`--format=''` breaks patch-id's per-commit
 # boundary detection), while the per-commit check below still avoids
 # piping the commit message into patch-id at all, by construction.
-main_patchid_index=""
+#
+# `main_patchid_log` keeps the full `git patch-id` output, not just a
+# deduped set of ids -- patch-id alone is a pre-filter, not the final
+# verdict, since it's documented to ignore whitespace (Codex fresh-eyes
+# finding F1, cross-model-review, PR #269 follow-up; see
+# delete-rebase-backup-tags.sh's identical comment for the live-verified
+# detail and why the exact-match fallback below doesn't reject the genuine
+# rebase-merge case).
+main_patchid_log=""
 
 default_branch_patchids() {
-  if [ -z "$main_patchid_index" ]; then
-    main_patchid_index=$(git log -p --no-ext-diff --no-textconv \
+  if [ -z "$main_patchid_log" ]; then
+    main_patchid_log=$(git log -p --no-ext-diff --no-textconv \
       "$default_branch" -- 2>/dev/null \
-      | git patch-id --stable | awk '{print $1}' | sort -u)
+      | git patch-id --stable)
   fi
 }
 
 # Requires every commit unique to the tag (since its own merge-base with
-# $default_branch) to have a content-identical (patch-id) match somewhere in
-# $default_branch's full history -- a single unmatched commit keeps the tag
-# flagged unreachable, since it may be the only remaining copy of that one
-# commit's changes.
+# $default_branch) to have an exact, byte-for-byte diff-text match against
+# some commit on $default_branch's full history -- a single unmatched
+# commit keeps the tag flagged unreachable, since it may be the only
+# remaining copy of that one commit's changes. Patch-id narrows the
+# candidate set cheaply; it is never the acceptance criterion by itself.
 is_tag_content_reachable() {
   local tag="$1"
   local mb
@@ -117,15 +126,24 @@ is_tag_content_reachable() {
   tag_commits=$(git rev-list "$mb..$tag" 2>/dev/null)
   [ -z "$tag_commits" ] && return 1
   default_branch_patchids
-  [ -z "$main_patchid_index" ] && return 1
-  local commit pid
+  [ -z "$main_patchid_log" ] && return 1
+  local commit tag_diff pid candidates cand exact_match
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
-    pid=$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$commit" \
-      | git patch-id --stable | awk '{print $1}')
-    if [ -z "$pid" ] || ! printf '%s\n' "$main_patchid_index" | grep -qxF "$pid"; then
-      return 1
-    fi
+    tag_diff=$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$commit")
+    pid=$(printf '%s\n' "$tag_diff" | git patch-id --stable | awk '{print $1}')
+    [ -z "$pid" ] && return 1
+    candidates=$(printf '%s\n' "$main_patchid_log" | awk -v p="$pid" '$1 == p {print $2}')
+    [ -z "$candidates" ] && return 1
+    exact_match=false
+    while IFS= read -r cand; do
+      [ -z "$cand" ] && continue
+      if [ "$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$cand")" = "$tag_diff" ]; then
+        exact_match=true
+        break
+      fi
+    done <<< "$candidates"
+    $exact_match || return 1
   done <<< "$tag_commits"
   return 0
 }

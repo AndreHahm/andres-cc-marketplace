@@ -72,22 +72,42 @@ default_branch="${default_branch:-main}"
 # 667-commit index came back as a single id). The commit-message content
 # this format includes is not a live risk here regardless -- see the
 # per-commit check below, which avoids it by construction.
-main_patchid_index=""
+#
+# `main_patchid_log` keeps the full `git patch-id` output ("<patch-id>
+# <commit-sha>" per line), not just a deduped set of ids -- patch-id alone
+# is a pre-filter, not the final verdict. `git patch-id` is documented to
+# ignore whitespace when hashing, so two commits whose diffs differ ONLY in
+# whitespace can share a patch-id (live-verified: adding 2 vs. 4 leading
+# spaces to the same line produced identical patch-ids for genuinely
+# different diff bytes -- Codex fresh-eyes finding F1, cross-model-review,
+# PR #269 follow-up). Trusting patch-id equality alone would let a tag
+# whose real content differs from $default_branch only by whitespace be
+# misclassified as safe to delete. `is_tag_content_reachable` below uses
+# this log to narrow candidates by patch-id cheaply, then requires an exact
+# byte-for-byte diff-text match against at least one candidate before
+# accepting -- confirmed this doesn't reject the genuine rebase-merge case:
+# a rebase preserves file content, and git blob hashes are purely
+# content-addressed, so the "index <old>..<new>" line inside a rebased
+# commit's diff text stays byte-identical too (live-verified against this
+# repo's real PR #269 commit pair).
+main_patchid_log=""
 
 default_branch_patchids() {
-  if [ -z "$main_patchid_index" ]; then
-    main_patchid_index=$(git log -p --no-ext-diff --no-textconv \
+  if [ -z "$main_patchid_log" ]; then
+    main_patchid_log=$(git log -p --no-ext-diff --no-textconv \
       "$default_branch" -- 2>/dev/null \
-      | git patch-id --stable | awk '{print $1}' | sort -u)
+      | git patch-id --stable)
   fi
 }
 
 # Content-based fallback for is_tag_safe_to_delete below. Requires every
 # commit unique to the tag (since its own merge-base with $default_branch)
-# to have a content-identical (patch-id) match somewhere in
+# to have an exact, byte-for-byte diff-text match against some commit on
 # $default_branch's full history -- a single unmatched commit keeps the tag
 # flagged unsafe, since it may be the only remaining copy of that one
-# commit's changes.
+# commit's changes. Patch-id narrows the candidate set cheaply (typically to
+# zero or one commit); it is never the acceptance criterion by itself -- see
+# the comment above default_branch_patchids for why.
 is_tag_content_reachable() {
   local tag="$1"
   local mb
@@ -96,15 +116,24 @@ is_tag_content_reachable() {
   tag_commits=$(git rev-list "$mb..$tag" 2>/dev/null)
   [ -z "$tag_commits" ] && return 1
   default_branch_patchids
-  [ -z "$main_patchid_index" ] && return 1
-  local commit pid
+  [ -z "$main_patchid_log" ] && return 1
+  local commit tag_diff pid candidates cand exact_match
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
-    pid=$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$commit" \
-      | git patch-id --stable | awk '{print $1}')
-    if [ -z "$pid" ] || ! printf '%s\n' "$main_patchid_index" | grep -qxF "$pid"; then
-      return 1
-    fi
+    tag_diff=$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$commit")
+    pid=$(printf '%s\n' "$tag_diff" | git patch-id --stable | awk '{print $1}')
+    [ -z "$pid" ] && return 1
+    candidates=$(printf '%s\n' "$main_patchid_log" | awk -v p="$pid" '$1 == p {print $2}')
+    [ -z "$candidates" ] && return 1
+    exact_match=false
+    while IFS= read -r cand; do
+      [ -z "$cand" ] && continue
+      if [ "$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$cand")" = "$tag_diff" ]; then
+        exact_match=true
+        break
+      fi
+    done <<< "$candidates"
+    $exact_match || return 1
   done <<< "$tag_commits"
   return 0
 }
