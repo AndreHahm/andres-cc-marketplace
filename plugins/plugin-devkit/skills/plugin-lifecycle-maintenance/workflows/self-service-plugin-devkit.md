@@ -63,13 +63,16 @@ Uses the "Shared: Cost-Gated Dispatch" procedure below. Target set: every review
 (via `Agent`) whose domain matches a changed component's type (a changed `SKILL.md` →
 `skill-reviewer` + `skilldir-reviewer` if its references/scripts also changed; a changed
 agent → `subagent-reviewer`; a changed hook → `hook-reviewer`; a changed rule →
-`rule-reviewer`; cross-cutting agents — `consistency-reviewer`, `completeness-reviewer`,
-`dependency-reviewer`, `authority-reviewer`, `external-references-reviewer`,
-`permission-reviewer`, `security-reviewer` — each in its own Delta mode, dispatched once per
-qualifying changed edge/claim/section/reference the changed set contains, since every one of
-these agents' Delta mode is scoped to a single named item, not an arbitrary multi-component set;
-a component with no single such item to point at is covered by that reviewer's Full review
-instead, scoped to just that component). "Scoped" default =
+`rule-reviewer`; also dispatched once per changed component like these type-matched
+reviewers: `external-references-reviewer` and `security-reviewer`, whose Delta modes each
+batch every qualifying item a single component's diff contains into one call (named
+"reference(s)"/"lines/sections" respectively in their own frontmatter, not a single named
+item). The remaining cross-cutting agents — `consistency-reviewer`, `completeness-reviewer`,
+`dependency-reviewer`, `authority-reviewer`, `permission-reviewer` — have a Delta mode
+scoped to exactly one named item instead, so each gets one dispatch per qualifying changed
+edge/claim/section the changed set contains, not one dispatch per component; a component
+with no single such item to point at is covered by that reviewer's Full review instead,
+scoped to just that component. "Scoped" default =
 components changed since the last self-service run marker, or a caller-given git
 ref/date; "Full" = every plugin-devkit component × every applicable reviewer, always the
 explicit opt-in path. **Before a Full sweep enumerates its target set, exclude any path
@@ -146,18 +149,23 @@ Used by Service 2 (self-review) and Service 4 (self-evaluation) — both need th
    agent-cost-tracker.py estimate <agent-name>`, cached per name for this run (never
    re-shell per component instance).
 4. **Present the gate** — `AskUserQuestion`: "Scoped (N changed components, ~X tokens
-   est.) or Full (M components, ~Y tokens est., based on N prior observations)?" Always
-   recommend Scoped; Full is the explicit, cost-disclosed opt-in R26 requires. If no
+   est.) or Full (M components, ~Y tokens est., based on N prior observations)?" For the
+   five single-item Delta reviewers named in Step 5 below, count actual qualifying items
+   (edges/claims/sections), not components, when estimating their share of ~X/~Y — a
+   component with three qualifying claims dispatches that reviewer three times, not once.
+   Always recommend Scoped; Full is the explicit, cost-disclosed opt-in R26 requires. If no
    historical estimate exists for a given agent, state that plainly rather than
    fabricating a number.
 5. **Dispatch only the in-scope set**, batched sensibly. This means different things by
    mode: a reviewer run in **Full review** mode against a named component set gets one
-   dispatch for the whole set, not one per component. Every cross-cutting agent named in
-   Service 2 above (`consistency-reviewer`, `completeness-reviewer`, `dependency-reviewer`,
-   `authority-reviewer`, `external-references-reviewer`, `permission-reviewer`,
-   `security-reviewer`) has a Delta mode scoped to a single named item, not the whole set —
-   each instead gets one dispatch per qualifying item the scope actually contains, never a
-   single call handed the whole set at once.
+   dispatch for the whole set, not one per component. `external-references-reviewer` and
+   `security-reviewer` get one dispatch per changed component, same as any type-matched
+   reviewer, since their own Delta mode batches every qualifying item within a component's
+   diff into that one call. The remaining cross-cutting agents named in Service 2 above
+   (`consistency-reviewer`, `completeness-reviewer`, `dependency-reviewer`,
+   `authority-reviewer`, `permission-reviewer`) have a Delta mode scoped to exactly one
+   named item instead — each gets one dispatch per qualifying item the scope actually
+   contains, never a single call handed the whole set at once.
 6. **Record actual usage afterward** — `agent-cost-tracker.py record <agent-name>
    <tokens> <duration_ms>` per completed dispatch, best-effort (per
    `plugin-rulebook/references/overhead-and-cost-rules.md`'s own convention — no hook can
