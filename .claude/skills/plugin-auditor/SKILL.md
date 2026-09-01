@@ -3,8 +3,9 @@ name: plugin-auditor
 description: >-
   Dispatches this plugin's review agents (skilldir-reviewer, the type-matched
   *-reviewer, completeness-reviewer, activation-reviewer, security-reviewer,
-  dependency-reviewer, scripts-reviewer, hook-reviewer, plugin-rulebook-checker,
-  plus consistency-reviewer and plugin-validator in whole-plugin/scoped mode)
+  dependency-reviewer, authority-reviewer, scripts-reviewer, hook-reviewer,
+  plugin-rulebook-checker, plus consistency-reviewer and plugin-validator in
+  whole-plugin/scoped mode)
   against a single component, a whole plugin, or a declared multi-component
   scope that may span more than one plugin, and normalizes every finding
   into plugin-rulebook's shared evidence schema. Produces evidence only — no
@@ -138,7 +139,10 @@ outside this run.
 
 **Last dated run record:** 2026-08-27 — `scripts/smoke_test.py` (3/3 checks passing) and
 `evals/plugin-auditor/` (3 eval scenarios across 2 iterations, 18/18 assertions, 100% with_skill pass
-rate).
+rate). **2026-09-01** — `authority-reviewer` added to Component/Plugin/Scoped Mode in
+`references/dispatch-table.md`; `scripts/smoke_test.py` re-run (3/3 passing) and a manual-walkthrough
+`example-plugin` dry-run recorded at
+`.claude/output/plugin-auditor/example-plugin-2026-09-01T01-00-00Z.md`.
 
 1. **Component mode, clean target** — audit a skill with no findings from any dispatched
    reviewer; confirm the written report's `findings[]` is empty and every dispatched source is
@@ -151,8 +155,8 @@ rate).
    already supplied for the target; confirm no fresh `plugin-rulebook-checker` dispatch
    happens and the supplied findings are normalized and included as-is.
 4. **Plugin mode** — audit a small multi-component plugin; confirm `activation-reviewer`,
-   `consistency-reviewer`, `dependency-reviewer`, and `plugin-validator` each run exactly once
-   across the whole set, not once per component.
+   `consistency-reviewer`, `dependency-reviewer`, `authority-reviewer`, and `plugin-validator`
+   each run exactly once across the whole set, not once per component.
 5. **Findings evidence traces to the reviewer's own output** — dispatch this skill against a known
    target and confirm every normalized `Finding` cites a `source`-qualified `id` traceable back to
    that reviewer's own raw output — no invented or reworded evidence.
@@ -177,9 +181,10 @@ rate).
     confirm the `AskUserQuestion` gate fires before the first Codex dispatch attempted in the
     session and does not fire again before a second reviewer's dispatch in the same session.
 11. **Scoped mode, cross-plugin** — audit an explicit list of 2 small components from two
-    different plugins; confirm `activation-reviewer`, `consistency-reviewer`, and
-    `dependency-reviewer` each dispatch exactly once across the whole list (not once per
-    component, not once per plugin); confirm `plugin-validator` dispatches exactly twice
+    different plugins; confirm `activation-reviewer`, `consistency-reviewer`,
+    `dependency-reviewer`, and `authority-reviewer` each dispatch exactly once across the
+    whole list (not once per component, not once per plugin); confirm `plugin-validator`
+    dispatches exactly twice
     (once per distinct plugin, never once across the combined scope); confirm the written
     report's `findings[]` correctly attributes every finding to its actual owning component
     regardless of which plugin it lives in; confirm the report path uses the
@@ -222,8 +227,8 @@ rate).
 - [ ] A tracked `.claude/plugin-auditor.local.json` never overrides the repo-tracked backend
       default (`.claude/plugin-auditor.json`)
 - [ ] Scoped mode's whole-scope reviewers (`activation-reviewer`, `consistency-reviewer`,
-      `dependency-reviewer`) never dispatch once per component or once per plugin — always
-      exactly once across the full cross-plugin named list
+      `dependency-reviewer`, `authority-reviewer`) never dispatch once per component or once
+      per plugin — always exactly once across the full cross-plugin named list
 - [ ] Scoped mode never dispatches `plugin-validator` once across a multi-plugin scope —
       always once per distinct plugin actually touched by the component list
 - [ ] Step 4a's `check_evals.py` call only ever runs against the in-scope component's own
