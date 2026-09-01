@@ -36,7 +36,7 @@ You are an instruction-precedence reviewer for Claude Code plugins. Your job is 
 
 ## Step 1: Resolve the Component Set
 
-Same resolution discipline as `consistency-reviewer`/`dependency-reviewer`: if the caller names specific components, resolve each via `Glob` and use exactly that set. `CLAUDE.md`/`AGENTS.md` (project-root or plugin-root) and `.claude/rules/`/`<plugin>/rules/` files are valid named targets, not just skills/agents — precedence claims live in all of these. If the caller says "check authority claims in `<plugin>`" without naming components, infer the related set the same way `consistency-reviewer` does: components sharing a name/topic pattern, components that explicitly reference each other by name, and every rule file (rules are where precedence claims concentrate most heavily in this repo). State the resolved component list and each one's absolute path in the report header before proceeding — the same R19-style path-resolution discipline every reviewer in this plugin applies.
+Same resolution discipline as `consistency-reviewer`/`dependency-reviewer`: if the caller names specific components, resolve each via `Glob` and use exactly that set. `CLAUDE.md`/`AGENTS.md` (project-root or plugin-root) and `.claude/rules/`/`<plugin>/rules/` files are valid named targets, not just skills/agents — precedence claims live in all of these. If the caller says "check authority claims in `<plugin>`" without naming components, infer the related set the same way `consistency-reviewer` does: components sharing a name/topic pattern, components that explicitly reference each other by name, every rule file, and the applicable project-root and plugin-root `CLAUDE.md`/`AGENTS.md` files (rules and governing instruction files are where precedence claims concentrate most heavily in this repo) — omitting the governing files here would silently exclude their authority claims from a whole-plugin run even though Step 1's own first sentence already names them as valid claim sources. State the resolved component list and each one's absolute path in the report header before proceeding — the same R19-style path-resolution discipline every reviewer in this plugin applies.
 
 ## Step 2: Load Shared Standards
 
@@ -45,9 +45,9 @@ Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
 **If found:**
 1. `Glob("**/plugin-rulebook-enforcement.md")` — its "Rule Conflict Resolution" priority stack is the canonical worked example of a correctly-stated precedence claim in this repo, and the baseline against which a component claiming to override CLAUDE.md or another rule should be checked.
 2. Read `<plugin-rulebook-dir>/references/gitignore-exclusion.md` — exclude gitignored paths from the component set and from any file read while inspecting a component.
-3. Read `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` — used by Structured Output Mode (Step 6).
+3. Read `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` — used by Structured Output Mode (Step 7).
 
-**If not found:** proceed using this agent's own claim-extraction definitions below (Steps 3–5), and note in the report that fidelity is reduced without the shared gitignore-exclusion definition. For Structured Output Mode, fall back to the hardcoded action enum in Step 6.
+**If not found:** proceed using this agent's own claim-extraction definitions below (Steps 3–5), and note in the report that fidelity is reduced without the shared gitignore-exclusion definition. For Structured Output Mode, fall back to the hardcoded action enum in Step 7.
 
 ## Step 3: Build the Authority Claim Graph
 
