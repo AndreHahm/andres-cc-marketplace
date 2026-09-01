@@ -6,9 +6,11 @@
 codex-kit's codex-review-bridge (see plugins/codex-kit/skills/codex-review-bridge/SKILL.md).
 
 Reads the target agent's .md file, strips its YAML frontmatter, writes the body
-to a scratch instruction file outside --target-paths (the bridge's own
-containment check rejects a nested/equal path), then calls bridge-invoke.mjs
-and returns the parsed canonical envelope (or typed failure) as a dict.
+to a scratch instruction file outside the repository entirely (an OS temp
+directory -- --instruction-file is not repo-root-bound the way --target-paths
+is, and this guarantees no --target-paths value, however broad, can ever
+contain it), then calls bridge-invoke.mjs and returns the parsed canonical
+envelope (or typed failure) as a dict.
 
 Per GitHub issue #251 / plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md.
 """
@@ -18,6 +20,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 AGENTS = {"work-transition-reviewer", "work-intake-classifier"}
@@ -106,14 +109,6 @@ def dispatch(
         raise FileNotFoundError(agent_file)
     body = strip_frontmatter(agent_file.read_text(encoding="utf-8"))
 
-    # Scratch instruction file: gitignored (**/.temp/), inside the repo root
-    # (bridge-invoke.mjs's repo-root containment check requires this), and
-    # deliberately outside any realistic --target-paths (evidence files),
-    # never nested inside them. Path is computed and containment-checked
-    # BEFORE any write happens -- every check below must pass first.
-    scratch_dir = root / ".temp" / "workmanagement-kit-bridge"
-    instruction_file = scratch_dir / f"{dispatch_id}-{agent}-instruction.md"
-
     # A relative target path must resolve against `root`, not the process's
     # actual OS cwd -- Path.resolve() on a relative path resolves against
     # Path.cwd(), which only matches `root` by coincidence unless the caller
@@ -124,15 +119,24 @@ def dispatch(
     resolved_targets = [
         (Path(t) if Path(t).is_absolute() else root / t).resolve() for t in target_paths
     ]
-    instr_resolved = scratch_dir.resolve() / instruction_file.name
-    for tp in resolved_targets:
-        if instr_resolved == tp or instr_resolved in tp.parents or tp in instr_resolved.parents:
-            raise ValueError(
-                f"instruction file {instr_resolved} is nested in/equal to target path {tp} "
-                "-- codex-review-bridge's own containment check would reject this dispatch"
-            )
 
-    scratch_dir.mkdir(parents=True, exist_ok=True)
+    # Scratch instruction file: a fresh OS temp directory, deliberately
+    # OUTSIDE the repository entirely. An earlier version put this under
+    # `root/.temp/`, reasoning that bridge-invoke.mjs's repo-root containment
+    # check required it -- that reasoning was wrong: --instruction-file is
+    # explicitly NOT bound by that check (bridge-invoke.mjs's own comment:
+    # "instruction-file is deliberately NOT bound by the repo-root
+    # containment gate... plugin-auditor's documented Codex path writes the
+    # trusted reviewer instructions to the session scratchpad precisely
+    # because that directory must live OUTSIDE the repository root"). Being
+    # inside root meant a broad --target-paths entry (e.g. the repo root
+    # itself, ".") would always contain the scratch dir too, rejecting every
+    # such dispatch via the nested-instruction-file check that used to live
+    # here (found by Codex's PR #278 full review). A directory outside the
+    # repo entirely can never be contained by any --target-paths value, so
+    # that check is no longer needed at all.
+    scratch_dir = Path(tempfile.mkdtemp(prefix="workmanagement-kit-bridge-"))
+    instruction_file = scratch_dir / f"{dispatch_id}-{agent}-instruction.md"
     instruction_file.write_text(body, encoding="utf-8")
 
     # Everything from here on must run inside the try/finally below --
@@ -156,12 +160,16 @@ def dispatch(
         if not bridge_script.is_file():
             raise FileNotFoundError(bridge_script)
 
-        # bridge-invoke.mjs validates --target-paths/--instruction-file
-        # against ^[A-Za-z0-9._/-]+$ -- no backslash (Windows' native
-        # separator) and no colon (a Windows drive letter, e.g. "C:") are in
-        # that charset. An absolute Windows path fails this check either way
-        # it's rendered, so every path handed to the bridge must be relative
-        # to --cwd, using forward slashes.
+        # bridge-invoke.mjs validates --target-paths (but NOT
+        # --instruction-file -- see the scratch_dir comment above) against
+        # ^[A-Za-z0-9._/-]+$ -- no backslash (Windows' native separator) and
+        # no colon (a Windows drive letter, e.g. "C:") are in that charset.
+        # An absolute Windows path fails this check either way it's
+        # rendered, so every --target-paths value handed to the bridge must
+        # be relative to --cwd, using forward slashes. --instruction-file
+        # carries no such restriction and is passed as an absolute path
+        # unchanged, since it now lives outside `root` and has no
+        # `root`-relative form to begin with.
         def relposix(p: Path) -> str:
             return p.relative_to(root).as_posix()
 
@@ -171,7 +179,7 @@ def dispatch(
             "--reviewer-type",
             agent,
             "--instruction-file",
-            relposix(instruction_file.resolve()),
+            str(instruction_file.resolve()),
             "--target-paths",
             ",".join(relposix(tp) for tp in resolved_targets),
             "--execution-profile",
@@ -221,10 +229,19 @@ def dispatch(
         return payload
     finally:
         # Otherwise every dispatch -- success or failure -- permanently
-        # grows .temp/workmanagement-kit-bridge/ (found by Devin's PR #278
-        # review). Runs on every exit path, including a subprocess.run
-        # OSError propagating out of this function.
+        # leaves a file (and now a whole temp directory) behind (found by
+        # Devin's PR #278 round-2 review). Runs on every exit path,
+        # including a subprocess.run OSError propagating out of this
+        # function. rmdir() only removes an empty directory -- since this
+        # scratch_dir is a fresh mkdtemp() used for exactly one file, it's
+        # always empty immediately after that file is unlinked; ignored if
+        # something unexpected leaves it non-empty rather than failing the
+        # whole dispatch over cleanup.
         instruction_file.unlink(missing_ok=True)
+        try:
+            scratch_dir.rmdir()
+        except OSError:
+            pass
 
 
 def main() -> None:
