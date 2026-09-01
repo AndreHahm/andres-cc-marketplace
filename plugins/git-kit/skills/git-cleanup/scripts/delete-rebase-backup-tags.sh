@@ -285,6 +285,39 @@ fi
 # command.
 failed=0
 for tag in "${matched[@]}"; do
+  # Resolve the object BEFORE running the safety check, not after -- via the
+  # fully-qualified refs/tags/<name> form -- never bare "$tag" (which could
+  # start with a dash and be misparsed as an option). Prefixing with
+  # refs/tags/ rules that out unconditionally, with no need for a
+  # stop-parsing flag: `--end-of-options` was tried first and doesn't
+  # actually work as one for `git rev-parse` in the git version this was
+  # verified against -- live-verified, it gets echoed back as a literal
+  # token on its own output line instead of suppressing option parsing.
+  #
+  # Ordering matters: resolving this AFTER is_tag_safe_to_delete (the
+  # original shape of this fix) leaves a gap of its own -- if the tag is
+  # force-moved in the window between the safety check's own internal,
+  # by-name resolution and this assignment, $verified_oid captures the NEW,
+  # never-actually-checked object, and the compare-and-delete below then
+  # "verifies" trivially against itself, deleting an object the safety
+  # check never examined (Codex automated PR review finding, PR #275
+  # round 2). Resolving first closes this: is_tag_safe_to_delete may still
+  # end up checking a later-moved state, but the delete below can only ever
+  # succeed against $pre_check_oid specifically -- if the ref no longer
+  # points there by the time of the actual delete (moved during or after
+  # the check, for any reason), the compare-and-delete correctly refuses,
+  # regardless of what the safety check itself returned. Residual, not
+  # fully closed: if the tag moves away from $pre_check_oid and then back
+  # to the exact same object before the delete runs, this can't distinguish
+  # that from never having moved at all -- an intentionally accepted,
+  # vanishingly narrow race for a manually-run, interactive cleanup tool,
+  # not something a background/automated process would trigger.
+  pre_check_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null)
+  if [ -z "$pre_check_oid" ]; then
+    echo "Skipped '$tag': could not resolve its current object id" >&2
+    failed=1
+    continue
+  fi
   # Re-verify immediately before deleting, not just at --list time -- the
   # tag could have been force-moved, or $default_branch could have advanced,
   # in the time since --list ran (see the predicate's own comment above).
@@ -293,20 +326,7 @@ for tag in "${matched[@]}"; do
     failed=1
     continue
   fi
-  # Resolve the exact object this verification just approved, via the
-  # fully-qualified refs/tags/<name> form -- never bare "$tag" (which could
-  # start with a dash and be misparsed as an option). Prefixing with
-  # refs/tags/ rules that out unconditionally, with no need for a
-  # stop-parsing flag: `--end-of-options` was tried first and doesn't
-  # actually work as one for `git rev-parse` in the git version this was
-  # verified against -- live-verified, it gets echoed back as a literal
-  # token on its own output line instead of suppressing option parsing.
-  verified_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null)
-  if [ -z "$verified_oid" ]; then
-    echo "Skipped '$tag': could not resolve its current object id" >&2
-    failed=1
-    continue
-  fi
+  verified_oid="$pre_check_oid"
   # Atomic compare-and-delete: `git update-ref -d <ref> <old-oid>` only
   # deletes when the ref's CURRENT value still matches $verified_oid,
   # closing the remaining race between this verification and the actual
