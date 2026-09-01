@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.9"
+# requires-python = ">=3.10"
 # ///
 """Dispatch work-transition-reviewer / work-intake-classifier live through
 codex-kit's codex-review-bridge (see plugins/codex-kit/skills/codex-review-bridge/SKILL.md).
@@ -34,7 +34,12 @@ def repo_root_from(start: Path) -> Path:
     for parent in (cur, *cur.parents):
         if (parent / ".git").exists():
             return parent
-    raise SystemExit(f"could not resolve repo root from {start}")
+    # ValueError, not SystemExit -- SystemExit is a BaseException, not an
+    # Exception, so it silently bypasses main()'s own
+    # except (ValueError, FileNotFoundError, OSError) and crashes with an
+    # uncaught traceback instead of the documented typed-failure dict (found
+    # by CodeRabbit's PR #278 review).
+    raise ValueError(f"could not resolve repo root from {start}")
 
 
 def strip_frontmatter(text: str) -> str:
@@ -109,7 +114,16 @@ def dispatch(
     scratch_dir = root / ".temp" / "workmanagement-kit-bridge"
     instruction_file = scratch_dir / f"{dispatch_id}-{agent}-instruction.md"
 
-    resolved_targets = [Path(t).resolve() for t in target_paths]
+    # A relative target path must resolve against `root`, not the process's
+    # actual OS cwd -- Path.resolve() on a relative path resolves against
+    # Path.cwd(), which only matches `root` by coincidence unless the caller
+    # happens to invoke this script from the repo root itself. A caller using
+    # --repo-root from a different directory would otherwise get a target
+    # resolved against the wrong base (found by Codex/CodeRabbit/Devin's
+    # PR #278 review).
+    resolved_targets = [
+        (Path(t) if Path(t).is_absolute() else root / t).resolve() for t in target_paths
+    ]
     instr_resolved = scratch_dir.resolve() / instruction_file.name
     for tp in resolved_targets:
         if instr_resolved == tp or instr_resolved in tp.parents or tp in instr_resolved.parents:
@@ -161,28 +175,48 @@ def dispatch(
     if dry_run:
         cmd += ["--dry-run", "true"]
 
-    # encoding="utf-8" is required explicitly -- subprocess.run's text=True
-    # alone decodes with the platform's locale-preferred encoding (cp1252 on
-    # a default Windows install, not UTF-8), which silently corrupts any
-    # non-ASCII character (e.g. an em dash) the child process writes as UTF-8.
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", cwd=str(root))
-    stdout = result.stdout.strip()
     try:
-        payload = json.loads(stdout) if stdout else None
-    except json.JSONDecodeError:
-        payload = None
+        # encoding="utf-8" is required explicitly -- subprocess.run's
+        # text=True alone decodes with the platform's locale-preferred
+        # encoding (cp1252 on a default Windows install, not UTF-8), which
+        # silently corrupts any non-ASCII character (e.g. an em dash) the
+        # child process writes as UTF-8.
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, encoding="utf-8", cwd=str(root)
+        )
+        stdout = result.stdout.strip()
+        stderr = result.stderr.strip()
+        # bridge-invoke.mjs writes every typed failure via console.error
+        # (stderr) and only a real success envelope via console.log
+        # (stdout) -- verified directly against its source. Parsing stdout
+        # only silently discarded the bridge's own failure category (e.g.
+        # isolation_profile_unavailable, cli_unavailable) on every real
+        # failure, always falling back to the generic
+        # bridge_caller_invocation_error below (found by Codex/Devin's
+        # PR #278 review).
+        try:
+            payload_text = stdout if stdout else stderr
+            payload = json.loads(payload_text) if payload_text else None
+        except json.JSONDecodeError:
+            payload = None
 
-    if payload is None:
-        return {
-            "ok": False,
-            "category": "bridge_caller_invocation_error",
-            "detail": {
-                "returncode": result.returncode,
-                "stdout": stdout[-4000:],
-                "stderr": result.stderr.strip()[-4000:],
-            },
-        }
-    return payload
+        if payload is None:
+            return {
+                "ok": False,
+                "category": "bridge_caller_invocation_error",
+                "detail": {
+                    "returncode": result.returncode,
+                    "stdout": stdout[-4000:],
+                    "stderr": stderr[-4000:],
+                },
+            }
+        return payload
+    finally:
+        # Otherwise every dispatch -- success or failure -- permanently
+        # grows .temp/workmanagement-kit-bridge/ (found by Devin's PR #278
+        # review). Runs on every exit path, including a subprocess.run
+        # OSError propagating out of this function.
+        instruction_file.unlink(missing_ok=True)
 
 
 def main() -> None:
