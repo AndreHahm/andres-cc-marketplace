@@ -34,6 +34,7 @@ Re-checks an agent report's `file:line` + quoted-text citations against the real
 - Judging whether a finding itself is correct or worth acting on — this only checks that the cited evidence exists as claimed, not that the underlying conclusion is right
 - Verifying claims with no concrete file:line anchor (a general architectural assessment, a design opinion) — there's nothing here to mechanically check
 - Real-time fact-checking during a dispatch — this runs after a report is already produced, as a follow-up verification step, not something the dispatched agent runs on itself
+- Checking whether a component correctly states or respects instruction precedence/conflict-authority claims between components ("who wins", "defers to", "canonical source for") — use `authority-reviewer` instead; this skill only re-checks `file:line` citation accuracy, not authority/precedence claims
 
 ## Citation JSON Format
 

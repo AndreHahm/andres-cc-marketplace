@@ -3801,11 +3801,52 @@
         }
       ],
       "type": "hook"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "agent"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_738f83b2",
+      "name": "authority-reviewer",
+      "naming_history": [
+        {
+          "evidence": [
+            "agents/authority-reviewer.md"
+          ],
+          "name": "authority-reviewer",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-01",
+          "valid_to": null
+        }
+      ],
+      "path": "agents/authority-reviewer.md",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "agents/authority-reviewer.md"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-01",
+          "valid_to": null
+        }
+      ],
+      "type": "agent"
     }
   ],
   "extensions": {},
   "plugin_id": "plugin_7e527600",
   "plugin_name": "plugin-devkit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-08-29"
+  "updated_on": "2026-09-01"
 }
