@@ -248,13 +248,35 @@ which would only ever match a whole-plugin import):
 1. **Only if `plugin_inventory_exists`:** for each component in the written report's `components`
    object, write that nested object verbatim (unchanged — it already carries its own
    `target`/`target_type`/`graded_at`/`final_score`/`dimensions`/`gates_applied`) to
-   `.claude/output/plugin-grader/<component-name>-<same-timestamp-as-Step-6>.json`, then:
+   `.claude/output/plugin-grader/<target>-<same-timestamp-as-Step-6>-components/<component-name>.<component-type>.json`
+   — a dedicated subdirectory, never a flat file directly under `.claude/output/plugin-grader/`. This
+   is deliberate, not cosmetic: a flat `<component-name>-<timestamp>.json` filename can collide
+   byte-for-byte with Step 6's own combined-report filename (`<target>-<timestamp>.json`) whenever a
+   component's name equals its own plugin's name — silently overwriting the original combined report
+   on disk before the rollup sub-step below ever reads it. The subdirectory form can never collide with
+   Step 6's flat file regardless of what `<target>`/`<component-name>` are (a directory and a `.json`
+   file never share a path), and including `<component-type>` in the per-component filename keeps two
+   same-named-but-differently-typed components' extracted files distinct from each other too. This also
+   makes an extracted file visually distinguishable from a genuinely independent standalone-mode run's
+   own report — the two are never siblings in the same flat directory. Then:
    ```bash
    python ${CLAUDE_PLUGIN_ROOT}/skills/plugin-inventory/scripts/plugin-inventory.py import-grading <plugin_dir> <inventory_path> <extracted_component_report_path> <component_name> <component_type>
    ```
    If `plugin_inventory_exists` is `false`, skip this sub-step entirely and note in the outcome report
    (below) that per-component import was skipped for that reason — never attempt it against a path that
    the existence check already found missing.
+
+   **Known limitation, not fixed here:** if two active components in the same plugin share a name but
+   differ by type (e.g. a skill and a command both named `docs` — `plugin-inventory` itself allows this,
+   since its own active-record uniqueness key is `(name, type)`, not bare `name`), Step 6's own
+   `components` object (per `references/output-schema.md`'s Plugin Mode section, a plain
+   `{"<name>": {...}}` dict) can only ever hold one report per bare name — the second one silently
+   overwrites the first when that report was built, before this step ever runs. This step's own
+   per-component loop only ever sees whatever `components` object Step 6 actually wrote, so it cannot
+   detect or recover a grade already dropped upstream. Fixing this needs composite `(name, type)` keys
+   across `references/output-schema.md`, Step 4's own rollup-input construction, and every consumer of
+   this shape — out of this step's own scope; tracked as
+   [issue #274](https://github.com/AndreHahm/andres-cc-marketplace/issues/274) rather than attempted here.
 
    **This loop is not one atomic operation — each call is its own independent write.** Each individual
    `import-grading` invocation is atomic on its own (it locks, reads, and rejects a missing/ambiguous
@@ -294,9 +316,9 @@ See `references/output-schema.md` for the exact JSON shapes (`compute_score.py` 
 
 **Last dated run record and full scenario walkthrough:** see `references/test-scenarios.md` — extracted
 per `plugin-rulebook`'s R30 (content beyond R29's required trigger-example lists and pass-criteria
-checklist must move to `references/` or `evals.json`, not stay inline in `SKILL.md`). 29 numbered
-scenarios (1 through 14k) cover every behavior described above, including this session's two
-`cross-model-review` rounds and PR #271's own Codex/Devin review round.
+checklist must move to `references/` or `evals.json`, not stay inline in `SKILL.md`). 31 numbered
+scenarios (1 through 14m) cover every behavior described above, including this session's two
+`cross-model-review` rounds and PR #271's own Codex/Devin review rounds.
 
 **Verify this skill activates on:**
 - "grade this plugin"
@@ -324,6 +346,7 @@ scenarios (1 through 14k) cover every behavior described above, including this s
 - [ ] Step 8's plugin-mode question always states the real write scope (component count, and whether the rollup will run) — never the bare component-mode phrasing reused verbatim for a different scope
 - [ ] Step 8 never writes to `plugin-inventory.json`/`marketplace-inventory.json` without an explicit "Yes" answer first — no silent import, ever
 - [ ] Plugin-mode import never points `plugin-inventory import-grading` at the combined plugin-mode report file directly — each component's score is always extracted to its own standalone-shaped report file first
+- [ ] Plugin-mode component extraction always writes to the `<target>-<timestamp>-components/` subdirectory — never a flat filename under `.claude/output/plugin-grader/` that could collide with Step 6's own combined-report file
 - [ ] Step 8 always reports each import's real `quality_score_appended`/`security_score_appended` result — a no-op duplicate (`false`) is never presented as if new history landed
 - [ ] A partial failure in plugin mode's per-component loop always reports which components already succeeded, separately from the failing one's error — never collapsed into a single pass/fail line that hides a partial-completion write
 - [ ] A staging-mirror duplicate (`.claude/` vs `plugins/plugin-devkit/`) is noted, not treated as an error
@@ -345,7 +368,7 @@ scenarios (1 through 14k) cover every behavior described above, including this s
 | `references/gates-and-rollup.md` | Exact hard-gate math, stacking rule, and whole-plugin rollup formula |
 | `references/output-schema.md` | JSON shapes for the script's input/output and the final written report |
 | `references/swot-and-next-steps.md` | Score-driven SWOT derivation and prioritized-next-steps ranking |
-| `references/test-scenarios.md` | Full 29-scenario test walkthrough and last dated run record, extracted from `SKILL.md` per R30 |
+| `references/test-scenarios.md` | Full 31-scenario test walkthrough and last dated run record, extracted from `SKILL.md` per R30 |
 | `scripts/compute_score.py` | Deterministic weighted-sum and gate-application script — the only source of truth for this arithmetic |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency) — re-run before packaging or after any SKILL.md edit |
 | `assets/example-output.json` | A complete worked example of the final report JSON (component mode) |
