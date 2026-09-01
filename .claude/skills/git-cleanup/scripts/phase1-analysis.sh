@@ -82,7 +82,7 @@ comm -23 \
 #
 # `default_branch_patchids` must be called bare (never as `$(...)`) --
 # command substitution forks a subshell, and an assignment to
-# $main_patchid_index made inside that subshell is discarded when it exits,
+# $main_patchid_log made inside that subshell is discarded when it exits,
 # silently defeating the cache on every call (found by security-reviewer,
 # PR #269 follow-up; live-verified: this bug alone took a 22-tag sweep from
 # an expected ~2s to 80s, rebuilding the full-history index once per tag).
@@ -118,6 +118,14 @@ default_branch_patchids() {
 # commit keeps the tag flagged unreachable, since it may be the only
 # remaining copy of that one commit's changes. Patch-id narrows the
 # candidate set cheaply; it is never the acceptance criterion by itself.
+#
+# Known, accepted limitation (safe direction only -- a false negative, never
+# a false positive): see delete-rebase-backup-tags.sh's identical comment
+# for the full detail -- an unrelated upstream change to the same file
+# between branch creation and rebase-merge can change diff text/blob hashes
+# even though the logical change is identical, causing a genuinely-reachable
+# tag to still report unreachable here. Disclosed and accepted rather than
+# fixed in this PR (Devin automated PR review finding, PR #275).
 is_tag_content_reachable() {
   local tag="$1"
   local mb
