@@ -11,7 +11,10 @@ description: >-
   triggers include "what can this skill actually do", "review permissions
   on this component/plugin", "does this deny rule affect that skill's
   allowed-tools", and proactively before a commit or release touching
-  permission-related files (frontmatter, settings.json, hooks.json).
+  permission-related files (frontmatter, settings.json, hooks.json). Not
+  for whether a component correctly states or respects instruction
+  precedence/conflict-authority between components (use authority-reviewer
+  instead) — this agent covers tool/capability permission scope only.
 model: sonnet
 color: cyan
 tools: ["Read", "Grep", "Glob"]

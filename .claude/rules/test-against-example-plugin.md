@@ -4,7 +4,7 @@
 
 A new or structurally-modified `plugin-devkit` component whose job is to inspect, review, validate, or
 otherwise operate against a plugin's actual on-disk component/manifest structure — before that component
-is finalized. This covers 21 agents and 9 skills (see "In Scope" below), not every plugin-devkit
+is finalized. This covers 22 agents and 9 skills (see "In Scope" below), not every plugin-devkit
 component.
 
 ## Rule
@@ -14,14 +14,20 @@ Before finalizing a new or structurally-modified in-scope component, run a live 
 workflow step, checkable only at the moment it should have happened — not something a static file
 inspection can verify after the fact.
 
-**In scope — 21 agents:**
-- All 17 `*-reviewer` agents: `activation-reviewer`, `claudemd-reviewer`, `command-reviewer`,
-  `completeness-reviewer`, `consistency-reviewer`, `dependency-reviewer`,
+**In scope — 22 agents:**
+- All 18 `*-reviewer` agents: `activation-reviewer`, `authority-reviewer`, `claudemd-reviewer`,
+  `command-reviewer`, `completeness-reviewer`, `consistency-reviewer`, `dependency-reviewer`,
   `external-references-reviewer`, `hook-reviewer`, `human-doc-reviewer`, `language-reviewer`,
   `permission-reviewer`, `rule-reviewer`, `scripts-reviewer`, `security-reviewer`, `skill-reviewer`,
   `skilldir-reviewer`, `subagent-reviewer`
 - `plugin-inspector`, `plugin-rulebook-checker`, `plugin-validator`, `smoke-tester` — same "operates
   against a plugin's actual structure/components" criterion, just not named `*-reviewer`
+
+`authority-reviewer` (added 2026-09-01) reads a plugin's or the marketplace's actual rule/skill/CLAUDE.md
+files to extract and cross-check precedence/authority claims (Steps 3 and 6 of its own procedure resolve
+named claim targets and canonical-source claims against real on-disk files) — meets this rule's own
+"operates against a plugin's actual structure/components" criterion the same way its sibling
+`*-reviewer` agents do.
 
 **In scope — 9 skills:**
 - `plugin-lifecycle-upstream`, `plugin-lifecycle-downstream`, `plugin-lifecycle-maintenance`
