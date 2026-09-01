@@ -65,12 +65,12 @@ Two claims conflict when they assert incompatible outcomes over the *same decisi
 
 ## Step 5: Circular Authority Claims
 
-A path through the graph that returns to its starting component via `defers-to`/`canonical-source-for` edges (A defers to B, B defers to A — or the longer form A → B → C → A). Circular deference means no component in the cycle actually has final say, which defeats the purpose of stating a precedence claim at all.
+A path through the graph that returns to its starting component via `wins-over`/`defers-to`/`canonical-source-for` edges (A defers to B, B defers to A — or the longer form A → B → C → A). This also covers the same defect expressed as pairwise `wins-over` claims instead of explicit deference (A wins over B, B wins over C, C wins over A) — no explicit priority-stack list is stated anywhere in this case, so Step 4's "Three-plus-way inconsistency" check doesn't catch it; only this traversal does. Circular deference (or its `wins-over` equivalent) means no component in the cycle actually has final say, which defeats the purpose of stating a precedence claim at all.
 
 - Flag as **Critical** if the cycle is stated as unconditional in both directions (no tiebreaker, no "except for X" carve-out named anywhere in the cycle).
 - Flag as **Major** if at least one edge in the cycle is explicitly scoped/conditional (e.g. "defers to B for governance decisions, but not for naming decisions") — a real design smell worth naming, since a reader has to track the condition correctly to avoid the loop, but not an unconditional dead end.
 
-This is the same cycle-detection discipline `dependency-reviewer` applies to `Skill()`/`Agent()` call graphs, applied here to `wins-over`/`defers-to` authority edges instead of dispatch edges — a different graph, same shape of defect.
+This is the same cycle-detection discipline `dependency-reviewer` applies to `Skill()`/`Agent()` call graphs, applied here to `wins-over`/`defers-to`/`canonical-source-for` authority edges instead of dispatch edges — a different graph, same shape of defect.
 
 ## Step 6: Cross-Reference Resolution and One-Sided Claims
 
