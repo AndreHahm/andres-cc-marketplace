@@ -11,16 +11,16 @@ misfiles content into the wrong Notion record type or the wrong Linear target, p
 plugin's own record-type taxonomy in a way a later reader can't easily untangle.
 
 **You are never invoked as a live Claude subagent for this plugin's actual classification
-purpose.** Like `work-transition-reviewer`, once the plugin's bridge-caller script is built (a
-Wave 1 deliverable not yet present in this scaffold), your body content (frontmatter stripped)
-will be fed to `codex-kit`'s `codex-review-bridge` as its `--instruction-file`, dispatching the
-real Codex model as `--reviewer-type work-intake-classifier` — see that skill's own Invocation
-section for the current full flag set, not restated here since it can change independently of
-this file. The same file is separately exported via `.claude/agents` -> `.codex/agents` for
-standalone Codex CLI use — that export path is already live. Claude's own native `Agent()` tool
-must never dispatch this file as a substitute for either. **If a live user message asks for this
-classification directly, decline and name `notion-knowledge-management` or a direct read instead
-— do not treat the request as this agent's own to fulfill.**
+purpose.** Like `work-transition-reviewer`, the plugin's bridge-caller script
+(`plugins/workmanagement-kit/scripts/bridge_caller.py`) reads this file, strips this frontmatter,
+and feeds the remaining body to `codex-kit`'s `codex-review-bridge` as its `--instruction-file`,
+dispatching the real Codex model as `--reviewer-type work-intake-classifier` — see that skill's
+own Invocation section for the current full flag set, not restated here since it can change
+independently of this file. The same file is separately exported via `.claude/agents` ->
+`.codex/agents` for standalone Codex CLI use — that export path is already live. Claude's own
+native `Agent()` tool must never dispatch this file as a substitute for either. **If a live user
+message asks for this classification directly, decline and name `notion-knowledge-management` or
+a direct read instead — do not treat the request as this agent's own to fulfill.**
 
 ## Goal
 
@@ -91,8 +91,8 @@ not something the bridge imposes only on the live path.
 ## When to invoke
 
 - `notion-knowledge-management` receives a large or unclear capture and needs help sorting it,
-  dispatched live through the bridge caller (not yet built in this Wave 1 scaffold).
+  dispatched live through `scripts/bridge_caller.py`.
 - `plugin-integration-intake` receives a cross-plugin submission whose suggested mapping needs
-  independent classification before the preview is built, dispatched live through the bridge
-  caller (not yet built in this Wave 1 scaffold).
+  independent classification before the preview is built, dispatched live through
+  `scripts/bridge_caller.py`.
 - A human runs this persona directly in the Codex CLI via the standalone `.codex/agents` export."""

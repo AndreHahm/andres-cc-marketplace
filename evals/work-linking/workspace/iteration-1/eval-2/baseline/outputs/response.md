@@ -3,7 +3,7 @@
 I found one matching pair of items on each side and compared them directly.
 
 - **Notion:** "💡 Idea: Export Transition History as CSV" — https://app.notion.com/p/3ccce0610b0c8187b6e0db08a5ee6a0a (created/last edited 2026-08-30T19:22)
-- **Linear:** AND-5 "Add CSV export to transition history" — https://linear.app/andrehahm/issue/AND-5/add-csv-export-to-transition-history (status: Backlog, created 2026-08-30T19:22:22)
+- **Linear:** AND-5 "Add CSV export to transition history" — https://linear.app/example-workspace/issue/AND-5/add-csv-export-to-transition-history (status: Backlog, created 2026-08-30T19:22:22)
 
 Both were created at essentially the same timestamp, so this looks like the Linear issue was spun up directly from the Notion idea. However, they've already drifted:
 
@@ -18,7 +18,7 @@ Both were created at essentially the same timestamp, so this looks like the Line
    - Linear's Proposed Scope answers the fields question (item identifier, from-state, to-state, changed-by, timestamp) and the filtering question (respect existing filters/date range) — but Notion still lists these as open.
    - Both sides still leave "single item vs. bulk/multi-item export" genuinely unresolved (Linear repeats it under its own Open Questions), so that one point is at least consistent — it just hasn't been carried back to Notion as "still open, now confirmed as the key open question" rather than one of four vague ones.
 
-4. **Ownership/priority not reflected in Notion.** Linear shows a concrete owner (created by André Hahm, team "AndreHahm"), a Backlog status, and a "Feature" label. Notion has none of this — it reads as an anonymous, unowned idea, so anyone consulting Notion alone would not know this has already moved into a real team's backlog.
+4. **Ownership/priority not reflected in Notion.** Linear shows a concrete owner (created by Example User, team "ExampleTeam"), a Backlog status, and a "Feature" label. Notion has none of this — it reads as an anonymous, unowned idea, so anyone consulting Notion alone would not know this has already moved into a real team's backlog.
 
 ## Bottom line
 
