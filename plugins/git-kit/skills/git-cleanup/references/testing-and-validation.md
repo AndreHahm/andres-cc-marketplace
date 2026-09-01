@@ -49,22 +49,29 @@ to exercise):**
       reachable from the default branch is reported "exists, merged into `<default>`" +
       "reachable from `<default>`: yes" and is a `STALE_REBASE_BACKUP_TAG` candidate
 - [ ] A tag whose derived branch still exists, is merged into the default branch, but whose own commit is
-      NOT reachable from the default branch (a rebase-then-merge sequence, where the merged branch's tip
-      is a different commit object than the tag's pre-rebase commit) is reported "reachable from
-      `<default>`: NO" and is NEVER proposed for deletion — the reachability check always runs for the
-      merged case too, never skipped just because the branch itself is already known-safe to delete
-      (found by `cross-model-review`, Codex Phase 1 re-review after the first data-loss fix, 2026-08-31 —
-      the merged-branch case turned out to have the exact same flaw as the branch-gone case, just less
-      obvious since "merged" sounds like a stronger safety signal than it actually is here; live-verified
-      with a real rebase-then-merge sequence, confirming `git branch --merged` reports the branch merged
-      while `git merge-base --is-ancestor <pre-rebase-sha> main` still returns false)
+      NOT reachable from the default branch by raw SHA (a rebase-then-merge sequence, where the merged
+      branch's tip is a different commit object than the tag's pre-rebase commit) — the reachability
+      check always runs for the merged case too, never skipped just because the branch itself is already
+      known-safe to delete (found by `cross-model-review`, Codex Phase 1 re-review after the first
+      data-loss fix, 2026-08-31 — the merged-branch case turned out to have the exact same flaw as the
+      branch-gone case, just less obvious since "merged" sounds like a stronger safety signal than it
+      actually is here; live-verified with a real rebase-then-merge sequence, confirming
+      `git branch --merged` reports the branch merged while
+      `git merge-base --is-ancestor <pre-rebase-sha> main` still returns false). **Superseded by PR #275**
+      (see the "Live results, 2026-09-01" section below): raw-SHA unreachability here is no longer the
+      final word — `is_tag_content_reachable`'s exact-diff-text fallback (patch-id used only as a cheap
+      pre-filter, never the acceptance criterion) now recognizes this exact case as reachable when the
+      tag's content genuinely matches the default branch, and Gate 1 reports it as
+      "reachable from `<default>`: yes (content match after rebase...)" and it IS eligible for "delete all
+      recommended" — never solely because the raw-SHA check failed. A tag unreachable by *both* signals
+      still reports "NO" and is never proposed for deletion.
 - [ ] A tag whose derived branch still exists and is NOT merged is reported "exists, not merged into
       `<default>`" and is never proposed for deletion, with no reachability check run at all — Phase 3.6
       leaves it alone regardless of the tag's own age, and the extra `git merge-base` call is skipped
       entirely for this case since the outcome doesn't depend on it
-- [ ] `delete-rebase-backup-tags.sh`'s own internal `git tag -d --` call runs with no marker-handshake
+- [ ] `delete-rebase-backup-tags.sh`'s own internal `git update-ref -d` call runs with no marker-handshake
       write beforehand — confirmed `guard-raw-destructive-cleanup.sh` only matches
-      `git branch -D`/`worktree remove --force`, never `git tag -d`
+      `git branch -D`/`worktree remove --force`, never `git tag -d`/`git update-ref -d`
 - [ ] Gate 1/Gate 2 list stale rebase-backup tags as their own category, distinct from branch and
       stale-remote-branch categories, never silently merged into either
 - [ ] Deletion always goes through `delete-rebase-backup-tags.sh`'s index-only interface — the agent
@@ -101,6 +108,23 @@ to exercise):**
       `.claude/rules/recheck-state-before-side-effecting-action.md`; live-verified: force-moved a listed
       tag to an unreachable commit via `git tag -f` between `--list` and delete, confirmed the delete call
       now skips it and reports why, and the tag survives)
+- [ ] Deletion is a true atomic compare-and-delete, not just "re-verify then delete by name" — the script
+      resolves each tag's current object id via the fully-qualified `refs/tags/<name>` form immediately
+      after `is_tag_safe_to_delete` returns true, then deletes with
+      `git update-ref -d refs/tags/<name> <resolved-oid>`, which only succeeds if the ref still points at
+      exactly that object; a force-move in the (now much narrower) window between resolving the oid and
+      the delete call is refused, not silently deleted (PR #275, Devin automated PR review — the
+      re-verify-then-name-based-delete pattern PR #262 shipped still had a residual race between the
+      re-verify and the delete call itself, meaningfully widened by this predicate's own content-fallback
+      taking real wall-clock time to run; live-verified in an isolated scratch repo: deleting with the
+      correct, just-resolved oid succeeds, and deleting after force-moving the tag with a now-stale oid is
+      refused with `error: cannot lock ref ...: is at <new> but expected <old>`, exit 1, tag intact)
+      **Also verify `git rev-parse "refs/tags/<name>"` (no bare tag name, no `--end-of-options`) is what
+      resolves the oid** — `--end-of-options` was tried first and found to not actually suppress option
+      parsing for `git rev-parse` in the git version this was verified against: it gets echoed back as a
+      literal token on the output's first line instead, live-verified; the fully-qualified `refs/tags/`
+      prefix sidesteps the whole class of risk unconditionally instead (a value starting with `refs/tags/`
+      can never be misparsed as an option, regardless of what the tag's own name starts with)
 - [ ] The Category Definitions quick-reference table's `STALE_REBASE_BACKUP_TAG` row states the
       reachability condition explicitly, not just "branch gone or merged" — a reader skimming only the
       table (not Phase 3.6's own prose) must not be able to reconstruct the pre-fix, unsafe rule
@@ -170,3 +194,51 @@ fix/sync-claude-mirror` confirmed it was gone.
 actual second remote here) — output unchanged and correct (empty remote-only-branch list, both real stale
 branches already cleaned up by that point), confirming the fix didn't regress the single-remote case this
 repo actually has.
+
+**Verify the content-reachability fallback (`is_tag_content_reachable`, PR #275), live-verified
+2026-09-01 against this repository's own real rebase-backup tags and a set of isolated scratch-repo
+tests for each underlying git mechanic — not a hypothetical claim about how `git patch-id`/
+`git diff-tree` behave, each was independently reproduced live:**
+- [ ] A rebase-merged tag (SHA differs from the default branch, content identical) is recognized as
+      content-reachable and eligible for deletion — live-verified against this repo's real
+      `feat/merge-pr-conflict-checks-rebase-backup-20260901-064237` tag: all 6 commits unique to the tag
+      had an exact patch-id match on `main`, and the raw diff text (not just the patch-id) was confirmed
+      byte-identical between the tag's pre-rebase commit and `main`'s post-rebase commit — the mechanism
+      this fallback exists for
+- [ ] `git patch-id` is whitespace-insensitive — two commits whose diffs differ ONLY in leading
+      whitespace amount (2 vs. 4 spaces added to the same line) produced an identical patch-id in an
+      isolated scratch repo, confirming patch-id alone is unsafe as the acceptance criterion; the
+      predicate uses it only to narrow candidates, requiring an exact byte-for-byte diff-text match
+      before ever accepting one (found by Codex fresh-eyes, `cross-model-review` round 1)
+- [ ] The exact-diff-text requirement does not reject the genuine rebase-merge case — git blob hashes are
+      purely content-addressed, so a rebase that doesn't touch a commit's actual content leaves the
+      "index `<old>`..`<new>`" line inside that commit's diff text byte-identical too; live-verified
+      against the real tag above
+- [ ] A merge commit with no unique content (`git diff-tree --cc` empty) inside a tag's history is
+      skipped rather than failing the whole tag closed — live-verified in an isolated scratch repo with a
+      genuine conflict-free merge; a merge commit with real hand-resolved conflict content (`--cc`
+      non-empty, content differing from every parent) still fails the tag closed, since there's nothing
+      on the default branch to verify it against — live-verified with a genuine hand-resolved 3-way
+      conflict (found by Claude fresh-eyes, `cross-model-review` round 2)
+- [ ] A `git diff-tree` failure (bad object, corrupted ref) is distinguished from a genuinely empty/
+      trivial merge diff by checking the exit status separately from stdout emptiness — live-verified: a
+      deliberately invalid commit reference produced empty stdout AND exit 128, which the fix correctly
+      treats as a failure (fail closed) rather than a trivial merge (found by Codex fresh-eyes,
+      `cross-model-review` round 3)
+- [ ] The full `--list` sweep against this repository's real rebase-backup tags stayed consistent across
+      every fix in this round (19-20 tags, depending on unrelated concurrent repo activity, correctly
+      recognized as content-reachable both before and after each hardening pass; 2-3 genuinely
+      unreachable tags correctly stayed flagged throughout)
+- [ ] The full create → list → delete round-trip works end-to-end through the script's own index-only
+      interface — live-verified with a throwaway tag: created with its branch already deleted, confirmed
+      it appeared in `--list`, deleted by index, confirmed removal via a follow-up `git tag -l`
+
+**Now covered by a persisted, repeatable fixture** (flagged by Devin's automated PR review on PR #275;
+addressed in the same PR rather than deferred): `scripts/test-content-reachable.sh` sources
+`default_branch_patchids`/`is_tag_content_reachable` directly from `delete-rebase-backup-tags.sh` --
+never a hand-copied re-implementation, so it can't silently drift from the real code -- and exercises 5
+scenarios in isolated, throwaway git repos: a genuine rebase-merge (SHA differs, content identical) is
+recognized as reachable; a whitespace-only difference does NOT falsely match; a trivial merge commit
+doesn't abort the walk; a `git diff-tree` failure is distinguished from an empty diff; and the atomic
+compare-and-delete succeeds on a matching oid and refuses on a stale one. Run directly:
+`bash scripts/test-content-reachable.sh`. All 5 passed on the fix that shipped in PR #275.

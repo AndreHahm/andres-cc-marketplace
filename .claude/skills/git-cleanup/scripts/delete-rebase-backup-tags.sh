@@ -50,7 +50,7 @@ default_branch="${default_branch:-main}"
 #
 # `default_branch_patchids` must be called bare (never as `$(...)`) --
 # command substitution forks a subshell, and an assignment to
-# $main_patchid_index made inside that subshell is discarded when it exits,
+# $main_patchid_log made inside that subshell is discarded when it exits,
 # silently defeating the cache on every call (found by security-reviewer,
 # PR #269 follow-up; live-verified: this bug alone took the 22-tag --list
 # run from an expected ~2s to 80s, rebuilding the full-history index once
@@ -108,6 +108,22 @@ default_branch_patchids() {
 # commit's changes. Patch-id narrows the candidate set cheaply (typically to
 # zero or one commit); it is never the acceptance criterion by itself -- see
 # the comment above default_branch_patchids for why.
+#
+# Known, accepted limitation (safe direction only -- a false negative, never
+# a false positive): if $default_branch changed an unrelated part of the
+# SAME file between the tag's branch creation and its rebase-merge, the
+# rebased commit's diff text (surrounding context lines, and the "index
+# <old>..<new>" blob hashes on both sides) can differ from the tag's own
+# pre-rebase commit even though the actual logical change -- what this
+# commit itself adds/removes -- is identical. The exact-text comparison
+# then correctly finds no match and fails the tag closed, even though its
+# content genuinely did land on $default_branch. Fixing this precisely
+# would mean replacing exact-diff-text comparison with a real
+# content-equivalence check tolerant of a changed base (e.g. comparing
+# final blob state rather than the diff text itself) -- a real algorithm
+# redesign, not a quick patch, so it's deliberately not attempted here.
+# (Devin automated PR review finding, PR #275; disclosed and accepted
+# rather than fixed in this PR.)
 is_tag_content_reachable() {
   local tag="$1"
   local mb
@@ -222,8 +238,8 @@ if [ "${1:-}" = "--list" ]; then
     i=$((i + 1))
     # %q (display only): a tag name can contain characters that would make
     # the numbered listing itself misleading -- the snapshot file and the
-    # `git tag -d` argument below both keep the raw, unescaped bytes; only
-    # this printed line is quoted for safe, unambiguous display.
+    # `git update-ref -d` deletion below both keep the raw, unescaped bytes;
+    # only this printed line is quoted for safe, unambiguous display.
     printf '%d\t%q\n' "$i" "$tag"
   done < "$SNAPSHOT"
   exit 0
@@ -262,10 +278,11 @@ if [ "${#matched[@]}" -ne "${#wanted[@]}" ]; then
   exit 1
 fi
 
-# Each deletion is a separate `git tag -d` call so one failure doesn't block
-# the rest -- same partial-failure principle Phase 5 already documents for
-# branch deletions. `$tag` here is a shell variable holding raw bytes read
-# from the snapshot file, never text the model composed into this command.
+# Each deletion is a separate compare-and-delete call so one failure doesn't
+# block the rest -- same partial-failure principle Phase 5 already documents
+# for branch deletions. `$tag` here is a shell variable holding raw bytes
+# read from the snapshot file, never text the model composed into this
+# command.
 failed=0
 for tag in "${matched[@]}"; do
   # Re-verify immediately before deleting, not just at --list time -- the
@@ -276,10 +293,40 @@ for tag in "${matched[@]}"; do
     failed=1
     continue
   fi
-  if git tag -d -- "$tag"; then
+  # Resolve the exact object this verification just approved, via the
+  # fully-qualified refs/tags/<name> form -- never bare "$tag" (which could
+  # start with a dash and be misparsed as an option). Prefixing with
+  # refs/tags/ rules that out unconditionally, with no need for a
+  # stop-parsing flag: `--end-of-options` was tried first and doesn't
+  # actually work as one for `git rev-parse` in the git version this was
+  # verified against -- live-verified, it gets echoed back as a literal
+  # token on its own output line instead of suppressing option parsing.
+  verified_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null)
+  if [ -z "$verified_oid" ]; then
+    echo "Skipped '$tag': could not resolve its current object id" >&2
+    failed=1
+    continue
+  fi
+  # Atomic compare-and-delete: `git update-ref -d <ref> <old-oid>` only
+  # deletes when the ref's CURRENT value still matches $verified_oid,
+  # closing the remaining race between this verification and the actual
+  # delete -- a name-based `git tag -d` has no such guarantee, since it
+  # deletes whatever the ref currently points to even if a concurrent
+  # process force-moved it after verification but before this exact command
+  # runs (the window `is_tag_safe_to_delete`'s own content-reachability path
+  # widened, by taking real wall-clock time to run, compared to the
+  # near-instant raw-SHA-ancestry check it used to be the only path through).
+  # Live-verified in an isolated scratch repo: deleting with the correct,
+  # just-resolved oid succeeds; deleting after force-moving the tag with a
+  # now-stale oid is correctly refused (`error: cannot lock ref ...: is at
+  # <new> but expected <old>`, exit 1), leaving the moved (unverified) tag
+  # intact rather than deleting it (Devin automated PR review finding,
+  # PR #275, cited against this repo's own
+  # .claude/rules/recheck-state-before-side-effecting-action.md).
+  if git update-ref -d "refs/tags/$tag" "$verified_oid"; then
     :
   else
-    echo "Error: failed to delete tag '$tag'" >&2
+    echo "Error: failed to delete tag '$tag' (may have moved since verification, or another error occurred)" >&2
     failed=1
   fi
 done

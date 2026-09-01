@@ -188,14 +188,14 @@ reachable from the default branch. Categorize each one from that output — no e
 
 Fold the result into Gate 1 as its own list, the same way Phase 3.5's stale remote branches get their own
 list — never silently merge it into the branch categories above, since a tag isn't a branch and
-`git tag -d` isn't `git branch -d`/`-D`.
+`git update-ref -d` isn't `git branch -d`/`-D`.
 
 **Get the deletable list from the script, not by hand-deriving it from Phase 1's raw per-tag facts.** Run
 `"${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh" --list` — it independently
 re-applies the exact rule above (branch gone or merged AND reachable) and prints only the genuinely
 deletable tags as a numbered list, snapshotting the exact tag names to a file the delete step (Phase 5)
-reads back rather than trusting text typed into this response. **Never type a tag name into a `git tag -d`
-command yourself, however it was validated** — see Phase 5's Execute section for why a character-class
+reads back rather than trusting text typed into this response. **Never type a tag name into a
+`git update-ref -d` command yourself, however it was validated** — see Phase 5's Execute section for why a character-class
 check on a value the agent then composes into a command is never fully safe: a git-legal tag name can
 contain almost any shell metacharacter (`git check-ref-format` accepts e.g. `$(cmd)-rebase-backup-...`,
 live-verified), and there is no character class that is both shell-safe and complete against every
@@ -340,10 +340,10 @@ call. Resolve `<owner>/<repo>` via `gh repo view --json nameWithOwner --jq .name
 not once per branch.
 
 **Stale rebase-backup tags (Phase 3.6):** no marker write needed — `delete-rebase-backup-tags.sh`'s own
-`git tag -d` call isn't guarded by `guard-raw-destructive-cleanup.sh` (that hook only matches
+`git update-ref -d` call isn't guarded by `guard-raw-destructive-cleanup.sh` (that hook only matches
 `git branch -D`/`worktree remove --force`), and deleting a tag never touches a protected branch name in
-the first place. **Never type a tag name into a `git tag -d` command directly, and never pass one as an
-argument to any script either** — a git tag name is legal with almost any shell metacharacter (e.g.
+the first place. **Never type a tag name into a `git update-ref -d` command directly, and never pass one
+as an argument to any script either** — a git tag name is legal with almost any shell metacharacter (e.g.
 `` `$(cmd)-rebase-backup-20260831-120000` `` is a git-accepted tag name, `git check-ref-format` confirms
 it), so any value the agent composes into a command — even quoted, even as a validated-looking script
 argument — is a command-injection surface; and no character-class validation can be both shell-safe and
@@ -354,8 +354,12 @@ it independently re-derives the deletable set itself (never trusting Phase 3.6's
 snapshots the exact tag names to a file; pass back only the plain digit indices shown against Gate 2's
 confirmed selections — `"${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh"
 <index> [index...]` — the same index-only interface `stage-selected-files.sh` already uses for staged
-filenames, for the identical reason. The script deletes one tag per `git tag -d --` call internally, so a
-partial failure part-way through still lets the rest proceed, and reports which index (if any) failed.
+filenames, for the identical reason. The script resolves each tag's current object id via the always-safe
+fully-qualified `refs/tags/<name>` form (never the bare name, which could start with a dash) and deletes
+it with `git update-ref -d refs/tags/<name> <resolved-oid>` — an atomic compare-and-delete that only
+succeeds if the ref still points at the exact object just verified safe, closing the race between that
+verification and the actual delete (PR #275) — one call per tag internally, so a partial failure part-way
+through still lets the rest proceed, and reports which index (if any) failed.
 
 ### Phase 6: Report
 
@@ -410,10 +414,15 @@ partial failure part-way through still lets the rest proceed, and reports which 
     reachable** - neither "branch no longer exists locally" nor "branch is merged" is by itself evidence
     the tag is redundant: the branch's deletion was never verified by this run in the gone case, and
     rebasing rewrites commit SHAs in the merged case (a merged branch's current tip being an ancestor of
-    the default branch says nothing about whether the tag's own pre-rebase commit is) - Phase 3.6 only
-    proposes deletion in either case once `git merge-base --is-ancestor` confirms the tag's own commit is
-    reachable from the default branch - an unreachable tag is reported separately as needing manual
-    review, never included in "delete all recommended"
+    the default branch says nothing about whether the tag's own pre-rebase commit is) - Phase 3.6 proposes
+    deletion in either case once the tag's own commit is verified reachable from the default branch, by
+    either of two signals: raw-SHA ancestry (`git merge-base --is-ancestor`), or - when that fails,
+    since a rebase rewrites every commit's SHA while preserving its content - an exact, byte-for-byte
+    diff-text match against the default branch's history (patch-id used only as a cheap pre-filter, never
+    the acceptance criterion by itself, since it's whitespace-insensitive; see
+    `delete-rebase-backup-tags.sh`'s own `is_tag_content_reachable` for the full mechanism, including its
+    fail-closed handling of merge commits and `git diff-tree` failures) - a tag unreachable by both
+    signals is reported separately as needing manual review, never included in "delete all recommended"
 11. **Never type a tag name into a command, at all, for any reason** - a git tag name is legal with
     almost any shell metacharacter (`git check-ref-format` accepts e.g.
     `` `$(cmd)-rebase-backup-20260831-120000` ``), and no character-class check on a value the agent then
@@ -439,8 +448,8 @@ These are common shortcuts that lead to data loss. Reject them:
 | "It's gitignored, so it's not important" | Gitignored means *not in git history* — it is often the only copy of a `.env`, a local override, or uncommitted scratch output. Absence from git is not evidence of unimportance. |
 | "This remote branch has no local copy, so its PR must be merged and it's safe to delete" | No local copy only means nobody has it checked out here — it could be an open PR someone else is working on, or a branch with no PR at all. Phase 3.5 always confirms `state: MERGED` live via `gh pr view` before ever proposing deletion. |
 | "This rebase-backup tag is old, it's probably safe to delete" | Age alone says nothing about whether the branch it protects is still active — a long-running feature branch can be rebased repeatedly with none of its backup tags becoming safe to delete. Phase 3.6 only proposes deletion once the derived branch is confirmed gone or merged. |
-| "The branch is gone, so its backup tag must be redundant" | The branch's own deletion was never verified by this skill run — it may have been force-deleted outside git-cleanup's own evidence trail. Phase 3.6 always confirms the tag's commit is reachable from the default branch (`git merge-base --is-ancestor`) before proposing deletion in this case; an unreachable tag may be the only remaining copy of its commits. |
-| "The branch is merged, so its backup tag must be redundant" | Rebasing rewrites commit SHAs — a merged branch's current tip being an ancestor of the default branch does not mean the tag's own pre-rebase commit is (live-verified: a plain rebase-then-merge sequence leaves the branch showing merged while the tag's exact commit stays unreachable). Phase 3.6 runs the same `git merge-base --is-ancestor` check for the merged case as for the branch-gone case — never skips it just because the branch itself is already known-safe to delete. |
+| "The branch is gone, so its backup tag must be redundant" | The branch's own deletion was never verified by this skill run — it may have been force-deleted outside git-cleanup's own evidence trail. Phase 3.6 always confirms the tag's commit is reachable from the default branch (by raw-SHA ancestry, or, when a rebase rewrote the SHA, by an exact content match) before proposing deletion in this case; a tag unreachable by both signals may be the only remaining copy of its commits. |
+| "The branch is merged, so its backup tag must be redundant" | Rebasing rewrites commit SHAs — a merged branch's current tip being an ancestor of the default branch does not mean the tag's own pre-rebase commit is (live-verified: a plain rebase-then-merge sequence leaves the branch showing merged while the tag's exact pre-rebase commit stays unreachable by raw SHA). Phase 3.6 runs the same two-signal reachability check (raw-SHA ancestry, then content match) for the merged case as for the branch-gone case — never skips it just because the branch itself is already known-safe to delete, and never treats a content match alone as sufficient without also verifying it's byte-exact, not just patch-id-equal (patch-id ignores whitespace). |
 
 ## Testing & Validation
 
