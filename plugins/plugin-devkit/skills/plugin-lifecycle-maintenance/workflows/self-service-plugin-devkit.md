@@ -65,7 +65,11 @@ Uses the "Shared: Cost-Gated Dispatch" procedure below. Target set: every review
 agent → `subagent-reviewer`; a changed hook → `hook-reviewer`; a changed rule →
 `rule-reviewer`; cross-cutting agents — `consistency-reviewer`, `completeness-reviewer`,
 `dependency-reviewer`, `authority-reviewer`, `external-references-reviewer`,
-`permission-reviewer`, `security-reviewer` — in their Delta mode, scoped to the changed set). "Scoped" default =
+`permission-reviewer`, `security-reviewer` — each in its own Delta mode, dispatched once per
+qualifying changed edge/claim/section/reference the changed set contains, since every one of
+these agents' Delta mode is scoped to a single named item, not an arbitrary multi-component set;
+a component with no single such item to point at is covered by that reviewer's Full review
+instead, scoped to just that component). "Scoped" default =
 components changed since the last self-service run marker, or a caller-given git
 ref/date; "Full" = every plugin-devkit component × every applicable reviewer, always the
 explicit opt-in path. **Before a Full sweep enumerates its target set, exclude any path

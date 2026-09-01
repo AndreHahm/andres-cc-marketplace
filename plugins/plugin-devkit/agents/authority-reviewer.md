@@ -43,7 +43,7 @@ Same resolution discipline as `consistency-reviewer`/`dependency-reviewer`: if t
 Search for the rulebook: `Glob("**/plugin-rulebook/SKILL.md")`.
 
 **If found:**
-1. Read `<plugin-rulebook-dir>/../../rules/plugin-rulebook-enforcement.md` (or wherever this repo's own documented priority stack lives — search for it if the path differs) — its "Rule Conflict Resolution" priority stack is the canonical worked example of a correctly-stated precedence claim in this repo, and the baseline against which a component claiming to override CLAUDE.md or another rule should be checked.
+1. `Glob("**/plugin-rulebook-enforcement.md")` — its "Rule Conflict Resolution" priority stack is the canonical worked example of a correctly-stated precedence claim in this repo, and the baseline against which a component claiming to override CLAUDE.md or another rule should be checked.
 2. Read `<plugin-rulebook-dir>/references/gitignore-exclusion.md` — exclude gitignored paths from the component set and from any file read while inspecting a component.
 3. Read `<plugin-rulebook-dir>/assets/settings.json → structured_output.action_enum` — used by Structured Output Mode (Step 6).
 
