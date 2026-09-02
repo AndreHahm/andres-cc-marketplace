@@ -19,7 +19,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-include = ["scripts/**/*.py", "tests/**/*.py", "plugins/session-kit/scripts/**/*.py", "plugins/session-kit/tests/**/*.py"]
+include = ["scripts/**/*.py", "tests/**/*.py", "plugins/session-kit/scripts/**/*.py", "plugins/session-kit/tests/**/*.py", "plugins/session-kit/skills/**/*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -29,4 +29,4 @@ pythonpath = ["."]
 testpaths = ["tests/marketplace_ci", "plugins/analysis-kit/tests", "plugins/session-kit/tests"]
 
 [tool.ty.environment]
-extra-paths = ["plugins/analysis-kit/scripts", "plugins/session-kit/scripts"]
+extra-paths = ["plugins/analysis-kit/scripts", "plugins/session-kit/scripts", "plugins/session-kit/skills/session-handoff/scripts"]
