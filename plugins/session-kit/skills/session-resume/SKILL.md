@@ -25,6 +25,10 @@ Generate a context-recovery document from a past session.
   instead of synthesizing a recovery prompt from raw transcript. This skill reconstructs context
   retroactively from a past session's own JSONL when nothing was ever explicitly saved;
   `session-handoff` loads a document someone deliberately wrote and validated during an active session.
+- Wants to continue the work directly in *this* conversation rather than receive a portable document
+  → use `session-recover` instead. This skill always produces a document for review or handoff
+  elsewhere; `session-recover` continues in-place, regardless of whether the prior session ended
+  cleanly or was interrupted (though interruption recovery is its most common trigger).
 
 ## Step 1: Resolve the session
 
