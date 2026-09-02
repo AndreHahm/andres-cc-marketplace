@@ -29,4 +29,4 @@ pythonpath = ["."]
 testpaths = ["tests/marketplace_ci", "plugins/analysis-kit/tests", "plugins/session-kit/tests"]
 
 [tool.ty.environment]
-extra-paths = ["plugins/analysis-kit/scripts", "plugins/session-kit/scripts", "plugins/session-kit/skills/session-handoff/scripts"]
+extra-paths = ["plugins/analysis-kit/scripts", "plugins/session-kit/scripts", "plugins/session-kit/skills/session-handoff/scripts", "plugins/session-kit/skills/session-recover/scripts"]

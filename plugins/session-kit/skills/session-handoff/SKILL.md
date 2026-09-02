@@ -33,6 +33,10 @@ ambiguity.
   document during an active session.
 - A generic end-of-session audit/summary ritual with no persisted document — use `session-wrap-up`
   instead, which suggests this skill as a follow-up rather than duplicating it.
+- No explicit handoff document was ever saved, and the goal is to continue directly in the current
+  conversation rather than load a pre-validated document → use `session-recover` instead. This skill's
+  RESUME workflow requires a validated, staleness-checked document created beforehand; `session-recover`
+  works directly from raw session JSONL with no prior save step.
 
 ## Mode Selection
 
