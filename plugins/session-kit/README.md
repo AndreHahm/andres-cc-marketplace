@@ -1,7 +1,8 @@
 # session-kit
 
 Claude Code session management toolkit: list, search, diff, export, resume, and clean up past
-sessions; aggregate cross-session tasks; audit and search stored memory files.
+sessions; aggregate cross-session tasks; audit and search stored memory files; create and load
+handoff documents to preserve context across sessions; and run an end-of-session wrap-up ritual.
 
 ## Language
 
@@ -11,7 +12,7 @@ another language.
 
 ## Overview
 
-14 skills sit on top of a shared `scripts/` core:
+14 read/query skills sit on top of a shared `scripts/` core:
 
 - `scripts/formatters.py` — output helpers (JSON/NDJSON serialization, table rendering, duration/size
   formatting, timestamp and date-boundary parsing)
@@ -21,10 +22,18 @@ another language.
   tasks under `~/.claude/tasks/` (list, search, timeline, cleanup, task aggregation, deletion)
 - `scripts/memory_scanner.py` — scans `~/.claude/projects/*/memory/` (list, health audit, search)
 
-Each skill invokes these as CLI scripts (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.py" <command> ...`).
-`memory_scanner.py` and the delete/detail/task-list commands in `session_store.py` always print JSON;
-`session_store.py`'s `list`/`search`/`timeline`/`tasks` commands default to a human-readable table and
-need an explicit `--format json` (every skill invocation that needs structured output passes it).
+Each of those 14 skills invokes these as CLI scripts
+(`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.py" <command> ...`). `memory_scanner.py` and the
+delete/detail/task-list commands in `session_store.py` always print JSON; `session_store.py`'s
+`list`/`search`/`timeline`/`tasks` commands default to a human-readable table and need an explicit
+`--format json` (every skill invocation that needs structured output passes it).
+
+Two further skills write rather than just query, each with its own self-contained tooling:
+
+- `session-handoff` — 4 standalone scripts under its own `skills/session-handoff/scripts/`
+  (`create_handoff.py`, `list_handoffs.py`, `validate_handoff.py`, `check_staleness.py`), independent
+  of the shared `scripts/` core above
+- `session-wrap-up` — no scripts; a prose-only ritual using `git status`/`git diff` directly
 
 ## Skills
 
@@ -44,6 +53,8 @@ need an explicit `--format json` (every skill invocation that needs structured o
 | `session-memory` | List all memory files across projects |
 | `session-memory-search` | Search memory file contents |
 | `session-memory-audit` | Health-check memories (stale, broken links, orphans, missing frontmatter, duplicates) |
+| `session-handoff` | Create and load validated, staleness-checked handoff documents (`.claude/handoffs/`) |
+| `session-wrap-up` | End-of-session ritual: informational git audit, learning capture, summary, handoff suggestion |
 
 ## Development
 
