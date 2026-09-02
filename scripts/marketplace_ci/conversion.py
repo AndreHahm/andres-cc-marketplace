@@ -64,6 +64,17 @@ def convert_agent(source: str) -> str:
     # only supported optional fields) — `tools` is Claude-side-only and must
     # not be carried into the export.
     # https://learn.chatgpt.com/docs/agent-configuration/subagents?surface=app
+    #
+    # A custom subagent with no sandbox_mode of its own inherits the parent
+    # session's sandbox_mode (see docs/codex-subagents-schema.md) -- since
+    # `tools` above is dropped rather than translated, every exported agent
+    # needs an explicit sandbox_mode or it silently inherits whatever the
+    # root config.toml sets (currently workspace-write). Every agent this
+    # marketplace currently exports is a read-only reviewer/classifier, so
+    # "read-only" is the correct default for all of them; a future agent
+    # that genuinely needs write access should revisit this, not add a
+    # speculative override mechanism for a need that doesn't exist yet.
+    lines.append('sandbox_mode = "read-only"')
 
     body_text = body.rstrip("\n")
     lines.append(f'developer_instructions = """\n{body_text}"""')

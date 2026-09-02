@@ -29,6 +29,14 @@ def test_agent_conversion_preserves_description_and_prompt_but_drops_tools():
     assert "Review the target carefully." in rendered
 
 
+def test_convert_agent_always_emits_read_only_sandbox_mode():
+    # Every exported agent needs its own sandbox_mode -- otherwise it silently
+    # inherits the parent session's (e.g. a root config.toml's workspace-write)
+    # instead of staying read-only. See conversion.py's own comment for why.
+    rendered = convert_agent(AGENT_MARKDOWN)
+    assert 'sandbox_mode = "read-only"' in rendered
+
+
 def test_legacy_source_command_is_blocking(repo):
     (repo / ".agents" / "skills" / "source-command-old").mkdir(parents=True)
     assert find_legacy_command_exports(repo) == (Path(".agents/skills/source-command-old"),)

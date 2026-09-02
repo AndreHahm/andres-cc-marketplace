@@ -1,5 +1,6 @@
 name = "work-intake-classifier"
 description = "Not a live-request handler. This file's body is the instruction payload for two non-native dispatch paths only: (1) workmanagement-kit's own bridge-caller script feeding it to `codex-kit`'s `codex-review-bridge` as `--instruction-file` so the real Codex model performs the classification, and (2) a human running this persona standalone via this repository's `.claude/agents` -> `.codex/agents` export, outside any Claude Code session. Claude's native `Agent()` dispatch must never be used to invoke this file directly, even when a live request's phrasing resembles an ambiguous-intake classification task."
+sandbox_mode = "read-only"
 developer_instructions = """
 # Work Intake Classifier
 
