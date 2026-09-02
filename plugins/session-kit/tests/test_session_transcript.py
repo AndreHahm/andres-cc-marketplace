@@ -4,6 +4,8 @@ from session_transcript import (
     export_transcript,
     extract_user_text,
     get_diff_data,
+    get_errors,
+    get_irritation_signals,
     get_messages,
     get_messages_paginated,
     get_resume_data,
@@ -67,6 +69,93 @@ class TestGetStats:
     def test_duration(self):
         stats = get_stats(FIXTURE)
         assert stats["duration_minutes"] > 0
+
+
+class TestGetErrors:
+    def test_resolves_error_to_originating_tool(self, tmp_path):
+        f = tmp_path / "errors.jsonl"
+        f.write_text(
+            '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use",'
+            '"id":"toolu_1","name":"Bash","input":{"command":"false"}}]}}\n'
+            '{"type":"user","timestamp":"2026-04-10T09:00:00Z","message":{"role":"user",'
+            '"content":[{"type":"tool_result","tool_use_id":"toolu_1","is_error":true,'
+            '"content":"command failed"}]}}\n'
+        )
+        result = get_errors(str(f))
+        assert result["error_count"] == 1
+        assert result["errors"][0]["tool_name"] == "Bash"
+        assert result["errors"][0]["error_content"] == "command failed"
+
+    def test_ignores_successful_tool_results(self, tmp_path):
+        f = tmp_path / "no_errors.jsonl"
+        f.write_text(
+            '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use",'
+            '"id":"toolu_1","name":"Read","input":{}}]}}\n'
+            '{"type":"user","message":{"role":"user","content":[{"type":"tool_result",'
+            '"tool_use_id":"toolu_1","is_error":false,"content":"ok"}]}}\n'
+        )
+        result = get_errors(str(f))
+        assert result["error_count"] == 0
+
+    def test_unknown_tool_name_when_tool_use_missing(self, tmp_path):
+        f = tmp_path / "orphan_error.jsonl"
+        f.write_text(
+            '{"type":"user","timestamp":"2026-04-10T09:00:00Z","message":{"role":"user",'
+            '"content":[{"type":"tool_result","tool_use_id":"toolu_missing","is_error":true,'
+            '"content":"boom"}]}}\n'
+        )
+        result = get_errors(str(f))
+        assert result["errors"][0]["tool_name"] == "unknown"
+
+
+class TestGetIrritationSignals:
+    def test_detects_correction_phrase(self, tmp_path):
+        f = tmp_path / "correction.jsonl"
+        f.write_text(
+            '{"type":"user","timestamp":"2026-04-10T09:00:00Z","message":{"role":"user",'
+            '"content":"no, that is wrong, please undo it"}}\n'
+        )
+        result = get_irritation_signals(str(f))
+        assert result["correction_count"] == 1
+        assert result["corrections"][0]["phrase"] in {"no,", "wrong", "undo"}
+
+    def test_detects_stuck_loop(self, tmp_path):
+        call = (
+            '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use",'
+            '"name":"Bash","input":{"command":"ls"}}]}}\n'
+        )
+        f = tmp_path / "loop.jsonl"
+        f.write_text(call * 3)
+        result = get_irritation_signals(str(f))
+        assert result["stuck_loop_count"] == 1
+        assert result["stuck_loops"][0] == {"tool_name": "Bash", "count": 3}
+
+    def test_no_loop_below_threshold(self, tmp_path):
+        call = (
+            '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use",'
+            '"name":"Bash","input":{"command":"ls"}}]}}\n'
+        )
+        f = tmp_path / "short_run.jsonl"
+        f.write_text(call * 2)
+        result = get_irritation_signals(str(f))
+        assert result["stuck_loop_count"] == 0
+
+    def test_different_inputs_do_not_count_as_same_run(self, tmp_path):
+        f = tmp_path / "varied.jsonl"
+        f.write_text(
+            "".join(
+                '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use",'
+                f'"name":"Bash","input":{{"command":"ls {i}"}}}}]}}}}\n'
+                for i in range(3)
+            )
+        )
+        result = get_irritation_signals(str(f))
+        assert result["stuck_loop_count"] == 0
+
+    def test_no_false_positive_on_plain_text(self):
+        result = get_irritation_signals(FIXTURE)
+        assert result["correction_count"] == 0
+        assert result["stuck_loop_count"] == 0
 
 
 class TestGetTasks:

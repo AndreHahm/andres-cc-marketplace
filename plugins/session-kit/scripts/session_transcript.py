@@ -11,6 +11,8 @@ Usage as CLI:
   python3 session_transcript.py resume <session.jsonl>
   python3 session_transcript.py diff <session-a.jsonl> <session-b.jsonl>
   python3 session_transcript.py messages <session.jsonl> [--offset N] [--limit N] [--include-tools]
+  python3 session_transcript.py errors <session.jsonl>
+  python3 session_transcript.py irritation <session.jsonl>
 """
 
 from __future__ import annotations
@@ -24,6 +26,12 @@ from typing import Any, NoReturn
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from formatters import parse_timestamp, to_json, truncate  # noqa: E402
+
+# Correction phrases indicating the user is pushing back on prior assistant work.
+CORRECTION_PHRASES = ["wrong", "stop", "undo", "revert", "no,", "that's not"]
+
+# Consecutive identical tool calls at or above this count are treated as a stuck loop.
+STUCK_LOOP_THRESHOLD = 3
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -226,6 +234,109 @@ def get_stats(path: str) -> dict:
         "last_message": last_ts_str,
         "cwd": cwd,
         "is_resumed": is_resumed,
+    }
+
+
+def get_errors(path: str) -> dict:
+    """List tool errors from a session: timestamps, tool names, and error content.
+
+    Two-pass: assistant tool_use blocks map tool-use IDs to tool names, then user
+    tool_result blocks with is_error resolve each error to its originating tool.
+    """
+    tool_names: dict[str, str] = {}
+    errors: list[dict] = []
+
+    for obj in read_lines(path):
+        msg_type = obj.get("type")
+        content = (obj.get("message") or {}).get("content") or []
+        if not isinstance(content, list):
+            continue
+
+        if msg_type == "assistant":
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "tool_use":
+                    tool_names[block.get("id", "")] = block.get("name", "unknown")
+        elif msg_type == "user":
+            for block in content:
+                if not (isinstance(block, dict) and block.get("type") == "tool_result"):
+                    continue
+                if not block.get("is_error"):
+                    continue
+                result_content = block.get("content", "")
+                if isinstance(result_content, list):
+                    result_content = " ".join(
+                        str(b.get("text", "")) for b in result_content if isinstance(b, dict)
+                    )
+                errors.append(
+                    {
+                        "timestamp": obj.get("timestamp"),
+                        "tool_name": tool_names.get(block.get("tool_use_id", ""), "unknown"),
+                        "error_content": truncate(str(result_content), 500),
+                    }
+                )
+
+    return {"error_count": len(errors), "errors": errors}
+
+
+def get_irritation_signals(path: str) -> dict:
+    """Detect user frustration signals: correction phrases and stuck tool-call loops.
+
+    Correction phrases are case-insensitive substring matches against a fixed list
+    ("wrong", "stop", "undo", etc.) in user message text. A stuck loop is 3+
+    consecutive identical tool calls (same tool name and input) in assistant messages.
+    """
+    corrections: list[dict] = []
+    stuck_loops: list[dict] = []
+    run_key: tuple[str, str] | None = None
+    run_length = 0
+
+    def flush_run() -> None:
+        if run_key is not None and run_length >= STUCK_LOOP_THRESHOLD:
+            stuck_loops.append({"tool_name": run_key[0], "count": run_length})
+
+    for obj in read_lines(path):
+        msg_type = obj.get("type")
+
+        if msg_type == "user":
+            text = extract_user_text(obj)
+            if text and not is_system_message(text):
+                lower = text.lower()
+                for phrase in CORRECTION_PHRASES:
+                    if phrase in lower:
+                        corrections.append(
+                            {
+                                "timestamp": obj.get("timestamp"),
+                                "phrase": phrase,
+                                "excerpt": truncate(text, 200),
+                            }
+                        )
+                        break
+
+        elif msg_type == "assistant":
+            content = (obj.get("message") or {}).get("content") or []
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if not (isinstance(block, dict) and block.get("type") == "tool_use"):
+                    continue
+                key = (
+                    block.get("name", "unknown"),
+                    json.dumps(block.get("input", {}), sort_keys=True),
+                )
+                if key == run_key:
+                    run_length += 1
+                else:
+                    flush_run()
+                    run_key = key
+                    run_length = 1
+
+    flush_run()
+
+    return {
+        "correction_count": len(corrections),
+        "corrections": corrections,
+        "stuck_loop_count": len(stuck_loops),
+        "stuck_loops": stuck_loops,
     }
 
 
@@ -576,7 +687,8 @@ def main() -> None:
 
     if not command:
         sys.stderr.write(
-            "Usage: python3 session_transcript.py <stats|tasks|export|resume|diff|messages> ...\n"
+            "Usage: python3 session_transcript.py "
+            "<stats|tasks|export|resume|diff|messages|errors|irritation> ...\n"
         )
         sys.exit(1)
 
@@ -661,6 +773,16 @@ def main() -> None:
                 session_path, offset=opts.offset, limit=opts.limit, include_tools=opts.include_tools
             )
             print(to_json(result))
+        elif command == "errors":
+            session_path = args[1] if len(args) > 1 else None
+            if not session_path:
+                _exit_with_error("Missing session path", 2)
+            print(to_json(get_errors(session_path)))
+        elif command == "irritation":
+            session_path = args[1] if len(args) > 1 else None
+            if not session_path:
+                _exit_with_error("Missing session path", 2)
+            print(to_json(get_irritation_signals(session_path)))
         else:
             _exit_with_error(f"Unknown command: {command}", 3)
     except OSError as err:
