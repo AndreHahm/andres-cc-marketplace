@@ -37,6 +37,99 @@ def test_convert_agent_always_emits_read_only_sandbox_mode():
     assert 'sandbox_mode = "read-only"' in rendered
 
 
+def test_convert_agent_translates_model_to_codex_tier():
+    rendered = convert_agent(AGENT_MARKDOWN)  # declares model: sonnet
+    assert 'model = "gpt-5.6-terra"' in rendered
+
+
+@pytest.mark.parametrize(
+    "claude_model,codex_model",
+    [
+        ("opus", "gpt-5.6-sol"),
+        ("fable", "gpt-5.6-sol"),
+        ("sonnet", "gpt-5.6-terra"),
+        ("haiku", "gpt-5.6-luna"),
+    ],
+)
+def test_convert_agent_model_mapping_per_tier(claude_model, codex_model):
+    markdown = f"""---
+name: demo
+description: Reviews demo components
+model: {claude_model}
+---
+
+Body.
+"""
+    rendered = convert_agent(markdown)
+    assert f'model = "{codex_model}"' in rendered
+
+
+def test_convert_agent_rejects_unmapped_model():
+    markdown = """---
+name: demo
+description: Reviews demo components
+model: gpt-4
+---
+
+Body.
+"""
+    with pytest.raises(ConversionError, match="no Codex tier mapping"):
+        convert_agent(markdown)
+
+
+def test_convert_agent_omits_model_line_for_inherit():
+    # "inherit" means "use whatever model invoked this agent" -- not a fixed
+    # tier, so nothing to translate; found live via work-intake-classifier.md
+    # and work-transition-reviewer.md (plugins/workmanagement-kit/agents/),
+    # both of which declare model: inherit.
+    markdown = """---
+name: demo
+description: Reviews demo components
+model: inherit
+---
+
+Body.
+"""
+    rendered = convert_agent(markdown)
+    assert "model" not in rendered
+
+
+def test_convert_agent_omits_model_line_when_absent():
+    markdown = """---
+name: demo
+description: Reviews demo components
+---
+
+Body.
+"""
+    rendered = convert_agent(markdown)
+    assert "model" not in rendered
+
+
+def test_convert_agent_gives_smoke_tester_workspace_write():
+    markdown = """---
+name: smoke-tester
+description: Runs smoke tests.
+---
+
+Body.
+"""
+    rendered = convert_agent(markdown)
+    assert 'sandbox_mode = "workspace-write"' in rendered
+
+
+def test_convert_agent_other_agents_stay_read_only():
+    markdown = """---
+name: some-other-reviewer
+description: Reviews things.
+---
+
+Body.
+"""
+    rendered = convert_agent(markdown)
+    assert 'sandbox_mode = "read-only"' in rendered
+
+
 def test_legacy_source_command_is_blocking(repo):
     (repo / ".agents" / "skills" / "source-command-old").mkdir(parents=True)
     assert find_legacy_command_exports(repo) == (Path(".agents/skills/source-command-old"),)

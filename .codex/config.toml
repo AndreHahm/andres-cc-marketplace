@@ -94,7 +94,15 @@ Whenever Haiku model is requested, Codex should use Luna instead.
 - Do not auto-resolve, default, or continue past unanswered question cards.
 """
 
-forced_login_method = "chatgpt"
+# forced_login_method is deliberately NOT set here. Cross-model-review found
+# (confirmed via web search, 2026-09-02): project-scoped config.toml cannot
+# override machine-local auth settings -- that layer is excluded from the
+# project config specifically for security reasons (managed config -> user
+# config -> project config -> CLI flags, with auth excluded from the project
+# layer). Setting forced_login_method = "chatgpt" here would have no actual
+# effect while reading as a real, working restriction to anyone who checks it
+# in. If this is genuinely needed, set it in ~/.codex/config.toml instead.
+
 project_root_markers = [".git"]
 
 [features]
