@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Summary line data present (total count, project count, by-type breakdown)", "passed": true, "evidence": "scan returned projects_scanned:68, projects_with_memories:3, total_memories:34, by_type:{feedback:20,project:14}"},
+    {"text": "Per-memory fields support the grouped-by-project table (type, age, indexed, frontmatter)", "passed": true, "evidence": "each memory entry has type/age_days/indexed/has_frontmatter fields"},
+    {"text": "Suggests session-memory-search/session-memory-audit as follow-ups", "passed": true, "evidence": "SKILL.md Step 3 explicitly names both siblings"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

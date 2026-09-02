@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT run the timeline command/produce a timeline for this request", "passed": true, "evidence": "Did not execute session_store.py timeline"},
+    {"text": "Explicitly names session-list as the correct skill for this request", "passed": true, "evidence": "Quoted the skill's own exclusion, named session-list"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

@@ -1,0 +1,25 @@
+{
+  "skill_name": "session-handoff",
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "description": "Creates and loads validated, staleness-checked handoff documents so a fresh agent can continue work with near-zero ambiguity.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Create a handoff document",
+      "prompt": "I need to pause work, create a handoff document for this session.",
+      "expected_output": "Runs create_handoff.py, produces a scaffold with git info pre-filled, tells the user to fill in [TODO: ...] sections, mentions validate_handoff.py as the next step.",
+      "files": [".claude/handoffs/"]
+    },
+    {
+      "id": 2,
+      "name": "Load latest handoff, check staleness first",
+      "prompt": "Load the latest handoff and resume from it.",
+      "expected_output": "Runs list_handoffs.py to find candidates, then check_staleness.py before loading, reports the staleness level, only then reads/loads the actual document."
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  }
+}

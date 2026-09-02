@@ -1,0 +1,24 @@
+{
+  "skill_name": "session-memory-audit",
+  "skill_path": "plugins/session-kit/skills/session-memory-audit/SKILL.md",
+  "description": "Health-checks Claude Code memories for staleness, broken links, orphaned files, expired dates, missing frontmatter, and duplicates.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Health-check memories",
+      "prompt": "Check my memory files for problems -- stale entries, broken links, duplicates, missing frontmatter.",
+      "expected_output": "Runs memory_scanner.py audit, presents a health summary, splits findings into Section A (auto-fixable) and Section B (AI-assisted), and does NOT apply any fix without an AskUserQuestion confirmation first."
+    },
+    {
+      "id": 2,
+      "name": "Correctly redirects a keyword search",
+      "prompt": "Find memories mentioning the deployment process.",
+      "expected_output": "Declines to run the audit itself and points to session-memory-search instead, per its own stated exclusion."
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  }
+}

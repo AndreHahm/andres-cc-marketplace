@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Resolves two sessions without asking the user to manually supply session IDs", "passed": true, "evidence": "Selected yesterday=cbba71a9 and today=ab822c24 automatically via list fallback"},
+    {"text": "Runs session_transcript.py diff against the two resolved session paths", "passed": true, "evidence": "Ran diff and got files_common/added/dropped structural output"},
+    {"text": "Reports files added/dropped/common between the two sessions", "passed": true, "evidence": "files_common empty, explained as two unrelated worktree efforts"},
+    {"text": "Presents a synthesized narrative, not just raw JSON", "passed": true, "evidence": "Narrative covering focus, tool-usage shift (AskUserQuestion 23->53), MCP tool differences"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

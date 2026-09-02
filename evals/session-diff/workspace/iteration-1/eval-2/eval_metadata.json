@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-diff/SKILL.md",
+  "assertions": [
+    {"text": "Uses session-detail (or equivalent resolution) on the two GIVEN session IDs, not a fresh 'list --limit 2' call", "type": "functionality", "target": "outputs/"},
+    {"text": "The diff output's session_a/session_b actually correspond to the two named IDs (7b92a813... and ab822c24...)", "type": "functionality", "target": "outputs/"},
+    {"text": "Reports files added/dropped/common between the two named sessions", "type": "presence", "target": "outputs/"}
+  ]
+}

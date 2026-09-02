@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT produce the full session-detail profile for this request", "passed": true, "evidence": "Agent report: 'did not produce a full session summary/tasks/transcript'"},
+    {"text": "Names session-stats as the correct skill for a token-cost-only request", "passed": true, "evidence": "Agent report: 'told the user to use session-stats for that'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

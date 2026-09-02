@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Identifies candidates without deleting anything", "passed": true, "evidence": "cleanup command ran, returned 3 tiny-session candidates as JSON; no delete-session call made"},
+    {"text": "Output includes reason/age/size fields presentable as a table", "passed": true, "evidence": "each candidate has reason, age_days, size_bytes"},
+    {"text": "Shows total reclaimable space", "passed": true, "evidence": "total_size_bytes: 680 present in output"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

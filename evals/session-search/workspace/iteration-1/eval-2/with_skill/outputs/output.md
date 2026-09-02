@@ -1,0 +1,1 @@
+That's not something I can do with session-search — that skill only searches Claude Code session transcripts, not stored memory file content. For searching your memory files for anything about the login bug, use `session-memory-search` instead.

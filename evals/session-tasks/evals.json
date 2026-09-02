@@ -1,0 +1,21 @@
+{
+  "skill_name": "session-tasks",
+  "skill_path": "plugins/session-kit/skills/session-tasks/SKILL.md",
+  "description": "Aggregates tasks across Claude Code task lists and sessions.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Aggregate pending tasks across sessions",
+      "prompt": "What tasks are pending across all my sessions and task lists?",
+      "expected_output": "Aggregates tasks with pending/in-progress/completed status using --format json, shows dependencies.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Find orphaned task lists",
+      "prompt": "Show me any orphaned task lists in this project.",
+      "expected_output": "Correctly identifies pending/in-progress tasks whose owning task list's last_modified is >7 days old.",
+      "files": []
+    }
+  ]
+}

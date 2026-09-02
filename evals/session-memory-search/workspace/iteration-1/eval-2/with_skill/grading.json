@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT run a keyword search itself for this request", "passed": true, "evidence": "Agent report: 'No memory_scanner.py invocation was made, consistent with the skill's scope boundary.'"},
+    {"text": "Explicitly names session-memory as the correct skill for a no-keyword listing", "passed": true, "evidence": "Agent report: 'redirected the user to session-memory for a full listing/overview.'"},
+    {"text": "Reasoning matches the skill's own stated When NOT to Use criterion (no keyword involved)", "passed": true, "evidence": "Agent report: 'since the user's request had no keyword... per the skill's explicit routing rule.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

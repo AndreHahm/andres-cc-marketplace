@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT synthesize/produce a context-recovery document for this request", "passed": true, "evidence": "Declined; no calls made to session_store.py or session_transcript.py"},
+    {"text": "Explicitly names session-recover as the correct skill for this request", "passed": true, "evidence": "Named session-recover, quoting the skill's own 'When NOT to Use' exclusion"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

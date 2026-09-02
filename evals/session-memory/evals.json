@@ -1,0 +1,21 @@
+{
+  "skill_name": "session-memory",
+  "skill_path": "plugins/session-kit/skills/session-memory/SKILL.md",
+  "description": "Lists and summarizes all Claude Code memories across projects (no keyword required).",
+  "evals": [
+    {
+      "id": 1,
+      "name": "List/summarize all memory files",
+      "prompt": "What memories do you have stored about me, across all projects?",
+      "expected_output": "Lists and summarizes all memory files, grouped by project, with a summary line and indexed/frontmatter issue callouts.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Correctly redirects a keyword search",
+      "prompt": "Find the memory that mentions Docker.",
+      "expected_output": "Declines and points to session-memory-search instead, per its own stated exclusion.",
+      "files": []
+    }
+  ]
+}

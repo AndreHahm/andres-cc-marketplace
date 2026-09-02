@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT run the audit script itself for this request", "passed": true, "evidence": "Agent report: 'did not run memory_scanner.py.'"},
+    {"text": "Explicitly names session-memory-search as the correct skill for a keyword search", "passed": true, "evidence": "Agent report: 'redirected to session-memory-search.'"},
+    {"text": "Reasoning matches the skill's own stated exclusion (finding by keyword is not a health-check)", "passed": true, "evidence": "Agent report: 'per the skill's When NOT to Use section, keyword search is explicitly excluded.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

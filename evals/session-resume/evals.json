@@ -1,0 +1,19 @@
+{
+  "skill_name": "session-resume",
+  "skill_path": "plugins/session-kit/skills/session-resume/SKILL.md",
+  "description": "Generates a context recovery prompt from a past Claude Code session.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Context-recovery prompt for a different session",
+      "prompt": "Give me a context recovery prompt for my session on the auth feature, so I can start a fresh session with that context.",
+      "expected_output": "Produces a structured context-recovery document (per the Context Recovery Template), mentions claude --resume as an alternative."
+    },
+    {
+      "id": 2,
+      "name": "Correctly redirects an in-place continuation request",
+      "prompt": "My session just crashed with ctrl-c, help me continue working on it right here in this conversation.",
+      "expected_output": "Declines and points to session-recover instead, per its own stated 'When NOT to Use' exclusion -- does not synthesize a recovery document for this request."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {"text": "Runs list_handoffs.py before anything else", "type": "functionality", "target": "outputs/ transcript or tool calls"},
+    {"text": "Runs check_staleness.py on the selected handoff BEFORE reading/loading its content", "type": "functionality", "target": "outputs/ transcript or tool calls"},
+    {"text": "Reports the staleness level (FRESH/SLIGHTLY_STALE/STALE/VERY_STALE) to the user", "type": "presence", "target": "outputs/"},
+    {"text": "Only reads the actual handoff document content after the staleness check", "type": "quality", "target": "outputs/ transcript ordering"}
+  ]
+}

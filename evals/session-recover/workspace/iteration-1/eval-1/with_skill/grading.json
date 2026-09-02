@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs extract_resume_context.py --session 7b92a813-0321-4dbb-b37a-c62dfc1207e7 (or the analogous single-call invocation)", "passed": true, "evidence": "Ran exactly this single-call invocation per the skill's Quick Start"},
+    {"text": "Reports a session end reason from the briefing (clean exit / interrupted / error cascade / abandoned / unknown)", "passed": true, "evidence": "Reported 'Clean exit' and critically cross-checked it against the Subagent Workflow section (16 completed / 45 interrupted), correctly flagging the heuristic's likely mis-classification"},
+    {"text": "Does not run claude --resume or claude --continue", "passed": true, "evidence": "Neither command appears anywhere in the commands-run list"},
+    {"text": "Proceeds to continue the work directly or states a concrete next action, rather than only summarizing", "passed": true, "evidence": "Proposed 5 concrete, ordered next steps rather than a static summary (execution correctly withheld per this eval's own test-harness instruction not to edit real files)"},
+    {"text": "Never loads the full session JSONL directly via Read -- always goes through the script", "passed": true, "evidence": "Only Bash-based script/git/grep/find/ls calls used; no direct Read of a .jsonl file"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

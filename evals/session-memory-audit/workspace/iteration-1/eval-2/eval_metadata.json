@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-memory-audit/SKILL.md",
+  "assertions": [
+    {"text": "Does NOT run the audit script itself for this request", "type": "functionality", "target": "outputs/ transcript or tool calls"},
+    {"text": "Explicitly names session-memory-search as the correct skill for a keyword search", "type": "presence", "target": "outputs/"},
+    {"text": "Reasoning matches the skill's own stated exclusion (finding by keyword is not a health-check)", "type": "quality", "target": "outputs/"}
+  ]
+}

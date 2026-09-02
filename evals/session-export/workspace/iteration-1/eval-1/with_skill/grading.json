@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Resolves current session via 'list --format json' before exporting", "passed": true, "evidence": "Documented --project filter returned [] (worktree basename bug), agent correctly fell back to unfiltered list and picked the current session"},
+    {"text": "Runs session_transcript.py export with --format md", "passed": true, "evidence": "Ran export --format md, produced 17182-line file"},
+    {"text": "Produced transcript is readable markdown, not raw JSON", "passed": true, "evidence": "Clean ## User/## Assistant headers with timestamps"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "note": "Caveat, not a skill-body defect: Step 1's documented --project \"$(basename $(pwd))\" command silently returns [] when run from a git worktree, since the store's project key is derived from the full checkout path, not the worktree directory's own basename. Recurred in 3 of 4 evals in this batch (export-1, diff-1, diff-2, timeline-1). Worth a follow-up fix to session_store.py or the affected skills' Step 1 wording."
+}

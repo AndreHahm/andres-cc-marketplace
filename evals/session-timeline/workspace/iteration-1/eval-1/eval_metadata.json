@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-timeline/SKILL.md",
+  "assertions": [
+    {"text": "Runs session_store.py timeline with --format json", "type": "functionality", "target": "outputs/"},
+    {"text": "Presents a chronological/visual timeline, not a flat sorted table", "type": "quality", "target": "outputs/"},
+    {"text": "Identifies at least one pattern (cadence, gaps, or session-length trend)", "type": "quality", "target": "outputs/"},
+    {"text": "Does not claim a branch column the timeline data doesn't contain", "type": "quality", "target": "outputs/"}
+  ]
+}

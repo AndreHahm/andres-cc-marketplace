@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Used --format json when invoking session_store.py list", "passed": true, "evidence": "`session_store.py list --sort duration --limit 20 --format json`"},
+    {"text": "Used --sort with a size/duration-related value, no --project filter", "passed": true, "evidence": "--sort duration, no --project (correct, task asked 'across all projects')"},
+    {"text": "Presented results sorted by the requested dimension (longest first)", "passed": true, "evidence": "Table led with the 99h22m session, descending by duration"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

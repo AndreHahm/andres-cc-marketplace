@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs session_store.py timeline with --format json", "passed": true, "evidence": "Ran timeline, self-diagnosed and fixed the worktree project-key issue, got 195 real sessions"},
+    {"text": "Presents a chronological/visual timeline, not a flat sorted table", "passed": true, "evidence": "ASCII bar chart, day-by-day"},
+    {"text": "Identifies at least one pattern", "passed": true, "evidence": "Long-to-short session shift, peak days (Aug 25, Aug 28), no multi-day gaps in 31 days"},
+    {"text": "Does not claim a branch column the timeline data doesn't contain", "passed": true, "evidence": "No branch column claimed"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+  "note": "Same underlying --project \"$(basename $(pwd))\" worktree bug encountered as session-export/session-diff (see those grading notes) -- agent self-diagnosed and worked around it rather than failing silently."
+}

@@ -1,0 +1,26 @@
+{
+  "skill_name": "session-stats",
+  "skill_path": "plugins/session-kit/skills/session-stats/SKILL.md",
+  "description": "Shows token usage, model distribution, tool usage, tool errors, and frustration signals for a Claude Code session.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Report tool errors for a session",
+      "prompt": "What tool errors happened in the session I just finished?",
+      "expected_output": "Resolves the session path via --format json, runs session_transcript.py errors, reports timestamped errors with correct tool names, count-first framing.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Report token/model breakdown",
+      "prompt": "How much token usage did that last session use?",
+      "expected_output": "Resolves the session path, runs session_transcript.py stats, reports a token/model breakdown as a visual summary, notes cost estimation is unavailable.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 5,
+    "declared_scenarios_covered": 2,
+    "uncovered": ["what models were used in this session", "was I stuck in a loop", "show me everything about this session (full profile) redirect"]
+  }
+}

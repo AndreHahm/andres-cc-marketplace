@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-handoff/SKILL.md",
+  "assertions": [
+    {"text": "Runs create_handoff.py (not a hand-written document)", "type": "functionality", "target": "outputs/ transcript or tool calls"},
+    {"text": "A file was created under .claude/handoffs/ with git info pre-filled (branch, recent commits)", "type": "presence", "target": ".claude/handoffs/"},
+    {"text": "Reports the file path to the user and instructs filling in [TODO: ...] sections", "type": "quality", "target": "outputs/"},
+    {"text": "Mentions validate_handoff.py as the next step", "type": "presence", "target": "outputs/"}
+  ]
+}

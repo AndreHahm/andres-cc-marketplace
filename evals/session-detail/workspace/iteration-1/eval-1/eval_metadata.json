@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-detail/SKILL.md",
+  "assertions": [
+    {"text": "Ran session_store.py session-detail <session-id>", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Presented session/token/model/tool summary plus task lists", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Offered or showed messages via session_transcript.py messages using the resolved path field", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

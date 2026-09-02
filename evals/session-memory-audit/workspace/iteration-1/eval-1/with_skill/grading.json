@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs memory_scanner.py audit (not search or a manual scan)", "passed": true, "evidence": "Agent report: 'Ran plugins/session-kit/scripts/memory_scanner.py audit for real (read-only).'"},
+    {"text": "Presents a health summary (counts by severity) before the detailed findings", "passed": true, "evidence": "Agent report: '34 memories, 3 projects, 0 healthy, 48 findings (12 critical / 0 warning / 36 info)'."},
+    {"text": "Findings are split into two clearly labeled sections: auto-fixable and AI-assisted", "passed": true, "evidence": "Agent report: 'Section A (auto-fixable, 46 findings)... Section B (AI-assisted, 2 findings)'."},
+    {"text": "Does not apply any DELETE/REMOVE/INDEX/SYNC fix without an AskUserQuestion confirmation first", "passed": true, "evidence": "AskUserQuestion errored as unavailable in this subagent context; the skill correctly treated that as a hard stop -- zero fixes applied, no rm, no MEMORY.md edit."},
+    {"text": "Does not print a free-text '(yes/no)' prompt in place of AskUserQuestion", "passed": true, "evidence": "Agent attempted the real AskUserQuestion tool rather than falling back to a printed text prompt when it errored."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0},
+  "notes": "AskUserQuestion is not available inside general-purpose subagents -- a genuine test-methodology limitation for any AskUserQuestion-gated skill tested this way. The skill's own fail-safe design (treat an unconfirmable gate as a hard stop) is what actually produced the correct zero-fixes-applied result here, not a simulated approval."
+}

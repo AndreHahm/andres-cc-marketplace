@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Uses --format json for full field set", "passed": true, "evidence": "tasks --status pending --format json returned description/blockedBy/blocks/source fields not present in table mode"},
+    {"text": "Data supports grouping by status (in_progress/pending/completed)", "passed": true, "evidence": "status field present on every task"},
+    {"text": "Cross-references task-lists' last_modified for orphan detection", "passed": true, "evidence": "task-lists command returns last_modified per list, matching what orphan detection needs"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

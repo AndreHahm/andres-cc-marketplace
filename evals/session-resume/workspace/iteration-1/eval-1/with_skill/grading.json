@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Resolves a session and runs session_transcript.py resume", "passed": false, "evidence": "No session about 'the auth feature' exists in this real repo's data -- keyword searches (auth, authentication, OAuth, JWT, login) all returned zero genuine matches"},
+    {"text": "Output follows the Context Recovery Template structure", "passed": false, "evidence": "No document was produced, correctly"},
+    {"text": "Mentions 'claude --resume' as an alternative", "passed": false, "evidence": "Not applicable, no document produced"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 0, "pass_rate": 0.0},
+  "note": "INCONCLUSIVE, not a skill defect -- this eval's own scenario prompt was flawed: it referenced a fictional 'session on the auth feature' that does not exist anywhere in this repo's real session data. The tested skill's actual behavior (refusing to fabricate a plausible-looking recovery document for a non-existent session, running real keyword searches to verify, then asking the user for disambiguation) is exactly correct and desirable -- arguably better than blindly producing a document. The 0/3 pass rate reflects the scenario's own premise failing, not the skill under test. Recommend re-running this eval with a real session ID/topic if a clean pass/fail signal is wanted."
+}

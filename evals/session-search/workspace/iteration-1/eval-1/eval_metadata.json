@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-search/SKILL.md",
+  "assertions": [
+    {"text": "Used --format json when invoking session_store.py search", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Searched for a literal keyword related to 'login bug', not a regex pattern", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Grouped results by session with matching text and a resume command", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

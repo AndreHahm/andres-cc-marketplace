@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Used --format json when invoking session_store.py list", "passed": true, "evidence": "`python3 \"plugins/session-kit/scripts/session_store.py\" list --limit 20 --format json`"},
+    {"text": "Filtered by the current project (some --project value used)", "passed": false, "evidence": "No --project flag used; agent's own note: 'A stricter this-project-only filter... was not applied since the skill's default Step 1 command has no project filter'. Result included unrelated worktree/agent-trigger sessions (#14-17)."},
+    {"text": "Presented results as a table including session IDs and dates", "passed": true, "evidence": "20-row markdown table with Session ID and Date columns present"},
+    {"text": "Mentions the claude --resume <session-id> command", "passed": true, "evidence": "'Resume command: claude --resume <session-id>'"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 3, "pass_rate": 0.75}
+}
