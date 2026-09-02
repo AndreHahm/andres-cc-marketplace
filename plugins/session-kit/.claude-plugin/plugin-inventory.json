@@ -573,6 +573,88 @@
         }
       ],
       "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_b4ba304b",
+      "name": "session-handoff",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-handoff"
+          ],
+          "name": "session-handoff",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-handoff",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-handoff"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_02a15697",
+      "name": "session-wrap-up",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-wrap-up"
+          ],
+          "name": "session-wrap-up",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-wrap-up",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-wrap-up"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
     }
   ],
   "extensions": {},
