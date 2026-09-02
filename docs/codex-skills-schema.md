@@ -71,12 +71,20 @@ Codex scans, in priority order: `REPO` (`.agents/skills` relative to cwd, then
 
 ## Claude Code's extensions beyond the base spec
 
-Surveyed live across this repo's own `.claude/skills/*/SKILL.md` files, the frontmatter fields
-actually in use are: `name`, `description`, `allowed-tools`, `argument-hint`,
-`disable-model-invocation`, `hooks`, `model`. Of these, only `name`/`description` (and, experimentally,
-`allowed-tools`) are part of the base spec — `argument-hint`, `disable-model-invocation`, `hooks`, and
-`model` are Claude Code-only extensions with no defined meaning in the base spec or in Codex's
+Per this repo's own `skill-development/references/platform-reference.md` (Claude Code's full
+documented frontmatter field list, not just what happens to be in use), the complete set is: `name`,
+`description`, `when_to_use`, `argument-hint`, `arguments`, `allowed-tools`, `model`, `effort`,
+`context`, `agent`, `hooks`, `disable-model-invocation`, `paths`, `user-invocable`, `shell`. Of these,
+only `name`/`description` (and, experimentally, `allowed-tools`) are part of the base spec — every
+other field is a Claude Code-only extension with no defined meaning in the base spec or in Codex's
 documented frontmatter support.
+
+An earlier version of this section surveyed only fields *actually used* across this repo's own
+`.claude/skills/*/SKILL.md` files (`name`, `description`, `allowed-tools`, `argument-hint`,
+`disable-model-invocation`, `hooks`, `model`) rather than the full documented set — live-usage
+grepping under-counts real extensions that no skill in this repo happens to exercise yet (e.g.
+`context: fork`/`agent`, confirmed real but currently unused by any of this repo's 93 skills,
+including the one actually exported to Codex). Corrected 2026-09-02.
 
 Neither source doc states what Codex does when it encounters an unrecognized frontmatter field —
 that behavior is undocumented, not verified here. What *is* confirmed is narrower: Codex's own doc

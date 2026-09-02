@@ -32,7 +32,10 @@ sandbox_mode = "workspace-write"
 # injection reaches spawned subagents or only the root/parent session --
 # treat the delegation policy below as best-effort until verified live.
 developer_instructions = """
-Multi-agent delegation policy:
+Follow `AGENTS.md` as the canonical repository policy. Analysis, review, diagnosis, and triage are
+read-only unless the user explicitly asks for implementation.
+
+## Multi-agent delegation policy
 
 - Do not spawn subagents unless the task contains at least two independent workstreams and delegation materially improves the outcome.
 - Every spawn_agent call must set fork_turns explicitly; never rely on its default.
@@ -42,11 +45,64 @@ Multi-agent delegation policy:
 - Never select reasoning_effort: "ultra" for a subagent.
 - Subagents must not spawn further subagents unless the user explicitly requests recursive delegation.
 - Reuse an existing subagent for follow-up work instead of spawning a replacement when practical.
+
+## Codex compatibility
+
+Claude Code also uses skill frontmatter that Codex does not interpret natively. After selecting
+a skill under `.claude/skills/`, read its `SKILL.md` in full and translate these fields/tools:
+
+- `context: fork`: run the skill in a subagent, using the `default` role unless `agent` names a
+  different available role. Spawn with no inherited conversation history and pass the user request,
+  skill name and path, arguments, and any assigned output path explicitly.
+- `disable-model-invocation: true`: invoke only when the user explicitly names or requests that
+  skill. Treat `$skill-name`, Claude-style `/skill-name`, and "run skill-name" as explicit.
+- `$ARGUMENTS`: substitute the text following the skill name; when absent, use the skill's stated
+  default.
+- `arguments` (frontmatter field): named positional substitution (`$0`, `$1`, ... or `$name`) mapped
+  in declared order from the space-separated invocation text -- distinct from `$ARGUMENTS`, which
+  substitutes the whole raw string. When a name has no corresponding positional value, treat it as
+  absent/unset.
+- `AskUserQuestion`: use the `request_user_input` tool instead (see also "## Tool `request_user_input`").
+  If `request_user_input` is unavailable in the current mode, state the question directly in output
+  and pause for the user's reply instead of proceeding unanswered.
+
+If a forked workflow requests more simultaneous subagents than the session permits, use the
+maximum available concurrency and dispatch the remaining workstreams in batches. Do not omit or
+merge groups or evaluators; preserve each workstream's isolated context and assigned output path.
+
+The parent must still read the selected skill before delegation, wait for the forked workflow, and
+return its result. These translations affect Codex orchestration only; do not edit the canonical
+Claude frontmatter.
+
+Do not copy `.claude/rules/` into `.codex/rules/`; Codex reserves that directory for command
+permission rules written as `.rules` files.
+
+Whenever Opus or Fable models are requested, Codex should use Sol instead.
+Whenever Sonnet model is requested, Codex should use Terra instead.
+Whenever Haiku model is requested, Codex should use Luna instead.
+
+## Delegation defaults
+
+- Keep Terra as the primary coordinator and final decision-maker.
+- Delegate the smallest useful set of independent work: Luna for narrow or mechanical tasks, Terra for material judgment, and Sol review only when high risk warrants it. Do not delegate recursively.
+- Treat worker reports as claims. The primary waits for workers, inspects their changes, reruns relevant verification, and decides whether the requested outcome is complete.
+
+## Tool `request_user_input`
+
+- Never set `autoResolutionMs`.
+- Use question cards when input is needed, and wait indefinitely for the user.
+- Do not auto-resolve, default, or continue past unanswered question cards.
 """
 
 forced_login_method = "chatgpt"
 project_root_markers = [".git"]
 
+[features]
+# multi_agent duplicates [agents].enabled below from a newer "Centralized Feature Flags"
+# surface (per official config docs, which call [features] the "preferred" location).
+# Whether the two overlap, are independent, or one supersedes the other is unconfirmed by
+# any fetched doc -- kept both defensively rather than assuming one makes the other a no-op.
+multi_agent = true
 
 [agents]
 enabled = true
