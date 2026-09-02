@@ -2,7 +2,8 @@
 
 Claude Code session management toolkit: list, search, diff, export, resume, and clean up past
 sessions; aggregate cross-session tasks; audit and search stored memory files; create and load
-handoff documents to preserve context across sessions; and run an end-of-session wrap-up ritual.
+handoff documents to preserve context across sessions; recover and continue an interrupted session
+directly in-conversation; and run an end-of-session wrap-up ritual.
 
 ## Language
 
@@ -28,11 +29,14 @@ delete/detail/task-list commands in `session_store.py` always print JSON; `sessi
 `list`/`search`/`timeline`/`tasks` commands default to a human-readable table and need an explicit
 `--format json` (every skill invocation that needs structured output passes it).
 
-Two further skills write rather than just query, each with its own self-contained tooling:
+Three further skills write or continue rather than just query, each with its own self-contained
+tooling:
 
 - `session-handoff` — 4 standalone scripts under its own `skills/session-handoff/scripts/`
   (`create_handoff.py`, `list_handoffs.py`, `validate_handoff.py`, `check_staleness.py`), independent
   of the shared `scripts/` core above
+- `session-recover` — 1 standalone script under its own `skills/session-recover/scripts/`
+  (`extract_resume_context.py`), also independent of the shared `scripts/` core
 - `session-wrap-up` — no scripts; a prose-only ritual using `git status`/`git diff` directly
 
 ## Skills
@@ -54,6 +58,7 @@ Two further skills write rather than just query, each with its own self-containe
 | `session-memory-search` | Search memory file contents |
 | `session-memory-audit` | Health-check memories (stale, broken links, orphans, missing frontmatter, duplicates) |
 | `session-handoff` | Create and load validated, staleness-checked handoff documents (`.claude/handoffs/`) |
+| `session-recover` | Recover context from an interrupted session and continue directly in-conversation |
 | `session-wrap-up` | End-of-session ritual: informational git audit, learning capture, summary, handoff suggestion |
 
 ## Development
