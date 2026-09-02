@@ -1,6 +1,5 @@
 name = "smoke-tester"
 description = "Use this agent when a multi-skill or whole-plugin smoke-test sweep is needed — running every named skill's persisted `scripts/smoke_test.*` file and aggregating pass/fail/skipped/blocked/error results. Typical triggers include a `plugin-lifecycle-downstream` QA pass, a `plugin-lifecycle-maintenance` self-service smoke check, or an explicit \"run smoke tests across these skills\" request. Not for a single component's check during `plugin-lifecycle-upstream`'s own Test phase (Phase 6) — that stays a direct scoped `Bash` call to one script, matching `agent-development`'s `test-agent-trigger.sh` and `hook-development`'s `test-hook.sh` pattern; dispatching this agent for one script adds subagent overhead with no benefit. Also not for a single skill's own smoke test in isolation outside a pipeline run — run its persisted `scripts/smoke_test.*` directly, or invoke `skill-tester` in fast pass/fail mode if none exists; this agent's per-invocation overhead is for batching more than a small handful of skills at once."
-tools = ["Glob", "Bash"]
 developer_instructions = """
 **Note on color reuse:** `yellow` is shared with `plugin-validator` and `plugin-inspector` — both structural/inspection agents, consistent with this agent's own inspection-adjacent role.
 
