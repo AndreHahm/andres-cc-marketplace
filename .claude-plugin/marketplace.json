@@ -85,6 +85,19 @@
       "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
       "repository": "https://github.com/andrehahm/andres-cc-marketplace",
       "license": "Apache-2.0"
+    },
+    {
+      "name": "session-kit",
+      "source": "./plugins/session-kit",
+      "description": "Claude Code session management toolkit: list, search, diff, export, resume, and clean up past sessions; aggregate cross-session tasks; audit and search stored memory files — all backed by a shared Python core that parses session JSONL and scans ~/.claude/projects/ and ~/.claude/tasks/ directly, with no external dependencies beyond the standard library.",
+      "version": "1.0.0-alpha.1",
+      "author": {
+        "name": "Andre Hahm",
+        "url": "https://github.com/andrehahm"
+      },
+      "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
+      "repository": "https://github.com/andrehahm/andres-cc-marketplace",
+      "license": "Apache-2.0"
     }
   ]
 }

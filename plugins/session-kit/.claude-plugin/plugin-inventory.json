@@ -1,0 +1,583 @@
+{
+  "components": [
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_55d39d2a",
+      "name": "session-cleanup",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-cleanup"
+          ],
+          "name": "session-cleanup",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-cleanup",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-cleanup"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e401fadf",
+      "name": "session-delete",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-delete"
+          ],
+          "name": "session-delete",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-delete",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-delete"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_35ee23d2",
+      "name": "session-detail",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-detail"
+          ],
+          "name": "session-detail",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-detail",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-detail"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_3433cb63",
+      "name": "session-diff",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-diff"
+          ],
+          "name": "session-diff",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-diff",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-diff"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_ab51e538",
+      "name": "session-export",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-export"
+          ],
+          "name": "session-export",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-export",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-export"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_d5151707",
+      "name": "session-list",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-list"
+          ],
+          "name": "session-list",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-list",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-list"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_0a527971",
+      "name": "session-memory",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-memory"
+          ],
+          "name": "session-memory",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-memory",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-memory"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_fecd7cca",
+      "name": "session-memory-audit",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-memory-audit"
+          ],
+          "name": "session-memory-audit",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-memory-audit",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-memory-audit"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e6edb575",
+      "name": "session-memory-search",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-memory-search"
+          ],
+          "name": "session-memory-search",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-memory-search",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-memory-search"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_cad857c1",
+      "name": "session-resume",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-resume"
+          ],
+          "name": "session-resume",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-resume",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-resume"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_7561a5f8",
+      "name": "session-search",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-search"
+          ],
+          "name": "session-search",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-search",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-search"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_562f85c9",
+      "name": "session-stats",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-stats"
+          ],
+          "name": "session-stats",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-stats",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-stats"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_8a8ecd5a",
+      "name": "session-tasks",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-tasks"
+          ],
+          "name": "session-tasks",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-tasks",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-tasks"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_9b9214a4",
+      "name": "session-timeline",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-timeline"
+          ],
+          "name": "session-timeline",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-timeline",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-timeline"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    }
+  ],
+  "extensions": {},
+  "plugin_id": "plugin_aeaa6571",
+  "plugin_name": "session-kit",
+  "schema_version": "1.0.0",
+  "updated_on": "2026-09-02"
+}

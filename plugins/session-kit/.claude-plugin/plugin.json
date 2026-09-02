@@ -1,0 +1,8 @@
+{
+  "name": "session-kit",
+  "version": "1.0.0-alpha.1",
+  "description": "Claude Code session management toolkit: list, search, diff, export, resume, and clean up past sessions; aggregate cross-session tasks; audit and search stored memory files — all backed by a shared Python core that parses session JSONL and scans ~/.claude/projects/ and ~/.claude/tasks/ directly, with no external dependencies beyond the standard library.",
+  "author": {
+    "name": "Andre Hahm"
+  }
+}
