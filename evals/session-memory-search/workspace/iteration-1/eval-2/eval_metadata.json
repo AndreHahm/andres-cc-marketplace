@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-memory-search/SKILL.md",
+  "assertions": [
+    {"text": "Does NOT run a keyword search itself for this request", "type": "functionality", "target": "outputs/ transcript or tool calls"},
+    {"text": "Explicitly names session-memory as the correct skill for a no-keyword listing", "type": "presence", "target": "outputs/"},
+    {"text": "Reasoning matches the skill's own stated When NOT to Use criterion (no keyword involved)", "type": "quality", "target": "outputs/"}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Uses the two GIVEN session IDs directly, not a fresh 'list --limit 2' call", "passed": true, "evidence": "Resolved via session-detail on 7b92a813 and ab822c24 as named"},
+    {"text": "The diff output's session_a/session_b actually correspond to the two named IDs", "passed": true, "evidence": "Report explicitly identifies Session A (7b92a813, 127 files) and Session B (ab822c24, 43 files) matching the named IDs"},
+    {"text": "Reports files added/dropped/common between the two named sessions", "passed": true, "evidence": "Zero file overlap reported with explanation"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "note": "This is the regression test for the ID-resolution bug fixed earlier this session -- confirmed still fixed."
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-export/SKILL.md",
+  "assertions": [
+    {"text": "Uses --format txt", "type": "functionality", "target": "outputs/"},
+    {"text": "Uses --no-include-tools so no tool-call summaries appear in output", "type": "functionality", "target": "outputs/"},
+    {"text": "If a file was written, the path is absolute (e.g. under $HOME), never a bare relative filename", "type": "structure", "target": "outputs/"}
+  ]
+}

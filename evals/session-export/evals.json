@@ -1,0 +1,19 @@
+{
+  "skill_name": "session-export",
+  "skill_path": "plugins/session-kit/skills/session-export/SKILL.md",
+  "description": "Exports a Claude Code session as a clean, readable markdown/text transcript.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Export a session as markdown",
+      "prompt": "Export this session as a clean markdown transcript.",
+      "expected_output": "Resolves the current session, runs export_transcript with --format md, produces a readable markdown transcript."
+    },
+    {
+      "id": 2,
+      "name": "Export without tool calls, as plain text",
+      "prompt": "Export session 511b9c9b-5288-447f-aab2-8e68d013aa97 as plain text, without any tool call details.",
+      "expected_output": "Uses --format txt --no-include-tools correctly; output has no tool-call summaries; if written to file, uses an absolute path, never a bare relative filename."
+    }
+  ]
+}

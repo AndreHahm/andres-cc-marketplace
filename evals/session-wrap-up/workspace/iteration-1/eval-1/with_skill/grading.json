@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs git status and git diff --stat (informationally, not as a gate)", "passed": true, "evidence": "Response shows both git status and git diff --stat output analyzed under Step 1"},
+    {"text": "Captures at least one learning in [LEARN] Category: Rule format, or explicitly notes none apply", "passed": true, "evidence": "Step 2 explicitly states 'nothing to log as a [LEARN] this time' with rationale"},
+    {"text": "Produces a one-paragraph session summary", "passed": true, "evidence": "Step 4 is a single paragraph covering accomplished/current-state/next"},
+    {"text": "Never runs or suggests a lint/typecheck/test command", "passed": true, "evidence": "No lint/typecheck/test command mentioned anywhere in the response"},
+    {"text": "Ends by asking whether the user is ready to end the session", "passed": true, "evidence": "Response ends with '**Ready to end session?**'"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

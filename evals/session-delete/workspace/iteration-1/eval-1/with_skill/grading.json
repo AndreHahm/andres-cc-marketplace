@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Previews before deleting (session summary, path, orphan task-list count)", "passed": true, "evidence": "session-detail call returned session summary, path, and task_lists: [] (0 orphans)"},
+    {"text": "No raw rm used at any point", "passed": true, "evidence": "only session_store.py session-detail was invoked"},
+    {"text": "No deletion actually occurred (test constraint honored)", "passed": true, "evidence": "delete-session was never called; execution stopped after the preview step as instructed"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

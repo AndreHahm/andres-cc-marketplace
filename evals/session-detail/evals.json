@@ -1,0 +1,26 @@
+{
+  "skill_name": "session-detail",
+  "skill_path": "plugins/session-kit/skills/session-detail/SKILL.md",
+  "description": "Shows detailed information about a Claude Code session, including summary, tasks, and conversation messages.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Full profile of one session",
+      "prompt": "Show me everything about session abc123 -- stats, tasks, messages, all of it.",
+      "expected_output": "Runs session_store.py session-detail, presents session/token/model/tool summary plus associated tasks; offers to show messages via session_transcript.py messages if wanted.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Correctly redirects a stats-only request",
+      "prompt": "I just want the token cost breakdown for this session, nothing else.",
+      "expected_output": "Declines to produce the full profile and points the user to session-stats instead, per its own stated exclusion.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 2,
+    "uncovered": ["what tasks are pending across my sessions -> session-tasks redirect"]
+  }
+}

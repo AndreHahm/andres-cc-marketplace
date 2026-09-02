@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Orphan flag correctly derived (>7 days old, pending/in_progress status)", "passed": true, "evidence": "task-lists' last_modified values (2026-08-09 to 2026-08-13) are all >7 days before today (2026-09-02); pending task #2 belongs to one of them"},
+    {"text": "Orphaned status is computed, not asserted as a field the tasks output itself carries", "passed": true, "evidence": "matches SKILL.md's own quality gate wording exactly"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

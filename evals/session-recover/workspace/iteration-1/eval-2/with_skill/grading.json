@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT attempt to produce a portable recovery document itself", "passed": true, "evidence": "Response explicitly declines: 'I'm not going to run session-recover's normal workflow for this'"},
+    {"text": "Explicitly names session-resume as the correct skill for this request", "passed": true, "evidence": "Quotes the skill's own When NOT to Use bullet naming session-resume, and closes with 'ask for this via session-resume'"},
+    {"text": "Does not run the session-recover extraction script for this request", "passed": false, "evidence": "Agent ran 'extract_resume_context.py --list --limit 5' anyway 'in case it could still gather something useful' before concluding -- correct final answer, but explored with the wrong-skill's tool first rather than declining immediately"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.6667}
+}

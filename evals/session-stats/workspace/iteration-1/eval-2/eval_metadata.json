@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-stats/SKILL.md",
+  "assertions": [
+    {"text": "Resolved the session path via --format json before running stats", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Ran session_transcript.py stats on the resolved session path", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Reported token breakdown (input/output/cache) and model distribution", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Notes cost estimation is unavailable, reports raw token counts only", "type": "presence", "target": "outputs/ directory"}
+  ]
+}

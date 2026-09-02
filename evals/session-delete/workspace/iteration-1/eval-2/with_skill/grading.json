@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT attempt the excluded bulk-find task itself", "passed": true, "evidence": "prompt matches the skill's own When NOT to Use example almost verbatim"},
+    {"text": "Names the correct sibling skill (session-cleanup)", "passed": true, "evidence": "SKILL.md's own When NOT to Use bullet: 'Finding and bulk-deleting sessions by criteria -> use session-cleanup instead'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

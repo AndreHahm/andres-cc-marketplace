@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-list/SKILL.md",
+  "assertions": [
+    {"text": "Used --format json when invoking session_store.py list", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Filtered by the current project (some --project value used)", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Presented results as a table including session IDs and dates", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Mentions the claude --resume <session-id> command", "type": "presence", "target": "outputs/ directory"}
+  ]
+}

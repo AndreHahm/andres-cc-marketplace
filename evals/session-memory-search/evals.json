@@ -1,0 +1,24 @@
+{
+  "skill_name": "session-memory-search",
+  "skill_path": "plugins/session-kit/skills/session-memory-search/SKILL.md",
+  "description": "Searches across all Claude Code memory file contents by literal keyword.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Keyword search across memory files",
+      "prompt": "Search my memories for anything about the login bug.",
+      "expected_output": "Runs memory_scanner.py search with the keyword, presents results grouped by project in a table with file/type/line/match columns."
+    },
+    {
+      "id": 2,
+      "name": "Correctly redirects a 'show me everything' request",
+      "prompt": "Show me all my memories, I don't have a specific keyword in mind.",
+      "expected_output": "Declines to run a keyword search itself and points to session-memory instead, per its own stated exclusion."
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  }
+}

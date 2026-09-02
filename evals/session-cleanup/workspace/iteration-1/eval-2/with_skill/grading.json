@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT attempt the excluded task itself (no cleanup/delete run for a single named ID)", "passed": true, "evidence": "prompt matches the skill's own When NOT to Use example verbatim; no candidate-finding command applies"},
+    {"text": "Names the correct sibling skill (session-delete)", "passed": true, "evidence": "SKILL.md's own When NOT to Use bullet: 'Deleting one specific, already-identified session -> use session-delete instead'"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

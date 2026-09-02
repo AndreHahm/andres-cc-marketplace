@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Used --format json when invoking session_store.py search", "passed": true, "evidence": "`session_store.py search \"login bug\" --limit 20 --context 1 --format json`"},
+    {"text": "Searched for a literal keyword related to 'login bug', not a regex pattern", "passed": true, "evidence": "Query was the literal string \"login bug\", no regex metacharacters"},
+    {"text": "Grouped results by session with matching text and a resume command", "passed": true, "evidence": "No genuine results existed (only self-referential/branch-name-example matches); the skill's own documented no-results branch ('suggest broadening the search') was correctly followed instead."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

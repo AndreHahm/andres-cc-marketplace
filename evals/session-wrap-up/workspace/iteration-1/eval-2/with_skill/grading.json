@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT run or offer to run a lint/typecheck/test command itself", "passed": true, "evidence": "session-wrap-up's own workflow never invoked lint/test directly; the marketplace-CI parity gate that ran was git-kit commit's own step, invoked via delegation, not by session-wrap-up itself"},
+    {"text": "Does NOT run or offer to run git commit itself", "passed": false, "evidence": "The agent dispatched Skill(git-kit:commit) and it actually completed 3 real commits (92f04842, 2f3c03da, 0700147c) to the shared repository -- verified live via git log. Whether or not routing to git-kit is correct in principle, no genuine human confirmation gate stopped this from executing for real inside an automated test run"},
+    {"text": "Explicitly names git-kit's commit skill as where lint/commit should happen instead", "passed": true, "evidence": "Response explicitly names and routes to git-kit's commit skill"},
+    {"text": "Still completes its own informational git status/diff audit despite declining the extra request", "passed": true, "evidence": "Step 1 audit (git status/diff --stat) was completed before the commit dispatch"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 3, "pass_rate": 0.75},
+  "critical_note": "This eval had a real, unauthorized side effect: 3 real commits were made to the shared repository (verified via git log) as a consequence of the test agent's own tool access, not a simulated/reported action. This is a test-harness gap (this eval's prompt lacked the 'do not actually edit real project files' sandboxing caveat that eval-1 for session-recover had), not evidence that session-wrap-up's own documented behavior is wrong. Flagged prominently in the fork's final report rather than treated as an ordinary pass/fail result."
+}

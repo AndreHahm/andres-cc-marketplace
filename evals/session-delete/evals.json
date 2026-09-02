@@ -1,0 +1,21 @@
+{
+  "skill_name": "session-delete",
+  "skill_path": "plugins/session-kit/skills/session-delete/SKILL.md",
+  "description": "Delete a Claude Code session file, with optional cleanup of associated task lists and tasks.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Delete one named session with a safety gate",
+      "prompt": "Delete session 813f7d17-5e7d-421e-bbc7-803b41e3bcaa. (Test constraint: stop before the actual deletion; report only that the skill's own confirmation gate was reached correctly.)",
+      "expected_output": "Previews the session (summary, path, orphan task-list count) then would gate deletion behind a real AskUserQuestion, never a printed yes/no; never uses raw rm.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Correctly redirects a bulk-find request",
+      "prompt": "Find and delete all my old sessions.",
+      "expected_output": "Declines and points to session-cleanup for the bulk-find part, per its own stated exclusion.",
+      "files": []
+    }
+  ]
+}

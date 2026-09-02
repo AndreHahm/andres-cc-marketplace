@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-stats/SKILL.md",
+  "assertions": [
+    {"text": "Resolved the session path via --format json before running errors", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Ran session_transcript.py errors on the resolved session path", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Reported the error count first, then the list with timestamp and tool name", "type": "quality", "target": "outputs/ directory"},
+    {"text": "Tool names attributed correctly, not silently 'unknown' for real tool_use_id matches", "type": "functionality", "target": "outputs/ directory"}
+  ]
+}

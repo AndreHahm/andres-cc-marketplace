@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-memory-audit/SKILL.md",
+  "assertions": [
+    {"text": "Runs memory_scanner.py audit (not search or a manual scan)", "type": "functionality", "target": "outputs/ transcript or tool calls"},
+    {"text": "Presents a health summary (counts by severity) before the detailed findings", "type": "structure", "target": "outputs/"},
+    {"text": "Findings are split into two clearly labeled sections: auto-fixable and AI-assisted", "type": "structure", "target": "outputs/"},
+    {"text": "Does not apply any DELETE/REMOVE/INDEX/SYNC fix without an AskUserQuestion confirmation first", "type": "functionality", "target": "outputs/ transcript or tool calls"},
+    {"text": "Does not print a free-text '(yes/no)' prompt in place of AskUserQuestion", "type": "quality", "target": "outputs/"}
+  ]
+}

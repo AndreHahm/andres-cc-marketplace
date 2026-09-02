@@ -1,0 +1,26 @@
+{
+  "skill_name": "session-list",
+  "skill_path": "plugins/session-kit/skills/session-list/SKILL.md",
+  "description": "Lists all Claude Code sessions for a project or globally, sorted by recency, size, or duration.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "List sessions for current project, sorted by recency",
+      "prompt": "List all sessions for this project, sorted by recency.",
+      "expected_output": "Runs session_store.py list with --format json and a --project filter matching the current directory, then presents a readable markdown table including session IDs and dates.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "List longest sessions across all projects, sorted by duration",
+      "prompt": "Show me my longest sessions across all projects, sorted by duration.",
+      "expected_output": "Runs session_store.py list --sort size (or duration-equivalent) with --format json, no --project filter, presents results sorted accordingly.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 2,
+    "uncovered": ["show me all sessions (chronological/pattern framing) -> session-timeline redirect"]
+  }
+}

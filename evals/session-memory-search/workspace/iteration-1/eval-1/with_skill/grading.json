@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Invokes memory_scanner.py search with the user's keyword (not a listing command)", "passed": true, "evidence": "Ran 'memory_scanner.py search \"login bug\" --limit 20 --context 1' as command 1."},
+    {"text": "Presents results grouped by project", "passed": true, "evidence": "No matches existed in this environment's real memory data, so nothing to group -- correctly fell through to Step 2's documented no-results path instead."},
+    {"text": "Results shown as a File/Type/Line/Match table per Step 2", "passed": true, "evidence": "Same as above -- table format is N/A when zero matches exist; the agent correctly recognized this rather than fabricating a table."},
+    {"text": "If no results were found, suggests broadening the search rather than dead-ending", "passed": true, "evidence": "Retried with 'login' alone and 'bug' alone, then reported no login-bug-related memory exists and offered alternative keywords."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

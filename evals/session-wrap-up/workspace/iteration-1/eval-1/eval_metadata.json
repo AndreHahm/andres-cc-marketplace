@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-wrap-up/SKILL.md",
+  "assertions": [
+    {"text": "Runs git status and git diff --stat (informationally, not as a gate)", "type": "functionality", "target": "outputs/"},
+    {"text": "Captures at least one learning in [LEARN] Category: Rule format, or explicitly notes none apply", "type": "presence", "target": "outputs/"},
+    {"text": "Produces a one-paragraph session summary (accomplished / current state / next)", "type": "quality", "target": "outputs/"},
+    {"text": "Never runs or suggests a lint/typecheck/test command", "type": "functionality", "target": "outputs/"},
+    {"text": "Ends by asking whether the user is ready to end the session", "type": "presence", "target": "outputs/"}
+  ]
+}

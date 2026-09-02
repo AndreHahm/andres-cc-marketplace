@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-memory-search/SKILL.md",
+  "assertions": [
+    {"text": "Invokes memory_scanner.py search with the user's keyword (not a listing command)", "type": "functionality", "target": "outputs/ transcript or tool calls"},
+    {"text": "Presents results grouped by project", "type": "structure", "target": "outputs/"},
+    {"text": "Results shown as a File/Type/Line/Match table per Step 2", "type": "structure", "target": "outputs/"},
+    {"text": "If no results were found, suggests broadening the search rather than dead-ending", "type": "quality", "target": "outputs/"}
+  ]
+}

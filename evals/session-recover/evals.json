@@ -1,0 +1,24 @@
+{
+  "skill_name": "session-recover",
+  "skill_path": "plugins/session-kit/skills/session-recover/SKILL.md",
+  "description": "Recovers actionable context from an interrupted Claude Code session and continues execution in the current conversation.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Continue directly from an interrupted session",
+      "prompt": "My session crashed with ctrl-c, continue work from session 7b92a813-0321-4dbb-b37a-c62dfc1207e7.",
+      "expected_output": "Runs extract_resume_context.py --session 7b92a813-0321-4dbb-b37a-c62dfc1207e7, reports the session end reason from the briefing, then continues work directly / reports a concrete plan to continue rather than just producing a static summary document."
+    },
+    {
+      "id": 2,
+      "name": "Correctly redirects a portable-document request",
+      "prompt": "I want a portable recovery document for this session that I can hand to a different, separate session later.",
+      "expected_output": "Declines to produce a document itself and points to session-resume instead, per its own stated exclusion."
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 5,
+    "declared_scenarios_covered": 2,
+    "uncovered": ["'check what I was working on in the last session and keep going'", "'don't resume, just read the .claude files and continue'", "'load the latest handoff' (explicit prior save exists) -> session-handoff"]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-wrap-up/SKILL.md",
+  "assertions": [
+    {"text": "Does NOT run or offer to run a lint/typecheck/test command itself", "type": "functionality", "target": "outputs/"},
+    {"text": "Does NOT run or offer to run git commit itself", "type": "functionality", "target": "outputs/"},
+    {"text": "Explicitly names git-kit's commit skill as where lint/commit should happen instead", "type": "presence", "target": "outputs/"},
+    {"text": "Still completes its own informational git status/diff audit despite declining the extra request", "type": "functionality", "target": "outputs/"}
+  ]
+}

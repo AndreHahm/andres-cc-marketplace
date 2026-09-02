@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT run session_store.py search against session transcripts for this request", "passed": true, "evidence": "Output contains only a redirect message, no tool_call/command output present."},
+    {"text": "Names session-memory-search as the correct skill for this request", "passed": true, "evidence": "\"use `session-memory-search` instead\""}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

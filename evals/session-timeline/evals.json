@@ -1,0 +1,19 @@
+{
+  "skill_name": "session-timeline",
+  "skill_path": "plugins/session-kit/skills/session-timeline/SKILL.md",
+  "description": "Shows a chronological timeline of all Claude Code sessions for a project.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Chronological work timeline",
+      "prompt": "Show me a chronological timeline of my work on this project -- gaps, patterns, cadence.",
+      "expected_output": "Runs session_store.py timeline --format json, presents a chronological pattern-oriented view (cadence, gaps, session-length trends), not just a flat sorted list."
+    },
+    {
+      "id": 2,
+      "name": "Correctly redirects a plain sorted-list request",
+      "prompt": "Just give me a simple sorted list of my sessions, I don't care about patterns or gaps.",
+      "expected_output": "Declines and points to session-list instead, per its own stated 'When NOT to Use' exclusion."
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "skill_name": "session-diff",
+  "skill_path": "plugins/session-kit/skills/session-diff/SKILL.md",
+  "description": "Compares two Claude Code sessions -- files, tools, branches, topics.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Compare yesterday vs today sessions",
+      "prompt": "What changed between yesterday's session and today's session in this project?",
+      "expected_output": "Resolves two sessions by date/recency, runs the diff script, reports file/tool/topic differences as a side-by-side narrative."
+    },
+    {
+      "id": 2,
+      "name": "Compare two explicitly-given session IDs",
+      "prompt": "Compare sessions 7b92a813-0321-4dbb-b37a-c62dfc1207e7 and ab822c24-09b8-4673-a4bf-beb585238b75 -- what files changed between them?",
+      "expected_output": "Resolves and diffs exactly the two GIVEN session IDs directly (regression test for a fixed ID-resolution bug), not two different/most-recent sessions."
+    }
+  ]
+}

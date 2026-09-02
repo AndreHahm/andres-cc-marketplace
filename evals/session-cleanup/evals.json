@@ -1,0 +1,21 @@
+{
+  "skill_name": "session-cleanup",
+  "skill_path": "plugins/session-kit/skills/session-cleanup/SKILL.md",
+  "description": "Finds old, empty, or tiny Claude Code session files that are candidates for deletion.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Find cleanup candidates, no deletion",
+      "prompt": "Find old and empty sessions I could delete to save disk space.",
+      "expected_output": "Lists candidates (empty/tiny/old sessions) via the cleanup command, without deleting anything; presents total reclaimable space.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Correctly redirects a single explicit delete",
+      "prompt": "Delete this specific session, ID abc123.",
+      "expected_output": "Declines and points to session-delete instead, per its own stated exclusion.",
+      "files": []
+    }
+  ]
+}

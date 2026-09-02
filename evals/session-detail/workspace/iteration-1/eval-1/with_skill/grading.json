@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Ran session_store.py session-detail <session-id>", "passed": true, "evidence": "`session_store.py session-detail 7a6c2a54-0442-489c-a9f2-de0879047bf8`, correctly substituted a real ID after abc123 didn't resolve"},
+    {"text": "Presented session/token/model/tool summary plus task lists", "passed": true, "evidence": "Full sections for Session/Tokens/Models/Tools/Tasks present"},
+    {"text": "Offered or showed messages via session_transcript.py messages using the resolved path field", "passed": true, "evidence": "Used the exact path field from Step 1's session object for the messages call"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

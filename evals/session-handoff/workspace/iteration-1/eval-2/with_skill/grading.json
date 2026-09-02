@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs list_handoffs.py before anything else", "passed": true, "evidence": "Agent report: step 1 was list_handoffs.py, found 1 handoff (the eval-1 create test's own file)."},
+    {"text": "Runs check_staleness.py on the selected handoff BEFORE reading/loading its content", "passed": true, "evidence": "Agent report: step 2 was check_staleness.py, before the Read in step 3."},
+    {"text": "Reports the staleness level (FRESH/SLIGHTLY_STALE/STALE/VERY_STALE) to the user", "passed": true, "evidence": "Agent report: 'Staleness Level: SLIGHTLY_STALE (0.0 hours old... 87 files changed since)'."},
+    {"text": "Only reads the actual handoff document content after the staleness check", "passed": true, "evidence": "Agent report: 'Read the full handoff document' listed explicitly as step 3, after steps 1-2."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

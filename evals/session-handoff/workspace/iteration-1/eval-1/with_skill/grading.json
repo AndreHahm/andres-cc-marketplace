@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs create_handoff.py (not a hand-written document)", "passed": true, "evidence": "Agent report: ran 'create_handoff.py eval-test-create' as its only command."},
+    {"text": "A file was created under .claude/handoffs/ with git info pre-filled (branch, recent commits)", "passed": true, "evidence": "File created at .claude/handoffs/2026-09-02-233615-eval-test-create.md, 'pre-filled with timestamp, project path, git branch, recent commits, and modified files'."},
+    {"text": "Reports the file path to the user and instructs filling in [TODO: ...] sections", "passed": true, "evidence": "Agent report names the exact file path and lists the TODO sections to prioritize (Current State Summary, Important Context, Immediate Next Steps, Decisions Made)."},
+    {"text": "Mentions validate_handoff.py as the next step", "passed": true, "evidence": "Agent report: 'then run validate_handoff.py against the file to check for completeness... and a quality score.'"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

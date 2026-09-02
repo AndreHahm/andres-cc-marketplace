@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-list/SKILL.md",
+  "assertions": [
+    {"text": "Used --format json when invoking session_store.py list", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Used --sort with a size/duration-related value, no --project filter", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Presented results sorted by the requested dimension (longest first)", "type": "quality", "target": "outputs/ directory"}
+  ]
+}

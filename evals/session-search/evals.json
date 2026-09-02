@@ -1,0 +1,26 @@
+{
+  "skill_name": "session-search",
+  "skill_path": "plugins/session-kit/skills/session-search/SKILL.md",
+  "description": "Searches Claude Code sessions across all projects by literal, case-insensitive keyword.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Find a session by keyword",
+      "prompt": "Find that session where we discussed the login bug.",
+      "expected_output": "Runs session_store.py search with a literal keyword and --format json, groups matches by session, shows matching text with context and a resume command.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Correctly redirects a memory-content search",
+      "prompt": "Search my memory files for anything about the login bug.",
+      "expected_output": "Declines to run its own session-content search and points the user to session-memory-search instead, per its own stated exclusion.",
+      "files": []
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 2,
+    "uncovered": ["which project did I discuss Y in"]
+  }
+}

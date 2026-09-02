@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-search/SKILL.md",
+  "assertions": [
+    {"text": "Does NOT run session_store.py search against session transcripts for this request", "type": "functionality", "target": "outputs/ directory or tool-call log"},
+    {"text": "Names session-memory-search as the correct skill for this request", "type": "presence", "target": "outputs/ directory"}
+  ]
+}

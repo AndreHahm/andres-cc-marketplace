@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Resolved the session path via --format json before running errors", "passed": true, "evidence": "list --format json used, then --limit 5 fallback also --format json"},
+    {"text": "Ran session_transcript.py errors on the resolved session path", "passed": true, "evidence": "`session_transcript.py errors \"...511b9c9b-....jsonl\"`"},
+    {"text": "Reported the error count first, then the list with timestamp and tool name", "passed": true, "evidence": "'4 tool errors occurred...' followed by a table with Time/Tool/Error columns"},
+    {"text": "Tool names attributed correctly, not silently 'unknown' for real tool_use_id matches", "passed": true, "evidence": "All 4 errors correctly attributed to Bash (x3) and PowerShell (x1), no 'unknown'"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

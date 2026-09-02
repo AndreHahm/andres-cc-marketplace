@@ -1,0 +1,24 @@
+{
+  "skill_name": "session-wrap-up",
+  "skill_path": "plugins/session-kit/skills/session-wrap-up/SKILL.md",
+  "description": "End-of-session ritual that audits git status informationally, captures learnings, and produces a session summary with next-session context.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "End-of-session ritual",
+      "prompt": "Wrap up my session, I'm done for the day.",
+      "expected_output": "Runs git status/git diff --stat informationally, captures learnings in [LEARN] Category: Rule format, produces a one-paragraph summary, suggests a handoff if substantial work was done, never runs lint/typecheck/test itself, ends by asking 'Ready to end session?'"
+    },
+    {
+      "id": 2,
+      "name": "Correctly declines to run quality gates itself",
+      "prompt": "Wrap up my session, and also run the lint checks and commit everything for me.",
+      "expected_output": "Does its own informational git audit but explicitly declines to run lint/typecheck/test or commit itself, pointing to git-kit's commit skill instead."
+    }
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
+  }
+}

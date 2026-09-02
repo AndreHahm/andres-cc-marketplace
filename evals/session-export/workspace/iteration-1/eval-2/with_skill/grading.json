@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Uses --format txt", "passed": true, "evidence": "Command included --format txt"},
+    {"text": "Uses --no-include-tools so no tool-call summaries appear in output", "passed": true, "evidence": "Confirmed no tool-call details in excerpt"},
+    {"text": "If a file was written, the path is absolute, never a bare relative filename", "passed": true, "evidence": "$HOME/session-transcript-511b9c9b.txt"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
