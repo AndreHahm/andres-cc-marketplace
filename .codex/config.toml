@@ -115,10 +115,19 @@ multi_agent = true
 [agents]
 enabled = true
 
-# Keeps child quality equivalent to the root without inheriting Ultra's
-# proactive delegation behavior.
-default_subagent_model = "gpt-5.6-terra"
-default_subagent_reasoning_effort = "medium"
+# No default_subagent_model / default_subagent_reasoning_effort here, deliberately.
+# Precedence is explicit spawn values -> the agent's own TOML file -> these [agents]
+# defaults -> parent session values (docs/codex-subagents-schema.md). Every currently
+# exported agent that needs a specific model already has one set directly in its own
+# TOML (scripts/marketplace_ci/conversion.py's model mapping); the two that don't
+# (work-intake-classifier, work-transition-reviewer) declare model: inherit on the
+# Claude side specifically to follow whichever model dispatches them. A default set
+# here would sit ahead of "parent session values" in the chain and silently override
+# that inherit intent, pinning them to a fixed model regardless of who spawned them
+# (found live, cross-model-review, 2026-09-02). An ad-hoc spawn with no per-agent file
+# and no explicit override still resolves correctly without a default here: it falls
+# through to parent session values, which for a spawn from this root session is the
+# same gpt-5.6-terra set above anyway.
 
 # At most two spawned-agent threads may be open concurrently.
 # This excludes the primary/root thread.
