@@ -41,15 +41,15 @@ something this conversion step normalizes either way.
 
 ## Stale, unregistered content under `.agents/skills/`
 
-`.agents/skills/` currently contains 55 directories on disk. Only 1 (`plugin-marketplace-review`) is
-registered. The other 54 — `agent-development`, `commit`, `starting-work`, and every other skill name
+`.agents/skills/` currently contains 56 directories on disk. Only 1 (`plugin-marketplace-review`) is
+registered. The other 55 — `agent-development`, `commit`, `starting-work`, and every other skill name
 that appears there — are **not touched by the live conversion pipeline in either direction.**
 `plan_exports()` only ever considers `registry.skills` (the registered list); an on-disk directory
 with no matching registry entry is simply never visited by a normal `check-codex-exports` or
 `convert-codex-exports` run.
 
 Verified live: `uv run python -m scripts.marketplace_ci check-codex-exports` reports `OK` — a clean
-pass — with all 54 stale directories still present. This isn't a bug in the check; it's checking the
+pass — with all 55 stale directories still present. This isn't a bug in the check; it's checking the
 registered set only, by design (`plan_exports(repo, registry, previous=None)` uses the default
 `bootstrap=False`, which skips the "does this on-disk destination have a canonical source at all?"
 scan entirely).
@@ -62,7 +62,7 @@ The only thing that surfaces this drift is the separate `repair-all --bootstrap`
 uv run python -m scripts.marketplace_ci repair-all --bootstrap
 ```
 
-reported exactly **376 files** across the 54 unregistered directories as
+reported exactly **376 files** across the 55 unregistered directories as
 `warn: ... no canonical source found for this destination; requires manual classification` — flagged
 as informational warnings, not blocking failures (`_report()` in `__main__.py` only treats a
 non-`warn` operation as a problem).
@@ -72,7 +72,7 @@ non-`warn` operation as a problem).
 `.claude/skills/agent-development/SKILL.md` shows systematic text substitution — "Claude Code" →
 "Codex", "Claude decides based on description" → "Codex decides based on description", and so on,
 throughout the frontmatter description and body. Today's `plan_exports()` never does text
-substitution; it only ever copies bytes verbatim. This confirms the 54 stale directories were produced
+substitution; it only ever copies bytes verbatim. This confirms the 55 stale directories were produced
 by some earlier, different, no-longer-active process — not by the code currently in this repo — and
 have simply never been reconciled or removed since.
 
@@ -85,7 +85,7 @@ disclosed as findings rather than silently patched:
    fields (`argument-hint`, `disable-model-invocation`, `hooks`, `model`) and any
    Claude-tool-specific body content export unchanged, with no check for whether they mean anything
    — or anything safe — under Codex.
-2. **54 stale, unregistered directories under `.agents/skills/`**, invisible to every check CI
+2. **55 stale, unregistered directories under `.agents/skills/`**, invisible to every check CI
    actually runs, confirmed to originate from a retired conversion approach. Candidates for either
    registering (if still wanted as Codex exports) or removing (if genuinely abandoned) via
    `repair-all --bootstrap`'s own reconciliation flow.

@@ -21,6 +21,28 @@ _ALLOWED_FRONTMATTER_KEYS = {
 }
 _REQUIRED_FRONTMATTER_KEYS = {"name", "description"}
 
+# Claude model family -> Codex GPT-5.6 tier, per this marketplace's own
+# delegation policy (.codex/config.toml's developer_instructions): Opus/Fable
+# are the flagship tier (-> Sol), Sonnet is the balanced mid-tier (-> Terra),
+# Haiku is the fast/cheap tier (-> Luna). Source: fixed model catalog
+# confirmed against Codex's GPT-5.6 tier documentation, 2026-09-02.
+_MODEL_MAP = {
+    "opus": "gpt-5.6-sol",
+    "fable": "gpt-5.6-sol",
+    "sonnet": "gpt-5.6-terra",
+    "haiku": "gpt-5.6-luna",
+}
+
+# Agents whose documented job requires executing commands (not just reading/
+# analyzing) need workspace-write, not the read-only default below -- keep
+# this list to the minimum agents that actually need it, not a blanket
+# override. smoke-tester's whole job is running `python`/`node` against each
+# skill's scripts/smoke_test.*; under read-only, Codex cannot run a command
+# at all without an approval prompt per turn (confirmed against Codex's own
+# sandbox behavior, 2026-09-02), breaking its documented non-interactive
+# batch-sweep workflow.
+_WORKSPACE_WRITE_AGENTS = {"smoke-tester"}
+
 
 class ConversionError(ValueError):
     """Raised when an agent Markdown source cannot be converted to Codex TOML."""
@@ -53,8 +75,9 @@ def convert_agent(source: str) -> str:
     if missing:
         raise ConversionError(f"agent frontmatter missing required field(s): {sorted(missing)}")
 
+    name = str(frontmatter["name"])
     lines = [
-        f'name = "{_toml_escape(str(frontmatter["name"]))}"',
+        f'name = "{_toml_escape(name)}"',
         f'description = "{_toml_escape(str(frontmatter["description"]))}"',
     ]
 
@@ -65,16 +88,37 @@ def convert_agent(source: str) -> str:
     # not be carried into the export.
     # https://learn.chatgpt.com/docs/agent-configuration/subagents?surface=app
     #
+    # Translate the Claude source's `model` into the matching Codex tier,
+    # rather than silently dropping it -- an untranslated model would leave
+    # every exported agent using whatever [agents].default_subagent_model
+    # happens to be, regardless of what the source actually declared. Fail
+    # closed on an unrecognized value instead of silently falling through.
+    if "model" in frontmatter:
+        source_model = str(frontmatter["model"]).lower()
+        if source_model == "inherit":
+            # "inherit" means "use whatever model invoked this agent" -- not a
+            # fixed tier, so there's nothing to translate. Omit the line and
+            # let Codex's own [agents] default apply, the same fallback
+            # behavior as declaring no model preference at all.
+            pass
+        elif source_model not in _MODEL_MAP:
+            raise ConversionError(
+                f"agent frontmatter 'model' {source_model!r} has no Codex tier mapping "
+                f"(known: {sorted(_MODEL_MAP)} plus 'inherit')"
+            )
+        else:
+            lines.append(f'model = "{_MODEL_MAP[source_model]}"')
+
     # A custom subagent with no sandbox_mode of its own inherits the parent
     # session's sandbox_mode (see docs/codex-subagents-schema.md) -- since
     # `tools` above is dropped rather than translated, every exported agent
     # needs an explicit sandbox_mode or it silently inherits whatever the
     # root config.toml sets (currently workspace-write). Every agent this
-    # marketplace currently exports is a read-only reviewer/classifier, so
-    # "read-only" is the correct default for all of them; a future agent
-    # that genuinely needs write access should revisit this, not add a
-    # speculative override mechanism for a need that doesn't exist yet.
-    lines.append('sandbox_mode = "read-only"')
+    # marketplace currently exports is a read-only reviewer/classifier except
+    # smoke-tester (_WORKSPACE_WRITE_AGENTS above), which needs to actually
+    # run commands.
+    sandbox_mode = "workspace-write" if name in _WORKSPACE_WRITE_AGENTS else "read-only"
+    lines.append(f'sandbox_mode = "{sandbox_mode}"')
 
     body_text = body.rstrip("\n")
     lines.append(f'developer_instructions = """\n{body_text}"""')

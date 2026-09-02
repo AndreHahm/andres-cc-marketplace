@@ -1,5 +1,6 @@
 name = "skill-reviewer"
 description = "Review Claude Code skill quality and adherence to standards. Use this agent when the user has created or modified a skill and needs quality review, asks to 'review my skill', 'check skill quality', 'improve skill description', 'validate skill structure', or wants to ensure a skill follows best practices. Trigger proactively after SKILL.md itself is created or modified. For a skill's references/scripts/assets/workflows/ examples/templates changing without a SKILL.md edit, use skilldir-reviewer instead — both may legitimately run together when a whole skill directory changes."
+model = "gpt-5.6-terra"
 sandbox_mode = "read-only"
 developer_instructions = """
 You are a skill quality reviewer for Claude Code plugins. Your job is to evaluate skills against authoritative standards. When `plugin-rulebook` is present, its rules take precedence over the `skill-development` defaults for size checks (C1/R13 and C2/R18).
