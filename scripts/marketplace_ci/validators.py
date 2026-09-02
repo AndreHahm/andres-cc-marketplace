@@ -204,7 +204,12 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
     divergence_exceptions = {(exc.source, exc.dest) for exc in registry.divergence_exceptions}
 
     def check_pair(
-        rel_source: str, rel_dest: str, *, is_agent: bool = False, honor_exceptions: bool = False
+        rel_source: str,
+        rel_dest: str,
+        *,
+        is_agent: bool = False,
+        agent_name: str | None = None,
+        honor_exceptions: bool = False,
     ) -> None:
         # Exact match against the staged path set -- not a directory-prefix
         # key -- so that staging one file in a skill (e.g. SKILL.md) never
@@ -233,11 +238,11 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
             # check below is skipped.
             return
         staged_dest_blob = git_state.read_index(PurePosixPath(rel_dest))
-        expected = (
-            convert_agent(staged_source_blob.decode("utf-8")).encode("utf-8")
-            if is_agent
-            else staged_source_blob
-        )
+        if is_agent:
+            assert agent_name is not None, "agent_name is required when is_agent=True"
+            expected = convert_agent(staged_source_blob.decode("utf-8"), agent_name).encode("utf-8")
+        else:
+            expected = staged_source_blob
         if staged_dest_blob != expected:
             messages.append(
                 f"{rel_dest}: staged content does not match the staged canonical source"
@@ -270,7 +275,9 @@ def check_staged_parity(repo: Path) -> HookCheckResult:
         if not source_file.is_file():
             continue
         rel_source = source_file.relative_to(repo).as_posix()
-        check_pair(rel_source, f".codex/agents/{agent_name}.toml", is_agent=True)
+        check_pair(
+            rel_source, f".codex/agents/{agent_name}.toml", is_agent=True, agent_name=agent_name
+        )
 
     return HookCheckResult(exit_code=1 if messages else 0, messages=tuple(messages))
 

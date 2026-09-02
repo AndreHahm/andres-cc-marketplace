@@ -26,6 +26,16 @@ _REQUIRED_FRONTMATTER_KEYS = {"name", "description"}
 # are the flagship tier (-> Sol), Sonnet is the balanced mid-tier (-> Terra),
 # Haiku is the fast/cheap tier (-> Luna). Source: fixed model catalog
 # confirmed against Codex's GPT-5.6 tier documentation, 2026-09-02.
+#
+# codex-kit's own policy (references/cli-reference.md: "never hardcodes a
+# model name... Codex CLI owns that list and it changes over time") governs a
+# different problem: letting a *live, running* Codex session's own config
+# pick its model at runtime. This map instead does a one-time, deterministic
+# translation at *export/build time*, producing a static .toml file -- there
+# is no live config to defer to here. Deliberately fails closed (raises
+# ConversionError) on an unmapped source model rather than silently guessing
+# a tier or falling through to a default, so a new Claude model tier blocks
+# CI with a clear, fixable error instead of shipping a wrong translation.
 _MODEL_MAP = {
     "opus": "gpt-5.6-sol",
     "fable": "gpt-5.6-sol",
@@ -65,7 +75,7 @@ def _split_frontmatter(source: str) -> tuple[dict, str]:
     return frontmatter, body.lstrip("\n")
 
 
-def convert_agent(source: str) -> str:
+def convert_agent(source: str, agent_name: str) -> str:
     frontmatter, body = _split_frontmatter(source)
 
     unknown = set(frontmatter) - _ALLOWED_FRONTMATTER_KEYS
@@ -76,6 +86,10 @@ def convert_agent(source: str) -> str:
         raise ConversionError(f"agent frontmatter missing required field(s): {sorted(missing)}")
 
     name = str(frontmatter["name"])
+    if name != agent_name:
+        raise ConversionError(
+            f"agent frontmatter 'name' {name!r} does not match its registry key {agent_name!r}"
+        )
     lines = [
         f'name = "{_toml_escape(name)}"',
         f'description = "{_toml_escape(str(frontmatter["description"]))}"',
@@ -162,7 +176,7 @@ def plan_exports(
         source_file = claude_agents_root / f"{agent_name}.md"
         if not source_file.is_file():
             continue
-        content = convert_agent(source_file.read_text(encoding="utf-8")).encode("utf-8")
+        content = convert_agent(source_file.read_text(encoding="utf-8"), agent_name).encode("utf-8")
         dest = export_agents_root / f"{agent_name}.toml"
         register(source_file, dest, content)
 
