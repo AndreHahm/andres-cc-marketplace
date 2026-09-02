@@ -39,7 +39,7 @@ its job requires actually running commands — every other exported reviewer/cla
 is what actually constrains filesystem access instead. Workspace-write still means you can write files —
 the path-containment boundary below only decides *which* script gets to run, it says nothing about what
 that script does once running. **For the Codex export specifically, contain that risk with the disposable
-worktree in "Isolated execution (Codex export only)" below** rather than running target-authored scripts
+copy in "Isolated execution (Codex export only)" below** rather than running target-authored scripts
 directly against the checkout you were dispatched to sweep.
 That combination means the only safety boundary available to you is **where** a script lives, not what it
 contains. You also have no `AskUserQuestion` — subagents never receive it, even if it were listed here —
@@ -57,22 +57,28 @@ Claude Code's own permission/sandbox layer, a separate protection this doesn't d
 under the Codex export's `sandbox_mode = "workspace-write"`, where a script you execute has real write
 access to the whole workspace, not just the ability to fail safely.
 
-Before executing **any** script in a sweep, create one disposable git worktree of the current repository
-at its current `HEAD`, in a fresh temporary directory outside the repository (`git worktree add
-<tmp-path> HEAD`) — one worktree for the whole sweep, not one per script. Resolve each in-scope script's
-path against that worktree copy (the same relative path, rooted at `<tmp-path>` instead of the original
-cwd) and run it from there, so any write the script performs — intended or malicious — lands in the
-disposable copy, never in the checkout you were actually dispatched to sweep. The path-containment trust
-boundary above still applies, checked against the *original* repository structure before a script is
-considered in-scope at all; the worktree only changes *where* an already-approved script physically runs.
+Before executing **any** script in a sweep, make one disposable copy of the current repository in a fresh
+temporary directory outside the repository — one copy for the whole sweep, not one per script. **Copy the
+working tree as it currently sits on disk (a plain recursive copy), not a `git worktree`/`git checkout` of
+a committed ref** — a ref-based checkout only reproduces the last *commit*, silently dropping any
+uncommitted edits, which defeats the point when this agent is dispatched (its own "When to invoke" names
+`plugin-lifecycle-downstream`'s Fix phase specifically) to validate skills a Fix phase just edited but may
+not have committed yet. A plain file copy captures exactly what's on disk right now, tracked and untracked
+alike, matching what the sweep is actually meant to check.
 
-After every skill in scope has been checked — success, failure, or a crash partway through — remove the
-worktree (`git worktree remove --force <tmp-path>`) before building the aggregate report. Clean up even
-if the run is interrupted or a script hangs; a leftover disposable worktree is a resource leak, not a
-security issue, but don't rely on the OS to reclaim it. If worktree creation itself fails (no `git`
-available, no disk space, or dispatched to a target that isn't a git repository), stop and report the
-sweep as `error` for every skill — do not fall back to running scripts directly against the original
-checkout, which would silently drop this containment entirely.
+Resolve each in-scope script's path against that copy (the same relative path, rooted at the disposable
+copy instead of the original cwd) and run it from there, so any write the script performs — intended or
+malicious — lands in the disposable copy, never in the checkout you were actually dispatched to sweep. The
+path-containment trust boundary above still applies, checked against the *original* repository structure
+before a script is considered in-scope at all; the copy only changes *where* an already-approved script
+physically runs.
+
+After every skill in scope has been checked — success, failure, or a crash partway through — delete the
+disposable copy before building the aggregate report. Clean up even if the run is interrupted or a script
+hangs; a leftover copy is a resource leak, not a security issue, but don't rely on the OS to reclaim it.
+If the copy itself fails (no disk space, or a permissions error), stop and report the sweep as `error` for
+every skill — do not fall back to running scripts directly against the original checkout, which would
+silently drop this containment entirely.
 
 ## Goal
 
@@ -100,8 +106,8 @@ the execution queue.
 
 ## Process
 
-0. **Codex export only:** create the disposable worktree per "Isolated execution" above, before touching
-   any script.
+0. **Codex export only:** create the disposable copy per "Isolated execution" above, before touching any
+   script.
 1. Resolve the full set of skills in scope from the input (explicit list, or every skill directory found
    under a given plugin root via `Glob`).
 2. For each skill, check for `scripts/smoke_test.*`. If absent, record `skipped` and move on — do not
@@ -110,8 +116,8 @@ the execution queue.
 3. Otherwise, run it with the interpreter matching its extension (`python <path>` for `.py`, `node <path>`
    for `.mjs`/`.js`, or the project's declared TS runner for `.ts` if one is documented — skip and record
    `blocked` with a reason if `.ts` has no documented runner, rather than guessing at an interpreter).
-   **Codex export only:** run it from the disposable worktree copy (per "Isolated execution" above), not
-   the original checkout. Capture stdout/stderr and the exit code.
+   **Codex export only:** run it from the disposable copy (per "Isolated execution" above), not the
+   original checkout. Capture stdout/stderr and the exit code.
 4. Classify the result: exit code `0` → `pass`; non-zero → `fail`. Record only the failure output needed
    to act on it (the exit code plus stderr/the last error lines) — never the full stdout/stderr wholesale,
    since it may contain environment details, absolute user-home paths, or other incidental output that
@@ -121,8 +127,8 @@ the execution queue.
    failure.
 5. After every skill in scope has been checked, build the aggregate report (narrative by default,
    Structured Output Mode below if requested).
-6. **Codex export only:** remove the disposable worktree per "Isolated execution" above, whether the
-   sweep succeeded, failed partway, or was interrupted.
+6. **Codex export only:** delete the disposable copy per "Isolated execution" above, whether the sweep
+   succeeded, failed partway, or was interrupted.
 
 Run independent skills' smoke tests one after another within this single agent invocation — do not spawn
 further nested agents for this; a smoke test script is a single deterministic subprocess call, not work
