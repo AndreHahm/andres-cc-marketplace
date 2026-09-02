@@ -21,6 +21,10 @@ Generate a context-recovery document from a past session.
 
 - Wants to stay in the *original* session's own context (not a synthesized recovery prompt) → suggest the native `claude --resume`/`claude --continue` CLI flags instead (see Step 3)
 - Wants live inspection of a session, not a resume prompt → use `session-detail` instead
+- An explicit handoff document already exists for this work → use `session-handoff`'s RESUME workflow
+  instead of synthesizing a recovery prompt from raw transcript. This skill reconstructs context
+  retroactively from a past session's own JSONL when nothing was ever explicitly saved;
+  `session-handoff` loads a document someone deliberately wrote and validated during an active session.
 
 ## Step 1: Resolve the session
 
