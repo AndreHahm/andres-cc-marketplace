@@ -48,8 +48,9 @@ read-only unless the user explicitly asks for implementation.
 
 ## Codex compatibility
 
-Claude Code also uses skill frontmatter that Codex does not interpret natively. After selecting
-a skill under `.claude/skills/`, read its `SKILL.md` in full and translate these fields/tools:
+Codex discovers exported skills under `.agents/skills/`, not Claude Code's own `.claude/skills/`
+source directory -- and those exports use skill frontmatter that Codex does not interpret natively.
+After selecting one, read its `SKILL.md` in full and translate these fields/tools:
 
 - `context: fork`: run the skill in a subagent, using the `default` role unless `agent` names a
   different available role. Spawn with no inherited conversation history and pass the user request,

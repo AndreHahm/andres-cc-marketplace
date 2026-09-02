@@ -163,7 +163,7 @@ Review the target carefully.
     from scripts.marketplace_ci.conversion import convert_agent
 
     git_repo.stage(".claude/agents/export-demo.md", agent_markdown)
-    git_repo.stage(".codex/agents/export-demo.toml", convert_agent(agent_markdown))
+    git_repo.stage(".codex/agents/export-demo.toml", convert_agent(agent_markdown, "export-demo"))
     result = check_staged_parity(git_repo.root)
     assert result.exit_code == 0
 
