@@ -33,10 +33,12 @@ Show detailed statistics for a single session.
 If the user provides a session ID or path, use it directly. Otherwise, find the current session:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" list --project "$(basename $(pwd))" --limit 1 --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" current
 ```
 
-Use the `path` field from the first result. `--format json` is required — without it, the command's table output has no `path` field.
+Use the `path` field from the result. This resolves the live session directly (via its own session
+ID), not by matching the current directory against a project name — safe even when the current
+working directory doesn't match where the session actually started (e.g. a worktree created mid-session).
 
 ## Step 2: Run the stats script
 

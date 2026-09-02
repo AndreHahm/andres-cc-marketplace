@@ -38,7 +38,11 @@ If the user provides a session ID, resolve it. Otherwise, show recent sessions a
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" list --project "$(basename $(pwd))" --limit 5 --format json
 ```
 
-`--format json` is required — without it, the command's table output has no `path` field.
+`--format json` is required — without it, the command's table output has no `path` field. If this
+returns nothing (e.g. the current directory doesn't match where a relevant session actually started —
+a worktree created mid-session, for instance), try
+`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" list --limit 5 --format json` (no `--project`
+filter) to browse recent sessions across all projects instead.
 
 ## Step 2: Extract resume data
 
