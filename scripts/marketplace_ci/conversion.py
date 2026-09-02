@@ -58,12 +58,12 @@ def convert_agent(source: str) -> str:
         f'description = "{_toml_escape(str(frontmatter["description"]))}"',
     ]
 
-    if "tools" in frontmatter:
-        tools = frontmatter["tools"]
-        if not isinstance(tools, list) or not all(isinstance(t, str) for t in tools):
-            raise ConversionError("agent frontmatter 'tools' must be a list of strings")
-        rendered_tools = ", ".join(f'"{_toml_escape(t)}"' for t in tools)
-        lines.append(f"tools = [{rendered_tools}]")
+    # Codex's custom-subagent TOML schema has no `tools` field (only name,
+    # description, developer_instructions are required; model,
+    # model_reasoning_effort, sandbox_mode, mcp_servers, skills.config are the
+    # only supported optional fields) — `tools` is Claude-side-only and must
+    # not be carried into the export.
+    # https://learn.chatgpt.com/docs/agent-configuration/subagents?surface=app
 
     body_text = body.rstrip("\n")
     lines.append(f'developer_instructions = """\n{body_text}"""')

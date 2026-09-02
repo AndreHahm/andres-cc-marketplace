@@ -22,10 +22,10 @@ Review the target carefully.
 """
 
 
-def test_agent_conversion_preserves_description_tools_and_prompt():
+def test_agent_conversion_preserves_description_and_prompt_but_drops_tools():
     rendered = convert_agent(AGENT_MARKDOWN)
     assert 'description = "Reviews demo components"' in rendered
-    assert 'tools = ["Read", "Grep"]' in rendered
+    assert "tools" not in rendered
     assert "Review the target carefully." in rendered
 
 
