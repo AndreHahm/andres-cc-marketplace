@@ -45,7 +45,7 @@ tooling:
 |---|---|
 | `session-list` | List sessions, sorted by recency, size, or duration |
 | `session-search` | Search session content across all projects |
-| `session-stats` | Token usage, model distribution, tool usage for one session |
+| `session-stats` | Token usage, model distribution, tool usage, tool errors, and frustration signals for one session |
 | `session-detail` | Full detail view of one session (stats + tasks + messages) |
 | `session-diff` | Compare two sessions (files, branches, tools, topics) |
 | `session-export` | Export a session as a clean markdown/text transcript |
