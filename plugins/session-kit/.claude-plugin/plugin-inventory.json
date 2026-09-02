@@ -655,6 +655,47 @@
         }
       ],
       "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_042a1a47",
+      "name": "session-recover",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/session-recover"
+          ],
+          "name": "session-recover",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/session-recover",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/session-recover"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-02",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
     }
   ],
   "extensions": {},
