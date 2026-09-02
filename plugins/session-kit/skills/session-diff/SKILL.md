@@ -33,7 +33,13 @@ If the user did not name specific sessions (e.g. "compare yesterday and today"),
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" list --project "$(basename $(pwd))" --limit 2 --format json
 ```
 
-`--format json` is required for the `list` fallback — without it, there is no `path` field to extract. If the project has fewer than 2 sessions, tell the user there's nothing to diff yet.
+`--format json` is required for the `list` fallback — without it, there is no `path` field to extract.
+If this returns fewer than 2 sessions, it may be because the current directory doesn't match where a
+relevant session actually started (e.g. a worktree created mid-session) rather than there genuinely
+being nothing to diff — run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" current` to
+resolve the live session directly as one side, and `list --limit 5 --format json` (no `--project`
+filter) to browse recent sessions across all projects for the other. Only tell the user there's
+nothing to diff yet after trying this.
 
 ## Step 2: Run the diff
 

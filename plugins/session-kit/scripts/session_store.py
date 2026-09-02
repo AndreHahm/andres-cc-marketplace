@@ -19,6 +19,7 @@ Usage as CLI:
   python3 session_store.py delete-task-list <task-list-id>
   python3 session_store.py orphan-task-lists
   python3 session_store.py session-detail <id>
+  python3 session_store.py current
 
 Global overrides (any command): --projects-base PATH --tasks-base PATH
 --format json is the same as --json; both default to table for
@@ -69,13 +70,34 @@ VALID_ID_RE = re.compile(r"\A[a-zA-Z0-9_-]+\Z")
 
 
 def encode_project_path(path: str) -> str:
-    """Encode a filesystem path to Claude's project directory name."""
-    return path.replace("/", "-")
+    """Encode a filesystem path to Claude's project directory name.
+
+    Claude Code encodes every path separator as "-" -- ":" and "\\" too on
+    Windows (e.g. "C:\\Dev\\proj" -> "C--Dev-proj"), not just "/".
+    """
+    return re.sub(r"[/\\:]", "-", path)
+
+
+_WINDOWS_DRIVE_RE = re.compile(r"\A([A-Za-z])--(.*)\Z")
 
 
 def decode_project_path(encoded: str) -> str:
-    """Decode a Claude project directory name back to a filesystem path."""
-    if encoded.startswith("-"):
+    """Decode a Claude project directory name back to a filesystem path.
+
+    Best-effort and display-only, never used for filesystem I/O: the encoding
+    is lossy (encode_project_path collapses "/", "\\", and ":" all to "-"), so
+    a real hyphen inside a path segment is indistinguishable from an encoded
+    separator and can't be losslessly recovered. Windows drive-letter paths
+    (e.g. "C--Dev-Repos-foo") are recognized and rendered with the correct
+    drive prefix and backslash separators, but any segment containing a
+    genuine hyphen (like a repo named "andres-cc-marketplace") still renders
+    with that hyphen split into extra path segments.
+    """
+    drive_match = _WINDOWS_DRIVE_RE.match(encoded)
+    if drive_match:
+        drive, rest = drive_match.group(1), drive_match.group(2)
+        decoded = f"{drive}:\\" + rest.replace("-", "\\")
+    elif encoded.startswith("-"):
         decoded = "/" + encoded[1:].replace("-", "/")
     else:
         decoded = encoded.replace("-", "/")
@@ -111,6 +133,26 @@ def _assert_path_within_base(target_path: str, base_dir: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _find_session_files_by_id(session_id: str, base: str) -> list[str]:
+    """Search every project directory under base for a `<session_id>.jsonl` file.
+
+    A session ID is a globally-unique UUID, so this search needs no project/cwd
+    context at all -- it's the same mechanism step 3 of resolve_session() below
+    reuses via CLAUDE_CODE_SESSION_ID, since that's more robust than matching a
+    project directory name against the current cwd.
+    """
+    matches: list[str] = []
+    if os.path.isdir(base):
+        for entry in sorted(os.listdir(base)):
+            entry_path = os.path.join(base, entry)
+            if not os.path.isdir(entry_path):
+                continue
+            candidate = os.path.join(entry_path, f"{session_id}.jsonl")
+            if os.path.exists(candidate):
+                matches.append(candidate)
+    return matches
+
+
 def resolve_session(
     identifier: str | None = None, cwd: str | None = None, projects_base: str | None = None
 ) -> str:
@@ -120,7 +162,14 @@ def resolve_session(
     Resolution chain:
     1. Full path to .jsonl -> use directly
     2. UUID -> search projects for matching filename
-    3. None -> most recent .jsonl in cwd's project dir
+    3. None -> the live session's own CLAUDE_CODE_SESSION_ID, if set
+    4. None -> most recent .jsonl in cwd's project dir
+
+    Step 3 exists because a session's JSONL is stored under whichever project
+    directory it actually *started* in -- if cwd later changes (e.g. a worktree
+    created mid-session via starting-work), step 4's cwd-based match finds
+    nothing even though the live session obviously exists. CLAUDE_CODE_SESSION_ID
+    identifies it directly, sidestepping the cwd mismatch entirely.
 
     Raises ValueError instead of exiting (CLI catches and exits with code 2).
     """
@@ -134,15 +183,7 @@ def resolve_session(
 
     # 2. UUID search
     if identifier:
-        matches: list[str] = []
-        if os.path.isdir(base):
-            for entry in sorted(os.listdir(base)):
-                entry_path = os.path.join(base, entry)
-                if not os.path.isdir(entry_path):
-                    continue
-                candidate = os.path.join(entry_path, f"{identifier}.jsonl")
-                if os.path.exists(candidate):
-                    matches.append(candidate)
+        matches = _find_session_files_by_id(identifier, base)
         if len(matches) > 1:
             raise ValueError(
                 f"Ambiguous session ID: {identifier} matches {len(matches)} files across different "
@@ -154,7 +195,16 @@ def resolve_session(
             f"No session found with ID: {identifier}. Run session-list to see available sessions."
         )
 
-    # 3. Most recent in cwd project
+    # 3. Live session's own ID via environment
+    env_session_id = os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if env_session_id and is_valid_id(env_session_id):
+        env_matches = _find_session_files_by_id(env_session_id, base)
+        if len(env_matches) == 1:
+            return env_matches[0]
+        # Ambiguous (shouldn't happen for a real UUID) or not yet written to disk --
+        # fall through to the cwd heuristic below rather than erroring here.
+
+    # 4. Most recent in cwd project
     if cwd:
         encoded = encode_project_path(cwd)
         proj_dir = os.path.join(base, encoded)
@@ -1103,7 +1153,8 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
     if not command:
         sys.stderr.write(
             "Usage: python3 session_store.py <list|search|timeline|cleanup|tasks|task-lists|"
-            "delete-session|delete-task|delete-task-list|orphan-task-lists|session-detail> ...\n"
+            "delete-session|delete-task|delete-task-list|orphan-task-lists|session-detail|"
+            "current> ...\n"
         )
         sys.exit(1)
 
@@ -1299,12 +1350,15 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
             if not session_id or session_id.startswith("-"):
                 _exit_with_error("Missing session ID", 2)
             delete_tasks = "--delete-tasks" in argv
-            result = delete_session(
-                session_id,
-                projects_base=projects_base,
-                tasks_base=tasks_base,
-                delete_orphaned_tasks=delete_tasks,
-            )
+            try:
+                result = delete_session(
+                    session_id,
+                    projects_base=projects_base,
+                    tasks_base=tasks_base,
+                    delete_orphaned_tasks=delete_tasks,
+                )
+            except ValueError as err:
+                _exit_with_error(err, 2)
             print(
                 to_json(
                     {
@@ -1372,9 +1426,12 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
             session_id = argv[cmd_idx + 1] if cmd_idx + 1 < len(argv) else None
             if not session_id or session_id.startswith("-"):
                 _exit_with_error("Missing session ID", 2)
-            detail = get_session_detail(
-                session_id, projects_base=projects_base, tasks_base=tasks_base
-            )
+            try:
+                detail = get_session_detail(
+                    session_id, projects_base=projects_base, tasks_base=tasks_base
+                )
+            except ValueError as err:
+                _exit_with_error(err, 2)
             print(
                 to_json(
                     {
@@ -1387,6 +1444,16 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
                     }
                 )
             )
+
+        elif command == "current":
+            try:
+                session_path = resolve_session(cwd=os.getcwd(), projects_base=projects_base)
+            except ValueError as err:
+                _exit_with_error(err, 2)
+            summary = _get_session_summary(session_path)
+            if summary is None:
+                _exit_with_error(f"Could not read session file: {session_path}", 2)
+            print(to_json(_to_output_session(summary)))
 
         else:
             _exit_with_error(f"Unknown command: {command}", 3)

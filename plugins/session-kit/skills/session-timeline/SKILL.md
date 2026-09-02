@@ -34,7 +34,12 @@ To show only recent sessions:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" timeline --project "$(basename $(pwd))" --since "2026-04-01" --format json
 ```
 
-`--format json` is required — without it, the command prints a human-readable table instead of the JSON array Step 2 needs to parse.
+`--format json` is required — without it, the command prints a human-readable table instead of the
+JSON array Step 2 needs to parse. If this returns an empty timeline unexpectedly (e.g. the current
+directory doesn't match where a relevant session actually started — a worktree created mid-session,
+for instance), run
+`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" current` to check whether a live session
+exists for a differently-named project before concluding there's no history yet.
 
 ## Step 2: Present the timeline
 

@@ -91,6 +91,9 @@ class TestEncodeProjectPath:
     def test_encodes_filesystem_path(self):
         assert encode_project_path("/Users/me/myproject") == "-Users-me-myproject"
 
+    def test_encodes_windows_path(self):
+        assert encode_project_path("C:\\Dev\\Repos\\myproject") == "C--Dev-Repos-myproject"
+
 
 class TestDecodeProjectPath:
     def test_decodes_to_filesystem_path(self):
@@ -107,6 +110,23 @@ class TestDecodeProjectPath:
     def test_works_for_normal_paths(self):
         assert decode_project_path("-Users-me-project") == "/Users/me/project"
         assert decode_project_path("Users-me-project") == "Users/me/project"
+
+    def test_decodes_windows_drive_letter_path(self):
+        assert decode_project_path("C--Dev-Repos-proj") == "C:\\Dev\\Repos\\proj"
+
+    def test_round_trips_windows_path_without_hyphens(self):
+        # A drive-letter path with no real hyphens in any segment round-trips exactly.
+        original = "C:\\Dev\\Repos\\proj"
+        assert decode_project_path(encode_project_path(original)) == original
+
+    def test_does_not_round_trip_when_a_segment_has_a_real_hyphen(self):
+        # Documents the known, inherent limitation (see decode_project_path's own
+        # docstring): a real hyphen in a segment is indistinguishable from an
+        # encoded separator, so this case can never round-trip exactly.
+        original = "C:\\Dev\\Repos\\andres-cc-marketplace"
+        decoded = decode_project_path(encode_project_path(original))
+        assert decoded != original
+        assert decoded == "C:\\Dev\\Repos\\andres\\cc\\marketplace"
 
 
 class TestIsValidId:
@@ -146,6 +166,33 @@ class TestResolveSession:
 
         with pytest.raises(ValueError, match="Ambiguous session ID"):
             resolve_session("dup-session", projects_base=str(base))
+
+    def test_resolves_via_env_session_id_regardless_of_cwd(self, tmp_path, monkeypatch):
+        # The session's own project dir doesn't match cwd at all (e.g. a worktree
+        # created mid-session) -- CLAUDE_CODE_SESSION_ID must still resolve it,
+        # without needing the cwd-based fallback to match anything.
+        base = tmp_path / "projects"
+        proj_dir = base / "-some-other-original-checkout"
+        proj_dir.mkdir(parents=True)
+        shutil.copyfile(FIXTURE, proj_dir / "live-session-id.jsonl")
+
+        monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "live-session-id")
+        result = resolve_session(cwd="/totally/unrelated/worktree/path", projects_base=str(base))
+        assert result == str(proj_dir / "live-session-id.jsonl")
+
+    def test_falls_back_to_cwd_when_env_var_unset(self, fake_projects_dir, monkeypatch):
+        monkeypatch.delenv("CLAUDE_CODE_SESSION_ID", raising=False)
+        result = resolve_session(cwd="/Users/me/myproject", projects_base=fake_projects_dir)
+        assert result.endswith(".jsonl")
+        assert "-Users-me-myproject" in result
+
+    def test_falls_back_to_cwd_when_env_session_not_found_on_disk(
+        self, fake_projects_dir, monkeypatch
+    ):
+        monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "no-such-session-anywhere")
+        result = resolve_session(cwd="/Users/me/myproject", projects_base=fake_projects_dir)
+        assert result.endswith(".jsonl")
+        assert "-Users-me-myproject" in result
 
 
 class TestListSessions:
