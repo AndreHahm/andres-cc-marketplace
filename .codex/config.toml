@@ -1,0 +1,70 @@
+# .codex/config.toml
+
+# Root-agent defaults.
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+personality = "pragmatic"
+
+# Keep planning capable without enabling Ultra orchestration.
+plan_mode_reasoning_effort = "high"
+
+model_reasoning_summary = "auto"
+model_verbosity = "medium"
+
+# approval_policy stays interactive (on-request); sandbox_mode is
+# deliberately permissive (workspace-write, not the documented "read-only"
+# default) because this session needs write access to actually do its work.
+# Preserve your existing values if preferred; these settings do not affect
+# context hydration.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+# fork_turns has no config.toml default -- there is no [agents] key for it.
+# Mechanically: a spawn_agent call with no explicit fork_turns defaults to
+# "all" (a full-history fork), and a full-history fork silently REJECTS any
+# model/reasoning_effort override passed in that same call. Omitting
+# fork_turns therefore doesn't just skip a preference -- it can silently
+# break an override the caller thought was applied. These instructions make
+# explicit, isolated forks the policy for that reason.
+#
+# Confirmed: developer_instructions is injected into the session (per
+# official config docs). NOT confirmed by any fetched doc: whether that
+# injection reaches spawned subagents or only the root/parent session --
+# treat the delegation policy below as best-effort until verified live.
+developer_instructions = """
+Multi-agent delegation policy:
+
+- Do not spawn subagents unless the task contains at least two independent workstreams and delegation materially improves the outcome.
+- Every spawn_agent call must set fork_turns explicitly; never rely on its default.
+- Use fork_turns: "none" by default.
+- Use a small positive fork_turns value only when the child needs specific recent decisions.
+- Use fork_turns: "all" only when the full retained conversation is essential to completing the delegated task.
+- Never select reasoning_effort: "ultra" for a subagent.
+- Subagents must not spawn further subagents unless the user explicitly requests recursive delegation.
+- Reuse an existing subagent for follow-up work instead of spawning a replacement when practical.
+"""
+
+forced_login_method = "chatgpt"
+project_root_markers = [".git"]
+
+
+[agents]
+enabled = true
+
+# Keeps child quality equivalent to the root without inheriting Ultra's
+# proactive delegation behavior.
+default_subagent_model = "gpt-5.6-terra"
+default_subagent_reasoning_effort = "medium"
+
+# At most two spawned-agent threads may be open concurrently.
+# This excludes the primary/root thread.
+max_concurrent_threads_per_session = 2
+
+# Preserve visible interruption records.
+interrupt_message = true
+
+[windows]
+# Deliberately "elevated", not the "unelevated" default. Official docs don't
+# document exactly what privilege this grants (unverified as of 2026-09-02) --
+# kept as a known, accepted tradeoff for this session's actual Windows needs.
+sandbox = "elevated"
