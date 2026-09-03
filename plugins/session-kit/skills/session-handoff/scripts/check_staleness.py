@@ -42,16 +42,24 @@ def parse_handoff_metadata(filepath: str) -> dict:
         "modified_files": [],
     }
 
-    # Parse Created timestamp
-    match = re.search(r"Created:\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})", content)
+    # Parse Created timestamp -- accepts both the space-separated "YYYY-MM-DD HH:MM:SS" form
+    # (the handoff template's own default) and ISO-8601 "YYYY-MM-DDTHH:MM:SSZ" (used by some
+    # handoff authors, e.g. Write("Created: 2026-09-03T05:34:17Z", ...)); an unmatched format
+    # previously left `created` as None, which silently suppressed every staleness signal
+    # below rather than surfacing as an unknown/error state.
+    match = re.search(r"Created:\s*(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})Z?", content)
     if match:
         try:
-            metadata["created"] = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S")
+            metadata["created"] = datetime.strptime(
+                f"{match.group(1)} {match.group(2)}", "%Y-%m-%d %H:%M:%S"
+            )
         except ValueError:
             pass
 
-    # Parse Branch
-    match = re.search(r"Branch:\s*(\S+)", content)
+    # Parse Branch -- tolerates an optional Markdown code-span wrapper (`` `branch-name` ``,
+    # a real convention some handoff authors use) so its backticks aren't captured into the
+    # value and compared, unequal, against get_current_branch()'s unwrapped result.
+    match = re.search(r"Branch:\s*`?([^\s`]+)`?", content)
     if match:
         branch = match.group(1)
         if branch and not branch.startswith("["):
