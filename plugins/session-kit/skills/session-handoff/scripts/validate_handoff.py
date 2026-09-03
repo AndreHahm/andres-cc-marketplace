@@ -32,7 +32,7 @@ SECRET_PATTERNS = [
     (r'["\']?[a-zA-Z_]*private[_-]?key["\']?\s*[:=]', "Private key"),
     (r"-----BEGIN [A-Z]+ PRIVATE KEY-----", "PEM private key"),
     (r"mongodb(\+srv)?://[^/\s]+:[^@\s]+@", "MongoDB connection string with password"),
-    (r"postgres://[^/\s]+:[^@\s]+@", "PostgreSQL connection string with password"),
+    (r"postgres(?:ql)?://[^/\s]+:[^@\s]+@", "PostgreSQL connection string with password"),
     (r"mysql://[^/\s]+:[^@\s]+@", "MySQL connection string with password"),
     (r"Bearer\s+[a-zA-Z0-9_\-\.]+", "Bearer token"),
     (r"ghp_[a-zA-Z0-9]{36}", "GitHub personal access token"),
