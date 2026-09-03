@@ -316,17 +316,31 @@ def _get_session_summary(session_path: str) -> dict | None:
 
 def list_sessions(
     project_filter: str | None = None,
+    project_exact: bool = False,
     sort: str = "recency",
     limit: int | None = 20,
     since: str | None = None,
     until: str | None = None,
     projects_base: str | None = None,
 ) -> list[dict]:
-    """List all sessions, optionally filtered and sorted. limit=None returns all of them."""
+    """List all sessions, optionally filtered and sorted. limit=None returns all of them.
+
+    project_filter is a loose, case-insensitive substring match against each project's
+    encoded directory name by default. When project_exact is True, project_filter is
+    instead treated as a real filesystem path -- it's encoded the same way a session's
+    own project directory name would be, and only an exact match is returned. This is
+    what "sessions for the current project" needs: a substring match can return
+    sessions from an unrelated sibling project whose encoded name merely contains this
+    one (e.g. "app" matching both "/work/app" and "/work/app-backup").
+    """
     base = projects_base or DEFAULT_PROJECTS_BASE
 
     if not os.path.isdir(base):
         return []
+
+    encoded_filter = None
+    if project_exact and project_filter:
+        encoded_filter = encode_project_path(os.path.abspath(project_filter))
 
     sessions = []
 
@@ -334,7 +348,10 @@ def list_sessions(
         entry_path = os.path.join(base, entry)
         if not os.path.isdir(entry_path):
             continue
-        if project_filter and project_filter.lower() not in entry.lower():
+        if project_exact:
+            if encoded_filter is not None and entry != encoded_filter:
+                continue
+        elif project_filter and project_filter.lower() not in entry.lower():
             continue
         for fname in os.listdir(entry_path):
             if not fname.endswith(".jsonl"):
@@ -483,16 +500,19 @@ def search_sessions(
 
 def get_timeline(
     project_filter: str | None = None,
+    project_exact: bool = False,
     since: str | None = None,
     until: str | None = None,
     projects_base: str | None = None,
 ) -> list[dict]:
-    """Chronological list of sessions for a project."""
+    """Chronological list of sessions for a project. See list_sessions() for
+    project_filter/project_exact semantics."""
     # A hardcoded numeric limit here would silently drop a project's oldest sessions
     # once it passed that count, with no truncation indicator surfaced anywhere --
     # "chronological list" means all of them, not a capped recent window.
     sessions = list_sessions(
         project_filter=project_filter,
+        project_exact=project_exact,
         sort="recency",
         limit=None,
         since=since,
@@ -1227,10 +1247,12 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
     try:
         if command == "list":
             project = get_flag("--project")
+            project_exact = get_flag("--project-exact")
             sort = get_flag("--sort") or "recency"
             limit = get_flag_int("--limit", 20)
             sessions = list_sessions(
-                project_filter=project,
+                project_filter=project_exact or project,
+                project_exact=bool(project_exact),
                 sort=sort,
                 limit=limit,
                 since=since,
@@ -1311,8 +1333,13 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
 
         elif command == "timeline":
             project = get_flag("--project")
+            project_exact = get_flag("--project-exact")
             timeline = get_timeline(
-                project_filter=project, since=since, until=until, projects_base=projects_base
+                project_filter=project_exact or project,
+                project_exact=bool(project_exact),
+                since=since,
+                until=until,
+                projects_base=projects_base,
             )
             out = [_to_output_session(s) for s in timeline]
             if format_flag == "table":
@@ -1420,10 +1447,17 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
                 _exit_with_error("Missing session ID", 2)
             delete_tasks = "--delete-tasks" in argv
             try:
+                # Deliberately ignores any --projects-base/--tasks-base the caller passed --
+                # this script's allowed-tools grant is Bash(...:*), which permits arbitrary
+                # flags, so honoring a caller-supplied base here would let those flags
+                # trivially satisfy delete_session's own containment check against a base
+                # of the caller's choosing (e.g. --tasks-base /chosen/root then deleting
+                # /chosen/root/<id>). Same fixed-base pattern memory_scanner.py's own
+                # delete-memory command already uses for the same reason.
                 result = delete_session(
                     session_id,
-                    projects_base=projects_base,
-                    tasks_base=tasks_base,
+                    projects_base=DEFAULT_PROJECTS_BASE,
+                    tasks_base=DEFAULT_TASKS_BASE,
                     delete_orphaned_tasks=delete_tasks,
                 )
             except ValueError as err:
@@ -1447,7 +1481,9 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
             if not task_id or task_id.startswith("-"):
                 _exit_with_error("Missing task ID", 2)
             try:
-                result = delete_task(task_list_id, task_id, tasks_base=tasks_base)
+                # Fixed base, not the caller-supplied override -- see delete-session's
+                # matching comment above for why.
+                result = delete_task(task_list_id, task_id, tasks_base=DEFAULT_TASKS_BASE)
             except ValueError as err:
                 _exit_with_error(err, 2)
             print(
@@ -1466,7 +1502,9 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
             if not task_list_id or task_list_id.startswith("-"):
                 _exit_with_error("Missing task list ID", 2)
             try:
-                result = delete_task_list(task_list_id, tasks_base=tasks_base)
+                # Fixed base, not the caller-supplied override -- see delete-session's
+                # matching comment above for why.
+                result = delete_task_list(task_list_id, tasks_base=DEFAULT_TASKS_BASE)
             except ValueError as err:
                 _exit_with_error(err, 2)
             print(

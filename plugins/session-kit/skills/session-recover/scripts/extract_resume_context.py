@@ -94,14 +94,12 @@ def find_project_dir(project_path: str) -> Path | None:
     candidate = PROJECTS_DIR / normalized
     if candidate.is_dir():
         return candidate
-    # Fallback: search for a partial match, but only when it's unambiguous. A sibling
-    # project whose encoded name happens to contain this one as a substring (e.g.
-    # "-workspace-foo" inside "-workspace-foo-bar") must never be silently returned as
-    # if it were the requested project -- that combines an unrelated session transcript
-    # with the wrong project's current Git state.
-    partial_matches = [d for d in PROJECTS_DIR.iterdir() if d.is_dir() and normalized in d.name]
-    if len(partial_matches) == 1:
-        return partial_matches[0]
+    # No partial-match fallback: a sibling project whose encoded name merely contains
+    # this one as a substring (e.g. "-workspace-foo" inside "-workspace-foo-bar") is
+    # never proof of identity, even when it's the only such candidate -- returning it
+    # would combine an unrelated session transcript with the wrong project's current
+    # Git state. Only an exact encoded-path match (above) is ever returned; no match
+    # means None, not a guess.
     return None
 
 
@@ -479,15 +477,17 @@ def extract_subagent_context(session_file: Path) -> list[dict]:
             try:
                 lines = jsonl_file.read_text(encoding="utf-8").strip().split("\n")
                 line_count = len(lines)
-                has_tool_use_pending = False
-                # The loop below walks chronologically backward (latest line first), but a
-                # normal completed sequence is tool_use -> tool_result -> final text: seeing
-                # the result first would clear the flag, then the earlier tool_use would set
-                # it again, reporting a completed subagent as interrupted. Lock the verdict at
-                # the first tool-related block encountered (i.e. the chronologically LAST one).
-                tool_state_decided = False
-                # Check last 10 lines for final assistant text
-                for raw_line in reversed(lines[-10:]):
+                # Track unresolved tool_use IDs explicitly, not a single boolean derived
+                # from "the last tool-related block" -- if a subagent dispatches two tool
+                # calls and only one returns before interruption, deciding from just the
+                # latest block reports it completed even though the other call is still
+                # unresolved. Pairing by ID (add on tool_use, discard on the matching
+                # tool_result's tool_use_id) is the only way to get that right.
+                unresolved_tool_ids: set[str] = set()
+                # Check last 10 lines for final assistant text -- forward (chronological)
+                # order, so tool_use is always seen before its own tool_result, same as it
+                # actually happened.
+                for raw_line in lines[-10:]:
                     try:
                         obj = json.loads(raw_line)
                         msg = obj.get("message", {})
@@ -500,24 +500,22 @@ def extract_subagent_context(session_file: Path) -> list[dict]:
                                     continue
                                 block_type = block.get("type")
                                 if block_type == "tool_use":
-                                    if not tool_state_decided:
-                                        has_tool_use_pending = True
-                                        tool_state_decided = True
+                                    tool_id = block.get("id")
+                                    if tool_id:
+                                        unresolved_tool_ids.add(tool_id)
                                 elif block_type == "text":
                                     text = block.get("text", "")
-                                    if text.strip() and not last_text:
+                                    if text.strip():
                                         last_text = text.strip()[:500]
 
                         if role == "user" and isinstance(content, list):
                             for block in content:
                                 if isinstance(block, dict) and block.get("type") == "tool_result":
-                                    if not tool_state_decided:
-                                        has_tool_use_pending = False
-                                        tool_state_decided = True
+                                    unresolved_tool_ids.discard(block.get("tool_use_id"))
                     except json.JSONDecodeError:
                         continue
 
-                is_interrupted = has_tool_use_pending
+                is_interrupted = bool(unresolved_tool_ids)
             except OSError:
                 pass
 

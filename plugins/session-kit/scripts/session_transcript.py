@@ -738,7 +738,14 @@ def main() -> None:
             session_path = args[1] if len(args) > 1 else None
             if not session_path:
                 _exit_with_error("Missing session path", 2)
-            print(to_json(get_tasks(session_path)))
+            # get_tasks() returns the raw create/update event stream -- a TaskCreate
+            # commonly has no status of its own, and an unfused stream can't tell a
+            # completed task from a still-pending one. Fuse it into one current-state
+            # entry per task before printing, same as session_store.py's own JSONL
+            # fallback already does when aggregating tasks.
+            raw_tasks = get_tasks(session_path)
+            merged = merge_task_events(raw_tasks, Path(session_path).stem, default_status="pending")
+            print(to_json(merged))
         elif command == "export":
             session_path = args[1] if len(args) > 1 else None
             if not session_path:

@@ -129,6 +129,12 @@ def parse_memory_index(memory_dir: str) -> tuple[set[str], list[str]]:
 
     for match in _LINK_PATTERN.finditer(content):
         target = match.group(2)
+        # relative_memory_path() (the value every orphan/index-mismatch check compares
+        # against) never produces a leading "./" -- a MEMORY.md entry written as
+        # "./note.md" must normalize to "note.md" here too, or a validly-linked file
+        # is compared against a differently-shaped string and reported as orphaned.
+        if target.startswith("./"):
+            target = target[2:]
         linked.add(target)
         entries.append(target)
 

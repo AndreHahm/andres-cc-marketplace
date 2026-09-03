@@ -40,8 +40,8 @@ python3 "plugins/session-kit/scripts/session_store.py" session-detail cbba71a9-7
 python3 "plugins/session-kit/scripts/session_store.py" session-detail ab822c24-09b8-4673-a4bf-beb585238b75
 
 python3 "plugins/session-kit/scripts/session_transcript.py" diff \
-  "C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\cbba71a9-7aab-4fc1-9fd2-99f22323baf0.jsonl" \
-  "C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\ab822c24-09b8-4673-a4bf-beb585238b75.jsonl"
+  "C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\cbba71a9-7aab-4fc1-9fd2-99f22323baf0.jsonl" \
+  "C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\ab822c24-09b8-4673-a4bf-beb585238b75.jsonl"
 ```
 
 ## Raw diff output (session_transcript.py diff)

@@ -219,6 +219,22 @@ class TestAuditMemories:
         orphans = [f for f in result["findings"] if f["category"] == "orphan"]
         assert orphans == []
 
+    def test_dot_slash_prefixed_link_is_not_flagged_orphan(self, tmp_path):
+        # parse_memory_index() preserves a MEMORY.md link verbatim ("./note.md"), but
+        # relative_memory_path() (what every orphan/index check compares against) never
+        # produces a leading "./" -- an unnormalized "./"-prefixed link therefore never
+        # matched its own file's computed relative path, falsely orphaning it.
+        memory_dir = tmp_path / "projects" / "proj" / "memory"
+        memory_dir.mkdir(parents=True)
+        (memory_dir / "MEMORY.md").write_text(
+            "- [Note](./note.md) -- linked with a leading ./ prefix\n", encoding="utf-8"
+        )
+        (memory_dir / "note.md").write_text("content", encoding="utf-8")
+
+        result = audit_memories(projects_base=str(tmp_path / "projects"))
+        orphans = [f for f in result["findings"] if f["category"] == "orphan"]
+        assert orphans == []
+
     def test_nested_memory_file_orphan_suggestion_uses_relative_path(self, tmp_path):
         """The suggested fix must name the nested file's relative path, not just its bare
         basename -- suggesting a bare basename risks a duplicate/wrong top-level index

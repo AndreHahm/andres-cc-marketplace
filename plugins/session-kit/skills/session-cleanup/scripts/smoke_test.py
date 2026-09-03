@@ -134,12 +134,27 @@ def check_testing_validation_section():
     # content, not a real next-heading boundary -- treating it as one truncated the
     # section early and could report a complete section's own markers as missing.
     fenced = False
+    fence_char = None
     cursor = 0
     section_end = len(body)
     for line in tail.splitlines(keepends=True):
         stripped = line.lstrip()
-        if stripped.startswith("```") or stripped.startswith("~~~"):
-            fenced = not fenced
+        if stripped.startswith("```"):
+            opener = "`"
+        elif stripped.startswith("~~~"):
+            opener = "~"
+        else:
+            opener = None
+        if opener:
+            if not fenced:
+                fenced = True
+                fence_char = opener
+            elif opener == fence_char:
+                # Only the matching delimiter closes the fence -- a literal "~~~" line
+                # inside a real ``` fence is code content, not a close, and must not let
+                # a later "## " line inside that same example end the section early.
+                fenced = False
+                fence_char = None
         elif not fenced and line.startswith("## "):
             section_end = heading_end + cursor
             break

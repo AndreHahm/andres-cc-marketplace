@@ -28,8 +28,8 @@ grep -riln "login bug" ~/.claude/projects/C--Dev-Repos-andres-cc-marketplace/*.j
 ```
 Output:
 ```
-/c/Users/andre/.claude/projects/C--Dev-Repos-andres-cc-marketplace/7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl
-/c/Users/andre/.claude/projects/C--Dev-Repos-andres-cc-marketplace/8af407c7-3117-4e2d-8f32-1889c28546f9.jsonl
+/c/Users/devuser/.claude/projects/C--Dev-Repos-andres-cc-marketplace/7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl
+/c/Users/devuser/.claude/projects/C--Dev-Repos-andres-cc-marketplace/8af407c7-3117-4e2d-8f32-1889c28546f9.jsonl
 ```
 
 Two files contain the literal substring "login bug":
@@ -37,7 +37,7 @@ Two files contain the literal substring "login bug":
 1. **7b92a813-0321-4dbb-b37a-c62dfc1207e7** — this is the *current* session; it contains "login bug" only because this very eval task's prompt text ("Find that session where we discussed the login bug") is part of the transcript. Not a real prior discussion.
 2. **8af407c7-3117-4e2d-8f32-1889c28546f9** — not surfaced by the search tool's `--limit 20` results (likely ranked below the top matches or excluded for another reason). Inspected directly:
    ```bash
-   grep -io ".\{100\}login bug.\{100\}" "/c/Users/andre/.claude/projects/C--Dev-Repos-andres-cc-marketplace/8af407c7-3117-4e2d-8f32-1889c28546f9.jsonl" | head -5
+   grep -io ".\{100\}login bug.\{100\}" "/c/Users/devuser/.claude/projects/C--Dev-Repos-andres-cc-marketplace/8af407c7-3117-4e2d-8f32-1889c28546f9.jsonl" | head -5
    ```
    Output (sample):
    ```

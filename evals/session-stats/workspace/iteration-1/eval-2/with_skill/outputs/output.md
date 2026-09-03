@@ -30,7 +30,7 @@ python3 "plugins/session-kit/scripts/session_store.py" list --limit 5 --format j
 
 Output (truncated to first/most relevant record):
 ```json
-[{"session_id":"7b92a813-0321-4dbb-b37a-c62dfc1207e7","project":"C//Dev/Repos/andres/cc/marketplace","date":"2026-09-02","started":"2026-09-02T15:56:03.089Z","last_activity":"2026-09-02T21:33:01.647Z","messages":4872,"duration_minutes":337.0,"size_bytes":10916214,"path":"C:\\Users\\andre\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl"}, ...]
+[{"session_id":"7b92a813-0321-4dbb-b37a-c62dfc1207e7","project":"C//Dev/Repos/andres/cc/marketplace","date":"2026-09-02","started":"2026-09-02T15:56:03.089Z","last_activity":"2026-09-02T21:33:01.647Z","messages":4872,"duration_minutes":337.0,"size_bytes":10916214,"path":"C:\\Users\\devuser\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl"}, ...]
 ```
 
 The first (most recent) entry, `7b92a813-0321-4dbb-b37a-c62dfc1207e7`, has the latest `last_activity`
@@ -40,7 +40,7 @@ scratchpad path — confirmed as the "last session."
 ### Step 2: Run the stats script
 
 ```bash
-python3 "plugins/session-kit/scripts/session_transcript.py" stats "C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl"
+python3 "plugins/session-kit/scripts/session_transcript.py" stats "C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl"
 ```
 
 Raw output:

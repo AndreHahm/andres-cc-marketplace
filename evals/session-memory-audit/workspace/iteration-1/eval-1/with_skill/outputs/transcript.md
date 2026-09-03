@@ -17,7 +17,7 @@ captured (35.9KB) — summarized below.
 - 12 critical / 0 warning / 36 info
 
 Projects: `C--Dev-Repos-andres-cc-marketplace` (bulk of memories), `C--Dev-Repos-claude-pr-review`,
-`C--Users-andre-AppData-Local-Temp-agent-trigger-z8b9u4-1`.
+`C--Users-devuser-AppData-Local-Temp-agent-trigger-z8b9u4-1`.
 
 ## Section A: Auto-fixable (deterministic, no AI) — 46 findings
 
@@ -46,7 +46,7 @@ from the corresponding file's own frontmatter description. 30 in
 (`feedback_agent_cost_awareness.md`, `feedback_skill_review_format.md`,
 `feedback_task_status_visibility.md`, `feedback_upstream_design_phase_no_disk_writes.md`,
 `project_plugin_dev_staging_mirror.md`), and 1 in
-`C--Users-andre-AppData-Local-Temp-agent-trigger-z8b9u4-1`
+`C--Users-devuser-AppData-Local-Temp-agent-trigger-z8b9u4-1`
 (`feedback_plugin_security_review.md`).
 
 ### AskUserQuestion attempt

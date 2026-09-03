@@ -57,6 +57,11 @@ If the user wants the export to also include the session's tracked tasks, run:
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" tasks <session-jsonl-path>
 ```
+This returns each task's current, fused status (create/update events already merged into one entry per
+task) — not the raw event stream, so a task that was later completed shows `"status": "completed"`, not
+a stale/missing status from its original create event. If the user specifically asked for *pending*
+tasks (e.g. "my pending task list"), filter the result to `status == "pending"` before appending it.
+
 Append the result as a `## Tasks` section: directly under the transcript when presenting inline, or
 appended to the same file after the transcript itself has been written when `--output` was used. Don't
 silently drop the request just because the `export` subcommand itself has no task-inclusion flag — this

@@ -30,12 +30,12 @@ Show chronological history of sessions for a project.
 **Option A — cross-session, project-level timeline** (the default: cadence/gaps/patterns across all
 sessions in a project):
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" timeline --project "$(basename "$(pwd)")" --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" timeline --project-exact "$(pwd)" --format json
 ```
 
 To show only recent sessions:
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" timeline --project "$(basename "$(pwd)")" --since "2026-04-01" --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" timeline --project-exact "$(pwd)" --since "2026-04-01" --format json
 ```
 
 `--format json` is required — without it, the command prints a human-readable table instead of the
@@ -51,12 +51,19 @@ only, no summary or task context; Option A's `timeline` command only ever return
 *session*, never individual events within one):
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" current
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages <session-jsonl-path> --limit 200 --include-tools
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages <session-jsonl-path> --offset 0 --limit 200 --include-tools
 ```
 Use the `path` field from `current` (or a session ID the user gave) as `<session-jsonl-path>`. This is
 what actually satisfies an "event-level"/"detailed" framing scoped to one session — reaching only for
 Option A's project-level command when the user asked about one session's own events produces the same
 coarse bar chart regardless of how the request was phrased, which isn't what was asked.
+
+**Pagination — required for sessions over 200 events.** The command returns an envelope
+(`{"messages": [...], "total": N, "hasMore": bool, "offset": N}`), not a bare array — `--limit` caps
+one page, it does not truncate the session. If `hasMore` is `true`, repeat the call with
+`--offset 200`, then `--offset 400`, and so on, accumulating each page's `messages` until `hasMore`
+is `false`. Silently presenting only the first page for a long session omits its later — usually most
+relevant — activity.
 
 ## Step 2: Present the timeline
 
