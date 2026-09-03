@@ -116,6 +116,20 @@ class TestParseDateBoundary:
         assert isinstance(d, datetime)
         assert d.astimezone(UTC).isoformat() == "2026-04-01T14:30:00+00:00"
 
+    def test_end_of_day_extends_a_bare_date_to_its_last_microsecond(self):
+        # An "until" boundary built from a bare date without this must resolve to
+        # midnight *starting* that day, silently excluding every session that
+        # happened later the same date -- the day the caller almost certainly
+        # meant to include in full.
+        d = parse_date_boundary("2026-04-09", end_of_day=True)
+        assert isinstance(d, datetime)
+        assert d.astimezone(UTC).isoformat() == "2026-04-09T23:59:59.999999+00:00"
+
+    def test_end_of_day_does_not_affect_a_datetime_with_an_explicit_time(self):
+        d = parse_date_boundary("2026-04-09T14:30:00Z", end_of_day=True)
+        assert isinstance(d, datetime)
+        assert d.astimezone(UTC).isoformat() == "2026-04-09T14:30:00+00:00"
+
     def test_relative_days_7d(self):
         d = parse_date_boundary("7d")
         assert isinstance(d, datetime)

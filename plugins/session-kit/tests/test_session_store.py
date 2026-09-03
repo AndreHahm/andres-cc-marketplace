@@ -99,13 +99,15 @@ class TestDecodeProjectPath:
     def test_decodes_to_filesystem_path(self):
         assert decode_project_path("-Users-me-myproject") == "/Users/me/myproject"
 
-    def test_rejects_paths_containing_dotdot(self):
-        with pytest.raises(ValueError, match="Invalid project path"):
-            decode_project_path("foo-..")
-        with pytest.raises(ValueError, match="Invalid project path"):
-            decode_project_path("-..")
-        with pytest.raises(ValueError, match="Invalid project path"):
-            decode_project_path("..")
+    def test_never_raises_on_a_dotdot_sequence(self):
+        # decode_project_path is display-only, never used for filesystem I/O (see its
+        # own docstring) -- raising here would abort every caller that lists multiple
+        # sessions (list_sessions/search/timeline/cleanup all decode once per session)
+        # for one oddly-named project, not just that project. A real project directory
+        # literally named "v1..v2" must still decode to a best-effort display string.
+        assert decode_project_path("foo-..") == "foo/.."
+        assert decode_project_path("-..") == "/.."
+        assert decode_project_path("..") == ".."
 
     def test_works_for_normal_paths(self):
         assert decode_project_path("-Users-me-project") == "/Users/me/project"
@@ -261,6 +263,20 @@ class TestGetTimeline:
         assert "sessionId" in timeline[0]
         assert "date" in timeline[0]
 
+    def test_does_not_truncate_beyond_list_sessions_own_default_limit(self, tmp_path):
+        # get_timeline used to hardcode limit=1000 when calling list_sessions -- a
+        # project with more sessions than that silently lost its oldest ones, with
+        # no truncation indicator. This uses list_sessions' own *default* limit (20)
+        # as the smaller, practical stand-in: creating more sessions than that
+        # default already proves get_timeline isn't quietly capping via any
+        # inherited limit, hardcoded or default.
+        proj_dir = tmp_path / "-Users-me-manysessions"
+        proj_dir.mkdir(parents=True)
+        for i in range(25):
+            (proj_dir / f"session-{i:03d}.jsonl").write_text("")
+        timeline = get_timeline(projects_base=str(tmp_path))
+        assert len(timeline) == 25
+
 
 class TestFindCleanupCandidates:
     def test_finds_empty_sessions(self, fake_projects_dir):
@@ -322,6 +338,29 @@ class TestReadTaskList:
         assert tasks[0]["source"] == "filesystem"
         assert tasks[1]["status"] == "pending"
         assert tasks[1]["blockedBy"] == ["1"]
+
+    def test_rejects_a_traversal_task_list_id(self, tmp_path):
+        # read_task_list is reachable from the CLI's own --task-list flag with no
+        # other validation in that path -- an unvalidated ID let os.path.join walk
+        # outside tasks_base and read arbitrary .json files elsewhere on disk.
+        outside = tmp_path / "secret"
+        outside.mkdir()
+        (outside / "leaked.json").write_text('{"sensitive": "leak"}', encoding="utf-8")
+        tasks_base = tmp_path / "tasks"
+        tasks_base.mkdir()
+
+        with pytest.raises(ValueError, match="Invalid task list ID"):
+            read_task_list("../secret", str(tasks_base))
+
+    def test_skips_a_non_object_task_file(self, tmp_path):
+        list_dir = tmp_path / "list1"
+        list_dir.mkdir()
+        (list_dir / "bad.json").write_text('["not", "a", "dict"]', encoding="utf-8")
+        (list_dir / "good.json").write_text('{"subject": "ok"}', encoding="utf-8")
+
+        tasks = read_task_list("list1", str(tmp_path))
+        assert len(tasks) == 1
+        assert tasks[0]["subject"] == "ok"
 
 
 class TestDeleteTask:
@@ -516,6 +555,18 @@ class TestSearchSessionsUntilFilter:
         assert len(results) == 0
 
 
+class TestListSessionsUntilBoundary:
+    def test_a_bare_date_until_includes_sessions_later_that_same_day(self, tmp_path):
+        proj_dir = tmp_path / "-proj"
+        proj_dir.mkdir(parents=True)
+        (proj_dir / "afternoon.jsonl").write_text(
+            '{"type":"user","timestamp":"2026-04-09T14:00:00Z",'
+            '"message":{"content":"afternoon session"}}\n'
+        )
+        results = list_sessions(projects_base=str(tmp_path), until="2026-04-09", limit=None)
+        assert len(results) == 1
+
+
 class TestGetTimelineUntilFilter:
     def test_until_filters_out_sessions_after_date(self, fake_projects_dir):
         timeline = get_timeline(projects_base=fake_projects_dir, until="2026-04-09")
@@ -550,6 +601,33 @@ class TestAggregateTasks:
         tasks = aggregate_tasks(tasks_base="/nonexistent_tasks", projects_base=fake_projects_dir)
         assert len(tasks) >= 1
         assert tasks[0]["source"] == "jsonl"
+
+    def test_task_list_filter_scopes_the_jsonl_fallback_too(self, tmp_path):
+        # A requested task_list_id previously scoped only the primary filesystem
+        # read -- the JSONL fallback still scanned every project and appended tasks
+        # from unrelated sessions, so a request for one list returned other
+        # sessions' tasks too.
+        projects_dir = tmp_path / "projects"
+        wanted_dir = projects_dir / "-Users-me-wanted"
+        wanted_dir.mkdir(parents=True)
+        (wanted_dir / "wanted-session.jsonl").write_text(
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"TaskCreate",'
+            '"input":{"subject":"Wanted task"}}]}}\n'
+        )
+        other_dir = projects_dir / "-Users-me-other"
+        other_dir.mkdir(parents=True)
+        (other_dir / "other-session.jsonl").write_text(
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"TaskCreate",'
+            '"input":{"subject":"Unrelated task"}}]}}\n'
+        )
+
+        tasks = aggregate_tasks(
+            task_list_id="wanted-session",
+            tasks_base=str(tmp_path / "nonexistent_tasks"),
+            projects_base=str(projects_dir),
+        )
+        assert len(tasks) == 1
+        assert tasks[0]["subject"] == "Wanted task"
 
 
 class TestGetDailyTokenAggregation:

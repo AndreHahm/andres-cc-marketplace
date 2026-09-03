@@ -425,23 +425,33 @@ def audit_memories(projects_base: str | None = None, age_threshold: int = 60) ->
             )
 
         # Check 4: Expired dates — project/reference/unknown files where ALL ISO dates are in
-        # the past
+        # the past. Flagged for review, never auto-deletable: a past date alone doesn't mean
+        # "expired" -- a durable memory can legitimately document a past event (e.g. "v1.0
+        # shipped on 2025-01-15") and stay valid indefinitely. Auto-deleting on this signal
+        # alone would destroy still-useful memories; only a human (or an AI review pass) can
+        # tell an expired deadline apart from a historical fact worth keeping.
         if mem["type"] in ("project", "reference", "unknown"):
             dates = _find_expired_dates(content)
             if dates and all(d < now for d in dates):
                 oldest = min(dates)
                 findings.append(
                     {
-                        "severity": "critical",
+                        "severity": "warning",
                         "category": "expired",
-                        "fixType": "auto",
+                        "fixType": "ai_assisted",
                         "file": mem["file"],
                         "project": mem["project"],
                         "path": mem["path"],
-                        "message": f"{mem['file']} contains dates that have all passed "
-                        f"(oldest: {oldest.date().isoformat()})",
-                        "suggestion": "Delete or update this memory — it references past dates",
-                        "autoFixable": True,
+                        "message": f"{mem['file']} contains only past-dated ISO dates "
+                        f"(oldest: {oldest.date().isoformat()}) — this may be an expired "
+                        "deadline, or simply a durable record of a past event",
+                        "suggestion": "Review whether this memory documents an expiration "
+                        "that has passed (safe to delete/update) or a still-valid historical "
+                        "fact (keep as-is) — do not delete on this signal alone",
+                        "autoFixable": False,
+                        "aiAction": f"Read {mem['file']} and determine whether its past dates "
+                        "represent an expired deadline or a durable historical record before "
+                        "proposing any deletion",
                     }
                 )
 
@@ -495,7 +505,12 @@ def audit_memories(projects_base: str | None = None, age_threshold: int = 60) ->
                     index_content = f.read()
             except OSError:
                 continue
-            escaped_file = re.escape(mem["file"])
+            # relative_memory_path, not mem["file"] (a bare basename) -- MEMORY.md links a
+            # nested memory with its relative path (e.g. "decisions/note.md"), which a
+            # basename-only pattern never matches, silently never firing this check for
+            # any nested memory. Same fix already applied to scan_memories' "indexed"
+            # field and the Check 2 orphan check above -- this was the one remaining spot.
+            escaped_file = re.escape(relative_memory_path(mem["path"], memory_dir))
             desc_pattern = re.compile(rf"\[[^\]]*\]\({escaped_file}\)\s*—\s*(.+)")
             desc_match = desc_pattern.search(index_content)
             if desc_match:
@@ -563,7 +578,13 @@ def audit_memories(projects_base: str | None = None, age_threshold: int = 60) ->
     findings.sort(key=lambda f: SEVERITY_ORDER[f["severity"]])
 
     # Summary
-    files_with_findings = {f["path"] for f in findings}
+    # A broken_link finding's "path" is the (nonexistent) linked_path a MEMORY.md entry
+    # points at, per Check 1 above -- never a member of all_memories, since that finding
+    # exists precisely because the file doesn't exist. Without restricting to real memory
+    # paths, that phantom path still got subtracted from total_memories, undercounting
+    # "healthy" for files that were never memories to begin with.
+    memory_paths = {m["path"] for m in all_memories}
+    files_with_findings = {f["path"] for f in findings if f["path"] in memory_paths}
     total_memories = len(all_memories)
     healthy = total_memories - len(files_with_findings)
     by_severity = {"critical": 0, "warning": 0, "info": 0}

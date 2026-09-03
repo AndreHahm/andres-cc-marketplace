@@ -198,6 +198,21 @@ class TestGetTasks:
         assert len(tasks) >= 1
         assert tasks[0]["description"] == "Add input validation to CLI parser"
 
+    def test_reads_task_id_from_either_key_casing(self, tmp_path):
+        # Real TaskUpdate tool_use input has been observed with both "taskId" and
+        # "task_id" across real sessions -- reading only one silently drops every
+        # update using the other casing (merge_task_events() then treats it as an
+        # orphan update with no matching create).
+        f = tmp_path / "mixed_casing.jsonl"
+        f.write_text(
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"TaskUpdate",'
+            '"input":{"taskId":"1","status":"completed"}}]}}\n'
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"TaskUpdate",'
+            '"input":{"task_id":"2","status":"completed"}}]}}\n'
+        )
+        tasks = get_tasks(str(f))
+        assert [t["task_id"] for t in tasks] == ["1", "2"]
+
 
 class TestGetMessages:
     def test_filter_by_type(self):
@@ -273,6 +288,35 @@ class TestGetResumeData:
         data = get_resume_data(FIXTURE)
         assert len(data["tasks"]) >= 1
         assert all(t.get("status") == "pending" for t in data["tasks"])
+
+    def test_reports_the_last_observed_branch_not_the_alphabetical_max(self, tmp_path):
+        f = tmp_path / "branches.jsonl"
+        f.write_text(
+            '{"type":"user","message":{"content":"start"},"gitBranch":"main"}\n'
+            '{"type":"user","message":{"content":"switch"},"gitBranch":"feature/x"}\n'
+        )
+        data = get_resume_data(str(f))
+        assert data["branch"] == "feature/x"
+
+    def test_files_modified_excludes_read_only_tool_calls(self, tmp_path):
+        f = tmp_path / "reads.jsonl"
+        f.write_text(
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read",'
+            '"input":{"file_path":"read_only.py"}}]}}\n'
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit",'
+            '"input":{"file_path":"actually_modified.py"}}]}}\n'
+        )
+        data = get_resume_data(str(f))
+        assert data["files_modified"] == ["actually_modified.py"]
+
+    def test_does_not_crash_on_a_bare_string_message(self, tmp_path):
+        # extract_user_text() already treats a bare-string `message` as a valid
+        # shape; get_resume_data()'s assistant-side content extraction must not
+        # assume `message` is always a dict.
+        f = tmp_path / "string_message.jsonl"
+        f.write_text('{"type":"assistant","message":"a plain string, not a dict"}\n')
+        data = get_resume_data(str(f))
+        assert data["files_modified"] == []
 
 
 class TestMergeTaskEvents:

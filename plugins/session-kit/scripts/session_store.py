@@ -53,6 +53,7 @@ from session_transcript import (  # noqa: E402
     get_stats,
     get_tasks,
     merge_task_events,
+    message_dict,
 )
 
 # ---------------------------------------------------------------------------
@@ -92,6 +93,13 @@ def decode_project_path(encoded: str) -> str:
     drive prefix and backslash separators, but any segment containing a
     genuine hyphen (like a repo named "andres-cc-marketplace") still renders
     with that hyphen split into extra path segments.
+
+    Never raises: a rejected ".." sequence here would abort every caller that
+    lists multiple sessions (list_sessions/search/timeline/cleanup all call
+    this once per session), for a value that's never used for filesystem I/O
+    in the first place -- one oddly-named project (e.g. a real directory
+    literally named "v1..v2") would otherwise break listing for every other
+    project too, not just itself.
     """
     drive_match = _WINDOWS_DRIVE_RE.match(encoded)
     if drive_match:
@@ -101,8 +109,6 @@ def decode_project_path(encoded: str) -> str:
         decoded = "/" + encoded[1:].replace("-", "/")
     else:
         decoded = encoded.replace("-", "/")
-    if ".." in decoded:
-        raise ValueError("Invalid project path")
     return decoded
 
 
@@ -307,12 +313,12 @@ def _get_session_summary(session_path: str) -> dict | None:
 def list_sessions(
     project_filter: str | None = None,
     sort: str = "recency",
-    limit: int = 20,
+    limit: int | None = 20,
     since: str | None = None,
     until: str | None = None,
     projects_base: str | None = None,
 ) -> list[dict]:
-    """List all sessions, optionally filtered and sorted."""
+    """List all sessions, optionally filtered and sorted. limit=None returns all of them."""
     base = projects_base or DEFAULT_PROJECTS_BASE
 
     if not os.path.isdir(base):
@@ -334,7 +340,7 @@ def list_sessions(
                 sessions.append(summary)
 
     since_dt = parse_date_boundary(since) if since else None
-    until_dt = parse_date_boundary(until) if until else None
+    until_dt = parse_date_boundary(until, end_of_day=True) if until else None
 
     def keep(s: dict) -> bool:
         ts = parse_timestamp(s["lastActivity"] or s["started"])
@@ -381,7 +387,7 @@ def search_sessions(
     pattern = re.compile(re.escape(query), re.IGNORECASE)
 
     since_dt = parse_date_boundary(since) if since else None
-    until_dt = parse_date_boundary(until) if until else None
+    until_dt = parse_date_boundary(until, end_of_day=True) if until else None
 
     results: list[dict] = []
 
@@ -426,7 +432,7 @@ def search_sessions(
                 if obj.get("type") == "user":
                     searchable = extract_user_text(obj)
                 elif obj.get("type") == "assistant":
-                    content_blocks = (obj.get("message") or {}).get("content") or []
+                    content_blocks = message_dict(obj).get("content") or []
                     if isinstance(content_blocks, list):
                         for block in content_blocks:
                             if isinstance(block, dict) and block.get("type") == "text":
@@ -478,10 +484,13 @@ def get_timeline(
     projects_base: str | None = None,
 ) -> list[dict]:
     """Chronological list of sessions for a project."""
+    # A hardcoded numeric limit here would silently drop a project's oldest sessions
+    # once it passed that count, with no truncation indicator surfaced anywhere --
+    # "chronological list" means all of them, not a capped recent window.
     sessions = list_sessions(
         project_filter=project_filter,
         sort="recency",
-        limit=1000,
+        limit=None,
         since=since,
         until=until,
         projects_base=projects_base,
@@ -574,9 +583,19 @@ def read_task_list(task_list_id: str, tasks_base: str | None = None) -> list[dic
     """
     Read all tasks from a single task list directory.
     Skips .lock, .highwatermark, and any non-JSON-task files.
+
+    Validates task_list_id the same way delete_task/delete_task_list do -- this
+    function is reachable from the CLI's own --task-list flag with no other
+    validation in that path, so an unvalidated value like "../../somedir" would
+    otherwise let os.path.join walk outside tasks_base and read arbitrary .json
+    files elsewhere on disk back to the caller.
     """
+    if not is_valid_id(task_list_id):
+        raise ValueError(f"Invalid task list ID: {task_list_id}")
+
     base = tasks_base or DEFAULT_TASKS_BASE
     task_dir = os.path.join(base, task_list_id)
+    _assert_path_within_base(task_dir, base)
 
     if not os.path.isdir(task_dir):
         return []
@@ -590,6 +609,8 @@ def read_task_list(task_list_id: str, tasks_base: str | None = None) -> list[dic
         try:
             with open(task_path, encoding="utf-8") as f:
                 task = json.load(f)
+            if not isinstance(task, dict):
+                continue
             task["taskListId"] = task_list_id
             task["source"] = "filesystem"
             tasks.append(task)
@@ -904,6 +925,12 @@ def aggregate_tasks(
                 if not fname.endswith(".jsonl"):
                     continue
                 stem = re.sub(r"\.jsonl$", "", fname)
+                # A requested task_list_id scopes this fallback too -- without this
+                # check, a --task-list request still scanned every other session's
+                # JSONL and appended their tasks, since known_ids only ever contains
+                # the one requested list's own filesystem-sourced tasks.
+                if task_list_id and stem != task_list_id:
+                    continue
                 if stem in known_ids:
                     continue
                 try:
@@ -918,7 +945,7 @@ def aggregate_tasks(
 
     # Date filtering (applies to JSONL-sourced tasks with timestamps)
     since_dt = parse_date_boundary(since) if since else None
-    until_dt = parse_date_boundary(until) if until else None
+    until_dt = parse_date_boundary(until, end_of_day=True) if until else None
 
     date_filtered = valid_tasks
     if since_dt or until_dt:
@@ -1394,7 +1421,10 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
                 _exit_with_error("Missing task list ID", 2)
             if not task_id or task_id.startswith("-"):
                 _exit_with_error("Missing task ID", 2)
-            result = delete_task(task_list_id, task_id, tasks_base=tasks_base)
+            try:
+                result = delete_task(task_list_id, task_id, tasks_base=tasks_base)
+            except ValueError as err:
+                _exit_with_error(err, 2)
             print(
                 to_json(
                     {
@@ -1410,7 +1440,10 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
             task_list_id = argv[cmd_idx + 1] if cmd_idx + 1 < len(argv) else None
             if not task_list_id or task_list_id.startswith("-"):
                 _exit_with_error("Missing task list ID", 2)
-            result = delete_task_list(task_list_id, tasks_base=tasks_base)
+            try:
+                result = delete_task_list(task_list_id, tasks_base=tasks_base)
+            except ValueError as err:
+                _exit_with_error(err, 2)
             print(
                 to_json(
                     {
