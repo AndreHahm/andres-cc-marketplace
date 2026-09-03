@@ -167,14 +167,19 @@ class TestScanMemories:
 
 
 class TestAuditMemories:
-    def test_detects_expired_date_based_memories_critical(self):
+    def test_flags_date_based_memories_for_review_not_auto_delete(self):
+        # A past date alone doesn't mean "expired" -- a durable memory can legitimately
+        # document a past event (e.g. a release date) and stay valid indefinitely.
+        # Auto-deleting on this signal alone would destroy still-useful memories, so
+        # this is a review-only finding, never an autoFixable one.
         result = audit_memories(projects_base=FIXTURES_BASE)
         expired = [f for f in result["findings"] if f["category"] == "expired"]
         assert len(expired) > 0
         target = next(f for f in expired if f["file"] == "project_expired_reminder.md")
-        assert target["severity"] == "critical"
-        assert target["fixType"] == "auto"
-        assert target["autoFixable"] is True
+        assert target["severity"] == "warning"
+        assert target["fixType"] == "ai_assisted"
+        assert target["autoFixable"] is False
+        assert "aiAction" in target
 
     def test_detects_broken_memory_md_links_warning(self):
         result = audit_memories(projects_base=FIXTURES_BASE)
@@ -226,6 +231,28 @@ class TestAuditMemories:
         orphan = next(f for f in result["findings"] if f["category"] == "orphan")
         assert "decisions/note.md" in orphan["suggestion"]
 
+    def test_index_mismatch_detected_for_a_nested_memory(self, tmp_path):
+        # Check 7's pattern used to be built from mem["file"] (a bare basename), which
+        # never matches a nested memory's real MEMORY.md link (a relative path like
+        # "decisions/note.md") -- index_mismatch silently never fired for any nested
+        # memory. This constructs a genuine mismatch (frontmatter says one thing,
+        # MEMORY.md's own description says another) to prove Check 7 now catches it.
+        memory_dir = tmp_path / "projects" / "proj" / "memory"
+        (memory_dir / "decisions").mkdir(parents=True)
+        (memory_dir / "decisions" / "note.md").write_text(
+            "---\nname: Decision\ndescription: The real, current description\ntype: project\n---\n"
+            "content\n",
+            encoding="utf-8",
+        )
+        (memory_dir / "MEMORY.md").write_text(
+            "- [Decision](decisions/note.md) — a stale, outdated description\n", encoding="utf-8"
+        )
+
+        result = audit_memories(projects_base=str(tmp_path / "projects"))
+        mismatches = [f for f in result["findings"] if f["category"] == "index_mismatch"]
+        assert len(mismatches) == 1
+        assert mismatches[0]["file"] == "note.md"
+
     def test_detects_missing_frontmatter_ai_assisted(self):
         result = audit_memories(projects_base=FIXTURES_BASE)
         missing = [f for f in result["findings"] if f["category"] == "missing_frontmatter"]
@@ -267,8 +294,17 @@ class TestAuditMemories:
         assert total_from_by_severity == result["summary"]["issuesFound"]
         assert result["summary"]["issuesFound"] == len(result["findings"])
         assert result["summary"]["totalMemories"] > 0
+        # "healthy" must only subtract paths that are real memories -- a broken_link
+        # finding's path is the nonexistent linked_path it points at, never a member of
+        # scan_memories()'s own results, and must not deflate this count.
+        real_memory_paths = {
+            m["path"] for m in scan_memories(projects_base=FIXTURES_BASE)["memories"]
+        }
+        real_finding_paths = {
+            f["path"] for f in result["findings"] if f["path"] in real_memory_paths
+        }
         assert result["summary"]["healthy"] == result["summary"]["totalMemories"] - len(
-            {f["path"] for f in result["findings"]}
+            real_finding_paths
         )
         # 3 of the 4 fixture projects have memories (alpha, beta, gamma; empty has none)
         assert result["summary"]["projectsWithMemories"] == 3

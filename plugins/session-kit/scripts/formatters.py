@@ -130,12 +130,22 @@ def _subtract_months(dt: datetime, months: int) -> datetime:
     return dt.replace(year=year, month=month, day=day)
 
 
-def parse_date_boundary(input_str: str | None) -> datetime | None:
+_DATE_ONLY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def parse_date_boundary(input_str: str | None, *, end_of_day: bool = False) -> datetime | None:
     """
     Parse a date range boundary string.
     Accepts: ISO date ("2026-04-01"), relative shorthand ("7d", "2w", "3m"),
     or ISO datetime ("2026-04-01T14:00:00Z").
     Returns a datetime or None if unparseable.
+
+    end_of_day: when True and input_str is a bare date (no time component),
+    resolves to the last microsecond of that day instead of midnight at its
+    start. Callers using this as an "until" boundary must pass end_of_day=True
+    -- otherwise a date-only until="2026-04-09" becomes midnight *starting*
+    that day, silently excluding every session that happened later that same
+    date (the day the user almost certainly meant to include in full).
     """
     if not input_str:
         return None
@@ -153,6 +163,10 @@ def parse_date_boundary(input_str: str | None) -> datetime | None:
 
     try:
         dt = datetime.fromisoformat(input_str.replace("Z", "+00:00"))
-        return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
     except ValueError:
         return None
+    if not dt.tzinfo:
+        dt = dt.replace(tzinfo=UTC)
+    if end_of_day and _DATE_ONLY_PATTERN.match(input_str):
+        dt = dt + timedelta(days=1) - timedelta(microseconds=1)
+    return dt

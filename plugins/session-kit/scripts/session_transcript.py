@@ -89,6 +89,19 @@ def is_system_message(text: str) -> bool:
     return text.startswith("<local-command") or text.startswith("<command-name>")
 
 
+def message_dict(obj: dict) -> dict:
+    """The record's `message` field as a dict, or {} if it isn't one.
+
+    `message` is a dict for every real assistant record, but not guaranteed --
+    extract_user_text() already treats a bare-string `message` as a possible shape
+    for user records. `(obj.get("message") or {}).get(...)` crashes with
+    AttributeError on that shape (a non-empty string is truthy, so `or {}` never
+    triggers); this coerces any non-dict value to {} first.
+    """
+    msg = obj.get("message")
+    return msg if isinstance(msg, dict) else {}
+
+
 # ---------------------------------------------------------------------------
 # Exported functions
 # ---------------------------------------------------------------------------
@@ -159,7 +172,7 @@ def get_stats(path: str) -> dict:
                 user_count += 1
         elif msg_type == "assistant":
             assistant_count += 1
-            msg = obj.get("message") or {}
+            msg = message_dict(obj)
 
             # Resumed session detection.
             # Claude Code's --resume/--continue creates a NEW JSONL file with no standard
@@ -248,7 +261,7 @@ def get_errors(path: str) -> dict:
 
     for obj in read_lines(path):
         msg_type = obj.get("type")
-        content = (obj.get("message") or {}).get("content") or []
+        content = message_dict(obj).get("content") or []
         if not isinstance(content, list):
             continue
 
@@ -321,7 +334,7 @@ def get_irritation_signals(path: str) -> dict:
                         break
 
         elif msg_type == "assistant":
-            content = (obj.get("message") or {}).get("content") or []
+            content = message_dict(obj).get("content") or []
             if not isinstance(content, list):
                 continue
             for block in content:
@@ -355,7 +368,7 @@ def get_tasks(path: str) -> list[dict]:
     for obj in read_lines(path):
         if obj.get("type") != "assistant":
             continue
-        content = (obj.get("message") or {}).get("content") or []
+        content = message_dict(obj).get("content") or []
         if not isinstance(content, list):
             continue
 
@@ -379,7 +392,14 @@ def get_tasks(path: str) -> list[dict]:
                 tasks.append(
                     {
                         "action": "update",
-                        "task_id": inp.get("taskId"),
+                        # Real TaskUpdate input has been observed using both "taskId" and
+                        # "task_id" across sessions -- Claude Code's own docs note it may
+                        # repair misformatted input keys without that repair showing up in
+                        # the raw tool_use stream, so this reads either defensively rather
+                        # than assuming one casing. Reading only "taskId" (the prior
+                        # behavior) silently dropped every update whose real input used
+                        # "task_id" instead, since the lookup below matches on this value.
+                        "task_id": inp.get("taskId") or inp.get("task_id"),
                         "status": inp.get("status", ""),
                         "session_id": obj.get("sessionId"),
                         "timestamp": obj.get("timestamp"),
@@ -446,7 +466,7 @@ def get_messages(path: str, type_filter: str | None = None) -> list[dict]:
             if not entry["text"]:
                 continue
         elif msg_type == "assistant":
-            msg = obj.get("message") or {}
+            msg = message_dict(obj)
             text_parts = []
             tool_names = []
             content = msg.get("content") or []
@@ -498,7 +518,7 @@ def get_messages_paginated(
             if not entry["text"]:
                 continue
         elif msg_type == "assistant":
-            msg = obj.get("message") or {}
+            msg = message_dict(obj)
             text_parts = []
             tool_names = []
             tool_details_list = []
@@ -580,12 +600,18 @@ def export_transcript(path: str, fmt: str = "md", include_tools: bool = True) ->
     return "\n".join(lines)
 
 
+# Tools whose file_path input means the file was actually changed, not just read --
+# a Read/Glob/Grep call also carries a file_path input, and including those would
+# misreport a session that only inspected a file as having modified it.
+MUTATING_FILE_TOOLS = {"Write", "Edit", "NotebookEdit"}
+
+
 def get_resume_data(path: str) -> dict:
     """Extract data needed to resume/continue a past session."""
     stats = get_stats(path)
     tasks = merge_task_events(get_tasks(path), stats["session_id"], default_status="pending")
     files: set[str] = set()
-    branches: set[str] = set()
+    last_branch: str | None = None
     last_user_messages: list[str] = []
     git_commits: list[str] = []
 
@@ -593,34 +619,35 @@ def get_resume_data(path: str) -> dict:
         msg_type = obj.get("type")
         branch = obj.get("gitBranch")
         if branch:
-            branches.add(branch)
+            # Track the last-observed branch in file order, not the alphabetically
+            # greatest one -- a session that starts on "main" and ends on "feature/x"
+            # must report "feature/x" as where the work actually left off.
+            last_branch = branch
 
         if msg_type == "user":
             text = extract_user_text(obj)
             if text and not is_system_message(text):
                 last_user_messages.append(truncate(text, 300))
         elif msg_type == "assistant":
-            content = (obj.get("message") or {}).get("content") or []
+            content = message_dict(obj).get("content") or []
             if isinstance(content, list):
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "tool_use":
                         inp = block.get("input") or {}
-                        fp = inp.get("file_path", "")
-                        if fp:
-                            files.add(fp)
                         name = block.get("name", "")
+                        fp = inp.get("file_path", "")
+                        if fp and name in MUTATING_FILE_TOOLS:
+                            files.add(fp)
                         if name == "Bash":
                             cmd = inp.get("command", "")
                             if "git commit" in cmd:
                                 git_commits.append(truncate(cmd, 200))
 
-    sorted_branches = sorted(branches)
-
     return {
         "session_id": stats["session_id"],
         "project": str(Path(path).parent),
         "date_range": f"{stats['first_message']} - {stats['last_message']}",
-        "branch": sorted_branches[-1] if sorted_branches else "unknown",
+        "branch": last_branch or "unknown",
         "files_modified": sorted(files),
         "last_user_messages": last_user_messages[-5:],
         "tool_calls_summary": stats["tools"],
@@ -646,7 +673,7 @@ def get_diff_data(path: str) -> dict:
             if text and not is_system_message(text) and len(first_user_messages) < 3:
                 first_user_messages.append(truncate(text, 200))
         elif obj.get("type") == "assistant":
-            content = (obj.get("message") or {}).get("content") or []
+            content = message_dict(obj).get("content") or []
             if isinstance(content, list):
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "tool_use":
