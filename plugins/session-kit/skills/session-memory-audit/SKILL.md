@@ -62,7 +62,7 @@ After the table, use `AskUserQuestion` to ask: **"Apply all N auto-fixes?"** (op
 
 If yes:
 - For REMOVE: Edit MEMORY.md to remove the broken link line
-- For INDEX: Read the file's frontmatter, append a new entry to MEMORY.md: `- [name](filename.md) — description`
+- For INDEX: Read the file's frontmatter, append a new entry to MEMORY.md: `- [name](relative/path.md) — description` — the finding's path relative to the memory directory (e.g. `decisions/note.md` for a nested file, matching `memory_scanner.py`'s own `relative_memory_path()` scheme), never a bare basename, or a nested file's MEMORY.md link won't actually resolve to it
 - For SYNC: Update the MEMORY.md entry's description to match the file's frontmatter description
 
 Report each fix as it completes.
@@ -97,7 +97,7 @@ follow:
 2. Infer the memory type from content (user bio = user, behavioral rule = feedback, project state = project, external pointers = reference)
 3. Infer a concise name and description
 4. Show the proposed frontmatter to the user
-5. If approved (`AskUserQuestion`), prepend it to the file, then append an entry to MEMORY.md: `- [name](filename.md) — description`
+5. If approved (`AskUserQuestion`), prepend it to the file, then append an entry to MEMORY.md: `- [name](relative/path.md) — description` — the file's path relative to the memory directory (e.g. `decisions/note.md` for a nested file), never a bare basename, or a nested orphan's new entry is itself a broken link
 
 **missing_frontmatter:**
 1. Read the file content

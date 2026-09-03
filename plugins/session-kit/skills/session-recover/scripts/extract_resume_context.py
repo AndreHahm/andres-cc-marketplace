@@ -94,10 +94,14 @@ def find_project_dir(project_path: str) -> Path | None:
     candidate = PROJECTS_DIR / normalized
     if candidate.is_dir():
         return candidate
-    # Fallback: search for partial match
-    for d in PROJECTS_DIR.iterdir():
-        if d.is_dir() and normalized in d.name:
-            return d
+    # Fallback: search for a partial match, but only when it's unambiguous. A sibling
+    # project whose encoded name happens to contain this one as a substring (e.g.
+    # "-workspace-foo" inside "-workspace-foo-bar") must never be silently returned as
+    # if it were the requested project -- that combines an unrelated session transcript
+    # with the wrong project's current Git state.
+    partial_matches = [d for d in PROJECTS_DIR.iterdir() if d.is_dir() and normalized in d.name]
+    if len(partial_matches) == 1:
+        return partial_matches[0]
     return None
 
 

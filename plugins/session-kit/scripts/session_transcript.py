@@ -677,8 +677,9 @@ def get_diff_data(path: str) -> dict:
             if isinstance(content, list):
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "tool_use":
+                        name = block.get("name", "")
                         fp = (block.get("input") or {}).get("file_path", "")
-                        if fp:
+                        if fp and name in MUTATING_FILE_TOOLS:
                             files.add(fp)
 
     return {

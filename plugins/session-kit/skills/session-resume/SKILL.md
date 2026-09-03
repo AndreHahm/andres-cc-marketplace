@@ -35,7 +35,7 @@ Generate a context-recovery document from a past session.
 If the user provides a session ID, resolve it. Otherwise, show recent sessions and ask which one:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" list --project "$(basename $(pwd))" --limit 5 --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" list --project "$(basename "$(pwd)")" --limit 5 --format json
 ```
 
 `--format json` is required — without it, the command's table output has no `path` field. If this

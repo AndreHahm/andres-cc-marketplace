@@ -350,6 +350,20 @@ class TestGetDiffData:
         assert data["tools"] is not None
         assert data["first_user_messages"] is not None
 
+    def test_files_excludes_read_only_tool_calls(self, tmp_path):
+        # Same MUTATING_FILE_TOOLS filter get_resume_data() already applies -- a file
+        # only ever Read (never Write/Edit/NotebookEdit) is not a "change" for diffing
+        # two sessions against each other.
+        f = tmp_path / "reads.jsonl"
+        f.write_text(
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read",'
+            '"input":{"file_path":"read_only.py"}}]}}\n'
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit",'
+            '"input":{"file_path":"actually_modified.py"}}]}}\n'
+        )
+        data = get_diff_data(str(f))
+        assert data["files"] == ["actually_modified.py"]
+
 
 class TestReadLines:
     def test_parses_valid_jsonl(self):
