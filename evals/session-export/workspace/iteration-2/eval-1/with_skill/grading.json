@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Resolves the current session, runs export_transcript with --format md, produces a readable markdown transcript", "passed": true, "evidence": "Ran `session_store.py current` (no --format flag, returned real JSON) then `session_transcript.py export <path> --format md`, got real markdown output with '# Session Transcript' header and formatted User/Assistant sections"},
+    {"text": "REGRESSION CHECK (Phase 6 fix): Step 1's current call correctly documented as needing no --format flag", "passed": true, "evidence": "Live-confirmed matching session-stats's identical fix; quality gate wording matches actual behavior"},
+    {"text": "REGRESSION CHECK: new formal 'When NOT to Use' section present", "passed": true, "evidence": "Section reads: 'Wants to see session details in the conversation, not a file/transcript output -> use session-detail instead' -- present (verified by direct read)"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

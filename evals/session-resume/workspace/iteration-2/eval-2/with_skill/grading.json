@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Declines and points to session-recover instead of synthesizing a document", "passed": true, "evidence": "Response explicitly declines and names session-recover"},
+    {"text": "Does not run any script for this out-of-scope request", "passed": true, "evidence": "No script invocation in the response"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

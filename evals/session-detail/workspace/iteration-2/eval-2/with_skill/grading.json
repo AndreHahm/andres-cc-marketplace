@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Declines to produce the full profile for a stats-only request", "passed": true, "evidence": "Skill's own 'When NOT to Use' (line 24) names exactly this case"},
+    {"text": "Points to session-stats instead", "passed": true, "evidence": "Redirect target matches the When NOT to Use section and frontmatter description verbatim"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+  "note": "Quick Workflow re-verification, iteration-2, post Phase-6-fix-batch (commit fcf67daa). Simulated directly (no nested Agent dispatch available from within this fork)."
+}

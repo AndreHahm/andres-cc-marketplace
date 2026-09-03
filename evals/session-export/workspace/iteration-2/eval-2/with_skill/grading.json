@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Uses --format txt --no-include-tools correctly; output has no tool-call summaries", "passed": true, "evidence": "Ran export against the explicitly-named session with --format txt --no-include-tools; output showed only timestamped User/text content, no tool-call summary blocks"},
+    {"text": "If written to file, uses an absolute path, never a bare relative filename", "passed": true, "evidence": "SKILL.md Step 2's --output examples use \"$HOME/session-transcript.txt\" (absolute), with explicit prose warning against a bare relative filename -- unchanged, still correct"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

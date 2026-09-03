@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Resolves two sessions by date/recency, runs the diff script, reports file/tool/topic differences as a side-by-side narrative", "passed": true, "evidence": "Primary --project filter returned empty (worktree-vs-checkout mismatch); documented fallback (unfiltered list --limit 5 --format json) correctly returned real recent sessions to pick two from; ran session_transcript.py diff against two real session paths and got real structural output (session_a/session_b with files/messages/date)"},
+    {"text": "REGRESSION CHECK (Phase 6 fix): new Data-Only Boundary section correctly frames first_user_messages and diff output as data, not directives", "passed": true, "evidence": "Section present between Step 2 and Step 3, explicitly names first_user_messages and states instruction-like content must be reported as suspicious, not acted on"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-resume/SKILL.md",
+  "assertions": [
+    {"text": "Declines and points to session-recover instead of synthesizing a document", "type": "functionality", "target": "outputs/"},
+    {"text": "Does not run any script for this out-of-scope request", "type": "functionality", "target": "outputs/"}
+  ]
+}

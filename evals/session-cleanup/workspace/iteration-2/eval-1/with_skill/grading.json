@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs the cleanup command via session_store.py, not a manual scan", "passed": true, "evidence": "python3 session_store.py cleanup --older-than 30d --min-messages 3 (live run returned count:3, total_size_bytes:680)"},
+    {"text": "Presents candidates as a table without deleting anything", "passed": true, "evidence": "cleanup only identifies candidates per Step 2's own text; no delete-session call made"},
+    {"text": "Shows total reclaimable space", "passed": true, "evidence": "total_size_bytes field (680 bytes in this live data) surfaced per Step 2's instruction"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "note": "Quick Workflow re-verification, iteration-2, post Phase-6-fix-batch (commit fcf67daa). Simulated directly (no nested Agent dispatch available from within this fork) against live command output. This scenario does not exercise the --delete-tasks path (no deletion requested) -- see the dedicated static-check note in the parent report."
+}
