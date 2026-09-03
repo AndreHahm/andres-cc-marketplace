@@ -16,11 +16,18 @@
       "prompt": "Search my memory files for anything about the login bug.",
       "expected_output": "Declines to run its own session-content search and points the user to session-memory-search instead, per its own stated exclusion.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Cross-project search without continuation",
+      "prompt": "which project did I discuss the auth refactor in",
+      "expected_output": "Runs session_store.py search with no --project filter (cross-project, not scoped to the current project) and --format json, then returns matches grouped by session/project with a resume command -- without itself continuing or resuming the matched work, staying a pure lookup per the session-recover exclusion boundary.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 2,
-    "uncovered": ["which project did I discuss Y in"]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

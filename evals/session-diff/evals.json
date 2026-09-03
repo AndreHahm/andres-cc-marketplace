@@ -14,6 +14,17 @@
       "name": "Compare two explicitly-given session IDs",
       "prompt": "Compare sessions 7b92a813-0321-4dbb-b37a-c62dfc1207e7 and ab822c24-09b8-4673-a4bf-beb585238b75 -- what files changed between them?",
       "expected_output": "Resolves and diffs exactly the two GIVEN session IDs directly (regression test for a fixed ID-resolution bug), not two different/most-recent sessions."
+    },
+    {
+      "id": 3,
+      "name": "Diff with no session IDs given (fallback path)",
+      "prompt": "diff my sessions",
+      "expected_output": "Falls back to listing the 2 most recent sessions in the current project (via `session_store.py list --project ... --limit 2 --format json`) rather than erroring or asking unnecessarily, then runs the diff against the resolved pair. The list-fallback call includes `--format json`, per the skill's own quality gate."
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
+  }
 }

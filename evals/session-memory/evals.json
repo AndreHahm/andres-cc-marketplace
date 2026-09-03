@@ -16,6 +16,18 @@
       "prompt": "Find the memory that mentions Docker.",
       "expected_output": "Declines and points to session-memory-search instead, per its own stated exclusion.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Empty state: no memories yet",
+      "prompt": "what do you remember",
+      "expected_output": "Handles empty/no-memories case gracefully without erroring. States plainly that no memories exist yet (e.g., 'Found 0 memories across 0 projects'), rather than fabricating or hallucinating memory content. Suggests follow-up steps with session-memory-search and session-memory-audit.",
+      "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
+  }
 }

@@ -84,11 +84,12 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" messages <session-
 
 ## Testing & Validation
 
-Eval suite: `evals/session-detail/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
-passed.
+Eval suite: `evals/session-detail/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison, all
+passed. Eval 3 verified a cross-session task query correctly redirects to `session-tasks` instead of
+being answered directly.
 
-**Last dated run record:** `evals/session-detail/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-detail/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "show session details for X"

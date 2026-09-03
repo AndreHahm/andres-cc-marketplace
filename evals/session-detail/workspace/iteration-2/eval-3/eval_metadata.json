@@ -1,0 +1,16 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-detail/SKILL.md",
+  "assertions": [
+    {
+      "text": "Declines to answer using session-detail's own single-session view and redirects to `session-tasks` instead, per its own stated exclusion",
+      "type": "functionality",
+      "target": "routing behavior"
+    },
+    {
+      "text": "Does not attempt to synthesize a cross-session task answer itself",
+      "type": "functionality",
+      "target": "scope boundary"
+    }
+  ]
+}

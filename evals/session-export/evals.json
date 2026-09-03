@@ -14,6 +14,18 @@
       "name": "Export without tool calls, as plain text",
       "prompt": "Export session 511b9c9b-5288-447f-aab2-8e68d013aa97 as plain text, without any tool call details.",
       "expected_output": "Uses --format txt --no-include-tools correctly; output has no tool-call summaries; if written to file, uses an absolute path, never a bare relative filename."
+    },
+    {
+      "id": 3,
+      "name": "Export including pending task list",
+      "prompt": "export this session, including my pending task list",
+      "expected_output": "Resolves the current session via `session_store.py current` (no --format flag needed, the command always emits JSON), then produces an export that includes actual task-list data -- not just the plain transcript -- by also pulling task data (e.g. via session_transcript.py's `tasks` subcommand) and incorporating it into the output."
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": [],
+    "known_failures": ["Eval 3 ('Export including pending task list'): assertion 1 FAILED -- SKILL.md does not document how to include task-list data in an export (the underlying session_transcript.py `tasks` subcommand exists but is never referenced in the Export steps). See eval-3/with_skill/grading.json."]
+  }
 }

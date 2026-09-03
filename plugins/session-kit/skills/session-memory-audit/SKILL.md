@@ -130,11 +130,13 @@ follow:
 
 ## Testing & Validation
 
-Eval suite: `evals/session-memory-audit/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison,
-both passed.
+Eval suite: `evals/session-memory-audit/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison,
+all passed. Eval 3 verified that a deletion during audit routes through `memory_scanner.py delete-memory`
+(never a raw `rm`), is gated by a real `AskUserQuestion` confirmation, and stays within the `memory/`
+directory containment check.
 
-**Last dated run record:** `evals/session-memory-audit/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-memory-audit/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "check my memory health"

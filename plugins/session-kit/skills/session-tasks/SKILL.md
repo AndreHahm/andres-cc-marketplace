@@ -74,11 +74,12 @@ The `source` field indicates whether the task came from the filesystem (`"filesy
 
 ## Testing & Validation
 
-Eval suite: `evals/session-tasks/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
-passed.
+Eval suite: `evals/session-tasks/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison, all
+passed. Eval 3 verified orphaned status is computed by cross-referencing task-lists' `last_modified`,
+never asserted as a raw field, with `--format json` used throughout.
 
-**Last dated run record:** `evals/session-tasks/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-tasks/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "what tasks are pending"

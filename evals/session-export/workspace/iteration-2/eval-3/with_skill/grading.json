@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The export output includes task-list data (the recently-added task-lists capability), not just the transcript", "passed": false, "evidence": "Agent flagged 'pending task list' as ambiguous, then explicitly stated: 'Assumed option 1 (most likely): proceed to export the full session transcript as markdown, capturing all messages, responses, file paths, and tool call summaries verbatim' -- it never invoked session_transcript.py's separate `tasks` subcommand or merged any task-list data into the export. Root cause independently verified by reading scripts/session_transcript.py directly: the `export` subcommand's CLI args (--format, --no-include-tools, --output) have no task-inclusion flag at all; task data is only reachable via a wholly separate `tasks` subcommand (`session_transcript.py tasks <session.jsonl>`, backed by get_tasks()/merge_task_events()) that SKILL.md never mentions anywhere in its Export steps. This is a genuine skill documentation gap (task capability exists in the script but is undocumented in SKILL.md's export flow), not merely a bad agent guess."},
+    {"text": "Step 1's current call is made with no --format flag, per the skill's own quality gate (the command always emits JSON)", "passed": true, "evidence": "Agent: 'python3 \".../session_store.py\" current' -- no --format flag present."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 1, "pass_rate": 0.5}
+}

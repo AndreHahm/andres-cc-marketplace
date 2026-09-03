@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-stats/SKILL.md",
+  "assertions": [
+    {"text": "Uses the error/frustration-detection capability added this session, not just a generic token/cost summary", "type": "functionality", "target": "error/frustration detection"},
+    {"text": "Reports concrete evidence (e.g. repeated errors, retry patterns) rather than a bare yes/no with no support", "type": "quality", "target": "evidence-backed answer"}
+  ]
+}

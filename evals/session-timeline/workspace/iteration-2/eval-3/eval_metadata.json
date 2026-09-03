@@ -1,0 +1,18 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-timeline/SKILL.md",
+  "prompt": "show me a detailed timeline of this session's events",
+  "assertions": [
+    {
+      "text": "Invokes session_transcript.py (the script this session's allowed-tools grant was specifically widened to permit) rather than only the shared session_store.py",
+      "type": "structure",
+      "target": "script invocation / Bash grant usage"
+    },
+    {
+      "text": "Produces a chronological, event-level listing (not just a coarse session-list-style summary)",
+      "type": "quality",
+      "target": "timeline granularity"
+    }
+  ],
+  "run_note": "Produced directly by the grading agent (not via a blind nested Agent dispatch) after the nested Agent (id a61d043823b9ba372) had not yet returned a completion notification, per an explicit coordinator instruction to stop waiting and complete this turn. This deviates from this repo's Blind Testing protocol -- the simulator was not blind to the assertions above, having authored them earlier in this session. See grading.json's critical_note for the full disclosure."
+}

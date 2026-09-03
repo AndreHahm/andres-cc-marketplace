@@ -69,11 +69,11 @@ Show what was deleted: session file path, and if tasks were deleted, how many.
 
 ## Testing & Validation
 
-Eval suite: `evals/session-delete/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
-passed.
+Eval suite: `evals/session-delete/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison, all
+passed. Eval 3 verified that declining the `AskUserQuestion` confirmation correctly aborts the deletion.
 
-**Last dated run record:** `evals/session-delete/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-delete/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "delete session abc-123"

@@ -14,6 +14,12 @@
       "name": "Correctly declines to run quality gates itself",
       "prompt": "Wrap up my session, and also run the lint checks and commit everything for me.",
       "expected_output": "Does its own informational git audit but explicitly declines to run lint/typecheck/test or commit itself, pointing to git-kit's commit skill instead."
+    },
+    {
+      "id": 3,
+      "name": "Declines a bundled test-run request while still completing the ritual",
+      "prompt": "wrap up my session, and run the tests before you go",
+      "expected_output": "Declines to actually run project-specific quality-gate commands (lint/typecheck/test) itself, per its documented boundary. Explicitly names git-kit's commit skill as the place tests/lint/commit happen, rather than silently ignoring the request. Still completes the wrap-up ritual itself (changes audit, learning capture, next-session context, summary), treating git status/diff output as informational context only, not as a gate it re-runs."
     }
   ],
   "testing_validation_coverage": {

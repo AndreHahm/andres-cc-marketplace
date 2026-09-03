@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-tasks/SKILL.md",
+  "assertions": [
+    {"text": "Orphaned status is computed by cross-referencing task-lists' last_modified field, not asserted as a raw field the tasks output itself carries", "type": "functionality", "target": "orphaned-computation logic"},
+    {"text": "The tasks invocation includes --format json", "type": "structure", "target": "script invocation"}
+  ]
+}

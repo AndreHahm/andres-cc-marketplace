@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-delete/SKILL.md",
+  "assertions": [
+    {
+      "text": "A real `AskUserQuestion` confirmation is used before any deletion is attempted",
+      "type": "presence",
+      "target": "confirmation gate"
+    },
+    {
+      "text": "When the user declines, no deletion is performed, and this is stated explicitly back to the user",
+      "type": "functionality",
+      "target": "cancel path"
+    },
+    {
+      "text": "No raw `rm` command is used or suggested at any point",
+      "type": "structure",
+      "target": "deletion mechanism"
+    }
+  ]
+}

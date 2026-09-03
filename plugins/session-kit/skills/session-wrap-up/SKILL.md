@@ -79,18 +79,19 @@ After completing the ritual, use `AskUserQuestion` to ask: "Ready to end session
 
 ## Testing & Validation
 
-Eval suite: `evals/session-wrap-up/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison.
+Eval suite: `evals/session-wrap-up/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison.
 Eval 1 (informational audit, 4/4 assertions) passed fully. Eval 2 (declining a lint/commit request,
 3/4 assertions) recorded one assertion failure that the run's own `grading.json` documents as a
 test-harness sandboxing gap, not a skill defect — the test agent's tool access let a dispatched
 `git-kit:commit` call actually execute rather than being intercepted by the eval harness; the skill's
 own documented behavior (audit informationally, route lint/commit requests to `git-kit`, never run them
-itself) was followed correctly. This is a fixed, non-branching prose ritual with no scripts and no
+itself) was followed correctly. Eval 3 (declining a bundled test-run request while still completing the
+ritual, 3/3 assertions) passed fully. This is a fixed, non-branching prose ritual with no scripts and no
 conditional logic beyond "uncommitted changes exist or not", so the eval scope is correspondingly
 narrow.
 
-**Last dated run record:** `evals/session-wrap-up/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-wrap-up/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "wrap up"

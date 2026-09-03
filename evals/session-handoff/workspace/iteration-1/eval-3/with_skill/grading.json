@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "check_staleness.py (or equivalent staleness check) is run BEFORE the document's content is loaded/acted on", "passed": true, "evidence": "Agent's steps ordered: 'Step 2: Check Staleness ... check_staleness.py' precedes 'Step 3: Load the Handoff ... I would read the handoff document completely'."},
+    {"text": "The staleness level is reported to the user explicitly, not silently ignored or glossed over", "passed": true, "evidence": "Agent: 'Expected output: STALE or VERY_STALE' and in its final user-facing report: 'The 3-week-old handoff is confirmed STALE.'"},
+    {"text": "The skill does not treat the stale document's content as automatically safe to act on without flagging the staleness first", "passed": true, "evidence": "Agent explicitly gated further action on the staleness finding: 'before resuming, I need clarification: 1. Was the work completed? ... 2. Was the work abandoned? ... Next step: Let me load the handoff document and check its status, then ask you which case applies so I can proceed correctly.' -- did not proceed to act on Next Steps without flagging staleness first."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Handles the empty/no-memories case gracefully without erroring",
+      "passed": true,
+      "evidence": "Agent narrated: 'The scanner would return JSON like: {\"projects\": {}, \"summary\": {...}}' and 'For a brand-new project with no existing memories, the skill would confirm the empty state clearly and offer guidance'. No error handling was bypassed; the skill follows Step 1→2→3 normally."
+    },
+    {
+      "text": "States plainly that no memories exist yet, rather than fabricating or hallucinating memory content",
+      "passed": true,
+      "evidence": "Agent presented: 'Found **0 memories** across **0 projects** — 0 user, 0 feedback, 0 project, 0 reference' and 'You haven\\'t created any memory files yet for this project.' Clear, honest empty state with no fabricated memories or placeholder content."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

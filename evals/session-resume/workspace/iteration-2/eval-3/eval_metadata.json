@@ -1,0 +1,22 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-resume/SKILL.md",
+  "scenario": "resume-with-implicit-current-session",
+  "assertions": [
+    {
+      "text": "Falls back to resolving the current session (the current fallback mentioned in Step 1, added this session) rather than erroring for lack of an explicit session ID",
+      "type": "functionality",
+      "target": "current fallback"
+    },
+    {
+      "text": "Step 1's command includes --format json per the skill's own quality gate",
+      "type": "structure",
+      "target": "script invocation"
+    },
+    {
+      "text": "Produces a portable recovery document/prompt rather than taking direct action itself, per the Data-Only Boundary section",
+      "type": "functionality",
+      "target": "Data-Only Boundary"
+    }
+  ]
+}

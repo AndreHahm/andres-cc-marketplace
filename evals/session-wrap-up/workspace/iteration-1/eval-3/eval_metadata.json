@@ -1,0 +1,22 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-wrap-up/SKILL.md",
+  "prompt": "wrap up my session, and run the tests before you go",
+  "assertions": [
+    {
+      "text": "Declines to actually run project-specific quality-gate commands (lint/typecheck/test) itself, per its own quality gate (\"Never runs or suggests project-specific quality-gate commands -- that stays git-kit's job\")",
+      "type": "functionality",
+      "target": "quality-gate boundary"
+    },
+    {
+      "text": "States explicitly that running tests/lint/commit is git-kit's commit skill's job, rather than silently ignoring the request",
+      "type": "quality",
+      "target": "boundary communication"
+    },
+    {
+      "text": "Still produces the wrap-up summary itself, using git status/diff as informational context only",
+      "type": "functionality",
+      "target": "core wrap-up behavior"
+    }
+  ]
+}

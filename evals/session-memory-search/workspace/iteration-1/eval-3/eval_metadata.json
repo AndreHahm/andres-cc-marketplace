@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-memory-search/SKILL.md",
+  "assertions": [
+    {"text": "Uses a non-default --context value (documented default is 0) rather than the bare default", "type": "functionality", "target": "--context flag usage"},
+    {"text": "Returns surrounding context lines around each match, not just the bare matching line", "type": "quality", "target": "search output"}
+  ]
+}

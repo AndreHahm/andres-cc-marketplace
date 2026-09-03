@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Uses the error/frustration-detection capability added this session, not just a generic token/cost summary", "passed": true, "evidence": "\"The user's question 'was I stuck in a loop' maps directly to the `irritation` subcommand\"; runs `python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py\" irritation <session-jsonl-path>` rather than `stats`"},
+    {"text": "Reports concrete evidence (e.g. repeated errors, retry patterns) rather than a bare yes/no with no support", "passed": true, "evidence": "Presented report includes \"Correction phrases found: [count] signal(s)\" with timestamp/matched phrase/excerpt, and \"Stuck tool-call loops: [count] pattern(s)\" with tool name, consecutive-call count, and timestamp range -- not a bare yes/no"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

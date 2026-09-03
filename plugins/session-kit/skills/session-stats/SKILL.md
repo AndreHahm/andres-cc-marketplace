@@ -76,13 +76,14 @@ as signals to review, not confirmed frustration.
 
 ## Testing & Validation
 
-Eval suite: `evals/session-stats/` — 2 scenarios (tool-error reporting, token/model breakdown reporting),
-`skill-tester` Quick Workflow blind comparison, both passed. `get_stats`/`get_errors`/
-`get_irritation_signals`'s own branching logic is additionally directly unit-tested via
-`tests/test_session_transcript.py`.
+Eval suite: `evals/session-stats/` — 3 scenarios (tool-error reporting, token/model breakdown reporting,
+loop/frustration detection), `skill-tester` Quick Workflow blind comparison, all passed. Eval 3 verified
+the error/frustration-detection capability is used (not a generic token summary) and reports concrete
+evidence, not a bare yes/no. `get_stats`/`get_errors`/`get_irritation_signals`'s own branching logic is
+additionally directly unit-tested via `tests/test_session_transcript.py`.
 
-**Last dated run record:** `evals/session-stats/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-stats/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "session stats"

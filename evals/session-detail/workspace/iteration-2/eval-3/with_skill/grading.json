@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Declines to answer using session-detail's own single-session view and redirects to `session-tasks` instead, per its own stated exclusion",
+      "passed": true,
+      "evidence": "Agent states: 'Decline to answer with session-detail ✓ Do NOT run `session_store.py current` and show a single session\\'s tasks' and 'For pending tasks across all your sessions, use `session-tasks` instead' with explicit redirect"
+    },
+    {
+      "text": "Does not attempt to synthesize a cross-session task answer itself",
+      "passed": true,
+      "evidence": "Agent explicitly refuses self-synthesis: 'Avoid self-synthesis ✓ No attempt to run multiple session-detail calls and combine them. No manual aggregation of task lists. Trust the designated skill for that job.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

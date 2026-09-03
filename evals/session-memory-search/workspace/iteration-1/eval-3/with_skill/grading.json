@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Uses a non-default --context value (documented default is 0) rather than the bare default",
+      "passed": true,
+      "evidence": "Agent stated: 'Since you're asking for more context, I'd interpret this as a request to increase that parameter noticeably above the default. I'd invoke: python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/memory_scanner.py\" search \"auth bug\" --limit 20 --context 3' and explained 'Your request for \"more surrounding context than usual\"; 3 lines before/after each match, higher than the default of 0'"
+    },
+    {
+      "text": "Returns surrounding context lines around each match, not just the bare matching line",
+      "passed": true,
+      "evidence": "Agent described context output: 'Display context lines indented below each match row (using the 3-line buffer I requested)' with example format showing: '└─ Context (lines 40-44): [39-43 lines] → ...encountered auth bug in the session handler...' demonstrating context before and after the matched line"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

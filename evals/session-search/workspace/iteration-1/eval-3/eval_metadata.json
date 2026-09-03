@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-search/SKILL.md",
+  "assertions": [
+    {"text": "Performs a cross-project keyword search rather than scoping only to the current project", "type": "functionality", "target": "search scope"},
+    {"text": "Does not attempt to continue/resume the found work itself -- prompt states no continuation intent, so it should stay a pure lookup per the skill's own exclusion boundary with session-recover", "type": "functionality", "target": "scope boundary"}
+  ]
+}

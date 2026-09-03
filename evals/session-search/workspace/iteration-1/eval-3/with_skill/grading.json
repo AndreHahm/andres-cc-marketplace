@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Performs a cross-project keyword search rather than scoping only to the current project", "passed": true, "evidence": "\"No project filter — user doesn't know which project, so I search across all\"; command run: `python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py\" search \"auth refactor\" --limit 20 --context 1 --format json` with no --project flag"},
+    {"text": "Does not attempt to continue/resume the found work itself -- prompt states no continuation intent, so it should stay a pure lookup per the skill's own exclusion boundary with session-recover", "passed": true, "evidence": "\"NOT asking to continue working on a matched session (would use `session-recover`)\"; final message only offers \"If you want to continue working on any of these, use the resume command above\" rather than continuing the work itself"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

@@ -16,6 +16,18 @@
       "prompt": "Show me any orphaned task lists in this project.",
       "expected_output": "Correctly identifies pending/in-progress tasks whose owning task list's last_modified is >7 days old.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Compute orphaned tasks via cross-reference",
+      "prompt": "which tasks are orphaned",
+      "expected_output": "Runs task-lists to get each list's last_modified, then tasks --format json, and computes orphaned status by cross-referencing a task's task_list_id against its owning list's last_modified (>7 days old) rather than trusting any orphaned-like field the tasks output itself might carry.",
+      "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
+  }
 }

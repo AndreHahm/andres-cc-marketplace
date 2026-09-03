@@ -70,11 +70,12 @@ For each matched memory file, the user might want to:
 
 ## Testing & Validation
 
-Eval suite: `evals/session-memory-search/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison,
-both passed.
+Eval suite: `evals/session-memory-search/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison,
+all passed. Eval 3 verified a non-default `--context` value is used when the user asks for more
+surrounding context than the documented default (0).
 
-**Last dated run record:** `evals/session-memory-search/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-memory-search/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "search my memories for X"

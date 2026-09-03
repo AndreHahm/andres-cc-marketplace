@@ -16,11 +16,18 @@
       "prompt": "How much token usage did that last session use?",
       "expected_output": "Resolves the session path, runs session_transcript.py stats, reports a token/model breakdown as a visual summary, notes cost estimation is unavailable.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Loop/frustration detection",
+      "prompt": "was I stuck in a loop in this session",
+      "expected_output": "Resolves the current session path, runs session_transcript.py irritation (not just stats), and reports correction phrases and stuck tool-call loops with concrete evidence (timestamps, matched phrases, tool names, consecutive-call counts) presented as signals to review rather than a bare yes/no.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 5,
-    "declared_scenarios_covered": 2,
-    "uncovered": ["what models were used in this session", "was I stuck in a loop", "show me everything about this session (full profile) redirect"]
+    "declared_scenarios_covered": 3,
+    "uncovered": ["what models were used in this session", "show me everything about this session (full profile) redirect"]
   }
 }

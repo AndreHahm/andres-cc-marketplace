@@ -15,11 +15,17 @@
       "name": "Load latest handoff, check staleness first",
       "prompt": "Load the latest handoff and resume from it.",
       "expected_output": "Runs list_handoffs.py to find candidates, then check_staleness.py before loading, reports the staleness level, only then reads/loads the actual document."
+    },
+    {
+      "id": 3,
+      "name": "Resume from a known-stale handoff on a merged/deleted branch",
+      "prompt": "Load the latest handoff and resume -- note: the most recent handoff was created 3 weeks ago on a branch that's since been merged and deleted, so treat it as likely stale.",
+      "expected_output": "Runs check_staleness.py BEFORE loading/acting on the handoff document's content, explicitly reports the resulting staleness level to the user (e.g. STALE/VERY_STALE) rather than glossing over it, and does not treat the stale document's proposed next steps as automatically safe to act on -- flags the staleness and seeks clarification/verification before proceeding."
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 2,
-    "declared_scenarios_covered": 2,
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
     "uncovered": []
   }
 }

@@ -14,6 +14,17 @@
       "name": "Correctly redirects a plain sorted-list request",
       "prompt": "Just give me a simple sorted list of my sessions, I don't care about patterns or gaps.",
       "expected_output": "Declines and points to session-list instead, per its own stated 'When NOT to Use' exclusion."
+    },
+    {
+      "id": 3,
+      "name": "Detailed event-level timeline request",
+      "prompt": "show me a detailed timeline of this session's events",
+      "expected_output": "Recognized as a real gap (see grading.json critical_note, evals/session-timeline/workspace/iteration-2/eval-3/with_skill/grading.json): a faithful reading of the skill's own Step 1/Step 2 text produces only a session_store.py-driven, session-level (not event-level) timeline. session_transcript.py -- part of this skill's allowed-tools grant -- is documented only as a conditional per-session branch lookup, never as a path toward event-level detail. Both assertions failed under this eval; recorded honestly rather than papered over."
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
+  }
 }

@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Redirects to session-timeline per its own stated exclusion, rather than answering directly",
+      "passed": true,
+      "evidence": "Agent stated: 'I would **redirect you to the `session-timeline` skill**... Then I'd call: `Skill(session-timeline)`' because 'Your phrasing (\"all sessions, chronologically\") suggests you want to see patterns, trends, or the overall timeline shape'"
+    },
+    {
+      "text": "Does not attempt to answer using session-list's own default listing view",
+      "passed": true,
+      "evidence": "Agent explicitly declined to invoke session-list: 'I would **NOT invoke this skill**' and explained that even though session-list can sort by recency, the skill's flat table output does not satisfy the request for chronological patterns"
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 2,
+    "pass_rate": 1.0
+  }
+}

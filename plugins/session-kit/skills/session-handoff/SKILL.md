@@ -207,12 +207,14 @@ chain, read the most recent handoff first, then reference predecessors as needed
 
 ## Testing & Validation
 
-Eval suite: `evals/session-handoff/` — 2 scenarios (create-handoff, load-and-check-staleness-first),
-`skill-tester` Quick Workflow blind comparison, both passed. The 4 deterministic scripts in `scripts/`
-are additionally independently testable by direct execution against fixtures.
+Eval suite: `evals/session-handoff/` — 3 scenarios (create-handoff, load-and-check-staleness-first,
+resume-a-stale-handoff), `skill-tester` Quick Workflow blind comparison, all passed. Eval 3 verified
+staleness is checked and reported before a stale document's content is loaded or acted on. The 4
+deterministic scripts in `scripts/` are additionally independently testable by direct execution against
+fixtures.
 
-**Last dated run record:** `evals/session-handoff/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-handoff/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "create a handoff for this work"
