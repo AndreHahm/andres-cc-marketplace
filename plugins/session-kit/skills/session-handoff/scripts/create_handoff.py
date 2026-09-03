@@ -171,13 +171,6 @@ def generate_handoff(
     handoffs_dir.mkdir(parents=True, exist_ok=True)
 
     filepath = handoffs_dir / filename
-    # file_timestamp has one-second resolution -- two invocations with the same slug in
-    # that second would otherwise silently overwrite the first handoff's saved work.
-    # Disambiguate with a numeric suffix instead of clobbering.
-    suffix = 2
-    while filepath.exists():
-        filepath = handoffs_dir / f"{file_timestamp}-{slug}-{suffix}.md"
-        suffix += 1
 
     # Gather git info
     git_info = get_git_info(project_path)
@@ -327,8 +320,22 @@ def generate_handoff(
 **Security Reminder**: Run `validate_handoff.py` before finalizing to check for secret exposure.
 """
 
-    # Write the file
-    filepath.write_text(content, encoding="utf-8")
+    # Write the file. file_timestamp has one-second resolution -- two concurrent
+    # invocations with the same slug in that second would otherwise race on the same
+    # filename. Reserve the path atomically with exclusive creation ("x" mode: fails
+    # with FileExistsError instead of overwriting) and retry with the next numeric
+    # suffix on collision, rather than checking .exists() first and writing
+    # separately -- that check-then-write gap is exactly where two concurrent callers
+    # could both pass the check and the second write would still clobber the first.
+    suffix = 2
+    while True:
+        try:
+            with open(filepath, "x", encoding="utf-8") as f:
+                f.write(content)
+            break
+        except FileExistsError:
+            filepath = handoffs_dir / f"{file_timestamp}-{slug}-{suffix}.md"
+            suffix += 1
 
     return str(filepath)
 

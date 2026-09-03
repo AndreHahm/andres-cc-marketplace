@@ -211,6 +211,27 @@ class TestListSessions:
         none = list_sessions(projects_base=fake_projects_dir, project_filter="nonexistent")
         assert none == []
 
+    def test_message_count_excludes_internal_records(self, fake_projects_dir):
+        # Only user/assistant records are real conversation turns -- progress/system/
+        # snapshot records must not inflate the count (they'd mask a genuinely tiny
+        # session from cleanup, and overstate activity in listings).
+        proj_dir = os.path.join(fake_projects_dir, "-Users-me-myproject")
+        lines = [
+            '{"type":"user","timestamp":"2026-01-01T00:00:00Z",'
+            '"message":{"role":"user","content":"hi"}}',
+            '{"type":"progress","timestamp":"2026-01-01T00:00:01Z"}',
+            '{"type":"assistant","timestamp":"2026-01-01T00:00:02Z",'
+            '"message":{"role":"assistant","content":"hi back"}}',
+            '{"type":"file-history-snapshot","timestamp":"2026-01-01T00:00:03Z"}',
+            '{"type":"system","subtype":"turn_duration","timestamp":"2026-01-01T00:00:04Z"}',
+        ]
+        with open(os.path.join(proj_dir, "mixed-records.jsonl"), "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+
+        sessions = list_sessions(projects_base=fake_projects_dir, limit=100)
+        target = next(s for s in sessions if s["sessionId"] == "mixed-records")
+        assert target["messages"] == 2
+
 
 class TestListSessionsDateFiltering:
     def test_since_filters_out_older_sessions(self, fake_projects_dir):
@@ -471,6 +492,34 @@ class TestDeleteSession:
         with pytest.raises(ValueError):
             delete_session("nonexistent", projects_base=projects_base, tasks_base=tasks_base)
 
+    def test_session_is_deleted_even_when_task_cleanup_fails(
+        self, fake_projects_and_tasks_dir, monkeypatch
+    ):
+        # The session file is the smaller, single-operation, non-recoverable-if-lost
+        # resource; a task-cleanup failure after it's already gone must never look like
+        # the whole delete failed, and must never happen before the session is gone (a
+        # failure there previously left tasks permanently deleted while the session --
+        # the thing reported as "not deleted" -- was left behind).
+        projects_base, tasks_base = fake_projects_and_tasks_dir
+
+        def _boom(*_args, **_kwargs):
+            raise OSError("permission denied")
+
+        monkeypatch.setattr("session_store.delete_task_list", _boom)
+
+        result = delete_session(
+            "test-session-001",
+            projects_base=projects_base,
+            tasks_base=tasks_base,
+            delete_orphaned_tasks=True,
+        )
+        assert result["deleted"] is True
+        assert not os.path.exists(result["sessionPath"])
+        assert result["orphanedTasksDeleted"] is False
+        assert "permission denied" in result["taskDeletionError"]
+        # The task directory is still there -- untouched, not silently lost.
+        assert os.path.isdir(os.path.join(tasks_base, "test-session-001"))
+
 
 class TestFindOrphanTaskLists:
     def test_finds_task_lists_with_no_matching_session(self, tmp_path):
@@ -628,6 +677,27 @@ class TestAggregateTasks:
         )
         assert len(tasks) == 1
         assert tasks[0]["subject"] == "Wanted task"
+
+    def test_discovery_skips_a_directory_name_that_fails_id_validation(self, fake_tasks_dir):
+        # read_task_list (fixed for path-traversal) now raises ValueError for any name
+        # failing is_valid_id -- a discovered directory name isn't a request, it's
+        # whatever happens to exist on disk, so one invalid name must not abort
+        # discovery of every other, valid task list.
+        bad_dir = Path(fake_tasks_dir) / "not.a-valid id"
+        bad_dir.mkdir()
+        (bad_dir / "1.json").write_text(json.dumps({"id": "1", "subject": "unreachable"}))
+
+        tasks = aggregate_tasks(tasks_base=fake_tasks_dir, projects_base="/nonexistent")
+        assert len(tasks) == 2
+        assert all(t.get("subject") != "unreachable" for t in tasks)
+
+    def test_an_explicit_invalid_task_list_id_still_raises(self, fake_tasks_dir):
+        # An explicit request is different from a discovered name -- it should still
+        # surface as a real error the CLI can report, not be silently swallowed.
+        with pytest.raises(ValueError):
+            aggregate_tasks(
+                task_list_id="../escape", tasks_base=fake_tasks_dir, projects_base="/nonexistent"
+            )
 
 
 class TestGetDailyTokenAggregation:

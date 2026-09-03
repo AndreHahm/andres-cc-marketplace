@@ -272,7 +272,11 @@ def _get_session_summary(session_path: str) -> dict | None:
                 obj = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            msg_count += 1
+            # Only count real conversation turns -- internal records (progress,
+            # queue-operation, file-history-snapshot, system, etc.) would otherwise
+            # inflate the message total and mask genuinely tiny sessions from cleanup.
+            if obj.get("type") in ("user", "assistant"):
+                msg_count += 1
             ts = obj.get("timestamp")
             if ts:
                 if first_ts is None:
@@ -707,23 +711,36 @@ def delete_session(
         if os.path.isdir(task_dir):
             orphaned_task_lists.append(session_id)
 
-    # Delete the task-list cascade before the session file: if this raises, the
-    # session file is left intact and the error reflects the true on-disk state,
-    # rather than reporting a failure after the session was already unlinked.
-    orphaned_tasks_deleted = False
-    if delete_orphaned_tasks and orphaned_task_lists:
-        for list_id in orphaned_task_lists:
-            delete_task_list(list_id, tasks_base=t_base)
-        orphaned_tasks_deleted = True
-
+    # Delete the session file first: os.unlink is a single atomic operation, so a
+    # failure here leaves nothing touched. Deleting the (potentially multi-file)
+    # task-list cascade first has the opposite failure mode: if the session unlink
+    # then failed, the task data would already be irrecoverably gone while the
+    # session -- the thing actually reported as "not deleted" -- still remained.
     os.unlink(session_path)
 
-    return {
+    orphaned_tasks_deleted = False
+    task_deletion_error: str | None = None
+    if delete_orphaned_tasks and orphaned_task_lists:
+        try:
+            for list_id in orphaned_task_lists:
+                delete_task_list(list_id, tasks_base=t_base)
+            orphaned_tasks_deleted = True
+        except (OSError, ValueError) as err:
+            # The session is already gone -- don't let a task-cleanup failure read
+            # as if the whole delete failed. Report it as a degraded-but-honest
+            # result instead of raising and losing the fact that the session
+            # itself did delete successfully.
+            task_deletion_error = str(err)
+
+    result = {
         "deleted": True,
         "sessionPath": session_path,
         "orphanedTaskLists": orphaned_task_lists,
         "orphanedTasksDeleted": orphaned_tasks_deleted,
     }
+    if task_deletion_error:
+        result["taskDeletionError"] = task_deletion_error
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -907,10 +924,16 @@ def aggregate_tasks(
 
     # Primary: Read from ~/.claude/tasks/
     if task_list_id:
+        # An explicit request should raise on an invalid ID -- ValueError propagates so the
+        # CLI can report it as a bad-input error, per read_task_list's own docstring.
         all_tasks.extend(read_task_list(task_list_id, t_base))
     elif os.path.isdir(t_base):
         for entry in os.listdir(t_base):
-            if os.path.isdir(os.path.join(t_base, entry)):
+            # A discovered directory name isn't a request -- it's whatever happens to exist
+            # on disk, which can include something that never matches is_valid_id (e.g. a
+            # stray non-task directory). Skip it rather than letting read_task_list's
+            # ValueError abort listing every other, valid task list.
+            if os.path.isdir(os.path.join(t_base, entry)) and is_valid_id(entry):
                 all_tasks.extend(read_task_list(entry, t_base))
 
     # Fallback: Read from session JSONL (for older sessions)
@@ -1347,14 +1370,17 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
         elif command == "tasks":
             status = get_flag("--status") or "all"
             task_list_id = get_flag("--task-list")
-            tasks = aggregate_tasks(
-                status_filter=status,
-                task_list_id=task_list_id,
-                since=since,
-                until=until,
-                tasks_base=tasks_base,
-                projects_base=projects_base,
-            )
+            try:
+                tasks = aggregate_tasks(
+                    status_filter=status,
+                    task_list_id=task_list_id,
+                    since=since,
+                    until=until,
+                    tasks_base=tasks_base,
+                    projects_base=projects_base,
+                )
+            except ValueError as err:
+                _exit_with_error(err, 2)
             out = []
             for t in tasks:
                 t2 = dict(t)
@@ -1402,16 +1428,15 @@ def main() -> None:  # noqa: C901 — mirrors the original CLI's flat dispatch s
                 )
             except ValueError as err:
                 _exit_with_error(err, 2)
-            print(
-                to_json(
-                    {
-                        "deleted": result["deleted"],
-                        "session_path": result["sessionPath"],
-                        "orphaned_task_lists": result["orphanedTaskLists"],
-                        "orphaned_tasks_deleted": result["orphanedTasksDeleted"],
-                    }
-                )
-            )
+            out = {
+                "deleted": result["deleted"],
+                "session_path": result["sessionPath"],
+                "orphaned_task_lists": result["orphanedTaskLists"],
+                "orphaned_tasks_deleted": result["orphanedTasksDeleted"],
+            }
+            if "taskDeletionError" in result:
+                out["task_deletion_error"] = result["taskDeletionError"]
+            print(to_json(out))
 
         elif command == "delete-task":
             cmd_idx = argv.index("delete-task")

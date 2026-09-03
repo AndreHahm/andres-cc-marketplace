@@ -30,12 +30,12 @@ Show chronological history of sessions for a project.
 **Option A — cross-session, project-level timeline** (the default: cadence/gaps/patterns across all
 sessions in a project):
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" timeline --project "$(basename $(pwd))" --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" timeline --project "$(basename "$(pwd)")" --format json
 ```
 
 To show only recent sessions:
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" timeline --project "$(basename $(pwd))" --since "2026-04-01" --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" timeline --project "$(basename "$(pwd)")" --since "2026-04-01" --format json
 ```
 
 `--format json` is required — without it, the command prints a human-readable table instead of the

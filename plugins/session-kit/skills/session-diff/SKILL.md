@@ -34,7 +34,7 @@ Use the `session.path` field from each result.
 If the user did not name specific sessions (e.g. "compare yesterday and today"), list recent sessions in the current project and let the user pick, or infer from the dates if unambiguous:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" list --project "$(basename $(pwd))" --limit 2 --format json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" list --project "$(basename "$(pwd)")" --limit 2 --format json
 ```
 
 `--format json` is required for the `list` fallback — without it, there is no `path` field to extract.

@@ -129,8 +129,21 @@ def check_testing_validation_section():
     if idx == -1:
         return False, "no '## Testing & Validation' section found"
     heading_end = idx + len("## Testing & Validation")
-    next_h2 = re.search(r"\n## ", body[heading_end:])
-    section_end = heading_end + next_h2.start() if next_h2 else len(body)
+    tail = body[heading_end:]
+    # Fence-aware: a "## " line inside a fenced code example (```/~~~) is example
+    # content, not a real next-heading boundary -- treating it as one truncated the
+    # section early and could report a complete section's own markers as missing.
+    fenced = False
+    cursor = 0
+    section_end = len(body)
+    for line in tail.splitlines(keepends=True):
+        stripped = line.lstrip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            fenced = not fenced
+        elif not fenced and line.startswith("## "):
+            section_end = heading_end + cursor
+            break
+        cursor += len(line)
     section = body[idx:section_end]
     missing = [
         marker

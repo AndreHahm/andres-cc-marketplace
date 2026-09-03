@@ -161,7 +161,7 @@ def calculate_staleness_level(
     days_old: float,
     commits_since: int,
     files_changed: int,
-    branch_matches: bool,
+    branch_matches: bool | None,
     files_missing: int,
 ) -> tuple[str, str, list[str]]:
     """Calculate staleness level and provide recommendations.
@@ -199,10 +199,15 @@ def calculate_staleness_level(
     elif commits_since > 5:
         staleness_score += 1  # Some changes, worth reviewing
 
-    # Branch mismatch: likely working on different feature/context
-    if not branch_matches:
+    # Branch mismatch: likely working on different feature/context. branch_matches is
+    # None (not False) when the handoff has no Branch: field to compare -- unknowable,
+    # not confirmed same or different, so it's surfaced as a caveat without silently
+    # contributing to (or being scored the same as a confirmed mismatch in) the total.
+    if branch_matches is False:
         staleness_score += 2  # Different branch = different context
         issues.append("Current branch differs from handoff branch")
+    elif branch_matches is None:
+        issues.append("Handoff has no Branch: field on record - branch match unknown")
 
     # Missing files: 5+ suggests significant restructuring
     if files_missing > 5:
@@ -305,8 +310,12 @@ def check_staleness(handoff_path: str) -> dict:
     elif is_git_repo:
         # Git-based checks
         result["current_branch"] = get_current_branch(project_path)
+        # None (not True) when the handoff has no Branch: field to compare against --
+        # branch divergence is unknowable there, not confirmed absent. Defaulting to
+        # True previously reported a stale, branch-switched handoff as FRESH with
+        # "Branch matches: Yes" whenever it simply lacked a Branch: line.
         result["branch_matches"] = (
-            result["current_branch"] == metadata["branch"] if metadata["branch"] else True
+            result["current_branch"] == metadata["branch"] if metadata["branch"] else None
         )
 
         commits = get_commits_since(metadata["created"], project_path)
@@ -383,7 +392,12 @@ def print_report(result: dict):
         print("\n--- Git Status ---")
         print(f"Handoff branch: {result.get('handoff_branch', 'Unknown')}")
         print(f"Current branch: {result.get('current_branch', 'Unknown')}")
-        print(f"Branch matches: {'Yes' if result.get('branch_matches') else 'No'}")
+        _branch_matches = result.get("branch_matches")
+        if _branch_matches is None:
+            _branch_matches_label = "Unknown"
+        else:
+            _branch_matches_label = "Yes" if _branch_matches else "No"
+        print(f"Branch matches: {_branch_matches_label}")
         print(f"Commits since handoff: {result.get('commits_since', 0)}")
         print(f"Files changed: {result.get('files_changed_count', 0)}")
 
