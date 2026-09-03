@@ -246,11 +246,17 @@ def check_staleness(handoff_path: str) -> dict:
     # Parse handoff
     metadata = parse_handoff_metadata(handoff_path)
 
-    # Determine project path
-    project_path = metadata.get("project_path")
-    if not project_path or not Path(project_path).exists():
-        # Fallback: assume handoff is in .claude/handoffs/ within project
-        project_path = str(path.parent.parent.parent)
+    # Determine project path -- always derive structurally from the handoff file's own
+    # location (.claude/handoffs/<file>.md -> project root). The embedded "Project:" value
+    # in the handoff body is untrusted content (a hand-edited or moved handoff can carry a
+    # stale or unrelated path) and must never become the cwd for the git checks below --
+    # keep it only as metadata to compare against and warn on divergence.
+    project_path = str(path.parent.parent.parent)
+    embedded_project_path = metadata.get("project_path")
+    project_path_mismatch = bool(
+        embedded_project_path
+        and Path(embedded_project_path).resolve() != Path(project_path).resolve()
+    )
 
     # Check if git repo
     success, _ = run_cmd(["git", "rev-parse", "--git-dir"], cwd=project_path)
@@ -259,6 +265,8 @@ def check_staleness(handoff_path: str) -> dict:
     result = {
         "handoff_file": str(path),
         "project_path": project_path,
+        "embedded_project_path": embedded_project_path,
+        "project_path_mismatch": project_path_mismatch,
         "is_git_repo": is_git_repo,
         "created": metadata["created"],
         "handoff_branch": metadata["branch"],
@@ -275,7 +283,26 @@ def check_staleness(handoff_path: str) -> dict:
         result["days_old"] = None
         result["hours_old"] = None
 
-    if is_git_repo:
+    if is_git_repo and not metadata["created"]:
+        # Temporal staleness is unknowable with no valid Created timestamp -- without this
+        # branch, days_old_value stays 0 and get_commits_since/get_changed_files_since both
+        # short-circuit to [] for a None timestamp, so calculate_staleness_level would score
+        # 0 and report FRESH: a false safe-to-resume verdict for a handoff whose age is
+        # actually unknown.
+        result["current_branch"] = get_current_branch(project_path)
+        result["branch_matches"] = None
+        result["commits_since"] = None
+        result["recent_commits"] = []
+        result["files_changed_count"] = None
+        result["files_changed"] = []
+        result["referenced_files_exist"] = 0
+        result["referenced_files_missing"] = []
+        result["staleness_level"] = "UNKNOWN"
+        result["recommendation"] = (
+            "Missing or unparseable Created timestamp - unable to detect staleness"
+        )
+        result["issues"] = ["Handoff has no valid Created timestamp"]
+    elif is_git_repo:
         # Git-based checks
         result["current_branch"] = get_current_branch(project_path)
         result["branch_matches"] = (
@@ -311,6 +338,13 @@ def check_staleness(handoff_path: str) -> dict:
         result["staleness_level"] = "UNKNOWN"
         result["recommendation"] = "Not a git repo - unable to detect changes"
         result["issues"] = ["Project is not a git repository"]
+
+    if project_path_mismatch:
+        result["issues"].insert(
+            0,
+            f"Handoff's Project: field ({embedded_project_path}) differs from its actual "
+            f"location ({project_path}) - the actual location was used for all checks above",
+        )
 
     return result
 

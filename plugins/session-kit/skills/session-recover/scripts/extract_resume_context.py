@@ -44,6 +44,7 @@ from pathlib import Path
 # encode_project_path once lagged this file's own Windows-separator fix).
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 from session_store import encode_project_path as normalize_path  # noqa: E402
+from session_transcript import message_dict  # noqa: E402
 
 CLAUDE_DIR = Path.home() / ".claude"
 PROJECTS_DIR = CLAUDE_DIR / "projects"
@@ -105,23 +106,75 @@ def load_sessions_index(project_dir: Path) -> list[dict]:
     index_file = project_dir / "sessions-index.json"
     if not index_file.exists():
         return []
-    with open(index_file, encoding="utf-8") as f:
-        data = json.load(f)
-    entries = data.get("entries", [])
+    try:
+        with open(index_file, encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        # A truncated or corrupt index (e.g. Claude Code killed mid-write) must not abort
+        # recovery -- --list/extract mode both already fall back to locating session files
+        # directly on disk when the index is empty.
+        return []
+    if not isinstance(data, dict):
+        return []
+    entries = [e for e in data.get("entries", []) if isinstance(e, dict)]
     entries.sort(key=lambda e: e.get("modified", ""), reverse=True)
     return entries
 
 
-def search_sessions(entries: list[dict], query: str) -> list[dict]:
-    """Search sessions by keyword in firstPrompt and summary."""
+def search_sessions(entries: list[dict], query: str, project_dir: Path) -> list[dict]:
+    """Search sessions by keyword in firstPrompt/summary (index) and full JSONL transcript
+    content, so --query matches `session-search`'s own session_store.py-backed search --
+    including a topic mentioned only later in a transcript, and sessions missing from the
+    index entirely.
+    """
     query_lower = query.lower()
-    results = []
+    pattern = re.compile(re.escape(query), re.IGNORECASE)
+    indexed_by_id = {e.get("sessionId"): e for e in entries if e.get("sessionId")}
+    matched: dict[str, dict] = {}
+
     for entry in entries:
         first_prompt = (entry.get("firstPrompt") or "").lower()
         summary = (entry.get("summary") or "").lower()
         if query_lower in first_prompt or query_lower in summary:
-            results.append(entry)
-    return results
+            sid = entry.get("sessionId")
+            if sid:
+                matched[sid] = entry
+
+    for jsonl_file in project_dir.glob("*.jsonl"):
+        sid = jsonl_file.stem
+        if sid in matched:
+            continue
+        try:
+            with open(jsonl_file, encoding="utf-8") as f:
+                for raw_line in f:
+                    try:
+                        obj = json.loads(raw_line)
+                    except json.JSONDecodeError:
+                        continue
+                    content = message_dict(obj).get("content", "")
+                    if isinstance(content, str):
+                        text = content
+                    elif isinstance(content, list):
+                        text = " ".join(
+                            b.get("text", "")
+                            for b in content
+                            if isinstance(b, dict) and b.get("type") == "text"
+                        )
+                    else:
+                        continue
+                    if text and pattern.search(text):
+                        matched[sid] = indexed_by_id.get(sid) or {
+                            "sessionId": sid,
+                            "modified": "?",
+                            "messageCount": "?",
+                            "gitBranch": "?",
+                            "firstPrompt": "(matched in transcript content, not in index)",
+                        }
+                        break
+        except OSError:
+            continue
+
+    return list(matched.values())
 
 
 def format_session_entry(entry: dict, file_exists: bool = True) -> str:
@@ -423,6 +476,12 @@ def extract_subagent_context(session_file: Path) -> list[dict]:
                 lines = jsonl_file.read_text(encoding="utf-8").strip().split("\n")
                 line_count = len(lines)
                 has_tool_use_pending = False
+                # The loop below walks chronologically backward (latest line first), but a
+                # normal completed sequence is tool_use -> tool_result -> final text: seeing
+                # the result first would clear the flag, then the earlier tool_use would set
+                # it again, reporting a completed subagent as interrupted. Lock the verdict at
+                # the first tool-related block encountered (i.e. the chronologically LAST one).
+                tool_state_decided = False
                 # Check last 10 lines for final assistant text
                 for raw_line in reversed(lines[-10:]):
                     try:
@@ -437,7 +496,9 @@ def extract_subagent_context(session_file: Path) -> list[dict]:
                                     continue
                                 block_type = block.get("type")
                                 if block_type == "tool_use":
-                                    has_tool_use_pending = True
+                                    if not tool_state_decided:
+                                        has_tool_use_pending = True
+                                        tool_state_decided = True
                                 elif block_type == "text":
                                     text = block.get("text", "")
                                     if text.strip() and not last_text:
@@ -446,7 +507,9 @@ def extract_subagent_context(session_file: Path) -> list[dict]:
                         if role == "user" and isinstance(content, list):
                             for block in content:
                                 if isinstance(block, dict) and block.get("type") == "tool_result":
-                                    has_tool_use_pending = False
+                                    if not tool_state_decided:
+                                        has_tool_use_pending = False
+                                        tool_state_decided = True
                     except json.JSONDecodeError:
                         continue
 
@@ -494,7 +557,9 @@ def get_git_state(project_path: str) -> str:
             cwd=project_path,
             timeout=10,
         )
-        if status.stdout.strip():
+        if status.returncode != 0:
+            parts.append("### git status\n(not a git repository)")
+        elif status.stdout.strip():
             parts.append(f"### git status\n```\n{status.stdout.strip()}\n```")
         else:
             parts.append("### git status\nClean working tree.")
@@ -771,7 +836,7 @@ def main() -> None:
 
     # ── Query mode ──
     if args.query:
-        results = search_sessions(entries, args.query)
+        results = search_sessions(entries, args.query, project_dir)
         if not results:
             print(f"No sessions matching '{args.query}'.", file=sys.stderr)
             sys.exit(1)

@@ -171,6 +171,13 @@ def generate_handoff(
     handoffs_dir.mkdir(parents=True, exist_ok=True)
 
     filepath = handoffs_dir / filename
+    # file_timestamp has one-second resolution -- two invocations with the same slug in
+    # that second would otherwise silently overwrite the first handoff's saved work.
+    # Disambiguate with a numeric suffix instead of clobbering.
+    suffix = 2
+    while filepath.exists():
+        filepath = handoffs_dir / f"{file_timestamp}-{slug}-{suffix}.md"
+        suffix += 1
 
     # Gather git info
     git_info = get_git_info(project_path)

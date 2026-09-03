@@ -128,7 +128,10 @@ def check_testing_validation_section():
     idx = body.find("## Testing & Validation")
     if idx == -1:
         return False, "no '## Testing & Validation' section found"
-    section = body[idx:]
+    heading_end = idx + len("## Testing & Validation")
+    next_h2 = re.search(r"\n## ", body[heading_end:])
+    section_end = heading_end + next_h2.start() if next_h2 else len(body)
+    section = body[idx:section_end]
     missing = [
         marker
         for marker in (
