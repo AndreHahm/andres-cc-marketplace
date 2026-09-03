@@ -26,6 +26,6 @@
     "declared_scenarios_total": 3,
     "declared_scenarios_covered": 3,
     "uncovered": [],
-    "known_failures": ["Eval 3 ('Export including pending task list'): assertion 1 FAILED -- SKILL.md does not document how to include task-list data in an export (the underlying session_transcript.py `tasks` subcommand exists but is never referenced in the Export steps). See eval-3/with_skill/grading.json."]
+    "known_failures": []
   }
 }

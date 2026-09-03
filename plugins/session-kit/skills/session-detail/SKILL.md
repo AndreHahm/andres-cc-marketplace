@@ -29,6 +29,8 @@ Show comprehensive details about a single session.
 - Wants a portable recovery document for a *different* session, not live detail here → use
   `session-resume` instead.
 - Wants a comparison between two sessions, not detail on one → use `session-diff` instead.
+- Wants only a bare chronological, event-by-event timeline for one session (no summary or task
+  context) → use `session-timeline`'s single-session mode (its Step 1, Option B) instead.
 - Wants a file/transcript export, not detail shown in the conversation → use `session-export` instead.
 
 ## Step 1: Get session detail
