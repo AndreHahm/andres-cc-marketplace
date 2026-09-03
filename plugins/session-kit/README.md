@@ -34,8 +34,9 @@ another language.
 - `scripts/memory_scanner.py` — scans `~/.claude/projects/*/memory/` (scan, health audit, search,
   memory-file deletion)
 
-Each of those 14 skills invokes these as CLI scripts
-(`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.py" <command> ...`). Output format varies by command, not
+Each of those 14 skills invokes `session_store.py`/`session_transcript.py`/`memory_scanner.py` as CLI
+scripts (`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.py" <command> ...`); `formatters.py` is an
+import-only helper the other three use internally, never invoked directly. Output format varies by command, not
 uniformly across either script: `session_store.py`'s `list`/`search`/`timeline`/`tasks` default to a
 human-readable table and need an explicit `--format json` (every skill invocation that needs structured
 output passes it); every other `session_store.py` command (`cleanup`, `delete-session`, `delete-task`,
@@ -97,3 +98,7 @@ Each of the 17 skills also has a persisted structural self-test at `skills/<skil
 `python3 skills/<skill>/scripts/smoke_test.py`, no dependencies beyond the standard library. Each skill
 also has a `skill-tester` Quick Workflow eval suite at the repo root under `evals/<skill>/` (outside this
 plugin's own directory, matching this repo's marketplace-wide convention).
+
+## License
+
+Apache-2.0 — see [`LICENSE`](./LICENSE).
