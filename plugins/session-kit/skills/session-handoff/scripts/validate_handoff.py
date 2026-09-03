@@ -21,11 +21,14 @@ import sys
 from pathlib import Path
 
 # Secret detection patterns
+# API key/password/secret/token accept an unquoted value too (e.g. DATABASE_PASSWORD=correct-horse-
+# battery-staple), not just a quoted one -- handoffs are explicitly intended to be committed/shared,
+# so a quote-only check leaves a direct credential-leak path.
 SECRET_PATTERNS = [
-    (r'["\']?[a-zA-Z_]*api[_-]?key["\']?\s*[:=]\s*["\'][^"\']{10,}["\']', "API key"),
-    (r'["\']?[a-zA-Z_]*password["\']?\s*[:=]\s*["\'][^"\']+["\']', "Password"),
-    (r'["\']?[a-zA-Z_]*secret["\']?\s*[:=]\s*["\'][^"\']{10,}["\']', "Secret"),
-    (r'["\']?[a-zA-Z_]*token["\']?\s*[:=]\s*["\'][^"\']{20,}["\']', "Token"),
+    (r'["\']?[a-zA-Z_]*api[_-]?key["\']?\s*[:=]\s*(?:["\'][^"\']{10,}["\']|\S{10,})', "API key"),
+    (r'["\']?[a-zA-Z_]*password["\']?\s*[:=]\s*(?:["\'][^"\']+["\']|\S+)', "Password"),
+    (r'["\']?[a-zA-Z_]*secret["\']?\s*[:=]\s*(?:["\'][^"\']{10,}["\']|\S{10,})', "Secret"),
+    (r'["\']?[a-zA-Z_]*token["\']?\s*[:=]\s*(?:["\'][^"\']{20,}["\']|\S{20,})', "Token"),
     (r'["\']?[a-zA-Z_]*private[_-]?key["\']?\s*[:=]', "Private key"),
     (r"-----BEGIN [A-Z]+ PRIVATE KEY-----", "PEM private key"),
     (r"mongodb(\+srv)?://[^/\s]+:[^@\s]+@", "MongoDB connection string with password"),
@@ -69,8 +72,12 @@ def check_required_sections(content: str) -> tuple[bool, list[str]]:
         # #{1,6}: the template nests required sections at varying heading depths
         # (e.g. "### Important Context" under "## Context for Resuming Agent") --
         # matching only h1/h2 here would make some required sections unmatchable.
-        pattern = rf"(?:^|\n)#{{1,6}}\s*{re.escape(section)}"
-        match = re.search(pattern, content, re.IGNORECASE)
+        # (?=\s*$) (with MULTILINE, zero-width): require the heading line to end right
+        # after the section name, so e.g. "## Important Context Draft" doesn't satisfy
+        # "Important Context" -- a lookahead so match.end() still lands right after the
+        # section name itself, same as before this boundary check was added.
+        pattern = rf"(?:^|\n)#{{1,6}}\s*{re.escape(section)}(?=\s*$)"
+        match = re.search(pattern, content, re.IGNORECASE | re.MULTILINE)
         if not match:
             missing.append(f"{section} (missing)")
         else:
@@ -94,8 +101,10 @@ def check_recommended_sections(content: str) -> list[str]:
         # #{1,6}: the template nests required sections at varying heading depths
         # (e.g. "### Important Context" under "## Context for Resuming Agent") --
         # matching only h1/h2 here would make some required sections unmatchable.
-        pattern = rf"(?:^|\n)#{{1,6}}\s*{re.escape(section)}"
-        if not re.search(pattern, content, re.IGNORECASE):
+        # (?=\s*$) (with MULTILINE, zero-width): require a complete heading name match --
+        # see check_required_sections' matching comment above for why.
+        pattern = rf"(?:^|\n)#{{1,6}}\s*{re.escape(section)}(?=\s*$)"
+        if not re.search(pattern, content, re.IGNORECASE | re.MULTILINE):
             missing.append(section)
     return missing
 
@@ -132,8 +141,10 @@ def check_file_references(content: str, base_path: str) -> tuple[list[str], list
             # Skip obvious non-files, and a leading-"/" match -- pathlib's "/" operator
             # resets to the right-hand side for an absolute path, so an unfiltered
             # leading-"/" match would silently check the real filesystem root instead
-            # of base_path.
-            if filepath and not filepath.startswith(("http", "/")) and "/" in filepath:
+            # of base_path. No "/" requirement: a root-level file reference (e.g.
+            # "README.md", no slash) must still be checked, or it silently bypasses
+            # validation entirely.
+            if filepath and not filepath.startswith(("http", "/")):
                 found_files.add(filepath)
 
     existing = []
@@ -302,7 +313,12 @@ def print_report(result: dict):
     print(f"\n{'=' * 60}")
 
     # Final verdict
-    if result["score"] >= 70 and not result["secrets_found"]:
+    if (
+        result["score"] >= 70
+        and not result["secrets_found"]
+        and result["todos_clear"]
+        and result["required_complete"]
+    ):
         print("Verdict: READY for handoff")
         return True
     elif result["secrets_found"]:
