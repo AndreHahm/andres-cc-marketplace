@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs memory_scanner.py audit", "passed": true, "evidence": "python3 memory_scanner.py audit (live run: 34 memories, 51 findings across expired/stale/stale_path/index_mismatch categories)"},
+    {"text": "Presents a health summary before findings", "passed": true, "evidence": "Step 2's template surfaced first per the skill's own ordering"},
+    {"text": "Splits findings into Section A (auto-fixable) and Section B (AI-assisted)", "passed": true, "evidence": "expired/index_mismatch route to Section A per Step 3's own Action mapping; stale/stale_path route to Section B's per-category procedures"},
+    {"text": "Does not apply any fix without an AskUserQuestion confirmation first", "passed": true, "evidence": "Step 3's batch ask ('Apply all N auto-fixes?') gates Section A; each individual DELETE additionally requires its own per-file AskUserQuestion (line 65) before memory_scanner.py delete-memory runs"},
+    {"text": "DELETE routes through memory_scanner.py delete-memory, never a raw rm", "passed": true, "evidence": "Static check of SKILL.md line 67: 'python3 memory_scanner.py delete-memory <path> -- never a raw rm'. Not exercised by this eval's own prompt (no DELETE-category finding was reached / confirmed in this run's simulated flow); confirmed by direct file read instead."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0},
+  "note": "Quick Workflow re-verification, iteration-2, post Phase-6-fix-batch (commit fcf67daa). Simulated directly (no nested Agent dispatch available from within this fork) against live command output. Per this run's own safety constraint, no real deletion was simulated through to execution -- the delete-memory routing and per-file AskUserQuestion scoping were verified by direct source read (SKILL.md lines 65-69), not by executing a real delete."
+}

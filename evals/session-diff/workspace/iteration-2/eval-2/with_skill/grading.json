@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Resolves and diffs exactly the two GIVEN session IDs directly (regression test for a fixed ID-resolution bug), not two different/most-recent sessions", "passed": true, "evidence": "Ran session-detail against both explicitly-named IDs (7b92a813... and ab822c24...) directly -- both resolved correctly to their own real session data, not a substituted most-recent session; ran the diff against exactly those two resolved paths and got real comparative output"},
+    {"text": "REGRESSION CHECK: new formal 'When NOT to Use' section correctly redirects a single-session request to session-detail", "passed": true, "evidence": "Section reads: 'Wants details on one specific session, not a comparison -> use session-detail instead' -- present and correctly worded (verified by direct read, not a live-executable check)"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

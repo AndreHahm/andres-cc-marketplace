@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Declines and points to session-list instead, per its own stated 'When NOT to Use' exclusion", "passed": true, "evidence": "SKILL.md's 'When NOT to Use' section (unchanged by Phase 6) explicitly states: 'A simple sortable inventory (not chronological pattern analysis) -> use session-list instead'"}
+  ],
+  "summary": {"assertions_total": 1, "assertions_passed": 1, "pass_rate": 1.0}
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-recover/SKILL.md",
+  "assertions": [
+    {"text": "Does NOT attempt to produce a portable recovery document itself", "type": "functionality", "target": "outputs/"},
+    {"text": "Explicitly names session-resume as the correct skill for this request", "type": "functionality", "target": "outputs/"},
+    {"text": "Does not run the session-recover extraction script for this request", "type": "functionality", "target": "outputs/"}
+  ]
+}

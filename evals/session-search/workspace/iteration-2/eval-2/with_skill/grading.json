@@ -1,0 +1,8 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Declines to run its own session-content search and points to session-memory-search instead", "passed": true, "evidence": "Response declines and names session-memory-search"}
+  ],
+  "summary": {"assertions_total": 1, "assertions_passed": 1, "pass_rate": 1.0}
+}

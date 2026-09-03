@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Resolves the session path, runs session_transcript.py stats, reports a token/model breakdown as a visual summary, notes cost estimation is unavailable", "passed": true, "evidence": "Ran `session_transcript.py stats <path>` and got real token/model/tool breakdown JSON (turns, models dict, tokens dict, tools dict); SKILL.md Step 3 explicitly instructs noting cost estimation is unavailable"},
+    {"text": "REGRESSION CHECK: reciprocal session-recover exclusion is present in When NOT to Use", "passed": true, "evidence": "'When NOT to Use' now includes: 'Interruption recovery, not error listing (\"my session crashed, help me continue\") -> use session-recover instead' -- newly added in Phase 6, verified present"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

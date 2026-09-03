@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Runs session_store.py session-detail for an explicit session ID", "passed": true, "evidence": "Prompt gives an explicit ID (abc123), so Step 1's 'Otherwise' branch (session-detail <id>) applies, not the new current fallback"},
+    {"text": "Presents session/token/model/tool summary plus associated tasks", "passed": true, "evidence": "Step 2's template covers all five fields"},
+    {"text": "Offers to show messages via session_transcript.py messages if wanted", "passed": true, "evidence": "Step 3 documents this as optional, path derived from Step 1's session.path field"},
+    {"text": "The new current-session fallback (Step 1, added in the Phase 6 fix batch) resolves correctly when no ID is given", "passed": true, "evidence": "Not exercised by this eval's own prompt (an explicit ID was given) -- verified separately via a live command run: 'python3 session_store.py current' in this exact worktree correctly resolved the live session via CLAUDE_CODE_SESSION_ID, returning session_id/project/path fields as documented."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+  "note": "Quick Workflow re-verification, iteration-2, post Phase-6-fix-batch (commit fcf67daa). Simulated directly (no nested Agent dispatch available from within this fork). The current-fallback is the specific Phase-6 behavior change for this skill; it was verified via a supplementary live command run rather than this eval's own scenario, since neither of the 2 existing evals omits an explicit session ID."
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/session-kit/skills/session-recover/SKILL.md",
+  "assertions": [
+    {"text": "Runs extract_resume_context.py --session 7b92a813-0321-4dbb-b37a-c62dfc1207e7 (or the analogous single-call invocation)", "type": "functionality", "target": "outputs/"},
+    {"text": "Reports a session end reason from the briefing (clean exit / interrupted / error cascade / abandoned / unknown)", "type": "presence", "target": "outputs/"},
+    {"text": "Does not run claude --resume or claude --continue", "type": "functionality", "target": "outputs/"},
+    {"text": "Proceeds to continue the work directly or states a concrete next action, rather than only summarizing", "type": "functionality", "target": "outputs/"},
+    {"text": "Never loads the full session JSONL directly via Read -- always goes through the script", "type": "functionality", "target": "outputs/"},
+    {"text": "Step 2.5's AskUserQuestion confirmation gate fires before any implied Edit/implementation, presenting the candidate 'current request' for confirmation rather than acting on it silently", "type": "functionality", "target": "outputs/"}
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/session-kit/skills/session-search/SKILL.md",
+  "assertions": [
+    {"text": "Declines to run its own session-content search and points to session-memory-search instead", "type": "functionality", "target": "outputs/"}
+  ]
+}

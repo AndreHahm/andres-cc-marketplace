@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Does NOT attempt to produce a portable recovery document itself", "passed": true, "evidence": "Response explicitly declines and does not produce a document"},
+    {"text": "Explicitly names session-resume as the correct skill for this request", "passed": true, "evidence": "Response names session-resume directly, quoting the skill's own exclusion text"},
+    {"text": "Does not run the session-recover extraction script for this request", "passed": true, "evidence": "Response explicitly states no script was run, since the request is out of scope before data-gathering would matter -- corrects the iteration-1 finding where the agent explored via --list before declining"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0},
+  "note": "iteration-1's eval-2 recorded 2/3 (the agent explored with --list before declining). This iteration-2 run demonstrates the correct behavior is achievable given the skill's current, unchanged 'When NOT to Use' text -- the request is unambiguous enough that a careful reading doesn't require exploration first. This is not evidence the skill itself was edited to guarantee this outcome (it wasn't, in this Phase 6 batch); recorded as a clean re-run, with the iteration-1 finding's behavioral risk still worth noting as a real, not-fully-eliminated possibility for a less careful agent."
+}

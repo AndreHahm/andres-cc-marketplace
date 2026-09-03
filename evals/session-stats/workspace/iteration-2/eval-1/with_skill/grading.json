@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Resolves the session path via current, runs session_transcript.py errors, reports timestamped errors with correct tool names, count-first framing", "passed": true, "evidence": "Ran `session_store.py current` with NO --format flag and got real JSON back (session_id, path, etc.); ran `session_transcript.py errors <path>` and got a real error_count (36) plus a timestamped, correctly-tool_name-attributed list (e.g. tool_name: \"Skill\", tool_name: \"Agent\") -- no \"unknown\" attribution"},
+    {"text": "REGRESSION CHECK (Phase 6 fix): Step 1's current call needs no --format flag and this is now accurately documented (previously stated a false --format json requirement)", "passed": true, "evidence": "Live-confirmed: `python3 session_store.py current` with zero flags returns valid JSON unconditionally; quality gate now correctly states this"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}
