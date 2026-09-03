@@ -71,6 +71,9 @@ END_REASON_LABELS = {
 
 def find_project_dir(project_path: str) -> Path | None:
     """Find the Claude projects directory for a given project path."""
+    if not PROJECTS_DIR.is_dir():
+        return None
+
     abs_path = os.path.abspath(project_path)
 
     # If the path is already inside ~/.claude/projects/, use it directly
