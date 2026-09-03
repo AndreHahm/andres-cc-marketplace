@@ -19,7 +19,7 @@
       "id": 3,
       "name": "Detailed event-level timeline request",
       "prompt": "show me a detailed timeline of this session's events",
-      "expected_output": "Recognized as a real gap (see grading.json critical_note, evals/session-timeline/workspace/iteration-2/eval-3/with_skill/grading.json): a faithful reading of the skill's own Step 1/Step 2 text produces only a session_store.py-driven, session-level (not event-level) timeline. session_transcript.py -- part of this skill's allowed-tools grant -- is documented only as a conditional per-session branch lookup, never as a path toward event-level detail. Both assertions failed under this eval; recorded honestly rather than papered over."
+      "expected_output": "Step 1's Option B routes this request to `session_transcript.py messages <session-jsonl-path> --limit 200 --include-tools`, producing a chronological, event-level listing (individual messages/tool calls with timestamps) rather than the coarse one-bar-per-session project view. Re-verified via a genuinely blind nested-Agent dispatch (see grading.json, evals/session-timeline/workspace/iteration-2/eval-3/with_skill/grading.json): both assertions passed."
     }
   ],
   "testing_validation_coverage": {

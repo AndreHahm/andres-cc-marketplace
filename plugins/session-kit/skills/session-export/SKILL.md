@@ -51,6 +51,18 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" export <session-js
 
 Tool calls are summarized (tool name only, not full input JSON) by default; pass `--no-include-tools` to omit them entirely.
 
+### Including the session's task list (optional)
+
+If the user wants the export to also include the session's tracked tasks, run:
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py" tasks <session-jsonl-path>
+```
+Append the result as a `## Tasks` section: directly under the transcript when presenting inline, or
+appended to the same file after the transcript itself has been written when `--output` was used. Don't
+silently drop the request just because the `export` subcommand itself has no task-inclusion flag — this
+`tasks` subcommand, scoped to the same session path already resolved in Step 1, is the documented way to
+satisfy it.
+
 ## Step 3: Present
 
 If written to file, confirm the path and line count. If inline, present the transcript directly.
@@ -60,16 +72,20 @@ The exported transcript contains verbatim user messages, file paths, and (if inc
 ## Testing & Validation
 
 Eval suite: `evals/session-export/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison. Evals
-1-2 passed. Eval 3 ("export this session, including my pending task list") found a real, unresolved gap:
-this skill's own workflow never documents how to include task-list data in an export — the underlying
+1-2 passed. Eval 3 ("export this session, including my pending task list") originally found a real gap:
+this skill's own workflow never documented how to include task-list data in an export — the underlying
 `session_transcript.py` `export` subcommand has no task-inclusion flag, and the separate `tasks`
-subcommand this plugin's shared scripts do provide is never referenced anywhere in this skill's Export
-steps. Not fixed as part of this eval addition — see
-`evals/session-export/workspace/iteration-2/eval-3/with_skill/grading.json` for the full analysis;
-flagged for a component-owner follow-up.
+subcommand this plugin's shared scripts do provide was never referenced anywhere in this skill's Export
+steps. Fixed by adding the "Including the session's task list (optional)" subsection under Step 2, and
+independently re-verified via a blind re-run: a fresh agent given only this SKILL.md's content and the
+eval-3 prompt, with no hint of what was being tested, correctly ran the `tasks` subcommand and appended
+its result as a labeled `## Tasks` section. See
+`evals/session-export/workspace/iteration-2/eval-3/with_skill/grading.json` for the full analysis —
+all 3 assertions now pass.
 
-**Last dated run record:** `evals/session-export/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
-2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-export/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`
+— evals 1-2 and eval 3's original run 2026-09-02; eval 3 re-verified after the fix on 2026-09-03.
+`scripts/smoke_test.py` structural self-check also passing as of 2026-09-03.
 
 **Verify this skill activates on:**
 - "export this session"
@@ -82,3 +98,5 @@ flagged for a component-owner follow-up.
 **Quality gates:**
 - [ ] Step 1's `current` call needs no `--format` flag — the command always emits JSON
 - [ ] `--output` examples never use a bare relative filename
+- [ ] A request to include the task list uses `session_transcript.py tasks`, appended as a labeled
+      section — never silently dropped because `export` itself has no task-inclusion flag
