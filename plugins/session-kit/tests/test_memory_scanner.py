@@ -145,6 +145,21 @@ class TestScanMemories:
         assert len(result["memories"]) > 0
         assert result["memories"][0]["projectReadable"] == "project/alpha"
 
+    def test_nested_memory_file_correctly_linked_is_indexed(self, tmp_path):
+        """A MEMORY.md link like [Note](decisions/note.md) must match the nested file's
+        own relative path, not just its bare basename -- a basename-only comparison
+        incorrectly reports a correctly-linked nested file as unindexed."""
+        memory_dir = tmp_path / "projects" / "proj" / "memory"
+        (memory_dir / "decisions").mkdir(parents=True)
+        (memory_dir / "MEMORY.md").write_text(
+            "- [Decision on X](decisions/note.md) -- some decision\n", encoding="utf-8"
+        )
+        (memory_dir / "decisions" / "note.md").write_text("content", encoding="utf-8")
+
+        result = scan_memories(projects_base=str(tmp_path / "projects"))
+        mem = next(m for m in result["memories"] if m["file"] == "note.md")
+        assert mem["indexed"] is True
+
 
 # ---------------------------------------------------------------------------
 # audit_memories
@@ -184,6 +199,32 @@ class TestAuditMemories:
         )
         assert orphan["fixType"] == "auto"
         assert orphan["autoFixable"] is True
+
+    def test_nested_memory_file_correctly_linked_is_not_flagged_orphan(self, tmp_path):
+        """Same bug as scan_memories' 'indexed' field, in the orphan-detection check --
+        a nested file linked via its relative path must not be reported as unindexed."""
+        memory_dir = tmp_path / "projects" / "proj" / "memory"
+        (memory_dir / "decisions").mkdir(parents=True)
+        (memory_dir / "MEMORY.md").write_text(
+            "- [Decision on X](decisions/note.md) -- some decision\n", encoding="utf-8"
+        )
+        (memory_dir / "decisions" / "note.md").write_text("content", encoding="utf-8")
+
+        result = audit_memories(projects_base=str(tmp_path / "projects"))
+        orphans = [f for f in result["findings"] if f["category"] == "orphan"]
+        assert orphans == []
+
+    def test_nested_memory_file_orphan_suggestion_uses_relative_path(self, tmp_path):
+        """The suggested fix must name the nested file's relative path, not just its bare
+        basename -- suggesting a bare basename risks a duplicate/wrong top-level index
+        entry for a file that actually lives in a subdirectory."""
+        memory_dir = tmp_path / "projects" / "proj" / "memory"
+        (memory_dir / "decisions").mkdir(parents=True)
+        (memory_dir / "decisions" / "note.md").write_text("content", encoding="utf-8")
+
+        result = audit_memories(projects_base=str(tmp_path / "projects"))
+        orphan = next(f for f in result["findings"] if f["category"] == "orphan")
+        assert "decisions/note.md" in orphan["suggestion"]
 
     def test_detects_missing_frontmatter_ai_assisted(self):
         result = audit_memories(projects_base=FIXTURES_BASE)

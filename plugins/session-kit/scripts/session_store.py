@@ -1002,7 +1002,12 @@ def get_model_distribution(
     projects_base: str | None = None,
 ) -> list[dict]:
     sessions = list_sessions(
-        projects_base=projects_base, project_filter=project_filter, sort="recency", limit=9999
+        projects_base=projects_base,
+        project_filter=project_filter,
+        since=since,
+        until=until,
+        sort="recency",
+        limit=9999,
     )
 
     model_map: dict[str, dict[str, Any]] = {}
@@ -1077,7 +1082,12 @@ def get_activity_heatmap(
     projects_base: str | None = None,
 ) -> dict:
     sessions = list_sessions(
-        projects_base=projects_base, project_filter=project_filter, sort="recency", limit=9999
+        projects_base=projects_base,
+        project_filter=project_filter,
+        since=since,
+        until=until,
+        sort="recency",
+        limit=9999,
     )
 
     grid = [[0] * 24 for _ in range(7)]
