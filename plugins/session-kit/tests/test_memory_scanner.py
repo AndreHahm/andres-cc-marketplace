@@ -340,7 +340,22 @@ class TestDeleteMemory:
         target = other_dir / "note.md"
         target.write_text("content", encoding="utf-8")
 
-        with pytest.raises(ValueError, match="outside a memory/ directory"):
+        with pytest.raises(ValueError, match="outside a project's memory/ directory"):
+            delete_memory(str(target), projects_base=str(tmp_path / "projects"))
+        assert target.exists()
+
+    def test_rejects_memory_as_a_top_level_project_name(self, tmp_path):
+        """A file directly under <base>/memory/ is not a project's memory/ dir -- it's a
+        sibling directory that happens to be *named* "memory". The old containment check
+        (checking only whether "memory" appeared anywhere in the resolved path's parts)
+        incorrectly accepted this; the fix requires "memory" to be the second path segment
+        below the base, i.e. <project>/memory/..., not the base's own direct child."""
+        fake_project_dir = tmp_path / "projects" / "memory"
+        fake_project_dir.mkdir(parents=True)
+        target = fake_project_dir / "unrelated.md"
+        target.write_text("content", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="outside a project's memory/ directory"):
             delete_memory(str(target), projects_base=str(tmp_path / "projects"))
         assert target.exists()
 

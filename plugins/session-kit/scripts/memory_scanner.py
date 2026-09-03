@@ -650,24 +650,32 @@ def _assert_path_within_base(target_path: str, base_dir: str) -> None:
 
 
 def delete_memory(memory_path: str, projects_base: str | None = None) -> dict:
-    """Delete one memory file, after validating it resolves under <projects_base>/*/memory/.
+    """Delete one memory file, after validating it resolves under <projects_base>/<project>/memory/.
 
     Contains the deletion the same way session_store.py's delete_session contains
     session-file deletion -- the caller (a skill's own AskUserQuestion confirmation)
     decides *whether* to delete; this function is the only path that actually unlinks
     a file, and it refuses to unlink anything outside a real project's memory/ tree.
 
-    "Under memory/" means anywhere below a "memory" path segment, not necessarily its
-    immediate parent -- collect_memory_files() recurses into subdirectories under memory/,
-    so a nested memory/<sub>/<file>.md (a real, audit-findable case) must be deletable too,
-    not just a memory file sitting directly in memory/.
+    The check requires "memory" to be the exact second path segment below
+    <projects_base> (i.e. <project>/memory/...), not merely present anywhere in the
+    path -- an earlier version accepted any path containing a "memory" segment at any
+    depth, which also passed a file like <projects_base>/memory/unrelated.md (where
+    "memory" is itself a project directory name, not a project's memory subdirectory).
+    A nested memory/<sub>/<file>.md is still allowed past that second segment --
+    collect_memory_files() recurses into subdirectories under memory/, so a real,
+    audit-findable nested file must remain deletable too.
     """
     base = projects_base or DEFAULT_PROJECTS_BASE
     _assert_path_within_base(memory_path, base)
 
     resolved = os.path.realpath(memory_path)
-    if "memory" not in Path(resolved).parts:
-        raise ValueError(f"Refusing to delete a path outside a memory/ directory: {memory_path}")
+    resolved_base = os.path.realpath(base)
+    rel_parts = Path(resolved).relative_to(resolved_base).parts
+    if len(rel_parts) < 3 or rel_parts[1] != "memory":
+        raise ValueError(
+            f"Refusing to delete a path outside a project's memory/ directory: {memory_path}"
+        )
     if not os.path.isfile(resolved):
         raise ValueError(f"Memory file not found: {memory_path}")
 
