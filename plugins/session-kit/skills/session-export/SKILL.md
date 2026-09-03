@@ -16,6 +16,11 @@ Export a session as a clean transcript.
 - Wants to export a session, create a transcript, or save session history to a file
 - "export this session", "create a transcript"
 
+## When NOT to Use
+
+- Wants to see session details in the conversation, not a file/transcript output → use `session-detail`
+  instead
+
 ## Step 1: Resolve the session
 
 If no session specified, use the current one:
@@ -54,6 +59,12 @@ The exported transcript contains verbatim user messages, file paths, and (if inc
 
 ## Testing & Validation
 
+Eval suite: `evals/session-export/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
+passed.
+
+**Last dated run record:** `evals/session-export/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
+2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+
 **Verify this skill activates on:**
 - "export this session"
 - "create a transcript of this conversation"
@@ -63,5 +74,5 @@ The exported transcript contains verbatim user messages, file paths, and (if inc
 - "show session details for X" (no file output wanted) → `session-detail`
 
 **Quality gates:**
-- [ ] Step 1's command includes `--format json` so `path` is actually resolvable
+- [ ] Step 1's `current` call needs no `--format` flag — the command always emits JSON
 - [ ] `--output` examples never use a bare relative filename

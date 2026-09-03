@@ -13,7 +13,7 @@ Creates a new handoff document with auto-detected metadata:
 Usage:
     python create_handoff.py [task-slug] [--continues-from <previous-handoff>]
     python create_handoff.py "implementing-auth"
-    python create_handoff.py "auth-part-2" --continues-from 2024-01-15-143022-auth.md
+    python create_handoff.py "auth-part-2" --continues-from 2026-01-15-143022-auth.md
     python create_handoff.py  # auto-generates slug from timestamp
 """
 
@@ -23,6 +23,7 @@ import argparse
 import os
 import re
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -86,7 +87,7 @@ def find_previous_handoffs(project_path: str) -> list[dict]:
     for filepath in handoffs_dir.glob("*.md"):
         # Extract title from file
         try:
-            content = filepath.read_text()
+            content = filepath.read_text(encoding="utf-8")
             match = re.search(r"^#\s+(?:Handoff:\s*)?(.+)$", content, re.MULTILINE)
             title = match.group(1).strip() if match else filepath.stem
         except Exception:
@@ -320,12 +321,15 @@ def generate_handoff(
 """
 
     # Write the file
-    filepath.write_text(content)
+    filepath.write_text(content, encoding="utf-8")
 
     return str(filepath)
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+
     parser = argparse.ArgumentParser(
         description="Create a new handoff document with smart scaffolding"
     )

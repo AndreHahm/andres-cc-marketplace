@@ -11,7 +11,7 @@ Analyzes:
 
 Usage:
     python check_staleness.py <handoff-file>
-    python check_staleness.py .claude/handoffs/2024-01-15-143022-auth.md
+    python check_staleness.py .claude/handoffs/2026-01-15-143022-auth.md
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
 
 def parse_handoff_metadata(filepath: str) -> dict:
     """Extract metadata from a handoff file."""
-    content = Path(filepath).read_text()
+    content = Path(filepath).read_text(encoding="utf-8")
     metadata = {
         "created": None,
         "branch": None,
@@ -137,7 +137,10 @@ def check_files_exist(files: list[str], project_path: str) -> tuple[list[str], l
     missing = []
 
     for f in files:
-        full_path = Path(project_path) / f
+        # A leading "/" would make pathlib's "/" operator reset to the right-hand side
+        # (an absolute path), silently checking the real filesystem root instead of
+        # project_path -- strip it so every check stays contained under project_path.
+        full_path = Path(project_path) / f.lstrip("/")
         if full_path.exists():
             existing.append(f)
         else:
@@ -369,9 +372,12 @@ def print_report(result: dict):
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+
     if len(sys.argv) < 2:
         print("Usage: python check_staleness.py <handoff-file>")
-        print("Example: python check_staleness.py .claude/handoffs/2024-01-15-143022-auth.md")
+        print("Example: python check_staleness.py .claude/handoffs/2026-01-15-143022-auth.md")
         sys.exit(1)
 
     handoff_path = sys.argv[1]

@@ -27,6 +27,8 @@ Show detailed statistics for a single session.
 ## When NOT to Use
 
 - The full session profile (tasks, messages, summary), not just usage stats → use `session-detail` instead
+- Interruption recovery, not error listing ("my session crashed, help me continue") → use
+  `session-recover` instead
 
 ## Step 1: Resolve the session
 
@@ -74,10 +76,13 @@ as signals to review, not confirmed frustration.
 
 ## Testing & Validation
 
-No `evals/` suite — this skill's branching logic (`get_stats`/`get_errors`/`get_irritation_signals`) is
-confined to `scripts/session_transcript.py`, directly tested via `tests/test_session_transcript.py`; the
-skill body itself is a straight-line resolve→run→present flow with no prose-level judgment calls worth a
-comparison eval.
+Eval suite: `evals/session-stats/` — 2 scenarios (tool-error reporting, token/model breakdown reporting),
+`skill-tester` Quick Workflow blind comparison, both passed. `get_stats`/`get_errors`/
+`get_irritation_signals`'s own branching logic is additionally directly unit-tested via
+`tests/test_session_transcript.py`.
+
+**Last dated run record:** `evals/session-stats/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
+2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "session stats"
@@ -91,6 +96,6 @@ comparison eval.
 - "my session crashed, help me continue" (interruption recovery, not error listing) → `session-recover`
 
 **Quality gates:**
-- [ ] Step 1's command includes `--format json` so `path` is actually resolvable
+- [ ] Step 1's `current` call needs no `--format` flag — the command always emits JSON
 - [ ] `irritation` results are presented as signals to review, never as confirmed frustration
 - [ ] `errors` entries attribute the correct `tool_name` via `tool_use_id` matching, not silently "unknown"

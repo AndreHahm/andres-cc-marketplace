@@ -90,13 +90,36 @@ def check_bash_grants():
 
 
 def check_step_sequence():
+    # "## Step N:" headers (the common case) are checked as one continuous sequence across
+    # the whole document. "### Step N:" headers (session-handoff/session-recover's workflow
+    # steps -- an H2-only regex previously gave these two skills zero real coverage, found by
+    # skilldir-reviewer) are checked per enclosing "## " section instead, since a skill can
+    # have multiple named H2 workflow sections (e.g. session-handoff's separate CREATE/RESUME
+    # workflows) whose H3 steps each legitimately restart at 1.
     _, body, _ = _frontmatter_and_body()
-    numbers = [int(n) for n in re.findall(r"^## Step (\d+):", body, re.MULTILINE)]
-    if not numbers:
-        return True, "no '## Step N:' headers found (skip)"
-    expected = list(range(1, len(numbers) + 1))
-    if numbers != expected:
-        return False, f"Step numbering not sequential: found {numbers}, expected {expected}"
+    found_any = False
+
+    h2_numbers = [int(n) for n in re.findall(r"^## Step (\d+):", body, re.MULTILINE)]
+    if h2_numbers:
+        found_any = True
+        expected = list(range(1, len(h2_numbers) + 1))
+        if h2_numbers != expected:
+            return False, f"Step numbering not sequential: found {h2_numbers}, expected {expected}"
+
+    section_starts = [m.start() for m in re.finditer(r"^## ", body, re.MULTILINE)]
+    bounds = [0, *section_starts, len(body)]
+    chunks = [body[bounds[i] : bounds[i + 1]] for i in range(len(bounds) - 1)] or [body]
+    for chunk in chunks:
+        h3_numbers = [int(n) for n in re.findall(r"^### Step (\d+):", chunk, re.MULTILINE)]
+        if not h3_numbers:
+            continue
+        found_any = True
+        expected = list(range(1, len(h3_numbers) + 1))
+        if h3_numbers != expected:
+            return False, f"Step numbering not sequential: found {h3_numbers}, expected {expected}"
+
+    if not found_any:
+        return True, "no '## Step N:'/'### Step N:' headers found (skip)"
     return True, "Step headers sequential"
 
 

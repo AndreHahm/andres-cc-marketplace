@@ -8,6 +8,8 @@ Usage as CLI:
   python3 memory_scanner.py audit [--age-threshold N] [--projects-base PATH]
   python3 memory_scanner.py search "<query>" [--type TYPE] [--project FILTER] [--context N]
                                     [--limit N]
+  python3 memory_scanner.py delete-memory <path>
+    (--projects-base is intentionally NOT honored here -- see delete_memory()'s docstring)
 """
 
 from __future__ import annotations
@@ -52,13 +54,32 @@ def parse_frontmatter(content: str) -> dict:
     yaml_block = after_open[:close_idx]
     body = after_open[close_idx + 4 :]  # skip \n---
 
-    for line in yaml_block.split("\n"):
+    lines = yaml_block.split("\n")
+    block_scalar_re = re.compile(r"^[>|][+-]?\s*$")
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         colon_idx = line.find(":")
         if colon_idx == -1:
+            i += 1
             continue
         key = line[:colon_idx].strip()
         value = line[colon_idx + 1 :].strip()
-        value = re.sub(r'^["\'](.*?)["\']$', r"\1", value)
+        i += 1
+
+        if block_scalar_re.match(value):
+            # YAML block scalar (">-", "|", etc.) -- the real value is the following
+            # indented block, not this line's own 1-2 char indicator. Folded into a
+            # single space-joined string regardless of ">" (folded) vs "|" (literal)
+            # style -- good enough for a searchable/displayable description.
+            block_lines = []
+            while i < len(lines) and (lines[i][:1] in (" ", "\t") or not lines[i].strip()):
+                block_lines.append(lines[i].strip())
+                i += 1
+            value = " ".join(bl for bl in block_lines if bl)
+        else:
+            value = re.sub(r'^["\'](.*?)["\']$', r"\1", value)
+
         if key == "name":
             fm["name"] = value or None
         elif key == "description":
@@ -240,7 +261,14 @@ def scan_memories(
 # ---------------------------------------------------------------------------
 
 _ISO_DATE_PATTERN = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
-_ABS_PATH_PATTERN = re.compile(r"(/(?:Users|home|tmp|var|etc|opt)/[^\s\"'`),;>\]]+)")
+# Matches a Unix-rooted absolute path (/Users/..., /home/..., etc.) or a Windows
+# drive-letter absolute path (C:\..., C:/...) -- this plugin explicitly targets
+# Windows elsewhere (encode_project_path's own docstring), so stale-path detection
+# must not be silently inert for the platform it's most likely to run on.
+_ABS_PATH_PATTERN = re.compile(
+    r"(/(?:Users|home|tmp|var|etc|opt)/[^\s\"'`),;>\]]+"
+    r"|[A-Za-z]:[\\/][^\s\"'`),;>\]]+)"
+)
 
 SEVERITY_ORDER = {"critical": 0, "warning": 1, "info": 2}
 
@@ -604,6 +632,50 @@ def search_memories(
 
 
 # ---------------------------------------------------------------------------
+# delete_memory
+# ---------------------------------------------------------------------------
+
+
+def _assert_path_within_base(target_path: str, base_dir: str) -> None:
+    """Verify a resolved path stays within the expected base directory.
+
+    Uses realpath (resolves symlinks), not just abspath (lexical only) -- a
+    symlinked entry inside base_dir that points outside it must still be caught.
+    Mirrors session_store.py's own helper of the same name.
+    """
+    resolved_target = os.path.realpath(target_path)
+    resolved_base = os.path.realpath(base_dir)
+    if resolved_target != resolved_base and not resolved_target.startswith(resolved_base + os.sep):
+        raise ValueError("Path traversal detected")
+
+
+def delete_memory(memory_path: str, projects_base: str | None = None) -> dict:
+    """Delete one memory file, after validating it resolves under <projects_base>/*/memory/.
+
+    Contains the deletion the same way session_store.py's delete_session contains
+    session-file deletion -- the caller (a skill's own AskUserQuestion confirmation)
+    decides *whether* to delete; this function is the only path that actually unlinks
+    a file, and it refuses to unlink anything outside a real project's memory/ tree.
+
+    "Under memory/" means anywhere below a "memory" path segment, not necessarily its
+    immediate parent -- collect_memory_files() recurses into subdirectories under memory/,
+    so a nested memory/<sub>/<file>.md (a real, audit-findable case) must be deletable too,
+    not just a memory file sitting directly in memory/.
+    """
+    base = projects_base or DEFAULT_PROJECTS_BASE
+    _assert_path_within_base(memory_path, base)
+
+    resolved = os.path.realpath(memory_path)
+    if "memory" not in Path(resolved).parts:
+        raise ValueError(f"Refusing to delete a path outside a memory/ directory: {memory_path}")
+    if not os.path.isfile(resolved):
+        raise ValueError(f"Memory file not found: {memory_path}")
+
+    os.unlink(resolved)
+    return {"deleted": True, "path": resolved}
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -641,7 +713,7 @@ def main() -> None:
     command = args[0] if args and not args[0].startswith("-") else None
 
     if not command:
-        sys.stderr.write("Usage: python3 memory_scanner.py <scan|audit|search> ...\n")
+        sys.stderr.write("Usage: python3 memory_scanner.py <scan|audit|search|delete-memory> ...\n")
         sys.exit(1)
 
     try:
@@ -765,6 +837,21 @@ def main() -> None:
             ]
 
             print(to_ndjson(out) if out else to_json([]))
+
+        elif command == "delete-memory":
+            cmd_idx = args.index("delete-memory")
+            target_path = args[cmd_idx + 1] if cmd_idx + 1 < len(args) else None
+            if not target_path or target_path.startswith("-"):
+                _exit_with_error("Missing memory file path", 2)
+
+            # Deliberately ignores any --projects-base the caller passed -- the whole
+            # allowed-tools grant for this script is Bash(...:*), which permits arbitrary
+            # flags, so honoring a caller-supplied base here would let --projects-base
+            # trivially satisfy delete_memory's own containment check against a base of
+            # the caller's choosing. This is the one command in this script that deletes a
+            # file, so its containment base is fixed, not configurable.
+            result = delete_memory(target_path, projects_base=DEFAULT_PROJECTS_BASE)
+            print(to_json(result))
         else:
             _exit_with_error(f"Unknown command: {command}", 1)
     except SystemExit:

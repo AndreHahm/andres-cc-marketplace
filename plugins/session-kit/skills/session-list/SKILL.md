@@ -48,11 +48,25 @@ The script outputs a JSON array. Present as a markdown table:
 | # | Session ID | Project | Date | Messages | Duration | Size |
 |---|-----------|---------|------|----------|----------|------|
 
-Highlight the current session if it matches the working directory. Show the resume command: `claude --resume <session-id>`.
+To highlight the current session in the table, run
+`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" current` separately and mark whichever listed
+row's `session_id` matches its result — the `list` output itself carries no current-session marker.
+Show the resume command: `claude --resume <session-id>`.
 
 If the user asks for more detail on a specific session (tasks, full message transcript), use the `session-detail` skill; for a narrow token/model/tool-usage breakdown only, use `session-stats`.
 
 ## Testing & Validation
+
+Eval suite: `evals/session-list/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison. Eval 2
+(4/4) passed fully. Eval 1 (3/4) recorded one assertion failure: the run expected the default `list`
+call to filter to the current project, but Step 1's own default command has no `--project` filter by
+design (this skill lists globally by default, per its own description — filtering is opt-in, shown as
+the second example). Whether that eval assertion or the skill's own default is the one that should
+change is an open design question, not a fixed defect — noted here rather than silently claimed as a
+clean pass.
+
+**Last dated run record:** `evals/session-list/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
+2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "list my sessions"

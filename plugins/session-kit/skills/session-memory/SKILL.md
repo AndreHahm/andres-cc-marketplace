@@ -32,7 +32,8 @@ Run the memory scanner to discover all memory files across projects:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/memory_scanner.py" scan
 ```
 
-This command always prints JSON — no `--format` flag needed.
+This defaults to JSON (also accepts `--format table` for a human-readable table instead) — no
+`--format` flag needed for this skill's own JSON-parsing workflow below.
 
 Optional filters — add based on user request:
 - `--type user|feedback|project|reference` — filter by memory type
@@ -62,6 +63,12 @@ Based on what was found, suggest relevant next steps:
 - The `session-memory-search` skill — to search across memory content
 
 ## Testing & Validation
+
+Eval suite: `evals/session-memory/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
+passed.
+
+**Last dated run record:** `evals/session-memory/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
+2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "what do you remember"

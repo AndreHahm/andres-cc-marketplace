@@ -63,8 +63,8 @@ ready." (points at the `session-handoff` skill; do not create the handoff yourse
 ## Guardrails
 
 - Do not skip any workflow step.
-- If uncommitted changes exist, ask whether to commit (via `git-kit`) or leave them — don't decide
-  silently.
+- If uncommitted changes exist, use `AskUserQuestion` to ask whether to commit (via `git-kit`) or leave
+  them — never a printed "(yes/no)" prompt, and don't decide silently.
 
 ## Output
 
@@ -74,13 +74,23 @@ ready." (points at the `session-handoff` skill; do not create the handoff yourse
 - Next-session resume context
 - Handoff suggestion, if warranted
 
-After completing the ritual, ask: "Ready to end session?"
+After completing the ritual, use `AskUserQuestion` to ask: "Ready to end session?" — never a printed
+"(yes/no)" prompt.
 
 ## Testing & Validation
 
-No `evals/` suite — this is a fixed, non-branching prose ritual with no scripts and no conditional
-logic beyond "uncommitted changes exist or not"; the trigger and quality-gate checks below are the
-applicable test surface for a skill this shape.
+Eval suite: `evals/session-wrap-up/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison.
+Eval 1 (informational audit, 4/4 assertions) passed fully. Eval 2 (declining a lint/commit request,
+3/4 assertions) recorded one assertion failure that the run's own `grading.json` documents as a
+test-harness sandboxing gap, not a skill defect — the test agent's tool access let a dispatched
+`git-kit:commit` call actually execute rather than being intercepted by the eval harness; the skill's
+own documented behavior (audit informationally, route lint/commit requests to `git-kit`, never run them
+itself) was followed correctly. This is a fixed, non-branching prose ritual with no scripts and no
+conditional logic beyond "uncommitted changes exist or not", so the eval scope is correspondingly
+narrow.
+
+**Last dated run record:** `evals/session-wrap-up/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
+2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "wrap up"

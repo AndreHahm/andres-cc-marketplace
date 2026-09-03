@@ -39,6 +39,12 @@ import sys
 import time
 from pathlib import Path
 
+# Shared with the plugin's own scripts/ core -- import rather than reimplement, so the two
+# copies of this logic can't drift the way they already once did (session_store.py's
+# encode_project_path once lagged this file's own Windows-separator fix).
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from session_store import encode_project_path as normalize_path  # noqa: E402
+
 CLAUDE_DIR = Path.home() / ".claude"
 PROJECTS_DIR = CLAUDE_DIR / "projects"
 
@@ -61,15 +67,6 @@ END_REASON_LABELS = {
     "abandoned": "Abandoned (user message with no response)",
     "unknown": "Unknown",
 }
-
-
-def normalize_path(project_path: str) -> str:
-    """Convert absolute path to Claude's normalized directory name.
-
-    Claude Code encodes every path separator as "-" -- ":" and "\\" too on
-    Windows (e.g. "C:\\Dev\\proj" -> "C--Dev-proj"), not just "/".
-    """
-    return re.sub(r"[/\\:]", "-", project_path)
 
 
 def find_project_dir(project_path: str) -> Path | None:
