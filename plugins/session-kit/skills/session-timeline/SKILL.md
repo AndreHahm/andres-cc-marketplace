@@ -61,11 +61,17 @@ Identify patterns:
 
 ## Testing & Validation
 
-Eval suite: `evals/session-timeline/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
-passed.
+Eval suite: `evals/session-timeline/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison.
+Evals 1-2 passed. Eval 3 ("detailed timeline of this session's events") found a real, unresolved gap:
+a faithful reading of Step 1/Step 2 above produces only a `session_store.py`-driven, session-level
+timeline — `session_transcript.py` (also granted via this skill's `allowed-tools`) is only ever invoked
+conditionally, for per-session branch resolution, never as a path toward event-level detail. A request
+phrased around "detailed ... events" currently gets the same session-level bar chart regardless. See
+`evals/session-timeline/workspace/iteration-2/eval-3/with_skill/grading.json`'s `critical_note` for the
+full analysis; not fixed as part of this eval addition — flagged for a component-owner follow-up.
 
-**Last dated run record:** `evals/session-timeline/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-timeline/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "session timeline"

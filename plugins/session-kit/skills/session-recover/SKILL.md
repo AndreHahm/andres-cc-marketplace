@@ -267,15 +267,16 @@ proportion varies by session and hasn't been formally measured):
 
 ## Testing & Validation
 
-Eval suite: `evals/session-recover/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison.
+Eval suite: `evals/session-recover/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison.
 Eval 1 (continue-directly, 5/5) passed fully. Eval 2 (correctly-redirect-a-portable-doc-request, 2/3)
 recorded one real assertion failure: the skill reached the correct final answer (declined and named
 `session-resume`) but ran `extract_resume_context.py --list` first "in case it could still gather
 something useful" rather than declining immediately — a genuine behavioral signal worth tightening,
-not a harness artifact.
+not a harness artifact. Eval 3 (continue-directly, re-verified against the widened Step 2.5 gate, 3/3)
+confirmed the confirmation gate still fires correctly before Step 3 after this session's widening.
 
-**Last dated run record:** `evals/session-recover/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check (frontmatter, referenced-file existence,
+**Last dated run record:** `evals/session-recover/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check (frontmatter, referenced-file existence,
 `allowed-tools` grant usage, Testing & Validation completeness) also passing as of the same date.
 
 **Verify this skill activates on:**

@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Uses the `--delete-tasks` command variant (added this session) rather than treating task cleanup as a separate untracked step",
+      "passed": true,
+      "evidence": "Agent explicitly describes: 'If the user opted in to also deleting associated tasks, add `--delete-tasks`: python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py\" delete-session <session-id> --delete-tasks'"
+    },
+    {
+      "text": "Deletion (sessions and tasks together) is gated by a real `AskUserQuestion` confirmation before anything is deleted",
+      "passed": true,
+      "evidence": "Agent uses AskUserQuestion twice: 'I would invoke `AskUserQuestion` with two related questions: Question 1... Question 2: Also delete task entries associated with these sessions?'"
+    },
+    {
+      "text": "No raw `rm`/`rm -r` command is suggested or described as being run",
+      "passed": true,
+      "evidence": "Agent states: 'Delete only through the script — never shell commands, to ensure ID validation and orphan tracking' and never mentions rm in the workflow"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

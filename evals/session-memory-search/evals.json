@@ -14,11 +14,17 @@
       "name": "Correctly redirects a 'show me everything' request",
       "prompt": "Show me all my memories, I don't have a specific keyword in mind.",
       "expected_output": "Declines to run a keyword search itself and points to session-memory instead, per its own stated exclusion."
+    },
+    {
+      "id": 3,
+      "name": "Keyword search with expanded context beyond default",
+      "prompt": "Search my memories for 'auth bug', and show me more surrounding context around each match than usual.",
+      "expected_output": "Uses a non-default --context value (default is 0) that respects the user's request for 'more surrounding context', then presents results grouped by project with context lines indented below each match (not just the bare matched text)."
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 2,
-    "declared_scenarios_covered": 2,
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
     "uncovered": []
   }
 }

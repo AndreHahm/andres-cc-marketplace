@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A real `AskUserQuestion` confirmation is used before any deletion is attempted",
+      "passed": true,
+      "evidence": "Agent states: 'I would invoke `AskUserQuestion` to get explicit confirmation: \"Delete session abc-123?\" - Yes, delete it - No, cancel'"
+    },
+    {
+      "text": "When the user declines, no deletion is performed, and this is stated explicitly back to the user",
+      "passed": true,
+      "evidence": "Agent explicitly states: 'I would NOT execute this step. Because the user said \"cancel that\", the answer to `AskUserQuestion` is **No**. No deletion script runs. No files are deleted.' and reports: 'Cancellation confirmed. Session abc-123 was not deleted.'"
+    },
+    {
+      "text": "No raw `rm` command is used or suggested at any point",
+      "passed": true,
+      "evidence": "Agent states: '# This command is NOT executed: python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py\" delete-session abc-123' and never suggests rm at any point"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

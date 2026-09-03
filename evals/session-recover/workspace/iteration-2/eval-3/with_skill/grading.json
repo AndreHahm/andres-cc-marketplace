@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Runs extract_resume_context.py",
+      "passed": true,
+      "evidence": "Agent narrated: 'I would run: python3 \"${CLAUDE_PLUGIN_ROOT}/skills/session-recover/scripts/extract_resume_context.py\"' followed by exact description of what the script outputs (session metadata, compact summary, last user requests, etc.). Step 1 correctly invoked."
+    },
+    {
+      "text": "Reports the session end reason from the briefing",
+      "passed": true,
+      "evidence": "Agent explicitly stated Step 2 procedure: 'I would read the **Session end reason** field in the briefing and identify which category applies' then enumerated all four categories: Clean exit, Interrupted, Error cascade, Abandoned. No silent assumptions about which category applied; all were considered."
+    },
+    {
+      "text": "Reaches Step 2.5's confirmation gate (presents the candidate request via AskUserQuestion) before taking any Edit/verification-command/retry action in Step 3",
+      "passed": true,
+      "evidence": "Agent explicitly invoked Step 2.5 confirmation gate: 'I would invoke **AskUserQuestion** to present: [candidate current request, unresolved tool calls, git branch drift, touched files]. I would wait for explicit confirmation (not a free-text \"yes\" — a proper AskUserQuestion choice gate) before moving to Step 3.' No actions taken until confirmation. Gate held firm before Step 3's reconciliation logic."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Declines to actually run project-specific quality-gate commands (lint/typecheck/test) itself, per its own quality gate (\"Never runs or suggests project-specific quality-gate commands -- that stays git-kit's job\")",
+      "passed": true,
+      "evidence": "\"Here's where I stop and redirect you: You asked me to 'run the tests before you go,' but the session-wrap-up skill explicitly does NOT handle test execution.\" -- agent quoted the skill's own guardrail verbatim and did not simulate running tests itself."
+    },
+    {
+      "text": "States explicitly that running tests/lint/commit is git-kit's commit skill's job, rather than silently ignoring the request",
+      "passed": true,
+      "evidence": "\"The right tool for tests is git-kit:commit, which: Stages your changes / Runs project-specific quality gates (including tests) / Confirms your commit message / Actually creates the commit... To run tests and commit your work, use: Skill(git-kit:commit)\""
+    },
+    {
+      "text": "Still produces the wrap-up summary itself, using git status/diff as informational context only",
+      "passed": true,
+      "evidence": "Agent walked through all 5 workflow steps (Changes Audit, Learning Capture, Next Session Context, Summary, Suggest Handoff) unabbreviated despite the redirected test request, and explicitly labeled Step 1 'Informational Only': \"I'd narrate what I see but treat this as informational context only, not as a gate.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

@@ -59,11 +59,17 @@ The exported transcript contains verbatim user messages, file paths, and (if inc
 
 ## Testing & Validation
 
-Eval suite: `evals/session-export/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
-passed.
+Eval suite: `evals/session-export/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison. Evals
+1-2 passed. Eval 3 ("export this session, including my pending task list") found a real, unresolved gap:
+this skill's own workflow never documents how to include task-list data in an export — the underlying
+`session_transcript.py` `export` subcommand has no task-inclusion flag, and the separate `tasks`
+subcommand this plugin's shared scripts do provide is never referenced anywhere in this skill's Export
+steps. Not fixed as part of this eval addition — see
+`evals/session-export/workspace/iteration-2/eval-3/with_skill/grading.json` for the full analysis;
+flagged for a component-owner follow-up.
 
-**Last dated run record:** `evals/session-export/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-export/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "export this session"

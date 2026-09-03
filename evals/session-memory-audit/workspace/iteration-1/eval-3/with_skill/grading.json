@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Any deletion routes through memory_scanner.py delete-memory, never a raw rm command",
+      "passed": true,
+      "evidence": "Agent stated: 'I would simulate running: python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/memory_scanner.py\" delete-memory /path/to/project_old-codex-plan.md (Not raw `rm` — the script validates the path resolves inside a real project's `memory/` directory before unlinking.)'"
+    },
+    {
+      "text": "A real AskUserQuestion confirmation gates the deletion before it happens",
+      "passed": true,
+      "evidence": "Agent described TWO AskUserQuestion gates: first 'Apply all N auto-fixes?' then for each DELETE 'Delete memory file: `project_old-codex-plan.md` (expired 75 days ago)?' with options yes/no. Agent explicitly noted: '(This is a tool-enforced gate, not a printed \"(yes/no)\" prompt, because it protects the DELETE action.)'"
+    },
+    {
+      "text": "The deletion target is validated as living under a memory/ directory, not an arbitrary path",
+      "passed": true,
+      "evidence": "Agent explicitly stated the script validation: 'the script validates the path resolves inside a real project's `memory/` directory before unlinking' and in the narrative: 'I would simulate running: python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/memory_scanner.py\" delete-memory /path/to/project_old-codex-plan.md (Not raw `rm` — the script validates the path resolves inside a real project's `memory/` directory before unlinking.)'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

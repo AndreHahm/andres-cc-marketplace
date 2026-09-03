@@ -1,0 +1,22 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Invokes session_transcript.py (the script this session's allowed-tools grant was specifically widened to permit) rather than only the shared session_store.py",
+      "passed": false,
+      "evidence": "Faithful walkthrough of the SKILL.md's own literal Step 1 invoked only `python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py\" timeline --project \"$(basename $(pwd))\" --format json`. session_transcript.py was never called: the SKILL.md's own text mentions it exactly once, conditionally, for resolving per-session branch info ('If branch changes matter to the user, resolve them per-session via session_transcript.py diff/resume ... rather than assuming the timeline data carries a branch'), not as a path the skill directs the agent toward for a general 'detailed timeline of events' request."
+    },
+    {
+      "text": "Produces a chronological, event-level listing (not just a coarse session-list-style summary)",
+      "passed": false,
+      "evidence": "Output format matches the SKILL.md's Step 2 template verbatim: one row per session with a date/duration bar and message count (e.g. '2026-04-08  ████░░░░  45m  (12 messages)'), followed by cadence/gap/session-length pattern narration. This is session-level granularity across the whole project history, not an event-by-event breakdown of what happened inside one session -- the skill's own documented data model (session_id, project, date, messages, duration_minutes, size_bytes, path) carries no per-event fields to render."
+    }
+  ],
+  "summary": {
+    "assertions_total": 2,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  },
+  "critical_note": "METHODOLOGY DEVIATION (disclosed): this eval's with_skill response was produced directly by the grading agent, not by a blind nested Agent dispatch, because the nested Agent (id a61d043823b9ba372, dispatched earlier in this session with the full SKILL.md and scenario prompt, instructed to simulate rather than execute) had not returned a completion notification, and the coordinator explicitly instructed proceeding without further waiting to meet a turn deadline. This breaks blind-testing purity -- the simulator authored the assertions above and was not blind to them. The response was nonetheless derived faithfully from the SKILL.md's own literal Step 1/Step 2 instructions as written, not steered toward a particular pass/fail outcome, and both assertions failed on that faithful reading.\n\nREAL SKILL DEFECT FINDING: both assertion failures point to a genuine gap between the skill's allowed-tools grant and its own prose. The SKILL.md's allowed-tools frontmatter grants Bash access to session_transcript.py (a script the surrounding task context indicates this grant was specifically widened to permit), but the skill's own body never instructs the agent to reach for it, or for any event-level detail, in response to a 'detailed timeline of ... events' phrasing -- it only surfaces session_transcript.py as a conditional per-session branch lookup. Combined with the skill's own data model being strictly session-level (no event-level fields), a user request phrased around 'detailed ... events' will get a session-level bar chart regardless, which may or may not match user expectations. This is a documentation/instruction-completeness gap worth a component owner's review, not a test-harness artifact -- flagged prominently rather than papered over."
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Falls back to listing/comparing the 2 most recent sessions when no explicit session IDs are given, rather than erroring or asking unnecessarily", "passed": true, "evidence": "Agent: 'Since no session IDs were named, this hits the fallback logic... Run: python3 \".../session_store.py\" list --project \"andres-cc-marketplace\" --limit 2 --format json' -- proceeds directly to the 2-most-recent-session fallback rather than erroring or asking the user first."},
+    {"text": "The list-fallback call includes --format json per the skill's own quality gate", "passed": true, "evidence": "Agent's shown command: 'python3 \".../session_store.py\" list --project \"andres-cc-marketplace\" --limit 2 --format json' -- --format json explicitly present."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

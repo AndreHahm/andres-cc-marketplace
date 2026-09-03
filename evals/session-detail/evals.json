@@ -16,11 +16,18 @@
       "prompt": "I just want the token cost breakdown for this session, nothing else.",
       "expected_output": "Declines to produce the full profile and points the user to session-stats instead, per its own stated exclusion.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Correctly redirects cross-session task aggregation request",
+      "prompt": "what tasks are pending across my sessions",
+      "expected_output": "Recognizes request asks for cross-session task aggregation (not detail on one session), declines to answer using single-session view, redirects to session-tasks skill. Does not synthesize multi-session answer itself or attempt multiple session-detail calls.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 2,
-    "uncovered": ["what tasks are pending across my sessions -> session-tasks redirect"]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

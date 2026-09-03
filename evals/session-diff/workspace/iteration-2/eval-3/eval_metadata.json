@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-diff/SKILL.md",
+  "assertions": [
+    {"text": "Falls back to listing/comparing the 2 most recent sessions when no explicit session IDs are given, rather than erroring or asking unnecessarily", "type": "functionality", "target": "fallback behavior"},
+    {"text": "The list-fallback call includes --format json per the skill's own quality gate", "type": "structure", "target": "script invocation"}
+  ]
+}

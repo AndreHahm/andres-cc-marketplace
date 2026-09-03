@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-list/SKILL.md",
+  "assertions": [
+    {"text": "Redirects to session-timeline per its own stated exclusion, rather than answering directly", "type": "functionality", "target": "routing behavior"},
+    {"text": "Does not attempt to answer using session-list's own default listing view", "type": "functionality", "target": "scope boundary"}
+  ]
+}

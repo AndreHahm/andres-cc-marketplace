@@ -16,11 +16,18 @@
       "prompt": "Show me my longest sessions across all projects, sorted by duration.",
       "expected_output": "Runs session_store.py list --sort size (or duration-equivalent) with --format json, no --project filter, presents results sorted accordingly.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Redirect chronological/pattern framing to session-timeline",
+      "prompt": "show me all sessions, chronologically",
+      "expected_output": "Recognizes the chronological/pattern-oriented framing and redirects to session-timeline skill per the stated exclusion, rather than answering with a flat session-list table.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 2,
-    "uncovered": ["show me all sessions (chronological/pattern framing) -> session-timeline redirect"]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

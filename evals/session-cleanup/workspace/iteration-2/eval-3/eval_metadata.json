@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-cleanup/SKILL.md",
+  "assertions": [
+    {
+      "text": "Uses the `--delete-tasks` command variant (added this session) rather than treating task cleanup as a separate untracked step",
+      "type": "functionality",
+      "target": "SKILL.md workflow"
+    },
+    {
+      "text": "Deletion (sessions and tasks together) is gated by a real `AskUserQuestion` confirmation before anything is deleted",
+      "type": "presence",
+      "target": "confirmation gate"
+    },
+    {
+      "text": "No raw `rm`/`rm -r` command is suggested or described as being run",
+      "type": "structure",
+      "target": "deletion mechanism"
+    }
+  ]
+}

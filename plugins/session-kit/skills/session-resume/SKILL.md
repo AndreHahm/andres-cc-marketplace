@@ -106,15 +106,17 @@ This skill works **retroactively** on any past session, even ones that ended abr
 
 ## Testing & Validation
 
-Eval suite: `evals/session-resume/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison. Eval 2
-(1.0) passed fully. Eval 1 (0/3) recorded as inconclusive, not a skill defect: the eval's own prompt
-referenced a fictional "session on the auth feature" that doesn't exist in this repo's real session
-data. The skill's actual behavior — running real keyword searches, finding nothing, and asking for
-disambiguation instead of fabricating a plausible-looking recovery document — is exactly correct;
-recommend re-running that scenario with a real session ID/topic for a clean signal.
+Eval suite: `evals/session-resume/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison. Eval 2
+(1.0) and eval 3 (3/3) passed fully. Eval 1 (0/3) recorded as inconclusive, not a skill defect: the eval's
+own prompt referenced a fictional "session on the auth feature" that doesn't exist in this repo's real
+session data. The skill's actual behavior — running real keyword searches, finding nothing, and asking
+for disambiguation instead of fabricating a plausible-looking recovery document — is exactly correct;
+recommend re-running that scenario with a real session ID/topic for a clean signal. Eval 3 verified the
+`current`-session fallback (no explicit session ID given) resolves correctly and still produces a
+portable document rather than taking direct action, per the Data-Only Boundary.
 
-**Last dated run record:** `evals/session-resume/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-resume/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "resume from my last session"

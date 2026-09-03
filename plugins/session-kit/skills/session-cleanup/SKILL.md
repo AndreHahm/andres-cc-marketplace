@@ -94,11 +94,12 @@ Delete through this script only. Do not suggest a manual `rm -r` on a task-list 
 
 ## Testing & Validation
 
-Eval suite: `evals/session-cleanup/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
-passed.
+Eval suite: `evals/session-cleanup/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison, all
+passed. Eval 3 verified the `--delete-tasks` variant is gated by the same real `AskUserQuestion`
+confirmation as session deletion, with no raw `rm` used.
 
-**Last dated run record:** `evals/session-cleanup/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-cleanup/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "clean up old sessions"

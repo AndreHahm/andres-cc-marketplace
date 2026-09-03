@@ -14,11 +14,17 @@
       "name": "Correctly redirects a portable-document request",
       "prompt": "I want a portable recovery document for this session that I can hand to a different, separate session later.",
       "expected_output": "Declines to produce a document itself and points to session-resume instead, per its own stated exclusion."
+    },
+    {
+      "id": 3,
+      "name": "Check what I was working on and keep going",
+      "prompt": "check what I was working on in the last session and keep going",
+      "expected_output": "Runs extract_resume_context.py (no --session flag, uses latest for current project). Reports the session end reason from the briefing (clean exit, interrupted, error cascade, or abandoned). Presents candidate current request via AskUserQuestion at Step 2.5 (confirmation gate) before any Step 3 actions (Edit, verification commands, tool call retries). Never silently retries or assumes old claims are valid."
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 5,
-    "declared_scenarios_covered": 2,
-    "uncovered": ["'check what I was working on in the last session and keep going'", "'don't resume, just read the .claude files and continue'", "'load the latest handoff' (explicit prior save exists) -> session-handoff"]
+    "declared_scenarios_covered": 3,
+    "uncovered": ["'don't resume, just read the .claude files and continue'", "'load the latest handoff' (explicit prior save exists) -> session-handoff"]
   }
 }

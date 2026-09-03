@@ -14,6 +14,17 @@
       "name": "Correctly redirects an in-place continuation request",
       "prompt": "My session just crashed with ctrl-c, help me continue working on it right here in this conversation.",
       "expected_output": "Declines and points to session-recover instead, per its own stated 'When NOT to Use' exclusion -- does not synthesize a recovery document for this request."
+    },
+    {
+      "id": 3,
+      "name": "Resume with implicit current session (current fallback)",
+      "prompt": "resume from my last session",
+      "expected_output": "Step 1: resolves session via current project discovery (session_store.py list --project ... --format json, or fallback to current if empty). Step 1 command includes --format json per quality gate. Step 2: Extracts resume data via session_transcript.py. Step 3: Produces portable Markdown recovery document (provenance marker + 6 sections: What worked on, Key files, Decisions, Pending work, Last state, Git commits), not direct action. Offers claude --resume alternative."
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
+  }
 }

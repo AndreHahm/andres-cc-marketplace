@@ -16,6 +16,18 @@
       "prompt": "Delete this specific session, ID abc123.",
       "expected_output": "Declines and points to session-delete instead, per its own stated exclusion.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Clean up old sessions and handle orphaned tasks",
+      "prompt": "Clean up old sessions and also remove any now-orphaned task entries.",
+      "expected_output": "Runs cleanup to identify candidates, gates deletion behind AskUserQuestion confirmation, uses --delete-tasks flag when user opts in, then checks for orphaned task lists and gates their removal behind a second AskUserQuestion. All deletions flow through the Python script, never raw rm.",
+      "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
+  }
 }

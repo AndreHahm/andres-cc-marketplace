@@ -71,11 +71,12 @@ Present as a side-by-side comparison with your interpretation.
 
 ## Testing & Validation
 
-Eval suite: `evals/session-diff/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
-passed.
+Eval suite: `evals/session-diff/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison, all
+passed. Eval 3 verified the no-session-IDs-given fallback correctly resolves the 2 most recent sessions
+with `--format json`.
 
-**Last dated run record:** `evals/session-diff/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-diff/workspace/iteration-2/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "what changed between sessions X and Y"

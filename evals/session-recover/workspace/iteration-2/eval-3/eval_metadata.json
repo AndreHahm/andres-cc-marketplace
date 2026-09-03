@@ -1,0 +1,22 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/session-kit/skills/session-recover/SKILL.md",
+  "scenario": "check-what-I-was-working-on-and-keep-going",
+  "assertions": [
+    {
+      "text": "Runs extract_resume_context.py",
+      "type": "functionality",
+      "target": "Step 1"
+    },
+    {
+      "text": "Reports the session end reason from the briefing",
+      "type": "presence",
+      "target": "Step 2"
+    },
+    {
+      "text": "Reaches Step 2.5's confirmation gate (presents the candidate request via AskUserQuestion) before taking any Edit/verification-command/retry action in Step 3",
+      "type": "functionality",
+      "target": "Step 2.5 gate (widened this session)"
+    }
+  ]
+}

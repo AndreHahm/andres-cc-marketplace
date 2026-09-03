@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Orphaned status is computed by cross-referencing task-lists' last_modified field, not asserted as a raw field the tasks output itself carries", "passed": true, "evidence": "\"I do NOT trust an `\\\"orphaned\\\": true` field if it exists in the task JSON. I compute it fresh from the `last_modified` timestamp.\" followed by a worked example comparing a task's owning task-list last_modified against the 7-day cutoff"},
+    {"text": "The tasks invocation includes --format json", "passed": true, "evidence": "command run: `python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py\" tasks --format json`"}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0}
+}

@@ -16,6 +16,18 @@
       "prompt": "Find and delete all my old sessions.",
       "expected_output": "Declines and points to session-cleanup for the bulk-find part, per its own stated exclusion.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "User cancels deletion at confirmation gate",
+      "prompt": "Delete session abc-123 — actually wait, cancel that, don't delete it after all.",
+      "expected_output": "Previews the session via session-detail, presents confirmation via AskUserQuestion, respects user's cancellation decision, performs no deletion, explicitly confirms to user that session was not deleted. Never suggests or executes raw rm.",
+      "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
+  }
 }

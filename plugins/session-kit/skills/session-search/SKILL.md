@@ -69,11 +69,12 @@ If no results, suggest broadening the search or trying different keywords.
 
 ## Testing & Validation
 
-Eval suite: `evals/session-search/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
-passed.
+Eval suite: `evals/session-search/` — 3 scenarios, `skill-tester` Quick Workflow blind comparison, all
+passed. Eval 3 verified a cross-project keyword lookup with no continuation intent stays a pure search,
+never attempting to continue the found work itself.
 
-**Last dated run record:** `evals/session-search/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
-2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
+**Last dated run record:** `evals/session-search/workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`,
+2026-09-03. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "find that session where I fixed the login bug"

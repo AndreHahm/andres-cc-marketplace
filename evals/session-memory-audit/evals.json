@@ -14,11 +14,17 @@
       "name": "Correctly redirects a keyword search",
       "prompt": "Find memories mentioning the deployment process.",
       "expected_output": "Declines to run the audit itself and points to session-memory-search instead, per its own stated exclusion."
+    },
+    {
+      "id": 3,
+      "name": "Health-check with deletion: enforces safety gates and path containment",
+      "prompt": "Check my memory health, and delete the stale memory file you find.",
+      "expected_output": "Runs audit, presents findings in Section A (auto-fixable) and Section B (AI-assisted). For any DELETE action: uses memory_scanner.py delete-memory (never raw rm), enforces AskUserQuestion confirmation gates (one to approve the batch, one per DELETE item), and validates the deletion target path resolves inside a project's memory/ directory before unlinking."
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 2,
-    "declared_scenarios_covered": 2,
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
     "uncovered": []
   }
 }
