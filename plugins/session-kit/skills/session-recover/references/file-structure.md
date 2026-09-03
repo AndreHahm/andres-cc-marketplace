@@ -4,27 +4,7 @@ Ground-truth reference for `~/.claude/` directory layout and JSONL session forma
 
 ## Directory Layout
 
-```
-~/.claude/
-  projects/                           # Per-project session storage (primary)
-    <normalized-path>/
-      sessions-index.json             # Master index of all sessions
-      <session-id>.jsonl              # Session transcript
-      <session-id>/                   # Session subdirectory (optional)
-        subagents/
-          agent-<agent-id>.meta.json  # Agent metadata
-          agent-<agent-id>.jsonl      # Agent transcript
-        tool-results/
-          toolu_<tool-id>.txt         # Large tool outputs
-      memory/                         # Persistent memory files (MEMORY.md, etc.)
-  history.jsonl                       # Global prompt history (no session IDs)
-  tasks/                              # Task tracking (per-session lock/highwatermark)
-  plans/                              # Plan documents (random-name.md)
-  debug/                              # Per-session debug logs (<session-id>.txt)
-  transcripts/                        # Global tool operation logs (ses_<id>.jsonl)
-  file-history/                       # File modification backups
-  todos/                              # Todo items
-```
+See [schema-examples.md#directory-layout](schema-examples.md#directory-layout) for the full tree.
 
 ## Path Normalization
 
@@ -42,27 +22,7 @@ it here, since a second hand-written copy of this fact is exactly what drifted o
 
 ## sessions-index.json Schema
 
-```json
-{
-  "version": 1,
-  "entries": [
-    {
-      "sessionId": "20089b2a-e3dd-48b8-809c-0647128bf3b8",
-      "fullPath": "~/.claude/projects/-path-to-project/20089b2a-....jsonl",
-      "fileMtime": 1741327503477,
-      "firstPrompt": "fix the login bug",
-      "summary": "Fixed authentication redirect...",
-      "messageCount": 42,
-      "created": "2026-03-07T03:25:03.477Z",
-      "modified": "2026-03-07T12:21:43.806Z",
-      "gitBranch": "main",
-      "projectPath": "/path/to/project",
-      "isSidechain": false
-    }
-  ],
-  "originalPath": "/path/to/project"
-}
-```
+See [schema-examples.md#sessions-indexjson-schema](schema-examples.md#sessions-indexjson-schema) for the full example.
 
 Key fields for session identification:
 - `sessionId` — UUID v4 format
@@ -131,23 +91,7 @@ Each `.jsonl` file has one JSON object per line. Common types:
 
 ### User message
 
-```json
-{
-  "parentUuid": "prev-uuid or null",
-  "isSidechain": false,
-  "cwd": "/path/to/project",
-  "sessionId": "session-uuid",
-  "version": "2.1.71",
-  "gitBranch": "main",
-  "type": "user",
-  "message": {
-    "role": "user",
-    "content": "fix the login bug"
-  },
-  "uuid": "msg-uuid",
-  "timestamp": "2026-03-07T03:25:03.477Z"
-}
-```
+See [schema-examples.md#user-message-full-example](schema-examples.md#user-message-full-example) for the full example.
 
 **Important**: `.message.content` can be:
 - A **string** for plain text user messages
@@ -161,20 +105,7 @@ Each `.jsonl` file has one JSON object per line. Common types:
 
 ### Assistant message
 
-```json
-{
-  "type": "assistant",
-  "message": {
-    "role": "assistant",
-    "model": "claude-opus-4-6",
-    "content": [
-      { "type": "thinking", "thinking": "internal reasoning..." },
-      { "type": "text", "text": "visible response text" },
-      { "type": "tool_use", "id": "toolu_...", "name": "Bash", "input": { "command": "..." } }
-    ]
-  }
-}
-```
+See [schema-examples.md#assistant-message-full-example](schema-examples.md#assistant-message-full-example) for the full example.
 
 Content block types in assistant messages:
 - `thinking` — internal reasoning (skip when extracting actionable context)
