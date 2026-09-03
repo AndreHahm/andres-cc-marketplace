@@ -151,13 +151,23 @@ def check_files_exist(files: list[str], project_path: str) -> tuple[list[str], l
     """Check which files from handoff still exist."""
     existing = []
     missing = []
+    base = Path(project_path).resolve()
 
     for f in files:
         # A leading "/" would make pathlib's "/" operator reset to the right-hand side
-        # (an absolute path), silently checking the real filesystem root instead of
-        # project_path -- strip it so every check stays contained under project_path.
-        full_path = Path(project_path) / f.lstrip("/")
-        if full_path.exists():
+        # (an absolute path); stripping it alone still leaves a "../" segment free to
+        # walk outside project_path once resolved. An untrusted handoff table entry
+        # like "../../etc/passwd" must never be reported as an existing reference just
+        # because that unrelated file happens to exist elsewhere on disk -- resolve the
+        # candidate and require it to stay under project_path, same containment check
+        # session_store.py's own _assert_path_within_base() uses.
+        candidate = (Path(project_path) / f.lstrip("/")).resolve()
+        try:
+            candidate.relative_to(base)
+        except ValueError:
+            missing.append(f)
+            continue
+        if candidate.exists():
             existing.append(f)
         else:
             missing.append(f)

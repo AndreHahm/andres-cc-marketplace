@@ -483,10 +483,36 @@ def extract_subagent_context(session_file: Path) -> list[dict]:
                 # latest block reports it completed even though the other call is still
                 # unresolved. Pairing by ID (add on tool_use, discard on the matching
                 # tool_result's tool_use_id) is the only way to get that right.
+                #
+                # This pass scans the FULL transcript, not just the last 10 lines -- a
+                # tool_use followed by 10+ intervening progress/system records before
+                # interruption would otherwise fall outside a tail-only slice and be
+                # missed, reporting a genuinely-interrupted subagent as completed.
                 unresolved_tool_ids: set[str] = set()
-                # Check last 10 lines for final assistant text -- forward (chronological)
-                # order, so tool_use is always seen before its own tool_result, same as it
-                # actually happened.
+                for raw_line in lines:
+                    try:
+                        obj = json.loads(raw_line)
+                        msg = obj.get("message", {})
+                        role = msg.get("role", "")
+                        content = msg.get("content", "")
+
+                        if role == "assistant" and isinstance(content, list):
+                            for block in content:
+                                if isinstance(block, dict) and block.get("type") == "tool_use":
+                                    tool_id = block.get("id")
+                                    if tool_id:
+                                        unresolved_tool_ids.add(tool_id)
+
+                        if role == "user" and isinstance(content, list):
+                            for block in content:
+                                if isinstance(block, dict) and block.get("type") == "tool_result":
+                                    unresolved_tool_ids.discard(block.get("tool_use_id"))
+                    except json.JSONDecodeError:
+                        continue
+
+                # Check last 10 lines for final assistant text -- a separate, bounded
+                # pass so "final output" still means recent output, not the ID-pairing
+                # scan's full-file scope above.
                 for raw_line in lines[-10:]:
                     try:
                         obj = json.loads(raw_line)
@@ -496,22 +522,10 @@ def extract_subagent_context(session_file: Path) -> list[dict]:
 
                         if role == "assistant" and isinstance(content, list):
                             for block in content:
-                                if not isinstance(block, dict):
-                                    continue
-                                block_type = block.get("type")
-                                if block_type == "tool_use":
-                                    tool_id = block.get("id")
-                                    if tool_id:
-                                        unresolved_tool_ids.add(tool_id)
-                                elif block_type == "text":
+                                if isinstance(block, dict) and block.get("type") == "text":
                                     text = block.get("text", "")
                                     if text.strip():
                                         last_text = text.strip()[:500]
-
-                        if role == "user" and isinstance(content, list):
-                            for block in content:
-                                if isinstance(block, dict) and block.get("type") == "tool_result":
-                                    unresolved_tool_ids.discard(block.get("tool_use_id"))
                     except json.JSONDecodeError:
                         continue
 
@@ -867,10 +881,26 @@ def main() -> None:
                 if full_path and Path(full_path).exists():
                     session_file = Path(full_path)
             if not session_file.exists():
-                for jsonl in project_dir.glob("*.jsonl"):
-                    if session_id in jsonl.name:
-                        session_file = jsonl
-                        break
+                # A bare substring match (session_id anywhere in the filename) could
+                # silently load an unrelated session -- e.g. "abc" matching
+                # "prefix-abc-suffix.jsonl" -- combining the wrong transcript with this
+                # project's current Git state. Require session_id to be a *prefix* of the
+                # filename stem instead, and reject an ambiguous multi-match rather than
+                # silently picking the first one glob() happens to return.
+                prefix_matches = [
+                    jsonl
+                    for jsonl in project_dir.glob("*.jsonl")
+                    if jsonl.stem.startswith(session_id)
+                ]
+                if len(prefix_matches) == 1:
+                    session_file = prefix_matches[0]
+                elif len(prefix_matches) > 1:
+                    print(
+                        f"Error: '{session_id}' matches multiple session files ambiguously: "
+                        + ", ".join(sorted(p.stem for p in prefix_matches)),
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
                 else:
                     print(f"Error: session file not found for {session_id}", file=sys.stderr)
                     sys.exit(1)
