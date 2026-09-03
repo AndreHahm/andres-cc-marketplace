@@ -581,6 +581,10 @@ class TestGetModelDistribution:
         assert data[0]["tokens"] > 0
         assert data[0]["sessions"] > 0
 
+    def test_since_filters_dates(self, fake_projects_dir):
+        data = get_model_distribution(projects_base=fake_projects_dir, since="2026-04-11")
+        assert data == []
+
 
 class TestGetActivityHeatmap:
     def test_returns_7x24_grid(self, fake_projects_dir):
@@ -592,3 +596,8 @@ class TestGetActivityHeatmap:
         assert data["maxValue"] >= 0
         total = sum(sum(row) for row in data["grid"])
         assert total > 0
+
+    def test_since_filters_dates(self, fake_projects_dir):
+        data = get_activity_heatmap(projects_base=fake_projects_dir, since="2026-04-11")
+        total = sum(sum(row) for row in data["grid"])
+        assert total == 0

@@ -150,6 +150,18 @@ def collect_memory_files(memory_dir: str) -> list[str]:
     return results
 
 
+def relative_memory_path(file_path: str, memory_dir: str) -> str:
+    """A memory file's path relative to memory_dir, using forward slashes.
+
+    MEMORY.md links are Markdown-style relative paths (e.g. "decisions/note.md"),
+    forward-slash-separated even on Windows -- comparing against a bare
+    os.path.basename() only matches a file sitting directly in memory_dir, and
+    incorrectly reports a correctly-linked nested file (memory/<sub>/<file>.md)
+    as unindexed/orphaned.
+    """
+    return os.path.relpath(file_path, memory_dir).replace(os.sep, "/")
+
+
 def is_valid_memory_type(t: str | None) -> bool:
     """Type guard: checks if a string is a valid memory type."""
     return t in VALID_MEMORY_TYPES
@@ -232,7 +244,7 @@ def scan_memories(
             if type_filter and mem_type != type_filter:
                 continue
 
-            indexed = file_name in linked
+            indexed = relative_memory_path(file_path, memory_dir) in linked
 
             result["memories"].append(
                 {
@@ -353,7 +365,8 @@ def audit_memories(projects_base: str | None = None, age_threshold: int = 60) ->
         all_files = collect_memory_files(memory_dir)
         for file_path in all_files:
             file_name = os.path.basename(file_path)
-            if file_name not in linked:
+            rel_path = relative_memory_path(file_path, memory_dir)
+            if rel_path not in linked:
                 content = ""
                 try:
                     with open(file_path, encoding="utf-8") as f:
@@ -374,14 +387,14 @@ def audit_memories(projects_base: str | None = None, age_threshold: int = 60) ->
                     "file": file_name,
                     "project": project,
                     "path": file_path,
-                    "message": f"{file_name} exists in memory directory but is not indexed in "
+                    "message": f"{rel_path} exists in memory directory but is not indexed in "
                     "MEMORY.md",
-                    "suggestion": f"Add {file_name} to MEMORY.md index",
+                    "suggestion": f"Add {rel_path} to MEMORY.md index",
                     "autoFixable": has_fm,
                 }
                 if not has_fm:
                     entry_finding["aiAction"] = (
-                        f"Read {file_name}, generate appropriate frontmatter, then add to MEMORY.md"
+                        f"Read {rel_path}, generate appropriate frontmatter, then add to MEMORY.md"
                     )
                 findings.append(entry_finding)
 
