@@ -283,7 +283,11 @@ def get_irritation_signals(path: str) -> dict:
 
     Correction phrases are case-insensitive substring matches against a fixed list
     ("wrong", "stop", "undo", etc.) in user message text. A stuck loop is 3+
-    consecutive identical tool calls (same tool name and input) in assistant messages.
+    consecutive identical tool calls (same tool name and input) in assistant messages,
+    with no genuine human message in between -- a bare tool-result entry (the normal,
+    expected gap between one tool call and the next) doesn't break the run, but a real
+    user-authored message does, since that means a human turn happened between the
+    calls rather than the assistant retrying unattended.
     """
     corrections: list[dict] = []
     stuck_loops: list[dict] = []
@@ -291,8 +295,11 @@ def get_irritation_signals(path: str) -> dict:
     run_length = 0
 
     def flush_run() -> None:
+        nonlocal run_key, run_length
         if run_key is not None and run_length >= STUCK_LOOP_THRESHOLD:
             stuck_loops.append({"tool_name": run_key[0], "count": run_length})
+        run_key = None
+        run_length = 0
 
     for obj in read_lines(path):
         msg_type = obj.get("type")
@@ -300,6 +307,7 @@ def get_irritation_signals(path: str) -> dict:
         if msg_type == "user":
             text = extract_user_text(obj)
             if text and not is_system_message(text):
+                flush_run()
                 lower = text.lower()
                 for phrase in CORRECTION_PHRASES:
                     if phrase in lower:

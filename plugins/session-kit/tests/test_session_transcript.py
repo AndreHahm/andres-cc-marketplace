@@ -157,6 +157,40 @@ class TestGetIrritationSignals:
         assert result["correction_count"] == 0
         assert result["stuck_loop_count"] == 0
 
+    def test_tool_result_gap_does_not_break_a_genuine_run(self, tmp_path):
+        """A bare tool-result entry is the normal, expected gap between one retry and the
+        next -- it must not reset the run, or a genuine stuck-retry loop would never be
+        detected at all (every real tool call is followed by its own result)."""
+        call = (
+            '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use",'
+            '"name":"Bash","input":{"command":"ls"}}]}}\n'
+        )
+        result_line = (
+            '{"type":"user","message":{"role":"user","content":[{"type":"tool_result",'
+            '"tool_use_id":"x","content":"ok"}]}}\n'
+        )
+        f = tmp_path / "loop_with_results.jsonl"
+        f.write_text((call + result_line) * 3)
+        result = get_irritation_signals(str(f))
+        assert result["stuck_loop_count"] == 1
+        assert result["stuck_loops"][0] == {"tool_name": "Bash", "count": 3}
+
+    def test_real_user_message_breaks_a_run(self, tmp_path):
+        """Three identical tool calls separated by genuine human messages (not just tool
+        results) are three deliberate, human-directed re-runs across a real conversation --
+        not an unattended stuck loop -- so they must not be flagged."""
+        call = (
+            '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use",'
+            '"name":"Bash","input":{"command":"ls"}}]}}\n'
+        )
+        human_turn = (
+            '{"type":"user","message":{"role":"user","content":"looks good, keep going"}}\n'
+        )
+        f = tmp_path / "no_loop_across_turns.jsonl"
+        f.write_text((call + human_turn) * 3)
+        result = get_irritation_signals(str(f))
+        assert result["stuck_loop_count"] == 0
+
 
 class TestGetTasks:
     def test_extracts_task_create(self):
