@@ -28,7 +28,7 @@ Find session files that are candidates for cleanup.
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" cleanup --min-messages 3
 ```
 
-To also find old sessions (only `Nd` — a day count — is recognized; other units like weeks/months are silently ignored):
+To also find old sessions (`Nd`/`Nw`/`Nm` — days, weeks, or months):
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" cleanup --older-than 30d --min-messages 3
 ```
@@ -51,7 +51,14 @@ If confirmed, delete each session one at a time using the same command `session-
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" delete-session <session-id>
 ```
 
-This will also report any task lists that become orphaned. Delete through this script only — never a manual `rm`, which skips ID validation and the orphan-task report.
+If the user opted in to also deleting associated tasks, add `--delete-tasks`:
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py" delete-session <session-id> --delete-tasks
+```
+
+This will also report any task lists that become orphaned (deleted immediately if `--delete-tasks` was
+used, otherwise reported for Step 4 below). Delete through this script only — never a manual `rm`, which
+skips ID validation and the orphan-task report.
 
 Report each deletion. If the user wants to keep some, ask which ones to skip.
 
@@ -86,6 +93,12 @@ Delete through this script only. Do not suggest a manual `rm -r` on a task-list 
 - If in doubt, suggest the user review the list first
 
 ## Testing & Validation
+
+Eval suite: `evals/session-cleanup/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
+passed.
+
+**Last dated run record:** `evals/session-cleanup/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
+2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "clean up old sessions"

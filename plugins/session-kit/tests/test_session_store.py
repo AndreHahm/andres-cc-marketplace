@@ -268,6 +268,51 @@ class TestFindCleanupCandidates:
         empty = [c for c in candidates if c["reason"] == "empty"]
         assert len(empty) >= 1
 
+    def _set_session_age(self, fake_projects_dir, days_old):
+        session_path = os.path.join(
+            fake_projects_dir, "-Users-me-myproject", "test-session-001.jsonl"
+        )
+        old_time = time.time() - (days_old * 86400)
+        os.utime(session_path, (old_time, old_time))
+        return session_path
+
+    def test_older_than_days_unit(self, fake_projects_dir):
+        self._set_session_age(fake_projects_dir, 10)
+        candidates = find_cleanup_candidates(
+            projects_base=fake_projects_dir, older_than="5d", min_messages=1
+        )
+        old = [c for c in candidates if c["reason"] == "old"]
+        assert len(old) == 1
+
+    def test_older_than_weeks_unit(self, fake_projects_dir):
+        # 10 days old is > 1 week (7d) but < 2 weeks (14d)
+        self._set_session_age(fake_projects_dir, 10)
+        found_at_1w = find_cleanup_candidates(
+            projects_base=fake_projects_dir, older_than="1w", min_messages=1
+        )
+        found_at_2w = find_cleanup_candidates(
+            projects_base=fake_projects_dir, older_than="2w", min_messages=1
+        )
+        assert any(c["reason"] == "old" for c in found_at_1w)
+        assert not any(c["reason"] == "old" for c in found_at_2w)
+
+    def test_older_than_months_unit(self, fake_projects_dir):
+        # 10 days old is well under 1 month (30d)
+        self._set_session_age(fake_projects_dir, 10)
+        candidates = find_cleanup_candidates(
+            projects_base=fake_projects_dir, older_than="1m", min_messages=1
+        )
+        assert not any(c["reason"] == "old" for c in candidates)
+
+    def test_older_than_malformed_unit_disables_age_filter(self, fake_projects_dir):
+        self._set_session_age(fake_projects_dir, 10)
+        # "10x" doesn't match the d/w/m regex -- falls through to no age filtering,
+        # not an error and not a silent 0-day threshold.
+        candidates = find_cleanup_candidates(
+            projects_base=fake_projects_dir, older_than="10x", min_messages=1
+        )
+        assert not any(c["reason"] == "old" for c in candidates)
+
 
 class TestReadTaskList:
     def test_reads_all_tasks(self, fake_tasks_dir):

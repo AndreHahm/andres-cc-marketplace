@@ -6,7 +6,7 @@ description: >-
   gaps, or patterns over time — "session timeline", "what's the history of
   this project", "show me patterns in my work". For a simple sortable
   inventory (not chronological pattern analysis), use session-list instead.
-allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py":*)
+allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_store.py":*) Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/session_transcript.py":*)
 ---
 
 # Session Timeline
@@ -60,6 +60,12 @@ Identify patterns:
 - Gaps in activity?
 
 ## Testing & Validation
+
+Eval suite: `evals/session-timeline/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
+passed.
+
+**Last dated run record:** `evals/session-timeline/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
+2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "session timeline"

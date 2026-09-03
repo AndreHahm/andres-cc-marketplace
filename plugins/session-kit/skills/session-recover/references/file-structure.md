@@ -30,9 +30,10 @@ Ground-truth reference for `~/.claude/` directory layout and JSONL session forma
 
 Project paths are encoded by replacing every path separator with `-`. On POSIX this is just `/`; on
 Windows, Claude Code's own encoding also replaces `\` and `:` (e.g. `C:\Dev\proj` → `C--Dev-proj`).
-This skill's own `scripts/extract_resume_context.py` (`normalize_path`) handles all three separators —
-`session-kit`'s other `scripts/session_store.py` (`encode_project_path`) currently only replaces `/`
-and has not received the same Windows-separator fix.
+This skill's own `scripts/extract_resume_context.py` imports `session-kit`'s shared
+`scripts/session_store.py::encode_project_path` (aliased as `normalize_path`) rather than reimplementing
+it — one function, one docstring, which is the canonical source for this behavior rather than restating
+it here, since a second hand-written copy of this fact is exactly what drifted out of date before.
 
 | Original | Normalized |
 |----------|-----------|
@@ -180,11 +181,14 @@ Content block types in assistant messages:
 - `text` — visible response to user (extract this)
 - `tool_use` — tool invocations (useful for understanding what was done)
 
-### Noise types (filtered, not documented above)
+### Noise types (filtered, not part of the conversational schema)
 
-`extract_resume_context.py` also filters `progress`, `queue-operation`, and `last-prompt` message
-types, and `api_error`/`turn_duration`/`stop_hook_summary` system subtypes — operational noise, not
-part of the conversational schema above.
+`extract_resume_context.py`'s `NOISE_TYPES` filters four message types when extracting conversational
+content: `progress`, `queue-operation`, `file-history-snapshot` (documented above as a real first-line
+schema element — it's real, but treated as noise for the purposes of reconstructing "what was
+discussed"), and `last-prompt`. It also filters `api_error`/`turn_duration`/`stop_hook_summary` system
+subtypes. This is the complete, canonical list — see `extract_resume_context.py`'s own `NOISE_TYPES`
+constant as the source of truth.
 
 ### Tool result (user message with tool output)
 

@@ -24,7 +24,7 @@ from pathlib import Path
 def extract_title(filepath: Path) -> str:
     """Extract the title from a handoff document."""
     try:
-        content = filepath.read_text()
+        content = filepath.read_text(encoding="utf-8")
         # Look for first H1 header
         match = re.search(r"^#\s+(?:Handoff:\s*)?(.+)$", content, re.MULTILINE)
         if match:
@@ -41,7 +41,7 @@ def extract_title(filepath: Path) -> str:
 def check_completion_status(filepath: Path) -> str:
     """Check if handoff appears complete or has TODOs remaining."""
     try:
-        content = filepath.read_text()
+        content = filepath.read_text(encoding="utf-8")
         todo_count = content.count("[TODO:")
         if todo_count == 0:
             return "Complete"
@@ -54,7 +54,7 @@ def check_completion_status(filepath: Path) -> str:
 
 
 def parse_date_from_filename(filename: str) -> datetime | None:
-    """Extract date from filename like 2024-01-15-143022-slug.md"""
+    """Extract date from filename like 2026-01-15-143022-slug.md"""
     match = re.match(r"(\d{4}-\d{2}-\d{2})-(\d{6})", filename)
     if match:
         try:
@@ -101,6 +101,9 @@ def format_date(dt: datetime | None) -> str:
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+
     # Get project path
     project_path = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
 

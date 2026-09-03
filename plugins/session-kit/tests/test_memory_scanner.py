@@ -3,7 +3,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from memory_scanner import audit_memories, parse_frontmatter, scan_memories, search_memories
+import pytest
+from memory_scanner import (
+    audit_memories,
+    delete_memory,
+    parse_frontmatter,
+    scan_memories,
+    search_memories,
+)
 
 SCRIPT_PATH = str(Path(__file__).resolve().parent.parent / "scripts" / "memory_scanner.py")
 FIXTURES_BASE = str(Path(__file__).resolve().parent / "fixtures" / "memory")
@@ -287,6 +294,63 @@ class TestSearchMemories:
     def test_escapes_regex_special_characters_in_query(self):
         # This should not crash — the query is treated as a literal string
         search_memories("(a+)+$", projects_base=FIXTURES_BASE)
+
+
+# ---------------------------------------------------------------------------
+# delete_memory
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteMemory:
+    def test_deletes_a_valid_memory_file(self, tmp_path):
+        memory_dir = tmp_path / "projects" / "proj" / "memory"
+        memory_dir.mkdir(parents=True)
+        target = memory_dir / "note.md"
+        target.write_text("content", encoding="utf-8")
+
+        result = delete_memory(str(target), projects_base=str(tmp_path / "projects"))
+
+        assert result["deleted"] is True
+        assert not target.exists()
+
+    def test_deletes_a_nested_memory_file(self, tmp_path):
+        memory_dir = tmp_path / "projects" / "proj" / "memory" / "sub"
+        memory_dir.mkdir(parents=True)
+        target = memory_dir / "note.md"
+        target.write_text("content", encoding="utf-8")
+
+        result = delete_memory(str(target), projects_base=str(tmp_path / "projects"))
+
+        assert result["deleted"] is True
+        assert not target.exists()
+
+    def test_rejects_a_path_outside_projects_base(self, tmp_path):
+        outside_dir = tmp_path / "outside"
+        outside_dir.mkdir()
+        target = outside_dir / "note.md"
+        target.write_text("content", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            delete_memory(str(target), projects_base=str(tmp_path / "projects"))
+        assert target.exists()
+
+    def test_rejects_a_path_inside_base_but_not_under_memory(self, tmp_path):
+        other_dir = tmp_path / "projects" / "proj" / "notmemory"
+        other_dir.mkdir(parents=True)
+        target = other_dir / "note.md"
+        target.write_text("content", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="outside a memory/ directory"):
+            delete_memory(str(target), projects_base=str(tmp_path / "projects"))
+        assert target.exists()
+
+    def test_rejects_a_nonexistent_file(self, tmp_path):
+        memory_dir = tmp_path / "projects" / "proj" / "memory"
+        memory_dir.mkdir(parents=True)
+        target = memory_dir / "missing.md"
+
+        with pytest.raises(ValueError, match="not found"):
+            delete_memory(str(target), projects_base=str(tmp_path / "projects"))
 
 
 # ---------------------------------------------------------------------------

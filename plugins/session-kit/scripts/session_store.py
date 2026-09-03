@@ -507,9 +507,15 @@ def find_cleanup_candidates(
 
     max_age_days: int | None = None
     if older_than:
-        m = re.match(r"^(\d+)d$", older_than)
+        # Same "Nd/Nw/Nm" shorthand parse_date_boundary (formatters.py) already supports
+        # elsewhere in this file's own --since/--until handling -- kept consistent rather
+        # than accepting only "d" here. "m" uses a flat 30-day approximation (not
+        # parse_date_boundary's calendar-month subtraction), which is fine for a coarse
+        # cleanup threshold.
+        m = re.match(r"^(\d+)([dwm])$", older_than)
         if m:
-            max_age_days = int(m.group(1))
+            n, unit = int(m.group(1)), m.group(2)
+            max_age_days = n * {"d": 1, "w": 7, "m": 30}[unit]
 
     candidates: list[dict] = []
     now = time.time()
@@ -969,8 +975,8 @@ def get_daily_token_aggregation(
             existing["output"] += stats["tokens"]["output"]
             existing["cache_read"] += stats["tokens"]["cache_read"]
             existing["cache_create"] += stats["tokens"]["cache_create"]
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as err:  # noqa: BLE001 -- one corrupt session shouldn't break the whole chart
+            sys.stderr.write(f"get_daily_token_aggregation: skipping {s['path']}: {err}\n")
 
     labels = sorted(buckets.keys())
     return {
@@ -1019,8 +1025,8 @@ def get_model_distribution(
                 proportion = count / total_msgs if total_msgs > 0 else 0
                 existing["tokens"] += round(total_tokens * proportion)
                 existing["sessions"].add(s["sessionId"])
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as err:  # noqa: BLE001 -- one corrupt session shouldn't break the whole chart
+            sys.stderr.write(f"get_model_distribution: skipping {s['path']}: {err}\n")
 
     entries = sorted(
         (

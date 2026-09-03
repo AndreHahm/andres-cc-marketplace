@@ -11,7 +11,7 @@ Checks:
 
 Usage:
     python validate_handoff.py <handoff-file>
-    python validate_handoff.py .claude/handoffs/2024-01-15-143022-auth.md
+    python validate_handoff.py .claude/handoffs/2026-01-15-143022-auth.md
 """
 
 from __future__ import annotations
@@ -129,8 +129,11 @@ def check_file_references(content: str, base_path: str) -> tuple[list[str], list
         for match in matches:
             # Remove line numbers
             filepath = match.split(":")[0]
-            # Skip obvious non-files
-            if filepath and not filepath.startswith("http") and "/" in filepath:
+            # Skip obvious non-files, and a leading-"/" match -- pathlib's "/" operator
+            # resets to the right-hand side for an absolute path, so an unfiltered
+            # leading-"/" match would silently check the real filesystem root instead
+            # of base_path.
+            if filepath and not filepath.startswith(("http", "/")) and "/" in filepath:
                 found_files.add(filepath)
 
     existing = []
@@ -209,7 +212,7 @@ def validate_handoff(filepath: str) -> dict:
     if not path.exists():
         return {"error": f"File not found: {filepath}"}
 
-    content = path.read_text()
+    content = path.read_text(encoding="utf-8")
     base_path = path.parent.parent.parent  # Go up from .claude/handoffs/
 
     # Run checks
@@ -311,9 +314,12 @@ def print_report(result: dict):
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+
     if len(sys.argv) < 2:
         print("Usage: python validate_handoff.py <handoff-file>")
-        print("Example: python validate_handoff.py .claude/handoffs/2024-01-15-143022-auth.md")
+        print("Example: python validate_handoff.py .claude/handoffs/2026-01-15-143022-auth.md")
         sys.exit(1)
 
     filepath = sys.argv[1]

@@ -1,7 +1,7 @@
 ---
 name: session-delete
 description: >-
-  Delete a Claude Code session file, with optional cleanup of associated task
+  Deletes a Claude Code session file, with optional cleanup of associated task
   lists and tasks. Warns about orphaned tasks before deleting. Use when the
   user has already named or identified one specific session to remove —
   "delete session <id>", "remove session". For finding and bulk-deleting
@@ -68,6 +68,12 @@ Show what was deleted: session file path, and if tasks were deleted, how many.
 - Delete only through the script (Step 3) — never suggest a raw `rm` on a session file
 
 ## Testing & Validation
+
+Eval suite: `evals/session-delete/` — 2 scenarios, `skill-tester` Quick Workflow blind comparison, both
+passed.
+
+**Last dated run record:** `evals/session-delete/workspace/iteration-1/eval-{1,2}/with_skill/grading.json`,
+2026-09-02. `scripts/smoke_test.py` structural self-check also passing as of the same date.
 
 **Verify this skill activates on:**
 - "delete session abc-123"
