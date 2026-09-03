@@ -689,6 +689,11 @@ def delete_memory(memory_path: str, projects_base: str | None = None) -> dict:
         raise ValueError(
             f"Refusing to delete a path outside a project's memory/ directory: {memory_path}"
         )
+    if os.path.basename(resolved) == "MEMORY.md":
+        raise ValueError(
+            f"Refusing to delete MEMORY.md -- it is the project's memory index, "
+            f"not a memory document: {memory_path}"
+        )
     if not os.path.isfile(resolved):
         raise ValueError(f"Memory file not found: {memory_path}")
 

@@ -400,6 +400,20 @@ class TestDeleteMemory:
             delete_memory(str(target), projects_base=str(tmp_path / "projects"))
         assert target.exists()
 
+    def test_rejects_memory_md_index_itself(self, tmp_path):
+        """MEMORY.md is the index -- deleting it (rather than editing it) would leave
+        every other memory in the project unindexed. It has the same
+        <project>/memory/... shape the containment check otherwise accepts, so it needs
+        its own explicit rejection."""
+        memory_dir = tmp_path / "projects" / "proj" / "memory"
+        memory_dir.mkdir(parents=True)
+        index = memory_dir / "MEMORY.md"
+        index.write_text("# Index", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="memory index"):
+            delete_memory(str(index), projects_base=str(tmp_path / "projects"))
+        assert index.exists()
+
     def test_rejects_a_nonexistent_file(self, tmp_path):
         memory_dir = tmp_path / "projects" / "proj" / "memory"
         memory_dir.mkdir(parents=True)
