@@ -5,7 +5,7 @@
 | | Session A | Session B |
 |---|---|---|
 | Session ID | `7b92a813-0321-4dbb-b37a-c62dfc1207e7` | `ab822c24-09b8-4673-a4bf-beb585238b75` |
-| Path | `C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl` | `C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\ab822c24-09b8-4673-a4bf-beb585238b75.jsonl` |
+| Path | `C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl` | `C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\ab822c24-09b8-4673-a4bf-beb585238b75.jsonl` |
 | Started | 2026-09-02T15:56:03.089Z | 2026-09-02T07:53:55.180Z |
 | Last activity | 2026-09-02T21:32:37.380Z | 2026-09-02T14:54:43.081Z |
 | Messages | 1610 (turns) / 4871 (raw lines) | 1092 (turns) / 3361 (raw lines) |
@@ -20,19 +20,19 @@ Both sessions belong to the same project (`C//Dev/Repos/andres/cc/marketplace`) 
 python3 "plugins/session-kit/scripts/session_store.py" session-detail 7b92a813-0321-4dbb-b37a-c62dfc1207e7
 python3 "plugins/session-kit/scripts/session_store.py" session-detail ab822c24-09b8-4673-a4bf-beb585238b75
 python3 "plugins/session-kit/scripts/session_transcript.py" diff \
-  "C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl" \
-  "C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\ab822c24-09b8-4673-a4bf-beb585238b75.jsonl"
+  "C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl" \
+  "C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\ab822c24-09b8-4673-a4bf-beb585238b75.jsonl"
 ```
 (run from `C:\Dev\Repos\andres-cc-marketplace\.claude\worktrees\sessionmgnt-kit-plugin`, per the skill's `${CLAUDE_PLUGIN_ROOT}` resolution for this test environment)
 
 `session_store.py session-detail` output (session A):
 ```json
-{"session":{"session_id":"7b92a813-0321-4dbb-b37a-c62dfc1207e7","project":"C//Dev/Repos/andres/cc/marketplace","date":"2026-09-02","started":"2026-09-02T15:56:03.089Z","last_activity":"2026-09-02T21:32:37.380Z","messages":4871,"duration_minutes":336.6,"size_bytes":10914969,"path":"C:\\Users\\andre\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl"},"stats":{"turns":1610,"user_messages":65,"assistant_messages":1545,"duration_minutes":336.6,"models":{"claude-sonnet-5":1545},"tools":{"Bash":263,"Edit":152,"Read":145,"AskUserQuestion":74,"Write":61,"Agent":39,"Skill":30,"Grep":20,"ListAgents":19,"ScheduleWakeup":2,"ToolSearch":1},"cwd":"C:\\Dev\\Repos\\andres-cc-marketplace"}}
+{"session":{"session_id":"7b92a813-0321-4dbb-b37a-c62dfc1207e7","project":"C//Dev/Repos/andres/cc/marketplace","date":"2026-09-02","started":"2026-09-02T15:56:03.089Z","last_activity":"2026-09-02T21:32:37.380Z","messages":4871,"duration_minutes":336.6,"size_bytes":10914969,"path":"C:\\Users\\devuser\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl"},"stats":{"turns":1610,"user_messages":65,"assistant_messages":1545,"duration_minutes":336.6,"models":{"claude-sonnet-5":1545},"tools":{"Bash":263,"Edit":152,"Read":145,"AskUserQuestion":74,"Write":61,"Agent":39,"Skill":30,"Grep":20,"ListAgents":19,"ScheduleWakeup":2,"ToolSearch":1},"cwd":"C:\\Dev\\Repos\\andres-cc-marketplace"}}
 ```
 
 `session_store.py session-detail` output (session B):
 ```json
-{"session":{"session_id":"ab822c24-09b8-4673-a4bf-beb585238b75","project":"C//Dev/Repos/andres/cc/marketplace","date":"2026-09-02","started":"2026-09-02T07:53:55.180Z","last_activity":"2026-09-02T14:54:43.081Z","messages":3361,"duration_minutes":420.8,"size_bytes":7398837,"path":"C:\\Users\\andre\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\ab822c24-09b8-4673-a4bf-beb585238b75.jsonl"},"stats":{"turns":1092,"user_messages":55,"assistant_messages":1037,"duration_minutes":420.8,"models":{"claude-sonnet-5":1037},"tools":{"Bash":277,"Read":72,"AskUserQuestion":53,"Edit":48,"Grep":25,"Skill":23,"Write":13,"WebFetch":8,"Monitor":7,"WebSearch":6,"Glob":4,"ToolSearch":3},"cwd":"C:\\Dev\\Repos\\andres-cc-marketplace"}}
+{"session":{"session_id":"ab822c24-09b8-4673-a4bf-beb585238b75","project":"C//Dev/Repos/andres/cc/marketplace","date":"2026-09-02","started":"2026-09-02T07:53:55.180Z","last_activity":"2026-09-02T14:54:43.081Z","messages":3361,"duration_minutes":420.8,"size_bytes":7398837,"path":"C:\\Users\\devuser\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\ab822c24-09b8-4673-a4bf-beb585238b75.jsonl"},"stats":{"turns":1092,"user_messages":55,"assistant_messages":1037,"duration_minutes":420.8,"models":{"claude-sonnet-5":1037},"tools":{"Bash":277,"Read":72,"AskUserQuestion":53,"Edit":48,"Grep":25,"Skill":23,"Write":13,"WebFetch":8,"Monitor":7,"WebSearch":6,"Glob":4,"ToolSearch":3},"cwd":"C:\\Dev\\Repos\\andres-cc-marketplace"}}
 ```
 
 `session_transcript.py diff` output was large (45.2KB), auto-saved by the tool to a persisted-output file and parsed with a small Python script to extract `files_common`/`files_added`/`files_dropped` reliably (the raw JSON is two very long lines that don't page well by line offset). Key structural summary from that parse:

@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -47,12 +47,20 @@ def parse_handoff_metadata(filepath: str) -> dict:
     # handoff authors, e.g. Write("Created: 2026-09-03T05:34:17Z", ...)); an unmatched format
     # previously left `created` as None, which silently suppressed every staleness signal
     # below rather than surfacing as an unknown/error state.
-    match = re.search(r"Created:\s*(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})Z?", content)
+    match = re.search(r"Created:\s*(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(Z)?", content)
     if match:
         try:
-            metadata["created"] = datetime.strptime(
-                f"{match.group(1)} {match.group(2)}", "%Y-%m-%d %H:%M:%S"
-            )
+            naive = datetime.strptime(f"{match.group(1)} {match.group(2)}", "%Y-%m-%d %H:%M:%S")
+            if match.group(3):
+                # Trailing "Z" means these digits are UTC, not local time -- naively
+                # treating them as local (the old behavior) silently shifted every
+                # staleness signal (age, and the git --since boundary) by the local
+                # UTC offset. Convert to the equivalent local wall-clock time so it
+                # stays comparable to datetime.now() and to git's own --since parsing,
+                # both of which are naive-local everywhere else in this script.
+                metadata["created"] = naive.replace(tzinfo=UTC).astimezone().replace(tzinfo=None)
+            else:
+                metadata["created"] = naive
         except ValueError:
             pass
 

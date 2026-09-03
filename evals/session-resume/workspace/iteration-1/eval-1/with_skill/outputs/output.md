@@ -23,7 +23,7 @@ basename. Listing the 20 most recent sessions across all projects shows activity
 - `C//Dev/Repos/andres/cc/marketplace` (the main checkout — the bulk of recent sessions)
 - Several `.../claude/worktrees/<name>` variants (`workmanagement-kit-wave1-scaffold`,
   `git-cleanup-rebase-backup-tags`, `authority-reviewer-agent`)
-- A handful of one-off sessions rooted in `C:/Users/andre/AppData/Local/...`
+- A handful of one-off sessions rooted in `C:/Users/devuser/AppData/Local/...`
 
 None of these project/session groupings is an application codebase with authentication/login
 functionality — this whole session history is Claude Code plugin/skill development work on the

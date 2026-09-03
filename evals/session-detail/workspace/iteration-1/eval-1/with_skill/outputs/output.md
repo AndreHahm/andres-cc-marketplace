@@ -37,9 +37,9 @@ e5969db7-...  C//Dev/Repos/andres/cc/mark...  2026-09-01    11        0s    3.4 
 e6ba4638-...  C//Dev/Repos/andres/cc/mark...  2026-09-01    11        0s    3.4 KB
 ed3cfd13-...  C//Dev/Repos/andres/cc/mark...  2026-09-01  2767    6h 58m    5.3 MB
 7537bdd2-...  C//Dev/Repos/andres/cc/mark...  2026-09-01    13        6s   69.6 KB
-0c1c602a-...  C//Users/andre/AppData/Loca...  2026-09-01    19       18s   36.5 KB
+0c1c602a-...  C//Users/devuser/AppData/Loca...  2026-09-01    19       18s   36.5 KB
 b967b76d-...  C//Dev/Repos/andres/cc/mark...  2026-09-01    13       12s   69.5 KB
-fca41e27-...  C//Users/andre/AppData/Loca...  2026-09-01    13       12s   30.1 KB
+fca41e27-...  C//Users/devuser/AppData/Loca...  2026-09-01    13       12s   30.1 KB
 a5a644eb-...  C//Dev/Repos/andres/cc/mark...  2026-09-01    12       12s    3.9 KB
 fdcbb806-...  C//Dev/Repos/andres/cc/mark...  2026-09-01  2391    3h 29m    4.5 MB
 767491c5-...  C//Dev/Repos/andres/cc/mark...  2026-09-01    11        0s    3.5 KB
@@ -56,7 +56,7 @@ python3 "plugins/session-kit/scripts/session_store.py" list --format json
 
 Relevant entry:
 ```json
-{"session_id":"7a6c2a54-0442-489c-a9f2-de0879047bf8","project":"C//Dev/Repos/andres/cc/marketplace","date":"2026-09-01","started":"2026-09-01T16:30:52.284Z","last_activity":"2026-09-01T16:54:39.194Z","messages":198,"duration_minutes":23.8,"size_bytes":577680,"path":"C:\\Users\\andre\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\7a6c2a54-0442-489c-a9f2-de0879047bf8.jsonl"}
+{"session_id":"7a6c2a54-0442-489c-a9f2-de0879047bf8","project":"C//Dev/Repos/andres/cc/marketplace","date":"2026-09-01","started":"2026-09-01T16:30:52.284Z","last_activity":"2026-09-01T16:54:39.194Z","messages":198,"duration_minutes":23.8,"size_bytes":577680,"path":"C:\\Users\\devuser\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\7a6c2a54-0442-489c-a9f2-de0879047bf8.jsonl"}
 ```
 
 ---
@@ -70,7 +70,7 @@ python3 "plugins/session-kit/scripts/session_store.py" session-detail 7a6c2a54-0
 
 Raw output:
 ```json
-{"session":{"session_id":"7a6c2a54-0442-489c-a9f2-de0879047bf8","project":"C//Dev/Repos/andres/cc/marketplace","date":"2026-09-01","started":"2026-09-01T16:30:52.284Z","last_activity":"2026-09-01T16:54:39.194Z","messages":198,"duration_minutes":23.8,"size_bytes":577680,"path":"C:\\Users\\andre\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\7a6c2a54-0442-489c-a9f2-de0879047bf8.jsonl"},"stats":{"session_id":"7a6c2a54-0442-489c-a9f2-de0879047bf8","turns":49,"user_messages":7,"assistant_messages":42,"duration_minutes":23.8,"models":{"claude-sonnet-5":42},"tokens":{"input":84,"output":45479,"cache_read":5485834,"cache_create":377480},"tools":{"Bash":6,"Grep":6,"Read":5,"Agent":2,"Skill":1,"Write":1},"first_message":"2026-09-01T16:30:52.284Z","last_message":"2026-09-01T16:54:39.194Z","cwd":"C:\\Dev\\Repos\\andres-cc-marketplace","is_resumed":false},"task_lists":[]}
+{"session":{"session_id":"7a6c2a54-0442-489c-a9f2-de0879047bf8","project":"C//Dev/Repos/andres/cc/marketplace","date":"2026-09-01","started":"2026-09-01T16:30:52.284Z","last_activity":"2026-09-01T16:54:39.194Z","messages":198,"duration_minutes":23.8,"size_bytes":577680,"path":"C:\\Users\\devuser\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\7a6c2a54-0442-489c-a9f2-de0879047bf8.jsonl"},"stats":{"session_id":"7a6c2a54-0442-489c-a9f2-de0879047bf8","turns":49,"user_messages":7,"assistant_messages":42,"duration_minutes":23.8,"models":{"claude-sonnet-5":42},"tokens":{"input":84,"output":45479,"cache_read":5485834,"cache_create":377480},"tools":{"Bash":6,"Grep":6,"Read":5,"Agent":2,"Skill":1,"Write":1},"first_message":"2026-09-01T16:30:52.284Z","last_message":"2026-09-01T16:54:39.194Z","cwd":"C:\\Dev\\Repos\\andres-cc-marketplace","is_resumed":false},"task_lists":[]}
 ```
 
 ---
@@ -79,7 +79,7 @@ Raw output:
 
 Command:
 ```bash
-python3 "plugins/session-kit/scripts/session_transcript.py" messages "C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\7a6c2a54-0442-489c-a9f2-de0879047bf8.jsonl" --limit 20
+python3 "plugins/session-kit/scripts/session_transcript.py" messages "C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\7a6c2a54-0442-489c-a9f2-de0879047bf8.jsonl" --limit 20
 ```
 
 Raw output (first page, 20 of 61 total; `hasMore: true`):

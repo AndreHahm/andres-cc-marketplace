@@ -29,7 +29,7 @@ This returned the current session as the top (most recent) row:
 
 ```json
 {"session_id":"7b92a813-0321-4dbb-b37a-c62dfc1207e7","project":"C//Dev/Repos/andres/cc/marketplace", ...,
- "path":"C:\\Users\\andre\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl"}
+ "path":"C:\\Users\\devuser\\.claude\\projects\\C--Dev-Repos-andres-cc-marketplace\\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl"}
 ```
 
 The session ID matches the one embedded in this test's own scratchpad path
@@ -40,14 +40,14 @@ Step 2 — export, writing to file (session is 4,879 messages / ~10.9MB, far too
 
 ```
 python3 "plugins/session-kit/scripts/session_transcript.py" export \
-  "C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl" \
+  "C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\7b92a813-0321-4dbb-b37a-c62dfc1207e7.jsonl" \
   --format md --output "<scratchpad>\session-transcript.md"
 ```
 
 Result:
 
 ```json
-{"status": "ok", "path": "C:\\Users\\andre\\AppData\\Local\\Temp\\claude\\C--Dev-Repos-andres-cc-marketplace\\7b92a813-0321-4dbb-b37a-c62dfc1207e7\\scratchpad\\session-transcript.md", "lines": 17182}
+{"status": "ok", "path": "C:\\Users\\devuser\\AppData\\Local\\Temp\\claude\\C--Dev-Repos-andres-cc-marketplace\\7b92a813-0321-4dbb-b37a-c62dfc1207e7\\scratchpad\\session-transcript.md", "lines": 17182}
 ```
 
 ## Output disposition
@@ -56,7 +56,7 @@ Written to file (not printed inline), at the session's own scratchpad location, 
 guidance to use an absolute path outside the repo:
 
 ```
-C:\Users\andre\AppData\Local\Temp\claude\C--Dev-Repos-andres-cc-marketplace\7b92a813-0321-4dbb-b37a-c62dfc1207e7\scratchpad\session-transcript.md
+C:\Users\devuser\AppData\Local\Temp\claude\C--Dev-Repos-andres-cc-marketplace\7b92a813-0321-4dbb-b37a-c62dfc1207e7\scratchpad\session-transcript.md
 ```
 
 17,182 lines total.

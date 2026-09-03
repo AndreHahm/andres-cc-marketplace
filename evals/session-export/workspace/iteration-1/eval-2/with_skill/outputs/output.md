@@ -7,12 +7,12 @@ Export session `511b9c9b-5288-447f-aab2-8e68d013aa97` as plain text, without any
 Session ID and JSONL path were given directly by the user, so Step 1 (resolving the session via
 `session_store.py list`) was skipped, per the task instructions.
 
-- Session JSONL: `C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\511b9c9b-5288-447f-aab2-8e68d013aa97.jsonl`
+- Session JSONL: `C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\511b9c9b-5288-447f-aab2-8e68d013aa97.jsonl`
 
 ## Command run
 
 ```
-python3 "plugins/session-kit/scripts/session_transcript.py" export "C:\Users\andre\.claude\projects\C--Dev-Repos-andres-cc-marketplace\511b9c9b-5288-447f-aab2-8e68d013aa97.jsonl" --format txt --no-include-tools --output "$HOME/session-transcript-511b9c9b.txt"
+python3 "plugins/session-kit/scripts/session_transcript.py" export "C:\Users\devuser\.claude\projects\C--Dev-Repos-andres-cc-marketplace\511b9c9b-5288-447f-aab2-8e68d013aa97.jsonl" --format txt --no-include-tools --output "$HOME/session-transcript-511b9c9b.txt"
 ```
 
 Run from the plugin worktree root:
@@ -25,11 +25,11 @@ Run from the plugin worktree root:
 
 ## Output location
 
-`C:\Users\andre\session-transcript-511b9c9b.txt`
+`C:\Users\devuser\session-transcript-511b9c9b.txt`
 
 Script result:
 ```json
-{"status": "ok", "path": "C:/Users/andre/session-transcript-511b9c9b.txt", "lines": 1265}
+{"status": "ok", "path": "C:/Users/devuser/session-transcript-511b9c9b.txt", "lines": 1265}
 ```
 
 1265 lines written.

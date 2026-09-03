@@ -211,6 +211,40 @@ class TestListSessions:
         none = list_sessions(projects_base=fake_projects_dir, project_filter="nonexistent")
         assert none == []
 
+    def test_project_exact_rejects_an_ambiguous_substring_sibling(self, tmp_path):
+        # A loose substring --project match returns sessions from BOTH "/work/app" and
+        # "/work/app-backup" for the query "app" -- project_exact=True must resolve the
+        # real path to its exact encoded directory name and match only that one.
+        projects_dir = tmp_path / "projects"
+        projects_dir.mkdir()
+        app_dir = str(tmp_path / "app")
+        backup_dir = str(tmp_path / "app-backup")
+        enc_app = encode_project_path(os.path.abspath(app_dir))
+        enc_backup = encode_project_path(os.path.abspath(backup_dir))
+
+        (projects_dir / enc_app).mkdir()
+        (projects_dir / enc_app / "s1.jsonl").write_text(
+            '{"type":"user","timestamp":"2026-01-01T00:00:00Z",'
+            '"message":{"role":"user","content":"hi"}}',
+            encoding="utf-8",
+        )
+        (projects_dir / enc_backup).mkdir()
+        (projects_dir / enc_backup / "s2.jsonl").write_text(
+            '{"type":"user","timestamp":"2026-01-01T00:00:00Z",'
+            '"message":{"role":"user","content":"hi"}}',
+            encoding="utf-8",
+        )
+
+        # Old loose-substring behavior really is ambiguous -- confirms the fixture.
+        ambiguous = list_sessions(projects_base=str(projects_dir), project_filter="app")
+        assert len(ambiguous) == 2
+
+        exact = list_sessions(
+            projects_base=str(projects_dir), project_filter=app_dir, project_exact=True
+        )
+        assert len(exact) == 1
+        assert exact[0]["sessionId"] == "s1"
+
     def test_message_count_excludes_internal_records(self, fake_projects_dir):
         # Only user/assistant records are real conversation turns -- progress/system/
         # snapshot records must not inflate the count (they'd mask a genuinely tiny
