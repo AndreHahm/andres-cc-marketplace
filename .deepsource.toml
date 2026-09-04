@@ -1,6 +1,14 @@
 version = 1
 
-test_patterns = ["tests/**"]
+test_patterns = [
+  "tests/**",
+  "plugins/*/tests/**",
+  "plugins/*/skills/*/scripts/smoke_test.py",
+  "plugins/*/skills/*/scripts/test_*.*",
+  "plugins/*/skills/*/scripts/*_fixtures_*.*",
+  "plugins/*/scripts/test_*.*",
+  "plugins/*/scripts/smoke-tests/**"
+]
 
 exclude_patterns = [
     "node_modules/**",

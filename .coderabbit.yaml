@@ -3,8 +3,9 @@
 # markdown-authored plugin components (plugins/*/{skills,agents,commands,rules})
 
 language: en-US
-tone_instructions: "Be concise, technical, and actionable. Focus on code quality, maintainability, and adherence to project standards. Ask clarifying questions rather than making
-  assumptions."
+tone_instructions: >
+  Be concise, technical, and actionable. Focus on code quality, maintainability, and adherence to
+  project standards. Ask clarifying questions rather than making assumptions.
 
 early_access: false
 
@@ -120,7 +121,8 @@ reviews:
       instructions: |
         # Project Specific Guidelines
         1. Language: All user-facing UI text, strings, and messages MUST be in English.
-        2. Code Quality: Avoid N+1 issues, blocking operations, and ensure high code quality. Suggest optimizations that follow modern best practices.
+        2. Code Quality: Avoid N+1 issues, blocking operations, and ensure high code quality.
+           Suggest optimizations that follow modern best practices.
 
     - path: "plugins/*/skills/**/SKILL.md"
       instructions: |
@@ -163,7 +165,9 @@ reviews:
         - Verify job dependencies and conditions
 
   pre_merge_checks:
-    # Custom Pre-merge Checks - Add unique checks to enforce your team's standards before merging a pull request. Each check must have a unique name (up to 50 characters) and clear instructions (up to 10000 characters). Use these to automatically verify coding, security, documentation, or business rules and maintain code quality.
+    # Custom Pre-merge Checks - Add unique checks to enforce your team's standards before merging a pull request.
+    # Each check must have a unique name (up to 50 characters) and clear instructions (up to 10000 characters).
+    # Use these to automatically verify coding, security, documentation, or business rules and maintain code quality.
     # Default: []
     custom_checks: []
 
@@ -194,7 +198,7 @@ reviews:
     biome:
       enabled: false
     hadolint:
-      enabled: true
+      enabled: false
     swiftlint:
       enabled: false
     phpstan:
@@ -207,7 +211,7 @@ reviews:
     gitleaks:
       enabled: true
     checkov:
-      enabled: true
+      enabled: false
     detekt:
       enabled: false
     eslint:
@@ -232,10 +236,6 @@ chat:
   # Disable ASCII/emoji art in responses
   art: false
 
-code_generation:
-  docstrings:
-    language: 'en'
-
 issue_enrichment:
   auto_enrich:
     enabled: true
@@ -250,11 +250,14 @@ knowledge_base:
     scope: auto
 
   code_guidelines:
-    # CodeRabbit will analyze and learn from your organization's code guidelines, which you can mention in the file patterns section. These guidelines will then be used to conduct thorough code reviews.
+    # CodeRabbit will analyze and learn from your organization's code guidelines, which you can mention in the file
+    # patterns section. These guidelines will then be used to conduct thorough code reviews.
     enabled: true
     # Enabled - Enable CodeRabbit to enforce your organization's coding standards during reviews.
     filePatterns:
-      # File Patterns - Specify files for your coding guideline documents in this section. CodeRabbit will scan these files to understand your team's standards and apply them during code reviews. Multiple files supported. File names are case-sensitive. Common files like: (**/.cursorrules, .github/copilot-instructions.md, .github/instructions/*.instructions.md, **/CLAUDE.md, **/GEMINI.md, **/.cursor/rules/*, **/.windsurfrules, **/.clinerules/*, **/.rules/*, **/AGENT.md, **/AGENTS.md) are included by default.
-      - "CONTRIBUTING.md"
-      - "README.md"
-      - "AGENTS.md"
+      # File Patterns - Specify files for your coding guideline documents in this section. CodeRabbit will scan these
+      # files to understand your team's standards and apply them during code reviews. Multiple files supported.
+      # File names are case-sensitive. Common files like: (**/.cursorrules, .github/copilot-instructions.md,
+      # .github/instructions/*.instructions.md, **/CLAUDE.md, **/GEMINI.md, **/.cursor/rules/*, **/.windsurfrules,
+      # **/.clinerules/*, **/.rules/*, **/AGENT.md, **/AGENTS.md) are included by default.
+      - "REVIEW.md"
