@@ -2,7 +2,6 @@
 exclude: |
   (?x)^(
       .*\{\{.*\}\}.*|     # Exclude any files with cookiecutter variables
-      docs/mkdocs/.*|     # Exclude mkdocs raw files
       site/.*|            # Exclude mkdocs compiled files
       \.history/.*|       # Exclude history files
       .*cache.*/.*|       # Exclude cache directories
@@ -19,6 +18,12 @@ default_install_hook_types:
   - post-checkout
   - post-merge
   - post-rewrite
+# Without this, a hook that doesn't declare its own `stages:` is eligible at every
+# installed hook type above — including post-checkout/post-merge/post-rewrite, not
+# just pre-commit. An explicit per-hook `stages:` (the two local hooks below) still
+# overrides this default.
+default_stages:
+  - pre-commit
 repos:
   # Verify that pyproject.toml is well-formed
   - repo: https://github.com/abravalheri/validate-pyproject
