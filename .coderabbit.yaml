@@ -82,6 +82,10 @@ reviews:
     - "**/plugins/**"
     - "**/docs/**"
 
+    # Marketplace registry — high-blast-radius governance path per AGENTS.md, but ".claude-plugin"
+    # is a distinct top-level dir from ".claude" and matches none of the positive patterns above.
+    - "**/.claude-plugin/marketplace.json"
+
     # Exclude auto-mirrored plugin-devkit copies (reviewed once via plugins/**, not duplicated)
     - "!**/.claude/**"
     - "!**/.codex/**"
