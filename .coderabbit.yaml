@@ -89,6 +89,13 @@ reviews:
     - "!**/.devin/**"
     - "!**/.windsurf/**"
 
+    # Re-include .claude/-only governance files with no plugins/** canonical counterpart —
+    # AGENTS.md's "Marketplace registry and governance paths" section marks these high-blast-radius
+    # and requires review; the blanket .claude/** exclude above would otherwise silently skip them.
+    - "**/.claude/marketplace-sync.json"
+    - "**/.claude/plugin-rulebook.config.json"
+    - "**/.claude/plugin-rulebook-audit-decisions.md"
+
     # Exclude generated and vendor files
     - "!**/dist/**"
     - "!**/site/**"
@@ -147,7 +154,6 @@ reviews:
 
     - path: "scripts/marketplace_ci/**/*.py"
       instructions: |
-        - Enforce ruff/ty compliance (this repo's own CI gate)
         - Check for proper error handling and fail-closed defaults on security-relevant checks
         - Flag new logic with no corresponding coverage in tests/marketplace_ci/
 
