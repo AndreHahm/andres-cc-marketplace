@@ -1,7 +1,7 @@
 {
   "globs": ["./**/docs/**/*.md"],
   "customRules": ["mkdocs-material-linter"],
-  "extends": "../.markdownlint-cli2.jsonc",
+  "extends": "../../.markdownlint-cli2.jsonc",
   "config": {
     "material-admonition-types": true,
     "material-admonition-indentation": true,
