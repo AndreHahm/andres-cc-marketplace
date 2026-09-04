@@ -14,6 +14,7 @@ default_language_version:
 
 default_install_hook_types:
   - pre-commit
+  - pre-push
   - commit-msg
   - post-checkout
   - post-merge
