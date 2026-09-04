@@ -1,0 +1,74 @@
+{
+  "globs": ["./**/*.md"],
+  "ignores": ["node_modules", ".git"],
+  "config": {
+    "default": true,
+    "heading-increment": true,
+    "heading-style": { "style": "atx" },
+    "ul-style": { "style": "dash" },
+    "ul-indent": { "indent": 2 },
+    "no-hard-tabs": { "code_blocks": false },
+    "line-length": {
+      "line_length": 1024,
+      "heading_line_length": 80,
+      "code_blocks": false,
+      "tables": false,
+      "strict": false
+    },
+    "no-duplicate-heading": { "siblings_only": false },
+    "no-trailing-punctuation": { "punctuation": ".,;:!" },
+    "ol-prefix": { "style": "ordered" },
+    "list-marker-space": { "ul_single": 1, "ol_single": 1, "ul_multi": 1, "ol_multi": 1 },
+    "blanks-around-fences": true,
+    "blanks-around-lists": true,
+    "no-emphasis-as-heading": true,
+    "no-space-in-emphasis": true,
+    "no-space-in-code": true,
+    "no-space-in-links": true,
+    "fenced-code-language": {
+      "allowed_languages": [
+        "bash", "css", "csv", "dockerfile", "html", "ini", "javascript", "js", "json",
+        "jsonc", "json5", "jsonl", "markdown", "mermaid", "plaintext", "powershell", "python",
+        "sh", "shell", "sql", "text", "toml", "typescript", "xml", "yaml", "yml"
+      ],
+      "language_only": false
+    },
+    "no-empty-links": true,
+    "required-headings": false,
+    "proper-names": {
+      "names": [
+        "Codex", "Claude", "Gemini", "GitHub", "GitLab", "JavaScript", "JSON",
+        "LLM", "Markdown", "markdownlint", "MkDocs", "Node.js", "PowerShell",
+        "PyPI", "Python", "TOML", "TypeScript", "VS Code", "YAML"
+      ],
+      "code_blocks": false
+    },
+    "no-alt-text": true,
+    "single-trailing-newline": true,
+    "code-fence-style": { "style": "backtick" },
+    "emphasis-style": { "style": "asterisk" },
+    "strong-style": { "style": "asterisk" },
+    "extended-ascii": { "ascii-only": true },
+    "link-fragments": true,
+    "reference-links-images": false,
+    "link-image-reference-definitions": false,
+    "hr-style": { "style": "---" },
+    "no-bare-urls": true,
+
+    /* --- Project Specific --- */
+
+    /* MD033: Allow all Inline HTML (Project requires flexibility over strict list) */
+    "no-inline-html": false,
+
+    /* MD046: Allow Code Block flexibility (e.g. for Admonitions or Tabs in MkDocs layouts) */
+    "code-block-style": false,
+
+    /* MD041 & MD025: Handle Frontmatter Titles (MkDocs docs pages use a `title:` front-matter key) */
+    "first-line-heading": {
+      "front_matter_title": "^\\s*title\\s*[:=]"
+    },
+    "single-title": {
+      "front_matter_title": "^\\s*title\\s*[:=]"
+    }
+  }
+}

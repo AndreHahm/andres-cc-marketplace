@@ -1,0 +1,35 @@
+version = 1
+
+test_patterns = ["tests/**"]
+
+exclude_patterns = [
+    "node_modules/**",
+    ".venv/**",
+    "issues/**",
+    "docs/**",
+    "evals/**",
+    ".draft/**",
+    ".temp/**",
+    ".backup/**",
+    ".claude/**",
+    ".agents/**",
+    ".devin/**",
+    ".codex/**",
+    ".qodo/**",
+    ".windsurf/**"
+]
+
+[[analyzers]]
+name = "python"
+enabled = true
+
+  [analyzers.meta]
+  runtime_version = "3.x.x"
+
+[[analyzers]]
+name = "javascript"
+enabled = true
+
+[[analyzers]]
+name = "shell"
+enabled = true

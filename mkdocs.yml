@@ -1,0 +1,157 @@
+---
+site_name: andres-cc-marketplace
+site_description: Open-source Claude Code Marketplace powered by Andre Hahm
+site_author: "Andre Hahm"
+site_url: https://andrehahm.github.io/andres-cc-marketplace/
+repo_name: andres-cc-marketplace
+repo_url: https://github.com/AndreHahm/andres-cc-marketplace
+docs_dir: docs/site
+site_dir: site
+
+validation:
+    omitted_files: warn
+    absolute_links: warn
+    unrecognized_links: warn
+
+nav:
+    - Home: index.md
+    - Plugins:
+        - Overview: plugins/overview.md
+        - Analysis Kit: plugins/analysis-kit.md
+        - Codex Kit: plugins/codex-kit.md
+        - Git Kit: plugins/git-kit.md
+        - Plugin DevKit: plugins/plugin-devkit.md
+        - Session Kit: plugins/session-kit.md
+        - Work Management Kit: plugins/workmanagement-kit.md
+    - Architecture:
+        - Overview: architecture/overview.md
+    - Governance:
+        - Skill Lifecycle: governance/skill-lifecycle.md
+        - Risk Tiers: governance/risk-tiers.md
+        - Ownership: governance/ownership.md
+    - Skill Authoring:
+        - Skill Manifest: skill-authoring/skill-manifest.md
+        - Skill Testing: skill-authoring/skill-testing.md
+        - Skill Maintenance: skill-authoring/skill-maintenance.md
+    - Evaluation:
+        - Overview: evaluation/overview.md
+        - Golden Sets: evaluation/golden-sets.md
+        - CI Smoke Gate: evaluation/ci-gate.md
+        - CI Review Gate: evaluation/ci-review-gate.md
+        - Skill-TDD: evaluation/skill-tdd.md
+    - Roadmap:
+        - Phase 1 Foundation: roadmap/phase-1-foundation.md
+
+theme:
+    name: material
+    language: en
+    palette:
+        - media: "(prefers-color-scheme)"
+          toggle:
+              icon: material/brightness-auto
+              name: Switch to light mode
+        - media: "(prefers-color-scheme: dark)"
+          scheme: slate
+          primary: black
+          accent: lime
+          toggle:
+              icon: material/weather-night
+              name: Switch to light mode
+        - media: "(prefers-color-scheme: light)"
+          scheme: default
+          primary: teal
+          accent: purple
+          toggle:
+              icon: material/weather-sunny
+              name: Switch to dark mode
+    font:
+        text: Roboto
+        code: Roboto Mono
+    features:
+        - navigation.indexes
+        - navigation.tabs
+        - navigation.tabs.sticky
+        - navigation.indexes
+        - navigation.instant
+        - navigation.sections
+        - navigation.expand
+        - navigation.tracking
+        - content.code.copy
+        - content.code.annotate
+        - content.action.edit
+        - content.action.view
+        - content.tabs.link
+        - content.tooltips
+        - toc.follow
+        - navigation.top
+        - navigation.footer
+        - search.suggest
+        - search.highlight
+
+markdown_extensions:
+    - admonition
+    - attr_list
+    - tables
+    - toc:
+        #   baselevel: 2
+        permalink: true
+        #   slugify: !!python/object/apply:pymdownx.slugs.slugify
+        #       kwds:
+        #           case: lower
+    - pymdownx.blocks.definition
+    - pymdownx.blocks.details
+    # - pymdownx.blocks.tab
+    - pymdownx.details
+    - pymdownx.emoji:
+        # Python object references validated at runtime by mkdocs-material
+        emoji_index: !!python/name:material.extensions.emoji.twemoji
+        emoji_generator: !!python/name:material.extensions.emoji.to_svg
+    - pymdownx.highlight:
+        linenums: true
+    - pymdownx.magiclink:
+        repo_url_shorthand: true
+        user: AndreHahm
+        repo: andres-cc-marketplace
+    - pymdownx.snippets:
+        check_paths: true
+    - pymdownx.superfences:
+        preserve_tabs: true
+    - pymdownx.tabbed:
+        alternate_style: true
+    - pymdownx.tasklist
+
+plugins:
+    - include-markdown
+    - mkdocstrings:
+        default_handler: python
+        handlers:
+            python:
+                paths:
+                    - .
+                options:
+                    # Headings
+                    show_root_heading: true
+                    show_root_full_path: false
+                    # Docstrings
+                    show_if_no_docstring: true
+                    # Signatures/annotations
+                    show_signature_annotations: true
+                    # Other
+                    show_bases: false
+    - awesome-pages
+    - search:
+        lang: en
+    - git-revision-date-localized:
+        enable_creation_date: true
+    - minify:
+        minify_html: true
+
+extra:
+    # version:
+    #     provider: mike # Not needed when using read the docs
+    social:
+        - icon: fontawesome/brands/github
+          link: https://github.com/AndreHahm/
+          name: Github
+        - icon: material/email
+          link: "mailto:info@andre-hahm.me"

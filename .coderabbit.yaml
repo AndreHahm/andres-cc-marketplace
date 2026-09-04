@@ -1,0 +1,260 @@
+# CodeRabbit Configuration for andres-cc-marketplace
+# Python-based Claude Code plugin marketplace (scripts/marketplace_ci, pytest) with
+# markdown-authored plugin components (plugins/*/{skills,agents,commands,rules})
+
+language: en-US
+tone_instructions: "Be concise, technical, and actionable. Focus on code quality, maintainability, and adherence to project standards. Ask clarifying questions rather than making
+  assumptions."
+
+early_access: false
+
+reviews:
+  # I tested assertive and found it too verbose, e.g. approx. 200 comments on
+  # one pull request. Some of the nitpicks do look valuable to me, but the
+  # signal to noise ratio isn't good enough.
+  profile: chill # Options: chill, assertive
+
+
+  # Request changes only for critical/major issues?
+  request_changes_workflow: false
+
+  # Don't generate summary in PR description - let authors write their own
+  high_level_summary: false
+  # high_level_summary_placeholder: "@coderabbitai summary"
+
+  # Include the high-level summary in the walkthrough comment instead
+  high_level_summary_in_walkthrough: false
+
+  # Disable poem generation in walkthrough comments
+  poem: false
+
+  # Disable review status messages to reduce comment noise
+  review_status: false
+
+  # Collapse walkthrough comment to reduce visual clutter in PRs
+  collapse_walkthrough: true
+
+  # Include sequence diagrams in walkthrough comments
+  sequence_diagrams: false
+
+  # Disable changed files summary in walkthrough comments
+  changed_files_summary: false
+
+  # Automatic review settings
+  auto_review:
+    # Enable automatic reviews for pull requests
+    enabled: true
+
+    # Automatic Incremental Review - Automatic incremental code review on each push
+    auto_incremental_review: false
+
+    # Skip reviews if PR title contains these keywords (case-insensitive)
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT REVIEW"
+      - "DO NOT MERGE"
+      - "NO REVIEW"
+      - "NO MERGE"
+      - "DRAFT"
+
+    # Skip reviews from these automated bot accounts
+    ignore_usernames:
+      - "dependabot[bot]"
+      - "renovate[bot]"
+      - "github-actions[bot]"
+      - "chatgpt-codex-connector[bot]"
+      - "devin-ai-integration[bot]"
+      - "deepsource[bot]"
+
+    # Skip reviewing draft PRs until they're ready for review (default: false, keeping explicit)
+    drafts: false
+
+    # Base branches (other than the default branch) to review. Accepts regex patterns. Use '.*' to match all branches.
+    base_branches:
+      - main
+
+  # Focus reviews on source code, exclude generated and vendor files
+  path_filters:
+    # Include source code and ci
+    - "**/.github/**"
+    - "**/scripts/**"
+    - "**/plugins/**"
+    - "**/docs/**"
+
+    # Exclude auto-mirrored plugin-devkit copies (reviewed once via plugins/**, not duplicated)
+    - "!**/.claude/**"
+    - "!**/.codex/**"
+    - "!**/.agents/**"
+    - "!**/.devin/**"
+    - "!**/.windsurf/**"
+
+    # Exclude generated and vendor files
+    - "!**/dist/**"
+    - "!**/site/**"
+    - "!**/node_modules/**"
+    - "!**/.venv/**"
+    - "!**/__pycache__/**"
+    - "!**/.pytest_cache/**"
+    - "!**/.ruff_cache/**"
+    - "!**/.ty/**"
+    - "!**/*.lock"
+    - "!**/*.log"
+    - "!**/.git/**"
+    - "!**/reports/**"
+    - "!**/.draft/**"
+    - "!**/.backup/**"
+    - "!**/.temp/**"
+    - "!**/.codacy/**"
+    - "!**/.idea/**"
+    - "!**/.scannerwork/**"
+    - "!**/.sonarlint/**"
+    - "!**/.vscode/**"
+    - "!**/.qodo/**"
+    - "!**/pnpm-lock.yaml"
+    - "!**/uv.lock"
+    - '!CHANGELOG.md'
+
+  # Path-specific instructions for different areas of the codebase
+  path_instructions:
+    - path: '**/*'
+      instructions: |
+        # Project Specific Guidelines
+        1. Language: All user-facing UI text, strings, and messages MUST be in English.
+        2. Code Quality: Avoid N+1 issues, blocking operations, and ensure high code quality. Suggest optimizations that follow modern best practices.
+
+    - path: "plugins/*/skills/**/SKILL.md"
+      instructions: |
+        - Check for proper YAML frontmatter (name, description) and clear activation triggers
+        - Ensure clear, actionable instructions
+        - Validate markdown formatting and structure
+
+    - path: "plugins/*/agents/**/*.md"
+      instructions: |
+        - Verify agent frontmatter (name, description, tools) is present and tool scoping is minimal
+        - Check triggering conditions are unambiguous against sibling agents
+
+    - path: "plugins/*/commands/**/*.md"
+      instructions: |
+        - Verify command frontmatter and argument handling are documented
+        - Ensure the command's behavior matches its description
+
+    - path: "**/rules/*.md"
+      instructions: |
+        - Check the rule states a clear "When this applies" scope and a "Why" rationale
+        - Flag rules that duplicate an existing rule instead of extending it
+
+    - path: "scripts/marketplace_ci/**/*.py"
+      instructions: |
+        - Enforce ruff/ty compliance (this repo's own CI gate)
+        - Check for proper error handling and fail-closed defaults on security-relevant checks
+        - Flag new logic with no corresponding coverage in tests/marketplace_ci/
+
+    - path: "tests/**/*.py"
+      instructions: |
+        - Check test coverage and assertions are non-vacuous
+        - Validate pytest naming conventions
+        - Verify no skipped/xfail tests left in committed code
+
+    - path: ".github/workflows/**"
+      instructions: |
+        - Validate GitHub Actions syntax
+        - Check for proper secret handling
+        - Ensure pinned action versions (SHA)
+        - Verify job dependencies and conditions
+
+  pre_merge_checks:
+    # Custom Pre-merge Checks - Add unique checks to enforce your team's standards before merging a pull request. Each check must have a unique name (up to 50 characters) and clear instructions (up to 10000 characters). Use these to automatically verify coding, security, documentation, or business rules and maintain code quality.
+    # Default: []
+    custom_checks: []
+
+  # Configuration for tools
+  tools:
+    ast-grep:
+      rule_dirs: []
+      util_dirs: []
+      essential_rules: true
+      packages: []
+    shellcheck:
+      enabled: true
+    ruff:
+      enabled: true
+    markdownlint:
+      enabled: true
+    github-checks:
+      enabled: true
+      timeout_ms: 90000
+    languagetool:
+      enabled: true
+      enabled_rules: []
+      disabled_rules: []
+      enabled_categories: []
+      disabled_categories: []
+      enabled_only: false
+      level: default
+    biome:
+      enabled: false
+    hadolint:
+      enabled: true
+    swiftlint:
+      enabled: false
+    phpstan:
+      enabled: false
+      level: default
+    golangci-lint:
+      enabled: false
+    yamllint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    checkov:
+      enabled: true
+    detekt:
+      enabled: false
+    eslint:
+      enabled: false
+    rubocop:
+      enabled: false
+    buf:
+      enabled: false
+    regal:
+      enabled: false
+    actionlint:
+      enabled: true
+    pmd:
+      enabled: false
+    cppcheck:
+      enabled: false
+
+chat:
+  # Enable auto-reply to comments
+  auto_reply: true
+
+  # Disable ASCII/emoji art in responses
+  art: false
+
+code_generation:
+  docstrings:
+    language: 'en'
+
+issue_enrichment:
+  auto_enrich:
+    enabled: true
+
+# Configuration for knowledge base
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: auto
+
+  issues:
+    scope: auto
+
+  code_guidelines:
+    # CodeRabbit will analyze and learn from your organization's code guidelines, which you can mention in the file patterns section. These guidelines will then be used to conduct thorough code reviews.
+    enabled: true
+    # Enabled - Enable CodeRabbit to enforce your organization's coding standards during reviews.
+    filePatterns:
+      # File Patterns - Specify files for your coding guideline documents in this section. CodeRabbit will scan these files to understand your team's standards and apply them during code reviews. Multiple files supported. File names are case-sensitive. Common files like: (**/.cursorrules, .github/copilot-instructions.md, .github/instructions/*.instructions.md, **/CLAUDE.md, **/GEMINI.md, **/.cursor/rules/*, **/.windsurfrules, **/.clinerules/*, **/.rules/*, **/AGENT.md, **/AGENTS.md) are included by default.
+      - "CONTRIBUTING.md"
+      - "README.md"
+      - "AGENTS.md"

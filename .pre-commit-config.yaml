@@ -1,4 +1,136 @@
+---
+exclude: |
+  (?x)^(
+      .*\{\{.*\}\}.*|     # Exclude any files with cookiecutter variables
+      docs/site/.*|       # Exclude mkdocs raw files
+      site/.*|            # Exclude mkdocs compiled files
+      \.history/.*|       # Exclude history files
+      .*cache.*/.*|       # Exclude cache directories
+      .*venv.*/.*|        # Exclude virtual environment directories
+      .*node_modules/.*   # Exclude node modules directories
+  )$
+fail_fast: true
+default_language_version:
+  python: python3.13
+
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+  - post-checkout
+  - post-merge
+  - post-rewrite
 repos:
+  # Verify that pyproject.toml is well-formed
+  - repo: https://github.com/abravalheri/validate-pyproject
+    rev: '0.26'
+    hooks:
+      - id: validate-pyproject
+        name: "🐍 python · Validate pyproject.toml"
+        description: "Verify that pyproject.toml adheres to it's schema."
+        additional_dependencies: ["validate-pyproject-schema-store[all]"]
+
+  # Verify that GitHub workflows are well-formed
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.28.0
+    hooks:
+      - id: check-github-workflows
+        args: ["--verbose"]
+        name: "🐙 github-actions · Check GitHub workflows"
+        description: "Verify that GitHub workflows are well-formed."
+
+  # uv - Lock and sync dependencies
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    # uv version.
+    rev: 0.9.7
+    hooks:
+      - id: uv-lock
+        name: "⚙️ uv · Lock dependencies"
+        description: "Lock dependencies using uv."
+      - id: uv-sync
+        args: ["--locked", "--all-packages"]
+        name: "⚙️ uv · Sync dependencies"
+        description: "Sync dependencies using uv."
+
+  # Ruff - Fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      # Run the linter
+      - id: ruff-check
+        args: [--fix]
+        name: "🐍 python · Check with Ruff"
+        description: "Runs Ruff to check Python code for style and potential errors"
+        # Match pyproject.toml's [tool.ruff] include list — ruff ignores that config's
+        # `include` when files are passed explicitly on the CLI, so this hook must
+        # mirror it or it lints plugin scripts never brought into the ruff rollout.
+        files: ^(scripts|tests|plugins/session-kit/(scripts|tests|skills))/.*\.py$
+      # Run the formatter
+      - id: ruff-format
+        name: "🐍 python · Format with Ruff"
+        description: "Runs Ruff to format Python code"
+        files: ^(scripts|tests|plugins/session-kit/(scripts|tests|skills))/.*\.py$
+
+  # Gitleaks - Searches full repo history for secrets and keys
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.28.0
+    hooks:
+      - id: gitleaks
+        name: "🔒 security · Detect hardcoded secrets"
+        description: "Searches full repo history for secrets and keys"
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.18.1
+    hooks:
+      - id: markdownlint-cli2
+        name: "📝 markdown · Lint markdown"
+        # No hardcoded glob in args — let pre-commit pass only the staged files
+        # matching `files:` below. A fixed `./**/*.md` glob here would make this
+        # hook lint the entire repo's markdown tree on every commit that touches
+        # even one .md file, regardless of what's actually staged.
+        files: \.md$
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        args: [-c, .yamllint.yaml, --format, parsable]
+        files: \.ya?ml$
+
+  # Shellcheck - Shell script linter
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        name: "🐚 shell · Lint shell scripts"
+        description: "Runs Shellcheck to check shell scripts for style and potential errors"
+
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        name: "🌳 git · Remove trailing whitespace"
+        args: ['--markdown-linebreak-ext=md,mkd,mkdn,markdown']
+      - id: end-of-file-fixer
+        name: "🌳 git · Fix end of file"
+      - id: check-yaml
+        name: "🌳 git · Check YAML files"
+        exclude: 'mkdocs\.yml$'  # Exclude mkdocs.yml (uses Python-specific YAML tags)
+      - id: check-json
+        name: "🌳 git · Check JSON files"
+      - id: check-added-large-files
+        name: "🌳 git · Block large file commits"
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+        name: "🌳 git · Detect conflict markers"
+      - id: check-toml
+        name: "🌳 git · Check TOML files"
+      - id: mixed-line-ending
+        name: "🌳 git · Check line endings"
+      - id: check-executables-have-shebangs
+        name: "🌳 git · Check that non-binary executables have a proper shebang"
+
+  # Local hooks for project-specific tasks
   - repo: local
     hooks:
       - id: marketplace-ci-check-staged

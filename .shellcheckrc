@@ -1,0 +1,6 @@
+# Default shell dialect for files without a shebang
+shell=bash
+
+# SC1090: ShellCheck can't follow non-constant source (e.g. a dynamically computed path)
+# SC1091: Not following sourced file (file not found or not readable)
+disable=SC1090,SC1091
