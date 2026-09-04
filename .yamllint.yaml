@@ -1,0 +1,33 @@
+extends: default
+
+rules:
+  key-duplicates: enable
+  new-line-at-end-of-file: enable
+  document-start: disable
+
+  # Generous line length for YAML blocks (120 chars)
+  line-length:
+    max: 120
+    level: warning
+
+  # Standardize truthy values (true/false instead of yes/no)
+  truthy:
+    level: warning
+    allowed-values: ['true', 'false']
+
+  comments: disable
+
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+  trailing-spaces: enable
+
+  brackets: disable
+
+  colons:
+    max-spaces-before: 0
+    max-spaces-after: 1
+  hyphens:
+    max-spaces-after: 1
+
+  empty-values: disable

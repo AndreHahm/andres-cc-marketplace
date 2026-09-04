@@ -14,9 +14,11 @@ reports/events/
 !.env.example
 .idea/
 .qodo/
+.windsurf/
 !.claude/
 !.codex/
 !.agents/
+!.devin/
 .claude/worktrees/
 .codex/worktrees/
 
@@ -29,10 +31,14 @@ reports/events/
 *.local.*
 **/*.local.*
 .claude/output/
+.claude/handoffs/
 **/.draft/
 **/.backup/
 **/.temp/
 **/.experiments/
+
+#MKDocs static site
+site/
 
 # Transient advisory-lock files from marketplace-inventory/plugin-inventory's atomic-write mechanism
 **/.claude-plugin/*.lock
