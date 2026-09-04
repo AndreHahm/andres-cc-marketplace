@@ -109,7 +109,7 @@ without knowing to manually comment `@codex review` first. The trigger list abov
 match the connector's actual current re-trigger conditions, plus the new `issue_comment` trigger so
 that manual `@codex review` comment itself starts a fresh wait. `@codex full review` (added
 2026-08-31) is this workflow's own second recognized trigger phrase alongside `@codex review`,
-matching the codex reviewer's `full_review_trigger` config value (`git-kit.settings.json`'s
+matching the Codex reviewer's `full_review_trigger` config value (`git-kit.settings.json`'s
 `review_findings_reviewers`) — both phrases start a fresh wait the same way.
 
 `reopened` was dropped along with `synchronize` (not just narrowed to the other two) — the
@@ -193,7 +193,7 @@ findings-review event. That specific scenario still hasn't been observed live.
 ## Recovering a stuck check
 
 A distinct failure mode from all three signals above, confirmed live on PR #50 (2026-08-17): Codex
-finished the review on its own dashboard (chatgpt.com/codex) and the connector never posted a review
+finished the review on its own dashboard (`chatgpt.com/codex`) and the connector never posted a review
 object, a matching comment, *or* a `+1` reaction to GitHub within the 30-minute window — a GitHub-side
 write-back gap, not a delay in any signal this workflow polls for. The check fails as designed in this
 case; nothing here is a bug.

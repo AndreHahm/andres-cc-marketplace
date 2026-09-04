@@ -58,7 +58,7 @@ The only thing that surfaces this drift is the separate `repair-all --bootstrap`
 **never invoked by CI** (`.github/workflows/marketplace-ci.yml` calls plain `check-all`, not
 `repair-all --bootstrap`) and exists as a manual, on-demand tool only. Run live:
 
-```
+```bash
 uv run python -m scripts.marketplace_ci repair-all --bootstrap
 ```
 
