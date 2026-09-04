@@ -27,12 +27,12 @@ multiSelect: false
 SKILL.md lines 116-123, Phase 2: Component Inventory, final step:
 
 > "Emit the inventory before proceeding:
-> 
+>
 > ```
 > 📦 Session Inventory  <start> → <end>
 > | # | Component | Category | Evidence |
 > ```
-> 
+>
 > Confirm before proceeding — ask with `AskUserQuestion`: "Found N components. Proceed with full analysis?" — options "Proceed" / "Cancel"."
 
 ### Workflow Continuation

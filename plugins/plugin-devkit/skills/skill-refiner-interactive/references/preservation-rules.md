@@ -314,4 +314,3 @@ See `production-patterns.md`'s "Changes Made Summary" for a worked example of th
 **When in doubt:** Move to references instead of deleting. Moving preserves functionality while still improving efficiency.
 
 **Operator approval:** Always use `AskUserQuestion` before deleting. Migrations and improvements don't need approval (content preserved anyway).
-

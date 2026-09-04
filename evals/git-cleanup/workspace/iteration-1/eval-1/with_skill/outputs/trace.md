@@ -105,7 +105,7 @@ These changes will be LOST if you remove this worktree.
 
 1. Related branch groups (if any identified in Phase 2)
    - Table showing branches, commit counts, PR merges, status
-   
+
 2. Individual branch categories (from Phase 3)
    - SAFE_TO_DELETE
    - SQUASH_MERGED
@@ -119,10 +119,10 @@ These changes will be LOST if you remove this worktree.
    - **../proj-x: DIRTY**
      ```
      WARNING: ../proj-x has uncommitted changes:
-     
+
      Ignored (not tracked by git, will also be deleted):
        .env
-     
+
      These changes will be LOST if you remove this worktree.
      ```
    - (Other worktrees and their status)

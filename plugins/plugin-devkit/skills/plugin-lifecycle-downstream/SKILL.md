@@ -419,4 +419,3 @@ below for the runtime invariants this pipeline itself must hold at every phase.
 - [ ] Phase 10 rechecks every affected evidence source after the last mutation.
 - [ ] Phase 11 performs evidence-only scoring and no duplicate review.
 - [ ] Phase 12 discloses stopped, skipped, deferred, and accepted-risk items.
-

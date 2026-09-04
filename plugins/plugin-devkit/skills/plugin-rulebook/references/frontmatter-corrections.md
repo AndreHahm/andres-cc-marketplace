@@ -60,4 +60,3 @@ finds candidates rather than confirmed violations: verify each reported line aga
 prose (its own module docstring lists the specific false-positive classes it's known to produce — a
 documentation example quoting grant syntax, a command with extra args beyond a wrapped grant, a word
 that's also ordinary English, a prose ellipsis/wildcard) before treating it as a REQUIRED finding.
-

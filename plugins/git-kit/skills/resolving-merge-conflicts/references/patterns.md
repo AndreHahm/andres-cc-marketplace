@@ -452,12 +452,12 @@ Merge all documentation improvements.
 ```
 <<<<<<< HEAD
 /// Processes user input and returns validated data.
-/// 
+///
 /// # Arguments
 /// * `input` - The raw user input
 =======
 /// Processes user input and returns validated data.
-/// 
+///
 /// # Errors
 /// Returns `Error::InvalidInput` if validation fails
 >>>>>>> branch
@@ -467,10 +467,10 @@ Merge all documentation improvements.
 
 ```
 /// Processes user input and returns validated data.
-/// 
+///
 /// # Arguments
 /// * `input` - The raw user input
-/// 
+///
 /// # Errors
 /// Returns `Error::InvalidInput` if validation fails
 ```

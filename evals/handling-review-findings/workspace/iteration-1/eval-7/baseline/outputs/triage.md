@@ -14,7 +14,7 @@ This change defers the formatting fix to a separate issue rather
 than addressing it in this PR.
 ```
 
-**Rationale:** 
+**Rationale:**
 - The commit adds no actual fix to the PR's deliverable (README.md remains unchanged)
 - The commit only documents and formalizes the decision to defer a Minor finding
 - The commit message should make this deferral decision explicit and transparent

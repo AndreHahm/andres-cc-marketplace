@@ -253,4 +253,3 @@ summary distinguishes verified, deferred, accepted-risk, skipped, and unresolved
 Pipeline confirmation authorizes read-only orchestration only. Preparing tests, applying
 fixes, keeping documentation edits, and committing each require their own bounded
 approval. Never treat approval in one phase as authorization for a later mutation.
-

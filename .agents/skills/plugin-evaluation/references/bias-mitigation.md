@@ -73,7 +73,7 @@ CRITICAL EVALUATION GUIDELINES:
 def length_normalized_score(score, response_length, target_length=500):
     """Adjust score based on response length."""
     length_ratio = response_length / target_length
-    
+
     if length_ratio > 2.0:
         # Penalize excessively long responses
         penalty = (length_ratio - 2.0) * 0.1
@@ -150,7 +150,7 @@ Detailed explanations receive higher scores even when the extra detail is irrele
 async def relevance_weighted_evaluation(response, prompt, criteria):
     # First, assess relevance of each segment
     relevance_scores = await assess_relevance(response, prompt)
-    
+
     # Weight evaluation by relevance
     segments = split_into_segments(response)
     weighted_scores = []
@@ -158,7 +158,7 @@ async def relevance_weighted_evaluation(response, prompt, criteria):
         if relevance > 0.5:  # Only count relevant segments
             score = await evaluate_segment(segment, prompt, criteria)
             weighted_scores.append(score * relevance)
-    
+
     return sum(weighted_scores) / len(weighted_scores)
 ```
 
@@ -198,7 +198,7 @@ For each claim in the response:
 2. Note if evidence or sources are provided
 3. Score based on verifiability, not confidence
 
-IMPORTANT: Confident claims without evidence should NOT receive higher scores than 
+IMPORTANT: Confident claims without evidence should NOT receive higher scores than
 hedged claims with evidence.
 ```
 
@@ -210,15 +210,15 @@ Add a fact-checking step before scoring:
 async def fact_checked_evaluation(response, prompt, criteria):
     # Extract claims
     claims = await extract_claims(response)
-    
+
     # Fact-check each claim
     fact_check_results = await asyncio.gather(*[
         verify_claim(claim) for claim in claims
     ])
-    
+
     # Adjust score based on fact-check results
     accuracy_factor = sum(r['verified'] for r in fact_check_results) / len(fact_check_results)
-    
+
     base_score = await evaluate(response, prompt, criteria)
     return base_score * (0.7 + 0.3 * accuracy_factor)  # At least 70% of score
 ```
