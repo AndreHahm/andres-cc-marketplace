@@ -99,6 +99,10 @@ repos:
       - id: yamllint
         args: [-c, .yamllint.yaml, --format, parsable]
         files: \.ya?ml$
+        # Excluded for the same reason check-yaml above excludes it: mkdocs.yml
+        # follows Material-for-MkDocs' own conventional 4-space indentation
+        # style, not this repo's general 2-space YAML rule.
+        exclude: 'mkdocs\.yml$'
 
   # Shellcheck - Shell script linter
   - repo: https://github.com/shellcheck-py/shellcheck-py
