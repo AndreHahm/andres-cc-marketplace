@@ -84,10 +84,14 @@ repos:
       - id: markdownlint-cli2
         name: "📝 markdown · Lint markdown"
         # No hardcoded glob in args — let pre-commit pass only the staged files
-        # matching `files:` below. A fixed `./**/*.md` glob here would make this
-        # hook lint the entire repo's markdown tree on every commit that touches
-        # even one .md file, regardless of what's actually staged.
-        files: \.md$
+        # matching `files:` below. A fixed glob here would make this hook lint
+        # the entire matched tree on every commit that touches even one .md
+        # file, regardless of what's actually staged. Scoped to docs/** to
+        # match .markdownlint-cli2.jsonc's own globs — markdownlint-cli2
+        # ignores that config's `globs` whenever explicit filenames are passed
+        # on the CLI (which pre-commit always does here), so the two must be
+        # kept in sync by hand.
+        files: ^docs/.*\.md$
 
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.37.1

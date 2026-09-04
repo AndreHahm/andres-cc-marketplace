@@ -1,6 +1,6 @@
 {
-  "globs": ["./**/*.md"],
-  "ignores": ["node_modules", ".git"],
+  "globs": ["./docs/**/*.md"],
+  "ignores": ["node_modules", ".venv", ".git"],
   "config": {
     "default": true,
     "heading-increment": true,
