@@ -39,3 +39,22 @@ Separately, for context only (not blocking this issue): `markdownlint`'s pre-com
 3. Verify with a real test commit that it now blocks a violation and passes a clean commit as expected.
 
 **Scope note:** this should be its own separate branch/PR — not bundled with other marketplace-ci tooling work.
+
+## Verification (all 3 acceptance criteria met)
+
+1. Ran the 4 hygiene hooks across the whole repo (279 files fixed) and committed the result as its own
+   commit.
+2. `uv run pre-commit install` installed all 6 hook types, including `pre-push` (a separate fix was
+   needed first: `default_install_hook_types` was missing `pre-push`, so the local
+   `marketplace-ci-check-all` hook — scoped to `stages: [pre-push]` — would never have run).
+3. Verified with real commit attempts:
+   - A staged fake AWS key was **not** blocked — gitleaks allowlists that well-known placeholder
+     (`AKIAIOSFODNN7EXAMPLE`) by default.
+   - A staged fake Stripe-shaped key **was** blocked by gitleaks (`stripe-access-token` rule),
+     confirming the hook is live.
+   - A staged new file under `docs/` was separately blocked by markdownlint's pre-existing backlog in
+     *other*, untouched `docs/*.md` files — a live demonstration of the already-known gap: any new
+     `docs/**/*.md` file now triggers that backlog, since markdownlint-cli2 lints the whole glob
+     whenever one matching file is staged, not just the staged file itself. Worth a follow-up decision
+     on how to handle it (baseline exemption, cleanup pass, or accept as-is).
+   - This very commit is the clean-pass case: pre-commit ran for real and let it through.
