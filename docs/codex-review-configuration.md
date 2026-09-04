@@ -18,7 +18,7 @@ Both the root file and any more-specific `AGENTS.md` covering a changed file app
 
 A `## Code Review Rules` heading, with `###`-level category headings and bullet lists underneath:
 
-```
+```markdown
 ## Code Review Rules
 
 ### Category Name
