@@ -258,4 +258,3 @@ Check against common skill creation mistakes. For detailed examples, see `skill-
 - [ ] **Unnecessary tools** - Does skill actually need all listed tools?
   - Apply principle of least privilege: only what's required
   - Common mistake: Including Task(*) when task operations not needed
-

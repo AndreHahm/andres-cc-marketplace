@@ -20,13 +20,13 @@ These describe the same vulnerability with slightly different wording. Content c
 
 **Workflow Step 2 (Classify findings):** Round 3 finding, Major severity, clearly deduplicated.
 
-**Workflow Step 3 (Apply round-cap decisions):** 
+**Workflow Step 3 (Apply round-cap decisions):**
 - Round 3 → Issue path (not fixed in-session per SKILL.md line 145)
 - Major severity → Hard Cap exception applies (SKILL.md line 119: "A Critical/Major finding never falls through to a silent 'proceeds without it' outcome, in any round")
 - Scope-deferred check: No, this is fixable in-session, just deferred per round-3 cap
 - Severity gate does not apply (this is Major, not Minor/nit)
 
-**Workflow Step 5 (Issue path):** 
+**Workflow Step 5 (Issue path):**
 From SKILL.md step 5 (line 131-145):
 > "before drafting, check `gh issue list` for an existing issue already filed against this PR/head-SHA for the same finding (dedup per step 2's rule) — two reviewers flagging the same defect in the same round **must produce one issue, not two**; if a match exists, reply pointing at it instead of filing a duplicate."
 

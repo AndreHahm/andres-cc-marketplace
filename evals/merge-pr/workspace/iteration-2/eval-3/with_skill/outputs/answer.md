@@ -36,7 +36,7 @@ headRefName: "feat/x;rm -rf /"
   - `x` - matches (letter)
   - `;` - **DOES NOT MATCH** (semicolon is not in allowed character set)
   - `rm -rf /` - contains space and other disallowed characters
-  
+
 - Status: **FAIL**
 - The validation gate explicitly states: "if it doesn't [match], stop and tell the user rather than proceeding"
 

@@ -102,7 +102,7 @@ to verify the contract is sound and complete.
 - **Status:** SATISFIED
 
 ### Assertion 2: Marker-write happens AFTER confirmation, immediately before git commit, not BEFORE confirmation
-- **Evidence from trace:** 
+- **Evidence from trace:**
   - Tool Call 2 (AskUserQuestion in 6b) is the confirmation gate
   - Tool Call 3 (write-git-kit-marker.sh in 6c.1) is explicitly listed as occurring "immediately before committing"
   - Tool Call 3 is positioned after the conditional "If 'Commit as shown'" from step 6b

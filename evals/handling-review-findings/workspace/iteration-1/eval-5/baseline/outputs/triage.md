@@ -25,7 +25,7 @@ A PR review "round" is defined by which commit (HEAD SHA) is being reviewed, not
 3. **Round boundaries are commit-driven:** A new review round begins when:
    - The author pushes a new commit in response to earlier findings, creating a new HEAD SHA
    - Reviewers then examine this new code version
-   
+
    Since no such push occurred, no new round has been triggered.
 
 4. **Multi-hour gap is irrelevant:** Time elapsed between two reviewers examining the same code is independent of round assignment. Multiple reviewers can post findings (even different findings) within the same round if they're all looking at the same commit.

@@ -14,7 +14,7 @@ After completing the Phase 2 component inventory and emitting the inventory tabl
 
 - **Tool:** `AskUserQuestion`
 - **Message:** "Found 5 components. Proceed with full analysis?"
-- **Options:** 
+- **Options:**
   - "Proceed"
   - "Cancel"
 

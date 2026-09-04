@@ -296,4 +296,3 @@ Before deploying a production skill:
 - [ ] Production-ready patterns are demonstrated
 
 If all checks pass: **Ready for deployment**
-

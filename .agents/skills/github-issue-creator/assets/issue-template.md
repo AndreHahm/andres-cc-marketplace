@@ -2,8 +2,8 @@
 [One-line description of the issue]
 
 ## Environment
-- **Product/Service**: 
-- **Region/Version**: 
+- **Product/Service**:
+- **Region/Version**:
 - **Browser/OS**: (if relevant)
 
 ## Reproduction Steps

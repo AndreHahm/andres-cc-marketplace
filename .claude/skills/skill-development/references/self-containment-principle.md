@@ -294,4 +294,3 @@ This creates a clear boundary:
 - **Outside**: Optional external resources (network calls via explicitly declared tools)
 
 Skills respecting bounded scope work reliably across all Claude Code deployment contexts: local, project, user, and managed scopes.
-
