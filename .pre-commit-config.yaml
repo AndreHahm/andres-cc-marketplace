@@ -2,7 +2,7 @@
 exclude: |
   (?x)^(
       .*\{\{.*\}\}.*|     # Exclude any files with cookiecutter variables
-      docs/site/.*|       # Exclude mkdocs raw files
+      docs/mkdocs/.*|     # Exclude mkdocs raw files
       site/.*|            # Exclude mkdocs compiled files
       \.history/.*|       # Exclude history files
       .*cache.*/.*|       # Exclude cache directories

@@ -39,7 +39,6 @@ reports/events/
 
 #MKDocs static site
 site/
-!docs/site/
 
 # Transient advisory-lock files from marketplace-inventory/plugin-inventory's atomic-write mechanism
 **/.claude-plugin/*.lock

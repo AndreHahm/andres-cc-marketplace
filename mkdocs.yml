@@ -5,7 +5,7 @@ site_author: "Andre Hahm"
 site_url: https://andrehahm.github.io/andres-cc-marketplace/
 repo_name: andres-cc-marketplace
 repo_url: https://github.com/AndreHahm/andres-cc-marketplace
-docs_dir: docs/site
+docs_dir: docs/mkdocs
 site_dir: site
 
 validation:
