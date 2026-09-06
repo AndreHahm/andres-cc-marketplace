@@ -1,0 +1,56 @@
+name: Workflow Kill Switch
+description: Check the WORKFLOW_KILLSWITCH repo variable (falls back to .github/WORKFLOW_KILLSWITCH) and fail if workflows are disabled
+
+inputs:
+  killswitch-var:
+    description: >-
+      The WORKFLOW_KILLSWITCH repo variable's value. Composite actions
+      cannot reference the vars context directly -- GitHub Actions rejects
+      a vars-context expression inside a composite action's own env/with
+      with "Unrecognized named-value: 'vars'" (confirmed live: every job
+      in this repo's own CI failed on this until the caller resolved it
+      and passed it in here -- and, on the first attempt at this fix,
+      failed again from this very description field, because GitHub's
+      template engine scans every string value in the file for
+      expression-shaped text, not just env/with/if -- so this field
+      itself must never spell out the literal template syntax). The
+      calling workflow must pass the WORKFLOW_KILLSWITCH repo variable's
+      value here, resolved via the vars context.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Check Workflow Kill Switch
+      shell: bash
+      env:
+        KILLSWITCH_VAR: ${{ inputs.killswitch-var }}
+      run: |
+        # Primary source: the WORKFLOW_KILLSWITCH repo variable (0=DISABLED, 1=ENABLED).
+        # Variables are available without a checkout, so this cannot be bypassed by
+        # ordering the check before actions/checkout.
+        if [ -n "$KILLSWITCH_VAR" ]; then
+          case "$KILLSWITCH_VAR" in
+            0) STATUS="DISABLED" ;;
+            1) STATUS="ENABLED" ;;
+            *)
+              echo "::error::Unrecognized WORKFLOW_KILLSWITCH variable value: '$KILLSWITCH_VAR' (expected 0 or 1)"
+              exit 1
+              ;;
+          esac
+        # Fallback: the tracked .github/WORKFLOW_KILLSWITCH file, only used when the
+        # variable is unset. Requires checkout to have already run to see repo content.
+        elif [ -f ".github/WORKFLOW_KILLSWITCH" ]; then
+          STATUS=$(sed -n 's/^STATUS:[[:space:]]*//p' .github/WORKFLOW_KILLSWITCH | head -n1 | tr -d '\r' | xargs)
+        else
+          STATUS="ENABLED"
+        fi
+
+        if [ "$STATUS" = "DISABLED" ]; then
+          echo "::error::Workflows disabled by kill switch. Merges are blocked until it is re-enabled."
+          exit 1
+        elif [ "$STATUS" != "ENABLED" ]; then
+          echo "::error::Unrecognized WORKFLOW_KILLSWITCH STATUS value: '$STATUS' (expected ENABLED or DISABLED)"
+          exit 1
+        fi

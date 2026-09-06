@@ -1,0 +1,16 @@
+# WORKFLOW KILL SWITCH
+#
+# This file controls whether GitHub Actions workflows are allowed to run.
+#
+# STATUS: ENABLED
+#
+# To enable workflows, change STATUS to: ENABLED
+# To disable workflows, change STATUS to: DISABLED
+#
+# All workflows check this file before executing.
+# If STATUS is DISABLED, workflows exit immediately without doing anything.
+#
+# Last updated: 2026-09-05
+# Reason: Initial config
+
+STATUS: ENABLED
