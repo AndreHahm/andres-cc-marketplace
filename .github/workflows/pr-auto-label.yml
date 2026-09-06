@@ -1,0 +1,172 @@
+name: Auto-label PRs (Conventional Commits)
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+concurrency:
+  group: pr-auto-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+            .github/actions/fork-safety
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: Check if PR is from fork
+        id: fork-safety
+        uses: ./.github/actions/fork-safety
+
+      - name: Label PR by Conventional Commit title
+        if: steps.fork-safety.outputs.should-skip-writes != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # ratchet:actions/github-script@v9.0.0
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) return;
+
+            const title = (pr.title || "").trim();
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = pr.number;
+
+            // Conventional Commit header: type(scope)!: subject
+            // Examples:
+            // - feat(api): add endpoint
+            // - fix!: change behavior
+            // - build(deps): bump package
+            // - chore(deps-dev): update lockfile
+            // - docs(readme): update
+            const m = title.match(/^([a-zA-Z]+)(\(([^)]+)\))?(!)?:\s+/);
+
+            if (!m) {
+              core.info(`No conventional-commit style prefix detected in title: "${title}"`);
+              return;
+            }
+
+            const type = (m[1] || "").toLowerCase();
+            const scopeRaw = (m[3] || "").toLowerCase(); // without parentheses
+            const isBreaking = !!m[4];
+
+            // Map CC types -> your labels (Type)
+            const map = {
+              feat: "t: feature",
+              fix: "t: bug",
+              docs: "t: documentation",
+              refactor: "t: refactor",
+              perf: "t: performance",
+              test: "t: test",
+              build: "t: build",
+              ci: "t: ci",
+              chore: "t: chore",
+              security: "t: security",
+              style: "t: chore",
+              revert: "t: chore"
+            };
+
+            const labelsToAdd = new Set();
+
+            // Type label
+            if (map[type]) labelsToAdd.add(map[type]);
+
+            // Status label: only set on first open / reopen to avoid
+            // overwriting manually-set status labels on subsequent pushes.
+            const eventAction = context.payload.action;
+            if (eventAction === "opened" || eventAction === "reopened") {
+              labelsToAdd.add("s: needs review");
+            }
+
+            // Impact label for breaking changes
+            if (isBreaking) labelsToAdd.add("i: breaking change");
+
+            // Area label from CC scope
+            if (scopeRaw) {
+              // Dependencies: build(deps) / chore(deps) / chore(deps-dev) etc.
+              const depScopes = ["deps", "deps-dev", "dependencies", "dependabot", "renovate"];
+              const isDeps = depScopes.includes(scopeRaw) || scopeRaw.startsWith("deps");
+              if (isDeps) {
+                labelsToAdd.add("a: dependencies");
+              }
+
+              // Map well-known scopes to area labels
+              const scopeAreaMap = {
+                api: "a: api",
+                frontend: "a: frontend",
+                backend: "a: backend",
+                db: "a: database",
+                database: "a: database",
+                docker: "a: docker",
+                devops: "a: devops",
+                ci: "a: devops",
+                tests: "a: tests",
+                test: "a: tests",
+                arch: "a: architecture",
+                architecture: "a: architecture",
+                observability: "a: observability",
+                "github-actions": "a: github-actions",
+                actions: "a: github-actions",
+                "ai-setup": "a: ai-setup",
+                "ai-evals": "a: ai-evals",
+                "ai-observability": "a: ai-observability"
+              };
+              if (scopeAreaMap[scopeRaw]) labelsToAdd.add(scopeAreaMap[scopeRaw]);
+            }
+
+            const labels = Array.from(labelsToAdd);
+            if (labels.length === 0) {
+              core.info("No labels to add.");
+              return;
+            }
+            core.info(`Adding labels: ${labels.join(", ")}`);
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number,
+              labels
+            });
+
+      - name: Label PRs by changed files
+        if: steps.fork-safety.outputs.should-skip-writes != 'true'
+        uses: actions/labeler@634933edcd8ababfe52f92936142cc22ac488b1b # ratchet:actions/labeler@v6.0.1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+      - name: Remind to run full CI on PR
+        if: steps.fork-safety.outputs.should-skip-writes != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # ratchet:actions/github-script@v9.0.0
+        with:
+          script: |
+            if (!["opened", "reopened"].includes(context.payload.action)) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '👋 Hi! Thank you for contributing to Andres Claude Code Plugin Marketplace. The following points will speed up your PR merge:\n\n' +
+                '- A PR should do only one thing, smaller PRs enable faster reviews.\n' +
+                '- Every PR should include unit tests to ensure it works and is not broken by other future PRs.\n' +
+                '- Write the commit message by fulfilling the PR description to help reviewer and future developers understand.\n\n' +
+                'If CI fails, you can run linting and testing checks locally (see the marketplace README for setup).'
+            });
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

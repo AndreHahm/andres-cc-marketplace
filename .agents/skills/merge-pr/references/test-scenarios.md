@@ -26,7 +26,7 @@ R29's own three required inline subsections, the trigger-phrase lists and `Quali
 - Flag given with an empty or missing reason → treated as if the flag were absent entirely
 - Step 3 (merge-rights) fails even though step 2's bypass exception applied → stop at step 3, exactly like the non-bypass path; a bypass never grants merge rights
 - Step 4's re-triggered check comes back failing (bad attestation, actor/SHA mismatch server-side) → step 4(e)'s rerun of step 2 reports not-ready and stops; never proceeds to step 5 on an assumption that the bypass "should" have worked
-- `codex-review-bypassed` label missing from the repo → step 4(c) stops and reports failure; the skill never creates the label itself
+- `s: codex review bypassed` label missing from the repo → step 4(c) stops and reports failure; the skill never creates the label itself
 
 **Verify step 2's four-state CI classification never collapses a state into another:**
 - A required context has no entry anywhere in `statusCheckRollup` (never ran for the current head SHA) → classified **missing**, reported distinctly from "pending" (e.g. "1 required context missing: Fork PR (unsupported) — never ran for the current head commit"), never silently folded into a "still running" message

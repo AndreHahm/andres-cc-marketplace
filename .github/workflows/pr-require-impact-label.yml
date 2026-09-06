@@ -1,0 +1,73 @@
+name: Require Impact Label
+
+on:
+  pull_request_target:
+    types: [opened, edited, labeled, unlabeled, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: pr-require-impact-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+jobs:
+  require-impact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: Verify exactly one impact label is set
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # ratchet:actions/github-script@v9.0.0
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) return;
+
+            // Optional: skip drafts (comment out if you want to enforce even on drafts)
+            if (pr.draft) {
+              core.info("PR is a draft. Skipping impact label enforcement.");
+              return;
+            }
+
+            const allowed = new Set([
+              "i: breaking change",
+              "i: major change",
+              "i: minor change"
+            ]);
+
+            // Fetch live labels to avoid stale payload when labeled/unlabeled
+            // events fire concurrently with the autofix workflow.
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number
+            });
+            const labels = (issue.labels || [])
+              .map(l => (typeof l === "string" ? l : l.name || "").toLowerCase());
+            const found = labels.filter(n => allowed.has(n));
+
+            if (found.length === 1) {
+              core.info(`Impact label OK: ${found[0]}`);
+              return;
+            }
+
+            const msg =
+              found.length === 0
+                ? `Missing impact label. Please add exactly one of: ${Array.from(allowed).join(", ")}.`
+                : `Too many impact labels: ${found.join(", ")}. Please keep exactly one.`;
+
+            core.setFailed(msg);
