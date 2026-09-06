@@ -61,9 +61,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           persist-credentials: false
+          # .github/WORKFLOW_KILLSWITCH is included here (unlike
+          # marketplace-ci.yml's sparse-checkouts, which rely on the
+          # restore step below for it) because that step is skipped for
+          # issue_comment events -- for those, this checkout's own default
+          # ref is already the trusted default branch, so sparse-checkout
+          # is sufficient on its own to make the marker file available.
           sparse-checkout: |
             .github/actions/workflow-killswitch
             .github/actions/track-rerun
+            .github/WORKFLOW_KILLSWITCH
       - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
         # Only pull_request runs check out PR-controlled content here --
         # actions/checkout's default ref for an issue_comment event
