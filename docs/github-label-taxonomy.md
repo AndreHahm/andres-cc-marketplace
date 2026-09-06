@@ -74,7 +74,10 @@ Scope labels make architectural boundaries visible.
 Describes lifecycle stage.
 
 - `s: blocked` — Blocked by another issue, decision, or dependency.
+- `s: codex review bypassed` — Marketplace CI's Codex review requirement was bypassed via a SHA-bound maintainer attestation.
+- `s: do not merge` — Explicitly held back from merging regardless of check/review status.
 - `s: in progress` — Currently being worked on.
+- `s: merge conflict` — Has merge conflicts that need to be resolved.
 - `s: needs information` — Awaiting additional information from the author.
 - `s: needs review` — Awaiting reviewer feedback.
 - `s: triage` — Needs initial review and classification.
@@ -113,11 +116,20 @@ Tracks planning artifacts attached to issues or PRs.
 - `plan: prd` — Product requirements document.
 - `plan: roadmap` — Roadmap planning: milestones, releases, timelines.
 - `plan: spike` — Time-boxed research/experiment to reduce uncertainty.
+- `plan: subtask` — Subtask: a granular unit of work under a `plan: task`.
 - `plan: task` — Task planning: implementation plan, checklist, sequencing.
 
 ---
 
-## 8. Resolution (`r:`)
+## 8. Automation (`auto:`)
+
+Marks issues created automatically by repository automation, rather than by a human.
+
+- `auto: workflow-health` — Automated workflow health alert created by `workflow-health.yml`.
+
+---
+
+## 9. Resolution (`r:`)
 
 Applied when closing an issue or PR to record the outcome.
 
@@ -128,7 +140,7 @@ Applied when closing an issue or PR to record the outcome.
 
 ---
 
-## 9. Community/Contribution (`c:`)
+## 10. Community/Contribution (`c:`)
 
 Applied when communicating with contributors.
 

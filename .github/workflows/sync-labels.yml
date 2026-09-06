@@ -19,6 +19,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout-cone-mode: false
           sparse-checkout: |
             .github/actions/workflow-killswitch
             .github/actions/track-rerun
@@ -84,12 +85,6 @@ jobs:
 
           print(f"✅ labels.yml structure is valid ({len(data['labels'])} labels)")
           EOF
-
-      - name: Authenticate GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "$GH_TOKEN" | gh auth login --with-token
 
       - name: Run label sync script
         run: |
