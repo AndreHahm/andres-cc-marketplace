@@ -1,0 +1,11 @@
+# This file defines individuals or teams responsible for code in this repository.
+# Code owners are automatically requested for review when someone opens a PR that modifies code they own.
+#
+# Syntax: <pattern> <owner1> <owner2> ...
+# Patterns follow .gitignore syntax
+# Owners can be @username or @org/team-name
+#
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+* @AndreHahm
