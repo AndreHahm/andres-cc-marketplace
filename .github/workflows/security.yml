@@ -1,0 +1,85 @@
+# ─── Security — Secret scan · npm audit · CodeQL ─────────────────────────────
+# Runs on every push/PR to main and on a weekly schedule.
+
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: "0 4 * * 1" # weekly on Monday at 04:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secretlint:
+    name: "Run secretlint on changed files"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # ratchet:tj-actions/changed-files@v47.0.6
+        with:
+          # Double-quoted so YAML actually escapes this to a real newline --
+          # single-quoted '\n' is the literal two-character string backslash+n
+          # (YAML single-quoted scalars never process escapes), and this
+          # action does a raw `Array.join(separator)` with no unescaping of
+          # its own, so a single-quoted value here would silently join
+          # filenames with a literal "\n" instead of a real newline, breaking
+          # the `xargs -d '\n'` step below it feeds (verified against the
+          # action's own v47.0.6 dist/index.js).
+          separator: "\n"
+
+      - name: Set up Node.js
+        uses: ./.github/actions/setup-pnpm
+        with:
+          # skip-install: this job only wants to install when relevant files
+          # actually changed (its own separate "Install dependencies" step
+          # below, gated on any_changed) -- the action's own default would
+          # otherwise install unconditionally on every run.
+          skip-install: 'true'
+
+      - name: Install dependencies
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: pnpm install --frozen-lockfile
+        timeout-minutes: 3
+
+      - name: Show changed files
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: printf '%s\n' "$CHANGED_FILES"
+
+      - name: Run secretlint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          printf '%s' "$CHANGED_FILES" > /tmp/changed-files.txt
+          xargs -a /tmp/changed-files.txt -d '\n' -- npx secretlint

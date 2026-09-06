@@ -1,0 +1,121 @@
+name: 'Setup Node.js and pnpm'
+description: 'Fast, cached setup of Node.js and pnpm with dependency installation'
+author: 'Andre Hahm'
+
+branding:
+  icon: 'package'
+  color: 'green'
+
+inputs:
+  node-version:
+    description: 'Node.js version to install (default: 22)'
+    required: false
+    default: '22'
+  working-directory:
+    description: 'Working directory for installation (default: .)'
+    required: false
+    default: '.'
+  cache-dependency-path:
+    description: 'Path to dependency lock file (default: **/pnpm-lock.yaml)'
+    required: false
+    default: '**/pnpm-lock.yaml'
+  skip-install:
+    description: 'Skip dependency installation (default: false)'
+    required: false
+    default: 'false'
+
+outputs:
+  cache-hit:
+    description: 'Boolean indicating if cache was hit (true/false)'
+    value: ${{ steps.cache-dependencies.outputs.cache-hit }}
+  node-version:
+    description: 'Installed Node.js version'
+    value: ${{ steps.setup-node.outputs.node-version }}
+  pnpm-version:
+    description: 'Installed pnpm version'
+    value: ${{ steps.pnpm-version.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      id: setup-node
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'pnpm'
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+    - name: Setup pnpm
+      id: setup-pnpm
+      # No `version:` passed -- pnpm/action-setup auto-detects from this
+      # repo's own package.json `packageManager` field instead, so CI always
+      # installs the exact same pnpm version local corepack-managed dev
+      # environments use, with no separate version to keep in sync by hand.
+      uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # ratchet:pnpm/action-setup@v6.0.10
+      with:
+        run_install: false
+
+    - name: Report installed pnpm version
+      id: pnpm-version
+      shell: bash
+      run: echo "version=$(pnpm --version)" >> "$GITHUB_OUTPUT"
+
+    - name: Get pnpm store directory
+      id: pnpm-store
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+    - name: Cache dependencies
+      id: cache-dependencies
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
+      with:
+        path: |
+          ${{ steps.pnpm-store.outputs.STORE_PATH }}
+          ${{ inputs.working-directory }}/node_modules
+        key: ${{ runner.os }}-pnpm-${{ hashFiles(inputs.cache-dependency-path) }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-
+
+    - name: Install dependencies
+      if: inputs.skip-install == 'false'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "::group::📦 Installing dependencies with pnpm"
+
+        # Check cache status
+        if [[ "${{ steps.cache-dependencies.outputs.cache-hit }}" == "true" ]]; then
+          echo "✅ Cache hit! Dependencies restored from cache."
+          echo "⚡ This significantly reduces installation time."
+        else
+          echo "📥 Cache miss. Installing dependencies..."
+          echo "⏱️  This may take a few minutes on first run."
+        fi
+
+        echo ""
+        echo "🔧 Configuration:"
+        echo "   - Node.js: $(node --version)"
+        echo "   - pnpm: $(pnpm --version)"
+        echo "   - Working Directory: ${{ inputs.working-directory }}"
+        echo ""
+
+        # Install with frozen lockfile for consistency
+        pnpm install --frozen-lockfile
+
+        echo ""
+        echo "✅ Dependencies installed successfully!"
+        echo "::endgroup::"
+
+    - name: Installation Summary
+      shell: bash
+      run: |
+        echo "::notice::📦 Node.js and pnpm setup complete"
+        echo "::notice::Node.js version: $(node --version)"
+        echo "::notice::pnpm version: $(pnpm --version)"
+        if [[ "${{ steps.cache-dependencies.outputs.cache-hit }}" == "true" ]]; then
+          echo "::notice::⚡ Cache Hit - Installation time reduced by ~90%"
+        else
+          echo "::notice::📥 Cache Miss - Dependencies installed fresh"
+        fi
