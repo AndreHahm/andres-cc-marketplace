@@ -20,7 +20,7 @@ not hand-typed):
 | `Fork PR (unsupported — explicit terminal result)` | `fork-unsupported` | Only runs (`if:`) when the PR head is a fork; fails explicitly rather than leaving Codex review silently pending. **Reports `skipped` on a same-repo PR** — a `skipped` conclusion satisfies a required check in GitHub's branch protection, so this doesn't block ordinary same-repo PRs. |
 | `Compute Codex review scope` | `compute-scope` | Cheap, Node/Codex-CLI-free job that computes whether the diff is eligible for the automatic reviewer-scope bypass (see below) and, on a `synchronize` event, whether this push rebased onto a newer base. Checks out the PR's own head SHA directly (never the async `refs/pull/<n>/merge` ref `codex-review` uses) so its scope decision can't disagree with what `codex-review` actually reviews — then restores `scripts/marketplace_ci/` itself from the **trusted base SHA** before scoring, so the decision logic isn't evaluated by a version of itself the PR could have edited (same principle `prepare_reviewer_instruction` already applies to reviewer instructions). Not a required check itself, but `publish` now depends on it having actually **succeeded** — a failure, cancellation, or timeout (5 min) here fails `publish` closed, it does not silently read as "not eligible, run `codex-review` normally." |
 | `Codex delta review` | `codex-review` | Dispatches the reviewer set from `derive_review_scope` via `codex-review-bridge` — including `full`-mode escalation's own defined, bounded reviewer set (see "Full-mode escalation" below). Skipped when `compute-scope` reports the diff bypass-eligible, in addition to the existing fork-PR skip. |
-| `Publish Codex policy result` | `publish` | The single check branch protection should actually require for Codex policy: passes if `compute-scope` succeeded AND (`codex-review` succeeded, OR was skipped **with `compute-scope`'s own `bypass_eligible` output confirming why**), OR if a valid SHA-bound bypass attestation + `codex-review-bypassed` label is present for the current head SHA. Now runs unconditionally for every same-repo PR (only a fork PR skips it) rather than only when `codex-review` itself ran. Keys the "was this skip legitimate?" check off `compute-scope`'s explicit output rather than `codex-review`'s bare result — `codex-review` also depends on `hygiene`/`python-quality`/`marketplace-parity`, any of which failing independently also produces a `skipped` `codex-review`, which the bare-result check alone would have accepted as a clean pass. |
+| `Publish Codex policy result` | `publish` | The single check branch protection should actually require for Codex policy: passes if `compute-scope` succeeded AND (`codex-review` succeeded, OR was skipped **with `compute-scope`'s own `bypass_eligible` output confirming why**), OR if a valid SHA-bound bypass attestation + `s: codex review bypassed` label is present for the current head SHA. Now runs unconditionally for every same-repo PR (only a fork PR skips it) rather than only when `codex-review` itself ran. Keys the "was this skip legitimate?" check off `compute-scope`'s explicit output rather than `codex-review`'s bare result — `codex-review` also depends on `hygiene`/`python-quality`/`marketplace-parity`, any of which failing independently also produces a `skipped` `codex-review`, which the bare-result check alone would have accepted as a clean pass. |
 
 Configure branch protection to require: `Hygiene (PR contract)`, `Python quality (ruff, ty, pytest)`,
 `Marketplace mirror/export parity`, `Fork PR (unsupported — explicit terminal result)`, and
@@ -157,16 +157,31 @@ maintainer (live `write`/`maintain`/`admin` permission) attesting a bypass, boun
 
 1. Post a PR comment containing a hidden marker:
    `<!-- marketplace-ci-bypass-attestation {"schema_version":1,"actor":"<login>","head_sha":"<sha>","reason":"<reason>","created_at":"<ISO-8601 UTC>"} -->`
-2. Apply the `codex-review-bypassed` label (must already exist in the repo — nothing creates it
-   automatically; create it once via `gh label create codex-review-bypassed`).
+2. Apply the `s: codex review bypassed` label (must already exist in the repo — nothing creates it
+   automatically; create it once via `gh label create "s: codex review bypassed"`).
 3. Applying the label re-triggers the workflow (`labeled` is in the `pull_request` trigger types);
    `publish` re-checks the attestation via `scripts/marketplace_ci/review.py`'s `check_bypass` — exact
    actor + exact head SHA match, plus a live permission check — and reports `Publish Codex policy result`
    as passing, explicitly annotated as bypassed, never as a clean review. Applying a label that's
    **already present** on the PR is a GitHub Actions no-op and does not fire a fresh `labeled` event — a
    re-attestation after a superseded bypass attempt must remove the label first (`gh pr edit --remove-label
-   codex-review-bypassed`), then re-add it, to force a fresh check run.
+   "s: codex review bypassed"`), then re-add it, to force a fresh check run.
 4. A new commit changes the head SHA, invalidating any prior attestation — it must be re-attested.
+
+### Attesting without the label (`CODEX_CI_REVIEW_BYPASS`)
+
+The `CODEX_CI_REVIEW_BYPASS` repo variable (`0`=disabled, `1`=enabled) is **not** a standalone
+bypass — setting it never bypasses anything by itself, and it changes nothing about who can attest
+or what an attestation must contain. It only lets `publish` look for a valid attestation on a run
+that wasn't triggered by applying the label (e.g. a plain push/`synchronize` event), for which there
+is no `labeled` timeline event to resolve a trusted actor from. When set to `1`, `publish` instead
+resolves the attesting actor from the **real GitHub author** of a matching comment (`user.login` from
+the Comments API — never the marker's own self-declared `actor` field, which is attacker-controllable
+comment text) via `resolve-attested-actor`, then runs the exact same `check_bypass` attestation check
+as the label path: exact head-SHA match, non-empty reason, live `write`/`maintain`/`admin` permission
+on that real author. A PR with no matching attestation comment is unaffected by this variable
+regardless of its value — every PR still needs its own SHA-bound attestation; this only changes how
+the check discovers one.
 
 `Skill(git-kit:create-pr)` and `Skill(git-kit:merge-pr)` both support `--bypass-codex-review "<reason>"`
 to run this protocol as part of the normal PR-creation/merge flow rather than by hand. Neither skips any

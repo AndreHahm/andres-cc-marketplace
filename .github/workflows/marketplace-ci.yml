@@ -21,10 +21,20 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
       - run: pip install uv
@@ -45,8 +55,19 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
       - run: pip install uv
@@ -62,14 +83,25 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
       - run: pip install uv
       - run: uv sync --group dev
       - run: uv run python -m scripts.marketplace_ci check-all --json-output marketplace-check.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
         if: always()
         with:
           name: marketplace-check-report
@@ -82,6 +114,21 @@ jobs:
     permissions:
       contents: read
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
       - name: Fail explicitly rather than leave the check pending
         run: |
           echo "::error::Marketplace Codex review does not support fork-origin PRs (no trusted secret access for the Codex API key). This is an explicit, terminal failure, not a silently pending required check."
@@ -97,6 +144,21 @@ jobs:
     outputs:
       bypass_eligible: ${{ steps.scope.outputs.bypass_eligible }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
       # Check out the PR's own head commit directly, never the async
       # `refs/pull/<n>/merge` ref codex-review below uses -- GitHub computes
       # that merge ref out-of-band and it's known to lag a just-pushed head,
@@ -106,7 +168,7 @@ jobs:
       # real TOCTOU gap once two independent jobs each resolve their own
       # checkout instead of one.
       - name: Check out the PR's own head commit
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
@@ -116,7 +178,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: git rev-parse --verify "$BASE_SHA"^{commit}
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
       - run: pip install uv
@@ -197,8 +259,23 @@ jobs:
     permissions:
       contents: read
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
       - name: Check out the PR's merge commit
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
@@ -209,14 +286,14 @@ jobs:
         run: git rev-parse --verify "$BASE_SHA"^{commit}
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
       - run: pip install uv
       - run: uv sync --group dev
 
       - name: Set up Node (for the codex CLI and codex-review-bridge)
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7.0.0
         with:
           node-version: "20"
 
@@ -255,7 +332,7 @@ jobs:
 
       - name: Upload review result
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
         with:
           name: codex-review-result
           path: codex-review-result.json
@@ -280,24 +357,81 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
       - run: pip install uv
       - run: uv sync --group dev
 
-      - name: Check attested bypass (comment-plus-label protocol)
+      - name: Check attested bypass (comment-plus-label protocol, or CODEX_CI_REVIEW_BYPASS var)
         id: bypass
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CODEX_CI_REVIEW_BYPASS: ${{ vars.CODEX_CI_REVIEW_BYPASS }}
         run: |
           set -euo pipefail
+          # Repo-variable path: NEVER a bypass by itself -- it only lets this
+          # check look for a valid attestation on a run that wasn't triggered
+          # by applying the label (e.g. a plain push/synchronize), when no
+          # `labeled` event exists to resolve a trusted actor from. Every one
+          # of check_bypass's own requirements (an exact head-SHA match, a
+          # non-empty reason, live write/maintain/admin permission) still
+          # applies unchanged, and the attesting actor is resolved from the
+          # comment's REAL GitHub author, never the marker's own
+          # self-declared "actor" field -- security-reviewer finding: the
+          # original version of this path granted bypassed=true
+          # unconditionally, repo-wide, with no attestation, actor, or SHA
+          # check of any kind.
+          if [ -n "$CODEX_CI_REVIEW_BYPASS" ]; then
+            case "$CODEX_CI_REVIEW_BYPASS" in
+              0) : ;;
+              1)
+                gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                  --jq '[.[] | {login: (.user.login // ""), body: .body}]' \
+                  > comments-with-login.json
+                ACTOR=$(uv run python -m scripts.marketplace_ci resolve-attested-actor \
+                  --comments-with-login comments-with-login.json --head-sha "$HEAD_SHA" || true)
+                if [ -z "$ACTOR" ]; then
+                  echo "bypassed=false" >> "$GITHUB_OUTPUT"
+                  exit 0
+                fi
+                PERMISSION=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo "none")
+                gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '[.[].body]' > comment-bodies.json
+                jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
+                  --slurpfile comments comment-bodies.json \
+                  '{actor: $actor, head_sha: $sha, permission: $permission, comments: $comments[0]}' \
+                  > bypass-event.json
+                if uv run python -m scripts.marketplace_ci check-bypass --event bypass-event.json; then
+                  echo "::warning::Codex review bypassed via CODEX_CI_REVIEW_BYPASS variable + SHA-bound attestation from @$ACTOR (no bypass label applied to this PR)."
+                  echo "bypassed=true" >> "$GITHUB_OUTPUT"
+                else
+                  echo "bypassed=false" >> "$GITHUB_OUTPUT"
+                fi
+                exit 0
+                ;;
+              *)
+                echo "::error::Unrecognized CODEX_CI_REVIEW_BYPASS variable value: '$CODEX_CI_REVIEW_BYPASS' (expected 0 or 1)"
+                exit 1
+                ;;
+            esac
+          fi
           LABELS=$(gh api "repos/$REPO/issues/$PR_NUMBER/labels" --jq '[.[].name]')
-          if ! echo "$LABELS" | jq -e 'index("codex-review-bypassed")' > /dev/null; then
+          if ! echo "$LABELS" | jq -e 'index("s: codex review bypassed")' > /dev/null; then
             echo "bypassed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -306,7 +440,7 @@ jobs:
           # person than whoever is attesting the bypass. Resolve via the
           # issue events timeline (most recent matching "labeled" event).
           ACTOR=$(gh api "repos/$REPO/issues/$PR_NUMBER/events" --paginate \
-            --jq '[.[] | select(.event == "labeled" and .label.name == "codex-review-bypassed")] | last | .actor.login')
+            --jq '[.[] | select(.event == "labeled" and .label.name == "s: codex review bypassed")] | last | .actor.login')
           if [ -z "$ACTOR" ] || [ "$ACTOR" = "null" ]; then
             echo "bypassed=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -331,7 +465,7 @@ jobs:
           CODEX_RESULT: ${{ needs.codex-review.result }}
         run: |
           if [ "$BYPASSED" = "true" ]; then
-            echo "Codex review bypassed via attested SHA-bound exception. Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
+            echo "Codex review bypassed (attested SHA-bound label exception or CODEX_CI_REVIEW_BYPASS variable). Never presented as a clean review — deterministic, PR-author-privilege, and branch-protection gates still apply unchanged."
             exit 0
           fi
           # compute-scope must have actually succeeded before its
