@@ -216,7 +216,7 @@ Before creating a PR, check for uncommitted changes:
    b. Resolve the current authenticated actor: `gh api user --jq '.login'`.
    c. Verify live merge-capable permission (`write`, `maintain`, or `admin`) for that actor on this repo: `gh api repos/{owner}/{repo}/collaborators/{actor}/permission --jq '.permission'`. If insufficient, **stop here and report the bypass was not attested** — the PR remains created, but state plainly that the Codex-review gate is still active because this actor lacks merge-capable permission.
    d. Build the versioned attestation marker — `schema_version: 1`, this `actor`, this `head_sha`, the given `reason`, and a current UTC `created_at` timestamp — as a single JSON object, using `jq -n --arg` (or equivalent) to build it, **never by interpolating the reason text directly into a shell string** (the same shell-injection discipline this repository's own `marketplace-ci.yml` workflow applies to PR event data). Write the resulting comment body — the marker wrapped in an HTML comment, `<!-- marketplace-ci-bypass-attestation {...} -->` — to a scratchpad file, then post it: `gh pr comment <number> --body-file <scratchpad-path>`.
-   e. Apply the `codex-review-bypassed` label: `gh pr edit <number> --add-label codex-review-bypassed`. If the label doesn't exist in this repository yet, report that as a bypass-attestation failure — do not silently create it; label creation is a one-time repo-setup precondition documented in `docs/ci.md`, not something this skill does on every invocation.
+   e. Apply the `s: codex review bypassed` label: `gh pr edit <number> --add-label "s: codex review bypassed"`. If the label doesn't exist in this repository yet, report that as a bypass-attestation failure — do not silently create it; label creation is a one-time repo-setup precondition documented in `docs/ci.md`, not something this skill does on every invocation.
    f. Report the outcome plainly: on success, state that the bypass is attested for this exact head SHA only — a new push invalidates it and requires re-attesting (`check_bypass` in `scripts/marketplace_ci/review.py` requires an exact head-SHA match). On any failure in b–e, state clearly that the PR was created but the bypass was **not** successfully attested, and why — never report a failed attestation attempt as if it succeeded.
 
 6. **Issue-linking hand-off**: skip this step entirely if `create-pr` was invoked as a nested dependency
@@ -375,7 +375,7 @@ loop.
 **Verify `--bypass-codex-review` behavior:**
 - `--bypass-codex-review "<non-empty reason>"` given, actor has live `write`/`maintain`/`admin`
   permission → attestation comment posted (built via `jq -n --arg`, never raw shell interpolation of the
-  reason text), `codex-review-bypassed` label applied, success reported
+  reason text), `s: codex review bypassed` label applied, success reported
 - `--bypass-codex-review` given with an empty or missing reason → rejected before posting any comment or
   applying any label; the already-created PR is unaffected
 - `--bypass-codex-review` given a reason containing a literal bot-trigger mention (e.g. `@codex review`)
@@ -383,7 +383,7 @@ loop.
   reaches `gh pr comment` unchecked
 - Actor lacks live merge-capable permission → attestation not posted, failure reported plainly, PR still
   exists
-- `codex-review-bypassed` label doesn't exist in the repo yet → reported as a bypass-attestation failure,
+- `s: codex review bypassed` label doesn't exist in the repo yet → reported as a bypass-attestation failure,
   never auto-created
 - Flag omitted entirely → no attestation step runs, PR creation behaves exactly as before this flag
   existed
@@ -448,7 +448,7 @@ loop.
       never by interpolating the reason text directly into a shell string
 - [ ] A failed attestation attempt (insufficient permission, missing label) is always reported as a
       failure — never presented as if the bypass succeeded
-- [ ] The `codex-review-bypassed` label is only applied if it already exists in the repo — this skill
+- [ ] The `s: codex review bypassed` label is only applied if it already exists in the repo — this skill
       never creates it
 - [ ] Step 3.5 always runs before `gh pr create` in this repository, and a `FAIL` result always blocks
       creation with that title — never created anyway on a reported failure

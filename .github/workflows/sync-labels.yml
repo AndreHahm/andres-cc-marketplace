@@ -1,0 +1,92 @@
+name: Sync GitHub Labels
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/labels.yml'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  sync-labels:
+    name: Sync labels from labels.yml to GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # ratchet:actions/setup-python@v7.0.0
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install -r scripts/marketplace_ci/requirements.txt
+
+      - name: Validate labels.yml syntax
+        run: |
+          python3 -c "import yaml, sys; yaml.safe_load(open('.github/labels.yml'))" || {
+            echo "❌ Error: .github/labels.yml has invalid YAML syntax"
+            exit 1
+          }
+          echo "✅ labels.yml syntax is valid"
+
+      - name: Validate labels.yml structure
+        run: |
+          python3 << 'EOF'
+          import yaml, sys
+
+          with open('.github/labels.yml') as f:
+              data = yaml.safe_load(f)
+
+          if not isinstance(data, dict) or 'labels' not in data:
+              print("❌ Error: labels.yml must have a 'labels' key")
+              sys.exit(1)
+
+          if not isinstance(data['labels'], list):
+              print("❌ Error: 'labels' must be a list")
+              sys.exit(1)
+
+          for i, label in enumerate(data['labels']):
+              if not isinstance(label, dict):
+                  print(f"❌ Error: Label at index {i} is not a dictionary")
+                  sys.exit(1)
+
+              if 'name' not in label:
+                  print(f"❌ Error: Label at index {i} missing 'name' field")
+                  sys.exit(1)
+
+              if 'color' not in label:
+                  print(f"❌ Error: Label '{label.get('name')}' missing 'color' field")
+                  sys.exit(1)
+
+          print(f"✅ labels.yml structure is valid ({len(data['labels'])} labels)")
+          EOF
+
+      - name: Authenticate GitHub CLI
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Run label sync script
+        run: |
+          chmod +x ./scripts/marketplace_ci/add-github-labels.sh
+          ./scripts/marketplace_ci/add-github-labels.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

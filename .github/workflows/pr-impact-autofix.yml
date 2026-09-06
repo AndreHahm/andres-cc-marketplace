@@ -1,0 +1,111 @@
+name: Auto-fix Impact Labels (Breaking Change)
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled, ready_for_review]
+
+concurrency:
+  group: pr-impact-autofix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+  actions: read
+
+jobs:
+  impact-autofix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+            .github/actions/fork-safety
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: Check if PR is from fork
+        id: fork-safety
+        uses: ./.github/actions/fork-safety
+
+      - name: Enforce breaking change impact label consistency
+        if: steps.fork-safety.outputs.should-skip-writes != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # ratchet:actions/github-script@v9.0.0
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) return;
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = pr.number;
+
+            const title = (pr.title || "").trim();
+
+            // Conventional Commit header: type(scope)!: subject
+            // Detect "!" before ":" (also allow no scope): feat!: ... or feat(api)!: ...
+            const isBreaking = /^([a-zA-Z]+)(\([^)]+\))?(!):\s+/.test(title);
+
+            const IMPACT_BREAKING = "i: breaking change";
+            const IMPACT_MAJOR = "i: major change";
+            const IMPACT_MINOR = "i: minor change";
+
+            // Use pull request payload labels directly (more reliable for fork PRs)
+            const current = (pr.labels || [])
+              .map(l => (typeof l === "string" ? l : l.name))
+              .filter(Boolean);
+
+            const has = (name) => current.some(x => x.toLowerCase() === name.toLowerCase());
+
+            const toAdd = [];
+            const toRemove = [];
+
+            if (isBreaking) {
+              if (!has(IMPACT_BREAKING)) toAdd.push(IMPACT_BREAKING);
+
+              // Remove conflicting impact labels
+              if (has(IMPACT_MAJOR)) toRemove.push(IMPACT_MAJOR);
+              if (has(IMPACT_MINOR)) toRemove.push(IMPACT_MINOR);
+            } else {
+              // Not breaking: do not auto-assign major/minor.
+              // Remove stale breaking label if title no longer carries "!".
+              if (has(IMPACT_BREAKING)) toRemove.push(IMPACT_BREAKING);
+            }
+
+            if (toAdd.length === 0 && toRemove.length === 0) {
+              core.info("No impact label changes required.");
+              return;
+            }
+
+            if (toAdd.length > 0) {
+              core.info(`Adding labels: ${toAdd.join(", ")}`);
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number,
+                labels: toAdd
+              });
+            }
+
+            for (const label of toRemove) {
+              core.info(`Removing label: ${label}`);
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number,
+                  name: label
+                });
+              } catch (e) {
+                // Ignore if label is already gone
+                core.warning(`Could not remove label "${label}": ${e.message}`);
+              }
+            }

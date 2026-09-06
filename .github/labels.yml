@@ -1,0 +1,274 @@
+labels:
+  # -------------------------
+  # Impact (i:)
+  # -------------------------
+  - name: "i: breaking change"
+    color: "E53935"
+    description: "Backward-incompatible change requiring user action (API/behavior change)"
+
+  - name: "i: major change"
+    color: "FFB74D"
+    description: "Significant change with notable user impact, but backward compatible"
+
+  - name: "i: minor change"
+    color: "FFE082"
+    description: "Small change with low user impact"
+
+  # -------------------------
+  # Type (t:)
+  # -------------------------
+  - name: "t: bug"
+    color: "DC3545"
+    description: "A defect causing incorrect or unexpected behavior"
+
+  - name: "t: feature"
+    color: "0D6EFD"
+    description: "A new feature or capability"
+
+  - name: "t: enhancement"
+    color: "0969DA"
+    description: "An improvement to existing functionality"
+
+  - name: "t: documentation"
+    color: "6F42C1"
+    description: "Documentation updates or additions"
+
+  - name: "t: refactor"
+    color: "20C997"
+    description: "Code restructuring without changing external behavior"
+
+  - name: "t: performance"
+    color: "007BFF"
+    description: "Performance optimization"
+
+  - name: "t: security"
+    color: "DC143C"
+    description: "Security-related change or vulnerability"
+
+  - name: "t: test"
+    color: "17A2B8"
+    description: "Adding or improving tests"
+
+  - name: "t: build"
+    color: "6C757D"
+    description: "Build system or dependency changes"
+
+  - name: "t: ci"
+    color: "6610F2"
+    description: "CI/CD configuration updates"
+
+  - name: "t: chore"
+    color: "868E96"
+    description: "Maintenance tasks not affecting production code"
+
+
+  # -------------------------
+  # Status (s:)
+  # -------------------------
+  - name: "s: triage"
+    color: "FFC107"
+    description: "Needs initial review and classification"
+
+  - name: "s: merge conflict"
+    color: "FF5722"
+    description: "Has merge conflicts that need to be resolved"
+
+  - name: "s: needs information"
+    color: "FF9F43"
+    description: "Awaiting additional information from the author"
+
+  - name: "s: blocked"
+    color: "FF5722"
+    description: "Blocked by another issue, decision, or dependency"
+
+  - name: "s: do not merge"
+    color: "B71C1C"
+    description: "Explicitly held back from merging regardless of check/review status"
+
+  - name: "s: in progress"
+    color: "FF8C00"
+    description: "Currently being worked on"
+
+  - name: "s: needs review"
+    color: "FFAC1C"
+    description: "Awaiting reviewer feedback"
+
+  - name: "s: codex review bypassed"
+    color: "FFA000"
+    description: "Marketplace CI's Codex review requirement was bypassed via a SHA-bound maintainer attestation"
+
+
+  # -------------------------
+  # Priority (p:)
+  # -------------------------
+  - name: "p: critical"
+    color: "B71C1C"
+    description: "Top priority: requires immediate attention"
+
+  - name: "p: high"
+    color: "D9534F"
+    description: "High priority"
+
+  - name: "p: medium"
+    color: "78909C"
+    description: "Medium priority"
+
+  - name: "p: low"
+    color: "B0BEC5"
+    description: "Low priority"
+
+
+  # -------------------------
+  # Scope / Area (a:)
+  # -------------------------
+  - name: "a: api"
+    color: "9C27B0"
+    description: "Backend API related"
+
+  - name: "a: frontend"
+    color: "673AB7"
+    description: "Frontend related"
+
+  - name: "a: backend"
+    color: "3F51B5"
+    description: "Core backend logic"
+
+  - name: "a: database"
+    color: "795548"
+    description: "Database schema, migrations, or queries"
+
+  - name: "a: tests"
+    color: "009688"
+    description: "Test-related area"
+
+  - name: "a: devops"
+    color: "9575CD"
+    description: "Infrastructure, deployment, or ops"
+
+  - name: "a: docker"
+    color: "8E24AA"
+    description: "Docker configuration and images"
+
+  - name: "a: architecture"
+    color: "4A148C"
+    description: "System architecture decisions and changes"
+
+  - name: "a: dependencies"
+    color: "7E57C2"
+    description: "Dependency updates, lockfiles, vulnerability fixes, and transitive dependency issues"
+
+  - name: "a: observability"
+    color: "5C6BC0"
+    description: "Observability: monitoring, logging, metrics, tracing, dashboards, and alerting"
+
+  - name: "a: github-actions"
+    color: "6A1B9A"
+    description: "GitHub Actions workflows, reusable workflows, and automation around Actions"
+
+  # AI setup / optimization scopes
+  - name: "a: ai-setup"
+    color: "5E35B1"
+    description: "AI tooling setup: prompts, configs, agents, templates, model selection"
+
+  - name: "a: ai-evals"
+    color: "512DA8"
+    description: "Evaluation/benchmarking of prompts, agents, or AI workflows"
+
+  - name: "a: ai-observability"
+    color: "4527A0"
+    description: "Telemetry, tracing, logging, cost/latency tracking for AI workflows"
+
+  # -------------------------
+  # Community (c:)
+  # -------------------------
+  - name: "c: good first issue"
+    color: "28A745"
+    description: "Beginner-friendly contribution"
+
+  - name: "c: help wanted"
+    color: "20C997"
+    description: "Contributions are welcome"
+
+  - name: "c: discussion"
+    color: "17A2B8"
+    description: "Open discussion topic"
+
+  - name: "c: proposal"
+    color: "00C853"
+    description: "Proposed feature or change"
+
+
+  # -------------------------
+  # Execution / AI involvement (x:)
+  # -------------------------
+  - name: "x: ai-only"
+    color: "00BFA5"
+    description: "Implemented entirely by AI (author review/merge only)"
+
+  - name: "x: hitl"
+    color: "26A69A"
+    description: "Human-in-the-loop: AI assisted, human guided/edited/decided"
+
+  - name: "x: no-ai"
+    color: "607D8B"
+    description: "Implemented without AI assistance"
+
+
+  # -------------------------
+  # Planning (plan:)
+  # -------------------------
+  - name: "plan: brief"
+    color: "1565C0"
+    description: "Project brief: goals, non-goals, constraints, success criteria"
+
+  - name: "plan: prd"
+    color: "1E88E5"
+    description: "Product requirements document"
+
+  - name: "plan: feature"
+    color: "42A5F5"
+    description: "Feature planning: breakdown, stories, acceptance criteria"
+
+  - name: "plan: task"
+    color: "64B5F6"
+    description: "Task planning: implementation plan, checklist, sequencing"
+
+  - name: "plan: roadmap"
+    color: "90CAF9"
+    description: "Roadmap planning: milestones, releases, timelines"
+
+  - name: "plan: spike"
+    color: "BBDEFB"
+    description: "Time-boxed research/experiment to reduce uncertainty"
+
+  - name: "plan: subtask"
+    color: "E3F2FD"
+    description: "Subtask: a granular unit of work under a plan: task"
+
+
+  # -------------------------
+  # Automation (auto:)
+  # -------------------------
+  - name: "auto: workflow-health"
+    color: "0288D1"
+    description: "Automated workflow health alert created by workflow-health.yml"
+
+
+  # -------------------------
+  # Resolution (r:)
+  # -------------------------
+  - name: "r: duplicate"
+    color: "6C757D"
+    description: "Already tracked in another issue"
+
+  - name: "r: invalid"
+    color: "868E96"
+    description: "Not a valid issue"
+
+  - name: "r: wontfix"
+    color: "5A6268"
+    description: "Will not be addressed"
+
+  - name: "r: completed"
+    color: "198754"
+    description: "Successfully implemented"

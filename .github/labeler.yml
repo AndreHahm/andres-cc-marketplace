@@ -1,0 +1,117 @@
+---
+# ---------------------------------------------------------------------------
+# File-based label rules for actions/labeler@v6
+# Labels must match the names defined in .github/labels.yml
+# See docs/github_label_taxonomy.md and docs/github-label-usage.md
+#
+# NOTE: Documentation label intentionally excludes:
+#   - plugins/**/SKILL.md (skill definitions, not user docs)
+#   - plugins/**/references/**, plugins/**/assets/**
+#   - .agents/**, .claude/**, .codex/**, .devin/** (AI agent configs)
+#   - .github/ISSUE_TEMPLATE/*.md (issue templates)
+#   - .github/pull_request_template.md
+# ---------------------------------------------------------------------------
+
+# ── Type labels ─────────────────────────────────────────────────────────────
+
+"t: documentation":
+  - changed-files:
+      - any-glob-to-any-file:
+          # Documentation directories
+          - 'docs/**'
+          # Root-level documentation files
+          - 'README.md'
+          - 'CHANGELOG.md'
+          - 'CONTRIBUTING.md'
+          - 'CODE_OF_CONDUCT.md'
+          - 'LICENSE'
+          - 'SECURITY.md'
+          - 'RELEASE_NOTES.md'
+          - 'THIRD_PARTY_NOTICE.md'
+          # Plugin-level documentation files
+          - 'plugins/**/README.md'
+          - 'plugins/**/CHANGELOG.md'
+          - 'plugins/**/LICENSE'
+          - 'plugins/**/THIRD_PARTY_NOTICE.md'
+
+"t: ci":
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/**'
+          - '.github/actions/**'
+          - 'scripts/marketplace_ci/**'
+          - '.pre-commit-config.yaml'
+
+"t: build":
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'package.json'
+          - 'pnpm-lock.yaml'
+          - 'pyproject.toml'
+          - 'uv.lock'
+
+"t: test":
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'tests/**'
+          - 'plugins/*/tests/**'
+          - 'plugins/*/skills/*/scripts/smoke_test.py'
+          - 'plugins/*/skills/*/scripts/test_*.*'
+          - 'plugins/*/skills/*/scripts/*_fixtures_*.*'
+          - 'plugins/*/scripts/test_*.*'
+          - 'plugins/*/scripts/smoke-tests/**'
+
+# ── Area / Scope labels ──────────────────────────────────────────────────────
+
+"a: ai-setup":
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'plugins/**'
+          - '.agents/**'
+          - '.claude/**'
+          - '.claude-plugin/**'
+          - '.codex/**'
+          - '.devin/**'
+
+"a: ai-evals":
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'evals/**'
+
+"a: github-actions":
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/**'
+          - '.github/actions/**'
+          - '.github/codex/**'
+          - '.github/*.yml'
+          - '.github/CODEOWNERS'
+          - '.github/WORKFLOW_KILLSWITCH'
+          - '.github/*.json'
+
+"a: dependencies":
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'package.json'
+          - 'pnpm-lock.yaml'
+          - 'pyproject.toml'
+          - 'uv.lock'
+          - '.github/dependabot.yml'
+
+"a: tests":
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'scripts/tests/**'
+          - 'server/test/**'
+          - 'cli/src/__tests__/**'
+          - '**/*.test.*'
+          - '**/*.spec.*'
+          - '**/*.e2e-spec.*'
+
+"a: architecture":
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'ARCHITECTURE.md'
+          - 'cli/ARCHITECTURE.md'
+          - 'docs/adr/**'
+          - 'docs/reverse-engineering/**'
