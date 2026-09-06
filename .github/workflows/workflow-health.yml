@@ -1,0 +1,317 @@
+name: Workflow Health Monitor
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+            .github/actions/rate-limit-check
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: Check GitHub API Rate Limit (core/REST)
+        id: rate-limit-check
+        uses: ./.github/actions/rate-limit-check
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # This job's own API usage (~8 calls/run) is well under the
+          # default threshold -- fail-on-limit stays false so a low rate
+          # limit only ever produces an early ::warning:: annotation here,
+          # never fails this monitor job itself. The richer core+graphql
+          # percentage classification below (used for the health-report
+          # issue) is unaffected either way.
+          fail-on-limit: 'false'
+
+      - name: Check Rate Limits
+        id: rate_limits
+        env:
+          CORE_REMAINING: ${{ steps.rate-limit-check.outputs.remaining }}
+          CORE_LIMIT: ${{ steps.rate-limit-check.outputs.limit }}
+          CORE_RESET_TIME: ${{ steps.rate-limit-check.outputs.reset-time-human }}
+        run: |
+          echo "🔍 Checking GitHub API rate limits..."
+
+          # Core/REST values come from the rate-limit-check action above.
+          # GraphQL isn't covered by that action, so it's still fetched
+          # here directly -- /rate_limit calls never count against the
+          # rate limit itself, so this second call has no quota cost.
+          core_remaining="$CORE_REMAINING"
+          core_limit="$CORE_LIMIT"
+          core_reset_time="$CORE_RESET_TIME"
+
+          RATE_DATA=$(gh api rate_limit)
+
+          graphql_remaining=$(echo "$RATE_DATA" | jq '.resources.graphql.remaining')
+          graphql_limit=$(echo "$RATE_DATA" | jq '.resources.graphql.limit')
+          graphql_reset=$(echo "$RATE_DATA" | jq '.resources.graphql.reset')
+
+          # Calculate percentages
+          core_pct=$((core_remaining * 100 / core_limit))
+          graphql_pct=$((graphql_remaining * 100 / graphql_limit))
+
+          # Store for next step
+          echo "core_remaining=$core_remaining" >> $GITHUB_OUTPUT
+          echo "core_limit=$core_limit" >> $GITHUB_OUTPUT
+          echo "core_pct=$core_pct" >> $GITHUB_OUTPUT
+          echo "graphql_remaining=$graphql_remaining" >> $GITHUB_OUTPUT
+          echo "graphql_limit=$graphql_limit" >> $GITHUB_OUTPUT
+          echo "graphql_pct=$graphql_pct" >> $GITHUB_OUTPUT
+
+          # Convert graphql reset timestamp to human-readable (core's is
+          # already provided pre-formatted by rate-limit-check above)
+          graphql_reset_time=$(date -d @$graphql_reset '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null || date -r $graphql_reset '+%Y-%m-%d %H:%M:%S UTC')
+
+          echo "core_reset_time=$core_reset_time" >> $GITHUB_OUTPUT
+          echo "graphql_reset_time=$graphql_reset_time" >> $GITHUB_OUTPUT
+
+          # Determine health status
+          if [ $core_pct -lt 20 ] || [ $graphql_pct -lt 20 ]; then
+            echo "status=critical" >> $GITHUB_OUTPUT
+            echo "🚨 CRITICAL: Rate limits below 20%"
+          elif [ $core_pct -lt 40 ] || [ $graphql_pct -lt 40 ]; then
+            echo "status=warning" >> $GITHUB_OUTPUT
+            echo "⚠️ WARNING: Rate limits below 40%"
+          else
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "✅ HEALTHY: Rate limits above 40%"
+          fi
+
+          echo ""
+          echo "📊 Rate Limit Summary:"
+          echo "  REST API:    $core_remaining/$core_limit ($core_pct%)"
+          echo "  GraphQL API: $graphql_remaining/$graphql_limit ($graphql_pct%)"
+
+      - name: Check Workflow Statistics
+        id: workflow_stats
+        run: |
+          echo "📈 Checking workflow run statistics (last 24 hours)..."
+
+          # Get workflow runs from last 24 hours
+          YESTERDAY=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-24H +%Y-%m-%dT%H:%M:%SZ)
+
+          RUNS=$(gh api "repos/${{ github.repository }}/actions/runs?created=>=$YESTERDAY&per_page=100" --jq '.workflow_runs')
+
+          # Count runs by status
+          total=$(echo "$RUNS" | jq 'length')
+          success=$(echo "$RUNS" | jq '[.[] | select(.conclusion == "success")] | length')
+          failure=$(echo "$RUNS" | jq '[.[] | select(.conclusion == "failure")] | length')
+          cancelled=$(echo "$RUNS" | jq '[.[] | select(.conclusion == "cancelled")] | length')
+          in_progress=$(echo "$RUNS" | jq '[.[] | select(.status == "in_progress")] | length')
+
+          # Calculate success rate
+          if [ $total -gt 0 ]; then
+            success_rate=$((success * 100 / total))
+          else
+            success_rate=100
+          fi
+
+          # Store for next step
+          echo "total=$total" >> $GITHUB_OUTPUT
+          echo "success=$success" >> $GITHUB_OUTPUT
+          echo "failure=$failure" >> $GITHUB_OUTPUT
+          echo "cancelled=$cancelled" >> $GITHUB_OUTPUT
+          echo "in_progress=$in_progress" >> $GITHUB_OUTPUT
+          echo "success_rate=$success_rate" >> $GITHUB_OUTPUT
+
+          # Determine workflow health
+          if [ $success_rate -lt 70 ]; then
+            echo "workflow_status=critical" >> $GITHUB_OUTPUT
+            echo "🚨 Workflow success rate: $success_rate% (CRITICAL)"
+          elif [ $success_rate -lt 85 ]; then
+            echo "workflow_status=warning" >> $GITHUB_OUTPUT
+            echo "⚠️ Workflow success rate: $success_rate% (WARNING)"
+          else
+            echo "workflow_status=healthy" >> $GITHUB_OUTPUT
+            echo "✅ Workflow success rate: $success_rate% (HEALTHY)"
+          fi
+
+          echo ""
+          echo "📊 Workflow Statistics (24h):"
+          echo "  Total:       $total runs"
+          echo "  Success:     $success"
+          echo "  Failure:     $failure"
+          echo "  Cancelled:   $cancelled"
+          echo "  In Progress: $in_progress"
+          echo "  Success Rate: $success_rate%"
+
+      - name: Check Task Hierarchy Health
+        id: hierarchy_health
+        run: |
+          echo "🏗️ Checking task hierarchy health..."
+
+          # Count plan issues
+          plans=$(gh issue list --label "plan: brief" --state all --limit 100 --json number --jq 'length')
+          plans_open=$(gh issue list --label "plan: brief" --state open --limit 100 --json number --jq 'length')
+
+          # Count task issues
+          tasks=$(gh issue list --label "plan: task" --state all --limit 500 --json number --jq 'length')
+          tasks_open=$(gh issue list --label "plan: task" --state open --limit 500 --json number --jq 'length')
+
+          # Count subtask issues
+          subtasks=$(gh issue list --label "plan: subtask" --state all --limit 500 --json number --jq 'length')
+          subtasks_open=$(gh issue list --label "plan: subtask" --state open --limit 500 --json number --jq 'length')
+
+          # Store for next step
+          echo "plans=$plans" >> $GITHUB_OUTPUT
+          echo "plans_open=$plans_open" >> $GITHUB_OUTPUT
+          echo "tasks=$tasks" >> $GITHUB_OUTPUT
+          echo "tasks_open=$tasks_open" >> $GITHUB_OUTPUT
+          echo "subtasks=$subtasks" >> $GITHUB_OUTPUT
+          echo "subtasks_open=$subtasks_open" >> $GITHUB_OUTPUT
+
+          echo ""
+          echo "📊 Hierarchy Statistics:"
+          echo "  Plans:    $plans_open open / $plans total"
+          echo "  Tasks:    $tasks_open open / $tasks total"
+          echo "  Subtasks: $subtasks_open open / $subtasks total"
+
+      - name: Create Health Report Issue (if problems detected)
+        if: steps.rate_limits.outputs.status != 'healthy' || steps.workflow_stats.outputs.workflow_status != 'healthy'
+        run: |
+          STATUS="${{ steps.rate_limits.outputs.status }}"
+          WORKFLOW_STATUS="${{ steps.workflow_stats.outputs.workflow_status }}"
+
+          # Determine severity
+          if [ "$STATUS" = "critical" ] || [ "$WORKFLOW_STATUS" = "critical" ]; then
+            SEVERITY="🚨 CRITICAL"
+            LABEL="p: high"
+          else
+            SEVERITY="⚠️ WARNING"
+            LABEL="p: medium"
+          fi
+
+          # Create issue body
+          BODY=$(cat <<EOF
+          ## $SEVERITY Workflow Health Alert
+
+          **Generated**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+
+          ### 📊 Rate Limits
+
+          | Resource | Remaining | Limit | Usage |
+          |----------|-----------|-------|-------|
+          | REST API | ${{ steps.rate_limits.outputs.core_remaining }} | ${{ steps.rate_limits.outputs.core_limit }} | ${{ steps.rate_limits.outputs.core_pct }}% |
+          | GraphQL API | ${{ steps.rate_limits.outputs.graphql_remaining }} | ${{ steps.rate_limits.outputs.graphql_limit }} | ${{ steps.rate_limits.outputs.graphql_pct }}% |
+
+          **Reset Times**:
+          - REST API: ${{ steps.rate_limits.outputs.core_reset_time }}
+          - GraphQL API: ${{ steps.rate_limits.outputs.graphql_reset_time }}
+
+          ### 📈 Workflow Statistics (Last 24 Hours)
+
+          | Metric | Count | Percentage |
+          |--------|-------|------------|
+          | Total Runs | ${{ steps.workflow_stats.outputs.total }} | - |
+          | Successful | ${{ steps.workflow_stats.outputs.success }} | ${{ steps.workflow_stats.outputs.success_rate }}% |
+          | Failed | ${{ steps.workflow_stats.outputs.failure }} | - |
+          | Cancelled | ${{ steps.workflow_stats.outputs.cancelled }} | - |
+          | In Progress | ${{ steps.workflow_stats.outputs.in_progress }} | - |
+
+          ### 🏗️ Task Hierarchy
+
+          | Level | Open | Total |
+          |-------|------|-------|
+          | Plans | ${{ steps.hierarchy_health.outputs.plans_open }} | ${{ steps.hierarchy_health.outputs.plans }} |
+          | Tasks | ${{ steps.hierarchy_health.outputs.tasks_open }} | ${{ steps.hierarchy_health.outputs.tasks }} |
+          | Subtasks | ${{ steps.hierarchy_health.outputs.subtasks_open }} | ${{ steps.hierarchy_health.outputs.subtasks }} |
+
+          ### 🔧 Recommended Actions
+
+          EOF
+          )
+
+          # Add specific recommendations based on status
+          if [ "$STATUS" = "critical" ]; then
+            BODY="$BODY
+            **Rate Limit Issues**:
+            - ⚠️ Rate limits are critically low (<20%)
+            - Pause non-critical workflow activity
+            - Wait for rate limit reset
+            - Consider reducing workflow frequency
+            "
+          elif [ "$STATUS" = "warning" ]; then
+            BODY="$BODY
+            **Rate Limit Issues**:
+            - ⚠️ Rate limits are getting low (<40%)
+            - Monitor workflow activity
+            - Consider optimizing API usage
+            "
+          fi
+
+          if [ "$WORKFLOW_STATUS" = "critical" ]; then
+            BODY="$BODY
+            **Workflow Health Issues**:
+            - ⚠️ Success rate below 70%
+            - Review failed workflow runs
+            - Check for systematic issues
+            - Fix failing workflows
+            "
+          elif [ "$WORKFLOW_STATUS" = "warning" ]; then
+            BODY="$BODY
+            **Workflow Health Issues**:
+            - ⚠️ Success rate below 85%
+            - Monitor workflow failures
+            - Investigate common failure patterns
+            "
+          fi
+
+          BODY="$BODY
+          ### 📋 Next Steps
+
+          1. Review this health report
+          2. Address critical issues first
+          3. Monitor rate limit recovery
+          4. Check failed workflow runs
+
+          ---
+
+          *🤖 Automated health check by workflow-health.yml*
+          "
+
+          # Create the issue
+          gh issue create \
+            --title "$SEVERITY Workflow Health Alert - $(date -u '+%Y-%m-%d %H:%M UTC')" \
+            --body "$BODY" \
+            --label "auto: workflow-health,$LABEL"
+
+          echo "✅ Health alert issue created"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🏥 Workflow Health Check Complete"
+          echo ""
+          echo "**Rate Limits**: ${{ steps.rate_limits.outputs.status }}"
+          echo "**Workflows**: ${{ steps.workflow_stats.outputs.workflow_status }}"
+          echo ""
+          echo "**Details**:"
+          echo "- REST API: ${{ steps.rate_limits.outputs.core_pct }}% available"
+          echo "- GraphQL: ${{ steps.rate_limits.outputs.graphql_pct }}% available"
+          echo "- Success Rate: ${{ steps.workflow_stats.outputs.success_rate }}%"
+          echo "- Plans: ${{ steps.hierarchy_health.outputs.plans_open }} open"
+          echo "- Tasks: ${{ steps.hierarchy_health.outputs.tasks_open }} open"
+          echo "- Subtasks: ${{ steps.hierarchy_health.outputs.subtasks_open }} open"

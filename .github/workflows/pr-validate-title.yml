@@ -1,0 +1,93 @@
+name: Validate PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+concurrency:
+  group: pr-validate-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+jobs:
+  validate-title:
+    name: Validate PR title follows Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: Validate PR title format
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # ratchet:actions/github-script@v9.0.0
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.setFailed('No pull request found in context');
+              return;
+            }
+
+            const title = (pr.title || "").trim();
+
+            // Conventional Commit pattern: type(scope)!: subject
+            // Allowed types: feat, fix, docs, style, refactor, perf, test, chore, ci, experiment
+            const TYPES = "feat|fix|docs|style|refactor|perf|test|chore|ci|experiment";
+            const pattern = new RegExp(`^(${TYPES})(\\([a-z0-9._/-]+\\))?(!)?: .{1,100}$`, "m");
+
+            if (!pattern.test(title)) {
+              const msg = `
+            ❌ **Invalid PR title format**
+
+            **Received:** \`${title}\`
+
+            **Expected format:** \`<type>(<optional scope>): <description>\`
+
+            **Allowed types:** ${TYPES.replace(/\|/g, ", ")}
+
+            **Examples:**
+            - \`feat: add product export to Excel\`
+            - \`fix(auth): handle expired JWT gracefully\`
+            - \`chore(deps): bump vitest to 4.1.0\`
+            - \`docs: update README with Docker instructions\`
+            - \`feat(api)!: breaking change to endpoint\`
+
+            **Why this matters:**
+            - Ensures consistent changelog generation via release-please
+            - Enables automatic semantic versioning
+            - Improves project history readability
+
+            See: https://www.conventionalcommits.org
+            `;
+
+              core.setFailed(msg);
+
+              // Also post as a comment for visibility
+              try {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: msg
+                });
+              } catch (e) {
+                core.warning(`Could not post comment: ${e.message}`);
+              }
+
+              return;
+            }
+
+            core.info(`✅ PR title is valid: "${title}"`);
