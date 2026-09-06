@@ -2,7 +2,7 @@
 name: Feature Request
 about: Suggest a new feature or enhancement for this marketplace
 title: '[FEATURE] '
-labels: "t: enhancement", "s: triage"
+labels: ["t: enhancement", "s: triage"]
 assignees: ''
 ---
 
