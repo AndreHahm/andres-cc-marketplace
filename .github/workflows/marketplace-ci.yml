@@ -622,17 +622,30 @@ jobs:
       # run_codex_review() (or anything it calls in review.py) to always
       # exit 0 would defeat the whole review gate with no label,
       # attestation, or variable needed at all (Codex cross-model-review
-      # finding). Runs before `uv sync` so the dependency install itself
-      # also comes from the trusted spec, not the PR's own
-      # pyproject.toml/uv.lock.
-      - name: Restore the base SHA's copy of the review-dispatch code and its dependency spec (trust boundary)
+      # finding). Restoring scripts/pyproject.toml/uv.lock from the base
+      # SHA here -- the pattern compute-scope/publish use for the same
+      # class of decision code -- was tried and reverted: this job's own
+      # dispatched Codex reviewer reads target-path files directly off
+      # disk as evidence (confirmed against codex-review-bridge's own
+      # briefing text), so overwriting scripts/ on disk would silently
+      # hide this PR's own real changes there from the reviewer, exactly
+      # the failure mode compute-scope/publish don't have (they only use
+      # the restored code to make an internal decision, never hand file
+      # content to an external reader). Detect instead of substitute: if
+      # this PR's own copy of scripts/pyproject.toml/uv.lock is byte-
+      # identical to the trusted base SHA, there is nothing to distrust in
+      # the first place; if it differs, the PR is modifying the very code
+      # that decides and reports this review's own outcome, which no
+      # automated dispatch can safely self-evaluate -- fail closed and
+      # require the existing bypass-attestation mechanism (a maintainer
+      # manually reviews the change and attests) instead of ever running
+      # the review from an unverified copy of its own control-plane code.
+      - name: Refuse automated Codex dispatch when this PR modifies its own review-dispatch code (trust boundary)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if git checkout "$BASE_SHA" -- scripts pyproject.toml uv.lock; then
-            echo "restored scripts/, pyproject.toml, uv.lock from $BASE_SHA"
-          else
-            echo "::error::could not restore review-dispatch code from $BASE_SHA -- refusing to trust the PR's own copy of it"
+          if ! git diff --quiet "$BASE_SHA" -- scripts pyproject.toml uv.lock; then
+            echo "::error::This PR changes scripts/, pyproject.toml, or uv.lock -- the same code this job dispatches reviewers with and hands to them as evidence on disk. Neither running the PR's own copy (a same-repo PR could tamper with the review-dispatch logic itself) nor restoring the trusted base-SHA copy (which would silently hide this PR's real changes to those paths from the reviewer) is safe here. This requires a maintainer to manually review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable) rather than an automated Codex dispatch."
             exit 1
           fi
 
@@ -811,6 +824,13 @@ jobs:
           CODEX_CI_REVIEW_BYPASS: ${{ vars.CODEX_CI_REVIEW_BYPASS }}
         run: |
           set -euo pipefail
+          # Scratch JSON files are transient workflow artifacts, not
+          # repository content -- write them under $RUNNER_TEMP (a
+          # per-job scratch directory), never as bare relative filenames
+          # that would otherwise land in the checkout root (AGENTS.md's
+          # "No Scratch Files at Repo Root" policy; Codex cross-model-
+          # review finding).
+          SCRATCH="$RUNNER_TEMP"
           # Repo-variable path: NEVER a bypass by itself -- it only lets this
           # check look for a valid attestation on a run that wasn't triggered
           # by applying the label (e.g. a plain push/synchronize), when no
@@ -842,9 +862,27 @@ jobs:
                 # into one before applying the actual transform.
                 gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
                   | jq -s '[.[] | .[] | {login: (.user.login // ""), body: .body}]' \
-                  > comments-with-login.json
+                  > "$SCRATCH/comments-with-login.json"
+                # resolve-attested-actor's own tested exit-code contract
+                # distinguishes exit 1 (no match -- a legitimate, expected
+                # outcome) from exit 2 (an infrastructure/configuration
+                # failure, e.g. an unreadable or malformed input file). A
+                # blanket `|| true` here would swallow both alike, silently
+                # reporting bypassed=false for an infra failure too --
+                # exactly the "|| true ... on an infrastructure error is a
+                # regression, not a fix" pattern AGENTS.md's CI/review
+                # infrastructure section names directly (Codex cross-model-
+                # review finding). Disable errexit only for this one call so
+                # its real exit code can be inspected before deciding.
+                set +e
                 ACTOR=$(uv run python -m scripts.marketplace_ci resolve-attested-actor \
-                  --comments-with-login comments-with-login.json --head-sha "$HEAD_SHA" || true)
+                  --comments-with-login "$SCRATCH/comments-with-login.json" --head-sha "$HEAD_SHA")
+                actor_exit=$?
+                set -e
+                if [ "$actor_exit" -eq 2 ]; then
+                  echo "::error::resolve-attested-actor exited 2 (infrastructure/configuration failure, not a normal no-match) -- see stderr above. Refusing to silently report bypassed=false for this."
+                  exit 1
+                fi
                 if [ -z "$ACTOR" ]; then
                   echo "bypassed=false" >> "$GITHUB_OUTPUT"
                   exit 0
@@ -856,12 +894,23 @@ jobs:
                 # $comments[0] below would silently drop every page after the
                 # first. Merge pages the same way before writing this file.
                 gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-                  | jq -s '[.[] | .[].body]' > comment-bodies.json
+                  | jq -s '[.[] | .[].body]' > "$SCRATCH/comment-bodies.json"
                 jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
-                  --slurpfile comments comment-bodies.json \
+                  --slurpfile comments "$SCRATCH/comment-bodies.json" \
                   '{actor: $actor, head_sha: $sha, permission: $permission, comments: $comments[0]}' \
-                  > bypass-event.json
-                if uv run python -m scripts.marketplace_ci check-bypass --event bypass-event.json; then
+                  > "$SCRATCH/bypass-event.json"
+                # Same exit-code distinction as resolve-attested-actor above:
+                # check-bypass's own contract is exit 0 (ALLOWED), exit 1
+                # (DENIED -- legitimate), exit 2 (infra/config failure, e.g.
+                # an unreadable event file or missing field).
+                set +e
+                uv run python -m scripts.marketplace_ci check-bypass --event "$SCRATCH/bypass-event.json"
+                bypass_exit=$?
+                set -e
+                if [ "$bypass_exit" -eq 2 ]; then
+                  echo "::error::check-bypass exited 2 (infrastructure/configuration failure, not a normal denial) -- see stderr above. Refusing to silently report bypassed=false for this."
+                  exit 1
+                elif [ "$bypass_exit" -eq 0 ]; then
                   echo "::warning::Codex review bypassed via CODEX_CI_REVIEW_BYPASS variable + SHA-bound attestation from @$ACTOR (no bypass label applied to this PR)."
                   echo "bypassed=true" >> "$GITHUB_OUTPUT"
                 else
@@ -901,12 +950,20 @@ jobs:
           # Same $comments[0]-truncation gap as the variable path above --
           # merge pages before writing this file.
           gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-            | jq -s '[.[] | .[].body]' > comment-bodies.json
+            | jq -s '[.[] | .[].body]' > "$SCRATCH/comment-bodies.json"
           jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
-            --slurpfile comments comment-bodies.json \
+            --slurpfile comments "$SCRATCH/comment-bodies.json" \
             '{actor: $actor, head_sha: $sha, permission: $permission, comments: $comments[0]}' \
-            > bypass-event.json
-          if uv run python -m scripts.marketplace_ci check-bypass --event bypass-event.json; then
+            > "$SCRATCH/bypass-event.json"
+          # Same exit-code distinction as the variable path above.
+          set +e
+          uv run python -m scripts.marketplace_ci check-bypass --event "$SCRATCH/bypass-event.json"
+          bypass_exit=$?
+          set -e
+          if [ "$bypass_exit" -eq 2 ]; then
+            echo "::error::check-bypass exited 2 (infrastructure/configuration failure, not a normal denial) -- see stderr above. Refusing to silently report bypassed=false for this."
+            exit 1
+          elif [ "$bypass_exit" -eq 0 ]; then
             echo "bypassed=true" >> "$GITHUB_OUTPUT"
           else
             echo "bypassed=false" >> "$GITHUB_OUTPUT"
