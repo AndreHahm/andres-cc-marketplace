@@ -25,6 +25,44 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # A pull_request (not pull_request_target) trigger checks out the
+          # PR's own content -- including this action's own code and the
+          # tracked marker file -- so neither can be evaluated as-is: a
+          # same-repo PR's own copy is untrusted input here, the same
+          # principle compute-scope's own restore step already applies to
+          # scripts/pyproject.toml/uv.lock. Restore each path directly from
+          # the trusted base SHA via the Contents API (no git history or
+          # fetch-depth needed) before the action below ever runs. This
+          # closes the "PR's own copy is stale/tampered" gap; it does not
+          # (and structurally cannot, at this level) defend against a PR
+          # that removes this very step from its own copy of this workflow
+          # file -- the same limitation compute-scope's own restore already
+          # accepts for the job structure around it.
+          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              # Absent at the trusted base (e.g. newly added by this very
+              # PR) -- remove any PR-supplied copy so the check treats it
+              # as missing, never trusts PR-controlled content.
+              rm -f "$path"
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          done
+
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
         with:
@@ -58,6 +96,44 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           persist-credentials: false
+      - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # A pull_request (not pull_request_target) trigger checks out the
+          # PR's own content -- including this action's own code and the
+          # tracked marker file -- so neither can be evaluated as-is: a
+          # same-repo PR's own copy is untrusted input here, the same
+          # principle compute-scope's own restore step already applies to
+          # scripts/pyproject.toml/uv.lock. Restore each path directly from
+          # the trusted base SHA via the Contents API (no git history or
+          # fetch-depth needed) before the action below ever runs. This
+          # closes the "PR's own copy is stale/tampered" gap; it does not
+          # (and structurally cannot, at this level) defend against a PR
+          # that removes this very step from its own copy of this workflow
+          # file -- the same limitation compute-scope's own restore already
+          # accepts for the job structure around it.
+          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              # Absent at the trusted base (e.g. newly added by this very
+              # PR) -- remove any PR-supplied copy so the check treats it
+              # as missing, never trusts PR-controlled content.
+              rm -f "$path"
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          done
+
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
         with:
@@ -86,6 +162,44 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           persist-credentials: false
+      - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # A pull_request (not pull_request_target) trigger checks out the
+          # PR's own content -- including this action's own code and the
+          # tracked marker file -- so neither can be evaluated as-is: a
+          # same-repo PR's own copy is untrusted input here, the same
+          # principle compute-scope's own restore step already applies to
+          # scripts/pyproject.toml/uv.lock. Restore each path directly from
+          # the trusted base SHA via the Contents API (no git history or
+          # fetch-depth needed) before the action below ever runs. This
+          # closes the "PR's own copy is stale/tampered" gap; it does not
+          # (and structurally cannot, at this level) defend against a PR
+          # that removes this very step from its own copy of this workflow
+          # file -- the same limitation compute-scope's own restore already
+          # accepts for the job structure around it.
+          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              # Absent at the trusted base (e.g. newly added by this very
+              # PR) -- remove any PR-supplied copy so the check treats it
+              # as missing, never trusts PR-controlled content.
+              rm -f "$path"
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          done
+
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
         with:
@@ -120,6 +234,44 @@ jobs:
           sparse-checkout: |
             .github/actions/workflow-killswitch
             .github/actions/track-rerun
+      - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # A pull_request (not pull_request_target) trigger checks out the
+          # PR's own content -- including this action's own code and the
+          # tracked marker file -- so neither can be evaluated as-is: a
+          # same-repo PR's own copy is untrusted input here, the same
+          # principle compute-scope's own restore step already applies to
+          # scripts/pyproject.toml/uv.lock. Restore each path directly from
+          # the trusted base SHA via the Contents API (no git history or
+          # fetch-depth needed) before the action below ever runs. This
+          # closes the "PR's own copy is stale/tampered" gap; it does not
+          # (and structurally cannot, at this level) defend against a PR
+          # that removes this very step from its own copy of this workflow
+          # file -- the same limitation compute-scope's own restore already
+          # accepts for the job structure around it.
+          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              # Absent at the trusted base (e.g. newly added by this very
+              # PR) -- remove any PR-supplied copy so the check treats it
+              # as missing, never trusts PR-controlled content.
+              rm -f "$path"
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          done
+
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
         with:
@@ -150,6 +302,44 @@ jobs:
           sparse-checkout: |
             .github/actions/workflow-killswitch
             .github/actions/track-rerun
+      - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # A pull_request (not pull_request_target) trigger checks out the
+          # PR's own content -- including this action's own code and the
+          # tracked marker file -- so neither can be evaluated as-is: a
+          # same-repo PR's own copy is untrusted input here, the same
+          # principle compute-scope's own restore step already applies to
+          # scripts/pyproject.toml/uv.lock. Restore each path directly from
+          # the trusted base SHA via the Contents API (no git history or
+          # fetch-depth needed) before the action below ever runs. This
+          # closes the "PR's own copy is stale/tampered" gap; it does not
+          # (and structurally cannot, at this level) defend against a PR
+          # that removes this very step from its own copy of this workflow
+          # file -- the same limitation compute-scope's own restore already
+          # accepts for the job structure around it.
+          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              # Absent at the trusted base (e.g. newly added by this very
+              # PR) -- remove any PR-supplied copy so the check treats it
+              # as missing, never trusts PR-controlled content.
+              rm -f "$path"
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          done
+
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
         with:
@@ -265,6 +455,44 @@ jobs:
           sparse-checkout: |
             .github/actions/workflow-killswitch
             .github/actions/track-rerun
+      - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # A pull_request (not pull_request_target) trigger checks out the
+          # PR's own content -- including this action's own code and the
+          # tracked marker file -- so neither can be evaluated as-is: a
+          # same-repo PR's own copy is untrusted input here, the same
+          # principle compute-scope's own restore step already applies to
+          # scripts/pyproject.toml/uv.lock. Restore each path directly from
+          # the trusted base SHA via the Contents API (no git history or
+          # fetch-depth needed) before the action below ever runs. This
+          # closes the "PR's own copy is stale/tampered" gap; it does not
+          # (and structurally cannot, at this level) defend against a PR
+          # that removes this very step from its own copy of this workflow
+          # file -- the same limitation compute-scope's own restore already
+          # accepts for the job structure around it.
+          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              # Absent at the trusted base (e.g. newly added by this very
+              # PR) -- remove any PR-supplied copy so the check treats it
+              # as missing, never trusts PR-controlled content.
+              rm -f "$path"
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          done
+
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
         with:
@@ -360,6 +588,44 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           persist-credentials: false
+      - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # A pull_request (not pull_request_target) trigger checks out the
+          # PR's own content -- including this action's own code and the
+          # tracked marker file -- so neither can be evaluated as-is: a
+          # same-repo PR's own copy is untrusted input here, the same
+          # principle compute-scope's own restore step already applies to
+          # scripts/pyproject.toml/uv.lock. Restore each path directly from
+          # the trusted base SHA via the Contents API (no git history or
+          # fetch-depth needed) before the action below ever runs. This
+          # closes the "PR's own copy is stale/tampered" gap; it does not
+          # (and structurally cannot, at this level) defend against a PR
+          # that removes this very step from its own copy of this workflow
+          # file -- the same limitation compute-scope's own restore already
+          # accepts for the job structure around it.
+          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              # Absent at the trusted base (e.g. newly added by this very
+              # PR) -- remove any PR-supplied copy so the check treats it
+              # as missing, never trusts PR-controlled content.
+              rm -f "$path"
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          done
+
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
         with:
@@ -401,7 +667,7 @@ jobs:
             case "$CODEX_CI_REVIEW_BYPASS" in
               0) : ;;
               1)
-                gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
                   --jq '[.[] | {login: (.user.login // ""), body: .body}]' \
                   > comments-with-login.json
                 ACTOR=$(uv run python -m scripts.marketplace_ci resolve-attested-actor \
@@ -411,7 +677,7 @@ jobs:
                   exit 0
                 fi
                 PERMISSION=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo "none")
-                gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '[.[].body]' > comment-bodies.json
+                gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq '[.[].body]' > comment-bodies.json
                 jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
                   --slurpfile comments comment-bodies.json \
                   '{actor: $actor, head_sha: $sha, permission: $permission, comments: $comments[0]}' \
@@ -446,7 +712,7 @@ jobs:
             exit 0
           fi
           PERMISSION=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo "none")
-          gh api "repos/$REPO/issues/$PR_NUMBER/comments" --jq '[.[].body]' > comment-bodies.json
+          gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq '[.[].body]' > comment-bodies.json
           jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
             --slurpfile comments comment-bodies.json \
             '{actor: $actor, head_sha: $sha, permission: $permission, comments: $comments[0]}' \
