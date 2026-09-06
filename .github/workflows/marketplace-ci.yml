@@ -45,23 +45,39 @@ jobs:
           # that removes this very step from its own copy of this workflow
           # file -- the same limitation compute-scope's own restore already
           # accepts for the job structure around it.
-          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+          restore_from_base() {
+            local path="$1" on_absent="$2"
             mkdir -p "$(dirname "$path")"
             stderr_file=$(mktemp)
             if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
               echo "$content" | base64 -d > "$path"
             elif grep -q "HTTP 404" "$stderr_file"; then
-              # Absent at the trusted base (e.g. newly added by this very
-              # PR) -- remove any PR-supplied copy so the check treats it
-              # as missing, never trusts PR-controlled content.
-              rm -f "$path"
+              if [ "$on_absent" = "remove" ]; then
+                # Genuinely absent at the trusted base -- remove any
+                # PR-supplied copy so the check treats it as missing,
+                # never trusts PR-controlled content.
+                rm -f "$path"
+              fi
+              # else "keep": this is the bootstrapping PR introducing
+              # $path for the first time -- no trusted base copy exists
+              # yet to restore, so the PR's own checkout content stays.
+              # Only applies to this initiative's own rollout; every
+              # later PR's base SHA has a real trusted copy to restore.
             else
               echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
               rm -f "$stderr_file"
               exit 1
             fi
             rm -f "$stderr_file"
-          done
+          }
+          # The two action files themselves have no safe "missing"
+          # fallback -- GitHub Actions can't resolve `uses: ./path` at all
+          # if the file is absent, unlike the marker file below, whose
+          # absence is already handled gracefully by the action's own
+          # logic (defaults to ENABLED).
+          restore_from_base .github/actions/workflow-killswitch/action.yml keep
+          restore_from_base .github/actions/track-rerun/action.yml keep
+          restore_from_base .github/WORKFLOW_KILLSWITCH remove
 
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
@@ -116,23 +132,39 @@ jobs:
           # that removes this very step from its own copy of this workflow
           # file -- the same limitation compute-scope's own restore already
           # accepts for the job structure around it.
-          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+          restore_from_base() {
+            local path="$1" on_absent="$2"
             mkdir -p "$(dirname "$path")"
             stderr_file=$(mktemp)
             if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
               echo "$content" | base64 -d > "$path"
             elif grep -q "HTTP 404" "$stderr_file"; then
-              # Absent at the trusted base (e.g. newly added by this very
-              # PR) -- remove any PR-supplied copy so the check treats it
-              # as missing, never trusts PR-controlled content.
-              rm -f "$path"
+              if [ "$on_absent" = "remove" ]; then
+                # Genuinely absent at the trusted base -- remove any
+                # PR-supplied copy so the check treats it as missing,
+                # never trusts PR-controlled content.
+                rm -f "$path"
+              fi
+              # else "keep": this is the bootstrapping PR introducing
+              # $path for the first time -- no trusted base copy exists
+              # yet to restore, so the PR's own checkout content stays.
+              # Only applies to this initiative's own rollout; every
+              # later PR's base SHA has a real trusted copy to restore.
             else
               echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
               rm -f "$stderr_file"
               exit 1
             fi
             rm -f "$stderr_file"
-          done
+          }
+          # The two action files themselves have no safe "missing"
+          # fallback -- GitHub Actions can't resolve `uses: ./path` at all
+          # if the file is absent, unlike the marker file below, whose
+          # absence is already handled gracefully by the action's own
+          # logic (defaults to ENABLED).
+          restore_from_base .github/actions/workflow-killswitch/action.yml keep
+          restore_from_base .github/actions/track-rerun/action.yml keep
+          restore_from_base .github/WORKFLOW_KILLSWITCH remove
 
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
@@ -182,23 +214,39 @@ jobs:
           # that removes this very step from its own copy of this workflow
           # file -- the same limitation compute-scope's own restore already
           # accepts for the job structure around it.
-          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+          restore_from_base() {
+            local path="$1" on_absent="$2"
             mkdir -p "$(dirname "$path")"
             stderr_file=$(mktemp)
             if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
               echo "$content" | base64 -d > "$path"
             elif grep -q "HTTP 404" "$stderr_file"; then
-              # Absent at the trusted base (e.g. newly added by this very
-              # PR) -- remove any PR-supplied copy so the check treats it
-              # as missing, never trusts PR-controlled content.
-              rm -f "$path"
+              if [ "$on_absent" = "remove" ]; then
+                # Genuinely absent at the trusted base -- remove any
+                # PR-supplied copy so the check treats it as missing,
+                # never trusts PR-controlled content.
+                rm -f "$path"
+              fi
+              # else "keep": this is the bootstrapping PR introducing
+              # $path for the first time -- no trusted base copy exists
+              # yet to restore, so the PR's own checkout content stays.
+              # Only applies to this initiative's own rollout; every
+              # later PR's base SHA has a real trusted copy to restore.
             else
               echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
               rm -f "$stderr_file"
               exit 1
             fi
             rm -f "$stderr_file"
-          done
+          }
+          # The two action files themselves have no safe "missing"
+          # fallback -- GitHub Actions can't resolve `uses: ./path` at all
+          # if the file is absent, unlike the marker file below, whose
+          # absence is already handled gracefully by the action's own
+          # logic (defaults to ENABLED).
+          restore_from_base .github/actions/workflow-killswitch/action.yml keep
+          restore_from_base .github/actions/track-rerun/action.yml keep
+          restore_from_base .github/WORKFLOW_KILLSWITCH remove
 
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
@@ -254,23 +302,39 @@ jobs:
           # that removes this very step from its own copy of this workflow
           # file -- the same limitation compute-scope's own restore already
           # accepts for the job structure around it.
-          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+          restore_from_base() {
+            local path="$1" on_absent="$2"
             mkdir -p "$(dirname "$path")"
             stderr_file=$(mktemp)
             if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
               echo "$content" | base64 -d > "$path"
             elif grep -q "HTTP 404" "$stderr_file"; then
-              # Absent at the trusted base (e.g. newly added by this very
-              # PR) -- remove any PR-supplied copy so the check treats it
-              # as missing, never trusts PR-controlled content.
-              rm -f "$path"
+              if [ "$on_absent" = "remove" ]; then
+                # Genuinely absent at the trusted base -- remove any
+                # PR-supplied copy so the check treats it as missing,
+                # never trusts PR-controlled content.
+                rm -f "$path"
+              fi
+              # else "keep": this is the bootstrapping PR introducing
+              # $path for the first time -- no trusted base copy exists
+              # yet to restore, so the PR's own checkout content stays.
+              # Only applies to this initiative's own rollout; every
+              # later PR's base SHA has a real trusted copy to restore.
             else
               echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
               rm -f "$stderr_file"
               exit 1
             fi
             rm -f "$stderr_file"
-          done
+          }
+          # The two action files themselves have no safe "missing"
+          # fallback -- GitHub Actions can't resolve `uses: ./path` at all
+          # if the file is absent, unlike the marker file below, whose
+          # absence is already handled gracefully by the action's own
+          # logic (defaults to ENABLED).
+          restore_from_base .github/actions/workflow-killswitch/action.yml keep
+          restore_from_base .github/actions/track-rerun/action.yml keep
+          restore_from_base .github/WORKFLOW_KILLSWITCH remove
 
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
@@ -322,23 +386,39 @@ jobs:
           # that removes this very step from its own copy of this workflow
           # file -- the same limitation compute-scope's own restore already
           # accepts for the job structure around it.
-          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+          restore_from_base() {
+            local path="$1" on_absent="$2"
             mkdir -p "$(dirname "$path")"
             stderr_file=$(mktemp)
             if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
               echo "$content" | base64 -d > "$path"
             elif grep -q "HTTP 404" "$stderr_file"; then
-              # Absent at the trusted base (e.g. newly added by this very
-              # PR) -- remove any PR-supplied copy so the check treats it
-              # as missing, never trusts PR-controlled content.
-              rm -f "$path"
+              if [ "$on_absent" = "remove" ]; then
+                # Genuinely absent at the trusted base -- remove any
+                # PR-supplied copy so the check treats it as missing,
+                # never trusts PR-controlled content.
+                rm -f "$path"
+              fi
+              # else "keep": this is the bootstrapping PR introducing
+              # $path for the first time -- no trusted base copy exists
+              # yet to restore, so the PR's own checkout content stays.
+              # Only applies to this initiative's own rollout; every
+              # later PR's base SHA has a real trusted copy to restore.
             else
               echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
               rm -f "$stderr_file"
               exit 1
             fi
             rm -f "$stderr_file"
-          done
+          }
+          # The two action files themselves have no safe "missing"
+          # fallback -- GitHub Actions can't resolve `uses: ./path` at all
+          # if the file is absent, unlike the marker file below, whose
+          # absence is already handled gracefully by the action's own
+          # logic (defaults to ENABLED).
+          restore_from_base .github/actions/workflow-killswitch/action.yml keep
+          restore_from_base .github/actions/track-rerun/action.yml keep
+          restore_from_base .github/WORKFLOW_KILLSWITCH remove
 
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
@@ -475,23 +555,39 @@ jobs:
           # that removes this very step from its own copy of this workflow
           # file -- the same limitation compute-scope's own restore already
           # accepts for the job structure around it.
-          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+          restore_from_base() {
+            local path="$1" on_absent="$2"
             mkdir -p "$(dirname "$path")"
             stderr_file=$(mktemp)
             if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
               echo "$content" | base64 -d > "$path"
             elif grep -q "HTTP 404" "$stderr_file"; then
-              # Absent at the trusted base (e.g. newly added by this very
-              # PR) -- remove any PR-supplied copy so the check treats it
-              # as missing, never trusts PR-controlled content.
-              rm -f "$path"
+              if [ "$on_absent" = "remove" ]; then
+                # Genuinely absent at the trusted base -- remove any
+                # PR-supplied copy so the check treats it as missing,
+                # never trusts PR-controlled content.
+                rm -f "$path"
+              fi
+              # else "keep": this is the bootstrapping PR introducing
+              # $path for the first time -- no trusted base copy exists
+              # yet to restore, so the PR's own checkout content stays.
+              # Only applies to this initiative's own rollout; every
+              # later PR's base SHA has a real trusted copy to restore.
             else
               echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
               rm -f "$stderr_file"
               exit 1
             fi
             rm -f "$stderr_file"
-          done
+          }
+          # The two action files themselves have no safe "missing"
+          # fallback -- GitHub Actions can't resolve `uses: ./path` at all
+          # if the file is absent, unlike the marker file below, whose
+          # absence is already handled gracefully by the action's own
+          # logic (defaults to ENABLED).
+          restore_from_base .github/actions/workflow-killswitch/action.yml keep
+          restore_from_base .github/actions/track-rerun/action.yml keep
+          restore_from_base .github/WORKFLOW_KILLSWITCH remove
 
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
@@ -608,23 +704,39 @@ jobs:
           # that removes this very step from its own copy of this workflow
           # file -- the same limitation compute-scope's own restore already
           # accepts for the job structure around it.
-          for path in .github/actions/workflow-killswitch/action.yml .github/actions/track-rerun/action.yml .github/WORKFLOW_KILLSWITCH; do
+          restore_from_base() {
+            local path="$1" on_absent="$2"
             mkdir -p "$(dirname "$path")"
             stderr_file=$(mktemp)
             if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
               echo "$content" | base64 -d > "$path"
             elif grep -q "HTTP 404" "$stderr_file"; then
-              # Absent at the trusted base (e.g. newly added by this very
-              # PR) -- remove any PR-supplied copy so the check treats it
-              # as missing, never trusts PR-controlled content.
-              rm -f "$path"
+              if [ "$on_absent" = "remove" ]; then
+                # Genuinely absent at the trusted base -- remove any
+                # PR-supplied copy so the check treats it as missing,
+                # never trusts PR-controlled content.
+                rm -f "$path"
+              fi
+              # else "keep": this is the bootstrapping PR introducing
+              # $path for the first time -- no trusted base copy exists
+              # yet to restore, so the PR's own checkout content stays.
+              # Only applies to this initiative's own rollout; every
+              # later PR's base SHA has a real trusted copy to restore.
             else
               echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
               rm -f "$stderr_file"
               exit 1
             fi
             rm -f "$stderr_file"
-          done
+          }
+          # The two action files themselves have no safe "missing"
+          # fallback -- GitHub Actions can't resolve `uses: ./path` at all
+          # if the file is absent, unlike the marker file below, whose
+          # absence is already handled gracefully by the action's own
+          # logic (defaults to ENABLED).
+          restore_from_base .github/actions/workflow-killswitch/action.yml keep
+          restore_from_base .github/actions/track-rerun/action.yml keep
+          restore_from_base .github/WORKFLOW_KILLSWITCH remove
 
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch

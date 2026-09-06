@@ -64,6 +64,41 @@ jobs:
           sparse-checkout: |
             .github/actions/workflow-killswitch
             .github/actions/track-rerun
+      - name: Restore kill-switch enforcement from the trusted base SHA (trust boundary)
+        # Only pull_request runs check out PR-controlled content here --
+        # actions/checkout's default ref for an issue_comment event
+        # resolves to the default branch, which is already trusted, and
+        # github.event.pull_request.base.sha doesn't exist on that event
+        # shape at all. See marketplace-ci.yml's identical step for the
+        # full rationale (same action files, same trust boundary).
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          restore_from_base() {
+            local path="$1" on_absent="$2"
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              if [ "$on_absent" = "remove" ]; then
+                rm -f "$path"
+              fi
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          }
+          restore_from_base .github/actions/workflow-killswitch/action.yml keep
+          restore_from_base .github/actions/track-rerun/action.yml keep
+          restore_from_base .github/WORKFLOW_KILLSWITCH remove
+
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
         with:
