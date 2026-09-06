@@ -15,9 +15,9 @@ permissions:
 concurrency:
   # Workflow-level concurrency is evaluated at run-creation time, before the job's own `if:`
   # below ever runs -- so without the second `${{ }}` segment here, *any* issue_comment (not
-  # just an "@codex review" or "@codex full review" one) would enter this same group and
+  # just a "@codex review" or "@codex full review" one) would enter this same group and
   # cancel an in-progress pull_request-triggered wait via cancel-in-progress, only to have
-  # its own job skipped by the `if:` a moment later, leaving the check `cancelled` instead of
+  # its own job skipped by the `if:` a moment later, leaving the check `canceled` instead of
   # pass/fail. Give a comment the job's own `if:` will skip a unique, one-off group (keyed on
   # this run's own id) instead, so it can never collide with -- or cancel -- a real wait.
   #
@@ -58,6 +58,21 @@ jobs:
       PR_EVENT_TIME: ${{ github.event.pull_request.updated_at }}
       COMMENT_CREATED_AT: ${{ github.event.comment.created_at }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+      - name: Check Workflow Kill Switch
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: Track workflow rerun
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
       - name: Wait for Codex review
         shell: bash
         run: |
