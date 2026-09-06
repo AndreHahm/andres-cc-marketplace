@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------------------
 # File-based label rules for actions/labeler@v6
 # Labels must match the names defined in .github/labels.yml
-# See docs/github_label_taxonomy.md and docs/github-label-usage.md
+# See docs/github-label-taxonomy.md and docs/github-label-usage.md
 #
 # NOTE: Documentation label intentionally excludes:
 #   - plugins/**/SKILL.md (skill definitions, not user docs)
