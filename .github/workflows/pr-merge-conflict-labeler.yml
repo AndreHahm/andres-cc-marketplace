@@ -20,17 +20,26 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout-cone-mode: false
           sparse-checkout: |
             .github/actions/workflow-killswitch
             .github/actions/track-rerun
             .github/WORKFLOW_KILLSWITCH
       - name: Check Workflow Kill Switch
+        # Skipped on a plain push: that trigger has no branch filter (any
+        # branch push runs this job, unlike pull_request_target, which is
+        # gated behind a PR), so it would otherwise execute this repo's own
+        # local composite actions from the pushed SHA's tree with
+        # issues:write/pull-requests:write and no review gate at all (Codex
+        # finding, PR #290). The eps1lon action below is pinned by SHA and
+        # unaffected either way; this only skips the two local-action steps.
+        if: github.event_name != 'push'
         uses: ./.github/actions/workflow-killswitch
         with:
           killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
 
       - name: Track workflow rerun
-        if: github.run_attempt > 1
+        if: github.event_name != 'push' && github.run_attempt > 1
         uses: ./.github/actions/track-rerun
 
       - name: check if prs are dirty

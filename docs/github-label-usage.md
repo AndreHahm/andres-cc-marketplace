@@ -114,7 +114,13 @@ Status labels reflect the current lifecycle stage of an issue or PR.
 - `s: needs review` — apply to PRs awaiting reviewer feedback
 - `s: blocked` — apply when progress is blocked by an external dependency, decision, or another issue
 
-Only one status label should be active at a time. Update it as the issue or PR progresses.
+Only one of these five lifecycle-status labels should be active at a time. Update it as the issue or
+PR progresses.
+
+The remaining `s:` labels — `s: merge conflict`, `s: do not merge`, and `s: codex review bypassed` —
+are orthogonal state flags, not lifecycle stages: each can coexist with any one lifecycle-status label
+above (e.g. a PR can be `s: needs review` and `s: merge conflict` at the same time), and applying one
+never removes or replaces the current lifecycle status.
 
 ---
 

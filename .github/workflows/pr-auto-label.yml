@@ -20,6 +20,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout-cone-mode: false
           sparse-checkout: |
             .github/actions/workflow-killswitch
             .github/actions/track-rerun
@@ -38,7 +39,22 @@ jobs:
         id: fork-safety
         uses: ./.github/actions/fork-safety
 
+      - name: Label PRs by changed files
+        if: steps.fork-safety.outputs.should-skip-writes != 'true'
+        uses: actions/labeler@634933edcd8ababfe52f92936142cc22ac488b1b # ratchet:actions/labeler@v6.0.1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
       - name: Label PR by Conventional Commit title
+        # Runs after the file-based labeler step above (not before): the labeler's
+        # sync-labels:true removes any of its own configured label names (t:
+        # documentation, t: ci, t: build, t: test all overlap with this step's own
+        # type map) that the current diff doesn't match, regardless of who added
+        # them -- if this step ran first, the labeler would immediately strip
+        # back off any overlapping label it just added (CodeRabbit finding, PR
+        # #290). Running last means this step's own addLabels call always wins.
         if: steps.fork-safety.outputs.should-skip-writes != 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # ratchet:actions/github-script@v9.0.0
         with:
@@ -146,14 +162,6 @@ jobs:
               issue_number,
               labels
             });
-
-      - name: Label PRs by changed files
-        if: steps.fork-safety.outputs.should-skip-writes != 'true'
-        uses: actions/labeler@634933edcd8ababfe52f92936142cc22ac488b1b # ratchet:actions/labeler@v6.0.1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          configuration-path: .github/labeler.yml
-          sync-labels: true
 
       - name: Remind to run full CI on PR
         if: steps.fork-safety.outputs.should-skip-writes != 'true'
