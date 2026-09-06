@@ -614,6 +614,28 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install uv
+
+      # This job's own run-codex-review step below is the primary review
+      # gate itself, not just a bypass path -- publish only checks this
+      # job's bare pass/fail status (needs.codex-review.result), never the
+      # generated artifact's content, so a same-repo PR that edits
+      # run_codex_review() (or anything it calls in review.py) to always
+      # exit 0 would defeat the whole review gate with no label,
+      # attestation, or variable needed at all (Codex cross-model-review
+      # finding). Runs before `uv sync` so the dependency install itself
+      # also comes from the trusted spec, not the PR's own
+      # pyproject.toml/uv.lock.
+      - name: Restore the base SHA's copy of the review-dispatch code and its dependency spec (trust boundary)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if git checkout "$BASE_SHA" -- scripts pyproject.toml uv.lock; then
+            echo "restored scripts/, pyproject.toml, uv.lock from $BASE_SHA"
+          else
+            echo "::error::could not restore review-dispatch code from $BASE_SHA -- refusing to trust the PR's own copy of it"
+            exit 1
+          fi
+
       - run: uv sync --group dev
 
       - name: Set up Node (for the codex CLI and codex-review-bridge)
@@ -805,8 +827,21 @@ jobs:
             case "$CODEX_CI_REVIEW_BYPASS" in
               0) : ;;
               1)
+                # --paginate's own raw output is one JSON array PER page,
+                # concatenated -- not one merged array (confirmed via
+                # `gh api --help`: "Each page is a separate JSON array or
+                # object. Pass --slurp to wrap all pages...into an outer
+                # JSON array."). Applying --jq inline on a --paginate call
+                # only transforms each page independently, so a PR with
+                # more than one page of comments (default ~30/page) would
+                # otherwise produce multiple concatenated JSON values here
+                # -- which resolve-attested-actor's own json.loads cannot
+                # parse (verified live: raises JSONDecodeError). Fetch raw
+                # pages with no inline --jq, then merge with a separate
+                # `jq -s` (slurp) pass that flattens every page's array
+                # into one before applying the actual transform.
                 gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-                  --jq '[.[] | {login: (.user.login // ""), body: .body}]' \
+                  | jq -s '[.[] | .[] | {login: (.user.login // ""), body: .body}]' \
                   > comments-with-login.json
                 ACTOR=$(uv run python -m scripts.marketplace_ci resolve-attested-actor \
                   --comments-with-login comments-with-login.json --head-sha "$HEAD_SHA" || true)
@@ -815,7 +850,13 @@ jobs:
                   exit 0
                 fi
                 PERMISSION=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo "none")
-                gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq '[.[].body]' > comment-bodies.json
+                # Same multi-page-concatenation gap as above -- jq --slurpfile
+                # doesn't fail on it (unlike json.loads), it silently succeeds
+                # with $comments as an array of per-page arrays, so
+                # $comments[0] below would silently drop every page after the
+                # first. Merge pages the same way before writing this file.
+                gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+                  | jq -s '[.[] | .[].body]' > comment-bodies.json
                 jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
                   --slurpfile comments comment-bodies.json \
                   '{actor: $actor, head_sha: $sha, permission: $permission, comments: $comments[0]}' \
@@ -843,14 +884,24 @@ jobs:
           # the PR's original author, who may be a different, less-privileged
           # person than whoever is attesting the bypass. Resolve via the
           # issue events timeline (most recent matching "labeled" event).
+          # Same multi-page-concatenation gap the CODEX_CI_REVIEW_BYPASS
+          # path above documents: --jq applied inline on --paginate only
+          # transforms each page independently, and reading $(...) output
+          # directly (no JSON parser here at all) would otherwise capture
+          # every page's own separate result on its own line, corrupting
+          # $ACTOR into a multi-line value on an events response spanning
+          # more than one page. Merge pages first via `jq -s`.
           ACTOR=$(gh api "repos/$REPO/issues/$PR_NUMBER/events" --paginate \
-            --jq '[.[] | select(.event == "labeled" and .label.name == "s: codex review bypassed")] | last | .actor.login')
+            | jq -s -r '[.[] | .[] | select(.event == "labeled" and .label.name == "s: codex review bypassed")] | last | .actor.login')
           if [ -z "$ACTOR" ] || [ "$ACTOR" = "null" ]; then
             echo "bypassed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           PERMISSION=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo "none")
-          gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq '[.[].body]' > comment-bodies.json
+          # Same $comments[0]-truncation gap as the variable path above --
+          # merge pages before writing this file.
+          gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+            | jq -s '[.[] | .[].body]' > comment-bodies.json
           jq -n --arg actor "$ACTOR" --arg sha "$HEAD_SHA" --arg permission "$PERMISSION" \
             --slurpfile comments comment-bodies.json \
             '{actor: $actor, head_sha: $sha, permission: $permission, comments: $comments[0]}' \
