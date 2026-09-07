@@ -99,6 +99,30 @@ labels:
 
 
   # -------------------------
+  # Size (size:)
+  # -------------------------
+  - name: "size: XS"
+    color: "7EE081"
+    description: "XS: <10 lines changed"
+
+  - name: "size: S"
+    color: "A6D49F"
+    description: "S: 10-49 lines changed"
+
+  - name: "size: M"
+    color: "F7D070"
+    description: "M: 50-249 lines changed"
+
+  - name: "size: L"
+    color: "F48C06"
+    description: "L: 250-999 lines changed"
+
+  - name: "size: XL"
+    color: "DC2F02"
+    description: "XL: >=1000 lines changed"
+
+
+  # -------------------------
   # Priority (p:)
   # -------------------------
   - name: "p: critical"

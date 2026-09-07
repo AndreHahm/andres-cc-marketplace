@@ -1,0 +1,125 @@
+name: 'PR Size Labeler (Batch)'
+
+on:
+  workflow_dispatch:
+    inputs:
+      process_all:
+        description: 'Process all PRs (open and closed) or open only'
+        required: true
+        default: 'false'
+        type: 'choice'
+        options:
+          - 'true'
+          - 'false'
+      limit:
+        description: 'Max number of PRs to fetch and check'
+        required: true
+        default: '100'
+        type: 'string'
+
+permissions:
+  pull-requests: 'write'
+
+jobs:
+  batch-label:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+            .github/WORKFLOW_KILLSWITCH
+      - name: 'Check Workflow Kill Switch'
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: 'Track workflow rerun'
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: 'Batch label PRs'
+        env:
+          GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+          GH_REPO: '${{ github.repository }}'
+        run: |
+          # Determine the state filter
+          STATE="open"
+          if [ "${{ github.event.inputs.process_all }}" = "true" ]; then
+            STATE="all"
+          fi
+
+          LIMIT="${{ github.event.inputs.limit }}"
+          echo "Batch labeling up to $LIMIT $STATE PRs..."
+
+          # The 5 "size: *" labels are declared in .github/labels.yml (single
+          # source of truth, synced to GitHub by sync-labels.yml) -- this step
+          # only ever applies an already-existing label, it never creates one.
+
+          # 1. Query PR list with all required fields in ONE call to prevent N+1 queries
+          PR_LIST=$(gh pr list --state "$STATE" --limit "$LIMIT" --json number,additions,deletions,labels)
+          if [ -z "$PR_LIST" ] || [ "$PR_LIST" = "[]" ]; then
+            echo "ℹ️ No PRs found matching the criteria."
+            exit 0
+          fi
+
+          # Parse and iterate over PRs. Read from a process substitution, not a
+          # pipe: `... | while read; do COUNT=$((COUNT+1)); done` runs the loop
+          # body in a subshell in bash, so COUNT increments there are lost the
+          # moment the pipeline ends -- the summary below would always print 0,
+          # even though each PR's own per-iteration log line was correct.
+          UPDATED_COUNT=0
+          SKIPPED_COUNT=0
+
+          while read -r PR_JSON; do
+            PR_NUMBER=$(echo "$PR_JSON" | jq '.number')
+            ADDITIONS=$(echo "$PR_JSON" | jq '.additions')
+            DELETIONS=$(echo "$PR_JSON" | jq '.deletions')
+            TOTAL=$((ADDITIONS + DELETIONS))
+
+            # Calculate target size
+            if [ $TOTAL -lt 10 ]; then
+              SIZE="size: XS"
+            elif [ $TOTAL -lt 50 ]; then
+              SIZE="size: S"
+            elif [ $TOTAL -lt 250 ]; then
+              SIZE="size: M"
+            elif [ $TOTAL -lt 1000 ]; then
+              SIZE="size: L"
+            else
+              SIZE="size: XL"
+            fi
+
+            # Inspect existing labels to detect discrepancies
+            EXISTING_LABELS=$(echo "$PR_JSON" | jq -r '.labels[].name' 2>/dev/null || echo "")
+
+            LABELS_TO_REMOVE=()
+            for L in "size: XS" "size: S" "size: M" "size: L" "size: XL"; do
+              if echo "$EXISTING_LABELS" | grep -Fq "$L" && [ "$L" != "$SIZE" ]; then
+                LABELS_TO_REMOVE+=("--remove-label" "$L")
+              fi
+            done
+
+            LABEL_TO_ADD=()
+            if ! echo "$EXISTING_LABELS" | grep -Fq "$SIZE"; then
+              LABEL_TO_ADD+=("--add-label" "$SIZE")
+            fi
+
+            # Update labels if there's a difference
+            if [ ${#LABELS_TO_REMOVE[@]} -gt 0 ] || [ ${#LABEL_TO_ADD[@]} -gt 0 ]; then
+              echo "🔄 PR #$PR_NUMBER (+$ADDITIONS/-$DELETIONS = $TOTAL lines): updating size to $SIZE"
+              gh pr edit "$PR_NUMBER" "${LABELS_TO_REMOVE[@]}" "${LABEL_TO_ADD[@]}" 2>/dev/null || true
+              UPDATED_COUNT=$((UPDATED_COUNT + 1))
+            else
+              echo "✅ PR #$PR_NUMBER (+$ADDITIONS/-$DELETIONS = $TOTAL lines): already has correct label ($SIZE). Skipping."
+              SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+            fi
+          done < <(echo "$PR_LIST" | jq -c '.[]')
+
+          echo "============================================"
+          echo "🎉 Batch run completed!"
+          echo "Skipped (already correct): $SKIPPED_COUNT"
+          echo "Updated: $UPDATED_COUNT"

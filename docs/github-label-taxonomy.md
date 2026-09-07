@@ -84,7 +84,20 @@ Describes lifecycle stage.
 
 ---
 
-## 5. Priority (`p:`)
+## 5. Size (`size:`)
+
+Describes how large a Pull Request's diff is, by total lines changed. Automatically applied and kept
+in sync by `pr-size-labeler.yml`.
+
+- `size: XS` — <10 lines changed.
+- `size: S` — 10-49 lines changed.
+- `size: M` — 50-249 lines changed.
+- `size: L` — 250-999 lines changed.
+- `size: XL` — >=1000 lines changed.
+
+---
+
+## 6. Priority (`p:`)
 
 Describes urgency and importance.
 
@@ -95,7 +108,7 @@ Describes urgency and importance.
 
 ---
 
-## 6. Execution Transparency (`x:`)
+## 7. Execution Transparency (`x:`)
 
 Indicates AI involvement in implementation.
 
@@ -107,7 +120,7 @@ This ensures transparency in AI-assisted development workflows.
 
 ---
 
-## 7. Planning (`plan:`)
+## 8. Planning (`plan:`)
 
 Tracks planning artifacts attached to issues or PRs.
 
@@ -121,7 +134,7 @@ Tracks planning artifacts attached to issues or PRs.
 
 ---
 
-## 8. Automation (`auto:`)
+## 9. Automation (`auto:`)
 
 Marks issues created automatically by repository automation, rather than by a human.
 
@@ -129,7 +142,7 @@ Marks issues created automatically by repository automation, rather than by a hu
 
 ---
 
-## 9. Resolution (`r:`)
+## 10. Resolution (`r:`)
 
 Applied when closing an issue or PR to record the outcome.
 
@@ -140,7 +153,7 @@ Applied when closing an issue or PR to record the outcome.
 
 ---
 
-## 10. Community/Contribution (`c:`)
+## 11. Community/Contribution (`c:`)
 
 Applied when communicating with contributors.
 

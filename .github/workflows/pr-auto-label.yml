@@ -85,6 +85,24 @@ jobs:
             const scopeRaw = (m[3] || "").toLowerCase(); // without parentheses
             const isBreaking = !!m[4];
 
+            // Size-derived impact label: pull_request(_target)'s own payload
+            // already carries additions/deletions on the PR object, so this
+            // computes the same size bucket pr-size-labeler.yml uses without
+            // reading that workflow's own applied label -- two independently
+            // pull_request_target-triggered workflows on the same event have
+            // no ordering guarantee, so relying on the other one's label
+            // having already landed would be a real race, not just a style
+            // choice. XS/S -> minor, M/L/XL -> major: a 50-249-line diff
+            // reads as more "significant" than "small" per this repo's own
+            // taxonomy wording, and erring toward major for an ambiguous
+            // size is safer than erring toward minor (understating impact
+            // is the worse failure mode for a required, review-facing label).
+            const IMPACT_MINOR = "i: minor change";
+            const IMPACT_MAJOR = "i: major change";
+            const totalChanges = (pr.additions || 0) + (pr.deletions || 0);
+            const sizeImpact =
+              totalChanges < 50 ? IMPACT_MINOR : IMPACT_MAJOR;
+
             // Map CC types -> your labels (Type)
             const map = {
               feat: "t: feature",
@@ -137,8 +155,17 @@ jobs:
               labelsToAdd.add("s: needs review");
             }
 
-            // Impact label for breaking changes
-            if (isBreaking) labelsToAdd.add("i: breaking change");
+            // Impact label: breaking (from the title's own "!") always wins --
+            // exactly one impact label is required, so a breaking change never
+            // also gets a size-derived minor/major label alongside it. This
+            // step only ever adds "i: breaking change"; pr-impact-autofix.yml
+            // remains the sole owner of removing it once a title stops being
+            // breaking, so it's deliberately left out of managedUniverse below.
+            if (isBreaking) {
+              labelsToAdd.add("i: breaking change");
+            } else {
+              labelsToAdd.add(sizeImpact);
+            }
 
             // Area label from CC scope
             if (scopeRaw) {
@@ -152,15 +179,23 @@ jobs:
               if (scopeAreaMap[scopeRaw]) labelsToAdd.add(scopeAreaMap[scopeRaw]);
             }
 
-            // Reconcile stale type/scope labels from a previous title (e.g. an
-            // "edited" event changing feat(api): ... to fix: ... previously left
-            // the old t: feature/a: api labels in place forever, since only
-            // addLabels was ever called). Only remove a label that's within this
-            // step's own managed universe (the type map + area map + a:
-            // dependencies) and not part of the newly-computed set -- a manually
-            // applied label, or one owned by a different workflow (e.g.
-            // pr-impact-autofix.yml's own i: * reconciliation), is never touched
-            // (Codex finding, PR #290 round 2).
+            // Reconcile stale type/scope/size-impact labels from a previous
+            // title or diff size (e.g. an "edited" event changing
+            // feat(api): ... to fix: ... previously left the old t: feature/
+            // a: api labels in place forever, since only addLabels was ever
+            // called; likewise a PR that grows past a size boundary on
+            // "synchronize" should swap i: minor change for i: major change,
+            // not carry both). Only remove a label that's within this step's
+            // own managed universe (the type map + area map + a: dependencies
+            // + the two size-derived impact labels) and not part of the
+            // newly-computed set -- a label owned by a different workflow
+            // (pr-impact-autofix.yml's own "i: breaking change") is never
+            // touched (Codex finding, PR #290 round 2). NOTE: unlike every
+            // other label this step manages, "i: minor change"/"i: major
+            // change" have no manual-override protection either -- a human
+            // who deliberately overrides the size-derived guess will see it
+            // silently reverted back on the very next push, the identical
+            // tradeoff this step already accepts for t:/a: labels.
             //
             // Exclude every label .github/labeler.yml itself owns (file-based,
             // applied by the preceding "Label PRs by changed files" step) --
@@ -191,7 +226,8 @@ jobs:
               .map(l => (typeof l === "string" ? l : l.name))
               .filter(Boolean);
             const managedUniverse = new Set(
-              [...Object.values(map), ...Object.values(scopeAreaMap), "a: dependencies"]
+              [...Object.values(map), ...Object.values(scopeAreaMap), "a: dependencies",
+               IMPACT_MINOR, IMPACT_MAJOR]
                 .filter(label => !labelerOwned.has(label))
             );
             const toRemove = current.filter(l => managedUniverse.has(l) && !labelsToAdd.has(l));

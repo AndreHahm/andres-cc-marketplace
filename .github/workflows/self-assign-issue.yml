@@ -1,0 +1,70 @@
+name: 'Assign New Issue to Creator or Owner'
+
+on:
+  issues:
+    types:
+      - 'opened'
+
+concurrency:
+  group: 'self-assign-issue-${{ github.event.issue.number }}'
+  cancel-in-progress: true
+
+permissions:
+  issues: 'write'
+
+jobs:
+  assign-issue:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+            .github/WORKFLOW_KILLSWITCH
+      - name: 'Check Workflow Kill Switch'
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: 'Track workflow rerun'
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: 'Assign issue to creator or owner'
+        uses: 'actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3' # ratchet:actions/github-script@v9.0.0
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issueNumber = context.issue.number;
+            const creator = context.payload.issue.user.login;
+
+            // An issue can only be assigned to someone with at least read
+            // access to the repo -- GitHub's own addAssignees API silently
+            // drops any assignee who doesn't qualify, rather than erroring,
+            // so check first instead of assuming the creator is assignable.
+            let assignee = owner;
+            try {
+              const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner,
+                repo,
+                username: creator,
+              });
+              if (['write', 'maintain', 'admin'].includes(perm.permission)) {
+                assignee = creator;
+              }
+            } catch (e) {
+              core.info(`Could not resolve ${creator}'s permission level (${e.message}); falling back to the repo owner.`);
+            }
+
+            await github.rest.issues.addAssignees({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              assignees: [assignee],
+            });
+
+            core.info(`Assigned issue #${issueNumber} to ${assignee}.`);
