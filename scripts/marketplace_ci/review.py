@@ -812,3 +812,24 @@ def check_bypass(
             "attestation_reason": attestation["reason"],
         },
     )
+
+
+def resolve_attested_actor(comments_with_login: Sequence[dict], head_sha: str) -> str | None:
+    """Resolve which real GitHub commenter attested a bypass for `head_sha`,
+    for use when no `labeled` event exists to supply a trusted actor (e.g. a
+    bypass check run from a plain push rather than a label application).
+
+    Trusts each comment's real author (`login`, from the GitHub API) rather
+    than the marker's own self-declared `actor` field, and requires the two
+    to match — otherwise anyone could post a marker naming a *different*,
+    more-privileged user and have it accepted with no real permission check
+    on the actual poster. Returns the resolved login, or None if no comment
+    attests this exact SHA from its own real author."""
+    candidates = [
+        comment["login"]
+        for comment in comments_with_login
+        if (marker := parse_attestation_marker(comment.get("body", ""))) is not None
+        and marker["sha"] == head_sha
+        and marker["actor"] == comment.get("login")
+    ]
+    return candidates[-1] if candidates else None

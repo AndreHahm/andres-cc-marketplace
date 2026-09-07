@@ -518,6 +518,63 @@ def test_check_bypass_missing_field_returns_2(monkeypatch, repo, tmp_path):
     assert main(["check-bypass", "--event", str(event_path)]) == 2
 
 
+def test_resolve_attested_actor_prints_login_on_match(monkeypatch, repo, tmp_path, capsys):
+    comments = [
+        {
+            "login": "andre",
+            "body": (
+                "<!-- marketplace-ci-bypass-attestation "
+                '{"schema_version": 1, "actor": "andre", "head_sha": "abc123", '
+                '"reason": "incident", "created_at": "2026-08-13T00:00:00Z"} -->'
+            ),
+        }
+    ]
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text(json.dumps(comments), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    exit_code = main(
+        [
+            "resolve-attested-actor",
+            "--comments-with-login",
+            str(comments_path),
+            "--head-sha",
+            "abc123",
+        ]
+    )
+    assert exit_code == 0
+    assert capsys.readouterr().out.strip() == "andre"
+
+
+def test_resolve_attested_actor_returns_1_when_no_match(monkeypatch, repo, tmp_path):
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text(json.dumps([]), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    exit_code = main(
+        [
+            "resolve-attested-actor",
+            "--comments-with-login",
+            str(comments_path),
+            "--head-sha",
+            "abc123",
+        ]
+    )
+    assert exit_code == 1
+
+
+def test_resolve_attested_actor_unreadable_file_returns_2(monkeypatch, repo, tmp_path):
+    monkeypatch.chdir(repo)
+    exit_code = main(
+        [
+            "resolve-attested-actor",
+            "--comments-with-login",
+            str(tmp_path / "missing.json"),
+            "--head-sha",
+            "abc123",
+        ]
+    )
+    assert exit_code == 2
+
+
 def test_check_scope_bypass_unresolvable_base_sha_returns_2(monkeypatch, git_repo):
     monkeypatch.chdir(git_repo.root)
     assert main(["check-scope-bypass", "--base-sha", "0" * 40]) == 2
