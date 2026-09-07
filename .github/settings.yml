@@ -87,16 +87,20 @@ branches:
         # Required. Require branches to be up to date before merging.
         strict: true
         # Required. The list of status checks to require in order to merge into this branch.
-        checks:
-          - context: Hygiene (PR contract)
-          - context: Python quality (ruff, ty, pytest)
-          - context: Marketplace mirror/export parity
-          - context: Fork PR (unsupported — explicit terminal result)
-          - context: Publish Codex policy result
-          - context: Validate Repository Structure
-          - context: Validate Marketplace Plugin Entries
-          - context: Validate Individual Plugins
-          - context: Check for Duplicate Plugin Names
+        # NOTE: probot-settings' documented schema (docs/plugins/branches.md) uses `contexts`
+        # (a plain string array), not the REST API's newer `checks` ({context, app_id} objects) --
+        # an earlier draft of this file used `checks` and would have silently failed to apply
+        # any of these required contexts once synced.
+        contexts:
+          - Hygiene (PR contract)
+          - Python quality (ruff, ty, pytest)
+          - Marketplace mirror/export parity
+          - Fork PR (unsupported — explicit terminal result)
+          - Publish Codex policy result
+          - Validate Repository Structure
+          - Validate Marketplace Plugin Entries
+          - Validate Individual Plugins
+          - Check for Duplicate Plugin Names
       # Required. Enforce all configured restrictions for administrators. Set to true to enforce required status checks for repository administrators. Set to null to disable.
       enforce_admins: true
       # Prevent merge commits from being pushed to matching branches
