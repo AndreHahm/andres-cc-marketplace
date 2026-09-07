@@ -440,6 +440,7 @@ jobs:
       - name: Check out the PR's own head commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
@@ -601,6 +602,7 @@ jobs:
       - name: Check out the PR's merge commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
+          persist-credentials: false
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
 
@@ -644,7 +646,18 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if ! git diff --quiet "$BASE_SHA" -- scripts pyproject.toml uv.lock; then
+          # Three-dot (merge-base) diff, not two-dot: this job checks out
+          # refs/pull/<n>/merge, which always reflects the *current* base
+          # branch tip, while $BASE_SHA can lag behind it (e.g. no push to
+          # this PR since an unrelated, already-merged PR touched scripts/
+          # after $BASE_SHA). A two-dot diff against $BASE_SHA would compare
+          # the full trees and pick up that unrelated upstream change too,
+          # failing this gate closed for a PR that never touched these paths
+          # itself (CodeRabbit finding). Three-dot scopes the comparison to
+          # commits reachable from HEAD but not from $BASE_SHA -- this PR's
+          # own changes only, matching the base...head convention check-pr
+          # already uses.
+          if ! git diff --quiet "$BASE_SHA"...HEAD -- scripts pyproject.toml uv.lock; then
             echo "::error::This PR changes scripts/, pyproject.toml, or uv.lock -- the same code this job dispatches reviewers with and hands to them as evidence on disk. Neither running the PR's own copy (a same-repo PR could tamper with the review-dispatch logic itself) nor restoring the trusted base-SHA copy (which would silently hide this PR's real changes to those paths from the reviewer) is safe here. This requires a maintainer to manually review the change and attest a bypass (the comment-plus-label protocol, or the CODEX_CI_REVIEW_BYPASS variable) rather than an automated Codex dispatch."
             exit 1
           fi

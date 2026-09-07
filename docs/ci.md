@@ -170,7 +170,8 @@ maintainer (live `write`/`maintain`/`admin` permission) attesting a bypass, boun
 
 ### Attesting without the label (`CODEX_CI_REVIEW_BYPASS`)
 
-The `CODEX_CI_REVIEW_BYPASS` repo variable (`0`=disabled, `1`=enabled) is **not** a standalone
+The `CODEX_CI_REVIEW_BYPASS` repo variable (`0`=disabled, `1`=enabled; any other non-empty value
+fails `publish` closed for every same-repo PR until corrected) is **not** a standalone
 bypass — setting it never bypasses anything by itself, and it changes nothing about who can attest
 or what an attestation must contain. It only lets `publish` look for a valid attestation on a run
 that wasn't triggered by applying the label (e.g. a plain push/`synchronize` event), for which there
