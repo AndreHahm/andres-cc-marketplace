@@ -1,13 +1,17 @@
 # ─────────────────────────────────────────────────────────────────
-# PR Status Sync Workflow
+# PR Status Comment Workflow
 # ─────────────────────────────────────────────────────────────────
-# Syncs PR lifecycle events with linked issues.
+# Posts a lifecycle-transition comment on any issue linked from a PR's
+# description (Closes/Fixes/Resolves/Relates to #N). This does NOT update
+# any issue/project status field or Projects board -- there is no
+# project-sync backend configured in this repo. It's a notification only;
+# an actual reader still has to change the issue's own status/label by hand.
 #
-# Status Transitions:
-# - PR opened (ready) → Issues: "In Review"
-# - PR draft → Issues: "In Progress"
-# - PR merged → Issues: "To Deploy" + delete branch
-# - PR closed (not merged) → Issues: "In Progress"
+# Comment posted on:
+# - PR opened (ready) -> "PR ready for review" comment
+# - PR draft -> "PR converted to draft" comment
+# - PR merged -> "PR merged" comment + delete branch
+# - PR closed (not merged) -> "PR closed" comment
 #
 # Features:
 # - Extracts linked issues from PR body
@@ -16,7 +20,7 @@
 # - Debounced (10s delay to prevent loops)
 # ─────────────────────────────────────────────────────────────────
 
-name: PR Status Sync
+name: PR Status Comment
 
 on:
   pull_request:
@@ -62,6 +66,8 @@ jobs:
           persist-credentials: false
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
 
       - name: Track workflow rerun
         if: github.run_attempt > 1
@@ -90,6 +96,8 @@ jobs:
             .github/actions/track-rerun
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
 
       - name: Track workflow rerun
         if: github.run_attempt > 1
@@ -149,6 +157,8 @@ jobs:
             .github/actions/track-rerun
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
 
       - name: Track workflow rerun
         if: github.run_attempt > 1
@@ -161,10 +171,10 @@ jobs:
           echo "✅ Debounce complete"
 
   # ─────────────────────────────────────────────────────────────────
-  # Sync Issue Status Based on PR Event
+  # Comment on Linked Issues Based on PR Event
   # ─────────────────────────────────────────────────────────────────
   sync-issue-status:
-    name: Sync Issue Status
+    name: Comment on Linked Issues
     runs-on: ubuntu-latest
     needs:
       - fork-check
@@ -181,12 +191,14 @@ jobs:
           persist-credentials: false
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
 
       - name: Track workflow rerun
         if: github.run_attempt > 1
         uses: ./.github/actions/track-rerun
 
-      - name: Determine target status
+      - name: Determine comment to post
         id: determine-status
         run: |
           PR_STATE="${{ github.event.pull_request.state }}"
@@ -200,33 +212,36 @@ jobs:
           echo "   Merged: $PR_MERGED"
           echo "   Action: $EVENT_ACTION"
 
+          # TARGET_STATUS selects which comment template to post below --
+          # this workflow only ever comments on linked issues, it never
+          # changes any real issue/project status field (no project-sync
+          # backend is configured in this repo).
           TARGET_STATUS=""
 
-          # Determine status based on PR lifecycle
           if [[ "$PR_MERGED" == "true" ]]; then
             TARGET_STATUS="To Deploy"
-            echo "✅ PR merged → Issues to 'To Deploy'"
+            echo "✅ PR merged → will comment 'ready for deployment' on linked issues"
 
           elif [[ "$PR_STATE" == "closed" && "$PR_MERGED" != "true" ]]; then
             TARGET_STATUS="In Progress"
-            echo "🔄 PR closed without merge → Issues back to 'In Progress'"
+            echo "🔄 PR closed without merge → will comment on linked issues"
 
           elif [[ "$PR_DRAFT" == "true" || "$EVENT_ACTION" == "converted_to_draft" ]]; then
             TARGET_STATUS="In Progress"
-            echo "📝 PR is draft → Issues to 'In Progress'"
+            echo "📝 PR is draft → will comment on linked issues"
 
           elif [[ "$PR_STATE" == "open" && "$PR_DRAFT" == "false" ]]; then
             TARGET_STATUS="In Review"
-            echo "👀 PR ready for review → Issues to 'In Review'"
+            echo "👀 PR ready for review → will comment on linked issues"
 
           else
-            echo "⚠️  Unknown PR state - skipping status update"
+            echo "⚠️  Unknown PR state - skipping comment"
             exit 0
           fi
 
           echo "target-status=$TARGET_STATUS" >> $GITHUB_OUTPUT
 
-      - name: Update linked issues status
+      - name: Comment on linked issues
         if: steps.determine-status.outputs.target-status != ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # ratchet:actions/github-script@v9.0.0
         env:
@@ -239,16 +254,15 @@ jobs:
             const issueNumbers = (process.env.ISSUE_NUMBERS || '').split(',').filter(n => n.trim());
             const targetStatus = process.env.TARGET_STATUS;
 
-            console.log(`🔄 Updating ${issueNumbers.length} issue(s) to status: ${targetStatus}`);
+            console.log(`🔄 Commenting on ${issueNumbers.length} linked issue(s) (transition: ${targetStatus})`);
 
             for (const issueNumber of issueNumbers) {
               try {
-                console.log(`\n📌 Updating issue #${issueNumber}...`);
+                console.log(`\n📌 Commenting on issue #${issueNumber}...`);
 
-                // Note: Project sync would happen here via project-sync composite action
-                // For now, we'll use a simplified approach
-
-                // Add a comment to the issue about the PR status change
+                // This posts a comment only -- there is no project-sync backend
+                // configured in this repo, so no issue/project status field is
+                // ever actually changed (see this workflow's own header).
                 const pr = context.payload.pull_request;
                 let comment = '';
 
@@ -310,6 +324,8 @@ jobs:
             .github/actions/track-rerun
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
 
       - name: Track workflow rerun
         if: github.run_attempt > 1
@@ -378,6 +394,8 @@ jobs:
             .github/actions/track-rerun
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
 
       - name: Track workflow rerun
         if: github.run_attempt > 1
@@ -426,11 +444,11 @@ jobs:
           done
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Status sync
+          # Issue comments
           if [[ "${{ needs.sync-issue-status.result }}" == "success" ]]; then
-            echo "## ✅ Status Updates" >> $GITHUB_STEP_SUMMARY
+            echo "## ✅ Issue Comments Posted" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "All linked issues have been updated with the PR status change." >> $GITHUB_STEP_SUMMARY
+            echo "All linked issues were notified of this PR's status change via comment." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
 

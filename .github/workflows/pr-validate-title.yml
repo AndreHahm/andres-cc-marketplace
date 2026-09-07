@@ -26,6 +26,8 @@ jobs:
             .github/actions/track-rerun
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
 
       - name: Track workflow rerun
         if: github.run_attempt > 1

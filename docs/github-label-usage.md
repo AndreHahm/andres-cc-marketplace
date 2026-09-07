@@ -104,6 +104,22 @@ This supports transparent AI-assisted development practices.
 
 ---
 
+## Size Labels
+
+Size labels reflect the total lines changed (additions + deletions) in a Pull Request, kept in sync
+automatically by `pr-size-labeler.yml` on every push to the PR — never applied or removed manually.
+
+- `size: XS` — <10 lines changed
+- `size: S` — 10-49 lines changed
+- `size: M` — 50-249 lines changed
+- `size: L` — 250-999 lines changed
+- `size: XL` — >=1000 lines changed
+
+Only one size label is active at a time; the workflow removes any stale size label when the diff
+shrinks or grows into a different bucket.
+
+---
+
 ## Status Labels
 
 Status labels reflect the current lifecycle stage of an issue or PR.

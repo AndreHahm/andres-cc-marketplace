@@ -17,7 +17,17 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.ref != 'refs/heads/main' }}
+    # A merged pull_request "closed" event flips github.ref from the PR's own
+    # refs/pull/<N>/merge scope to the base branch ref (refs/heads/main) --
+    # verified against GitHub's own changelog (2023-09-13 update to
+    # GITHUB_REF/github.ref). Gating on `github.ref != 'refs/heads/main'`
+    # unconditionally skipped cleanup for every normally-merged PR, the most
+    # common case. Always run for the pull_request trigger (its own caches
+    # were never main's to begin with, regardless of what github.ref reads
+    # post-merge); keep the main-ref guard only for workflow_dispatch/
+    # workflow_call, where someone could otherwise trigger this directly
+    # against main.
+    if: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -28,6 +38,8 @@ jobs:
             .github/actions/fork-safety
       - name: Check Workflow Kill Switch
         uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
 
       - name: Track workflow rerun
         if: github.run_attempt > 1
@@ -44,20 +56,43 @@ jobs:
           (steps.fork-safety.outputs.should-skip-writes != 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CURRENT_REF: ${{ github.ref }}
         run: |
           gh extension install actions/gh-actions-cache
 
           REPO=${{ github.repository }}
-          BRANCH=${{ github.ref }}
+
+          # Always derive the cache scope from the PR number directly rather
+          # than trusting github.ref, which reads differently for a merged
+          # vs. closed-without-merging PR (see the job-level `if` comment
+          # above) -- the PR's own caches were created under
+          # refs/pull/<N>/merge while it was open, regardless of how it
+          # eventually closed.
+          if [[ "$EVENT_NAME" == "pull_request" && -n "$PR_NUMBER" ]]; then
+            BRANCH="refs/pull/$PR_NUMBER/merge"
+          else
+            BRANCH="$CURRENT_REF"
+          fi
 
           echo "Fetching list of cache key"
           cacheKeysForPR=$(gh actions-cache list -R "$REPO" -B "$BRANCH" --limit 100 | cut -f 1)
 
-          ## Setting this to not fail the workflow while deleting cache keys.
+          ## Best-effort cleanup: don't fail this maintenance job over a
+          ## transient cache-API hiccup, but never swallow a failure
+          ## silently either -- report exactly how many deletions failed.
           set +e
+          FAILED=0
           echo "Deleting caches..."
           for cacheKey in $cacheKeysForPR
           do
-              gh actions-cache delete "$cacheKey" -R "$REPO" -B "$BRANCH" --confirm
+              if ! gh actions-cache delete "$cacheKey" -R "$REPO" -B "$BRANCH" --confirm; then
+                echo "::warning::Failed to delete cache key: $cacheKey"
+                FAILED=$((FAILED + 1))
+              fi
           done
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::warning::$FAILED cache deletion(s) failed -- see warnings above"
+          fi
           echo "Done"
