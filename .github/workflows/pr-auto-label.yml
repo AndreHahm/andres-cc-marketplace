@@ -161,14 +161,39 @@ jobs:
             // applied label, or one owned by a different workflow (e.g.
             // pr-impact-autofix.yml's own i: * reconciliation), is never touched
             // (Codex finding, PR #290 round 2).
+            //
+            // Exclude every label .github/labeler.yml itself owns (file-based,
+            // applied by the preceding "Label PRs by changed files" step) --
+            // several overlap with this step's own type/area maps, and without
+            // this exclusion this reconciliation would remove a label the
+            // file-labeler just correctly applied, whenever the title's own
+            // scope doesn't happen to also produce that same label (Codex +
+            // CodeRabbit finding, PR #290 round 3). Keep this list in sync with
+            // .github/labeler.yml's own top-level label keys if that file changes.
+            const labelerOwned = new Set([
+              "t: documentation",
+              "t: ci",
+              "t: build",
+              "t: test",
+              "a: ai-setup",
+              "a: ai-evals",
+              "a: github-actions",
+              "a: tests",
+              "a: architecture",
+              // Also a labeler.yml-owned label (package.json/pyproject.toml/uv.lock/
+              // dependabot.yml) -- not in the reviewers' own suggested list, but the
+              // same overlap: this step separately adds "a: dependencies" to
+              // managedUniverse below from a title scope like build(deps), so it
+              // needs the same exclusion or it's vulnerable to the identical bug.
+              "a: dependencies"
+            ]);
             const current = (pr.labels || [])
               .map(l => (typeof l === "string" ? l : l.name))
               .filter(Boolean);
-            const managedUniverse = new Set([
-              ...Object.values(map),
-              ...Object.values(scopeAreaMap),
-              "a: dependencies"
-            ]);
+            const managedUniverse = new Set(
+              [...Object.values(map), ...Object.values(scopeAreaMap), "a: dependencies"]
+                .filter(label => !labelerOwned.has(label))
+            );
             const toRemove = current.filter(l => managedUniverse.has(l) && !labelsToAdd.has(l));
 
             const labels = Array.from(labelsToAdd);
