@@ -26,6 +26,7 @@ from scripts.marketplace_ci.review import (
     parse_attestation_marker,
     prepare_reviewer_instruction,
     rebase_onto_base_absorbed,
+    resolve_attested_actor,
     validate_review_output,
 )
 from scripts.marketplace_ci.sync import (
@@ -482,6 +483,21 @@ def _handle_check_bypass(args: argparse.Namespace) -> int:
     return 0 if result.allowed else 1
 
 
+def _handle_resolve_attested_actor(args: argparse.Namespace) -> int:
+    path = Path(args.comments_with_login)
+    try:
+        comments = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"resolve-attested-actor: cannot read {path}: {exc}", file=sys.stderr)
+        return 2
+
+    actor = resolve_attested_actor(comments, args.head_sha)
+    if actor is None:
+        return 1
+    print(actor)
+    return 0
+
+
 def _handle_check_scope_bypass(args: argparse.Namespace) -> int:
     """Automatic, scope-derived counterpart to check-bypass's manual
     SHA-bound attestation: computes whether the diff since --base-sha has
@@ -761,6 +777,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check_bypass_parser.add_argument("--event", required=True, metavar="PATH")
     check_bypass_parser.set_defaults(handler=_handle_check_bypass)
+
+    resolve_actor_parser = subparsers.add_parser(
+        "resolve-attested-actor",
+        help="resolve which real GitHub commenter attested a bypass for a given head SHA",
+    )
+    resolve_actor_parser.add_argument("--comments-with-login", required=True, metavar="PATH")
+    resolve_actor_parser.add_argument("--head-sha", required=True, metavar="SHA")
+    resolve_actor_parser.set_defaults(handler=_handle_resolve_attested_actor)
 
     check_scope_bypass = subparsers.add_parser(
         "check-scope-bypass",
