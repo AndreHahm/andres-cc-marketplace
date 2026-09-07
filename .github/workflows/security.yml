@@ -45,44 +45,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Restore secretlint config from the trusted base SHA (trust boundary)
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-          # The checkout above uses the PR's own merge-commit content --
-          # .secretlintrc.json/.secretlintignore are PR-controlled at this
-          # point, so a PR could weaken its own secret scan (e.g. add a
-          # leaking path to .secretlintignore) and this check would still
-          # report success. Restore both from the trusted base SHA before
-          # secretlint ever reads them (same restore-from-base pattern
-          # marketplace-ci.yml's Hygiene job already uses).
-          restore_from_base() {
-            local path="$1" on_absent="$2"
-            mkdir -p "$(dirname "$path")"
-            stderr_file=$(mktemp)
-            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
-              echo "$content" | base64 -d > "$path"
-            elif grep -q "HTTP 404" "$stderr_file"; then
-              if [ "$on_absent" = "remove" ]; then
-                rm -f "$path"
-              fi
-              # else "keep": this is the bootstrapping PR introducing $path
-              # for the first time -- no trusted base copy exists yet to
-              # restore, so the PR's own checkout content stays.
-            else
-              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
-              rm -f "$stderr_file"
-              exit 1
-            fi
-            rm -f "$stderr_file"
-          }
-          restore_from_base .secretlintrc.json keep
-          restore_from_base .secretlintignore keep
-
       - name: Get changed files
         id: changed-files
         uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # ratchet:tj-actions/changed-files@v47.0.6
@@ -115,6 +77,54 @@ jobs:
         env:
           CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: printf '%s\n' "$CHANGED_FILES"
+
+      - name: Restore secretlint config from the trusted base SHA (trust boundary)
+        # Deliberately placed immediately before the scan itself, not right
+        # after checkout: setup-pnpm (a local composite action, itself
+        # PR-controlled) and `pnpm install` (which runs the PR's own
+        # package.json lifecycle scripts) both execute PR-controlled code
+        # after an earlier restore attempt and before the scan -- either
+        # could silently re-corrupt an already-restored file. Restoring here,
+        # with no further PR-controlled execution before "Run secretlint"
+        # below, is what actually closes the gap (Codex's own review caught
+        # the ordering flaw in an earlier version of this same fix).
+        if: github.event_name == 'pull_request' && steps.changed-files.outputs.any_changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # .secretlintrc.json/.secretlintignore are PR-controlled at this
+          # point (this job's checkout has no ref override, so pull_request
+          # runs against the PR's own merge-commit content) -- a PR could
+          # weaken its own secret scan (e.g. add a leaking path to
+          # .secretlintignore) and this check would still report success.
+          # Restore both from the trusted base SHA before secretlint ever
+          # reads them (same restore-from-base pattern marketplace-ci.yml's
+          # Hygiene job already uses).
+          restore_from_base() {
+            local path="$1" on_absent="$2"
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              if [ "$on_absent" = "remove" ]; then
+                rm -f "$path"
+              fi
+              # else "keep": this is the bootstrapping PR introducing $path
+              # for the first time -- no trusted base copy exists yet to
+              # restore, so the PR's own checkout content stays.
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          }
+          restore_from_base .secretlintrc.json keep
+          restore_from_base .secretlintignore keep
 
       - name: Run secretlint
         if: steps.changed-files.outputs.any_changed == 'true'
