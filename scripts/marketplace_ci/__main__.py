@@ -487,8 +487,17 @@ def _handle_resolve_attested_actor(args: argparse.Namespace) -> int:
     path = Path(args.comments_with_login)
     try:
         comments = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         print(f"resolve-attested-actor: cannot read {path}: {exc}", file=sys.stderr)
+        return 2
+
+    if not isinstance(comments, list) or not all(
+        isinstance(c, dict) and isinstance(c.get("body", ""), str) for c in comments
+    ):
+        print(
+            f"resolve-attested-actor: {path} must contain a JSON array of {{login, body}} objects",
+            file=sys.stderr,
+        )
         return 2
 
     actor = resolve_attested_actor(comments, args.head_sha)
