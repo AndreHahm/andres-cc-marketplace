@@ -575,6 +575,54 @@ def test_resolve_attested_actor_unreadable_file_returns_2(monkeypatch, repo, tmp
     assert exit_code == 2
 
 
+def test_resolve_attested_actor_non_list_json_returns_2(monkeypatch, repo, tmp_path):
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text("null", encoding="utf-8")
+    monkeypatch.chdir(repo)
+    exit_code = main(
+        [
+            "resolve-attested-actor",
+            "--comments-with-login",
+            str(comments_path),
+            "--head-sha",
+            "abc123",
+        ]
+    )
+    assert exit_code == 2
+
+
+def test_resolve_attested_actor_non_dict_item_returns_2(monkeypatch, repo, tmp_path):
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text(json.dumps(["not-an-object"]), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    exit_code = main(
+        [
+            "resolve-attested-actor",
+            "--comments-with-login",
+            str(comments_path),
+            "--head-sha",
+            "abc123",
+        ]
+    )
+    assert exit_code == 2
+
+
+def test_resolve_attested_actor_non_string_body_returns_2(monkeypatch, repo, tmp_path):
+    comments_path = tmp_path / "comments.json"
+    comments_path.write_text(json.dumps([{"login": "andre", "body": 123}]), encoding="utf-8")
+    monkeypatch.chdir(repo)
+    exit_code = main(
+        [
+            "resolve-attested-actor",
+            "--comments-with-login",
+            str(comments_path),
+            "--head-sha",
+            "abc123",
+        ]
+    )
+    assert exit_code == 2
+
+
 def test_check_scope_bypass_unresolvable_base_sha_returns_2(monkeypatch, git_repo):
     monkeypatch.chdir(git_repo.root)
     assert main(["check-scope-bypass", "--base-sha", "0" * 40]) == 2
