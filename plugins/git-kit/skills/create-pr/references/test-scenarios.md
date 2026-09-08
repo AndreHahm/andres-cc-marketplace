@@ -37,9 +37,13 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 **Verify Pre-flight Checks step 3.5 (session open-issues check):**
 - Session has no open issues → step 3.5 states this plainly and proceeds directly to step 4, no fix or
   filed issue
-- An open issue's file is part of the current diff (`git diff --name-only main...HEAD`) → fixed,
-  verified, and committed via `Skill(git-kit:commit)` before step 4 runs — never pushed directly by this
-  step, since step 1 remains the only push
+- An open issue's file is part of the current diff (`git -c core.quotePath=false diff --name-only
+  main...HEAD`) → fixed, verified, and committed via `Skill(git-kit:commit)` before step 4 runs — never
+  pushed directly by this step, since step 1 remains the only push
+- A touched file's path contains non-ASCII bytes (e.g. `café.md`) → still correctly classified as
+  touched, since `-c core.quotePath=false` prevents git from C-quoting the path (the bare `git diff
+  --name-only` form would emit `"caf\303\251.md"`, which never matches the issue's real associated
+  path, misclassifying it as untouched)
 - An open issue's file is not part of the current diff → its draft is shown via `AskUserQuestion`;
   only on approval is `Skill(git-kit:github-issue-lifecycle)` resumed at Workflow 1's Step 3 to file it
   live, with that workflow's own Step 6 (PR-linking) explicitly skipped, and reported with its issue
