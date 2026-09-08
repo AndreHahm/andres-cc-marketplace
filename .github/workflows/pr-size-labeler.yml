@@ -1,7 +1,16 @@
 name: 'PR Size Labeler'
 
 on:
-  pull_request_target:
+  # pull_request, not pull_request_target: this job's own fork-safety step
+  # already unconditionally skips writes for fork PRs, so the elevated
+  # write-capable token pull_request_target grants fork PRs was never
+  # actually used -- it only combined a write permission with a trigger
+  # this repo's own REVIEW.md explicitly flags as breaking the
+  # trusted/untrusted split, with no corresponding benefit (Codex finding,
+  # round 3). pull_request already provides writes for same-repo PRs via
+  # this job's own permissions: block below; a fork PR gets GitHub's own
+  # restricted token in addition to this job's existing skip.
+  pull_request:
     types: ['opened', 'synchronize', 'reopened']
   workflow_dispatch:
     inputs:

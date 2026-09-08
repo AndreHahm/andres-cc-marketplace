@@ -148,6 +148,17 @@ jobs:
           success=$(echo "$RUNS" | jq '[.[] | select(.conclusion == "success")] | length')
           failure=$(echo "$RUNS" | jq '[.[] | select(.conclusion == "failure")] | length')
           cancelled=$(echo "$RUNS" | jq '[.[] | select(.conclusion == "cancelled")] | length')
+          # timed_out/startup_failure are both genuinely unsuccessful
+          # terminal outcomes, distinct from the literal "failure"
+          # conclusion GitHub reports for them -- excluding them from the
+          # denominator (as round 2's fix did) let e.g. 5 successes + 5
+          # timeouts report 100% instead of 50% (Codex finding, round 3).
+          # skipped/neutral/action_required/stale are deliberately NOT
+          # included here: a skipped run (an unmatched `if:` condition) or
+          # one still awaiting manual approval isn't a failure, and
+          # counting it as one would wrongly tank the score for normal,
+          # expected skip conditions.
+          timed_out=$(echo "$RUNS" | jq '[.[] | select(.conclusion == "timed_out" or .conclusion == "startup_failure")] | length')
           in_progress=$(echo "$RUNS" | jq '[.[] | select(.status == "in_progress")] | length')
 
           # Calculate success rate over completed outcomes only -- `total`
@@ -157,7 +168,7 @@ jobs:
           # In a low-volume period that can produce a false critical 0%
           # rate with no completed workflow having actually failed
           # (CodeRabbit finding, round 2).
-          completed=$((success + failure))
+          completed=$((success + failure + timed_out))
           if [ $completed -gt 0 ]; then
             success_rate=$((success * 100 / completed))
           else
@@ -169,6 +180,7 @@ jobs:
           echo "success=$success" >> $GITHUB_OUTPUT
           echo "failure=$failure" >> $GITHUB_OUTPUT
           echo "cancelled=$cancelled" >> $GITHUB_OUTPUT
+          echo "timed_out=$timed_out" >> $GITHUB_OUTPUT
           echo "in_progress=$in_progress" >> $GITHUB_OUTPUT
           echo "success_rate=$success_rate" >> $GITHUB_OUTPUT
 
@@ -190,6 +202,7 @@ jobs:
           echo "  Success:     $success"
           echo "  Failure:     $failure"
           echo "  Cancelled:   $cancelled"
+          echo "  Timed out:   $timed_out"
           echo "  In Progress: $in_progress"
           echo "  Success Rate: $success_rate%"
 
@@ -264,6 +277,7 @@ jobs:
           | Successful | ${{ steps.workflow_stats.outputs.success }} | ${{ steps.workflow_stats.outputs.success_rate }}% |
           | Failed | ${{ steps.workflow_stats.outputs.failure }} | - |
           | Cancelled | ${{ steps.workflow_stats.outputs.cancelled }} | - |
+          | Timed out | ${{ steps.workflow_stats.outputs.timed_out }} | - |
           | In Progress | ${{ steps.workflow_stats.outputs.in_progress }} | - |
 
           ### 🏗️ Task Hierarchy
