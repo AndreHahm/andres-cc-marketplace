@@ -133,17 +133,23 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - The final recheck passes → step 7(b) proceeds to write the marker and merge exactly as before this fix
 
 **Verify step 1.5 (session open-issues check):**
-- Session has no open issues → step 1.5 states this plainly and proceeds directly to step 2, no fix or
-  filed issue
+- The current checkout's repository (`gh repo view`) matches step 1's resolved `{owner}/{repo}` and its
+  branch matches `headRefName` — the checkout-match check passes, so step 1.5 proceeds to scan
+- The current checkout's repository does *not* match step 1's resolved `{owner}/{repo}`, even with
+  `isCrossRepository: false` and a coincidentally matching branch name (a same-repo-shaped but
+  different repository) → step 1.5 is skipped entirely — no scan, no fix, no file — and the flow
+  proceeds straight to step 2; the user is told to `gh pr checkout $ARGUMENTS` first
+- The current checkout's repository matches but its branch doesn't match `headRefName` → same result:
+  step 1.5 is skipped entirely, never partially (e.g. never files an issue against the matched
+  repository while skipping only the fix)
+- `isCrossRepository: true` (a genuine fork PR) → same result: step 1.5 is skipped entirely, since a
+  fork's branch isn't one this checkout can push to or file against correctly either
+- Session has no open issues (checkout check passed) → step 1.5 states this plainly and proceeds
+  directly to step 2, no fix or filed issue
 - An open issue's file is part of step 1's already-fetched `files` list, the checkout-match check
-  passes (`isCrossRepository: false` and the current branch matches `headRefName`), and it's an
-  ordinary unaddressed reviewer finding (not user-deferred) → fixed, verified, then committed and
-  pushed via `Skill(git-kit:commit)` (push explicitly requested) — since this PR already exists, a
-  local-only commit is never left unpushed
-- The same touched issue, but `isCrossRepository: true` (a fork PR) or the current checkout's branch
-  doesn't match `headRefName` → the fix path is never attempted; the issue is treated as untouched
-  (filed) instead, and the summary states touched issues couldn't be auto-fixed for this checkout and
-  points at `gh pr checkout $ARGUMENTS`
+  passed, and it's an ordinary unaddressed reviewer finding (not user-deferred) → fixed, verified, then
+  committed and pushed via `Skill(git-kit:commit)` (push explicitly requested) — since this PR already
+  exists, a local-only commit is never left unpushed
 - The same touched issue, but the user had explicitly deferred it earlier in the session → never
   auto-fixed; surfaced via `AskUserQuestion` ("fix now" or "leave deferred") first, and only fixed on
   "fix now"
@@ -157,5 +163,5 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - A fix-driven push happens at step 1.5 → step 2 treats this as a rerun and re-fetches fresh data,
   never reclassifying against step 1's now-stale snapshot
 - No fix-driven push happens at step 1.5 (nothing found, only issues were filed, or the checkout-match
-  check failed and no fix was attempted) → step 2's first pass still uses step 1's already-current
-  fetch, no unnecessary re-fetch
+  check failed) → step 2's first pass still uses step 1's already-current fetch, no unnecessary
+  re-fetch
