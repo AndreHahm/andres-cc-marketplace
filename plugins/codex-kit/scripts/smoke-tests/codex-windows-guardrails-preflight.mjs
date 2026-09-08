@@ -263,6 +263,28 @@ console.log("\n=== .secretlintignore consultation: an UNLISTED sibling script wi
   fs.rmSync(path.join(scriptsDir, "other-secret-helper.py"));
 }
 
+console.log("\n=== .secretlintignore consultation (Codex PR review finding, issue #295): a later `!` negation revokes an earlier exemption ===");
+{
+  // An earlier version of isExemptedBySecretlintignore returned on the
+  // FIRST matching pattern, so a .secretlintignore listing
+  // scripts/redact_secrets.py and then LATER negating it with
+  // !scripts/redact_secrets.py never reached the negation -- the file
+  // stayed wrongly exempt. Real gitignore semantics are "last matching
+  // rule wins"; the negation here is the last word and must be honored.
+  fs.writeFileSync(
+    path.join(repoRoot, ".secretlintignore"),
+    ".secretlintignore\nscripts/redact_secrets.py\n!scripts/redact_secrets.py\n"
+  );
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "rejected with secret_file_in_scope -- a later `!` negation for the same exact path revokes the earlier exemption, not silently ignored",
+    result.ok === false && result.category === "secret_file_in_scope" && /redact_secrets\.py/.test(result.detail),
+    JSON.stringify(result)
+  );
+  // Restore the non-negated .secretlintignore for the next scenario.
+  fs.writeFileSync(path.join(repoRoot, ".secretlintignore"), ".secretlintignore\nscripts/redact_secrets.py\n");
+}
+
 console.log("\n=== .secretlintignore consultation: a listed file whose CONTENT is an actual credential is still blocked ===");
 {
   const scriptsDir = path.join(repoRoot, "scripts");

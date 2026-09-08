@@ -106,7 +106,12 @@ export function matchesAnyStrictSecretFilename(basename, caseInsensitive = false
 // blast radius entirely: only a file explicitly, individually named in
 // .secretlintignore -- never a whole directory or an extension class --
 // can ever be exempted here. Comments (`#`) and blank lines are skipped.
-// Also NOT implemented via `git check-ignore`: that command always
+// A `!`-negated exact-path entry IS honored, per real gitignore "last
+// matching rule wins" semantics (Codex PR review finding, issue #295): a
+// `.secretlintignore` listing `foo.py` then later `!foo.py` must end up
+// NOT exempting `foo.py` -- an earlier version of this function returned
+// on the first match found, so the later negation was silently never
+// reached. Also NOT implemented via `git check-ignore`: that command always
 // additionally consults real `.gitignore` files found in the working tree,
 // with no flag to suppress that -- which is exactly the conflation this
 // function exists to avoid (guarded-dispatch.mjs's walkFiles has its own
@@ -167,10 +172,25 @@ export function isExemptedBySecretlintignore(repoRoot, relativePath) {
   const patterns = loadSecretlintignorePatterns(repoRoot);
   if (patterns.length === 0) return false;
   const normalized = relativePath.split(path.sep).join("/");
+  // Codex PR review finding (issue #295): gitignore semantics are "last
+  // matching rule wins", including a `!`-negated rule re-including a path
+  // an earlier rule already listed. An earlier version of this loop
+  // `return true`d on the FIRST matching pattern, so a `.secretlintignore`
+  // containing both `secret-helper.py` and a later `!secret-helper.py`
+  // (a legitimate way to explicitly revoke an earlier exemption) was
+  // silently ignored -- the file stayed wrongly exempt. Iterating the
+  // whole list and keeping only the LAST match's verdict fixes this while
+  // still supporting only exact-path entries (no glob) per this
+  // function's own scope.
+  let exempted = false;
   for (const pattern of patterns) {
-    if (pattern.includes("*") || pattern.includes("?")) continue; // no globs
-    const anchored = pattern.startsWith("/") ? pattern.slice(1) : pattern;
-    if (anchored === normalized) return true;
+    const negated = pattern.startsWith("!");
+    const body = negated ? pattern.slice(1) : pattern;
+    if (body.includes("*") || body.includes("?")) continue; // no globs
+    const anchored = body.startsWith("/") ? body.slice(1) : body;
+    if (anchored === normalized) {
+      exempted = !negated;
+    }
   }
-  return false;
+  return exempted;
 }
