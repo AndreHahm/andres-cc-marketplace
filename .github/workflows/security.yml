@@ -70,7 +70,13 @@ jobs:
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm install --frozen-lockfile
+        # --ignore-scripts: this install runs in the PR's own checkout, so
+        # without it pnpm would also execute the PR's own package.json
+        # preinstall/postinstall/prepare scripts, which could tamper with
+        # the secretlint binary itself (in node_modules/.bin) before "Run
+        # secretlint" invokes it -- restoring the config alone doesn't
+        # close that gap (found by cross-model review).
+        run: pnpm install --frozen-lockfile --ignore-scripts
         timeout-minutes: 3
 
       - name: Show changed files
@@ -132,10 +138,17 @@ jobs:
           CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           printf '%s' "$CHANGED_FILES" > /tmp/changed-files.txt
+          # secretlint is a pinned devDependency (package.json/pnpm-lock.yaml)
+          # installed by the step above -- `pnpm exec` runs that exact,
+          # locked binary rather than `npx`'s unpinned, network-fetched
+          # resolution (secretlint wasn't previously declared as a
+          # dependency at all, so `npx secretlint` had nothing local to
+          # run against; found by cross-model review).
+          #
           # The `--` after `-d '\n'` only terminates xargs's own option
           # parsing -- it is not forwarded to secretlint. Without a second
           # `--` for secretlint's own argv, a changed file named e.g.
           # "--help" would be parsed by secretlint as an option flag
           # instead of a filename, printing help and exiting 0 without
           # scanning anything.
-          xargs -a /tmp/changed-files.txt -d '\n' -- npx secretlint --
+          xargs -a /tmp/changed-files.txt -d '\n' -- pnpm exec secretlint --
