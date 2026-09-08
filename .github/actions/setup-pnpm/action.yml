@@ -81,9 +81,13 @@ runs:
         path: |
           ${{ steps.pnpm-store.outputs.STORE_PATH }}
           ${{ inputs.working-directory }}/node_modules
-        key: ${{ runner.os }}-pnpm-${{ hashFiles(inputs.cache-dependency-path) }}
+        # Node version included in both: this cache also holds node_modules
+        # (not just the pnpm store), and a lockfile-only key would let a
+        # caller using a different node-version restore native modules built
+        # for the wrong Node ABI (CodeRabbit finding, PR #294 review).
+        key: ${{ runner.os }}-node${{ inputs.node-version }}-pnpm-${{ hashFiles(inputs.cache-dependency-path) }}
         restore-keys: |
-          ${{ runner.os }}-pnpm-
+          ${{ runner.os }}-node${{ inputs.node-version }}-pnpm-
 
     - name: Install dependencies
       if: inputs.skip-install == 'false'

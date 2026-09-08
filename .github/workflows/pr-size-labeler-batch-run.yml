@@ -59,8 +59,16 @@ jobs:
           # source of truth, synced to GitHub by sync-labels.yml) -- this step
           # only ever applies an already-existing label, it never creates one.
 
-          # 1. Query PR list with all required fields in ONE call to prevent N+1 queries
-          PR_LIST=$(gh pr list --state "$STATE" --limit "$LIMIT" --json number,additions,deletions,labels)
+          # 1. Query PR list with all required fields in ONE call to prevent N+1 queries.
+          # Check the command's own exit status separately from an empty
+          # result -- a failed `gh pr list` (auth/rate-limit/API error) would
+          # otherwise be indistinguishable from a legitimate "no PRs found"
+          # and get silently treated as a no-op success (Codex + CodeRabbit
+          # finding, PR #294 review).
+          if ! PR_LIST=$(gh pr list --state "$STATE" --limit "$LIMIT" --json number,additions,deletions,labels); then
+            echo "::error::gh pr list failed -- could not fetch the PR list."
+            exit 1
+          fi
           if [ -z "$PR_LIST" ] || [ "$PR_LIST" = "[]" ]; then
             echo "ℹ️ No PRs found matching the criteria."
             exit 0
@@ -73,6 +81,7 @@ jobs:
           # even though each PR's own per-iteration log line was correct.
           UPDATED_COUNT=0
           SKIPPED_COUNT=0
+          FAILED_COUNT=0
 
           while read -r PR_JSON; do
             PR_NUMBER=$(echo "$PR_JSON" | jq '.number')
@@ -111,8 +120,17 @@ jobs:
             # Update labels if there's a difference
             if [ ${#LABELS_TO_REMOVE[@]} -gt 0 ] || [ ${#LABEL_TO_ADD[@]} -gt 0 ]; then
               echo "🔄 PR #$PR_NUMBER (+$ADDITIONS/-$DELETIONS = $TOTAL lines): updating size to $SIZE"
-              gh pr edit "$PR_NUMBER" "${LABELS_TO_REMOVE[@]}" "${LABEL_TO_ADD[@]}" 2>/dev/null || true
-              UPDATED_COUNT=$((UPDATED_COUNT + 1))
+              # Only count as updated on actual success -- the previous
+              # `2>/dev/null || true` discarded a real failure (rate limiting,
+              # permissions, a missing label) and still counted it as updated,
+              # so the batch could exit successfully while labels stayed
+              # stale (Codex + CodeRabbit finding, PR #294 review).
+              if gh pr edit "$PR_NUMBER" "${LABELS_TO_REMOVE[@]}" "${LABEL_TO_ADD[@]}"; then
+                UPDATED_COUNT=$((UPDATED_COUNT + 1))
+              else
+                echo "::warning::Failed to update labels for PR #$PR_NUMBER"
+                FAILED_COUNT=$((FAILED_COUNT + 1))
+              fi
             else
               echo "✅ PR #$PR_NUMBER (+$ADDITIONS/-$DELETIONS = $TOTAL lines): already has correct label ($SIZE). Skipping."
               SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
@@ -123,3 +141,7 @@ jobs:
           echo "🎉 Batch run completed!"
           echo "Skipped (already correct): $SKIPPED_COUNT"
           echo "Updated: $UPDATED_COUNT"
+          echo "Failed: $FAILED_COUNT"
+          if [ "$FAILED_COUNT" -gt 0 ]; then
+            exit 1
+          fi

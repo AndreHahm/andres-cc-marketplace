@@ -120,7 +120,16 @@ jobs:
           # Get workflow runs from last 24 hours
           YESTERDAY=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-24H +%Y-%m-%dT%H:%M:%SZ)
 
-          RUNS=$(gh api "repos/${{ github.repository }}/actions/runs?created=>=$YESTERDAY&per_page=100" --jq '.workflow_runs')
+          # --paginate: a repo with more than 100 runs in the preceding 24h
+          # would otherwise only ever see the first page, silently
+          # undercounting totals and success rate (Codex finding, PR #294
+          # review). `.workflow_runs[]` (not `.workflow_runs`) emits each
+          # page's run objects individually so --paginate's own per-page
+          # concatenation produces one valid combined stream across all
+          # pages -- `jq -s '.'` then slurps that stream back into the
+          # single JSON array every downstream `$RUNS`-based filter below
+          # already expects.
+          RUNS=$(gh api --paginate "repos/${{ github.repository }}/actions/runs?created=>=$YESTERDAY&per_page=100" --jq '.workflow_runs[]' | jq -s '.')
 
           # Count runs by status
           total=$(echo "$RUNS" | jq 'length')
@@ -299,13 +308,30 @@ jobs:
           *🤖 Automated health check by workflow-health.yml*
           "
 
-          # Create the issue
-          gh issue create \
-            --title "$SEVERITY Workflow Health Alert - $(date -u '+%Y-%m-%d %H:%M UTC')" \
-            --body "$BODY" \
-            --label "auto: workflow-health,$LABEL"
+          # Update an existing open alert instead of creating a new one every
+          # time an unhealthy condition persists across scheduled runs (this
+          # job runs every 6h) -- an unconditional `gh issue create` was
+          # creating a duplicate issue on every single unhealthy run
+          # (CodeRabbit finding, PR #294 review).
+          EXISTING_ISSUE=$(gh issue list --label "auto: workflow-health" --state open --limit 1 --json number --jq '.[0].number // empty')
 
-          echo "✅ Health alert issue created"
+          if [ -n "$EXISTING_ISSUE" ]; then
+            echo "Updating existing health alert issue #$EXISTING_ISSUE..."
+            gh issue comment "$EXISTING_ISSUE" --body "$BODY"
+            # Swap the priority label in case severity changed since the
+            # existing issue was opened (e.g. warning -> critical) -- add
+            # the current one, remove the other (a no-op if it wasn't set).
+            OTHER_LABEL="p: medium"
+            [ "$LABEL" = "p: medium" ] && OTHER_LABEL="p: high"
+            gh issue edit "$EXISTING_ISSUE" --add-label "$LABEL" --remove-label "$OTHER_LABEL"
+            echo "✅ Health alert issue #$EXISTING_ISSUE updated"
+          else
+            gh issue create \
+              --title "$SEVERITY Workflow Health Alert - $(date -u '+%Y-%m-%d %H:%M UTC')" \
+              --body "$BODY" \
+              --label "auto: workflow-health,$LABEL"
+            echo "✅ Health alert issue created"
+          fi
 
       - name: Summary
         if: always()

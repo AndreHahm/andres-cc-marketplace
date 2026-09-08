@@ -23,6 +23,17 @@
 name: PR Status Comment
 
 on:
+  # pull_request_review (types: [submitted]) was removed here: GitHub Actions
+  # doesn't support a `branches` filter on that event at all (actionlint:
+  # "branches" filter is not available for pull_request_review event), and
+  # every review submission -- approve, comment, or request-changes -- left
+  # the PR's own open/draft state unchanged, so the "Determine comment to
+  # post" logic below always re-classified it as "In Review" and posted
+  # another duplicate "Ready for Review" comment on every linked issue for
+  # every review left on the PR. The pull_request trigger below already
+  # covers every real lifecycle transition this workflow's own header
+  # documents; pull_request_review added no transition it didn't already
+  # cover (Codex + CodeRabbit finding, PR #294 review).
   pull_request:
     types:
       - opened
@@ -30,12 +41,6 @@ on:
       - converted_to_draft
       - ready_for_review
       - reopened
-    branches:
-      - main
-
-  pull_request_review:
-    types:
-      - submitted
     branches:
       - main
 
@@ -256,6 +261,13 @@ jobs:
 
             console.log(`🔄 Commenting on ${issueNumbers.length} linked issue(s) (transition: ${targetStatus})`);
 
+            // Failures collected and reported after processing every issue,
+            // not thrown immediately -- one issue's own transient API error
+            // shouldn't prevent commenting on the rest. But a caught error
+            // was previously only logged, letting the whole job succeed even
+            // when every single comment failed to post (Codex finding, PR
+            // #294 review).
+            const failures = [];
             for (const issueNumber of issueNumbers) {
               try {
                 console.log(`\n📌 Commenting on issue #${issueNumber}...`);
@@ -295,11 +307,14 @@ jobs:
 
               } catch (error) {
                 console.error(`⚠️  Failed to update issue #${issueNumber}:`, error.message);
-                // Continue with other issues
+                failures.push(issueNumber);
               }
             }
 
             console.log(`\n✅ Issue status sync completed`);
+            if (failures.length > 0) {
+              core.setFailed(`Failed to comment on ${failures.length} linked issue(s): ${failures.join(', ')}`);
+            }
 
   # ─────────────────────────────────────────────────────────────────
   # Delete Merged Branch

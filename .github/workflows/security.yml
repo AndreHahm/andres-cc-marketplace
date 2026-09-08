@@ -44,6 +44,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           fetch-depth: 0
+          # Without this, checkout persists GITHUB_TOKEN in .git/config,
+          # readable by every PR-controlled step that runs afterward
+          # (setup-pnpm, pnpm install) -- the kill-switch checkout above
+          # already sets this; this step didn't (zizmor artipacked +
+          # CodeRabbit finding, PR #294 review).
+          persist-credentials: false
 
       - name: Get changed files
         id: changed-files
@@ -62,27 +68,68 @@ jobs:
       - name: Set up Node.js
         uses: ./.github/actions/setup-pnpm
         with:
-          # skip-install: this job only wants to install when relevant files
-          # actually changed (its own separate "Install dependencies" step
-          # below, gated on any_changed) -- the action's own default would
-          # otherwise install unconditionally on every run.
+          # skip-install: this job never installs the repo's own root
+          # package.json -- it only ever installs the isolated
+          # .github/security-tools/ toolchain below, gated on any_changed.
           skip-install: 'true'
-
-      - name: Install dependencies
-        if: steps.changed-files.outputs.any_changed == 'true'
-        # --ignore-scripts: this install runs in the PR's own checkout, so
-        # without it pnpm would also execute the PR's own package.json
-        # preinstall/postinstall/prepare scripts, which could tamper with
-        # the secretlint binary itself (in node_modules/.bin) before "Run
-        # secretlint" invokes it -- restoring the config alone doesn't
-        # close that gap (found by cross-model review).
-        run: pnpm install --frozen-lockfile --ignore-scripts
-        timeout-minutes: 3
 
       - name: Show changed files
         env:
           CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: printf '%s\n' "$CHANGED_FILES"
+
+      - name: Restore security-tools manifest from the trusted base SHA (trust boundary)
+        # secretlint's own manifest+lockfile live in an isolated directory
+        # (.github/security-tools/), decoupled from the repo's root
+        # package.json/pnpm-lock.yaml, specifically so this restore can be
+        # unconditional: `pnpm install --frozen-lockfile` only verifies
+        # that a manifest and its lockfile agree with EACH OTHER, not that
+        # either matches trusted content -- a PR that edited both files
+        # consistently in the repo root could otherwise swap in a forged
+        # "secretlint" package that still passes --frozen-lockfile
+        # (CodeRabbit finding, PR #294 review). Restoring the isolated
+        # manifest from base closes that gap without conflicting with any
+        # *legitimate* root package.json change this PR might also make,
+        # since this scan's own toolchain no longer shares a manifest with
+        # the rest of the repo.
+        if: github.event_name == 'pull_request' && steps.changed-files.outputs.any_changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          restore_from_base() {
+            local path="$1"
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              # Genuinely absent at the trusted base -- this is the
+              # bootstrapping PR introducing this isolated toolchain for the
+              # first time, so no trusted base copy exists yet to restore;
+              # keep the PR's own (this workflow's own commit history).
+              :
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          }
+          restore_from_base .github/security-tools/package.json
+          restore_from_base .github/security-tools/pnpm-lock.yaml
+
+      - name: Install secretlint (isolated toolchain)
+        if: steps.changed-files.outputs.any_changed == 'true'
+        # --ignore-scripts: without it, pnpm would execute the isolated
+        # manifest's own preinstall/postinstall/prepare scripts (none are
+        # declared today, but this stays defense-in-depth against a future
+        # trusted-base change adding one) before "Run secretlint" invokes
+        # the resulting binary.
+        run: pnpm --dir .github/security-tools install --frozen-lockfile --ignore-scripts
+        timeout-minutes: 3
 
       - name: Restore secretlint config from the trusted base SHA (trust boundary)
         # Deliberately placed immediately before the scan itself, not right
@@ -138,12 +185,16 @@ jobs:
           CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           printf '%s' "$CHANGED_FILES" > /tmp/changed-files.txt
-          # secretlint is a pinned devDependency (package.json/pnpm-lock.yaml)
-          # installed by the step above -- `pnpm exec` runs that exact,
-          # locked binary rather than `npx`'s unpinned, network-fetched
-          # resolution (secretlint wasn't previously declared as a
-          # dependency at all, so `npx secretlint` had nothing local to
-          # run against; found by cross-model review).
+          # secretlint is a pinned devDependency of the isolated
+          # .github/security-tools/ toolchain (restored from trusted base,
+          # installed above). Invoked by its own binary path, not `pnpm
+          # --dir .github/security-tools exec` -- that form changes the
+          # child process's own cwd to .github/security-tools/ (verified
+          # locally), which would break every changed-file path below
+          # (repo-root-relative, e.g. ".github/workflows/security.yml")
+          # since they'd then resolve relative to the wrong directory.
+          # Invoking the binary directly keeps cwd at the repo root, where
+          # $CHANGED_FILES's own paths are already correct.
           #
           # The `--` after `-d '\n'` only terminates xargs's own option
           # parsing -- it is not forwarded to secretlint. Without a second
@@ -151,4 +202,4 @@ jobs:
           # "--help" would be parsed by secretlint as an option flag
           # instead of a filename, printing help and exiting 0 without
           # scanning anything.
-          xargs -a /tmp/changed-files.txt -d '\n' -- pnpm exec secretlint --
+          xargs -a /tmp/changed-files.txt -d '\n' -- ./.github/security-tools/node_modules/.bin/secretlint --
