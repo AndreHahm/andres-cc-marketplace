@@ -229,6 +229,113 @@ console.log("\n=== Security review fix (M5): a docs-shaped file whose CONTENT is
   fs.rmSync(refsDir, { recursive: true, force: true });
 }
 
+console.log("\n=== .secretlintignore consultation (issue #295): a listed, non-doc-shaped script advances past the secret scan ===");
+{
+  // .secretlintignore lists itself too (matching the real repo's own
+  // convention) -- otherwise walkFiles would block on .secretlintignore's
+  // OWN basename (it contains "secret") before ever reaching the file this
+  // scenario is actually testing.
+  fs.writeFileSync(path.join(repoRoot, ".secretlintignore"), ".secretlintignore\nscripts/redact_secrets.py\n");
+  const scriptsDir = path.join(repoRoot, "scripts");
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  fs.writeFileSync(path.join(scriptsDir, "redact_secrets.py"), "# redaction helper, no real secret here\n");
+  const result = runDispatch(repoRoot, repoRoot, path.join(repoRoot, "target.md"));
+  check(
+    "not blocked by secret_file_in_scope -- a .py script listed in .secretlintignore (not doc-shaped, so isDocumentationAboutSecrets alone would not exempt it) advances past the secret scan",
+    result.ok === false && result.category === "instruction_containment_violation",
+    JSON.stringify(result)
+  );
+}
+
+console.log("\n=== .secretlintignore consultation: an UNLISTED sibling script with the same loose keyword is still blocked (no overreach) ===");
+{
+  // .secretlintignore from the previous scenario is still in place, listing
+  // only scripts/redact_secrets.py (and itself) -- a different, unlisted
+  // secret-named file in the same directory must still block.
+  const scriptsDir = path.join(repoRoot, "scripts");
+  fs.writeFileSync(path.join(scriptsDir, "other-secret-helper.py"), "# unrelated, unlisted\n");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected with secret_file_in_scope -- a sibling file not explicitly listed in .secretlintignore is not exempted",
+    result.ok === false && result.category === "secret_file_in_scope" && /other-secret-helper\.py/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(path.join(scriptsDir, "other-secret-helper.py"));
+}
+
+console.log("\n=== .secretlintignore consultation: a listed file whose CONTENT is an actual credential is still blocked ===");
+{
+  const scriptsDir = path.join(repoRoot, "scripts");
+  fs.writeFileSync(path.join(scriptsDir, "redact_secrets.py"), "AKIAIOSFODNN7EXAMPLE\n");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "still rejected with secret_file_in_scope -- .secretlintignore membership is a filename signal, not a license to skip the content re-scan",
+    result.ok === false && result.category === "secret_file_in_scope" && /redact_secrets\.py/.test(result.detail),
+    JSON.stringify(result)
+  );
+  // Restore innocuous content before the next scenario.
+  fs.writeFileSync(path.join(scriptsDir, "redact_secrets.py"), "# redaction helper, no real secret here\n");
+}
+
+console.log("\n=== .secretlintignore consultation: .env is never exempted even when .secretlintignore is present (preserves walkFiles' full-disk-visibility design) ===");
+{
+  fs.writeFileSync(path.join(repoRoot, ".env"), "SECRET=1");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "rejected with secret_file_in_scope -- .env is still caught with .secretlintignore present, since .env is deliberately never listed there (round 2, PR #294)",
+    result.ok === false && result.category === "secret_file_in_scope" && /\.env/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(path.join(repoRoot, ".env"));
+}
+
+console.log("\n=== .secretlintignore consultation (security review, C1): a root-anchored DIRECTORY entry never exempts a nested .env (no directory-scale exemption) ===");
+{
+  // An earlier version of isExemptedBySecretlintignore treated a `/nested`
+  // entry as matching anything under nested/ (mirroring gitignore's own
+  // directory semantics) -- for guarded-dispatch.mjs specifically, that let
+  // a single directory-shaped entry (e.g. a real repo's `/.claude`) exempt
+  // every file under it, including an untracked .env inside a session
+  // worktree. isExemptedBySecretlintignore is now exact-full-path-only, so
+  // `/nested` must never cover `nested/.env`.
+  fs.writeFileSync(path.join(repoRoot, ".secretlintignore"), ".secretlintignore\n/nested\n");
+  const nestedDir = path.join(repoRoot, "nested");
+  fs.mkdirSync(nestedDir, { recursive: true });
+  fs.writeFileSync(path.join(nestedDir, ".env"), "SECRET=1");
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "rejected with secret_file_in_scope -- a directory-shaped .secretlintignore entry does not exempt a strict-pattern file nested under it",
+    result.ok === false && result.category === "secret_file_in_scope" && /nested[\\/]\.env/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(nestedDir, { recursive: true, force: true });
+  fs.rmSync(path.join(repoRoot, ".secretlintignore"));
+}
+
+console.log("\n=== .secretlintignore consultation (security review, C1): a `*.ext` GLOB entry never exempts a binary keystore (no extension-class exemption) ===");
+{
+  // Content-scanning a binary .p12/.pfx/.jks yields replacement characters
+  // that trivially pass the text-shaped redactSecrets/looksLikeCredential-
+  // Assignment checks -- an extension-glob .secretlintignore entry (the
+  // kind the file's own "Binary/media file extensions" section invites)
+  // must never be treated as exemption-eligible here, since the content
+  // rescan cannot actually verify a binary file is safe.
+  fs.writeFileSync(path.join(repoRoot, ".secretlintignore"), ".secretlintignore\n*.p12\n");
+  fs.writeFileSync(path.join(repoRoot, "keystore.p12"), Buffer.from([0x30, 0x82, 0x01, 0x00, 0xff, 0xfe, 0x00, 0x01]));
+  const result = runDispatch(repoRoot, repoRoot, instructionFile);
+  check(
+    "rejected with secret_file_in_scope -- a glob-shaped .secretlintignore entry does not exempt a strict-pattern binary file",
+    result.ok === false && result.category === "secret_file_in_scope" && /keystore\.p12/.test(result.detail),
+    JSON.stringify(result)
+  );
+  fs.rmSync(path.join(repoRoot, "keystore.p12"));
+}
+
+// Clean up the .secretlintignore + scripts/ fixtures before the rest of this
+// suite's existing scenarios continue (none of them expect either present).
+fs.rmSync(path.join(repoRoot, ".secretlintignore"));
+fs.rmSync(path.join(repoRoot, "scripts"), { recursive: true, force: true });
+
 console.log("\n=== Cross-model-review fix (issue #78): a docs-shaped file with a CREDENTIAL-named assignment is still blocked ===");
 {
   // Codex live finding: redactSecrets' generic assignment pattern only
