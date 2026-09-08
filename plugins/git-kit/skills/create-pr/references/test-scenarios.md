@@ -40,10 +40,23 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 - An open issue's file is part of the current diff (`git diff --name-only main...HEAD`) → fixed,
   verified, and committed via `Skill(git-kit:commit)` before step 4 runs — never pushed directly by this
   step, since step 1 remains the only push
-- An open issue's file is not part of the current diff → filed via `Skill(git-kit:github-issue-lifecycle)`
-  Workflow 1 only, with that workflow's Step 6 (PR-linking) explicitly skipped, and reported with its
-  issue number — never fixed in-session
-- Multiple untouched issues → each filed independently, all reported together
+- An open issue's file is not part of the current diff → its draft is shown via `AskUserQuestion`;
+  only on approval is `Skill(git-kit:github-issue-lifecycle)` resumed at Workflow 1's Step 3 to file it
+  live, with that workflow's own Step 6 (PR-linking) explicitly skipped, and reported with its issue
+  number — never fixed in-session, and never filed on Workflow 1's own internal "once approved" wording
+  alone
+- The user declines an untouched issue's drafted approval → it is not filed; reported as a still-open,
+  unfiled item instead
+- Multiple untouched issues → each drafted and approved (or declined) independently, all reported
+  together
+- An open issue's file is part of the diff, but the user had explicitly deferred that issue earlier in
+  the session → never auto-fixed; surfaced via `AskUserQuestion` ("fix now" or "leave deferred") first,
+  and only fixed on "fix now"
+- An open issue's file is part of the diff, and it's an ordinary unaddressed reviewer finding (not a
+  user-deferred item) → fixed, verified, and committed via `Skill(git-kit:commit)` before step 4 runs —
+  never pushed directly by this step, since step 1 remains the only push
+- An open issue has no single clearly-associated file path → falls to untouched (the same "otherwise"
+  branch as any file not in the diff), never left undefined
 - Step 3.5 always runs after step 3 (everything committed) and before step 4 — never before, since
   diffing against an uncommitted working tree would misclassify touched vs. untouched
 - A fix committed at step 3.5 → the diff is re-derived before step 4's cross-model-review runs, so the

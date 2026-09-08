@@ -135,13 +135,27 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 **Verify step 1.5 (session open-issues check):**
 - Session has no open issues → step 1.5 states this plainly and proceeds directly to step 2, no fix or
   filed issue
-- An open issue's file is part of step 1's already-fetched `files` list → fixed, verified, then
-  committed and pushed via `Skill(git-kit:commit)` (push explicitly requested) — since this PR already
-  exists, a local-only commit is never left unpushed
-- An open issue's file is not part of that list → filed via `Skill(git-kit:github-issue-lifecycle)`
-  Workflow 1 only, with that workflow's Step 6 (PR-linking) explicitly skipped, and reported with its
-  issue number — never fixed in-session
+- An open issue's file is part of step 1's already-fetched `files` list, the checkout-match check
+  passes (`isCrossRepository: false` and the current branch matches `headRefName`), and it's an
+  ordinary unaddressed reviewer finding (not user-deferred) → fixed, verified, then committed and
+  pushed via `Skill(git-kit:commit)` (push explicitly requested) — since this PR already exists, a
+  local-only commit is never left unpushed
+- The same touched issue, but `isCrossRepository: true` (a fork PR) or the current checkout's branch
+  doesn't match `headRefName` → the fix path is never attempted; the issue is treated as untouched
+  (filed) instead, and the summary states touched issues couldn't be auto-fixed for this checkout and
+  points at `gh pr checkout $ARGUMENTS`
+- The same touched issue, but the user had explicitly deferred it earlier in the session → never
+  auto-fixed; surfaced via `AskUserQuestion` ("fix now" or "leave deferred") first, and only fixed on
+  "fix now"
+- An open issue's file is not part of that list (or has no single associated file path) → its draft is
+  shown via `AskUserQuestion`; only on approval is `Skill(git-kit:github-issue-lifecycle)` resumed at
+  Workflow 1's Step 3 to file it live, with that workflow's own Step 6 (PR-linking) explicitly skipped,
+  and reported with its issue number — never fixed in-session, and never filed on Workflow 1's own
+  internal "once approved" wording alone
+- The user declines an untouched issue's drafted approval → it is not filed; reported as a still-open,
+  unfiled item instead
 - A fix-driven push happens at step 1.5 → step 2 treats this as a rerun and re-fetches fresh data,
   never reclassifying against step 1's now-stale snapshot
-- No fix-driven push happens at step 1.5 (nothing found, or only issues were filed) → step 2's first
-  pass still uses step 1's already-current fetch, no unnecessary re-fetch
+- No fix-driven push happens at step 1.5 (nothing found, only issues were filed, or the checkout-match
+  check failed and no fix was attempted) → step 2's first pass still uses step 1's already-current
+  fetch, no unnecessary re-fetch
