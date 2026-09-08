@@ -312,7 +312,8 @@ jobs:
       - sync-issue-status
     if: |
       always() &&
-      needs.fork-check.outputs.should-skip-writes != 'true' &&
+      needs.fork-check.result == 'success' &&
+      needs.fork-check.outputs.should-skip-writes == 'false' &&
       github.event.pull_request.merged == true
 
     steps:
@@ -402,6 +403,13 @@ jobs:
         uses: ./.github/actions/track-rerun
 
       - name: Generate summary
+        env:
+          # Passed through env, not interpolated directly into the script
+          # below: a git branch name can contain characters (e.g. `$()`,
+          # backticks) that a direct ${{ }} substitution into a bash script
+          # body would let a PR's own branch name execute as shell code
+          # (zizmor's template-injection finding, PR #294 review).
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           echo "# 🔄 PR Status Sync Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -456,7 +464,7 @@ jobs:
           if [[ "${{ needs.delete-merged-branch.result }}" == "success" ]]; then
             echo "## 🗑️ Branch Cleanup" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Source branch \`${{ github.event.pull_request.head.ref }}\` was deleted after merge." >> $GITHUB_STEP_SUMMARY
+            echo "Source branch \`$PR_HEAD_REF\` was deleted after merge." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
 

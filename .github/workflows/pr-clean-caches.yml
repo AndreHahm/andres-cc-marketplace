@@ -6,7 +6,13 @@ on:
   workflow_call:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # github.ref alone would put every merged PR's cleanup run in the SAME
+  # group (see the job-level `if` comment below: github.ref becomes
+  # refs/heads/main on merge, not the PR's own scope) -- with
+  # cancel-in-progress: true, a second merge's cleanup would then cancel the
+  # first merge's still-running cleanup before it finishes (CodeRabbit
+  # finding, PR #294 review). Key by PR number when one exists.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -60,7 +66,16 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           CURRENT_REF: ${{ github.ref }}
         run: |
-          gh extension install actions/gh-actions-cache
+          # Pinned to the reviewed v1.0.4 release (commit
+          # d88f49218fd18a37f6f63ee4f8716764316a7f7d as of this fix) --
+          # without --pin, `gh extension install` always installs whatever
+          # the latest release happens to be at run time, and this job has
+          # actions: write, so an upstream compromise or incompatible
+          # release would gain execution with a write-capable token
+          # (Codex + CodeRabbit finding, PR #294 review). Bump the pinned
+          # tag deliberately, not automatically, when a newer release is
+          # reviewed.
+          gh extension install actions/gh-actions-cache --pin v1.0.4
 
           REPO=${{ github.repository }}
 
