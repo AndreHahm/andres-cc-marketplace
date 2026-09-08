@@ -133,8 +133,16 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - The final recheck passes → step 7(b) proceeds to write the marker and merge exactly as before this fix
 
 **Verify step 1.5 (session open-issues check):**
-- The current checkout's repository (`gh repo view`) matches step 1's resolved `{owner}/{repo}` and its
-  branch matches `headRefName` — the checkout-match check passes, so step 1.5 proceeds to scan
+- `isCrossRepository: false`, the current checkout's repository (`gh repo view`) matches step 1's
+  resolved `{owner}/{repo}`, and its branch matches `headRefName` — all three pass, so step 1.5
+  proceeds to scan
+- `isCrossRepository: true` (a genuine fork PR), checked out via `gh pr checkout <N>` from a clone of
+  the *base* repository → `gh repo view` reports the base repository (matching step 1's resolved
+  `{owner}/{repo}`, since that field is also the base repo) and the local branch name matches
+  `headRefName` (`gh pr checkout`'s own default naming) — both of the other two checks pass, but
+  `isCrossRepository: true` alone must still skip the entire step, since `git push origin HEAD` would
+  land in the base repository's remote, never the fork (Codex's automated review, PR #301, 2026-09-08 —
+  an earlier draft dropped this check while fixing a different gap, silently reopening this one)
 - The current checkout's repository does *not* match step 1's resolved `{owner}/{repo}`, even with
   `isCrossRepository: false` and a coincidentally matching branch name (a same-repo-shaped but
   different repository) → step 1.5 is skipped entirely — no scan, no fix, no file — and the flow
@@ -142,8 +150,6 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - The current checkout's repository matches but its branch doesn't match `headRefName` → same result:
   step 1.5 is skipped entirely, never partially (e.g. never files an issue against the matched
   repository while skipping only the fix)
-- `isCrossRepository: true` (a genuine fork PR) → same result: step 1.5 is skipped entirely, since a
-  fork's branch isn't one this checkout can push to or file against correctly either
 - Session has no open issues (checkout check passed) → step 1.5 states this plainly and proceeds
   directly to step 2, no fix or filed issue
 - An open issue's file is part of step 1's already-fetched `files` list, the checkout-match check
