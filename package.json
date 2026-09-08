@@ -12,6 +12,8 @@
   "devDependencies": {
     "markdownlint": "^0.40.0",
     "markdownlint-cli2": "^0.22.1",
-    "mkdocs-material-linter": "^1.5.3"
+    "mkdocs-material-linter": "^1.5.3",
+    "@secretlint/secretlint-rule-preset-recommend": "13.0.5",
+    "secretlint": "13.0.5"
   }
 }

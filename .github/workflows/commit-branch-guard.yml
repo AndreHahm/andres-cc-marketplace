@@ -113,7 +113,13 @@ jobs:
 
       - name: Install commitlint
         run: |
-          npm install --no-save @commitlint/cli@18.6.0 @commitlint/config-conventional@18.6.0
+          # --ignore-scripts: this install runs in the PR's own checkout, so
+          # without it npm would also execute the PR's own package.json
+          # preinstall/postinstall/prepare scripts, which could tamper with
+          # the commitlint binary itself (in node_modules/.bin) before "Run
+          # commitlint" invokes it -- restoring the config alone doesn't
+          # close that gap (found by cross-model review).
+          npm install --no-save --ignore-scripts @commitlint/cli@18.6.0 @commitlint/config-conventional@18.6.0
 
       - name: Fetch default branch
         env:
