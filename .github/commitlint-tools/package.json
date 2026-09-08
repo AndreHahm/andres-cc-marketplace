@@ -1,0 +1,11 @@
+{
+  "name": "commitlint-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Isolated toolchain manifest for commit-branch-guard.yml's commitlint run -- deliberately decoupled from the repo's root package.json, and installed with pnpm's own per-directory config resolution so a PR-committed root .npmrc can't redirect this install to a malicious registry.",
+  "packageManager": "pnpm@10.33.2+sha512.a90faf6feeab71ad6c6e57f94e0fe1a12f5dcc22cd754db40ae9593eb6a3e0b6b12e3540218bb37ae083404b1f2ce6db2a4121e979829b4aff94b99f49da1cf8",
+  "devDependencies": {
+    "@commitlint/cli": "18.6.0",
+    "@commitlint/config-conventional": "18.6.0"
+  }
+}

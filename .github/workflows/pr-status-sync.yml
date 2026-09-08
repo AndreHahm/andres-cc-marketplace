@@ -479,7 +479,12 @@ jobs:
           if [[ "${{ needs.delete-merged-branch.result }}" == "success" ]]; then
             echo "## 🗑️ Branch Cleanup" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Source branch \`$PR_HEAD_REF\` was deleted after merge." >> $GITHUB_STEP_SUMMARY
+            # "cleanup was attempted", not "was deleted" -- delete-merged-branch's
+            # own script catches deleteRef errors (a protected branch, an API
+            # failure) and still lets the job succeed, so this step can't
+            # claim deletion actually happened just because that job did
+            # (CodeRabbit finding, round 2).
+            echo "Source branch \`$PR_HEAD_REF\` cleanup was attempted after merge." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
 

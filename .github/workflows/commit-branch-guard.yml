@@ -106,28 +106,30 @@ jobs:
           echo "Automation: dependabot/, renovate/"
           exit 1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7.0.0
+      - name: Set up Node.js and pnpm
+        uses: ./.github/actions/setup-pnpm
         with:
-          node-version: 20
+          node-version: '20'
+          # skip-install: this job never installs the repo's own root
+          # package.json -- it only ever installs the isolated
+          # .github/commitlint-tools/ toolchain below.
+          skip-install: 'true'
 
-      - name: Install commitlint
-        run: |
-          # --ignore-scripts: this install runs in the PR's own checkout, so
-          # without it npm would also execute the PR's own package.json
-          # preinstall/postinstall/prepare scripts, which could tamper with
-          # the commitlint binary itself (in node_modules/.bin) before "Run
-          # commitlint" invokes it -- restoring the config alone doesn't
-          # close that gap (found by cross-model review).
-          npm install --no-save --ignore-scripts @commitlint/cli@18.6.0 @commitlint/config-conventional@18.6.0
-
-      - name: Fetch default branch
-        env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          git fetch origin $DEFAULT_BRANCH --depth=1
-
-      - name: Restore commitlint config from the trusted base SHA (trust boundary)
+      - name: Restore commitlint-tools manifest from the trusted base SHA (trust boundary)
+        # secretlint's own manifest+lockfile already live in an isolated
+        # .github/security-tools/ directory for the identical reason --
+        # this mirrors that pattern for commitlint. Unconditional
+        # (whenever a manifest genuinely differs at base) rather than
+        # relying on --ignore-scripts alone: a PR-committed root .npmrc
+        # can redirect a scoped package (e.g. @commitlint:registry) to a
+        # malicious registry even with lifecycle scripts disabled, since
+        # --ignore-scripts only blocks lifecycle scripts, not package
+        # resolution itself (Codex finding, round 2, verified locally:
+        # `pnpm config get @secretlint:registry` picked up a repo-root
+        # .npmrc override when run at the repo root, but returned
+        # `undefined` -- correctly isolated -- when run with cwd inside
+        # .github/security-tools/, confirming this per-directory isolation
+        # actually holds and closes the same gap here).
         if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -135,26 +137,70 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          # The checkout above uses the PR's own HEAD content --
-          # .commitlintrc.cjs is a CommonJS module that commitlint loads and
-          # executes as JS, so a PR that rewrites its own copy could run
-          # arbitrary code on this runner. Restore the base branch's own
-          # trusted copy immediately before commitlint reads it -- after
-          # "Install commitlint" (npm install runs the PR's own
-          # package.json lifecycle scripts, which could otherwise
-          # re-corrupt a config restored any earlier) -- so commit messages
-          # are judged against this repo's own rules, not rules the PR
-          # itself could rewrite (same restore-from-base pattern
-          # marketplace-ci.yml's Hygiene job already uses for other
-          # trust-sensitive files).
+          restore_from_base() {
+            local path="$1"
+            mkdir -p "$(dirname "$path")"
+            stderr_file=$(mktemp)
+            if content=$(gh api --method GET "repos/$REPO/contents/$path" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+              echo "$content" | base64 -d > "$path"
+            elif grep -q "HTTP 404" "$stderr_file"; then
+              # Genuinely absent at the trusted base -- this is the
+              # bootstrapping PR introducing this isolated toolchain for
+              # the first time, so no trusted base copy exists yet to
+              # restore; keep the PR's own.
+              :
+            else
+              echo "::error::could not verify trusted base-SHA content of $path ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+              rm -f "$stderr_file"
+              exit 1
+            fi
+            rm -f "$stderr_file"
+          }
+          restore_from_base .github/commitlint-tools/package.json
+          restore_from_base .github/commitlint-tools/pnpm-lock.yaml
+
+      - name: Install commitlint (isolated toolchain)
+        # --ignore-scripts: defense-in-depth against a future trusted-base
+        # change adding a lifecycle script; the real trust boundary here is
+        # the isolated directory + restore step above, which closes the
+        # registry-redirection gap --ignore-scripts alone can't.
+        run: pnpm --dir .github/commitlint-tools install --frozen-lockfile --ignore-scripts
+
+      - name: Fetch default branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git fetch origin $DEFAULT_BRANCH --depth=1
+
+      - name: Restore commitlint config into the isolated toolchain (trust boundary)
+        # Written to .github/commitlint-tools/.commitlintrc.cjs, NOT the
+        # repo-root .commitlintrc.cjs: "Run commitlint" below runs with its
+        # cwd inside the isolated toolchain directory specifically so
+        # @commitlint/config-conventional resolves from ITS OWN install --
+        # commitlint's own resolveExtends resolves module specifiers
+        # relative to process.cwd() (verified locally: neither --cwd nor
+        # -g change that, only actually changing the shell's own working
+        # directory does), unlike secretlint's own resolution, which
+        # worked correctly from a fixed cwd with only the binary path
+        # changed. The repo-root .commitlintrc.cjs is untouched here and
+        # stays available for local/human use; this workflow no longer
+        # reads it at all.
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
           stderr_file=$(mktemp)
           if content=$(gh api --method GET "repos/$REPO/contents/.commitlintrc.cjs" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
-            echo "$content" | base64 -d > .commitlintrc.cjs
+            echo "$content" | base64 -d > .github/commitlint-tools/.commitlintrc.cjs
           elif grep -q "HTTP 404" "$stderr_file"; then
             # Genuinely absent at the trusted base -- this is the
             # bootstrapping PR introducing it for the first time, so no
-            # trusted base copy exists yet to restore; keep the PR's own.
-            :
+            # trusted base copy exists yet to restore; fall back to the
+            # PR's own repo-root copy so this first run still has a config.
+            cp .commitlintrc.cjs .github/commitlint-tools/.commitlintrc.cjs
           else
             echo "::error::could not verify trusted base-SHA content of .commitlintrc.cjs ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
             rm -f "$stderr_file"
@@ -163,12 +209,13 @@ jobs:
           rm -f "$stderr_file"
 
       - name: Run commitlint
+        working-directory: .github/commitlint-tools
         env:
           TARGET_REF: ${{ steps.ref.outputs.target_ref }}
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            npx commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}"
+            ./node_modules/.bin/commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}"
           else
             BASE_REF=$(git merge-base origin/${{ github.event.repository.default_branch }} "$TARGET_REF")
-            npx commitlint --from "$BASE_REF" --to "$TARGET_REF"
+            ./node_modules/.bin/commitlint --from "$BASE_REF" --to "$TARGET_REF"
           fi
