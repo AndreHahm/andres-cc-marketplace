@@ -38,16 +38,15 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Setup Node.js
-      id: setup-node
-      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7.0.0
-      with:
-        node-version: ${{ inputs.node-version }}
-        cache: 'pnpm'
-        cache-dependency-path: ${{ inputs.cache-dependency-path }}
-
     - name: Setup pnpm
       id: setup-pnpm
+      # Must run before "Setup Node.js" below: that step's `cache: 'pnpm'`
+      # option shells out to the `pnpm` executable to resolve cache info,
+      # which fails with "Unable to locate executable file: pnpm" if pnpm
+      # isn't already on PATH yet (found live on PR #294's own CI run --
+      # this action had never actually executed on a real GitHub runner
+      # before that PR, only validated for YAML/schema correctness locally).
+      #
       # No `version:` passed -- pnpm/action-setup auto-detects from this
       # repo's own package.json `packageManager` field instead, so CI always
       # installs the exact same pnpm version local corepack-managed dev
@@ -55,6 +54,14 @@ runs:
       uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # ratchet:pnpm/action-setup@v6.0.10
       with:
         run_install: false
+
+    - name: Setup Node.js
+      id: setup-node
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'pnpm'
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     - name: Report installed pnpm version
       id: pnpm-version
