@@ -64,38 +64,6 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.ref.outputs.checkout_ref }}
 
-      - name: Restore commitlint config from the trusted base SHA (trust boundary)
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          set -euo pipefail
-          # The checkout above uses the PR's own HEAD content --
-          # .commitlintrc.cjs is a CommonJS module that commitlint loads and
-          # executes as JS, so a PR that rewrites its own copy could run
-          # arbitrary code on this runner. Restore the base branch's own
-          # trusted copy before commitlint ever reads it, so commit messages
-          # are judged against this repo's own rules, not rules the PR
-          # itself could rewrite (same restore-from-base pattern
-          # marketplace-ci.yml's Hygiene job already uses for other
-          # trust-sensitive files).
-          stderr_file=$(mktemp)
-          if content=$(gh api --method GET "repos/$REPO/contents/.commitlintrc.cjs" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
-            echo "$content" | base64 -d > .commitlintrc.cjs
-          elif grep -q "HTTP 404" "$stderr_file"; then
-            # Genuinely absent at the trusted base -- this is the
-            # bootstrapping PR introducing it for the first time, so no
-            # trusted base copy exists yet to restore; keep the PR's own.
-            :
-          else
-            echo "::error::could not verify trusted base-SHA content of .commitlintrc.cjs ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
-            rm -f "$stderr_file"
-            exit 1
-          fi
-          rm -f "$stderr_file"
-
       - name: Validate branch naming convention
         env:
           BRANCH_NAME: ${{ steps.ref.outputs.target_ref }}
@@ -152,6 +120,41 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           git fetch origin $DEFAULT_BRANCH --depth=1
+
+      - name: Restore commitlint config from the trusted base SHA (trust boundary)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          # The checkout above uses the PR's own HEAD content --
+          # .commitlintrc.cjs is a CommonJS module that commitlint loads and
+          # executes as JS, so a PR that rewrites its own copy could run
+          # arbitrary code on this runner. Restore the base branch's own
+          # trusted copy immediately before commitlint reads it -- after
+          # "Install commitlint" (npm install runs the PR's own
+          # package.json lifecycle scripts, which could otherwise
+          # re-corrupt a config restored any earlier) -- so commit messages
+          # are judged against this repo's own rules, not rules the PR
+          # itself could rewrite (same restore-from-base pattern
+          # marketplace-ci.yml's Hygiene job already uses for other
+          # trust-sensitive files).
+          stderr_file=$(mktemp)
+          if content=$(gh api --method GET "repos/$REPO/contents/.commitlintrc.cjs" -f ref="$BASE_SHA" --jq '.content' 2>"$stderr_file"); then
+            echo "$content" | base64 -d > .commitlintrc.cjs
+          elif grep -q "HTTP 404" "$stderr_file"; then
+            # Genuinely absent at the trusted base -- this is the
+            # bootstrapping PR introducing it for the first time, so no
+            # trusted base copy exists yet to restore; keep the PR's own.
+            :
+          else
+            echo "::error::could not verify trusted base-SHA content of .commitlintrc.cjs ($(cat "$stderr_file")) -- refusing to trust the PR's own copy"
+            rm -f "$stderr_file"
+            exit 1
+          fi
+          rm -f "$stderr_file"
 
       - name: Run commitlint
         env:
