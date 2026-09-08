@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
   issues: write
+  # Required by the "Check Workflow Statistics" step's `gh api .../actions/runs`
+  # call -- once a workflow declares an explicit permissions block, every
+  # unlisted scope defaults to none, so without this the call 403s every run
+  # (CodeRabbit finding, PR #294 review).
+  actions: read
 
 jobs:
   health-check:
