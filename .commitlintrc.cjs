@@ -15,6 +15,13 @@ module.exports = {
         'test',
         'chore',
         'ci',
+        // 'build' is documented as this repo's own recommended type for
+        // dependency-update commits (docs/github-label-usage.md: "Use
+        // build(deps): or chore(deps): for dependency updates") and
+        // pr-auto-label.yml already maps it to "t: build" -- omitting it
+        // here rejected the exact commit form the repo's own docs
+        // recommend (Codex finding, round 3).
+        'build',
         'experiment'
       ]
     ],

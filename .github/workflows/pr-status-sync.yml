@@ -367,6 +367,35 @@ jobs:
             }
 
             try {
+              // Verify the ref still points to this merged PR's own head
+              // SHA before deleting it -- deleteRef removes by name alone,
+              // with no SHA guard of its own. This repo's own
+              // .github/settings.yml already auto-deletes merged branches,
+              // so if a contributor recreates the exact same branch name
+              // before this (debounced, possibly delayed) job runs, a
+              // name-only delete would remove that unrelated replacement
+              // instead (Codex finding, round 3).
+              let currentSha;
+              try {
+                const { data: ref } = await github.rest.git.getRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `heads/${branchName}`
+                });
+                currentSha = ref.object.sha;
+              } catch (e) {
+                if (e.status === 404) {
+                  console.log(`ℹ️  Branch ${branchName} no longer exists -- nothing to delete.`);
+                  return;
+                }
+                throw e;
+              }
+
+              if (currentSha !== pr.head.sha) {
+                console.log(`⚠️  Skipping deletion - ${branchName} now points to ${currentSha}, not this PR's merged head ${pr.head.sha} (branch was recreated or advanced since merge).`);
+                return;
+              }
+
               await github.rest.git.deleteRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,

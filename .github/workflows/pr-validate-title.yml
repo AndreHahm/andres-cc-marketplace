@@ -46,8 +46,13 @@ jobs:
             const title = (pr.title || "").trim();
 
             // Conventional Commit pattern: type(scope)!: subject
-            // Allowed types: feat, fix, docs, style, refactor, perf, test, chore, ci, experiment
-            const TYPES = "feat|fix|docs|style|refactor|perf|test|chore|ci|experiment";
+            // Allowed types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, experiment
+            // 'build' included: docs/github-label-usage.md documents
+            // `build(deps): ...` as this repo's own recommended form for
+            // dependency updates, and pr-auto-label.yml already maps it to
+            // "t: build" -- omitting it here rejected the exact commit
+            // form the repo's own docs recommend (Codex finding, round 3).
+            const TYPES = "feat|fix|docs|style|refactor|perf|test|chore|ci|build|experiment";
             const pattern = new RegExp(`^(${TYPES})(\\([a-z0-9._/-]+\\))?(!)?: .{1,100}$`, "m");
 
             if (!pattern.test(title)) {
