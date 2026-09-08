@@ -129,7 +129,19 @@ jobs:
           # pages -- `jq -s '.'` then slurps that stream back into the
           # single JSON array every downstream `$RUNS`-based filter below
           # already expects.
-          RUNS=$(gh api --paginate "repos/${{ github.repository }}/actions/runs?created=>=$YESTERDAY&per_page=100" --jq '.workflow_runs[]' | jq -s '.')
+          #
+          # Captured into RUNS_STREAM first, then piped to jq -s
+          # separately -- this run: step has no explicit `shell: bash` key,
+          # so it uses GitHub Actions' actual default (`bash -e {0}`, no
+          # `-o pipefail`; verified against GitHub's own docs, which is
+          # NOT the same as the `--noprofile --norc -eo pipefail` an
+          # explicit `shell: bash` gets). A live `gh api ... | jq -s '.'`
+          # pipe under that default would let a failed gh api call still
+          # produce an empty `[]` via jq -s, reporting 0 runs and a false
+          # 100% success rate instead of failing the step (CodeRabbit
+          # finding, round 2).
+          RUNS_STREAM=$(gh api --paginate "repos/${{ github.repository }}/actions/runs?created=>=$YESTERDAY&per_page=100" --jq '.workflow_runs[]')
+          RUNS=$(printf '%s\n' "$RUNS_STREAM" | jq -s '.')
 
           # Count runs by status
           total=$(echo "$RUNS" | jq 'length')
@@ -138,9 +150,16 @@ jobs:
           cancelled=$(echo "$RUNS" | jq '[.[] | select(.conclusion == "cancelled")] | length')
           in_progress=$(echo "$RUNS" | jq '[.[] | select(.status == "in_progress")] | length')
 
-          # Calculate success rate
-          if [ $total -gt 0 ]; then
-            success_rate=$((success * 100 / total))
+          # Calculate success rate over completed outcomes only -- `total`
+          # includes queued/in_progress/cancelled runs (this monitor's own
+          # currently-executing run is itself in_progress in this exact
+          # window), none of which can ever have conclusion == "success".
+          # In a low-volume period that can produce a false critical 0%
+          # rate with no completed workflow having actually failed
+          # (CodeRabbit finding, round 2).
+          completed=$((success + failure))
+          if [ $completed -gt 0 ]; then
+            success_rate=$((success * 100 / completed))
           else
             success_rate=100
           fi

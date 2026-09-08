@@ -85,9 +85,14 @@ runs:
         # (not just the pnpm store), and a lockfile-only key would let a
         # caller using a different node-version restore native modules built
         # for the wrong Node ABI (CodeRabbit finding, PR #294 review).
-        key: ${{ runner.os }}-node${{ inputs.node-version }}-pnpm-${{ hashFiles(inputs.cache-dependency-path) }}
+        # Uses the RESOLVED version (steps.setup-node.outputs.node-version),
+        # not the raw inputs.node-version -- a caller passing a moving spec
+        # like 'lts/*' would otherwise keep the same literal cache key even
+        # after that spec resolves to a new major release, silently
+        # defeating this fix's own purpose (CodeRabbit finding, round 2).
+        key: ${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-pnpm-${{ hashFiles(inputs.cache-dependency-path) }}
         restore-keys: |
-          ${{ runner.os }}-node${{ inputs.node-version }}-pnpm-
+          ${{ runner.os }}-node${{ steps.setup-node.outputs.node-version }}-pnpm-
 
     - name: Install dependencies
       if: inputs.skip-install == 'false'
