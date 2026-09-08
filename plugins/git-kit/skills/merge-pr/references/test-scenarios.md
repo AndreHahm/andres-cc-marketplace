@@ -131,3 +131,17 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 - The final recheck fails (e.g. a required status check regressed, or the branch fell behind base, during step 5's confirmation delay) → step 7(b) stops and reports why, never writes the marker, never attempts `gh pr merge`
 - Bypass path → step 4(e) already reran step 2 once; step 7(b)'s final recheck still runs again immediately before the marker/merge command, since step 5's confirmation happens after step 4(e), not before it
 - The final recheck passes → step 7(b) proceeds to write the marker and merge exactly as before this fix
+
+**Verify step 1.5 (session open-issues check):**
+- Session has no open issues → step 1.5 states this plainly and proceeds directly to step 2, no fix or
+  filed issue
+- An open issue's file is part of step 1's already-fetched `files` list → fixed, verified, then
+  committed and pushed via `Skill(git-kit:commit)` (push explicitly requested) — since this PR already
+  exists, a local-only commit is never left unpushed
+- An open issue's file is not part of that list → filed via `Skill(git-kit:github-issue-lifecycle)`
+  Workflow 1 only, with that workflow's Step 6 (PR-linking) explicitly skipped, and reported with its
+  issue number — never fixed in-session
+- A fix-driven push happens at step 1.5 → step 2 treats this as a rerun and re-fetches fresh data,
+  never reclassifying against step 1's now-stale snapshot
+- No fix-driven push happens at step 1.5 (nothing found, or only issues were filed) → step 2's first
+  pass still uses step 1's already-current fetch, no unnecessary re-fetch
