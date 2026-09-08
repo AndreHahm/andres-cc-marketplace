@@ -42,22 +42,26 @@ jobs:
             const issueNumber = context.issue.number;
             const creator = context.payload.issue.user.login;
 
-            // An issue can only be assigned to someone with at least read
-            // access to the repo -- GitHub's own addAssignees API silently
+            // An issue can only be assigned to someone GitHub itself
+            // considers eligible -- GitHub's own addAssignees API silently
             // drops any assignee who doesn't qualify, rather than erroring,
             // so check first instead of assuming the creator is assignable.
+            // Use GitHub's own eligibility check rather than a hand-rolled
+            // write/maintain/admin permission-level proxy: that proxy
+            // rejected creators GitHub's real assignment rule would accept
+            // (CodeRabbit finding, PR #294 review) -- checkUserCanBeAssignedToIssue
+            // resolves with 204 (assignable) or throws on 404 (not assignable).
             let assignee = owner;
             try {
-              const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+              await github.rest.issues.checkUserCanBeAssignedToIssue({
                 owner,
                 repo,
-                username: creator,
+                issue_number: issueNumber,
+                assignee: creator,
               });
-              if (['write', 'maintain', 'admin'].includes(perm.permission)) {
-                assignee = creator;
-              }
+              assignee = creator;
             } catch (e) {
-              core.info(`Could not resolve ${creator}'s permission level (${e.message}); falling back to the repo owner.`);
+              core.info(`${creator} is not assignable to this issue (${e.message}); falling back to the repo owner.`);
             }
 
             await github.rest.issues.addAssignees({

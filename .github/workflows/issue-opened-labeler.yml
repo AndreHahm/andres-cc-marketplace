@@ -43,6 +43,13 @@ jobs:
         with:
           app-id: '${{ secrets.APP_ID }}'
           private-key: '${{ secrets.PRIVATE_KEY }}'
+          # Without an explicit permission-* input, the resulting token
+          # inherits the GitHub App installation's FULL permission set, not
+          # just what this job's workflow-level `permissions:` block allows
+          # -- that block only scopes GITHUB_TOKEN, not an app-generated
+          # token (zizmor + CodeRabbit finding, PR #294 review). This job
+          # only reads issues and adds a label.
+          permission-issues: write
 
       - name: 'Add s: triage label'
         uses: 'actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3' # ratchet:actions/github-script@v9.0.0

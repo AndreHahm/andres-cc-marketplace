@@ -124,10 +124,19 @@ jobs:
           - Deletions: -$DELETIONS
           - Files changed: $CHANGED_FILES"
 
-          # Find any existing size labeler comment by the github-actions bot
+          # Find any existing size labeler comment by the github-actions bot.
+          # --paginate: once a PR has enough comments for the existing size
+          # marker to fall off the first page, an unpaginated lookup can't
+          # find it and creates another marker on every sync (Codex finding,
+          # PR #294 review). Captured into a variable first, THEN piped to
+          # `head -n 1` as a separate step -- piping `gh api --paginate`
+          # directly into `head` risks SIGPIPE aborting `gh` mid-fetch under
+          # this shell's default `-o pipefail` (the same class of bug as the
+          # `sort | head -1` case this repo's own review-learnings document).
           echo "Searching for existing size comment..."
-          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
-            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("📊 PR Size:"))) | .id' | head -n 1)
+          ALL_SIZE_COMMENT_IDS=$(gh api --paginate "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("📊 PR Size:"))) | .id')
+          COMMENT_ID=$(printf '%s\n' "$ALL_SIZE_COMMENT_IDS" | head -n 1)
 
           if [ -n "$COMMENT_ID" ]; then
             echo "Updating existing comment (ID: $COMMENT_ID)..."
