@@ -168,6 +168,19 @@ maintainer (live `write`/`maintain`/`admin` permission) attesting a bypass, boun
    "s: codex review bypassed"`), then re-add it, to force a fresh check run.
 4. A new commit changes the head SHA, invalidating any prior attestation — it must be re-attested.
 
+> **The same "must already exist" caveat applies to the `size: XS/S/M/L/XL` labels**
+> `.github/workflows/pr-size-labeler.yml` applies (`.github/labels.yml` declares them; `sync-labels.yml`
+> only creates/updates them on a **push to `main`** that touches that file — so a PR that adds both the
+> workflow and the label declarations in the same change, like this one, can't benefit from that sync
+> until it merges). `pr-size-labeler.yml`'s own `gh pr edit --add-label` fails outright (`'size: XL' not
+> found`) if the label doesn't exist yet — live-verified on PR #294's own `size-label` check, whose first
+> real run only became possible once its trigger was fixed to `pull_request` (a `pull_request_target`-
+> triggered workflow that's new to the PR never runs at all until the PR merges, since GitHub resolves
+> that trigger's workflow file from the base branch). Bootstrap once via
+> `gh label create "size: XS" --color 7EE081 --description "XS: <10 lines changed"` (repeat for
+> `S`/`M`/`L`/`XL` with `.github/labels.yml`'s own color/description values) before this workflow's first
+> real run on a same-repo PR.
+
 ### Attesting without the label (`CODEX_CI_REVIEW_BYPASS`)
 
 The `CODEX_CI_REVIEW_BYPASS` repo variable (`0`=disabled, `1`=enabled; any other non-empty value
