@@ -6,7 +6,7 @@ description: >-
   request", or "push this and make a PR" — for linking an issue at creation time or reviewer actions on
   an existing PR, see `collaborating-on-a-pr` instead.
 argument-hint: (optional) an issue number to close or reference, and/or --bypass-codex-review "<reason>", and/or --bypass-cross-model-review "<reason>" — otherwise an interactive guide
-allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git -c core.quotePath=false diff --name-only:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), AskUserQuestion, Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:cross-model-review), Skill(git-kit:github-issue-lifecycle)
+allowed-tools: Bash(gh pr create:*), Bash(gh pr view:*), Bash(gh pr comment:*), Bash(gh pr edit:*), Bash(gh api user:*), Bash(gh api repos/*/collaborators/*/permission:*), Bash(gh repo view:*), Bash(git status:*), Bash(git push:*), Bash(git diff --name-only -z:*), Bash(tr:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(uv run python "${CLAUDE_PLUGIN_ROOT}/scripts/check-pr-title.py":*), AskUserQuestion, Read, Write, Skill(git-kit:commit), Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:cross-model-review), Skill(git-kit:github-issue-lifecycle)
 ---
 
 # How to Create a Pull Request Using GitHub CLI
@@ -114,13 +114,21 @@ Before creating a PR, check for uncommitted changes:
      now," "later," or similar) — that category is handled differently below; it is not the same as an
      unaddressed reviewer finding nobody has weighed in on yet. If nothing qualifies, say so plainly and
      continue to step 4.
-   - **Classify each as touched or untouched**: `git -c core.quotePath=false diff --name-only
-     main...HEAD` — always pass `-c core.quotePath=false`, never the bare form; git's default
-     `core.quotePath` C-quotes any path containing non-ASCII bytes (e.g. `café.md` prints as
-     `"caf\303\251.md"`), which would silently fail to match that file's real path and misclassify a
-     touched non-ASCII-named file as untouched, routing it to public issue-filing instead of the
-     required fix (live-verified: reproduced the exact quoting with a real non-ASCII filename; Codex's
-     automated review of this exact change, PR #301, 2026-09-08). Touched if the issue's associated
+   - **Classify each as touched or untouched**: `git diff --name-only -z main...HEAD | tr '\0' '\n'` —
+     always use `-z` (NUL-delimited, unquoted output), piped through `tr` to turn the NUL separators
+     into newlines for a readable list; never the bare `git diff --name-only main...HEAD` form, and
+     never `-c core.quotePath=false` alone. Git always C-quotes a path containing a control character
+     (a literal newline, tab, backslash, or double-quote) regardless of `core.quotePath` — that setting
+     only affects non-ASCII bytes, per `git help config`'s own `core.quotePath` entry: "Double-quotes,
+     backslash, and control characters are always escaped regardless of the setting of this variable."
+     `-z` is the only flag that disables path quoting entirely, for every character class, which is why
+     it replaces `core.quotePath=false` here rather than supplementing it (live-verified `core.quotePath`
+     C-quotes non-ASCII bytes, confirmed against `git help config`'s own text for the control-character
+     case; Codex's automated review of this exact change, PR #301, 2026-09-08, rounds 1 and 2 — the
+     first fix only addressed the non-ASCII case, and round 2 caught that a control character in a
+     filename still defeats it). No real filename can contain a NUL byte, so converting `-z`'s NUL
+     separators to newlines via `tr` is always safe and never collides with actual path content. Touched
+     if the issue's associated
      file path is part of this PR's diff, untouched otherwise (an issue with no single associated file
      path falls to untouched, the same as any other file not in the diff).
    - **Fix every touched issue now, except a user-explicitly-deferred one**: apply the fix, then verify
@@ -377,9 +385,10 @@ behavior (R30 extraction — kept out of this file to stay under R13's line budg
       "once approved" wording alone
 - [ ] A touched issue the user explicitly deferred earlier in the session is never auto-fixed at step
       3.5 — always surfaced via `AskUserQuestion` ("fix now" or "leave deferred") first
-- [ ] Step 3.5's touched/untouched diff check always passes `-c core.quotePath=false` — never the bare
-      `git diff --name-only` form, which C-quotes a non-ASCII filename and would misclassify a touched
-      file as untouched
+- [ ] Step 3.5's touched/untouched diff check always uses `git diff --name-only -z` — never the bare
+      `git diff --name-only` form (which C-quotes a non-ASCII filename) and never `-c
+      core.quotePath=false` alone (which still C-quotes a filename containing a control character like
+      an embedded newline) — either would misclassify a touched file as untouched
 - [ ] Step 3.5 finding nothing is always stated explicitly — never silently skipped with no report
 - [ ] Pre-flight Checks step 4 always invokes `Skill(git-kit:cross-model-review)` before step 1 (push)
       runs, on every PR — never skipped for a "small" or "docs-only" change without an explicit
