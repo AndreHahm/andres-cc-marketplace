@@ -134,15 +134,22 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
 
 **Verify step 1.5 (session open-issues check):**
 - `isCrossRepository: false`, the current checkout's repository (`gh repo view`) matches step 1's
-  resolved `{owner}/{repo}`, and its branch matches `headRefName` — all three pass, so step 1.5
-  proceeds to scan
+  resolved `{owner}/{repo}`, its branch matches `headRefName`, and `git rev-parse HEAD` matches step
+  1's `headRefOid` — all four pass, so step 1.5 proceeds to scan
 - `isCrossRepository: true` (a genuine fork PR), checked out via `gh pr checkout <N>` from a clone of
   the *base* repository → `gh repo view` reports the base repository (matching step 1's resolved
   `{owner}/{repo}`, since that field is also the base repo) and the local branch name matches
-  `headRefName` (`gh pr checkout`'s own default naming) — both of the other two checks pass, but
+  `headRefName` (`gh pr checkout`'s own default naming) — two of the other three checks pass, but
   `isCrossRepository: true` alone must still skip the entire step, since `git push origin HEAD` would
   land in the base repository's remote, never the fork (Codex's automated review, PR #301, 2026-09-08 —
   an earlier draft dropped this check while fixing a different gap, silently reopening this one)
+- Repository, branch, and `isCrossRepository: false` all check out correctly, but the checkout's local
+  `HEAD` is ahead of `headRefOid` (unpushed local commits on the same branch) → the other three checks
+  pass, but the `headRefOid` mismatch alone must still skip the entire step — otherwise the fix path's
+  `commit --push` would push those unrelated local commits into the PR unreviewed (Codex's automated
+  review, round 2, PR #301, 2026-09-08)
+- Same setup, but local `HEAD` is behind or diverged from `headRefOid` → same result: skipped entirely,
+  rather than letting the fix path's push fail non-fast-forward or silently diverge further
 - The current checkout's repository does *not* match step 1's resolved `{owner}/{repo}`, even with
   `isCrossRepository: false` and a coincidentally matching branch name (a same-repo-shaped but
   different repository) → step 1.5 is skipped entirely — no scan, no fix, no file — and the flow
@@ -152,8 +159,13 @@ a fresh `gh repo view` (skill-reviewer M1, 2026-08-31):**
   repository while skipping only the fix)
 - Session has no open issues (checkout check passed) → step 1.5 states this plainly and proceeds
   directly to step 2, no fix or filed issue
-- An open issue's file is part of step 1's already-fetched `files` list, the checkout-match check
-  passed, and it's an ordinary unaddressed reviewer finding (not user-deferred) → fixed, verified, then
+- The PR has more than 100 changed files → the paginated `gh api repos/{owner}/{repo}/pulls/<number>/files
+  --paginate` fetch still returns every file past the 100th, so a touched issue whose file lands beyond
+  that boundary is still correctly classified as touched — `gh pr view --json files` would have
+  silently truncated it and misclassified it as untouched (Codex's automated review, round 2, PR #301,
+  2026-09-08)
+- An open issue's file is part of that paginated changed-file list, the checkout-match check passed,
+  and it's an ordinary unaddressed reviewer finding (not user-deferred) → fixed, verified, then
   committed and pushed via `Skill(git-kit:commit)` (push explicitly requested) — since this PR already
   exists, a local-only commit is never left unpushed
 - The same touched issue, but the user had explicitly deferred it earlier in the session → never
