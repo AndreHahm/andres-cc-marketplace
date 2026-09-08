@@ -164,6 +164,21 @@ function loadSecretlintignorePatterns(repoRoot) {
   return patterns;
 }
 
+// Returns null if `pattern` doesn't apply to `normalizedPath` at all (an
+// unsupported glob shape, or simply no match), otherwise `{ negated }`
+// describing which way the match points. Extracted out of
+// isExemptedBySecretlintignore below to keep that function's own
+// cyclomatic complexity within this repo's Codacy-enforced limit (a
+// PR #299 finding) -- purely a readability/complexity split, no behavior
+// change of its own.
+function matchExactPattern(pattern, normalizedPath) {
+  const negated = pattern.startsWith("!");
+  const body = negated ? pattern.slice(1) : pattern;
+  if (body.includes("*") || body.includes("?")) return null; // no globs
+  const anchored = body.startsWith("/") ? body.slice(1) : body;
+  return anchored === normalizedPath ? { negated } : null;
+}
+
 export function isExemptedBySecretlintignore(repoRoot, relativePath) {
   // A `..`-laden relativePath must never satisfy this exemption, matching
   // the same defense-in-depth guard isDocumentationAboutSecrets already
@@ -184,13 +199,8 @@ export function isExemptedBySecretlintignore(repoRoot, relativePath) {
   // function's own scope.
   let exempted = false;
   for (const pattern of patterns) {
-    const negated = pattern.startsWith("!");
-    const body = negated ? pattern.slice(1) : pattern;
-    if (body.includes("*") || body.includes("?")) continue; // no globs
-    const anchored = body.startsWith("/") ? body.slice(1) : body;
-    if (anchored === normalized) {
-      exempted = !negated;
-    }
+    const match = matchExactPattern(pattern, normalized);
+    if (match) exempted = !match.negated;
   }
   return exempted;
 }
