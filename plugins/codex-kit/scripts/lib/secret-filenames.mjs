@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 // Shared sensitive-filename pattern list. Extracted from
 // codex-windows-guardrails/scripts/guarded-dispatch.mjs (which matches
 // plugins/git-kit/scripts/scan-staged-files.sh's bash `case` statement,
@@ -53,7 +56,121 @@ export const SECRET_FILENAME_PATTERNS = [
 // never by reconstructing and comparing a string form of the pattern.
 export const LOOSE_SECRET_FILENAME_PATTERNS = [SECRET_KEYWORD, CREDENTIAL_KEYWORD, PASSWORD_KEYWORD, TOKEN_KEYWORD];
 
+// The non-loose patterns from the list above -- .env, .key/.pem/.p12/.pfx/
+// .jks, the SSH/cloud key exact-filenames, .npmrc/.pgpass/.netrc. Computed
+// once, filtering LOOSE_SECRET_FILENAME_PATTERNS out by reference (never a
+// re-typed literal list) so the two stay in sync automatically.
+const STRICT_SECRET_FILENAME_PATTERNS = SECRET_FILENAME_PATTERNS.filter(
+  (re) => !LOOSE_SECRET_FILENAME_PATTERNS.includes(re)
+);
+
 export function matchesSecretFilename(basename, caseInsensitive = false) {
   const flags = caseInsensitive ? "i" : "";
   return SECRET_FILENAME_PATTERNS.find((re) => new RegExp(re.source, flags).test(basename));
+}
+
+// matchesSecretFilename uses .find(), which returns only the FIRST pattern
+// (in array order) that matches -- SECRET_FILENAME_PATTERNS lists the four
+// loose keyword patterns interleaved with the strict ones, so "the matched
+// pattern happens to be loose" does NOT prove no strict pattern also
+// applies (e.g. "my-secret.pem" matches SECRET_KEYWORD, at index 1, before
+// /\.pem$/ at index 4 is ever tried, even though .pem matches too).
+// Security review finding (issue #295, C1): a caller that wants to know
+// "does ANY strict pattern also match this basename" -- e.g. before trusting
+// a loose-pattern-only exemption -- must check the full strict list
+// directly, never infer it from matchesSecretFilename's single return value.
+export function matchesAnyStrictSecretFilename(basename, caseInsensitive = false) {
+  const flags = caseInsensitive ? "i" : "";
+  return STRICT_SECRET_FILENAME_PATTERNS.some((re) => new RegExp(re.source, flags).test(basename));
+}
+
+// --- .secretlintignore consultation (issue #295) ---
+//
+// Deliberately EXACT-FULL-PATH-ONLY (an optional leading `/` is stripped,
+// then the entire pattern must equal the entire repo-relative path) --
+// NOT a general gitignore engine, and specifically NOT supporting a glob,
+// a directory-prefix match, or a bare filename matched at any depth, even
+// though .secretlintignore's own syntax is gitignore-compatible and does
+// support all three there. This is narrower than gitignore semantics on
+// purpose (security review finding, issue #295, C1): an earlier version of
+// this function matched a `/tests`-shaped entry against anything *under*
+// that directory, and a `*.ext`-shaped entry against any matching basename
+// anywhere -- for THIS function's one caller (guarded-dispatch.mjs, gating
+// an unsandboxed danger-full-access Codex process), that meant a single
+// directory-scale .secretlintignore entry (e.g. `/.claude`) silently
+// exempted every file under it, including a real, untracked `.env` inside
+// a session worktree (`.claude/worktrees/*/`) -- a STRICT pattern match
+// that must never be exemption-eligible regardless of location. Requiring
+// an exact full-path match keeps every currently-real .secretlintignore
+// entry working (they're all already exact paths) while removing that
+// blast radius entirely: only a file explicitly, individually named in
+// .secretlintignore -- never a whole directory or an extension class --
+// can ever be exempted here. Comments (`#`) and blank lines are skipped.
+// Also NOT implemented via `git check-ignore`: that command always
+// additionally consults real `.gitignore` files found in the working tree,
+// with no flag to suppress that -- which is exactly the conflation this
+// function exists to avoid (guarded-dispatch.mjs's walkFiles has its own
+// documented design requiring it to see gitignored files like `.env`, so
+// treating bare .gitignore membership as a skip signal here would reverse
+// that).
+//
+// Callers must ALSO independently confirm no STRICT pattern matches the
+// basename (matchesAnyStrictSecretFilename above) before treating a true
+// result from this function as safe to exempt -- see that function's own
+// header for why a "loose" match from matchesSecretFilename does not
+// prove a strict one doesn't also apply. This function only answers "is
+// this exact path listed", nothing about which pattern(s) matched it.
+//
+// Known limitation (security review, issue #295, informational): this
+// reads the WORKING-TREE .secretlintignore unconditionally, with no
+// trusted-base-SHA verification -- unlike security.yml's own CI job, which
+// deliberately restores .secretlintignore from the PR's base SHA before
+// ever reading it, specifically because a PR could otherwise weaken its
+// own secret scan. A locally-run reviewer (e.g. codex-audit-loop against
+// an untrusted, unmerged branch) has no such check today: that branch's
+// own .secretlintignore edit is trusted as-is. Applying the same
+// restore-from-base pattern locally needs a live `gh api`/network call
+// this offline-capable script doesn't otherwise make -- left as a known,
+// disclosed follow-up rather than folded into this fix.
+let cachedPatterns = null;
+let cachedRepoRoot = null;
+
+function loadSecretlintignorePatterns(repoRoot) {
+  if (cachedRepoRoot === repoRoot && cachedPatterns) {
+    return cachedPatterns;
+  }
+  const patterns = [];
+  let raw;
+  try {
+    raw = fs.readFileSync(path.join(repoRoot, ".secretlintignore"), "utf8");
+  } catch {
+    raw = "";
+  }
+  for (const rawLine of raw.split(/\r?\n/)) {
+    // trimEnd only -- gitignore does not strip LEADING whitespace from a
+    // pattern (a pattern " foo" matches a path literally named " foo"),
+    // only trailing whitespace not itself escaped.
+    const line = rawLine.trimEnd();
+    if (!line || line.startsWith("#")) continue;
+    patterns.push(line);
+  }
+  cachedRepoRoot = repoRoot;
+  cachedPatterns = patterns;
+  return patterns;
+}
+
+export function isExemptedBySecretlintignore(repoRoot, relativePath) {
+  // A `..`-laden relativePath must never satisfy this exemption, matching
+  // the same defense-in-depth guard isDocumentationAboutSecrets already
+  // carries in guarded-dispatch.mjs for the identical reason.
+  if (relativePath.startsWith("..")) return false;
+  const patterns = loadSecretlintignorePatterns(repoRoot);
+  if (patterns.length === 0) return false;
+  const normalized = relativePath.split(path.sep).join("/");
+  for (const pattern of patterns) {
+    if (pattern.includes("*") || pattern.includes("?")) continue; // no globs
+    const anchored = pattern.startsWith("/") ? pattern.slice(1) : pattern;
+    if (anchored === normalized) return true;
+  }
+  return false;
 }

@@ -4,6 +4,8 @@ All notable changes to this plugin are documented here.
 
 ## [Unreleased]
 
+- `codex-windows-guardrails`' `checkSecretFiles` now also consults the repo's `.secretlintignore` (an explicit, per-file exemption, exact-path-only — never a directory or glob match) so a handful of legitimate files (a fake-secret test fixture, scripts whose whole job is secret detection) no longer block a `danger-full-access` dispatch just because their name matches a sensitive-filename pattern. A security review caught an initial version that supported the same directory/glob shapes `.secretlintignore` itself allows, which would have let a single broad entry (e.g. `/.claude`) exempt an untracked real `.env` nested anywhere under it — fixed by restricting the new matcher to exact full-path entries and requiring no strict pattern also matches the basename.
+
 - Added `codex-exec-live-roundtrip.mjs`, a new persisted smoke test that calls `runCodexExec` against the real, authenticated `codex` binary and asserts a schema-conformant response — every prior smoke test proved codex-kit's own scaffolding without ever completing a live `codex exec` round-trip (`running-a-full-retrospective:M7`). SKIPs cleanly via `runCodexExec`'s own `CLI_UNAVAILABLE`/`AUTH_UNAVAILABLE` categories in an environment with no live, logged-in `codex` CLI.
 - Added `codex-windows-guardrails`, a new skill providing best-effort guardrails (pre-flight
   repository-boundary/secret-file/instruction-containment checks plus an instructed, not enforced,

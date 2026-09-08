@@ -4,7 +4,12 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 import { runCodexExec, redactSecrets } from "../../../scripts/lib/codex-exec.mjs";
-import { matchesSecretFilename, LOOSE_SECRET_FILENAME_PATTERNS } from "../../../scripts/lib/secret-filenames.mjs";
+import {
+  matchesSecretFilename,
+  matchesAnyStrictSecretFilename,
+  LOOSE_SECRET_FILENAME_PATTERNS,
+  isExemptedBySecretlintignore
+} from "../../../scripts/lib/secret-filenames.mjs";
 import { ENVELOPE_SCHEMA, semanticallyValidate, isValidToken, neutralizeClosingTags } from "../../codex-review-bridge/scripts/bridge-invoke.mjs";
 
 // Consolidated guardrail dispatch for local Windows danger-full-access Codex
@@ -30,6 +35,15 @@ const SKILL_DIR = path.resolve(SCRIPT_DIR, "..");
 // the same reason.
 function matchesSecretPattern(basename) {
   return matchesSecretFilename(basename, process.platform === "win32");
+}
+
+// Same case-insensitivity rule as matchesSecretPattern above. Used to
+// confirm no STRICT pattern also matches before trusting a .secretlintignore
+// exemption for a name that happened to match a LOOSE pattern first (see
+// matchesAnyStrictSecretFilename's own header, and security review finding
+// C1, issue #295).
+function matchesAnyStrictPattern(basename) {
+  return matchesAnyStrictSecretFilename(basename, process.platform === "win32");
 }
 
 function typedFailure(category, detail) {
@@ -421,7 +435,25 @@ function checkSecretFiles(targetPaths, repoRoot) {
           // file, whose single checkNames entry already equals its own
           // basename.
           const matchedOwnBasename = name === path.basename(relativePath);
-          if (matchedOwnBasename && isDocumentationAboutSecrets(relativePath, matched)) {
+          // Two independent exemption signals, either sufficient to reach
+          // the content-scan below (issue #295 adds the second): a
+          // path-shape heuristic (isDocumentationAboutSecrets) and an
+          // explicit, human-curated .secretlintignore entry for this exact
+          // path (isExemptedBySecretlintignore -- see that function's own
+          // header for why it deliberately does NOT also consult bare
+          // .gitignore membership here, unlike scan-staged-files.sh's bash
+          // counterpart, and why it's exact-full-path-only, not a directory
+          // or glob match). Security review finding (C1, issue #295): the
+          // .secretlintignore signal additionally requires no STRICT
+          // pattern also matches this basename -- matchesSecretPattern's
+          // .find() only reports the FIRST array match, so a name matching
+          // both a loose keyword and a strict pattern (e.g.
+          // "my-secret.pem") would otherwise look loose-only and become
+          // exemption-eligible even though a real strict-pattern name is
+          // present.
+          const secretlintignoreExemption =
+            isExemptedBySecretlintignore(repoRoot, relativePath) && !matchesAnyStrictPattern(name);
+          if (matchedOwnBasename && (isDocumentationAboutSecrets(relativePath, matched) || secretlintignoreExemption)) {
             // Security review, issue #78 fix (M5): the path/extension
             // shape alone only proves this file is NAMED like
             // documentation about secrets -- it says nothing about
@@ -434,6 +466,10 @@ function checkSecretFiles(targetPaths, repoRoot) {
             // credential-shaped string still blocks; an unreadable file
             // fails closed (falls through to the block below) rather than
             // silently trusting an exemption that couldn't be verified.
+            // Applies the same way to the .secretlintignore signal: it
+            // says this filename/path is a known false positive, not that
+            // this exact file's current content is safe to skip
+            // re-verifying.
             let content = null;
             try {
               content = fs.readFileSync(file.path, "utf8");
