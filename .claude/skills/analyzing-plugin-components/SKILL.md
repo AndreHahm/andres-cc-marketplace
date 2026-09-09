@@ -15,7 +15,7 @@ description: >-
   agents, and rules from a session or date range. A bare, typeless "run a
   retrospective" or "analyze this session" request routes to
   `starting-an-analysis` instead.
-allowed-tools: Read Glob Grep Write Edit AskUserQuestion Bash(python */analysis-kit/scripts/component_inventory.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(git log:*) Bash(git show:*) Bash(date:*)
+allowed-tools: Read Glob Grep Write Edit AskUserQuestion Bash(python */analysis-kit/scripts/component_inventory.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */analysis-kit/scripts/validate_report.py:*) Bash(git log:*) Bash(git show:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 
@@ -110,11 +110,14 @@ Record any discrepancy found — an item marked open that's actually resolved, a
 
 **Invoked vs. edited components:** both count, and both get their own SWOT — but frame them differently. An *invoked* component is assessed on how well it performed when run (did its checks fire, did its output need correction). An *edited* component (one whose files you modified as a task, without ever loading it via `Skill`/`Agent`) is assessed on how well its existing structure/docs supported making that edit correctly, and what defects the edit surfaced. Don't skip edited components just because there's no invocation event to point to as evidence — the edit itself is the evidence.
 
-Emit the inventory before proceeding:
+Emit the inventory before proceeding, and give every entry a stable marker
+(`<!-- inventory: component:<kebab-case-name> -->`, immediately after its row) — this is the stable
+identifier Phase 3's disposition markers and `validate_report.py`'s pre-persistence check both key off:
 
 ```
 📦 Session Inventory  <start> → <end>
 | # | Component | Category | Evidence |
+<!-- inventory: component:<name> -->
 ```
 
 Confirm before proceeding — ask with `AskUserQuestion`: "Found N components. Proceed with full analysis?" — options "Proceed" / "Cancel". On "Cancel", stop here: do not run Phase 3-6, and do not persist a report. State the inventory that was found so the user can re-scope if they intended a narrower or wider range, then end the run.
@@ -125,6 +128,7 @@ For each component, produce a SWOT grounded in observed session behavior — not
 
 ```
 ### SWOT: <name>  (<category>)
+<!-- disposition: component:<name> assessed -->
 | Quadrant     | Observations |
 | Strengths    | … |
 | Weaknesses   | … |
@@ -138,6 +142,15 @@ research." Grouping several related components into one aggregate SWOT entry is 
 grouping itself is stated; a component silently absent from both Phase 3's output and any stated
 exclusion is a defect, not an acceptable summary — see the Testing & Validation gate for how this is
 checked before persistence.
+
+**Disposition markers, one per Phase 2 inventory entry, no exceptions:** an individually-assessed
+component gets `<!-- disposition: component:<name> assessed -->` right under its own SWOT heading (shown
+above); a component folded into an aggregate SWOT entry gets
+`<!-- disposition: component:<name> grouped:<group-name> -->` for each grouped name, placed under that
+same aggregate heading; an explicitly excluded component gets
+`<!-- disposition: component:<name> excluded -->` next to its stated exclusion justification. These
+markers are what `validate_report.py`'s pre-persistence check (below) verifies mechanically — a component
+with zero or more than one disposition marker fails that check before the report is ever persisted.
 
 See `references/swot-framework.md` for quadrant prompts and common patterns per component category.
 
@@ -207,6 +220,13 @@ Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) a
 origin/Coverage/Confidence/Source metadata block to each substantive suggestion, per
 `../../references/report-evidence-convention.md`.
 
+**Pre-persistence validation:** after writing the scratch file, run
+`Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/validate_report.py" --skill analyzing-plugin-components --report <scratch-path>)`.
+If it exits non-zero, its stderr lists the specific `[code] subject: message` lines — revise the draft to
+close each one (a missing/duplicate disposition, a missing coverage-preamble field, a missing next-step
+line, or missing evidence metadata) and re-run the check before persisting. Never persist a report the
+validator rejects.
+
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full Phase 3-6 output to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/analyzing-plugin-components/<scope-slug>-<timestamp>.md" --label "Session Analysis Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Session Analysis Report written: ...` confirmation line — present its printed output as its own line before the rest of Phase 6's output. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
 **Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
@@ -218,7 +238,7 @@ Use one file per run (`<scope-slug>-<timestamp>.md`) as the persistence conventi
 After Phase 6, verify these gates before presenting output as final:
 
 - [ ] Inventory names at least one component per category present in the session
-- [ ] Every Phase 2 inventory entry has either its own Phase 3 SWOT or a stated exclusion/grouping justification — count the two lists against each other before persisting, not just at a glance
+- [ ] Every Phase 2 inventory entry has either its own Phase 3 SWOT or a stated exclusion/grouping justification — count the two lists against each other before persisting, not just at a glance; `validate_report.py`'s pre-persistence check now enforces this mechanically via the `<!-- inventory: -->`/`<!-- disposition: -->` markers, so a run that skips writing the markers loses that mechanical backstop even if the prose itself still reads complete
 - [ ] Every SWOT block has both a Self-Critique and a Self-Reflection section (or an explicit "None — <reason>"/stated-exclusion in their place) — no SWOT block silently missing one or both
 - [ ] Every SWOT quadrant has at least one observation (no empty rows)
 - [ ] Every P1 suggestion names a specific file, section, or step in its Detail field
@@ -259,4 +279,6 @@ After Phase 6, verify these gates before presenting output as final:
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions this skill's P1/P2/P3 priority tiers map onto | When a suggestion's priority needs grounding against other skills' reports |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Phase 6, before persisting |
+| `../../scripts/validate_report.py` | Deterministic pre-persistence contract check (disposition markers, coverage preamble, next-step line, evidence metadata) | Phase 6, after drafting, before persisting |
+| `../../references/report-contracts.json` | This skill's own declared contract (`disposition_type: "component"`, `next_step_required: true`) that `validate_report.py` reads | Background |
 | `.claude/output/analyzing-plugin-components/` | Where this skill's own reports are persisted, one file per run | Phase 6 (write), Phase 2 of a later run (read, if in scope) |
