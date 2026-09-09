@@ -593,11 +593,339 @@
         }
       ],
       "type": "agent"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_eafb261e",
+      "name": "development-to-pr",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/development-to-pr"
+          ],
+          "name": "development-to-pr",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/development-to-pr",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/development-to-pr"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_c129685c",
+      "name": "linear-github-lifecycle",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/linear-github-lifecycle"
+          ],
+          "name": "linear-github-lifecycle",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/linear-github-lifecycle",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/linear-github-lifecycle"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_24b082f8",
+      "name": "linear-github-linking",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/linear-github-linking"
+          ],
+          "name": "linear-github-linking",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/linear-github-linking",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/linear-github-linking"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_4ee314d0",
+      "name": "linear-github-reconciliation",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/linear-github-reconciliation"
+          ],
+          "name": "linear-github-reconciliation",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/linear-github-reconciliation",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/linear-github-reconciliation"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_5fe83069",
+      "name": "merge-to-completion",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/merge-to-completion"
+          ],
+          "name": "merge-to-completion",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/merge-to-completion",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/merge-to-completion"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_28c09ddb",
+      "name": "pr-to-linear",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/pr-to-linear"
+          ],
+          "name": "pr-to-linear",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/pr-to-linear",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/pr-to-linear"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e55654c2",
+      "name": "repository-gates",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/repository-gates"
+          ],
+          "name": "repository-gates",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/repository-gates",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/repository-gates"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_60be3c3b",
+      "name": "work-to-development",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/work-to-development"
+          ],
+          "name": "work-to-development",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/work-to-development",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/work-to-development"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-09",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
     }
   ],
   "extensions": {},
   "plugin_id": "plugin_39dae8d5",
   "plugin_name": "workmanagement-kit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-08-31"
+  "updated_on": "2026-09-09"
 }
