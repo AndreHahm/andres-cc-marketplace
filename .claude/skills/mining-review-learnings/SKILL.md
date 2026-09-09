@@ -202,6 +202,13 @@ finding surfaced in Phase 2.
 
 ## Phase 4: Report
 
+**Coverage preamble and evidence metadata:** before writing the scratch file, prepend the Coverage
+Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
+origin/Coverage/Confidence/Source metadata block to each candidate learning, per
+`../../references/report-evidence-convention.md` — a candidate with `session-transcript: unavailable`
+should generally carry `Coverage: partial`, since only GitHub review history (not the fix transcript)
+backs it.
+
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings
 to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch
 <scratch-path> --final ".claude/output/mining-review-learnings/<pr-set-slug>-<timestamp>.md" --label
@@ -309,6 +316,7 @@ After Phase 4, verify before presenting output as final:
 - [ ] Every excluded one-off finding states its exclusion reasoning inline, never silently dropped
 - [ ] The report was persisted to `.claude/output/mining-review-learnings/` and its path confirmed with
       the standard `📄 ... written:` line
+- [ ] The scratch draft carries the Coverage Preamble and each candidate learning carries its Evidence origin/Coverage/Confidence/Source metadata, per `report-evidence-convention.md`
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final
       write — never written directly from the scratch draft
 - [ ] The `managing-review-learnings` next-step line printed only when at least one candidate exists;
@@ -333,6 +341,7 @@ above.
 | `../../scripts/session_parser.py` | Claude Code session-transcript discovery/parser this skill's Phase 2 step 3 wraps | Phase 2 |
 | `../../scripts/codex_session_parser.py` | Codex CLI session-file parser (no discovery of its own — Phase 2 step 4's `Glob` supplies the candidate paths) | Phase 2 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention this skill deliberately does not participate in — see Gotchas | Background |
+| `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
 | `../../references/date-range-scope-convention.md` | Shared session/conversation scope procedure this skill's Phase 1 cites only to distinguish its own merge-date PR filter from that convention | Phase 1 |
 | `<repo-root>/.claude/THIRD_PARTY_REVIEW_LEARNINGS.md` | The learnings document this skill mines against for already-cited findings; never edited by this skill | Phase 1 (last-cited resolution), Phase 3 (exclusion check) |
 | `.claude/output/mining-review-learnings/` | Where this skill's own reports are persisted, one file per run | Phase 4 (write) |

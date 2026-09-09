@@ -26,6 +26,14 @@ This plugin has no hard dependency required just to install and run its core ana
 
 **Shared report-discovery convention.** `references/report-discovery-convention.md` (plugin root) is the canonical definition of the `<scope-slug>` filename convention and the report-discovery glob every skill's own "latest report" / "next step" logic restates inline — read it before changing either in any individual skill, and sweep every site it lists in the same pass.
 
+**Shared report evidence and coverage convention.** `references/report-evidence-convention.md` (plugin
+root) defines two pieces every report-producing skill's own Persist step restates by reference: a
+Coverage Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) at the top of
+every persisted report, and an Evidence origin/Coverage/Confidence/Source metadata block on every
+substantive finding. This governs reports written from its adoption forward — an existing report written
+before this convention existed is not retroactively invalid, and no skill migrates historical output to
+add the missing fields.
+
 **Shared date-range scope convention.** `references/date-range-scope-convention.md` (plugin root) is the canonical Phase 1 scope-resolution procedure the 5 date-range skills (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`) each restate by reference in their own Phase 1 — read it before changing the procedure, and sweep every site it lists in the same pass.
 
 **Activation-collision fix convention.** Where two skills' domains genuinely overlap (e.g. a bare "run a retrospective" request could plausibly match either `analyzing-plugin-components` or `starting-an-analysis`; "which subagents ran" could match either `analyzing-tool-and-framework-use`'s tool inventory or `analyzing-actor-behavior`'s dispatch-quality assessment), this plugin resolves the ambiguity per the repo-wide convention in `.claude/rules/resolve-activation-overlap-bidirectionally.md`: an explicit, reciprocal textual exclusion — each skill's own "When to Use"/"When NOT to Use" section names the specific sibling skill and states the exact distinguishing criterion (not just "see the other skill" — the actual axis that separates them, e.g. "counts *that* a subagent was invoked" vs. "assesses *how well* it performed"), always bidirectional. This same pattern closed the original `analyzing-plugin-components`/`starting-an-analysis` collision and the `analyzing-tool-and-framework-use`/`analyzing-actor-behavior` and `analyzing-governance-and-conflicts`/`mining-recurring-patterns` overlaps found in later audits.
