@@ -98,6 +98,19 @@
       "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
       "repository": "https://github.com/andrehahm/andres-cc-marketplace",
       "license": "Apache-2.0"
+    },
+    {
+      "name": "context-kit",
+      "source": "./plugins/context-kit",
+      "description": "Automatic, hook-driven context-window management for Claude Code sessions — tracks tool-call/context usage, suggests strategic compaction at phase transitions and milestones, and captures/restores session state across compaction boundaries.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Andre Hahm",
+        "url": "https://github.com/andrehahm"
+      },
+      "homepage": "https://github.com/andrehahm/andres-cc-marketplace",
+      "repository": "https://github.com/andrehahm/andres-cc-marketplace",
+      "license": "Apache-2.0"
     }
   ]
 }

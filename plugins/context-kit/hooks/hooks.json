@@ -1,0 +1,96 @@
+{
+  "description": "Automatic context-usage tracking, phase/milestone detection, and strategic compaction suggestions and state capture/restore for Claude Code sessions.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-session-init.sh",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "compact|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-track-and-suggest.sh",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-milestone-detector.sh",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/context-monitor.py",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-instructions.sh",
+            "timeout": 5,
+            "onError": "warn"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/pre-compact.py",
+            "timeout": 10,
+            "onError": "warn"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-stop-check.sh",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      }
+    ]
+  }
+}
