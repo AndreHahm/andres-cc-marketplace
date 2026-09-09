@@ -12,7 +12,7 @@ description: >-
   check across them is wanted, or when asking whether two analysis-kit
   reports actually agree with each other.
 allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/comparator.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
-argument-hint: [2+ paths to persisted analysis-kit reports, or "latest N"]
+argument-hint: [2+ paths to persisted analysis-kit reports, "latest N", or "scope <scope-slug>"]
 ---
 
 # Reviewing Analysis Findings
@@ -23,7 +23,7 @@ This skill reviews *other reports*, not production code or a live session — it
 
 ## Quick Start
 
-1. Identify 2+ report paths to cross-check — an explicit list, `"latest N"`, or ask.
+1. Identify 2+ report paths to cross-check — an explicit list, `"latest N"`, `"scope <scope-slug>"`, or ask.
 2. Run the structural diff (Phase 2) on each pair before interpreting anything semantically.
 3. Classify findings pairs per `references/cross-check-taxonomy.md` — Duplicate, Contradiction, or Severity Undercut (Phase 3).
 4. Review the report, then check the persisted path.
@@ -47,9 +47,16 @@ This skill reviews *other reports*, not production code or a live session — it
 
 ## Phase 1: Identify the Report Paths
 
-If 2+ paths were supplied as arguments, use them. If `"latest N"` was supplied, `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/*.md')` — analysis-kit's own 9 report directories named explicitly, same convention `comparing-sessions` and `generating-analysis-recommendations` already apply — and take the N most recently modified. Otherwise ask via `AskUserQuestion` which reports to cross-check, or whether to use the latest N found.
+If 2+ paths were supplied as arguments, use them. If `"latest N"` was supplied, `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/*.md')` — analysis-kit's own 9 report directories named explicitly, same convention `comparing-sessions` and `generating-analysis-recommendations` already apply — and take the N most recently modified. If `"scope <scope-slug>"` was supplied, resolve the complete compatible set instead (see below). Otherwise ask via `AskUserQuestion` which reports to cross-check, whether to use the latest N found, or whether to resolve a full scope.
 
 Require at least 2 paths — a single report has nothing to cross-check against. If only one resolves, say so and stop rather than producing an empty cross-check.
+
+**`scope <scope-slug>` resolution.** `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` — the same 9-directory enumeration as `"latest N"`, filtered to the given scope-slug, matching each date-range skill's own Next-step filter convention (`references/report-discovery-convention.md`'s per-site table).
+
+- **Exact-prefix boundary, not a substring match.** A match only counts if the text immediately following `<scope-slug>` in the filename is the persistence-timestamp separator (`-<ISO8601-timestamp>.md`, or `-vs-<...>` for `comparing-sessions`' compound slug) — never any other continuation. This guards against a shorter scope-slug (e.g. `2026-08-10`) silently swallowing a longer, distinct one (e.g. `2026-08-10-to-2026-08-14`) that happens to share the same literal prefix.
+- **Exclude the output about to be written.** This run's own not-yet-persisted report is never a candidate for its own Included/Excluded lists.
+- **Exclude non-report matches.** Anything under `plugins/analysis-kit/tests/fixtures/` (smoke/eval fixtures, not real persisted output) is out of scope regardless of filename — the glob above only ever reaches `.claude/output/`, so this is naturally satisfied as long as the glob root isn't broadened later; call it out explicitly here so a future edit doesn't widen the root without noticing this guard.
+- **List every match found as either Included or Excluded, with a reason for each exclusion** — e.g. a `mining-review-learnings`/`managing-review-learnings` report is never included here (neither directory is in this 9-directory enumeration, per their own deliberate exclusion — see the Arguments block above), a match whose own content shows it's for a materially different sub-scope is excluded with that reason stated, and a compatible producer-consumer pair (see Phase 3) is included but flagged as related rather than treated as independent corroboration.
 
 ## Phase 2: Structural Diff (Pairwise)
 
@@ -67,11 +74,18 @@ This narrows Phase 3's attention to genuinely comparable sections first (`shared
 
 Per `references/cross-check-taxonomy.md`, classify each candidate finding pair into one of three categories:
 
-- **Duplicate** — near-identical finding/claim across two reports, same root cause. Not automatically a problem (two skills legitimately noticing the same real issue from different angles is expected) — flag it so a reader knows not to treat it as two separate items when prioritizing.
+- **Duplicate** — near-identical finding/claim across two reports, same root cause. Not automatically a problem (two skills legitimately noticing the same real issue from different angles is expected) — flag it so a reader knows not to treat it as two separate items when prioritizing. **Producer-consumer relationship, not a Duplicate:** when a `generating-analysis-recommendations` report's plan was expanded directly from a specific source report's finding, the same underlying claim appearing in both is not independent corroboration — record it as a Related pair (name the recommendation and its source finding) rather than classifying it as a Duplicate, which implies two *independent* observations of the same thing.
 - **Contradiction** — two reports reach opposite verdicts about the same subject, and neither report's text acknowledges the other's finding. Requires the same subject, not just similar wording — two findings about different files that happen to use similar language aren't a contradiction.
 - **Severity Undercut** — one report rates a finding at a given severity, but another report's own cited evidence for a related or the same finding implies a different severity than the first report claims. Ground the comparison in `../../references/severity-vocabulary.md`'s shared scale, since the two reports may use different native vocabularies (P1/P2/P3 vs. Violated/Compliant).
 
 ## Phase 4: Report
+
+For a `scope <scope-slug>` run, open with **Included Reports** (every report actually cross-checked) and
+**Excluded Reports** (every match Phase 1 found but didn't include, with its reason) — for an explicit-list
+or `"latest N"` run, these two sections are unnecessary since the input set is already fully named in the
+Arguments/Phase 1 output; don't add empty placeholder sections for those modes.
+
+**Supersession check (scope runs only):** before drafting, `Glob('.claude/output/reviewing-analysis-findings/<scope-slug>-*.md')` for an earlier findings-review report covering this same scope. If one exists and this run's own Included Reports set is a strict superset of what that earlier report covered, add a **Supersedes** section naming the earlier report's path and what it was missing (the reports this run adds that the earlier one didn't have). Never overwrite or delete the earlier file — it stays as the historical record of what was known at that point.
 
 Group by category (Duplicates, Contradictions, Severity Undercuts), most consequential first within each group. For each entry, cite both reports' paths and the specific text from each that supports the classification.
 
@@ -95,6 +109,10 @@ Included/Excluded Reports sections describe the same fact — keep them consiste
 After Phase 4, verify these gates before presenting output as final:
 
 - [ ] At least 2 report paths were resolved before Phase 2 ran — a single report never proceeds past Phase 1
+- [ ] A `scope <scope-slug>` run uses the exact-prefix boundary (not a bare substring match), so a shorter scope-slug never silently swallows a longer, distinct one that shares the same literal prefix
+- [ ] A `scope <scope-slug>` run's report always lists every resolved match as either Included or Excluded, each with a stated reason for exclusion — never a silent drop
+- [ ] A `generating-analysis-recommendations` report expanded directly from a source finding is recorded as a Related producer-consumer pair, never double-counted as an independent Duplicate
+- [ ] A later full-scope findings review that supersedes an earlier partial one for the same scope states this in a Supersedes section and names the earlier report's path — it never overwrites or deletes that earlier file
 - [ ] The structural diff (Phase 2) ran for every pair before any semantic interpretation
 - [ ] Every classified finding names both source reports and cites specific text from each
 - [ ] Severity Undercut findings are grounded in `severity-vocabulary.md`'s shared scale, not an ad hoc comparison of two different native vocabularies
