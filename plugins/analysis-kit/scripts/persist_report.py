@@ -15,7 +15,9 @@ independently-trusting ones.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -60,7 +62,19 @@ def main() -> int:
         return 1
 
     final_path.parent.mkdir(parents=True, exist_ok=True)
-    final_path.write_bytes(redacted_bytes)
+
+    # Write to a temp file in the same directory, then atomically replace the
+    # destination -- a crash mid-write leaves the prior final_path untouched
+    # instead of a partially-written file.
+    tmp_fd, tmp_name = tempfile.mkstemp(dir=final_path.parent, prefix=".persist_report-")
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(tmp_fd, "wb") as tmp_file:
+            tmp_file.write(redacted_bytes)
+        os.replace(tmp_path, final_path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
     written_bytes = final_path.read_bytes()
     if written_bytes.count(b"\r\n") != 0:
