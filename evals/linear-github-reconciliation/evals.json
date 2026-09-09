@@ -1,0 +1,14 @@
+{
+  "skill_name": "linear-github-reconciliation",
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-reconciliation/SKILL.md",
+  "description": "Wave 2 skill: linear-github-reconciliation",
+  "evals": [
+    {
+      "id": 1,
+      "name": "linear-github-reconciliation primary scenario",
+      "prompt": "Linear issue ENG-204's workflow status changed to 'In Review' but no Wave 2 skill in this session recorded that transition. Investigate.",
+      "expected_output": "Compares Linear, Git, GitHub, and recorded evidence against the authority model; classifies the discrepancy as exactly one of the nine defined states (likely 'Early status' or 'Automation drift' here); never uses newest-timestamp precedence; does not attempt to reverse-write against native automation, and stops consequential workflows pending investigation.",
+      "files": []
+    }
+  ]
+}

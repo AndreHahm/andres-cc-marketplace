@@ -16,6 +16,12 @@ what that execution looked like at some moment. This skill is the only bridge fr
 into a Notion record, and it never runs in the background — every summary is a single, deliberate,
 approved write.
 
+Wave 2 extends this as one more deliberate input: a verified Git/GitHub outcome (from
+`merge-to-completion`'s own read-back evidence) can feed into a summary or outcome/learning capture
+the same way a Linear fact does — never as a direct or automatic GitHub write of its own. This
+skill still never becomes a GitHub automation endpoint: it only accepts Git/GitHub evidence as
+*input* to a deliberate, human-approved Notion write, exactly as it already treats Linear facts.
+
 ## When to Use
 
 Producing a dated Linear-to-Notion status snapshot, or capturing an outcome/learning after a piece
@@ -28,13 +34,21 @@ of work completes — this skill is the front door for outcome/learning capture,
   idea") → `notion-knowledge-management` directly.
 - Dispositioning open follow-up items from a completed piece of work → `open-item-management`.
 - Changing Linear state itself (not just reading it for a summary) → `linear-work-management`.
+- A live or automated trigger from GitHub itself (a webhook, an Actions step, a native integration
+  event) — this skill only accepts already-verified evidence as deliberate input from another Wave 2
+  skill's own read-back; it never listens for or reacts to a GitHub event directly.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
 ## Quick Start
 
 1. Read the relevant Linear facts via `linear-work-management` (a Milestone's status, a Project's
-   Issue completion rate, whatever the summary is actually about).
+   Issue completion rate, whatever the summary is actually about) — and, when the source is a
+   completed Wave 2 lifecycle, the same Issue's `git-github-evidence` array (repository, PR
+   identity, merge SHA — never raw check/review transcripts), also via `linear-work-management`
+   since it is an ordinary field on the Issue record; see
+   `../linear-work-management/references/linear-entity-fields.md`'s Issue table and
+   `../../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record.
 2. Produce a dated summary that is explicitly labeled as a snapshot, not live state — the reader
    must never be able to mistake this Notion record for something that updates itself. Keep it
    concise and outcome-focused (see Confirmation and Safety) — never a restatement of every
@@ -90,6 +104,11 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - **This skill captures the outcome, not the open follow-ups.** A completed piece of work's
   remaining open questions/decisions/follow-ups are `open-item-management`'s job — if asked to
   "wrap up" a piece of work, expect both skills to run, not just this one.
+- **Never becomes a direct GitHub automation endpoint.** A Git/GitHub outcome reaches this skill
+  only via another skill's already-verified evidence (`merge-to-completion`'s read-back), never a
+  live GitHub event triggering this skill directly — that distinction is the whole point of the
+  "deliberate summary/learning workflow" Wave 2's design requires as the only supported path from
+  GitHub facts to Notion.
 
 ## Testing & Validation
 

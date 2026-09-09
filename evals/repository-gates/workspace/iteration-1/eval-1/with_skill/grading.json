@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Resolves the repository_policy.provider_profile (and confirms it maps to git-kit) before discovering gates",
+      "passed": true,
+      "evidence": "Read versioned-configuration.json schema v2, checked local override via git ls-files trust-boundary check, found provider_profile null -> reported manual handoff per skill's own Step 2 before any gate discovery table use"
+    },
+    {
+      "text": "Discovers gates from actual repository configuration sources named in the skill (pre-commit config, branch protection, workflow files), not a hardcoded universal list",
+      "passed": true,
+      "evidence": "Read real .pre-commit-config.yaml hooks, enumerated all 19 .github/workflows/*.yml files and grepped for Codex-review keyword, found two real distinct Codex gates by their actual display names"
+    },
+    {
+      "text": "Never asserts a 'Review Changes' gate exists unless real repo config names one",
+      "passed": true,
+      "evidence": "Explicit statement: 'nothing in this repository's own discovered configuration... names a gate with that identity'"
+    },
+    {
+      "text": "If branch protection can't be read, discloses this as ambiguous (permission vs. absence) rather than concluding 'no protection'",
+      "passed": true,
+      "evidence": "Explicit: 'I am not asserting either protection exists or no protection configured' for the unreachable gh api branch-protection call"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

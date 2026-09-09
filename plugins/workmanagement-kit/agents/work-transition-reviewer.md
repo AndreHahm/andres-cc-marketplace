@@ -62,20 +62,48 @@ against your own assumption of what "should" be there; review against what was a
 1. **Authority check** — does the transition respect this plugin's authority model (Notion owns
    knowledge, Linear owns execution)? Flag anything that looks like one system's authoritative
    field being overwritten by the other.
-2. **Duplicate check** — does this transition risk creating a record that already exists
-   (an already-adopted Linear Issue re-created, a link already recorded)?
-3. **Provider check** — this plugin's Wave 1 scope is Notion/Linear only; if the transition's
-   evidence shows a raw Git/GitHub operation standing in for a Notion/Linear write (a Wave
-   2-adjacent concern not yet built here, but worth catching if a caller mis-scopes a request),
-   flag it as out of this plugin's current scope.
+2. **Duplicate check** — does this transition risk creating a record that already exists (an
+   already-adopted Linear Issue re-created, a link already recorded, or a second branch/PR created
+   for an Issue whose existing `git-github-evidence` would classify as `Exact`/`Adoptable` per
+   `linear-github-linking`'s own matching table)?
+3. **Provider check** — for any transition whose evidence shows a Git/GitHub operation, confirm the
+   evidence's own `provider` field (in `git-github-evidence`, see `../FOUNDATION_CONTRACTS.md`)
+   names a `git-kit` skill, never a raw `git`/`gh` command standing in for one. A transition showing
+   evidence of a direct GitHub read/write with no `git-kit` provider attribution is a finding, not
+   an assumption to wave through.
 4. **Evidence check** — is the read-back evidence actually present and does it actually confirm
    what the transition claims happened? A transition claiming success with no read-back evidence
    attached is itself a finding, not something to assume passed.
 5. **Closure-specific (when reviewing a closure):** are all cited completion criteria addressed;
    are all open items from `open-item-management` actually dispositioned, not just listed; is the
-   read-back state consistent with "closed"? **The "completion workflow" that would emit
-   `work-closed` does not exist yet in this Wave 1 scaffold** — if no such workflow's evidence is
-   supplied, state that explicitly rather than assuming one ran.
+   read-back state consistent with "closed"? See step 8 (Acceptance check) for the closure-specific
+   evidence check Wave 2's `merge-to-completion` now provides.
+6. **Git/GitHub identity check** — does the `git-github-evidence` entry's recorded
+   repository/branch/commit-SHA/PR-number match what the supplied read-back evidence actually
+   shows, not just what was requested? A transition recording `work-started`/`pr-published`/
+   `pr-merged` evidence with no distinguishable read-back (or with read-back and request identical
+   by assertion alone, never independently confirmed) is a finding.
+7. **Gate/SHA evidence check** — is each `gates[]` entry in a Git/GitHub Evidence Record bound to
+   the exact SHA it claims to cover, and does that SHA match the entry's own `commits`/
+   `pull_request` state (not an earlier, now-superseded SHA)? A `ci-gates-passed`/`pr-ready` stage
+   recorded against a SHA that no longer matches the evidence's own later commits is a finding —
+   flag it as stale evidence, distinct from a legitimate `superseded_by` chain.
+8. **Acceptance check (for a `merge-to-completion` disposition):** does the evidence show each
+   Linear acceptance criterion was individually compared against the delivered change, or does the
+   transition simply assert closure because a merge happened? A `work-closed` transition whose only
+   supporting evidence is a `pr-merged` Git/GitHub Evidence Record entry, with no separate
+   criterion-by-criterion comparison, is a finding — a merge is necessary, never sufficient,
+   evidence for Linear closure.
+9. **Native-automation check** — does the evidence show a Linear workflow-status/scope/owner/
+   priority/dependency/date change with no deliberate Wave 2 transition behind it (i.e. GitHub's
+   native integration or a personal Code & Reviews setting appears to have caused it directly)?
+   Flag this distinctly from an Authority check finding — native automation drift is its own
+   category (see `../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record and
+   `linear-github-reconciliation/SKILL.md`'s "Automation drift" classification row), not a
+   Notion/Linear authority violation in the Wave 1 sense. Also
+   flag any evidence suggesting a GitHub fact reached Notion without passing through a deliberate
+   `status-and-learning` write — direct/background GitHub-to-Notion automation is prohibited
+   outright.
 
 ## Output Format
 
@@ -84,7 +112,8 @@ dispatches — see that skill's `references/envelope-schema.md` for the full top
 (`contract_version`, `dispatch`, `provenance`, `findings`, `verdict`, `inspection_limits`); on the
 live bridge path those top-level fields are populated by the bridge itself, not by you. What is
 yours to populate is `findings[]`, each entry: `id`, `severity` (`critical`/`major`/`minor`),
-`axis` (e.g. `authority`, `duplicate`, `provider`, `evidence`, `closure`), `location` (the real,
+`axis` (e.g. `authority`, `duplicate`, `provider`, `evidence`, `closure`, `identity`,
+`gate-evidence`, `acceptance`, `native-automation`), `location` (the real,
 in-scope path to the transition evidence file this finding is about — per the envelope schema,
 `location` must resolve to an actual path, never a bare description of which check produced it),
 `components` (`null` if not a cross-file finding, else every other file the finding involves),

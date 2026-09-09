@@ -1,0 +1,14 @@
+{
+  "skill_name": "development-to-pr",
+  "skill_path": "plugins/workmanagement-kit/skills/development-to-pr/SKILL.md",
+  "description": "Wave 2 skill: development-to-pr",
+  "evals": [
+    {
+      "id": 1,
+      "name": "development-to-pr primary scenario",
+      "prompt": "Commit the current changes and open a draft PR for Linear issue ENG-201's already-started branch.",
+      "expected_output": "Delegates the commit to git-kit:commit (never stages/commits directly itself); records commit-linked evidence per FOUNDATION_CONTRACTS.md's Git/GitHub Evidence Record; searches for an existing PR before proposing a new one; presents PR metadata and gets confirmation before publishing.",
+      "files": []
+    }
+  ]
+}

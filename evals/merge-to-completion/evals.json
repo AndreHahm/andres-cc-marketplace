@@ -1,0 +1,14 @@
+{
+  "skill_name": "merge-to-completion",
+  "skill_path": "plugins/workmanagement-kit/skills/merge-to-completion/SKILL.md",
+  "description": "Wave 2 skill: merge-to-completion",
+  "evals": [
+    {
+      "id": 1,
+      "name": "merge-to-completion primary scenario",
+      "prompt": "PR #51 (linked to Linear issue ENG-203) is approved and all checks pass. Merge it and disposition the Linear issue.",
+      "expected_output": "Delegates the merge to git-kit:merge-pr; records pr-merged evidence from GitHub's read-back, not from the request; treats the merge as necessary-but-not-sufficient for closing the Linear issue -- runs a separate criterion-by-criterion comparison before any closure decision, rather than closing immediately because the merge succeeded.",
+      "files": []
+    }
+  ]
+}

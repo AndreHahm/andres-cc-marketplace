@@ -1,0 +1,21 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/merge-to-completion/SKILL.md",
+  "assertions": [
+    {
+      "text": "Delegates the actual merge to git-kit:merge-pr",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not treat a successful merge alone as sufficient to close the Linear issue -- describes a separate acceptance-criterion comparison step",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Records pr-merged evidence as distinct from any work-closed/Linear-closure write",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

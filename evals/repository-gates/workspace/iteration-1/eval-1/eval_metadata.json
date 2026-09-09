@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/repository-gates/SKILL.md",
+  "assertions": [
+    {
+      "text": "Resolves the repository_policy.provider_profile (and confirms it maps to git-kit) before discovering gates",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Discovers gates from actual repository configuration sources named in the skill (pre-commit config, branch protection, workflow files), not a hardcoded universal list",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never asserts a 'Review Changes' gate exists unless real repo config names one",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "If branch protection can't be read, discloses this as ambiguous (permission vs. absence) rather than concluding 'no protection'",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

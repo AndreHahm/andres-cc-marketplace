@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "notion": {
     "production_workspace_id": null,
     "test_workspace_id": null,
@@ -12,5 +12,15 @@
     "organization_id": null,
     "production_team_id": null,
     "test_team_id": null
+  },
+  "github": {
+    "repository_slug": null,
+    "canonical_url": null,
+    "default_branch": null,
+    "native_automation": "unconfigured"
+  },
+  "repository_policy": {
+    "provider_profile": null,
+    "gate_discovery": "unconfigured"
   }
 }

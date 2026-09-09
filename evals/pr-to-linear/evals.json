@@ -1,0 +1,14 @@
+{
+  "skill_name": "pr-to-linear",
+  "skill_path": "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md",
+  "description": "Wave 2 skill: pr-to-linear",
+  "evals": [
+    {
+      "id": 1,
+      "name": "pr-to-linear primary scenario",
+      "prompt": "PR #50 (linked to Linear issue ENG-202) has review comments and a merge-blocking Codex finding. Summarize its review status to Linear and get the blocking finding resolved.",
+      "expected_output": "Delegates the actual finding triage/fix/reply/resolve cycle to git-kit:handling-review-findings rather than doing it itself or routing it to git-kit:collaborating-on-a-pr; reflects only a concise, deliberate summary to Linear, never a raw transcript copy.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "skill_name": "repository-gates",
+  "skill_path": "plugins/workmanagement-kit/skills/repository-gates/SKILL.md",
+  "description": "Wave 2 skill: repository-gates",
+  "evals": [
+    {
+      "id": 1,
+      "name": "repository-gates primary scenario",
+      "prompt": "What gates apply to this repository before I can publish a PR for a Wave 2 Linear-issue branch? Resolve the repository policy profile and discover the actual configured gates.",
+      "expected_output": "Resolves repository_policy.provider_profile from versioned-configuration.json (merged with any local override) before anything else; discovers gates from real repo config (.pre-commit-config.yaml, branch protection, workflow files) rather than assuming a universal list; never invents a 'Review Changes' gate; discloses ambiguity if branch protection can't be read rather than treating that as 'no protection'.",
+      "files": []
+    }
+  ]
+}

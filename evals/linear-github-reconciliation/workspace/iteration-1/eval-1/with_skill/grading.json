@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the situation as one of the defined drift states rather than leaving it unclassified",
+      "passed": true,
+      "evidence": "Built a full decision tree covering all 9 states, identified Automation drift and Missing link as leading candidates, correctly reported Ambiguous pending real reads rather than guessing"
+    },
+    {
+      "text": "Never proposes resolving the discrepancy by which system was most recently updated",
+      "passed": true,
+      "evidence": "Explicit Step 2 application: 'that doesn't make the GitHub event automatically correct... not auto-resolved toward whichever system last wrote something'"
+    },
+    {
+      "text": "Does not propose a reverse write against GitHub's native automation to force the status back",
+      "passed": true,
+      "evidence": "Explicit: 'this skill never reverse-writes against native automation to win the disagreement'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

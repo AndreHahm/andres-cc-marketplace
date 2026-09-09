@@ -16,6 +16,13 @@
       "prompt": "Disposition the follow-ups from the read-only-mirror design decision.",
       "expected_output": "Presents only the actionable-work items as a batch for approval, each with a source anchor, and does not silently create Linear Issues for retained-knowledge or Decision-needed items. Records every item's disposition as its own entry appended to the source record's disposition-history property, not overwriting prior entries.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Wave 2 post-merge-completion routing (open-item-management)",
+      "prompt": "Wave 2's merge-to-completion just routed Linear issue ENG-207's remaining follow-up items here for disposition.",
+      "expected_output": "Revalidates each item against current state rather than just replaying merge-to-completion's own preliminary classification; classifies each item as exactly one of resolved/retained-knowledge/decision-needed/actionable-work; gets two separate approvals (the follow-up batch, and the full disposition record).",
+      "files": []
     }
   ]
 }

@@ -1,0 +1,14 @@
+{
+  "skill_name": "linear-github-lifecycle",
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md",
+  "description": "Wave 2 skill: linear-github-lifecycle",
+  "evals": [
+    {
+      "id": 1,
+      "name": "linear-github-lifecycle primary scenario",
+      "prompt": "Take accepted Linear issue ENG-205 all the way from start of work through to a merged PR and Linear disposition.",
+      "expected_output": "Composes the 7 focused Wave 2 skills (work-to-development, development-to-pr, pr-to-linear, merge-to-completion, status-and-learning, plus reconciliation on demand) in the documented phase order, delegating each phase's actual logic rather than reimplementing it; gets confirmation at phase transitions.",
+      "files": []
+    }
+  ]
+}

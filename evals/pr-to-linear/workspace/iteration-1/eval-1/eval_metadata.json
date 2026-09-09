@@ -1,0 +1,21 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md",
+  "assertions": [
+    {
+      "text": "Routes finding triage/fix/reply/resolve to git-kit:handling-review-findings, not to git-kit:collaborating-on-a-pr",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never copies a full review comment or check transcript verbatim into the Linear summary",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Reflects only meaningful/blocking implications to Linear, described as a deliberate summary",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

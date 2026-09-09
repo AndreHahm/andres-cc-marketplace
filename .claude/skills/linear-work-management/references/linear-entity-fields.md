@@ -62,6 +62,7 @@ neither carries `notion-link`.
 | `notion-link` | No | The Idea or accepted Decision record this was promoted from, if promoted via `idea-to-implementation` — the required reciprocal half of `work-linking`'s stable-ID pair for this plugin's most common promotion path |
 | `disposition-history` | No | Array of per-item outcomes recorded by `open-item-management` when this Issue is the open-item source; accumulates, never overwritten — see `../../../FOUNDATION_CONTRACTS.md`'s Disposition Record |
 | `open-item-source` | No | `{system, stable_id, item_id}` reference back to the Report/Decision/Issue (`stable_id`) and specific open item within it (`item_id`) this follow-up was created from by `open-item-management`; set directly as part of this Issue's own creation write, independent of the source record's own `disposition-history` — see `../../../FOUNDATION_CONTRACTS.md`'s Disposition Record companion-field note |
+| `git-github-evidence` | No | Array of Wave 2 (`workmanagement-kit`'s Git/GitHub lifecycle bridge) stage-transition evidence entries — repository, branch, commits, PR identity, gate results — recorded by `linear-github-linking` and the skills that delegate to it; accumulates, never overwritten — see `../../../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record |
 
 ## Cross-Entity Rules
 

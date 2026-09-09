@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads git-github-evidence via linear-work-management rather than linear-github-linking",
+      "passed": true,
+      "evidence": "Step 1 explicitly invokes linear-work-management only, citing linear-entity-fields.md's Issue table for the field"
+    },
+    {
+      "text": "Explicitly labels the produced summary as a dated snapshot, not live/continuously-updating state",
+      "passed": true,
+      "evidence": "Drafted content explicitly headed 'Snapshot -- 2026-09-09 (not live; does not update)'"
+    },
+    {
+      "text": "Describes getting approval before writing the summary to Notion",
+      "passed": true,
+      "evidence": "Step 3 explicit AskUserQuestion gate before step 5's write, with explicit refusal to proceed on auto-mode alone"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

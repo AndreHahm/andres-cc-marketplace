@@ -1,0 +1,21 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-reconciliation/SKILL.md",
+  "assertions": [
+    {
+      "text": "Classifies the situation as one of the defined drift states rather than leaving it unclassified",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never proposes resolving the discrepancy by which system was most recently updated",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not propose a reverse write against GitHub's native automation to force the status back",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}
