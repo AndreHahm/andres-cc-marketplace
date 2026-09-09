@@ -45,7 +45,35 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
   Codex CLI use) and the live path (via this plugin's own `scripts/bridge_caller.py`, dispatching
   through `codex-kit`'s `codex-review-bridge`) are built and live (see Status).
 
-This plugin depends on `codex-kit` for the live Codex review path.
+Wave 2 additively bridges accepted Linear work to Git/GitHub implementation, orchestrating this
+repository's own `git-kit` lifecycle skills rather than reimplementing any of them:
+
+- **`repository-gates`** — discover, delegate, record, and invalidate this repository's actual
+  Git/GitHub lifecycle gates and the repository-policy provider profile that maps governed
+  operations to `git-kit`.
+- **`linear-github-linking`** — record and reconcile stable reciprocal links among a Linear Issue
+  and its GitHub branches, commits, and pull requests, with drift classification and bounded
+  repair.
+- **`work-to-development`** — validate an accepted Linear Issue's readiness and request governed
+  branch/worktree creation through `git-kit:starting-work`.
+- **`development-to-pr`** — supply Linear context and coordinate a governed commit and draft-PR
+  workflow through `git-kit:commit` plus `git-kit:create-pr`/`collaborating-on-a-pr`.
+- **`pr-to-linear`** — read a published PR's checks/reviews/threads, delegate the actual
+  finding-triage/fix/reply/resolve cycle to `git-kit:handling-review-findings`, and write
+  deliberate blocker summaries into Linear.
+- **`merge-to-completion`** — coordinate governed merge readiness/execution through
+  `git-kit:merge-pr`, then separately evaluate each Linear acceptance criterion before any
+  closure decision — a merge alone never closes Linear work.
+- **`linear-github-reconciliation`** — a broader drift sweep across Linear, Git, GitHub, and
+  recorded evidence against the authority matrix, repairing only bounded fields.
+- **`linear-github-lifecycle`** — composes `work-to-development`, `development-to-pr`,
+  `pr-to-linear`, `merge-to-completion`, and Wave 1's `status-and-learning` end to end (plus
+  `linear-github-linking` for evidence lookups and `linear-github-reconciliation` on demand),
+  with resumable phase state. `repository-gates` is reached indirectly, through the delegated
+  phase skills, not called by this skill directly.
+
+This plugin depends on `codex-kit` for the live Codex review path and on `git-kit` for every
+governed Git/GitHub operation Wave 2's skills delegate to.
 
 ## Installation
 
@@ -53,16 +81,31 @@ Install from this marketplace the same way as any other plugin in this repositor
 repository's own installation instructions). `codex-kit` must also be installed for the live
 Codex review path to function; without it (or on a Codex dispatch failure), `scripts/bridge_caller.py`
 returns the bridge's own typed failure rather than silently skipping the review — see Status for
-the script's current known reliability caveat on Windows.
+the script's current known reliability caveat on Windows. `git-kit` must be installed for any Wave 2
+skill's governed Git/GitHub operations to resolve — without it, `repository-gates` fails closed with
+a manual handoff rather than falling back to a raw `git`/`gh` command.
 
 ## Status
 
-This is Wave 1 of a two-wave design (Wave 1: Notion/Linear foundation; Wave 2, not built here: a
-later, additive Git/GitHub lifecycle bridge). Live Notion/Linear mutation requires the Foundational
-Setup steps described in this plugin's design documents to be completed (connector installation,
-workspace/team scoping, test scopes) before first live use.
+Both waves of this plugin's two-wave design are now built: Wave 1 (Notion/Linear foundation) and
+Wave 2 (an additive Git/GitHub lifecycle bridge, orchestrating `git-kit`'s existing lifecycle rather
+than reimplementing it). Live Notion/Linear mutation requires the Foundational Setup steps described
+in this plugin's design documents to be completed (connector installation, workspace/team scoping,
+test scopes) before first live use; Wave 2 additionally requires `repository_policy.provider_profile`
+to be set to `git-kit` in `versioned-configuration.json`'s local override before any Wave 2 skill's
+governed operations will resolve (see `repository-gates`'s own Failure and Resume section) — this
+repository has not yet activated a local override for that field.
 
-Items still open before this plugin is fully live:
+Items still open before Wave 2 is fully live:
+- **`versioned-configuration.json`'s schema-v2 `github`/`repository_policy` fields ship unconfigured
+  by design**, same shippable-defaults-plus-local-override model every existing field already uses —
+  an installation activates them via `.claude/workmanagement-kit.local.json`, never by editing the
+  shipped file.
+- **Each of the 8 Wave 2 skills has one real `skill-tester` Quick Workflow eval scenario** (under
+  `evals/<skill-name>/`), not the fuller 2-3-scenario baseline coverage Wave 1's own skills carry —
+  a real gap, not a placeholder, worth closing in a follow-up pass.
+
+Items still open from Wave 1:
 - **The shipped host profile and versioned configuration still ship as schemas with safe
   defaults, unconfigured, by design.** `host-profile.json` and `versioned-configuration.json` at
   the plugin root always default every operation to `unconfigured`/`null` — a real installation
