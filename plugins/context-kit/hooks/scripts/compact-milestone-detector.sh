@@ -38,9 +38,47 @@ fi
 
 TRACK_DIR="${HOME:-${USERPROFILE:-/tmp}}/.claude/strategic-compact"
 TRACK_FILE="${TRACK_DIR}/session-${SESSION_HASH}"
+TRACK_LOCK="${TRACK_FILE}.lock"
 
 # Exit if no tracking file
 [ ! -f "$TRACK_FILE" ] && exit 0
+
+# Acquire a lock before reading/updating $TRACK_FILE — this hook
+# (PostToolUse) and compact-track-and-suggest.sh (PreToolUse) both
+# read-modify-write the same file, and Claude Code can dispatch multiple
+# tool calls in one turn. Same two-phase scheme as compact-track-and-
+# suggest.sh: many cheap `mkdir`-only retries (phase 1), then at most one
+# fork-costly stale-lock check-and-bust before giving up (phase 2) — see
+# that script's own comment for the full rationale, including the live
+# timing measurement behind splitting it this way.
+_lock_acquired=0
+_attempts=0
+while [ "$_attempts" -lt 60 ]; do
+    if mkdir "$TRACK_LOCK" 2>/dev/null; then
+        printf '%s\n%s\n' "$$" "$(date +%s)" > "${TRACK_LOCK}/created" 2>/dev/null
+        _lock_acquired=1
+        break
+    fi
+    _attempts=$((_attempts + 1))
+done
+
+if [ "$_lock_acquired" -ne 1 ] && [ -f "${TRACK_LOCK}/created" ]; then
+    LOCK_PID=""
+    LOCK_CREATED=""
+    { read -r LOCK_PID; read -r LOCK_CREATED; } < "${TRACK_LOCK}/created" 2>/dev/null
+    if [[ "$LOCK_CREATED" =~ ^[0-9]+$ ]]; then
+        LOCK_AGE=$(( $(date +%s) - LOCK_CREATED ))
+        if [ "$LOCK_AGE" -ge 10 ] && { ! [[ "$LOCK_PID" =~ ^[0-9]+$ ]] || ! kill -0 "$LOCK_PID" 2>/dev/null; }; then
+            rm -rf "$TRACK_LOCK" 2>/dev/null
+            if mkdir "$TRACK_LOCK" 2>/dev/null; then
+                printf '%s\n%s\n' "$$" "$(date +%s)" > "${TRACK_LOCK}/created" 2>/dev/null
+                _lock_acquired=1
+            fi
+        fi
+    fi
+fi
+
+[ "$_lock_acquired" -ne 1 ] && exit 0
 
 # Source current state
 . "$TRACK_FILE"
@@ -112,6 +150,13 @@ if [ -n "$MILESTONE_TYPE" ] && [ "$TIME_SINCE_MILESTONE" -ge 300 ]; then
         echo "T3=$T3"
         echo "TIME_THRESHOLD=$TIME_THRESHOLD"
     } > "${TRACK_FILE}.tmp" && mv "${TRACK_FILE}.tmp" "$TRACK_FILE"
+fi
+
+# Release the lock now that any read-modify-write is complete. Only if we
+# still own it — see compact-track-and-suggest.sh's matching comment for why.
+_owner_pid=$(head -n1 "${TRACK_LOCK}/created" 2>/dev/null)
+if [ -z "$_owner_pid" ] || [ "$_owner_pid" = "$$" ]; then
+    rm -rf "$TRACK_LOCK" 2>/dev/null
 fi
 
 # Output JSON with suggestion if any
