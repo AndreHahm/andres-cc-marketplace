@@ -88,6 +88,11 @@ If no subagent dispatches occurred in scope, skip the subagent-level aggregation
 
 Group findings by category (recurring sequences, recalls/loops, usage hotspots). Close with a short Top Actions list, prioritizing automation candidates with the highest repeat count.
 
+**Coverage preamble and evidence metadata:** before writing the scratch file, prepend the Coverage
+Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
+origin/Coverage/Confidence/Source metadata block to each recurring-pattern finding, per
+`../../references/report-evidence-convention.md`.
+
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/mining-recurring-patterns/<scope-slug>-<timestamp>.md" --label "Recurring Pattern Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Recurring Pattern Report written: ...` confirmation line — present its printed output as-is. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
 **Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
@@ -110,6 +115,7 @@ After Phase 5, verify before presenting output as final:
 - [ ] Phase 4's skill-level ranking either used real `session_parser.py`/`codex_session_parser.py` data or was explicitly skipped with a stated reason — never estimated from conversation impressions alone
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
+- [ ] The scratch draft carries the Coverage Preamble and each finding carries its Evidence origin/Coverage/Confidence/Source metadata, per `report-evidence-convention.md`
 - [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when 2+ reports exist for this scope) was printed after the `📄 ... written:` line
 
 ## Reference Guide
@@ -120,4 +126,5 @@ After Phase 5, verify before presenting output as final:
 | `../../references/date-range-scope-convention.md` | Shared Phase 1 scope-resolution procedure this skill's own Phase 1 restates by reference | Phase 1 |
 | `references/pattern-mining-methodology.md` | Action-token abstraction examples, automation-candidate criteria, recall/loop detection patterns | Phase 2, Phase 3 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 3 memory-recall / Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
+| `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
 | `.claude/output/mining-recurring-patterns/` | Where this skill's own reports are persisted, one file per run | Phase 5 (write) |

@@ -71,6 +71,11 @@ For each section present in both reports (per Phase 2's `shared` list), compare 
 
 Structure findings as: **Consistencies** (what held steady), **Divergences** (what changed and in which direction), **Unresolved recurrences** (a suggestion present in both reports, meaning it wasn't acted on between sessions).
 
+**Coverage preamble and evidence metadata:** before writing the scratch file, prepend the Coverage
+Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
+origin/Coverage/Confidence/Source metadata block to each Consistency/Divergence/Unresolved-recurrence
+entry, per `../../references/report-evidence-convention.md`.
+
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/comparing-sessions/<scope-slug>-<timestamp>.md" --label "Session Comparison Report")`, where `<scope-slug>` derives from the two things being compared, e.g. `<current-scope>-vs-<prior-report-slug>`. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Session Comparison Report written: ...` confirmation line — present its printed output as-is. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
 **Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` This skill's own persisted filename slug (`<current-scope>-vs-<prior-report-slug>`) is unique to this one comparison and won't match any sibling report — so the "2+ reports" check below uses just the `<current-scope>` component (the same shared session identifier a date-range skill run on this same session/scope would have used), not the full compound slug. If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<current-scope>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.` (The just-written report itself, and any earlier `comparing-sessions` run sharing this same `<current-scope>`, both count toward the 2+ threshold — that's expected, not a bug: a genuine sibling report already exists in either case.)
@@ -90,6 +95,7 @@ After Phase 4, verify before presenting output as final:
 - [ ] Every entry in the diff's `shared` list was actually compared for content, not just noted as present in both
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
+- [ ] The scratch draft carries the Coverage Preamble and each comparison entry carries its Evidence origin/Coverage/Confidence/Source metadata, per `report-evidence-convention.md`
 - [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when 2+ reports share this run's `<current-scope>`) was printed after the `📄 ... written:` line
 
 ## Reference Guide
@@ -99,4 +105,5 @@ After Phase 4, verify before presenting output as final:
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `references/comparison-dimensions.md` | What counts as comparable between two sessions | Phase 3 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 / Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
+| `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
 | `.claude/output/comparing-sessions/` | Where this skill's own reports are persisted, one file per run | Phase 4 (write) |

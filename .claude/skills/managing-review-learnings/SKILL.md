@@ -246,6 +246,11 @@ issue body was actually surfaced for human approval before filing; report any ca
 evidence of that surfacing as an explicit deviation, not silently alongside a normally-approved "filed"
 outcome.
 
+**Coverage preamble and evidence metadata:** before writing the summary, prepend the Coverage Preamble
+(Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
+origin/Coverage/Confidence/Source metadata block to each disposition entry, per
+`../../references/report-evidence-convention.md`.
+
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the summary to the
 session scratchpad directory — never a bare relative filename, which resolves to the current working
 directory (usually the repo root) instead — then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch
@@ -362,6 +367,8 @@ After Phase 5, verify before presenting output as final:
       named explicitly in the relevant ask/dispatch, never silently propagated
 - [ ] `github-issue-lifecycle`'s current SKILL.md/workflow file was actually read before the dispatch,
       not assumed from this file's own description of it
+- [ ] The persisted summary carries the Coverage Preamble and each disposition entry carries its Evidence
+      origin/Coverage/Confidence/Source metadata, per `report-evidence-convention.md`
 - [ ] Every dispatch's real reported outcome (filed/found-as-duplicate/filing-failed) was captured and
       reported accurately in Phase 5 — never defaulted to "filed", and never reported as "not filed" for
       a post-filing verification concern (report that as "filed, but flagged as unverified" instead)
@@ -392,3 +399,4 @@ check against `.claude/rules/*.md`, and the filing-outcome vocabulary) — see
 | `.claude/output/mining-review-learnings/` | Where this skill's own input reports come from | Phase 1 |
 | `.claude/output/managing-review-learnings/` | Where this skill's own run summary is persisted | Phase 5 (write) |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention this skill deliberately does not participate in — see Gotchas | Background |
+| `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the summary |

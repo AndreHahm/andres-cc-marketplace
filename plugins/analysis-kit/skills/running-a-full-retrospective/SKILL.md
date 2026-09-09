@@ -161,6 +161,13 @@ resolved this scope" section for fixes that landed during the analysis runs them
 block for length), a "No action needed" section for informational-tier items, and a closing "Top 5 across
 the whole consolidation."
 
+**Coverage preamble and evidence metadata:** before writing the report, prepend the Coverage Preamble
+(Requested scope, Inspected scope, Unavailable evidence, Limitations) — Inspected scope here is which
+analysis types ran fresh, were reused, or produced an explicit empty contribution — per
+`../../references/report-evidence-convention.md`. Findings consolidated from dispatched reports inherit
+`Evidence origin: inherited` and the narrower of this run's own coverage and each source report's own
+stated coverage.
+
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full report to
 the session scratchpad directory (never a bare relative filename, which resolves to the current working
 directory — usually the repo root — instead), then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py"
@@ -386,6 +393,7 @@ After Phase 5, verify before presenting output as final:
 - [ ] The report was persisted to `.claude/output/running-a-full-retrospective/` and its path confirmed
       with the standard `📄 ... written:` line
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write
+- [ ] The report carries the Coverage Preamble, and consolidated findings inherit the narrower of this run's own coverage and each source report's stated coverage, per `report-evidence-convention.md`
 - [ ] The Phase 4 addendum (if the cross-check ran) was redacted via a direct `redact_secrets.py` pass
       before being folded into the persisted report via `Edit`
 - [ ] The Phase 4 cross-check offer and Phase 5's queue-start offer (5b) both used `AskUserQuestion` —
@@ -457,6 +465,7 @@ After Phase 5, verify before presenting output as final:
 | `../starting-an-analysis/references/analysis-type-guide.md` | One-paragraph disambiguation for each of the 5 eligible analysis types | Phase 1 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions and per-skill mapping table | Phase 3 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 (reuse check) and Phase 3 (persist) restate inline | Background — sweep this file's site list when editing either |
+| `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Phase 3 Persist step, before writing the report |
 | `.claude/output/running-a-full-retrospective/` | Where this skill's own reports are persisted, one file per run | Phase 3 (write) |
 | `<plugin-devkit-root>/skills/plugin-rulebook/references/evidence-schema.md` | Scope Manifest + Report Revision shapes this skill's Phase 5 hand-off builds for `plugin-lifecycle-downstream`'s External Entry (cross-plugin — `<plugin-devkit-root>` is resolved per `references/phase-5-fix-execution.md`'s Step 3 order, never hardcoded as a relative path) | Phase 5 |
 | `references/phase-5-fix-execution.md` | Full step-3/step-4 mechanics for the fix loop: dependency checks (including the `<plugin-devkit-root>` resolution order the two rows above and below rely on), the direct-fix worktree/commit/PR/merge/finishing-work chain, the pipeline-hand-off manifest/dispatch steps, Status-line update rules, and failure handling | Phase 5c (executing a topic) |
