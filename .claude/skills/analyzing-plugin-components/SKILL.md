@@ -111,12 +111,20 @@ Record any discrepancy found — an item marked open that's actually resolved, a
 **Invoked vs. edited components:** both count, and both get their own SWOT — but frame them differently. An *invoked* component is assessed on how well it performed when run (did its checks fire, did its output need correction). An *edited* component (one whose files you modified as a task, without ever loading it via `Skill`/`Agent`) is assessed on how well its existing structure/docs supported making that edit correctly, and what defects the edit surfaced. Don't skip edited components just because there's no invocation event to point to as evidence — the edit itself is the evidence.
 
 Emit the inventory before proceeding, and give every entry a stable marker
-(`<!-- inventory: component:<kebab-case-name> -->`, immediately after its row) — this is the stable
-identifier Phase 3's disposition markers and `validate_report.py`'s pre-persistence check both key off:
+(`<!-- inventory: component:<kebab-case-name> -->`) — this is the stable identifier Phase 3's
+disposition markers and `validate_report.py`'s pre-persistence check both key off. **Emit the complete
+table first, then every marker on its own line directly below the closed table** — never interleave a
+marker between table rows: an HTML-comment line isn't a valid pipe-table row, and GFM/CommonMark tables
+terminate at the first line that doesn't match the row pattern, so a marker placed mid-table would break
+the table's own rendering for every row after it.
 
 ```
 📦 Session Inventory  <start> → <end>
 | # | Component | Category | Evidence |
+|---|---|---|---|
+| 1 | <name> | <category> | <evidence> |
+| 2 | <name> | <category> | <evidence> |
+<!-- inventory: component:<name> -->
 <!-- inventory: component:<name> -->
 ```
 
