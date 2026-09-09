@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0.0",
+  "common": {
+    "coverage_fields": [
+      "Requested scope:",
+      "Inspected scope:",
+      "Unavailable evidence:",
+      "Limitations:"
+    ]
+  },
+  "skills": {
+    "analyzing-plugin-components": {
+      "required_headings": [],
+      "disposition_type": "component",
+      "next_step_required": true,
+      "requires_evidence_metadata": true
+    },
+    "analyzing-actor-behavior": {
+      "required_headings": [],
+      "disposition_type": "actor",
+      "next_step_required": true,
+      "requires_evidence_metadata": true
+    },
+    "analyzing-governance-and-conflicts": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
+    },
+    "analyzing-tool-and-framework-use": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
+    },
+    "mining-recurring-patterns": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
+    },
+    "comparing-sessions": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
+    },
+    "comparing-session-to-specification": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
+    },
+    "generating-analysis-recommendations": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": false,
+      "requires_evidence_metadata": true
+    },
+    "reviewing-analysis-findings": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": false,
+      "requires_evidence_metadata": true
+    },
+    "running-a-full-retrospective": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": false,
+      "requires_evidence_metadata": true
+    },
+    "mining-review-learnings": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": false,
+      "requires_evidence_metadata": true
+    },
+    "managing-review-learnings": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": false,
+      "requires_evidence_metadata": true
+    }
+  }
+}
