@@ -75,32 +75,42 @@ def check_dispositions(text: str, disposition_type: str | None) -> list[dict]:
         return []
 
     errors = []
-    inventory_ids: set[str] = set()
+    # Counts, not a set: the same identifier can legitimately appear more than
+    # once in the inventory (e.g. two same-type sub-agent dispatches sharing
+    # one agent-type identifier) -- each occurrence needs its own disposition,
+    # so collapsing repeats into a set would silently let one disposition
+    # marker cover multiple undisposed dispatches.
+    inventory_counts: dict[str, int] = {}
     for kind, ident in INVENTORY_RE.findall(text):
         if kind == disposition_type:
-            inventory_ids.add(ident)
+            inventory_counts[ident] = inventory_counts.get(ident, 0) + 1
 
     disposition_counts: dict[str, int] = {}
     for kind, ident in DISPOSITION_RE.findall(text):
         if kind == disposition_type:
             disposition_counts[ident] = disposition_counts.get(ident, 0) + 1
 
-    for ident in sorted(inventory_ids):
-        count = disposition_counts.get(ident, 0)
-        if count == 0:
+    for ident in sorted(inventory_counts):
+        inv_count = inventory_counts[ident]
+        disp_count = disposition_counts.get(ident, 0)
+        if disp_count < inv_count:
             errors.append(
                 {
                     "code": "missing_disposition",
-                    "message": f"No disposition found for {disposition_type}:{ident}",
+                    "message": (
+                        f"{inv_count} inventory occurrence(s) of {disposition_type}:{ident} but "
+                        f"only {disp_count} disposition(s) found"
+                    ),
                     "subject": f"{disposition_type}:{ident}",
                 }
             )
-        elif count > 1:
+        elif disp_count > inv_count:
             errors.append(
                 {
                     "code": "duplicate_disposition",
                     "message": (
-                        f"{count} dispositions found for {disposition_type}:{ident}, expected 1"
+                        f"{disp_count} dispositions found for {disposition_type}:{ident}, but only "
+                        f"{inv_count} inventory occurrence(s)"
                     ),
                     "subject": f"{disposition_type}:{ident}",
                 }
@@ -108,16 +118,21 @@ def check_dispositions(text: str, disposition_type: str | None) -> list[dict]:
     return errors
 
 
+EVIDENCE_METADATA_LABELS = ("Evidence origin:", "Coverage:", "Confidence:", "Source:")
+
+
 def check_evidence_metadata(text: str, required: bool) -> list[dict]:
     if not required:
         return []
-    if "Evidence origin:" not in text:
+    missing_labels = [label for label in EVIDENCE_METADATA_LABELS if label not in text]
+    if missing_labels:
         return [
             {
                 "code": "missing_evidence_metadata",
-                "message": "No 'Evidence origin:' metadata field found anywhere in the report",
+                "message": f"Metadata label {label!r} not found anywhere in the report",
                 "subject": "evidence-metadata",
             }
+            for label in missing_labels
         ]
     return []
 

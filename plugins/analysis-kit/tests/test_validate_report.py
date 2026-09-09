@@ -50,6 +50,37 @@ def test_actor_fixture_with_missing_assessment_fails():
     assert missing["subject"] == "actor:plugin-validator"
 
 
+def test_repeated_identical_inventory_identifier_requires_matching_dispositions():
+    # Two same-type sub-agent dispatches sharing one identifier: inventory has
+    # it twice, disposition only once -- must fail, not silently pass via a
+    # set-based dedup that collapses both inventory occurrences into one.
+    text = (
+        "<!-- inventory: actor:general-purpose -->\n"
+        "<!-- inventory: actor:general-purpose -->\n"
+        "<!-- disposition: actor:general-purpose assessed -->\n"
+    )
+    errors = validate_report.check_dispositions(text, "actor")
+    assert errors == [
+        {
+            "code": "missing_disposition",
+            "message": (
+                "2 inventory occurrence(s) of actor:general-purpose but only 1 disposition(s) found"
+            ),
+            "subject": "actor:general-purpose",
+        }
+    ]
+
+
+def test_repeated_identical_inventory_identifier_with_matching_dispositions_passes():
+    text = (
+        "<!-- inventory: actor:general-purpose -->\n"
+        "<!-- inventory: actor:general-purpose -->\n"
+        "<!-- disposition: actor:general-purpose grouped:fanout -->\n"
+        "<!-- disposition: actor:general-purpose grouped:fanout -->\n"
+    )
+    assert validate_report.check_dispositions(text, "actor") == []
+
+
 def test_common_fixture_with_missing_next_step_fails():
     result = validate_report.validate(
         "analyzing-plugin-components", _fixture("common-missing-next-step.md"), CONTRACTS
@@ -67,9 +98,27 @@ def test_missing_coverage_preamble_fields_flagged():
     assert len(errors) == len(CONTRACTS["common"]["coverage_fields"])
 
 
-def test_missing_evidence_metadata_flagged_when_required():
+def test_missing_evidence_metadata_flagged_for_each_absent_label_when_required():
     errors = validate_report.check_evidence_metadata("no metadata block here", required=True)
-    assert [e["code"] for e in errors] == ["missing_evidence_metadata"]
+    assert [e["code"] for e in errors] == ["missing_evidence_metadata"] * 4
+
+
+def test_partial_evidence_metadata_flags_only_the_missing_labels():
+    text = "Evidence origin: direct\nConfidence: high\n"
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert len(errors) == 2
+    assert {e["subject"] for e in errors} == {"evidence-metadata"}
+    messages = " ".join(e["message"] for e in errors)
+    assert "'Coverage:'" in messages
+    assert "'Source:'" in messages
+    assert "'Evidence origin:'" not in messages
+
+
+def test_all_four_evidence_metadata_labels_present_passes():
+    text = (
+        "Evidence origin: direct\nCoverage: complete\nConfidence: high\nSource: this-conversation\n"
+    )
+    assert validate_report.check_evidence_metadata(text, required=True) == []
 
 
 def test_missing_evidence_metadata_not_flagged_when_not_required():
