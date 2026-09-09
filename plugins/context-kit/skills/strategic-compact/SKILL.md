@@ -123,7 +123,12 @@ the plugin README for the optional `CONTEXT_KIT_PLANS_DIR`/`CONTEXT_KIT_SESSION_
   `additionalContext` — the active plan's status/current-task, if `CONTEXT_KIT_PLANS_DIR` is
   configured.
 - **`PreToolUse`** — `compact-track-and-suggest.sh` (matcher `.*`, every tool call) tracks
-  exploration-vs-implementation phase and injects threshold/phase-transition suggestions.
+  exploration-vs-implementation phase and detects threshold/phase-transition suggestions. This hook
+  runs **`async`** — measured at ~550-750ms per invocation on Windows (bash-subprocess spawn
+  overhead), well above `PreToolUse`'s documented budget, so it no longer blocks the tool call it's
+  attached to or synchronously injects `additionalContext`. It still writes any detected suggestion to
+  a pending-suggestion file synchronously within its own (backgrounded) run — the `Stop` hook below is
+  what actually delivers it to the user, not this hook's own return value.
 - **`PostToolUse`** — `compact-milestone-detector.sh` (matcher `Bash`) detects milestones (tests
   passing, commits, builds, deploys) from the command that just ran. `context-monitor.py` (matcher
   `Bash|Agent|Task`) separately estimates overall context-window usage (a coarse percentage, from
@@ -133,8 +138,18 @@ the plugin README for the optional `CONTEXT_KIT_PLANS_DIR`/`CONTEXT_KIT_SESSION_
   `post-compact-restore.py` to restore afterward.
 - **`Stop`** — `compact-stop-check.sh` checks for a pending suggestion that hasn't reached the user
   yet and **blocks the stop once** (`{"decision": "block", ...}`) when one exists, guarded by
-  `stop_hook_active` so it never re-triggers itself on the resulting continuation. This guarantees a
-  suggestion injected earlier in the turn actually reaches the user.
+  `stop_hook_active` so it never re-triggers itself on the resulting continuation. This is the
+  suggestion's actual delivery mechanism (see the `PreToolUse` note above), though not an absolute
+  guarantee: since `compact-track-and-suggest.sh` now runs async, its background write of the
+  pending-suggestion file could in principle still be in flight when `Stop` fires immediately after
+  (e.g. a suggestion detected on the very last tool call of a turn). In practice the write completes
+  well within the hook's own timeout, so this is a narrow, disclosed edge case, not a routine failure
+  mode.
+
+`compact-track-and-suggest.sh` and `compact-milestone-detector.sh` share one tracking file per
+session; a `mkdir`-based lock (bounded retries, fail-open, with stale-lock detection for a
+crashed/killed prior invocation) guards every read-modify-write against the two hooks racing each
+other when Claude Code dispatches multiple tool calls in close succession.
 
 **A second, opt-in blocking path exists.** `pre-compact.py` can also block compaction once, when
 `CLAUDE_PRECOMPACT_BLOCK_ON_DRAFT=1` is set and the active plan's status is still DRAFT — off by

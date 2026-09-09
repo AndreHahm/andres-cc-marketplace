@@ -37,6 +37,7 @@ else
 fi
 
 TRACK_FILE="${TRACK_DIR}/session-${SESSION_HASH}"
+TRACK_LOCK="${TRACK_FILE}.lock"
 
 # Get current timestamp
 START_TIME=$(date +%s)
@@ -63,26 +64,73 @@ T2=$(_validate_int "${STRATEGIC_COMPACT_T2:-75}" 75)
 T3=$(_validate_int "${STRATEGIC_COMPACT_T3:-100}" 100)
 TIME_THRESHOLD=$(_validate_int "${STRATEGIC_COMPACT_TIME:-1800}" 1800)  # 30 minutes default
 
-# Initialize on fresh starts AND after compact (context is fresh after compact)
+# Initialize on fresh starts AND after compact (context is fresh after compact).
+# Guarded by the same mkdir-based lock as compact-track-and-suggest.sh /
+# compact-milestone-detector.sh (see that script's own comment for the full
+# two-phase rationale and the live timing behind it) — a stray in-flight
+# async compact-track-and-suggest.sh invocation from just before a
+# /clear or compact event could otherwise race this reset.
 if [ "$SOURCE" = "startup" ] || [ "$SOURCE" = "clear" ] || [ "$SOURCE" = "compact" ]; then
-    {
-        echo "TOTAL=0"
-        echo "EXPLORATION=0"
-        echo "IMPLEMENTATION=0"
-        echo "LAST_PHASE=exploration"
-        echo "SUGGESTED_T1=0"
-        echo "SUGGESTED_T2=0"
-        echo "SUGGESTED_T3=0"
-        echo "SUGGESTED_TIME=0"
-        echo "PHASE_TRANSITION_SUGGESTED=0"
-        echo "MILESTONE_SUGGESTED=0"
-        echo "START_TIME=$START_TIME"
-        echo "LAST_MILESTONE_TIME=$START_TIME"
-        echo "T1=$T1"
-        echo "T2=$T2"
-        echo "T3=$T3"
-        echo "TIME_THRESHOLD=$TIME_THRESHOLD"
-    } > "$TRACK_FILE"
+    _lock_acquired=0
+    _attempts=0
+    while [ "$_attempts" -lt 60 ]; do
+        if mkdir "$TRACK_LOCK" 2>/dev/null; then
+            printf '%s\n%s\n' "$$" "$(date +%s)" > "${TRACK_LOCK}/created" 2>/dev/null
+            _lock_acquired=1
+            break
+        fi
+        _attempts=$((_attempts + 1))
+    done
+
+    if [ "$_lock_acquired" -ne 1 ] && [ -f "${TRACK_LOCK}/created" ]; then
+        LOCK_PID=""
+        LOCK_CREATED=""
+        { read -r LOCK_PID; read -r LOCK_CREATED; } < "${TRACK_LOCK}/created" 2>/dev/null
+        if [[ "$LOCK_CREATED" =~ ^[0-9]+$ ]]; then
+            LOCK_AGE=$(( $(date +%s) - LOCK_CREATED ))
+            if [ "$LOCK_AGE" -ge 10 ] && { ! [[ "$LOCK_PID" =~ ^[0-9]+$ ]] || ! kill -0 "$LOCK_PID" 2>/dev/null; }; then
+                rm -rf "$TRACK_LOCK" 2>/dev/null
+                if mkdir "$TRACK_LOCK" 2>/dev/null; then
+                    printf '%s\n%s\n' "$$" "$(date +%s)" > "${TRACK_LOCK}/created" 2>/dev/null
+                    _lock_acquired=1
+                fi
+            fi
+        fi
+    fi
+
+    # Fail open like the sibling scripts: if the lock couldn't be acquired,
+    # skip the reset rather than writing it anyway — an unconditional write
+    # here could still land in the middle of a real holder's own
+    # read-modify-write and get clobbered by (or clobber) it, which is
+    # exactly the race this lock exists to prevent. Skipping just leaves
+    # this one session starting with the prior session's leftover counters
+    # instead of a clean reset — a minor, self-correcting cosmetic gap, not
+    # a correctness issue.
+    if [ "$_lock_acquired" -eq 1 ]; then
+        {
+            echo "TOTAL=0"
+            echo "EXPLORATION=0"
+            echo "IMPLEMENTATION=0"
+            echo "LAST_PHASE=exploration"
+            echo "SUGGESTED_T1=0"
+            echo "SUGGESTED_T2=0"
+            echo "SUGGESTED_T3=0"
+            echo "SUGGESTED_TIME=0"
+            echo "PHASE_TRANSITION_SUGGESTED=0"
+            echo "MILESTONE_SUGGESTED=0"
+            echo "START_TIME=$START_TIME"
+            echo "LAST_MILESTONE_TIME=$START_TIME"
+            echo "T1=$T1"
+            echo "T2=$T2"
+            echo "T3=$T3"
+            echo "TIME_THRESHOLD=$TIME_THRESHOLD"
+        } > "${TRACK_FILE}.tmp" && mv "${TRACK_FILE}.tmp" "$TRACK_FILE"
+
+        _owner_pid=$(head -n1 "${TRACK_LOCK}/created" 2>/dev/null)
+        if [ -z "$_owner_pid" ] || [ "$_owner_pid" = "$$" ]; then
+            rm -rf "$TRACK_LOCK" 2>/dev/null
+        fi
+    fi
 fi
 
 # Build config info for context
