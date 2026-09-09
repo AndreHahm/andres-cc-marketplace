@@ -12,9 +12,9 @@ This is Wave 1 of a multi-wave build. This wave ships:
   (exploration → implementation), detect milestones (tests passing, a commit, a build, a deploy), and
   suggest `/compact` at good stopping points. One of the hooks (`Stop`) blocks once to make sure a
   pending suggestion actually reaches the user before the turn ends.
-- **`context-hooks`** — 3 Python hooks: a `PostToolUse` context-usage monitor (coarse percentage
-  estimate, throttled threshold nudges), a `PreCompact` state-capture hook, and a `SessionStart`
-  (`source=compact`) state-restore hook.
+- **3 additional Python hooks**, wired via the same `hooks/hooks.json`: a `PostToolUse` context-usage
+  monitor (coarse percentage estimate, throttled threshold nudges), a `PreCompact` state-capture hook,
+  and a `SessionStart` (`source=compact`) state-restore hook.
 
 Later waves add more context-management skills (`context-audit`, `context-degradation`,
 `context-engineering`, `context-optimization`, `context-window-analyze`) and a `context-mode` skill for
@@ -27,6 +27,13 @@ development:
 
 ```bash
 claude --plugin-dir /path/to/andres-cc-marketplace/plugins/context-kit
+```
+
+Once installed, `context-kit` works automatically — no manual invocation. A typical suggestion looks
+like:
+
+```
+[StrategicCompact] 50 tool calls reached. If context feels cluttered, this is a good checkpoint for /compact.
 ```
 
 ## Configuration
@@ -68,3 +75,7 @@ different mechanisms (automatic hooks vs. explicit user action) and different st
 hooks, so there's no mechanical collision. Whether `context-kit`'s automatic layer should eventually hand
 off to `session-kit`'s handoff format is an open cross-plugin design question for a future pass, not
 resolved in this wave.
+
+## License
+
+Apache-2.0 — see [`LICENSE`](./LICENSE).
