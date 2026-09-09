@@ -37,9 +37,9 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
 **Verify Pre-flight Checks step 3.5 (session open-issues check):**
 - Session has no open issues → step 3.5 states this plainly and proceeds directly to step 4, no fix or
   filed issue
-- An open issue's file is part of the current diff (`git diff --name-only -z main...HEAD | tr '\0'
-  '\n'`) → fixed, verified, and committed via `Skill(git-kit:commit)` before step 4 runs — never pushed
-  directly by this step, since step 1 remains the only push
+- An open issue's file is part of the current diff (`git diff --name-only -z main...HEAD | grep -zqxF
+  "<path>"` exits `0`) → fixed, verified, and committed via `Skill(git-kit:commit)` before step 4 runs —
+  never pushed directly by this step, since step 1 remains the only push
 - A touched file's path contains non-ASCII bytes (e.g. `café.md`) → still correctly classified as
   touched, since `-z` disables path quoting entirely (the bare `git diff --name-only` form would emit
   `"caf\303\251.md"`, which never matches the issue's real associated path, misclassifying it as
@@ -49,6 +49,11 @@ line-budget threshold. See `SKILL.md`'s own "Verify this skill activates on/does
   still C-quote it (`git help config`: "Double-quotes, backslash, and control characters are always
   escaped regardless of the setting of this variable" — `core.quotePath` only ever affects non-ASCII
   bytes, never control characters) and misclassify it as untouched
+- A touched file's path contains a literal newline, **and** a separate, differently-touched file's path
+  would form the same two "lines" if split at that newline (e.g. `line\nbreak.md` vs. the pair `line`
+  and `break.md`) → still correctly and distinctly classified via the NUL-safe `grep -zqxF` membership
+  test; converting `-z`'s output to newlines first (e.g. via `tr '\0' '\n'`) would make the two cases
+  indistinguishable and was itself a round-2 regression, fixed in round 3
 - An open issue's file is not part of the current diff → its draft is shown via `AskUserQuestion`;
   only on approval is `Skill(git-kit:github-issue-lifecycle)` resumed at Workflow 1's Step 3 to file it
   live, with that workflow's own Step 6 (PR-linking) explicitly skipped, and reported with its issue
