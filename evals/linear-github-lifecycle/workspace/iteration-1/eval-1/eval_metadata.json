@@ -1,0 +1,21 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md",
+  "assertions": [
+    {
+      "text": "Describes delegating each lifecycle phase to its own focused skill (work-to-development, development-to-pr, pr-to-linear, merge-to-completion) rather than performing the phase's logic itself",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Follows the documented phase order (start before publish, publish before merge)",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Describes getting confirmation before proceeding between phases",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Routes finding triage/fix/reply/resolve to git-kit:handling-review-findings, not to git-kit:collaborating-on-a-pr",
+      "passed": true,
+      "evidence": "Step 2 explicitly delegates the Codex finding and reviewer comment triage/fix/reply/resolve to handling-review-findings, with explicit statement this skill never re-implements that cycle itself"
+    },
+    {
+      "text": "Never copies a full review comment or check transcript verbatim into the Linear summary",
+      "passed": true,
+      "evidence": "Step 4 explicitly excludes diff/full Codex text/full comment thread/check logs from the Linear summary"
+    },
+    {
+      "text": "Reflects only meaningful/blocking implications to Linear, described as a deliberate summary",
+      "passed": true,
+      "evidence": "Step 4 produces a concise implication-focused summary, explicitly labeled deliberate"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

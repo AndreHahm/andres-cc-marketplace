@@ -5,5 +5,5 @@
   "author": {
     "name": "Andre Hahm"
   },
-  "dependencies": ["codex-kit"]
+  "dependencies": ["codex-kit", "git-kit"]
 }

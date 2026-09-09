@@ -2,11 +2,12 @@
 name: open-item-management
 description: >-
   Revalidate and disposition open questions, decisions, and follow-ups surfaced from a Notion
-  Report, Decision, or a completed Linear Issue — classify each as resolved, retained knowledge, a
-  Decision still needed, or actionable Linear work, then create approved follow-ups in a single
-  batch. Use when asked to revalidate open questions, disposition follow-ups from a report, or
-  process remaining open items after a Linear Issue completes — not to capture the outcome/learning
-  itself (see status-and-learning for that). Not every open question becomes a Linear Issue.
+  Report, Decision, or a completed Linear Issue — including one whose Wave 2 merge-to-completion
+  has just finished — classify each as resolved, retained knowledge, a Decision still needed, or
+  actionable Linear work, then create approved follow-ups in a single batch. Use when asked to
+  revalidate open questions, disposition follow-ups from a report, or process remaining open items
+  after a Linear Issue completes — not to capture the outcome/learning itself (see
+  status-and-learning for that). Not every open question becomes a Linear Issue.
 allowed-tools: Read, Skill(notion-knowledge-management), Skill(linear-work-management), AskUserQuestion
 ---
 
@@ -17,10 +18,24 @@ tracking but not yet acted on. Left alone, these either get silently forgotten o
 into Issues nobody asked for. This skill is the deliberate middle path: revalidate each item
 against current state, then let the user decide its disposition.
 
+A Wave 2 lifecycle's own post-merge remaining work is exactly this same kind of loose end — this
+skill needs no Git/GitHub awareness of its own to handle it, since `merge-to-completion` has
+already resolved it down to ordinary Linear Issue state (comments, fields) before routing here.
+
+**When invoked from `merge-to-completion`, this skill still runs its own complete pipeline** —
+Quick Start steps 1-6 below, including both of its own separate approvals (the follow-up batch and
+the full disposition record) — over the items `merge-to-completion` classified as follow-up work.
+This is a genuine second, independent revalidation pass, not a shortcut through mid-pipeline state:
+`merge-to-completion`'s own step 10 classification is a preliminary judgment for its own
+closure-disposition decision, made at merge time; this skill's own steps 1-3 re-read and re-classify
+each item against Linear's actual current state, which may have moved since. Reaching a different
+conclusion than `merge-to-completion`'s preliminary classification is expected here, not a bug —
+that is exactly what "revalidate against current state" (this skill's own core guardrail) means.
+
 ## When to Use
 
 Revalidating and dispositioning open questions/follow-ups surfaced from a Notion Report/Decision or
-a completed Linear Issue.
+a completed Linear Issue (including one Wave 2's `merge-to-completion` just routed here).
 
 ## When NOT to Use
 

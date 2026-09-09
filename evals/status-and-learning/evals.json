@@ -16,6 +16,13 @@
       "prompt": "Capture what we learned from shipping the CSV export feature.",
       "expected_output": "Distinguishes this from open-item disposition (correctly defers unresolved follow-ups to open-item-management rather than trying to handle them itself), and captures a concise outcome/learning rather than a full transcript.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Wave 2 post-merge Notion learning capture (status-and-learning)",
+      "prompt": "Capture the outcome and learning in Notion now that Wave 2's merge-to-completion has merged the PR and closed Linear issue ENG-206.",
+      "expected_output": "Reads relevant Linear facts and the Issue's git-github-evidence array via linear-work-management (not linear-github-linking); produces a dated summary explicitly labeled as a snapshot, not live state; gets approval before the Notion write; never treats itself as a live GitHub automation endpoint.",
+      "files": []
     }
   ]
 }

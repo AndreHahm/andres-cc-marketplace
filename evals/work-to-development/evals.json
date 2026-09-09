@@ -1,0 +1,14 @@
+{
+  "skill_name": "work-to-development",
+  "skill_path": "plugins/workmanagement-kit/skills/work-to-development/SKILL.md",
+  "description": "Wave 2 skill: work-to-development",
+  "evals": [
+    {
+      "id": 1,
+      "name": "work-to-development primary scenario",
+      "prompt": "Start work on accepted Linear issue ENG-200 (an accepted, ready-to-implement issue in this repository).",
+      "expected_output": "Reads Issue context via linear-work-management; resolves repository policy via repository-gates; searches for an existing branch/commit/PR via linear-github-linking before proposing a new one; presents the proposed git-kit:starting-work request and gets explicit confirmation before invoking it; never creates a branch directly itself.",
+      "files": []
+    }
+  ]
+}

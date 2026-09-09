@@ -323,8 +323,89 @@ all carry the same `stable_id` and can't be told apart when recovering from a pa
 needs no approval beyond whatever already gates the Issue's own creation — it is part of that same
 write, not a separate one.
 
+## Git/GitHub Evidence Record (`git-github-evidence`)
+
+A separate, repeatable mechanism for Git/GitHub-specific evidence the base Transition Contract cannot
+represent (repository identity, branch, multiple commits, PR identity, multiple gate results — all
+single-valued fields in the base contract would only ever hold the latest one). Same shape of extension
+Disposition Record already is for `open-item-management`'s multi-item case. Added by Wave 2
+(`workmanagement-kit`'s Git/GitHub lifecycle bridge); the background Wave 2 design documents originally
+described this as a `type` field added directly to the base Transition Contract, but the base contract
+has no such field and adding one would have repeated exactly the single-valued-fields limitation
+Disposition Record already exists to avoid — this record follows that same precedent instead.
+
+Stored as an array-valued `git-github-evidence` property directly on the Linear Issue record (see
+`linear-work-management/references/linear-entity-fields.md`'s Issue table). Appended to on every stage
+transition, never overwritten — matches Disposition Record's append-only, superseded-not-deleted
+convention.
+
+**Schema (one array entry per stage transition):**
+
+```json
+{
+  "evidence_id": "string, a stable unique ID for this evidence entry, never reused",
+  "repository": "string, canonical repo slug, e.g. 'owner/repo'",
+  "stage": "work-started | commit-linked | ci-gates-passed | pr-published | pr-ready | pr-merged | work-reopened",
+  "branch": "string, or null until a branch exists",
+  "base_branch": "string, or null",
+  "commits": [ {"sha": "string", "recorded_at": "ISO-8601 UTC timestamp"} ],
+  "pull_request": {"number": "integer", "url": "string", "state": "draft | open | merged | closed"} | null,
+  "gates": [ {"name": "string", "owner": "string", "result": "pass | fail | pending | bypassed", "sha": "string", "recorded_at": "ISO-8601 UTC timestamp"} ],
+  "provider": "string, the git-kit skill that performed the underlying operation, e.g. 'git-kit:starting-work'",
+  "policy_profile": "string, the repository-policy profile name this evidence was resolved under",
+  "superseded_by": "string, evidence_id of a later entry that invalidates this one (e.g. a force-push changing a recorded SHA), or null",
+  "transition_id": "string, the base Transition Contract transition_id of the write that appended this entry",
+  "recorded_at": "ISO-8601 UTC timestamp"
+}
+```
+
+- `stage` distinguishes each lifecycle checkpoint Wave 2 records.
+- `pr-merged` and this plugin's Linear workflow-status closure (informally "`work-closed`") remain
+  distinct: `pr-merged` is one array entry's `stage` value; the Linear Issue's own workflow status
+  changing to Done/Closed is a separate, ordinary Linear write through `linear-work-management`, recorded
+  via the **base** Transition Contract as always — never inferred from a `pr-merged` entry alone.
+- Multiple commits/PRs per Issue are modeled by repeated array entries sharing the same `repository`, not
+  a nested collection.
+- `superseded_by` implements supersede-without-delete: a force-push or base change appends a new entry
+  and sets the old entry's `superseded_by` to the new entry's `evidence_id`; the old entry is never
+  deleted or edited in place.
+- The write that appends a `git-github-evidence` entry is itself an ordinary single write against the
+  Linear Issue — it still gets its own ordinary base Transition Contract entry (`affected_record` = the
+  Issue), per the existing next-write convention. Each entry's own `transition_id` links back to that
+  write's `transition_id`; it is not a transition of its own (identical relationship to how Disposition
+  Record entries link back to their own appending write).
+- **`affected_record.system` extension:** the base Transition Contract's `affected_record.system` enum
+  (previously `"notion" | "linear"`) is extended to `"notion" | "linear" | "github"` — used when a
+  transition's own `affected_record` is a GitHub artifact directly (rare; most Wave 2 writes affect the
+  Linear Issue and carry `git-github-evidence` as a sub-property, not a separate GitHub-system write).
+
+## Repository Policy Profile
+
+Added by Wave 2. `repository_policy.provider_profile` (in `versioned-configuration.json`, schema v2)
+names a profile mapping each governed Git/GitHub logical operation to its required provider. For this
+repository, the profile is fixed — `git-kit` for every governed operation:
+
+| Logical operation | Required provider |
+|---|---|
+| Create branch/worktree | `git-kit:starting-work` |
+| Commit | `git-kit:commit` |
+| Push/create PR | `git-kit:create-pr` or `git-kit:collaborating-on-a-pr` (by intent) |
+| Review/comment | `git-kit:collaborating-on-a-pr` |
+| Merge | `git-kit:merge-pr` |
+| Post-merge sync/cleanup | `git-kit:finishing-work` |
+
+A profile with a missing/unconfigured provider for a governed operation fails closed — every Wave 2
+skill stops with a manual handoff rather than falling back to a raw `git`/`gh` command.
+
 ## Change Log
 
+- 2026-09-09 — Added the Git/GitHub Evidence Record (`git-github-evidence`) and Repository Policy
+  Profile for Wave 2 (`workmanagement-kit`'s Git/GitHub lifecycle bridge). Extended
+  `affected_record.system`'s enum to include `"github"`. `versioned-configuration.json` bumped to
+  schema version 2, adding `github`/`repository_policy` fields shipped `unconfigured`/`null` by
+  default, same shippable-defaults-plus-local-override model as every existing field. `pr-merged` and
+  this plugin's Linear closure remain distinct writes, matching Wave 1's already-established rule that
+  `work-closed` is the only completion transition.
 - 2026-08-31 — Initial version. Host profile and versioned configuration ship with `unconfigured`/
   `null` defaults (Foundational Setup — connector installation, workspace/team scoping, test
   scopes — is a separate task from creating these files; see `README.md`'s Status section).

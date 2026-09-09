@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Describes revalidating each item against current state rather than trusting merge-to-completion's classification unchecked",
+      "passed": true,
+      "evidence": "Step 2 explicitly re-checks each item; eng-207-d found already covered by an unrelated existing Issue (ENG-233) during revalidation, contradicting merge-to-completion's preliminary tag"
+    },
+    {
+      "text": "Classifies each item as exactly one of the four defined dispositions",
+      "passed": true,
+      "evidence": "Step 3 table assigns exactly one disposition per item (or correctly excludes an already-dispositioned one)"
+    },
+    {
+      "text": "Describes two separate approval steps (follow-up batch, then the full disposition record) rather than one combined approval",
+      "passed": true,
+      "evidence": "Step 4 and Step 6 are explicitly two separate AskUserQuestion gates, with explicit statement neither covers the other"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

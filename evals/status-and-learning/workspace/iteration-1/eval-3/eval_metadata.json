@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/status-and-learning/SKILL.md",
+  "assertions": [
+    {
+      "text": "Reads git-github-evidence via linear-work-management rather than linear-github-linking",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Explicitly labels the produced summary as a dated snapshot, not live/continuously-updating state",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Describes getting approval before writing the summary to Notion",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates the actual merge to git-kit:merge-pr",
+      "passed": true,
+      "evidence": "Step 5 delegates, with explicit statement never to independently re-verify checks/approvals to second-guess merge-pr"
+    },
+    {
+      "text": "Does not treat a successful merge alone as sufficient to close the Linear issue -- describes a separate acceptance-criterion comparison step",
+      "passed": true,
+      "evidence": "Steps 9-13 run a separate 3-criterion comparison, correctly leaving the issue open pending a follow-up for one unmet criterion"
+    },
+    {
+      "text": "Records pr-merged evidence as distinct from any work-closed/Linear-closure write",
+      "passed": true,
+      "evidence": "Explicit Gotchas section: pr-merged (step 7) and work-closed (step 13) kept as two distinct writes throughout"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

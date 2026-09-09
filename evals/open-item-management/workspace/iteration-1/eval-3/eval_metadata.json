@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/open-item-management/SKILL.md",
+  "assertions": [
+    {
+      "text": "Describes revalidating each item against current state rather than trusting merge-to-completion's classification unchecked",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Classifies each item as exactly one of the four defined dispositions",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Describes two separate approval steps (follow-up batch, then the full disposition record) rather than one combined approval",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

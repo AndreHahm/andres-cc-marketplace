@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads Linear Issue context before proposing any Git action",
+      "passed": true,
+      "evidence": "Step 1 invokes linear-work-management before any branch proposal"
+    },
+    {
+      "text": "Resolves repository policy (confirms git-kit is the provider) before requesting a branch",
+      "passed": true,
+      "evidence": "Step 3 invokes repository-gates before step 6's confirmation/step 7's delegation"
+    },
+    {
+      "text": "Checks for an existing branch/commit/PR for this Issue before proposing a new branch",
+      "passed": true,
+      "evidence": "Step 4 invokes linear-github-linking and branches on Exact/Adoptable/Conflicting/Ambiguous before proceeding"
+    },
+    {
+      "text": "Explicitly asks for confirmation before invoking git-kit:starting-work, and never claims to create a branch directly itself",
+      "passed": true,
+      "evidence": "Step 6 AskUserQuestion gate before step 7's git-kit:starting-work delegation; explicit 'never runs a raw git checkout -b' statement"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

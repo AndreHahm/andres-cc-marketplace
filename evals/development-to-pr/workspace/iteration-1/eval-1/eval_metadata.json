@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/development-to-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Delegates the commit to git-kit:commit rather than staging/committing directly",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "References the Git/GitHub Evidence Record / FOUNDATION_CONTRACTS.md when describing what evidence gets recorded",
+      "type": "presence",
+      "target": "outputs/"
+    },
+    {
+      "text": "Searches for an existing PR before proposing to create a new one",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Gets explicit confirmation before publishing the PR",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

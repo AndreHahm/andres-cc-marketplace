@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates the commit to git-kit:commit rather than staging/committing directly",
+      "passed": true,
+      "evidence": "Step 2 explicitly delegates, with explicit statement never to run git add/git commit directly"
+    },
+    {
+      "text": "References the Git/GitHub Evidence Record / FOUNDATION_CONTRACTS.md when describing what evidence gets recorded",
+      "passed": true,
+      "evidence": "Steps 4 and 12 both cite ../../FOUNDATION_CONTRACTS.md's Git/GitHub Evidence Record shape explicitly"
+    },
+    {
+      "text": "Searches for an existing PR before proposing to create a new one",
+      "passed": true,
+      "evidence": "Step 6 runs the search and classifies before step 9's publication choice"
+    },
+    {
+      "text": "Gets explicit confirmation before publishing the PR",
+      "passed": true,
+      "evidence": "Step 8 AskUserQuestion gate before step 9's delegation, explicitly not skipped despite user's draft-PR phrasing"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
