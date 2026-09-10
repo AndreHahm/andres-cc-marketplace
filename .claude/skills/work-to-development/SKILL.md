@@ -43,11 +43,12 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    Conflicting/Ambiguous/Stale) — an `Exact` or `Adoptable` result means work may already be
    underway; don't create a second branch for the same Issue without the user's explicit say-so.
 5. **Optional transition review:** for a large or ambiguous case (unclear duplicate risk, unusual
-   dependency exception), the plugin's shared Codex bridge-caller component
+   dependency exception), ask via `AskUserQuestion` whether to request an independent transition
+   review before proceeding. On yes, the plugin's shared Codex bridge-caller component
    (`scripts/bridge_caller.py`, live) may dispatch `work-transition-reviewer` (read-only) to check
-   authority, duplicate-artifact, provider, and confirmation concerns before proceeding — that
-   dispatch mechanism belongs to the plugin's shared infrastructure, not a tool this skill invokes
-   itself; the flow proceeds without it when unavailable.
+   authority, duplicate-artifact, provider, and confirmation concerns — that dispatch mechanism
+   belongs to the plugin's shared infrastructure, not a tool this skill invokes itself; the flow
+   proceeds without it when declined or unavailable.
 6. **Present and confirm:** show the readiness summary, any disclosed gaps, and the proposed
    `git-kit:starting-work` request (branch name per the repository's Linear-reference convention,
    e.g. `<type>/<linear-id-lowercase>-<slug>`). Get explicit confirmation via `AskUserQuestion` before
