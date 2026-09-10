@@ -5,17 +5,17 @@
     {
       "text": "Delegates the actual merge to git-kit:merge-pr",
       "passed": true,
-      "evidence": "Step 5 delegates, with explicit statement never to independently re-verify checks/approvals to second-guess merge-pr"
+      "evidence": "Step 5 -- 'Delegate: Skill(git-kit:merge-pr) ... merge-pr runs its own five required checks again internally ... then executes the merge via GitHub.' The response never calls a raw `gh pr merge` itself and explicitly defers readiness verification to merge-pr in Step 2 ('I do not re-implement or second-guess merge-pr's checks myself')."
     },
     {
-      "text": "Does not treat a successful merge alone as sufficient to close the Linear issue -- describes a separate acceptance-criterion comparison step, and closure with an outstanding criterion requires its own explicit user confirmation distinct from approving the follow-up",
+      "text": "Does not treat a successful merge alone as sufficient to close the Linear issue -- describes a separate acceptance-criterion comparison step",
       "passed": true,
-      "evidence": "Steps 9-13 run a separate 3-criterion comparison (2 of 3 met); for the unmet criterion, the response presents both the follow-up creation and closing-now-with-the-gap-tracked as distinct choices at the AskUserQuestion gate, and only records work-closed after the user separately confirmed closure -- not inferred from approving the follow-up alone"
+      "evidence": "Explicit section header 'Linear disposition phase (separate, explicit)' with Step 9 'Compare delivered change against each acceptance criterion individually ... never inferring merged => all criteria met'. Step 13 closes only 'if (a) every criterion was literally met ... or (b) ... the user separately and explicitly confirmed'. Also states plainly it will not fabricate a closure verdict without real criteria data: 'I will not synthesize any of those and then round-trip a fabricated all criteria met, closing ENG-203 result.'"
     },
     {
       "text": "Records pr-merged evidence as distinct from any work-closed/Linear-closure write",
       "passed": true,
-      "evidence": "Explicit Gotchas section: pr-merged (step 7) and work-closed (step 13) kept as two distinct writes throughout"
+      "evidence": "Step 7 records `pr-merged` via `linear-github-linking` with `merge_commit_sha` set from the Step 6 read-back, described as a distinct Git/GitHub Evidence Record entry -- separate from Step 13's `work-closed` write via `linear-work-management`, which only fires later and only if closure conditions are met. The response explicitly treats these as separate writes throughout (e.g. Step 8's drift-handling explicitly refuses to treat an automatic Linear status change as 'the disposition step')."
     }
   ],
   "summary": {

@@ -5,22 +5,22 @@
     {
       "text": "Reads Linear Issue context before proposing any Git action",
       "passed": true,
-      "evidence": "Step 1 invokes linear-work-management before any branch proposal"
+      "evidence": "Step 1 genuinely invoked Skill(linear-work-management) first, reading the real host-profile.json connector config, before any git/branch discussion appears."
     },
     {
       "text": "Resolves repository policy (confirms git-kit is the provider) before requesting a branch",
       "passed": true,
-      "evidence": "Step 3 invokes repository-gates before step 6's confirmation/step 7's delegation"
+      "evidence": "Step 3 genuinely invoked Skill(repository-gates), read versioned-configuration.json's repository_policy.provider_profile (null), and correctly treated that as repository-gates' own stop/manual-handoff condition rather than assuming git-kit anyway."
     },
     {
       "text": "Checks for an existing branch/commit/PR for this Issue before proposing a new branch",
       "passed": true,
-      "evidence": "Step 4 invokes linear-github-linking and branches on Exact/Adoptable/Conflicting/Ambiguous before proceeding"
+      "evidence": "Step 4 genuinely invoked Skill(linear-github-linking), honestly reported both halves of the check were blocked (unconfigured Linear connector; no Bash in this skill's allowed-tools), and correctly classified the result as Ambiguous per the skill's own table rather than assuming a clean no-match."
     },
     {
       "text": "Explicitly asks for confirmation before invoking git-kit:starting-work, and never claims to create a branch directly itself",
       "passed": true,
-      "evidence": "Step 6 AskUserQuestion gate before step 7's git-kit:starting-work delegation; explicit 'never runs a raw git checkout -b' statement"
+      "evidence": "Never invoked git-kit:starting-work or any raw git command; explicitly states any branch proposal is illustrative only and that it would present via AskUserQuestion before any git-kit delegation, consistent with the skill's own Confirmation and Safety section. Terminated in a manual handoff per repository-gates' own Failure-and-Resume rule rather than guessing."
     }
   ],
   "summary": {

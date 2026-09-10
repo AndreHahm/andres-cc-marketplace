@@ -5,22 +5,22 @@
     {
       "text": "Resolves the repository_policy.provider_profile (and confirms it maps to git-kit) before discovering gates",
       "passed": true,
-      "evidence": "Read versioned-configuration.json schema v2, checked local override via git ls-files trust-boundary check, found provider_profile null -> reported manual handoff per skill's own Step 2 before any gate discovery table use"
+      "evidence": "Section 1 reads versioned-configuration.json (provider_profile: null), runs the exact git ls-files trust-boundary check for the local override, then reads FOUNDATION_CONTRACTS.md's canonical table and states the resolved profile maps every governed operation to git-kit, disclosing the null-vs-table discrepancy explicitly rather than silently picking one — all before section 2's gate discovery."
     },
     {
       "text": "Discovers gates from actual repository configuration sources named in the skill (pre-commit config, branch protection, workflow files), not a hardcoded universal list",
       "passed": true,
-      "evidence": "Read real .pre-commit-config.yaml hooks, enumerated all 19 .github/workflows/*.yml files and grepped for Codex-review keyword, found two real distinct Codex gates by their actual display names"
+      "evidence": "Reads real .pre-commit-config.yaml hooks (2a/2b with actual hook ids), a live branch-protection read via gh_api_readonly.py with the real 9 required-check display names, and enumerates the actual workflow files/jobs (marketplace-ci.yml, validate-marketplace.yml, await-codex-review.yml) rather than assuming a generic gate list."
     },
     {
       "text": "Never asserts a 'Review Changes' gate exists unless real repo config names one",
       "passed": true,
-      "evidence": "Explicit statement: 'nothing in this repository's own discovered configuration... names a gate with that identity'"
+      "evidence": "Section 2e: 'No \"Review Changes\" gate exists anywhere in this repository's real configuration — not invented here,' explicitly distinguishing it from merge-pr's separate CODEOWNERS/merge-rights check."
     },
     {
       "text": "If branch protection can't be read, discloses this as ambiguous (permission vs. absence) rather than concluding 'no protection'",
       "passed": true,
-      "evidence": "Explicit: 'I am not asserting either protection exists or no protection configured' for the unreachable gh api branch-protection call"
+      "evidence": "Branch protection was readable this run, but the response explicitly states the forward-looking caveat: 'If a future session gets a 403/404 on this same endpoint, that must be reported as no discoverable required checks — ambiguous, may be the caller's permission level rather than an actual absence of protection... not silently read as no protection configured,' matching the skill's Failure and Resume section."
     }
   ],
   "summary": {

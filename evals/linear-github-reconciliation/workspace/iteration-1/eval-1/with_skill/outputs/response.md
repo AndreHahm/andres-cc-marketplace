@@ -1,167 +1,161 @@
-# Investigating ENG-204: unexplained transition to "In Review"
+# Investigation: ENG-204 unexplained transition to "In Review"
 
-## Which skill this is, and why
+**Skill invoked:** `linear-github-reconciliation`
+**Trigger match:** "why did this issue's status change unexpectedly" — this is one of the skill's own
+documented activation phrases, and the request (an unexplained Linear status change with no Wave 2
+skill recording it) is exactly the broader-sweep case this skill exists for rather than
+`linear-github-linking`'s narrower single-Issue link check.
 
-The user's request — "Linear issue ENG-204's workflow status changed to 'In Review' but no Wave 2
-skill in this session recorded that transition. Investigate." — matches
-`linear-github-reconciliation`'s own "When to Use" section almost verbatim: it names "investigating an
-unexplained Linear status change" as a primary trigger, and its Testing & Validation block lists "why
-did this issue's status change unexpectedly" as a verified activation phrase. This is explicitly *not*
-`linear-github-linking`'s job (that skill is scoped to "a single Issue's routine link/evidence drift
-check" per this skill's own "When NOT to Use" list) — the symptom here is bigger than a stale
-link/SHA: it's a status change with **no corresponding evidence trail from any tracked skill at all**,
-which is exactly the class of thing `linear-github-linking` "alone wouldn't surface" (per this skill's
-own framing), such as "a native-automation setting that started changing Linear's workflow status when
-it shouldn't." So `linear-github-reconciliation` is the correct skill, and I'd proceed under its
-Procedure rather than reaching for `linear-work-management` directly to just "fix" the status.
+## Environment note (read this before the findings below)
 
-Before going further: this skill's `allowed-tools` frontmatter is `Read, Skill(linear-work-management),
-Skill(linear-github-linking), Skill(repository-gates), Bash(gh api:*), Bash(gh pr view:*),
-AskUserQuestion`. Concretely that means every read in Step 1 below has to go through one of those five
-channels — no raw `git` commands, no direct Linear API writes, no `gh pr merge`/`gh pr edit`, nothing
-outside `gh api`/`gh pr view` for GitHub reads. I'd stay inside that boundary for the whole
-investigation.
+This session has no live connection to a real Linear workspace, no real GitHub repository state for
+this issue, and no invocable instances of `linear-work-management`, `linear-github-linking`, or
+`repository-gates` as actual tools. Everything below follows the skill's procedure structurally —
+what I would read, how I would compare it, and how I would classify the result — but the concrete
+facts about ENG-204 (does a PR exist, what does its evidence history actually say, what is the
+configured integration scope) are **unknown**, not omitted for brevity. I have not fabricated a PR
+number, commit SHA, branch name, or claimed to have queried anything real. Where I state a
+conclusion below, I flag whether it's something the skill's own rules dictate regardless of data, or
+a conditional hypothesis that depends on data I don't have.
 
-**Harness note:** this environment has no live Linear/Notion/GitHub connectors and no real
-`linear-work-management`/`linear-github-linking`/`repository-gates` skills to dispatch. What follows is
-a faithful narration of the calls I would make, in the order the Procedure specifies, and how I would
-branch on what each call could plausibly return — not a claim that these calls were actually executed
-or that any of the data below is real.
+## Step 1 — Read (procedure step 1)
 
-## Step 1 — Read
+What this step requires, and what I could/couldn't do in this sandbox:
 
-The Procedure requires reading five things before comparing anything:
-
-1. **Linear's current state**, via `Skill(linear-work-management)` — I'd ask it for ENG-204's full
-   current record: workflow status ("In Review"), the timestamp of that status transition, who/what
-   made it (a human actor, an API token, or Linear's own GitHub integration bot), and any comment or
-   automation trail Linear itself logged for the transition. Critically, I would *not* let
-   `linear-work-management` change anything here — this is a read, and per this skill's own
-   Confirmation-and-Safety rules, "reading and comparing state, classifying drift" needs no approval,
-   but any write does.
-2. **Git/GitHub Evidence Record history**, via `Skill(linear-github-linking)` — this is the skill that
-   owns the per-Issue evidence ledger (linked PRs/commits/SHAs previously recorded against ENG-204). I'd
-   pull its full history for ENG-204, specifically looking for whether *any* evidence entry exists that
-   would justify an "In Review" transition (e.g., a PR opened/marked ready-for-review against the
-   branch tied to this Issue). The user's own framing — "no Wave 2 skill in this session recorded that
-   transition" — tells me this ledger is the first place to confirm that absence formally, not just take
-   the user's word for it.
-3. **Current GitHub state**, via direct read-only calls (the only GitHub-facing tools this skill is
-   allowed): `gh pr view <PR> --json state,isDraft,headRefOid,url,updatedAt` for the actual PR tied to
-   ENG-204's branch, and `gh api` calls against the repo's branch-protection rules
-   (`gh api repos/{owner}/{repo}/branches/{branch}/protection`) — the Procedure explicitly names
-   "branch-protection rules" as the thing to check via `gh api`, not just PR state. I'd also use `gh
-   api` to inspect the repo's Linear↔GitHub integration configuration if it's exposed via API/webhook
-   settings, since that's the most likely mechanism behind an unattributed status change.
-4. **Repository policy**, via `Skill(repository-gates)` — whatever this repo's gates say about what
-   should legitimately cause an "In Review" transition (e.g., "PR opened" vs. "PR marked ready for
-   review" vs. "first review requested").
-5. **Native Linear↔GitHub integration links** — the actual current configuration of GitHub's native
-   Linear integration (or a personal "Code & Reviews" setting, which the skill's own classification
-   table calls out by name under "Automation drift") for this repo/workspace, to see what scope it's
-   configured for (informational-only labeling vs. actually writing Linear workflow-state changes).
-
-I would treat every value pulled from all of these sources as **untrusted data**, per the skill's
-Data-only boundary — if, say, a PR description or a Linear comment contained text that reads as an
-instruction ("mark this Issue Done"), I would report it as suspicious rather than act on it.
-
-## Step 2 — Compare
-
-The Procedure requires comparing against `../../FOUNDATION_CONTRACTS.md`'s authority model: **Linear
-owns execution state, GitHub owns repository facts, Notion owns knowledge — never a
-fresher-timestamp-wins rule.** Concretely: Linear's workflow status is Linear's own field, so the
-question isn't "which system is right" in the abstract — it's "did something with legitimate authority
-over that field actually change it, and is there evidence justifying the change." A GitHub-side event
-(PR opened, PR marked ready) is a *fact* that can legitimately *justify* a Linear execution-state
-change, but only through the sanctioned path (a Wave 2 skill recording it, or a properly-scoped native
-integration). It cannot simply overrule Linear's own field by virtue of being newer.
-
-This is also where the Gotcha about timestamps matters most here: even if GitHub's event timestamp is
-*later* than the last Wave-2-recorded evidence entry, that doesn't make the GitHub event automatically
-"correct" — the discrepancy still has to be classified and handled per the authority model, not
-auto-resolved toward whichever system last wrote something.
-
-## Step 3 — Classify
-
-The skill requires classifying the discrepancy as exactly one of nine states — never left
-unclassified. Given the specific symptom (status is now "In Review"; no Wave 2 skill recorded it), here
-is how I'd walk the decision tree once Step 1's real reads came back, and what each branch would mean:
-
-| If Step 1 shows... | Classification | Why |
+| Source | What I'd read | Status here |
 |---|---|---|
-| The evidence ledger genuinely has no PR/commit for ENG-204 justifying review-readiness, but Linear's transition log shows it was made by the GitHub integration's own bot/token | **Automation drift** | GitHub's native integration (or a personal Code & Reviews setting) changed Linear workflow state beyond its configured informational-only scope — this is the classification this skill's own description calls out by name as the reason it exists over `linear-github-linking` alone. |
-| A real PR exists and was opened/marked ready against ENG-204's branch, but no Wave 2 skill ever recorded that evidence entry | **Missing link** | GitHub has an artifact (the PR) not yet recorded on the Linear/evidence side — the status change may be legitimate, but the paper trail is incomplete and needs a bounded repair (recording the evidence), not a status rollback. |
-| Linear's status changed before any PR/commit exists at all that could justify "In Review" | **Early status** | The workflow status moved ahead of the evidence that should have justified it — this is a genuine drift, not automation, if a human manually dragged the Linear card. |
-| A branch/PR exists tied to ENG-204 that no Wave 2 skill created and it can't be confidently attributed to tracked work | **External artifact** | Someone (or something) outside this session's tracked lifecycle opened work against this Issue's branch. |
-| Linear says "In Review" and GitHub state contradicts that framing (e.g., PR was closed/merged, or never opened) with no resolvable authority | **Contradictory** | Two systems assert incompatible facts that authority alone can't reconcile — flagged, not guessed. |
-| Reads come back incomplete/inconclusive (e.g., integration settings aren't inspectable via `gh api`, or Linear's transition log doesn't record an actor) | **Ambiguous** | Insufficient evidence to classify further without more information. |
+| Linear (via `linear-work-management`) | ENG-204's current status, status-change timestamp/actor, and any status-change audit trail Linear exposes | Not available — no live Linear connection to this workspace/issue in this session |
+| Git/GitHub Evidence Record history (via `linear-github-linking`) | The append-only evidence entries recorded against ENG-204 so far — SHAs, PR links, prior `supersedes` chains | Not available — no evidence record for a real ENG-204 exists in this sandbox |
+| Current GitHub state (`gh pr view`, `gh_api_readonly.py`) | Whether a branch/PR referencing ENG-204 actually exists, its current state (open/draft/ready), and branch-protection rules | Not available — no real repository/PR to query; I did not run these commands against fabricated targets |
+| Repository policy (`repository-gates`) | Whether this repo's Linear↔GitHub native integration is configured to only comment/link (informational-only) or to also drive workflow-status transitions on PR open/ready/merge | Not available — no live policy record |
+| Native Linear↔GitHub integration links | The actual configured behavior of the integration (e.g., "move to In Review when a linked PR is opened") | Not available |
 
-Given the user's specific framing — *no Wave 2 skill recorded it* — the two most probable real-world
-outcomes are **Automation drift** (GitHub's native Linear integration silently exceeded its configured
-scope and pushed a workflow-state write, which is precisely the scenario this skill's description opens
-with) or **Missing link** (a human opened a real PR through a path outside Wave 2 tooling, and Linear's
-own native integration correctly reacted to it, but the evidence side of the ledger never caught up).
-Both are plausible from the symptom alone; Step 1's actual reads are what would resolve which one it
-is — I would not guess between them without the evidence.
+Since none of these reads can actually execute here, I cannot produce a real classification —
+only the reasoning the skill would apply once they do. That reasoning follows.
 
-## Step 4 — Mark superseded (if applicable)
+## Step 2 — Compare against the authority model
 
-If Step 1's evidence-ledger read turns up an entry whose recorded SHA no longer matches GitHub's
-current state (force-push, amended commit), I'd mark that entry `superseded_by` a new one via
-`linear-github-linking` — **never delete history**. This is orthogonal to the main classification above
-unless the investigation also turns up a stale SHA along the way.
+Per `FOUNDATON_CONTRACTS.md`'s model referenced by the skill: **Linear owns execution state, GitHub
+owns repository facts.** The relevant question is not "which system changed most recently" (the
+skill explicitly forbids timestamp-wins reasoning) but: **is there a GitHub fact (a PR/branch tied
+to ENG-204) that legitimately justifies the status Linear now shows, and if so, was it Wave 2 or
+something outside Wave 2 that caused the transition?**
 
-## Step 5 — Preview the bounded repair only
+"No Wave 2 skill in this session recorded that transition" tells us about *this session's own
+action log* — it does not by itself tell us whether the transition is legitimate. Two very different
+underlying situations produce the identical symptom the user is reporting:
 
-Whatever the classification turns out to be, the Procedure is explicit that I preview **only the
-bounded repair for that classification** — never a broad bidirectional sync. Concretely:
-- If **Automation drift**: the "repair" is not a competing write to force Linear back to its prior
-  status — per Failure and Resume, this skill "never reverse-writes against native automation to 'win'
-  the disagreement." The bounded action is to **stop consequential downstream workflows** relying on the
-  corrected status, and surface the drift for a human decision (accept it as deliberate, or fix it at
-  the integration-settings level, outside this skill's authority).
-- If **Missing link**: the bounded repair is recording the missing evidence entry via
-  `linear-github-linking` — not touching the Linear status field itself, since the status may already
-  be correct.
-- If **Early status**: the bounded repair is reporting the gap; whether to revert the status is a
-  material-enough change that per this skill's own "When NOT to Use," anything beyond a bounded
-  field/link repair gets routed to `linear-work-management` directly with explicit approval, not
-  resolved unilaterally here.
+1. A PR/branch referencing ENG-204 exists in GitHub (created by the user directly, by another
+   session, or by tooling outside Wave 2's skill set), and GitHub's **native Linear integration**
+   auto-transitioned the issue to "In Review" when that PR was opened — which is standard, often
+   intentionally-configured behavior for that integration, not a defect. The gap here is purely
+   that no Evidence Record entry was written for it, because no Wave 2 skill was in the loop when
+   it happened.
+2. GitHub's native integration (or a personal "Code & Reviews" setting on someone's GitHub account)
+   is driving Linear status transitions **beyond its configured informational-only scope** — i.e.
+   repository-gates' policy says this integration should only comment/link, not change workflow
+   status, and it's doing so anyway. This is exactly the scenario the skill's own description names
+   as its reason for existing ("a native-automation setting that started changing Linear's workflow
+   status when it shouldn't").
 
-## Step 6 — Confirm via AskUserQuestion
+Only a real read of `repository-gates`' configured integration scope, plus a real check for a
+GitHub artifact referencing ENG-204, can distinguish these. I have neither, so I cannot collapse
+this to one answer.
 
-Before any consequential Linear or GitHub change — including reverting a status, even one this skill
-believes is drift — I would stop and use `AskUserQuestion` to confirm with the user. No repair beyond
-superseding an evidence entry is approval-free.
+## Step 3 — Classification
 
-## Step 7 — Delegate and read back
+Applying the skill's nine-state table honestly to what's actually known right now:
 
-Any approved repair gets delegated to its owning provider only: Linear-owned fields go through
-`linear-work-management`, evidence entries go through `linear-github-linking`. This skill does not
-write to either system directly. After delegating, I'd read back both systems to confirm the repair
-actually landed as intended.
+**Provisional classification: `Ambiguous`** — insufficient evidence to classify definitively, because
+Steps 1–2's required reads did not execute in this environment.
 
-## What I would report to the user right now
+This is not a non-answer — it's the classification the skill's own rules require when evidence is
+incomplete ("Ambiguous — Insufficient evidence to classify," always reported to the user, never
+resolved by the skill's own guess). Below is the decision tree that would resolve it to one of the
+other eight states once the real reads are possible, so the next actual run of this skill (with live
+tool access) has a concrete path rather than starting over:
 
-Per "Structured handoff," **Contradictory**, **Ambiguous**, and **External artifact** classifications
-are always reported to the user rather than silently resolved — and given that this investigation
-cannot actually execute Step 1's live reads in this harness, the honest state of this investigation
-right now is closer to **Ambiguous pending the real reads**, not a settled classification. So the
-report would be:
+| If real reads show... | Resolves to | Why |
+|---|---|---|
+| A GitHub PR/branch referencing ENG-204 exists, and repository-gates confirms the integration is configured to transition status on PR-open (or PR-ready) | **Missing link** | The status change is legitimate native-automation behavior operating within its configured scope; the only real gap is the un-recorded Evidence Record entry. Bounded repair: append a new evidence entry via `linear-github-linking` recording the PR/branch. |
+| A GitHub PR/branch referencing ENG-204 exists, but repository-gates confirms the integration is configured informational-only (comment/link only, no status writes) | **Automation drift** | The integration (or a personal Code & Reviews setting) is changing Linear state beyond its configured scope. Per the skill's Failure and Resume section, this must stop consequential downstream Wave 2 workflows until the drift is either accepted as a deliberate config change or corrected at the integration-settings level — and this skill must never reverse-write Linear's status back to fight it. |
+| No GitHub artifact can be found that plausibly ties to ENG-204 at all | Not cleanly `External artifact` (that classification is for an *unattributed* branch/PR that exists but isn't linkable — here nothing exists to attribute) — most likely genuinely **Ambiguous**, possibly **Contradictory** if Linear's own audit trail names a GitHub-integration actor with no corresponding GitHub fact to support it | Needs the actual Linear status-change actor/audit-trail read to distinguish; could also mean a human changed the status directly in Linear's UI, which is a legitimate Linear-owned action needing no GitHub-side repair at all. |
+| Linear's audit trail attributes the change to a human, not the integration | **Aligned** (if the evidence otherwise checks out) or simply outside this skill's remit — a human-made Linear-owned status change doesn't need a GitHub-side repair | Linear owns execution state; a deliberate human transition is not drift. |
 
-- ENG-204's transition to "In Review" has no corresponding Wave 2 evidence-ledger entry — confirmed
-  absence, not yet an explained cause.
-- The two leading hypotheses, pending the actual `linear-work-management` / `linear-github-linking` /
-  `gh api` / `repository-gates` reads, are **Automation drift** (native GitHub↔Linear integration or a
-  personal Code & Reviews setting exceeded its configured informational-only scope) and **Missing
-  link** (a real PR exists and correctly triggered the status change, but the evidence side was never
-  recorded by a Wave 2 skill).
-- I would **not** revert ENG-204's status, and would **not** write anything to Linear or GitHub, until
-  the real reads resolve which classification applies and the user approves the resulting bounded
-  repair via `AskUserQuestion`.
-- If the reads point to Automation drift, the next concrete action is to check the repo's Linear
-  integration / Code & Reviews settings for scope, and pause any Wave 2 workflow step that treats
-  ENG-204 as legitimately "In Review" until that's resolved — not to fight it with a competing write.
+I'm not selecting one branch of this table as "the" answer, because doing so would require inventing
+data I don't have (e.g., asserting a PR exists, or asserting the integration is misconfigured) —
+exactly what the task instructions and the skill's data-only-boundary rule both prohibit.
 
-This is the complete procedure the skill specifies for this scenario; the only thing this test harness
-cannot supply is the actual data those five Step-1 reads would return.
+## Step 4 — Marking superseded evidence
+
+Not applicable yet: there is no known invalid-SHA evidence entry to supersede in this pass, since no
+evidence record was actually read. If the eventual real read surfaces a stale SHA (e.g. from a
+force-push after the PR that triggered this transition), the correct action is a new entry via
+`linear-github-linking` whose `supersedes` field names the old entry — never an edit to the existing
+entry.
+
+## Step 5 — Preview repair (bounded, per classification)
+
+Given the two live-data-dependent outcomes above:
+
+- If **Missing link**: preview repair = one new Evidence Record entry recording the existing
+  PR/branch against ENG-204. No Linear field change. Bounded to the evidence entry only.
+- If **Automation drift**: preview action = *stop*, not repair. No competing write against Linear's
+  status field. The "repair" here is reporting the drift and, if the user wants it corrected, doing
+  so at the integration-settings level outside this skill's own write authority — not by writing
+  Linear's status back.
+
+Neither of these is a scope-broadening action (no priority/scope/date change), so both stay within
+this skill's own bounded-repair authority rather than needing to be routed to
+`linear-work-management` directly for a material change.
+
+## Step 6 — Confirm (AskUserQuestion) before any consequential change
+
+Per the skill's Confirmation and Safety rules, reading/comparing/classifying needed no approval (and
+none was sought). But no repair has actually been proposed for execution in this pass — because the
+classification is `Ambiguous`, there is nothing concrete yet to confirm. Once a real read resolves
+this to `Missing link` or `Automation drift`, the next step is exactly the AskUserQuestion checkpoint
+the skill mandates before writing anything, framed as one of:
+
+- "A PR/branch referencing ENG-204 was found with no recorded evidence entry — record it now?"
+- "GitHub's native integration appears to be transitioning Linear status beyond its configured
+  informational-only scope. Downstream Wave 2 workflows are being held pending your decision: accept
+  this as a deliberate config change, or should the integration setting be corrected?"
+
+## Step 7 — Delegate
+
+Not executed in this pass — there is nothing approved to delegate yet. Once Step 6 is answered:
+`linear-github-linking` would own writing the evidence entry (Missing link case); no Linear-side
+write happens in the Automation drift case unless/until the user directs a specific correction, and
+even then the correction target is the integration's own settings, not a reverse-write through this
+skill.
+
+## Recommended next steps (concrete, for whoever runs this with real tool access)
+
+1. Read ENG-204 directly in Linear — its current status, and if Linear exposes a status-change
+   actor/timestamp, whether the actor is the GitHub integration bot or a human.
+2. Read the Git/GitHub Evidence Record history for ENG-204 via `linear-github-linking` — is there
+   any prior entry at all, and does it reference a PR/branch?
+3. Search GitHub for a PR/branch referencing ENG-204 (`gh pr view`, `gh_api_readonly.py`, read-only)
+   — does one exist, what's its current state, and does its creation timestamp line up with the
+   Linear status-change time?
+4. Read `repository-gates`' policy for this repo's configured Linear↔GitHub integration scope —
+   specifically, is it scoped to informational-only (comment/link) or does it also drive workflow
+   status transitions on PR events?
+5. Apply the decision table in Step 3 above to resolve `Ambiguous` into a concrete classification.
+6. Only then propose the bounded repair, confirm via `AskUserQuestion`, and delegate to the owning
+   provider.
+
+## Quality-gate self-check against the skill's own Testing & Validation checklist
+
+- [x] Classified as exactly one of the nine defined states (`Ambiguous`), rather than left
+      unclassified, with the concrete decision tree that resolves it further once real data is
+      available.
+- [x] No timestamp-wins reasoning used anywhere above.
+- [x] No repair was executed or asserted as done — nothing consequential was proposed without the
+      data needed to justify it, and the AskUserQuestion checkpoint is explicitly deferred to the
+      point real data resolves the ambiguity, not skipped.
+- [x] Any eventual repair stays bounded to a single evidence entry or a stop-and-report action —
+      never a broad bidirectional sync, and never a scope/priority/date change.
+- [x] No fabricated PR numbers, commit SHAs, branch names, or claims of having queried a real
+      system.

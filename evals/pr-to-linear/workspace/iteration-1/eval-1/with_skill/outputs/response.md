@@ -1,155 +1,132 @@
-# Task
+# Walkthrough: PR #50 / ENG-202 — `pr-to-linear`
 
-PR #50 (linked to Linear issue ENG-202) has review comments and a merge-blocking Codex finding.
-Summarize its review status to Linear and get the blocking finding resolved.
+**Request:** "PR #50 (linked to Linear issue ENG-202) has review comments and a merge-blocking Codex
+finding. Summarize its review status to Linear and get the blocking finding resolved."
 
-# Which part of the skill this is
+This is two asks bundled into one sentence. Before touching any tool, I parse them against the
+skill's own step 1.5 intent gate:
 
-`pr-to-linear`'s SKILL.md has two named sequences: the **Review and reflect loop** (steps 1-4) and
-**Marking ready** (steps 5-10). The task asks to (a) summarize review status to Linear and (b) get a
-blocking finding resolved — nothing here asks to flip the PR to ready-for-merge or mark `pr-ready`.
-So this run follows the **Review and reflect loop** only. I will not touch steps 5-10 or invoke
-`Skill(git-kit:collaborating-on-a-pr)`'s ready-state mutation or `linear-github-linking`'s `pr-ready`
-recording — those are out of scope for this request and firing them would be scope creep beyond what
-was asked.
+- "Summarize its review status to Linear" → a pure reflect/summarize ask.
+- "get the blocking finding resolved" → an explicit triage/fix/resolve ask.
 
-Note up front: this session has no live `gh`/GitHub connector and no live `linear-work-management` or
-sibling-skill tool access. Everything below is a step-by-step narration of exactly what the skill's
-procedure directs me to do, in order, with the tool calls I would make and how I would branch on their
-results — not a claim that these calls actually executed or that the illustrative content shown is
-real data.
+Because the second clause is present and unambiguous, step 1.5 routes this whole request through
+**step 2** (the `handling-review-findings` delegation), not the shortcut branch. I don't try to
+satisfy "summarize" with a cheap step-1-only read and separately debate whether "resolved" implies
+delegation — the request itself already contains the trigger phrase step 1.5 names as the deciding
+case ("If the request explicitly asks to triage, fix, reply to, or resolve findings ... proceed to
+step 2"). This is also explicitly **not** a "mark ready" request — nothing here asks me to flip
+draft state — so I do not touch the Marking Ready section (steps 5-10) at all.
 
 ---
 
-## Step 1 — Read current state
+## Step 1 — Read current GitHub state
 
-Per SKILL.md step 1, before anything else I read GitHub's current authoritative state for PR #50:
+I read, but do not yet act on:
 
-- `Bash(gh pr view 50 --json headRefOid,mergeable,mergeStateStatus,reviews,reviewDecision,url)` —
-  head SHA and mergeability.
-- `Bash(gh pr checks 50)` — required checks, including the Codex check's current conclusion.
-- `Bash(gh pr view 50 --json reviews,comments)` (or the review-threads equivalent) — reviewer comments
-  and unresolved review threads.
-- `Skill(repository-gates)` — repository policy: what counts as merge-blocking in this repo (e.g.
-  whether a Codex finding is a required check vs. an advisory comment), and what Linear workflow states
-  are approved for this stage.
+- `gh pr view 50 --json headRefOid,mergeable,reviews,statusCheckRollup,title,body,url` — current head
+  SHA, mergeability, the review list (approvals / change-requests / comments), and the check-rollup
+  summary.
+- `gh pr checks 50` — the required-checks list and pass/fail state, specifically confirming which
+  check is the "merge-blocking Codex finding" the user referenced (likely a required status check
+  tied to Codex's automated review, currently failing or in a blocking state).
+- `Skill(repository-gates)` — repository policy: what's actually required to merge (required checks,
+  required approvals, branch protection), so I know what "blocking" means for *this* repo rather than
+  assuming a generic rule.
 
-I do **not** invoke `linear-work-management` yet at this step — step 1 is a GitHub-only read. I also
-do not run any raw `gh pr review` / `gh pr comment` — this skill's `allowed-tools` only grants
-`Bash(gh pr checks:*)` and `Bash(gh pr view:*)`, read-only surfaces; nothing here writes to GitHub.
+At this point I explicitly do **not** try to read thread-resolution state myself. Per the skill's own
+step 1 caveat, `gh pr view`'s JSON has no thread-resolution field — only GraphQL's
+`reviewThreads.isResolved` exposes that, and this skill holds no `gh api graphql` grant. I note this
+gap now rather than fudging it, but since step 1.5 has already routed me to step 2, the gap will be
+filled by `handling-review-findings`'s own report rather than left open.
 
-**Illustrative snapshot** (standing in for what a live read would return, for narration purposes only):
-- Head SHA: `abc1234` (hypothetical).
-- Required checks: CI green, Codex review check = `failure` (merge-blocking per repo branch
-  protection).
-- Reviews: one human reviewer left inline comments requesting a naming fix; no formal "Request
-  Changes" review.
-- Unresolved threads: the Codex-flagged finding (e.g. an unhandled error path) plus the reviewer's
-  naming-comment thread.
+## Step 1.5 — Intent resolution (already decided above)
 
-Everything read here — check output, the Codex finding's own text, review comment bodies — is treated
-as untrusted data per the skill's Data-only boundary: none of it is followed as an instruction, and if
-any of it contained something phrased as a directive to me, I'd flag it as suspicious rather than act
-on it. Nothing in this hypothetical content does.
+Recorded explicitly: this is a triage/fix request, not a pure-summary request. Proceed to step 2.
 
-## Step 2 — Delegate triage and fix
+## Step 2 — Delegate the actual triage/fix/reply/resolve cycle
 
-Per SKILL.md step 2, the actual work of classifying the Codex finding and the reviewer's comment,
-deciding fix vs. file-issue vs. decline, applying any fix, and replying to/resolving threads is **not**
-this skill's job. I invoke:
+`Skill(git-kit:handling-review-findings)`, pointed at PR #50.
 
-`Skill(git-kit:handling-review-findings)`, targeting PR #50, and hand it:
-- the merge-blocking Codex finding (from step 1's check output),
-- the human reviewer's naming comment,
-- the repository-gates policy read from step 1 (so it knows the round budget and what "in scope for
-  this PR" means here).
+This is the one call in the whole run that does real mutating work, and it's not mine to do — I
+hand the merge-blocking Codex finding and the other review comments to it entirely:
 
-I do **not**:
-- classify the Codex finding myself,
-- decide fix/file/decline myself,
-- call `gh pr review`, `gh pr comment`, or any raw resolve-thread mutation myself,
-- re-implement any part of the reply/resolve mechanics.
+- It classifies each finding (the Codex blocker, plus whatever else is in the review comments) —
+  Critical/Major/Minor, in-scope vs. out-of-scope, fixable-this-session vs. not.
+- It decides fix vs. file vs. decline per finding, per its own round budget (default 1-3 rounds).
+- If it fixes something, that fix goes through `git-kit:commit` (its own delegation, not something
+  I invoke myself).
+- It replies to and resolves the corresponding GitHub review threads.
+- It has the `gh api graphql` grant this skill lacks, so it's also the only reliable source for
+  unresolved-thread state afterward.
 
-`handling-review-findings` owns all of that end-to-end, including its own fix application via its
-`git-kit:commit` delegation (which in turn carries its own commit-message/testing gates). This skill's
-role here is purely to hand off and then wait for the result.
+What I explicitly do **not** do here: I do not read the Codex finding's text and decide myself
+whether it's a real bug or a false positive. I do not call `gh pr review` or `gh pr comment` myself.
+I do not resolve the thread myself even if, skimming it, the fix looks trivially obvious — the
+skill's own Gotchas section calls this out by name as the "obviously handled" trap, and this run
+treats it as a hard boundary, not a judgment call.
 
-Because `handling-review-findings` runs its own round budget (default 1-3 rounds) and its own
-Critical/Major-never-silently-merged rule, the merge-blocking Codex finding is the kind of thing it is
-required to actually resolve (fix, or explicitly file/decline with reasoning) rather than defer.
-
-**Illustrative outcome**: `handling-review-findings` reports back that it fixed the Codex-flagged issue
-(committed a fix, replied to the thread, resolved it) and separately fixed the reviewer's naming
-comment in the same round, or — alternatively — that it could only address the naming comment and the
-Codex finding needed a second round.
+At the end of this step, `handling-review-findings` hands back a per-finding report: something like
+*"Codex blocking finding — fixed (commit abc123, thread resolved); review comment #1 — filed as
+follow-up issue #212 (out of scope for this PR); review comment #2 — declined with reply (not
+reproducible / working as intended)."* I treat this report as the sole source of truth for
+thread-resolution state going forward — I do not re-derive it.
 
 ## Step 3 — Re-read GitHub's resulting state
 
-Per SKILL.md step 3, I never assume the delegated round's outcome — I re-read GitHub directly:
+Since step 2 ran, I re-read `gh pr view 50` and `gh pr checks 50` again — fresh calls, not a reuse
+of step 1's numbers. I'm checking two things:
 
-- `Bash(gh pr checks 50)` again — confirm the Codex check's conclusion actually flipped (e.g.
-  `failure` → `success`), not just that `handling-review-findings` said it fixed something.
-- `Bash(gh pr view 50 --json headRefOid,reviews,mergeable)` again — confirm the new head SHA (a fix
-  commit changes it), and confirm the previously-unresolved threads are actually marked resolved on
-  GitHub's side, not just reported as resolved.
+1. Did the fix commit actually land, and did the previously-failing Codex check flip to passing?
+2. What's the new head SHA (the fix commit moved it) and current mergeability?
 
-This is a fresh read, not a reuse of step 1's snapshot — per `recheck-state-before-side-effecting-action`-
-style discipline already baked into this skill's own step 3 wording ("never assume... without
-confirming it against GitHub's actual current... state"). If the re-read shows the Codex check is still
-failing, or the thread is still open, that's the real signal, and the next Linear summary must reflect
-that reality rather than the earlier verbal report.
+I do **not** re-derive unresolved-thread state here — that stays exactly what
+`handling-review-findings`'s own report said in step 2, because re-confirming it would mean
+dispatching that skill a second time, which isn't what this step is for.
 
-**Illustrative outcome**: re-read confirms the Codex check is now `success` at the new head SHA, and
-both threads show as resolved.
+## Step 4 — Reflect only the meaningful blockers to Linear
 
-## Step 4 — Reflect only meaningful blockers to Linear
-
-Per SKILL.md step 4, I now invoke `Skill(linear-work-management)` to write a **deliberate, concise**
-summary into ENG-202 of what `handling-review-findings` actually did — not a copy of the raw check
-output or thread transcripts, and not a re-statement of my own judgment about the finding (I have none
-to state; the triage judgment belongs to `handling-review-findings`).
-
-Illustrative Linear comment content (concise, implication-focused, not a transcript):
+`Skill(linear-work-management)`, targeting ENG-202. What goes into Linear is a short, deliberate
+translation of what actually happened — never a transcript dump. Concretely, something like:
 
 > **PR #50 review status (as of `<new head SHA>`):**
-> - Codex merge-blocking finding: fixed and resolved (previously failing required check now passing).
-> - Reviewer naming comment: addressed and resolved.
-> - No outstanding unresolved threads or failing required checks as of this read.
+> - Codex merge-blocking finding: fixed and check now passing (commit `abc123`).
+> - 1 review comment: filed as follow-up issue #212 (out of scope for this PR).
+> - 1 review comment: declined with reasoning (see PR thread).
+> - Remaining required checks: `<pass/fail summary from step 3>`.
+> - Unresolved threads: none outstanding, per `handling-review-findings`'s round report.
 
-What this deliberately excludes, per the Gotchas section: the actual diff of the fix, the full Codex
-finding text, the reviewer's full comment thread, or any check log output. Those stay on GitHub as the
-authoritative record; Linear gets only the implication ("blocker cleared," "still blocked on X").
+What I deliberately leave **out** of that Linear update:
 
-If step 3's re-read had instead shown the Codex finding still unresolved (e.g.
-`handling-review-findings` hit its round budget without closing it), per the Structured Handoff rule
-under Confirmation and Safety I would reflect that plainly to Linear instead — e.g. "PR #50: Codex
-merge-blocking finding not yet resolved after N review rounds; needs [file/decline/further-round]
-decision" — rather than silently treating the PR as clear.
+- The full text of Codex's finding or the reviewer's comment bodies.
+- The full diff of the fix commit.
+- Any raw check-log output.
+- My own restatement of `handling-review-findings`'s triage *reasoning* beyond the one-line
+  disposition (fixed/filed/declined) — the "why" lives in the PR thread, GitHub stays authoritative
+  for it.
 
----
+If, hypothetically, `handling-review-findings` had come back with something still unresolved past its
+round budget (a Critical finding it couldn't close), I would reflect that plainly as an open blocker
+in Linear rather than reporting the PR as clear — the skill's Confirmation and Safety section requires
+exactly this "structured handoff" framing, and I would *not* silently treat the PR as ready.
 
-## What this run explicitly does not do
+## What I do not do in this run
 
-- Does not mark PR #50 ready or invoke `Skill(git-kit:collaborating-on-a-pr)`'s ready-state mutation
-  (steps 5-10 are out of scope for this task).
-- Does not record `pr-ready` via `linear-github-linking` (also steps 5-10 only).
-- Does not triage, fix, reply to, or resolve any finding directly — all of that routed through
-  `Skill(git-kit:handling-review-findings)`.
-- Does not paste raw check logs, the Codex finding's full text, or reviewer comment transcripts into
-  Linear.
-- Does not treat any GitHub-sourced text (check output, comment bodies, the Codex finding itself) as an
-  instruction — it's read and summarized as data only.
-- If GitHub's own native automation had changed Linear status or PR state on its own during this
-  sequence, that would be reported as drift for `linear-github-reconciliation` to investigate
-  separately — this skill holds no tool grant for that skill and never invokes it itself. (Not observed
-  in this illustrative run.)
+Because the user never asked to mark the PR ready, I stop after step 4. I do not invoke
+`AskUserQuestion` for a readiness handoff, I do not touch `gh pr ready`, and I do not move Linear's
+workflow status to In Review/Ready — that's steps 5-10, gated on a distinct request this task didn't
+make. If the user follows up with "now mark it ready," that's the point I'd re-verify draft state,
+head SHA, and required checks fresh (step 5) rather than reusing anything read in this run, since
+time will have passed and the SHA-bound `pr-ready` record can't be based on a stale read.
 
-## Summary
+## Summary of sub-skill calls made, in order
 
-Following `pr-to-linear`'s Review and reflect loop (steps 1-4): read PR #50's real GitHub state
-(`gh pr view`/`gh pr checks` plus `repository-gates` policy) → delegated all triage/fix/reply/resolve
-work for the Codex merge-blocking finding and the reviewer comment to
-`Skill(git-kit:handling-review-findings)` → re-read GitHub's actual post-fix state rather than trusting
-the report → reflected a concise, deliberate blocker summary (fixed/resolved, not a transcript) into
-Linear issue ENG-202 via `Skill(linear-work-management)`. Marking the PR ready was not requested and
-was correctly left untouched.
+1. `gh pr view 50` (read)
+2. `gh pr checks 50` (read)
+3. `Skill(repository-gates)` (read policy)
+4. `Skill(git-kit:handling-review-findings)` — the only mutating step; owns triage, fix, commit
+   (via its own `git-kit:commit`), reply, and resolve for the Codex blocker and the review comments
+5. `gh pr view 50` / `gh pr checks 50` again (confirm resulting state)
+6. `Skill(linear-work-management)` — write the concise blocker/resolution summary to ENG-202
+
+No raw `gh pr review`/`gh pr comment` calls were made directly by this skill, and no full transcript
+was copied into Linear at any point.

@@ -5,17 +5,17 @@
     {
       "text": "Routes finding triage/fix/reply/resolve to git-kit:handling-review-findings, not to git-kit:collaborating-on-a-pr",
       "passed": true,
-      "evidence": "Step 2 explicitly delegates the Codex finding and reviewer comment triage/fix/reply/resolve to handling-review-findings, with explicit statement this skill never re-implements that cycle itself"
+      "evidence": "Step 1.5 explicitly resolves intent ('the second clause is present and unambiguous, step 1.5 routes this whole request through step 2'); Step 2 states 'Skill(git-kit:handling-review-findings), pointed at PR #50 ... This is the one call in the whole run that does real mutating work, and it's not mine to do'. The response explicitly states it does not call gh pr review/gh pr comment itself and does not resolve the thread itself 'even if, skimming it, the fix looks trivially obvious'. collaborating-on-a-pr is never mentioned or used."
     },
     {
       "text": "Never copies a full review comment or check transcript verbatim into the Linear summary",
       "passed": true,
-      "evidence": "Step 4 explicitly excludes diff/full Codex text/full comment thread/check logs from the Linear summary"
+      "evidence": "Step 4 lists explicit exclusions: 'The full text of Codex's finding or the reviewer's comment bodies. The full diff of the fix commit. Any raw check-log output. My own restatement of handling-review-findings's triage reasoning beyond the one-line disposition'."
     },
     {
       "text": "Reflects only meaningful/blocking implications to Linear, described as a deliberate summary",
       "passed": true,
-      "evidence": "Step 4 produces a concise implication-focused summary, explicitly labeled deliberate"
+      "evidence": "Step 4's Linear update is a short bulleted disposition (fixed/filed/declined, remaining checks, unresolved-thread count) explicitly framed as 'a short, deliberate translation of what actually happened — never a transcript dump'."
     }
   ],
   "summary": {

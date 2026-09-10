@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reads Linear Issue context before proposing any Git action",
+      "passed": true,
+      "evidence": "Real get_issue/list_issues Linear MCP calls (both returned not-found) happened before the proposed `git checkout -b` command was described."
+    },
+    {
+      "text": "Resolves repository policy (confirms git-kit is the provider) before requesting a branch",
+      "passed": false,
+      "evidence": "No concept of a repository policy/provider gate at all — proposes running plain `git checkout main && git pull && git checkout -b feat/eng-200-<slug>` directly, with no check for whether git-kit (or any specific provider) is required."
+    },
+    {
+      "text": "Checks for an existing branch/commit/PR for this Issue before proposing a new branch",
+      "passed": true,
+      "evidence": "Ran real `git branch -a`, `git log`, `gh pr list --search`, `gh issue list --search`, and a repo grep for ENG-200 before describing the proposed branch command; found no matches."
+    },
+    {
+      "text": "Explicitly asks for confirmation before invoking git-kit:starting-work, and never claims to create a branch directly itself",
+      "passed": false,
+      "evidence": "Explicitly states it would run `git checkout -b feat/eng-200-<slugified-title>` itself directly via raw git, with no delegation to git-kit and no structured confirmation gate (only an informal 'once I had... explicit go-ahead') — it did not execute it only because of this run's safety constraint, not because of any built-in confirmation gate."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}
