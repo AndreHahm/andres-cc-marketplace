@@ -404,6 +404,17 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
 
 ## Change Log
 
+- 2026-09-10 — Fixed a fifth and sixth `cross-model-review` finding, both in Wave 2's newer skills:
+  `repository-gates` documented running the exact `git ls-files` trust-boundary check this section
+  requires before honoring `.claude/workmanagement-kit.local.json`, but its own `allowed-tools` never
+  actually granted `Bash(git ls-files:*)` — a fail-closed check with no way to execute it, unlike
+  Wave 1's `linear-work-management`/`notion-knowledge-management`, which already carry this grant for
+  the identical check; added the missing grant and spelled out the exact command in the skill's own
+  step 1. Separately, `development-to-pr`'s existing-PR branch treated `Adoptable` the same as
+  `Exact` (already-confirmed) for deciding whether to push to that branch, but
+  `linear-github-linking`'s own classification table requires an explicit `AskUserQuestion` identity
+  confirmation before treating an `Adoptable` candidate as adopted — added that confirmation as its
+  own step, before the commit-time branch decision.
 - 2026-09-10 — Fixed a fourth `cross-model-review` finding, a self-inflicted follow-on from the
   `pr-ready` structured-handoff fix below: once `pr-to-linear`'s ready-state mutation became a
   disclosed manual `gh pr ready` run by the user (no `git-kit` skill performs it), the resulting
