@@ -13,18 +13,25 @@
 # Read input from stdin
 INPUT=$(cat)
 
-# Extract command and response - try jq first, fallback to grep
+# Extract command and session id - try jq first, fallback to grep. No
+# success/failure field is extracted here: PostToolUse (the event this hook
+# is wired to) only ever fires after a tool call completes successfully —
+# a failed Bash command routes to the separate PostToolUseFailure event
+# instead, which this plugin doesn't wire up — and the real Bash
+# tool_response payload has no `.success` boolean field anyway (it's
+# `{stdout, stderr, interrupted, isImage}`). An earlier version of this
+# hook gated milestone detection on `.tool_response.success`, which was
+# always empty/false in practice and silently disabled the test_pass/build
+# milestone types entirely.
 if command -v jq &>/dev/null; then
     COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
-    SUCCESS=$(echo "$INPUT" | jq -r '.tool_response.success // empty' 2>/dev/null)
     SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
 else
     COMMAND=$(echo "$INPUT" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*:.*"\([^"]*\)"/\1/')
-    SUCCESS=$(echo "$INPUT" | grep -o '"success"[[:space:]]*:[[:space:]]*[a-z]*' | head -1 | sed 's/.*:[[:space:]]*//')
     SESSION_ID=$(echo "$INPUT" | grep -o '"session_id"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*:.*"\([^"]*\)"/\1/')
 fi
 
-# Exit if no command or not successful
+# Exit if no command
 [ -z "$COMMAND" ] && exit 0
 
 # Get session hash
@@ -87,11 +94,22 @@ fi
 CURRENT_TIME=$(date +%s)
 TIME_SINCE_MILESTONE=$((CURRENT_TIME - LAST_MILESTONE_TIME))
 
-# Detect milestone patterns
+# Detect milestone patterns. Each block below is a separate `if` (not
+# `elif`), so on a chained command matching more than one pattern (e.g.
+# `npm test && git commit -am fix`), the later block wins — deploy > build >
+# commit > test_pass, in the order checked below. Deliberate: a later
+# milestone in this list is treated as the more significant one when
+# several occur in the same command.
 MILESTONE_TYPE=""
 
-# Test commands (successful) — only count as a milestone when the command actually succeeded
-if [ "$SUCCESS" = "true" ] && echo "$COMMAND" | grep -qiE '(npm test|npm run test|yarn test|pnpm test|jest|vitest|pytest|python -m pytest|go test|cargo test|rspec|phpunit|mvn test|gradle test)'; then
+# Test commands — PostToolUse only fires after the Bash call completed
+# successfully (see the comment above), so no separate success check is
+# needed here. `\b...\b` word-boundary-anchors every alternative
+# (GNU grep, already relied on elsewhere in this script) so a short token
+# like `jest` only matches a real word, not a substring of an unrelated
+# command (e.g. `majestic`, `jester`) — this branch was dead code before
+# the SUCCESS-gate removal above, so this substring-match exposure is new.
+if echo "$COMMAND" | grep -qiE '\b(npm test|npm run test|yarn test|pnpm test|jest|vitest|pytest|python -m pytest|go test|cargo test|rspec|phpunit|mvn test|gradle test)\b'; then
     MILESTONE_TYPE="test_pass"
 fi
 
@@ -100,13 +118,17 @@ if echo "$COMMAND" | grep -qE 'git commit'; then
     MILESTONE_TYPE="commit"
 fi
 
-# Build commands — only count as a milestone when the command actually succeeded
-if [ "$SUCCESS" = "true" ] && echo "$COMMAND" | grep -qiE '(npm run build|yarn build|pnpm build|cargo build|go build|make build|gradle build|mvn package)'; then
+# Build commands — same PostToolUse-implies-success and word-boundary
+# reasoning as above (`make build` would otherwise substring-match inside
+# `cmake build`).
+if echo "$COMMAND" | grep -qiE '\b(npm run build|yarn build|pnpm build|cargo build|go build|make build|gradle build|mvn package)\b'; then
     MILESTONE_TYPE="build"
 fi
 
-# Deploy commands
-if echo "$COMMAND" | grep -qiE '(deploy|npm run deploy|vercel|netlify|heroku|kubectl apply|docker push)'; then
+# Deploy commands — same word-boundary reasoning as above, swept here for
+# consistency (this block predates the SUCCESS-gate fix and was already
+# live, but shares the same unanchored-substring shape).
+if echo "$COMMAND" | grep -qiE '\b(deploy|npm run deploy|vercel|netlify|heroku|kubectl apply|docker push)\b'; then
     MILESTONE_TYPE="deploy"
 fi
 
