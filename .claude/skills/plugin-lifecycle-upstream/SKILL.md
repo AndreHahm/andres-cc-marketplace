@@ -164,13 +164,15 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 ## Testing & Validation
 
 **Eval evidence:** `evals/plugin-lifecycle-upstream/evals.json` — 22 scenarios (Quick Workflow,
-`workspace/iteration-1`), 2/22 eval-covered (scenarios 1a and 1b, Gate 1's Create/non-Create branches);
-the remaining scenarios below are design-review-verified only.
+`workspace/iteration-1`), 4/22 eval-covered (scenarios 1a and 1b, Gate 1's Create/non-Create branches;
+scenarios 14 and 14a, Mirror Sync's brand-new-plugin and already-mirrored branches); the remaining
+scenarios below are design-review-verified only.
 
 **Last dated run record:** 2026-09-10 — `scripts/smoke_test.py` (5/5 checks passing, re-run after the
-Mirror Sync step was added) and the eval evidence above (5/5 assertions across scenarios 1a/1b, 100%
-with_skill pass rate, unchanged by this edit). Mirror Sync's own detection logic dry-run against
-`example-plugin`: `.claude/output/plugin-lifecycle-upstream/example-plugin-20260910T084106Z.md`.
+Mirror Sync step was added) and the eval evidence above (11/11 assertions across scenarios 1a/1b/14/14a,
+100% with_skill pass rate — scenarios 14/14a added and run this same date, confirming both branches of
+the new Mirror Sync step are correctly derivable from the skill text). Mirror Sync's own detection logic
+dry-run against `example-plugin`: `.claude/output/plugin-lifecycle-upstream/example-plugin-20260910T084106Z.md`.
 
 1. **Cold start** — a rough idea with no existing artifacts; confirm all 7 phases run in order with a gate between each
 1a. **Conceive, Create classification** — Phase 1 classifies the idea as Create; confirm the pipeline proceeds to Phase 2 with the light Conception Brief as `plugin-ideation`'s input
@@ -231,7 +233,7 @@ with_skill pass rate, unchanged by this edit). Mirror Sync's own detection logic
 |---|---|
 | `workflows/design-a-plugin.md` | Full 7-phase procedure with gate criteria per phase |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, phase-header sequencing, SKILL.md-prose phase-range consistency) — re-run after any SKILL.md/`workflows/*.md` edit |
-| `evals/plugin-lifecycle-upstream/` | Persisted `skill-tester` Quick Workflow eval suite (22 scenarios, 2/22 covered) |
+| `evals/plugin-lifecycle-upstream/` | Persisted `skill-tester` Quick Workflow eval suite (22 scenarios, 4/22 covered) |
 | `plugin-rulebook/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-downstream` and `plugin-lifecycle-maintenance` |
 | `plugin-rulebook/references/open-item-discipline.md` | Phase-completion check (every gate) and Pre-Commit Disclosure check (before Commit), shared with `plugin-lifecycle-downstream` and `plugin-lifecycle-maintenance` |
 | `git-kit:starting-work` | Branch-scope check's "create a new branch" option |

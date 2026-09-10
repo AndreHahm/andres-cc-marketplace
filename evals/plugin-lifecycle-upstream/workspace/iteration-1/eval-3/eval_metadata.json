@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-3-mirrorsync-new-plugin",
+  "skill_path": "C:\\Dev\\Repos\\andres-cc-marketplace\\.claude\\worktrees\\session-kit-mirror\\plugins\\plugin-devkit\\skills\\plugin-lifecycle-upstream",
+  "assertions": [
+    {"text": "States Mirror Sync checks whether the new plugin's name is already in .claude/marketplace-sync.json's plugin_mirrors", "type": "functionality", "target": "Mirror Sync detection"},
+    {"text": "States AskUserQuestion fires before any registry edit", "type": "functionality", "target": "Mirror Sync gate"},
+    {"text": "States 'Yes' edits plugin_mirrors and runs sync-plugin-mirrors --stage then check-plugin-mirrors", "type": "functionality", "target": "Mirror Sync 'Yes' branch"},
+    {"text": "States the registry edit + synced files are committed separately from the build and inventory-sync commits", "type": "presence", "target": "Mirror Sync commit"}
+  ]
+}

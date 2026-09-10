@@ -4,8 +4,8 @@
   "description": "Seven-phase gated plugin creation pipeline (Conceive->Ideate->Plan->Design->Build->Self-Review->Test)",
   "testing_validation_coverage": {
     "declared_scenarios_total": 22,
-    "declared_scenarios_covered": 2,
-    "uncovered": ["1: cold start", "2: resume from Plan", "2a: resume from Concept Card, no Brief", "2b: resume from Conception Brief", "3: partial build detected", "4: gate rejection", "4a: Self-Review findings surfaced", "4b: Self-Review clean result", "5: Test phase mixed component types", "5a: Test phase unplanned overhead", "6: commit and handoff", "7: Document step nothing to update", "8: Design produces no disk writes", "9: Open-PR check, PR exists", "10: Open-PR check, no PR", "11: Branch-scope check, unscoped branch", "12: Branch-scope check, already scoped", "13: Phase-completion check catches cancelled dispatch", "14: Mirror Sync step, brand-new plugin, this repo", "14a: Mirror Sync step, already-mirrored plugin"]
+    "declared_scenarios_covered": 4,
+    "uncovered": ["1: cold start", "2: resume from Plan", "2a: resume from Concept Card, no Brief", "2b: resume from Conception Brief", "3: partial build detected", "4: gate rejection", "4a: Self-Review findings surfaced", "4b: Self-Review clean result", "5: Test phase mixed component types", "5a: Test phase unplanned overhead", "6: commit and handoff", "7: Document step nothing to update", "8: Design produces no disk writes", "9: Open-PR check, PR exists", "10: Open-PR check, no PR", "11: Branch-scope check, unscoped branch", "12: Branch-scope check, already scoped", "13: Phase-completion check catches cancelled dispatch"]
   },
   "evals": [
     {
@@ -19,6 +19,18 @@
       "name": "Gate 1: Non-Create classification stops the pipeline",
       "prompt": "plugin-lifecycle-upstream's Phase 1 (Conceive) just ran and produced a Conception Brief with Concept type = Enhance (an existing component should be modified, not a new one created). What does Gate 1 do?",
       "expected_output": "Gate 1 stops the run -- it does not proceed into Ideate/Plan/Design/Build for a non-Create classification; it states the correct hand-off target (plugin-planning per plugin-conception's own Step 7 table) rather than silently continuing the upstream pipeline"
+    },
+    {
+      "id": "eval-3-mirrorsync-new-plugin",
+      "name": "Mirror Sync: brand-new plugin, this repo",
+      "prompt": "plugin-lifecycle-upstream just finished Phase 5 (Build) and produced a brand-new plugin called `widget-kit`, which is not present in `.claude/marketplace-sync.json`'s `plugin_mirrors` list. The Commit step already ran, and Inventory Sync just finished. What does the Mirror Sync step do next, and what happens if the user answers 'Yes'?",
+      "expected_output": "Mirror Sync checks .claude/marketplace-sync.json's plugin_mirrors, finds widget-kit absent, and asks via AskUserQuestion whether to register it -- never adding the entry without this ask. On 'Yes': it Edits plugin_mirrors to add widget-kit, runs `uv run python -m scripts.marketplace_ci sync-plugin-mirrors --stage` then `check-plugin-mirrors`, and commits the registry edit plus the synced files as their own commit, separate from the build commit and the inventory-sync commit"
+    },
+    {
+      "id": "eval-4-mirrorsync-already-mirrored",
+      "name": "Mirror Sync: already-mirrored plugin, new component",
+      "prompt": "plugin-lifecycle-upstream just finished Phase 5 (Build), adding a new skill to the existing `git-kit` plugin, which is already present in `.claude/marketplace-sync.json`'s `plugin_mirrors` list. What does the Mirror Sync step do in this case?",
+      "expected_output": "Since git-kit is already in plugin_mirrors, Mirror Sync states plainly there is nothing to do here and moves on to Document -- no AskUserQuestion fires for this case; the existing sync tooling (e.g. commit's own targeted-repair step) picks up the new component automatically the next time it runs"
     }
   ]
 }
