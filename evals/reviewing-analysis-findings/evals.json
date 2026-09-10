@@ -1,0 +1,20 @@
+{
+  "skill_name": "reviewing-analysis-findings",
+  "skill_path": "plugins/analysis-kit/skills/reviewing-analysis-findings/SKILL.md",
+  "description": "Cross-checks 2+ persisted analysis-kit reports for Duplicates, Contradictions, and Severity Undercuts.",
+  "testing_validation_coverage": {
+    "note": "Targeted regression eval, not a full re-run of this skill's own Testing & Validation checklist. Scoped to one specific behavior change: Phase 1 scope-mode resolution's exclusion of reviewing-analysis-findings from its own 9-directory report-discovery glob (PR #302 round-2 Codex finding, comment id 3976272096). Covers checklist item 'A scope <scope-slug> run's report always lists every resolved match as either Included or Excluded, each with a stated reason for exclusion' and its new sibling item about self-exclusion; does not re-cover the other checklist items.",
+    "declared_scenario_count": 2,
+    "covered_scenario_count": 1
+  },
+  "deviation_note": "This is a skill-vs-skill (pre-fix vs post-fix) comparison, not the standard with_skill-vs-baseline-with-no-skill comparison this pipeline is built for. 'pre-fix' configuration = the agent is given this session's PRE-fix Phase 1 excerpt (commit a634e595~1); 'post-fix' = the current, committed Phase 1 excerpt (commit a634e595). Both agents see identical scenario input; only the instructions they're given differ.",
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "scope-mode second run self-matches its own prior aggregation report",
+      "prompt": "You are resolving Phase 1 of the reviewing-analysis-findings skill for the input `scope auth-hardening`. A Glob against `.claude/output/{9-directory enumeration}/auth-hardening-*.md` (already run for you) returned exactly these 3 matches:\n\n- .claude/output/analyzing-plugin-components/auth-hardening-20260901T090000Z.md\n- .claude/output/analyzing-actor-behavior/auth-hardening-20260901T091500Z.md\n- .claude/output/reviewing-analysis-findings/auth-hardening-20260903T140000Z.md\n\nThe third match is a report this same skill (reviewing-analysis-findings) persisted 2 days earlier, from an EARLIER scope-mode run over this exact same scope-slug (`auth-hardening`) -- it is a prior aggregation/cross-check report, not a raw analysis-kit source report like the other two.\n\nFollow the Phase 1 `scope <scope-slug>` resolution instructions below (your only source of truth -- do not use any other knowledge of this skill) and produce the Included/Excluded report list this phase's own output requires, with a stated reason for every exclusion.\n\n---\n<PHASE_1_SCOPE_MODE_INSTRUCTIONS>\n---",
+      "expected_output": "The reviewing-analysis-findings match must be excluded from the Included cross-check set, with a reason naming that it's this skill's own prior aggregation report over the same scope (not an independent source report) -- not merely omitted with no reason, and not included as a peer source report.",
+      "files": []
+    }
+  ]
+}

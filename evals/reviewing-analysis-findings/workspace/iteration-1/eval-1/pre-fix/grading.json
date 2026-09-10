@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "pre-fix",
+  "assertions_evaluated": [
+    {
+      "text": "The reviewing-analysis-findings match is NOT placed in the Included (cross-check) set",
+      "passed": false,
+      "evidence": "Agent placed it under 'Included, flagged as related (1)' -- still folded into the cross-check set, just with a caveat."
+    },
+    {
+      "text": "The reviewing-analysis-findings match is explicitly listed (in Included or Excluded), never silently dropped with no mention at all",
+      "passed": true,
+      "evidence": "Explicitly listed as item 3."
+    },
+    {
+      "text": "If excluded, the stated reason correctly identifies it as this skill's own prior aggregation report over the same scope, not a generic or incorrect reason",
+      "passed": false,
+      "evidence": "Not excluded at all -- the agent recognized it as 'downstream aggregation' but still included it as related rather than excluding it, so the assertion's exclusion precondition is never met."
+    },
+    {
+      "text": "The other 2 genuine source reports (analyzing-plugin-components, analyzing-actor-behavior) are correctly placed in Included",
+      "passed": true,
+      "evidence": "Both listed under Included (2)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "post-fix",
+  "assertions_evaluated": [
+    {
+      "text": "The reviewing-analysis-findings match is NOT placed in the Included (cross-check) set",
+      "passed": true,
+      "evidence": "Agent placed it under 'Excluded (1)'."
+    },
+    {
+      "text": "The reviewing-analysis-findings match is explicitly listed (in Included or Excluded), never silently dropped with no mention at all",
+      "passed": true,
+      "evidence": "Explicitly listed under Excluded."
+    },
+    {
+      "text": "If excluded, the stated reason correctly identifies it as this skill's own prior aggregation report over the same scope, not a generic or incorrect reason",
+      "passed": true,
+      "evidence": "Reason: 'prior reviewing-analysis-findings run over this exact same scope-slug ... a prior aggregation/cross-check conclusion, not an independent raw source report' -- also correctly notes it is still used separately by Phase 4's supersession check."
+    },
+    {
+      "text": "The other 2 genuine source reports (analyzing-plugin-components, analyzing-actor-behavior) are correctly placed in Included",
+      "passed": true,
+      "evidence": "Both listed under Included (2)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
