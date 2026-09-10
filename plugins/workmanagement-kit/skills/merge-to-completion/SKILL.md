@@ -34,9 +34,15 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 1. **Resolve policy:** invoke `repository-gates` to confirm `git-kit` is the required provider for
    merge in this repository, same as every other Wave 2 skill's own first step.
-2. **Verify readiness:** current-SHA state, required checks, reviews, unresolved threads,
-   permissions, and merge-rights — delegated entirely to `Skill(git-kit:merge-pr)`'s own validation;
-   this skill never second-guesses or duplicates that check.
+2. **Verify readiness:** current-SHA state, required checks, no-changes-requested, no-merge-conflicts,
+   not-behind-base, and merge-rights — delegated entirely to `Skill(git-kit:merge-pr)`'s own
+   validation; this skill never second-guesses or duplicates that check. **Unresolved review threads
+   are disclosed by `merge-pr`, never blocking** — `merge-pr`'s own five required checks (not-draft,
+   status checks, no-changes-requested, no-merge-conflicts, not-behind-base) are the only things that
+   stop it; an unresolved-thread count is surfaced at its own confirmation step for the human merging
+   to weigh, not enforced as a gate. This skill inherits that same disclosed-not-blocking behavior by
+   design (never second-guessing `merge-pr`'s own check) — don't read step 4's "present and confirm"
+   below as adding a blocking unresolved-thread gate `merge-pr` itself doesn't have.
 3. **Read Linear context** (Issue identity and criteria) without treating it as GitHub merge
    authority — Linear's state never decides whether GitHub allows the merge.
 4. **Present and confirm** merge method, branch behavior, and the post-merge disposition workflow

@@ -394,8 +394,10 @@ repository, the profile is fixed — `git-kit` for every governed operation:
 |---|---|
 | Create branch/worktree | `git-kit:starting-work` |
 | Commit | `git-kit:commit` |
-| Push/create PR | `git-kit:create-pr` or `git-kit:collaborating-on-a-pr` (by intent) |
-| Review/comment | `git-kit:collaborating-on-a-pr` |
+| Create a new PR | `git-kit:create-pr` |
+| Push new commits to an already-existing PR's branch | `git-kit:commit` (its own push step — no `git-kit` skill owns a distinct "update an existing PR" mutation; see `development-to-pr`'s own Gotchas) |
+| Mark a PR ready for review | Manual handoff — no `git-kit` skill currently owns this action (see `pr-to-linear`'s own disclosed gap and the `provider` schema note below) |
+| Review/comment/link an issue at creation | `git-kit:collaborating-on-a-pr` |
 | Merge | `git-kit:merge-pr` |
 | Post-merge sync/cleanup | `git-kit:finishing-work` |
 
@@ -415,6 +417,18 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
   `linear-github-linking`'s own classification table requires an explicit `AskUserQuestion` identity
   confirmation before treating an `Adoptable` candidate as adopted — added that confirmation as its
   own step, before the commit-time branch decision.
+- 2026-09-10 — Fixed a seventh and eighth `cross-model-review` finding. The Repository Policy Profile
+  table's "Push/create PR" row only ever named `git-kit:create-pr`/`git-kit:collaborating-on-a-pr` as
+  valid providers — never updated when `development-to-pr`'s existing-PR path (an earlier fix this
+  same day) started using `git-kit:commit`'s own push instead, since neither of the table's two named
+  skills actually owns that operation. Split the row into three accurately-scoped operations (create a
+  new PR, push to an already-existing PR's branch, mark a PR ready) each naming its real provider,
+  including the disclosed no-provider-yet gap for "mark ready." Separately, `merge-to-completion`'s
+  own readiness-check description listed "unresolved threads" alongside the actual blocking checks it
+  delegates to `git-kit:merge-pr` — but `merge-pr` documents unresolved-thread counts as disclosed to
+  the human merging, never a blocking gate; the wrapper's own wording overstated what its delegate
+  actually enforces. Corrected to name the five real blocking checks and state the disclosed-not-
+  blocking behavior explicitly, matching `merge-pr`'s own documented contract.
 - 2026-09-10 — Fixed a fourth `cross-model-review` finding, a self-inflicted follow-on from the
   `pr-ready` structured-handoff fix below: once `pr-to-linear`'s ready-state mutation became a
   disclosed manual `gh pr ready` run by the user (no `git-kit` skill performs it), the resulting
