@@ -141,6 +141,35 @@ def test_real_bold_markdown_preamble_still_passes():
     assert validate_report.check_common(text, CONTRACTS) == []
 
 
+def test_coverage_fields_quoted_later_in_the_report_do_not_satisfy_the_preamble():
+    # Codex finding (PR #302): coverage fields were searched across the
+    # entire document, so a report with no real preamble of its own but a
+    # later section that quotes/excerpts another report's four coverage
+    # lines (e.g. inside a fenced evidence block) previously passed anyway.
+    text = (
+        "# Report\n\nNo preamble here.\n\n"
+        "## Findings\n\n"
+        "Quoting the source report's own preamble as evidence:\n"
+        "```\n"
+        "**Requested scope:** this-conversation\n**Inspected scope:** same\n"
+        "**Unavailable evidence:** none\n**Limitations:** none\n"
+        "```\n"
+    )
+    errors = validate_report.check_common(text, CONTRACTS)
+    assert len(errors) == len(CONTRACTS["common"]["coverage_fields"])
+    assert all(e["code"] == "missing_coverage" for e in errors)
+
+
+def test_coverage_fields_in_the_real_preamble_still_pass_when_report_has_later_sections():
+    text = (
+        "# Report\n\n"
+        "**Requested scope:** this-conversation\n**Inspected scope:** same\n"
+        "**Unavailable evidence:** none\n**Limitations:** none\n\n"
+        "## Findings\n\ntext\n"
+    )
+    assert validate_report.check_common(text, CONTRACTS) == []
+
+
 def test_blank_next_step_line_flagged():
     errors = validate_report.check_next_step("Next:\n", required=True)
     assert [e["code"] for e in errors] == ["missing_next_step"]
@@ -306,6 +335,52 @@ def test_evidence_source_has_no_enum_any_nonempty_value_passes():
 
 def test_no_findings_marker_satisfies_requirement_with_zero_blocks():
     assert validate_report.check_evidence_metadata("<!-- no-findings -->", required=True) == []
+
+
+def test_no_findings_marker_with_stray_unwrapped_metadata_is_contradictory():
+    # Codex finding (PR #302): a stale <!-- no-findings --> marker alongside
+    # unwrapped substantive metadata previously returned valid: true,
+    # bypassing the per-finding metadata check entirely.
+    text = (
+        "<!-- no-findings -->\n\n"
+        "Actually found something: Evidence origin: direct\nCoverage: complete\n"
+        "Confidence: high\nEvidence source: this-conversation\n"
+    )
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert [e["code"] for e in errors] == ["contradictory_no_findings"]
+
+
+def test_no_findings_marker_with_no_stray_metadata_still_passes():
+    text = "<!-- no-findings -->\n\nNothing else relevant in this report.\n"
+    assert validate_report.check_evidence_metadata(text, required=True) == []
+
+
+def test_marker_example_inside_fenced_block_is_not_mistaken_for_a_real_marker():
+    # Codex finding (PR #302): a valid finding whose own body fenced-quotes
+    # the marker convention as a documentation example previously had its
+    # real, correctly-paired outer markers reported as improperly nested.
+    text = (
+        "<!-- finding:start -->\n"
+        "This report documents the convention:\n"
+        "```\n"
+        "<!-- finding:start -->\n...\n<!-- finding:end -->\n"
+        "```\n"
+        "Evidence origin: direct\nCoverage: complete\nConfidence: high\n"
+        "Evidence source: this-conversation\n"
+        "<!-- finding:end -->"
+    )
+    assert validate_report.check_evidence_metadata(text, required=True) == []
+
+
+def test_stray_label_with_blank_value_still_flagged_as_unwrapped():
+    # CodeRabbit finding (PR #302): the stray-label check used a truthy test,
+    # so a stray label present with a BLANK value (falsy "") was silently
+    # excluded, even though the label itself unambiguously exists outside
+    # any finding block.
+    text = _finding_block() + "\n\nEvidence origin:\n"
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert [e["code"] for e in errors] == ["unwrapped_evidence_metadata"]
+    assert "Evidence origin:" in errors[0]["message"]
 
 
 def test_no_findings_marker_absent_and_no_blocks_still_fails():
