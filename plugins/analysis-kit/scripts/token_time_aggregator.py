@@ -9,6 +9,14 @@ that to a skill. Its realistic input is subagent-dispatch usage figures
 result), compiled by the calling skill into the JSON list this script
 reads. Treat any total this script reports as covering only what was
 actually supplied, not the whole session.
+
+Optional `level` field (added for analyzing-session-operations' Performance
+& Cost section): one of "whole_session", "skill", "subagent", "tool". When
+present, entries are additionally rolled up `by_level` so a report can state
+which levels actually have data -- e.g. never present a subagent-only total
+as if it were a whole-session total. Entries with no `level` are treated as
+"subagent" for backward compatibility with this script's original callers,
+matching its own pre-existing scope note above.
 """
 
 import argparse
@@ -17,33 +25,49 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+KNOWN_LEVELS = {"whole_session", "skill", "subagent", "tool"}
+
 
 def aggregate(entries: list[dict]) -> dict:
     total_tokens = 0
     total_duration_ms = 0
     by_label: dict[str, dict] = defaultdict(lambda: {"tokens": 0, "duration_ms": 0, "count": 0})
+    by_level: dict[str, dict] = defaultdict(lambda: {"tokens": 0, "duration_ms": 0, "count": 0})
 
     for entry in entries:
         tokens = entry.get("tokens", 0) or 0
         duration_ms = entry.get("duration_ms", 0) or 0
         label = entry.get("label", "unlabeled")
+        level = entry.get("level") or "subagent"
+        if not isinstance(level, str) or level not in KNOWN_LEVELS:
+            level = "subagent"
         total_tokens += tokens
         total_duration_ms += duration_ms
         by_label[label]["tokens"] += tokens
         by_label[label]["duration_ms"] += duration_ms
         by_label[label]["count"] += 1
+        by_level[level]["tokens"] += tokens
+        by_level[level]["duration_ms"] += duration_ms
+        by_level[level]["count"] += 1
 
     hotspots = sorted(by_label.items(), key=lambda kv: kv[1]["tokens"], reverse=True)
+    levels_present = sorted(by_level.keys())
+    levels_present_str = ", ".join(levels_present) if levels_present else "none"
 
     return {
         "entries_aggregated": len(entries),
         "total_tokens": total_tokens,
         "total_duration_ms": total_duration_ms,
         "by_label": dict(by_label),
+        "by_level": dict(by_level),
+        "levels_present": levels_present,
         "top_hotspots_by_tokens": [{"label": label, **stats} for label, stats in hotspots[:10]],
         "scope_note": (
             "Totals cover only entries supplied by the calling skill (typically subagent-dispatch "
-            "usage figures) -- not whole-session usage, which no skill can measure directly."
+            "usage figures) -- not whole-session usage, which no skill can measure directly. "
+            f"Levels actually present in this run: {levels_present_str} "
+            "-- never present a total from a narrower level (e.g. subagent) as if it covered a "
+            "broader one (e.g. whole_session) that isn't in this list."
         ),
     }
 

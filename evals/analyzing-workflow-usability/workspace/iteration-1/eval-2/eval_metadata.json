@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-workflow-usability/SKILL.md",
+  "assertions": [
+    {"text": "The first confirmation is 'necessary'", "type": "functionality", "target": "outputs/ report"},
+    {"text": "The second confirmation is verdict 'avoidable' since nothing changed between the two asks", "type": "functionality", "target": "outputs/ report"},
+    {"text": "The recommendation for the avoidable finding names evidence frequency, user consequence, a proposed simplification, and a stated safety tradeoff -- all four", "type": "structure", "target": "outputs/ Recommendations section"}
+  ]
+}

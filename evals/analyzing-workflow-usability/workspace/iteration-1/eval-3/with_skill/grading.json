@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The report does not present '5 corrections' as a flat, equally-weighted count", "passed": true, "evidence": "'the two should not be collapsed into a single \"5 corrections happened\" statistic -- they represent different problems... with very different remediation paths.'"},
+    {"text": "The force-push-prevention correction is explicitly distinguished as high-consequence, separate from the four trivial phrasing corrections", "passed": true, "evidence": "Finding 2 rated 'necessary' / 'High -- irreversible-data-loss near-miss', kept as a separate finding from Finding 1's 'avoidable' / 'Low' phrasing corrections."},
+    {"text": "The finding is weighted/ordered by consequence, not by raw count", "passed": true, "evidence": "'the single force-push correction is the more severe finding despite occurring only once, versus four low-cost phrasing corrections.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

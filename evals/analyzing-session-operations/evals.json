@@ -1,0 +1,28 @@
+{
+  "skill_name": "analyzing-session-operations",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-session-operations/SKILL.md",
+  "description": "Analyzes a session's operational reliability and performance/cost as two distinct report sections.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Repeated tool failure that eventually recovers",
+      "prompt": "Analyze session operations using the analyzing-session-operations skill (scope: this-conversation). SESSION TRANSCRIPT SUMMARY: The assistant ran `Bash(npm install)` and it failed with a network timeout at 10:00:00Z. It retried the identical command and it failed again at 10:00:15Z with the same timeout. It retried a third time at 10:00:35Z and it succeeded. No other tool calls occurred. Build the failure_aggregator.py --events input yourself from this description and run it, then produce the Reliability & Stability section of the report (you don't need the Performance & Cost section for this eval -- state plainly that no span/timing data was compiled for performance in this run).",
+      "expected_output": "The failure events are classified 'environment' (network timeout, not a tool-invocation bug). repeated_failures shows Bash(npm install) with count 2. The third attempt is correctly matched as recovering the FIRST failure (FIFO), leaving the second failure's own fate accurately described (either as a second recovery if a second success event was modeled, or explicitly as unresolved if only one success was supplied -- the report must be internally consistent with whatever events the model actually constructed). time_to_recovery_seconds is a real number derived from the actual timestamps supplied, not estimated.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Overlapping dispatch vs. serial bottleneck",
+      "prompt": "Analyze session operations using the analyzing-session-operations skill (scope: this-conversation). SESSION TRANSCRIPT SUMMARY: Two subagents (agent-A, agent-B) were dispatched together and ran concurrently from 10:00:00Z to 10:00:30Z (agent-A) and 10:00:05Z to 10:00:35Z (agent-B) -- clearly overlapping. Separately, two independent Bash tool calls with no stated dependency between them (checking two unrelated files) ran back-to-back serially: 10:01:00Z-10:01:20Z and then 10:01:20Z-10:01:40Z, with no overlap at all. Build the critical_path_analyzer.py --events input yourself and run it, then produce the Performance & Cost section.",
+      "expected_output": "The report correctly identifies the two-subagent dispatch as realized parallelism (overlapping_seconds > 0) and does NOT flag it as a problem by itself. Separately, it identifies the two serial Bash calls as a potential ineffective-parallelism/serial-bottleneck finding, since nothing stated a dependency between them and they could plausibly have run concurrently. The two situations are not conflated into one finding.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "Subagent-only usage data, no whole-session level",
+      "prompt": "Analyze session operations using the analyzing-session-operations skill (scope: this-conversation). SESSION TRANSCRIPT SUMMARY: Three subagents were dispatched, each reporting their own token/duration usage (e.g. 5000 tokens / 8000ms, 3000 tokens / 5000ms, 7000 tokens / 12000ms). No whole-session token/time figure is available anywhere -- no skill can measure that directly. Build the token_time_aggregator.py --input yourself (tagging entries with level: subagent) and run it, then produce the Performance & Cost section's cost discussion.",
+      "expected_output": "The report explicitly states that whole-session cost is unavailable and only reports the subagent-level total (15000 tokens combined) as a subagent-level figure, never presenting it as if it covered the whole session. It reads and cites the levels_present field rather than re-deriving the same disclosure differently. No dollar/monetary figure is fabricated since no rate was supplied.",
+      "files": []
+    }
+  ]
+}

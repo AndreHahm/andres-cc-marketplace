@@ -92,6 +92,18 @@
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
+    },
+    "analyzing-session-operations": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
+    },
+    "analyzing-workflow-usability": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
     }
   }
 }

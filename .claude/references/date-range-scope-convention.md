@@ -1,9 +1,10 @@
 # Date-Range Scope Convention
 
-Canonical Phase 1 scope-resolution procedure shared by 7 date-range report-producing skills
+Canonical Phase 1 scope-resolution procedure shared by 9 date-range report-producing skills
 (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`,
 `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `analyzing-session-outcomes`,
-`analyzing-verification-effectiveness`). This file is the source of truth —
+`analyzing-verification-effectiveness`, `analyzing-session-operations`, `analyzing-workflow-usability`).
+This file is the source of truth —
 if this procedure changes, sweep every site listed below (R20-style) rather than editing one copy and
 leaving the rest stale.
 
@@ -65,3 +66,5 @@ shared procedure itself lives here.
 - `skills/analyzing-verification-effectiveness/SKILL.md` Phase 1 — no addendum, procedure only (its
   Phase 1 explicitly names `session_parser.py`/`codex_session_parser.py` since the shared procedure may
   invoke them, even though this skill's own Phase 2 doesn't call them separately)
+- `skills/analyzing-session-operations/SKILL.md` Phase 1 — no addendum, procedure only
+- `skills/analyzing-workflow-usability/SKILL.md` Phase 1 — no addendum, procedure only

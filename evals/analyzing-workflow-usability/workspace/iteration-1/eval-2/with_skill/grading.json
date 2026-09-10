@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The first confirmation is 'necessary'", "passed": true, "evidence": "Original safety gate fires exactly once on the first ask, described as preserved/legitimate throughout."},
+    {"text": "The second confirmation is verdict 'avoidable' since nothing changed between the two asks", "passed": true, "evidence": "'Verdict: avoidable' -- 'subject, scope, and risk are genuinely identical and nothing changed'."},
+    {"text": "The recommendation names evidence frequency, user consequence, a proposed simplification, and a stated safety tradeoff -- all four", "passed": true, "evidence": "All four explicitly labeled and present in the Recommendation 1 section."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
