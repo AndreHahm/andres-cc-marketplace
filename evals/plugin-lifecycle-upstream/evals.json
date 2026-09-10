@@ -3,9 +3,9 @@
   "skill_path": "plugins/plugin-devkit/skills/plugin-lifecycle-upstream/SKILL.md",
   "description": "Seven-phase gated plugin creation pipeline (Conceive->Ideate->Plan->Design->Build->Self-Review->Test)",
   "testing_validation_coverage": {
-    "declared_scenarios_total": 20,
+    "declared_scenarios_total": 22,
     "declared_scenarios_covered": 2,
-    "uncovered": ["1: cold start", "2: resume from Plan", "2a: resume from Concept Card, no Brief", "2b: resume from Conception Brief", "3: partial build detected", "4: gate rejection", "4a: Self-Review findings surfaced", "4b: Self-Review clean result", "5: Test phase mixed component types", "5a: Test phase unplanned overhead", "6: commit and handoff", "7: Document step nothing to update", "8: Design produces no disk writes", "9: Open-PR check, PR exists", "10: Open-PR check, no PR", "11: Branch-scope check, unscoped branch", "12: Branch-scope check, already scoped", "13: Phase-completion check catches cancelled dispatch"]
+    "uncovered": ["1: cold start", "2: resume from Plan", "2a: resume from Concept Card, no Brief", "2b: resume from Conception Brief", "3: partial build detected", "4: gate rejection", "4a: Self-Review findings surfaced", "4b: Self-Review clean result", "5: Test phase mixed component types", "5a: Test phase unplanned overhead", "6: commit and handoff", "7: Document step nothing to update", "8: Design produces no disk writes", "9: Open-PR check, PR exists", "10: Open-PR check, no PR", "11: Branch-scope check, unscoped branch", "12: Branch-scope check, already scoped", "13: Phase-completion check catches cancelled dispatch", "14: Mirror Sync step, brand-new plugin, this repo", "14a: Mirror Sync step, already-mirrored plugin"]
   },
   "evals": [
     {
