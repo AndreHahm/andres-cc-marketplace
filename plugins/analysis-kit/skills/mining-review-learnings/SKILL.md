@@ -206,8 +206,9 @@ finding surfaced in Phase 2.
 Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
 origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to each candidate learning, per
 `../../references/report-evidence-convention.md` — a candidate with `session-transcript: unavailable`
-should generally carry `Coverage: partial`, since only GitHub review history (not the fix transcript)
-backs it.
+must carry `Coverage: partial`, since only GitHub review history (not the fix transcript) backs it;
+`Coverage: complete` for such a candidate would claim inspection of evidence that was never actually
+reachable.
 
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings
 to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch

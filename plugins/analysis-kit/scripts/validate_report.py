@@ -31,11 +31,20 @@ def load_contracts(path: Path = CONTRACTS_PATH) -> dict:
 def check_common(text: str, contracts: dict) -> list[dict]:
     errors = []
     for field in contracts["common"]["coverage_fields"]:
-        if field not in text:
+        value = _label_value(text, field)
+        if value is None:
             errors.append(
                 {
                     "code": "missing_coverage",
                     "message": f"Coverage preamble field '{field}' not found",
+                    "subject": field,
+                }
+            )
+        elif not value:
+            errors.append(
+                {
+                    "code": "missing_coverage",
+                    "message": f"Coverage preamble field '{field}' has no value",
                     "subject": field,
                 }
             )
@@ -59,11 +68,20 @@ def check_required_headings(text: str, headings: list[str]) -> list[dict]:
 def check_next_step(text: str, required: bool) -> list[dict]:
     if not required:
         return []
-    if "Next:" not in text:
+    value = _label_value(text, "Next:")
+    if value is None:
         return [
             {
                 "code": "missing_next_step",
                 "message": "Standard 'Next: ...' handoff line not found",
+                "subject": "next-step",
+            }
+        ]
+    if not value:
+        return [
+            {
+                "code": "missing_next_step",
+                "message": "'Next:' line found but has no content after it",
                 "subject": "next-step",
             }
         ]
@@ -141,14 +159,41 @@ NO_FINDINGS_RE = re.compile(r"<!--\s*no-findings\s*-->")
 
 
 def _label_value(block: str, label: str) -> str | None:
-    """Text after `label` on its line, or None if the label isn't present at all."""
-    match = re.search(re.escape(label) + r"[ \t]*(.*)", block)
+    """Text after `label` on its own line, or None if the label isn't present at all.
+
+    Anchored to the start of a line (optionally through markdown `**bold**`
+    wrapping, e.g. `**Requested scope:** value`) -- a bare, unanchored search
+    would also match the label mentioned in ordinary prose elsewhere in the
+    document (e.g. "as mentioned in Requested scope: above"), treating that
+    prose mention as if it were the actual field.
+    """
+    pattern = r"^\*{0,2}" + re.escape(label) + r"\*{0,2}[ \t]*(.*)"
+    match = re.search(pattern, block, re.MULTILINE)
     return match.group(1).strip() if match else None
+
+
+FINDING_START_RE = re.compile(r"<!--\s*finding:start\s*-->")
+FINDING_END_RE = re.compile(r"<!--\s*finding:end\s*-->")
 
 
 def check_evidence_metadata(text: str, required: bool) -> list[dict]:
     if not required:
         return []
+
+    start_count = len(FINDING_START_RE.findall(text))
+    end_count = len(FINDING_END_RE.findall(text))
+    if start_count != end_count:
+        return [
+            {
+                "code": "malformed_finding_marker",
+                "message": (
+                    f"{start_count} <!-- finding:start --> marker(s) but {end_count} "
+                    "<!-- finding:end --> marker(s) -- every finding must be fully wrapped, and "
+                    "an unmatched marker means at least one finding was not validated"
+                ),
+                "subject": "evidence-metadata",
+            }
+        ]
 
     blocks = FINDING_BLOCK_RE.findall(text)
     if not blocks:
@@ -167,6 +212,30 @@ def check_evidence_metadata(text: str, required: bool) -> list[dict]:
         ]
 
     errors = []
+
+    # A substantive finding whose metadata was written but never wrapped in
+    # <!-- finding:start/end --> markers is otherwise invisible to the
+    # per-block loop below (FINDING_BLOCK_RE only sees matched blocks) --
+    # this catches the common case of forgetting the wrapper while still
+    # writing the metadata fields. It cannot catch a finding with no metadata
+    # attempt at all and no markers -- that's a documented, structural-only
+    # limitation (see this script's own module docstring); nothing short of
+    # understanding each skill's own finding format could detect that case.
+    remainder = FINDING_BLOCK_RE.sub("", text)
+    stray_labels = [label for label in EVIDENCE_METADATA_LABELS if _label_value(remainder, label)]
+    if stray_labels:
+        errors.append(
+            {
+                "code": "unwrapped_evidence_metadata",
+                "message": (
+                    f"Evidence metadata label(s) {stray_labels} found outside any "
+                    "<!-- finding:start -->/<!-- finding:end --> block -- likely a finding whose "
+                    "metadata was written but never wrapped"
+                ),
+                "subject": "evidence-metadata",
+            }
+        )
+
     for index, block in enumerate(blocks, start=1):
         for label in EVIDENCE_METADATA_LABELS:
             value = _label_value(block, label)
@@ -244,7 +313,7 @@ def main() -> int:
     report_path = Path(args.report)
     try:
         text = report_path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         print(f"Error: could not read {report_path}: {exc}", file=sys.stderr)
         return 2
 

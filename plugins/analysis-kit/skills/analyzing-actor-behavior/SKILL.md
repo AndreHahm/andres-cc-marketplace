@@ -90,6 +90,13 @@ is ever persisted.
 
 For each notable human action, assess against `references/actor-behavior-taxonomy.md`'s human-behavior signals: correction rate (how often the human had to fix or redirect agent output), decision friction (repeated back-and-forth on the same question), and unprompted contributions (work the human did that no agent proposed).
 
+**Every `human-developer` occurrence inventoried in Phase 2 still needs its own disposition marker,
+even a non-notable one.** "Notable" governs how deeply an action is *assessed* here in Phase 4 (full
+signal analysis vs. a one-line note), not whether it gets a disposition at all — `validate_report.py`'s
+pre-persistence check has no concept of "notable," only inventory-vs-disposition counts. A non-notable
+occurrence gets `<!-- disposition: actor:human-developer excluded -->` (or `grouped:<name>` if several
+non-notable occurrences are folded together) rather than being silently left out.
+
 ## Phase 5: Cross-Agent Flow Analysis
 
 Only when 2+ agents were dispatched in the scope. Map the handoff pattern using `references/handoff-flow-patterns.md`'s categories (sequential delegation, parallel dispatch, nested/circular risk, handback-without-context). Flag any handoff where context was lost between agents, or where a later agent redid work an earlier one already completed.
