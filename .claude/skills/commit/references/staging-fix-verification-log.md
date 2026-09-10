@@ -49,6 +49,26 @@ and reconfirmed clean; `ty check` separately caught 2 real issues `ruff` didn't 
 union type) — confirming `ty check`'s inclusion catches a real class of error `ruff` alone misses. All
 three checks passed clean after fixes.
 
+## Step 13.5 (real-commitlint check) — verified live, 2026-09-10
+
+Installed the isolated toolchain (`pnpm --dir .github/commitlint-tools install --frozen-lockfile`), then
+ran `lint-commit-message.sh` directly (not through a live `commit` invocation) against two drafted
+messages: one with a 190-character body line (correctly failed, exit 1, reporting
+`[body-max-line-length]` — the exact rule name the script's step-13.5 branching logic reads) and one with
+a short body (correctly passed, exit 0, no output). Also confirmed commitlint's own `extends` resolution
+requires the CLI's cwd to be inside `.github/commitlint-tools/` — running it from the repo root against
+the same config threw `Cannot find module "@commitlint/config-conventional"`, matching
+`commit-branch-guard.yml`'s own comment on this exact behavior (per
+`.claude/rules/verify-tool-behavior-before-instructing.md`, checked against the real tool rather than
+assumed) — confirming the script's `cd` into the toolchain directory is load-bearing, not incidental.
+Also verified a relative message-file path resolves correctly after that `cd` (the script's
+absolute-path resolution step), and that missing-argument/missing-file inputs fail with a clear message
+rather than an unhandled error. **Not yet exercised**: a full live `commit` run that reaches step 13.5 as
+part of its normal flow (drafts a message, hits a real violation, rewraps, re-checks) — this initial
+verification ran the script directly to confirm its own logic and the underlying tool behavior; the
+first real `commit` invocation on a message with a genuinely long body line is the next opportunity to
+close this out.
+
 ## Step 16 (push) — fixed and verified live, 2026-08-28
 
 This PR's first pass at step 16 replaced "retype/recompose the branch name" with "resolve it fresh
