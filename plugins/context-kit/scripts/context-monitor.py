@@ -418,19 +418,14 @@ def run_context_monitor() -> int:
 
         shown = get_shown_thresholds(session_id)
 
-        # Check reusable-discovery thresholds (40%, 55%, 65%)
-        for threshold in LEARN_THRESHOLDS:
-            if percentage >= threshold and threshold not in shown["learn"]:
-                emit(
-                    f"💡 Context ~{percentage:.0f}% (approx) — if a reusable discovery emerged, "
-                    "consider capturing it now before auto-compaction.",
-                    f"Context usage is approximately {percentage:.0f}% (coarse proxy). If a "
-                    "non-obvious discovery or reusable workflow emerged this session, consider "
-                    "capturing it now — e.g. via session-kit's session-wrap-up skill, if "
-                    "installed — before auto-compaction.",
-                )
-                mark_threshold_shown("learn", threshold, session_id)
-                return 0  # Only show one message at a time
+        # Check the two urgency thresholds BEFORE the learn-threshold loop
+        # below: if the very first unthrottled observation already lands
+        # at 90%+ (e.g. resuming a session with an already-large
+        # transcript, or one big tool call), the learn loop would
+        # otherwise emit 40%, then 55%, then 65% across three separate
+        # tool calls before ever reaching the urgent 90% warning on a
+        # fourth call -- delaying the most important warning exactly when
+        # auto-compaction is closest.
 
         # Check 90% threshold (critical)
         if percentage >= THRESHOLD_CRITICAL and not shown["warn_90"]:
@@ -454,6 +449,20 @@ def run_context_monitor() -> int:
             )
             mark_threshold_shown("warn_80", True, session_id)
             return 0
+
+        # Check reusable-discovery thresholds (40%, 55%, 65%)
+        for threshold in LEARN_THRESHOLDS:
+            if percentage >= threshold and threshold not in shown["learn"]:
+                emit(
+                    f"💡 Context ~{percentage:.0f}% (approx) — if a reusable discovery emerged, "
+                    "consider capturing it now before auto-compaction.",
+                    f"Context usage is approximately {percentage:.0f}% (coarse proxy). If a "
+                    "non-obvious discovery or reusable workflow emerged this session, consider "
+                    "capturing it now — e.g. via session-kit's session-wrap-up skill, if "
+                    "installed — before auto-compaction.",
+                )
+                mark_threshold_shown("learn", threshold, session_id)
+                return 0  # Only show one message at a time
 
         return 0
     finally:
