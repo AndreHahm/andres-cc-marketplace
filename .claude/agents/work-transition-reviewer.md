@@ -87,7 +87,8 @@ against your own assumption of what "should" be there; review against what was a
    the exact SHA it claims to cover, and does that SHA match the entry's own `commits`/
    `pull_request` state (not an earlier, now-superseded SHA)? A `ci-gates-passed`/`pr-ready` stage
    recorded against a SHA that no longer matches the evidence's own later commits is a finding —
-   flag it as stale evidence, distinct from a legitimate `superseded_by` chain.
+   flag it as stale evidence, distinct from a legitimate `supersedes` chain (a newer entry naming
+   the old one, never the old entry itself being altered).
 8. **Acceptance check (for a `merge-to-completion` disposition):** does the evidence show each
    Linear acceptance criterion was individually compared against the delivered change, or does the
    transition simply assert closure because a merge happened? A `work-closed` transition whose only

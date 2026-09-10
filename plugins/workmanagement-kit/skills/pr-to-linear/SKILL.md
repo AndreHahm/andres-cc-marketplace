@@ -8,7 +8,7 @@ description: >-
   status to Linear, reflect blocking findings into an issue, or mark a PR ready for review. Never
   copies full PR/check/review transcripts into Linear, and never re-implements finding triage or
   reply/resolve mechanics handling-review-findings already owns.
-allowed-tools: Read, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:handling-review-findings), Skill(git-kit:collaborating-on-a-pr), Bash(gh pr checks:*), Bash(gh pr view:*), AskUserQuestion
+allowed-tools: Read, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:handling-review-findings), Bash(gh pr checks:*), Bash(gh pr view:*), AskUserQuestion
 ---
 
 # PR to Linear
@@ -65,11 +65,18 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    reuse an earlier read.
 6. **Revalidate** Linear acceptance context and known blockers via `linear-work-management`.
 7. **Present and confirm:** the readiness action and any remaining gaps, via `AskUserQuestion`.
-8. **Delegate the ready-state mutation** to `Skill(git-kit:collaborating-on-a-pr)` — marking ready is
-   a review-state action that skill owns; it is distinct from the finding-triage cycle above.
-9. **Read back** GitHub's actual state and record `pr-ready` (via `linear-github-linking`) only for
-   the exact current head SHA confirmed in step 5 — a readiness action taken against a stale SHA
-   read is invalid; re-verify if any time has passed since step 5.
+8. **Request the ready-state mutation as a structured handoff:** no `git-kit` skill currently owns a
+   callable draft-to-ready conversion action — `gh pr ready` is documented only as a manual follow-up
+   command under `git-kit:create-pr`'s own Best Practices, not as something `create-pr` or
+   `collaborating-on-a-pr` performs on request, and this skill holds no tool grant for either of them
+   for this step. This is a disclosed Wave 2 gap, not a mechanic to re-implement here: present it to
+   the user via `AskUserQuestion` and ask them to run `gh pr ready` themselves outside this skill's own
+   delegated flow. This skill never invokes `gh pr ready` (or any other raw `gh pr` mutation) directly
+   itself — doing so would be exactly the raw-command fallback Wave 2's own Non-Goals prohibit.
+9. **Read back** GitHub's actual state — confirming the PR's draft state actually changed, not
+   assuming it did because the user was asked — and record `pr-ready` (via `linear-github-linking`)
+   only for the exact current head SHA confirmed in step 5 — a readiness action taken against a stale
+   SHA read is invalid; re-verify if any time has passed since step 5.
 10. **Move Linear to In Review/Ready** only if the repository's approved Linear workflow calls for
     it as a distinct, deliberate step — never inferred from GitHub's own native automation.
 
@@ -78,7 +85,7 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - **No approval needed:** reading PR state, reflecting a summary to Linear that doesn't change
   workflow status.
 - **Approval required:** whatever `handling-review-findings` itself requires for triage/fix/reply/
-  resolve decisions (owned by that skill, not duplicated here), and the ready-state mutation itself
+  resolve decisions (owned by that skill, not duplicated here), and the ready-state handoff itself
   (step 7).
 - **Structured handoff:** if `handling-review-findings` reports a finding it couldn't resolve within
   its own round budget, reflect that plainly to Linear rather than silently treating the PR as clear.
@@ -109,6 +116,12 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - **`pr-ready` is SHA-bound.** Marking ready, then discovering a new commit landed before the mutation
   actually applied, means the recorded evidence is for the wrong SHA — always re-read immediately
   before the mutation, not once earlier in the same conversation.
+- **No `git-kit` skill currently owns `gh pr ready` as a callable action.** Don't assume
+  `collaborating-on-a-pr` or `create-pr` will perform the conversion on request just because one of
+  them documents the underlying command — `create-pr` only mentions `gh pr ready` as manual
+  follow-up guidance for the PR's own author, not an invokable step. Treat this as a real, disclosed
+  gap (step 8's structured handoff), not an oversight to silently work around with an ungranted raw
+  command.
 
 ## Testing & Validation
 
@@ -128,8 +141,10 @@ See Testing & Validation below for the concrete trigger phrases this section sum
       summary.
 - [ ] Never triages a finding, applies a fix, or replies to/resolves a thread itself — always
       delegates that whole cycle to `git-kit:handling-review-findings`.
-- [ ] The ready-state action routes through `git-kit:collaborating-on-a-pr` — never a raw `gh pr`
-      command.
+- [ ] The ready-state action is always a structured handoff (`AskUserQuestion`, asking the user to
+      run `gh pr ready` themselves) — never a raw `gh pr` command invoked by this skill, and never
+      silently assumed to be `collaborating-on-a-pr`'s or `create-pr`'s job without that assumption
+      being checked against what those skills actually document.
 - [ ] `pr-ready` is only ever recorded for a head SHA re-verified immediately before the mutation.
 - [ ] A native automation status change is always treated as drift to report, never as an expected
       outcome to accept silently.

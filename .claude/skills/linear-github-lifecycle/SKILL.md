@@ -69,10 +69,18 @@ confirmation state, evidence recorded so far, any invalidation noted, unresolved
 resume point (which phase to re-enter). On resume:
 
 1. Read the Issue's `git-github-evidence` array (via `linear-github-linking`) to determine the
-   furthest-completed phase.
-2. Present the resume point to the user via `AskUserQuestion` before continuing — never silently
+   furthest-completed **Git/GitHub** phase — this reliably covers every phase through
+   `merge-to-completion`'s `pr-merged`/Linear disposition, since each of those phases appends its own
+   evidence entry.
+2. **The Notion-learning phase has no `git-github-evidence` entry of its own** — `status-and-learning`
+   writes to Notion, not to the Issue's Git/GitHub Evidence Record, so this array can never confirm
+   whether that phase already ran. When the furthest Git/GitHub evidence shows `merge-to-completion`
+   already completed, always ask the user directly via `AskUserQuestion` whether a Notion outcome/
+   learning summary was already captured for this Issue before re-entering `status-and-learning` —
+   never assume either way, and never re-invoke it on the strength of `git-github-evidence` alone.
+3. Present the resume point to the user via `AskUserQuestion` before continuing — never silently
    resume from an assumed point.
-3. Re-enter at the next undone phase; never re-run a completed phase's own mutation (e.g. don't
+4. Re-enter at the next undone phase; never re-run a completed phase's own mutation (e.g. don't
    re-request a branch that `work-started` evidence already confirms exists).
 
 ## Confirmation and Safety
@@ -103,6 +111,11 @@ resume point (which phase to re-enter). On resume:
 - **Reconciliation is on-demand, not automatic.** This skill doesn't run `linear-github-reconciliation`
   as part of every normal pass — only when drift is suspected or explicitly requested. Running it
   unconditionally on every phase transition would be needless overhead for the common, aligned case.
+- **`git-github-evidence` cannot detect the Notion-learning phase's completion.** It's a Git/GitHub-only
+  record; `status-and-learning` writes to Notion, leaving no trace there. Resuming an Issue whose
+  furthest Git/GitHub evidence is `pr-merged`/disposition-closed always requires an explicit
+  `AskUserQuestion` about whether the Notion summary already happened (see Resume Behavior step 2) —
+  never inferred from Git/GitHub evidence alone, which would risk a duplicate Notion record.
 
 ## Testing & Validation
 
@@ -120,6 +133,8 @@ resume point (which phase to re-enter). On resume:
       skill.
 - [ ] Resume always reads persisted evidence to determine the furthest-completed phase — never
       assumes a resume point without checking.
+- [ ] Resume never re-enters `status-and-learning` on the strength of `git-github-evidence` alone —
+      always asks the user explicitly first, since that phase has no Git/GitHub evidence of its own.
 - [ ] A focused skill's own structured handoff is always surfaced directly, never silently absorbed
       to keep the overall sequence moving.
 - [ ] Reconciliation only runs on demand — never unconditionally on every phase transition.

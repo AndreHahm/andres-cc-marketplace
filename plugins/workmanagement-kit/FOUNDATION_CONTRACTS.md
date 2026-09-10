@@ -353,7 +353,7 @@ convention.
   "gates": [ {"name": "string", "owner": "string", "result": "pass | fail | pending | bypassed", "sha": "string", "recorded_at": "ISO-8601 UTC timestamp"} ],
   "provider": "string, the git-kit skill that performed the underlying operation, e.g. 'git-kit:starting-work'",
   "policy_profile": "string, the repository-policy profile name this evidence was resolved under",
-  "superseded_by": "string, evidence_id of a later entry that invalidates this one (e.g. a force-push changing a recorded SHA), or null",
+  "supersedes": "string, evidence_id of an earlier entry this one invalidates (e.g. a force-push changing a recorded SHA for the same branch/PR), or null",
   "transition_id": "string, the base Transition Contract transition_id of the write that appended this entry",
   "recorded_at": "ISO-8601 UTC timestamp"
 }
@@ -366,9 +366,14 @@ convention.
   via the **base** Transition Contract as always — never inferred from a `pr-merged` entry alone.
 - Multiple commits/PRs per Issue are modeled by repeated array entries sharing the same `repository`, not
   a nested collection.
-- `superseded_by` implements supersede-without-delete: a force-push or base change appends a new entry
-  and sets the old entry's `superseded_by` to the new entry's `evidence_id`; the old entry is never
-  deleted or edited in place.
+- `supersedes` implements supersede-without-delete, matching Disposition Record's own most-recent-wins
+  convention exactly (not just "the same shape of extension" — the same resolution rule): a force-push
+  or base change appends a **new** entry whose own `supersedes` field names the earlier entry's
+  `evidence_id`. The pointer lives only on the new entry — the old entry is never touched, so "never
+  overwritten"/"never edited in place" above holds literally, not just in spirit. A consuming skill's
+  "is this evidence still current for this branch/PR" check must follow the same most-recent-entry-wins
+  rule `disposition-history`'s own reconsideration note (above) already establishes for `item_id` — never
+  look for a back-reference on the old entry, since none is ever written there.
 - The write that appends a `git-github-evidence` entry is itself an ordinary single write against the
   Linear Issue — it still gets its own ordinary base Transition Contract entry (`affected_record` = the
   Issue), per the existing next-write convention. Each entry's own `transition_id` links back to that
@@ -399,6 +404,14 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
 
 ## Change Log
 
+- 2026-09-10 — Fixed a self-contradiction in the Git/GitHub Evidence Record found by
+  `cross-model-review`: the schema's `superseded_by` field required mutating an *old* entry on every
+  force-push/base-change repair, directly contradicting the same section's own "never overwritten"/
+  "never edited in place" guarantees, and deviating from the Disposition Record precedent this record
+  claimed to follow (which has no back-pointer field at all). Replaced `superseded_by` (set on the old
+  entry) with `supersedes` (set only on the new entry, naming the earlier entry it invalidates) — the
+  old entry is now genuinely never touched, matching Disposition Record's most-recent-wins convention
+  literally, not just in name.
 - 2026-09-09 — Added the Git/GitHub Evidence Record (`git-github-evidence`) and Repository Policy
   Profile for Wave 2 (`workmanagement-kit`'s Git/GitHub lifecycle bridge). Extended
   `affected_record.system`'s enum to include `"github"`. `versioned-configuration.json` bumped to

@@ -2,10 +2,11 @@
 name: development-to-pr
 description: >-
   Supply Linear context and coordinate a governed commit and draft-PR workflow through
-  git-kit:commit plus git-kit:create-pr or collaborating-on-a-pr — running the repository's
-  configured pre-commit/pre-push gates, then publishing or adopting a PR with a permitted Linear
-  reference. Use when asked to commit and open a PR linked to a Linear issue, publish a draft PR for
-  an issue, or run local gates before publishing. Never stages, commits, or pushes directly.
+  git-kit:commit plus git-kit:create-pr or collaborating-on-a-pr — discovering the repository's
+  configured pre-push gate, publishing or adopting a PR with a permitted Linear reference, then
+  confirming the gate's real outcome once it can actually be observed. Use when asked to commit and
+  open a PR linked to a Linear issue, or publish a draft PR for an issue. Never stages, commits, or
+  pushes directly.
 allowed-tools: Read, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:commit), Skill(git-kit:create-pr), Skill(git-kit:collaborating-on-a-pr), AskUserQuestion
 ---
 
@@ -42,10 +43,12 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 4. **Record `commit-linked`:** via `linear-github-linking`, append a `git-github-evidence` entry
    (`stage: "commit-linked"`, `commits: [{sha, recorded_at}]`) per `../../FOUNDATION_CONTRACTS.md`'s
    Git/GitHub Evidence Record, using the read-back SHA.
-5. **Run pre-push gates:** invoke `repository-gates` to discover the configured pre-push gate and
-   its owner; run it through that owner (never inline in this skill). Record `ci-gates-passed` only
-   for gates that actually completed before publication, bound to the exact commit SHA from step 3 —
-   never assume a gate passed without its own read-back.
+5. **Discover pre-push gate configuration:** invoke `repository-gates` to discover what pre-push
+   gate(s), if any, this repository actually enforces — discovery only, never execution. A real git
+   pre-push hook only fires during an actual `git push`, and a required-check-style gate only starts
+   once a PR exists against a pushed SHA — neither can be run or confirmed as a standalone step here,
+   before step 9's publication has actually pushed anything. Carry the discovered gate identity
+   forward to step 12.
 6. **Search for an existing PR:** via `linear-github-linking`, check for an already-existing PR by
    repository, branch, SHA, and Linear ID. Classify per its own table.
 7. **Prepare PR metadata:** concise summary plus the repository's permitted Linear-reference
@@ -55,13 +58,20 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    via `AskUserQuestion` before publishing anything.
 9. **Delegate publication:** invoke `Skill(git-kit:create-pr)` for a new PR, or
    `Skill(git-kit:collaborating-on-a-pr)` to adopt/update an existing one — by intent, never both for
-   the same outcome.
+   the same outcome. Any real pre-push git hook fires here, inside `git-kit`'s own push; a failing
+   hook fails this delegation itself rather than reaching step 10.
 10. **Read back:** confirm the actual GitHub branch, head SHA, PR number/URL, base, and draft state
     from `git-kit`'s own output.
 11. **Verify no native status change:** confirm GitHub's own Linear integration (if configured)
     attached informational evidence without changing the Issue's workflow status — if it did, this is
     drift, not an expected outcome; report it rather than treating it as normal.
-12. **Record `pr-published`:** via `linear-github-linking`, append a `git-github-evidence` entry
+12. **Confirm the pre-push gate's outcome:** only now — after step 9's actual push — can a
+    required-check-style gate's real result be read back (via `repository-gates`, using the gate
+    identity discovered in step 5, bound to the exact head SHA confirmed in step 10). Record
+    `ci-gates-passed` only for a `pass` read-back; record `pending`/`fail` faithfully rather than
+    omitting the entry when the gate hasn't resolved yet or didn't pass — never assume a pass without
+    its own read-back.
+13. **Record `pr-published`:** via `linear-github-linking`, append a `git-github-evidence` entry
     (`stage: "pr-published"`) per `../../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record,
     using the read-back PR identity from step 10.
 
@@ -80,9 +90,13 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 - **Unknown push/PR outcome:** search GitHub by repository, branch, head SHA, and Linear ID before
   retrying — never re-run publication blind.
-- **Commit succeeds, gate fails:** record the commit's own evidence (step 4) regardless; do not
-  record `ci-gates-passed` for a gate that didn't pass, and don't proceed to publication until the
-  gate is resolved or the user explicitly accepts the gap.
+- **A real pre-push git hook fails during step 9's push:** `git-kit:create-pr`'s own delegation
+  reports the failure directly — the commit's own evidence (step 4) still stands regardless; do not
+  proceed to a retry of step 9 until the hook's own failure is resolved.
+- **A required-check-style gate is still pending or failed at step 12's read-back:** record that real
+  state (`pending`/`fail`), not `ci-gates-passed` — the PR is already published at this point (step 9
+  already ran), so this is a structured handoff about an unresolved gate on an already-published PR,
+  not something that blocks publication itself.
 
 ## Gotchas
 
@@ -98,7 +112,6 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 **Verify this skill activates on:**
 - "commit this and open a PR linked to issue X"
 - "publish a draft PR for this Linear issue"
-- "run the local gates before publishing"
 
 **Verify it does NOT activate on:**
 - "start work on this issue" → `work-to-development`
@@ -108,6 +121,7 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - [ ] Never stages, commits, or pushes directly — always through `git-kit:commit` and
       `git-kit:create-pr`/`collaborating-on-a-pr`.
 - [ ] `ci-gates-passed` is only ever recorded for a gate with its own confirmed read-back, bound to
-      the exact commit SHA.
+      the exact commit SHA — always read back after step 9's publication, never assumed or recorded
+      as a precondition to publishing.
 - [ ] An existing-PR search always runs before publishing a new PR — never creates a duplicate.
 - [ ] Native GitHub → Linear status changes are always verified absent, never assumed absent.
