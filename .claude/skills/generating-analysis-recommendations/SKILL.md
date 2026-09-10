@@ -64,7 +64,7 @@ Group by priority bucket, Quick Wins first. Within each bucket, order by estimat
 
 **Coverage preamble and evidence metadata:** before writing the scratch file, prepend the Coverage
 Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
-origin/Coverage/Confidence/Source metadata block to each recommendation, per
+origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to each recommendation, per
 `../../references/report-evidence-convention.md` — most recommendations here carry `Evidence origin:
 inherited` (from the source report's own finding), unless this skill independently re-verified the
 underlying evidence.
@@ -86,7 +86,7 @@ After Phase 4, verify before presenting output as final:
 - [ ] Priority buckets are assigned per the rubric's bands, not by gut feel
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
-- [ ] The scratch draft carries the Coverage Preamble and each recommendation carries its Evidence origin/Coverage/Confidence/Source metadata, per `report-evidence-convention.md`
+- [ ] The scratch draft carries the Coverage Preamble and each recommendation carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 
 ## Reference Guide
 

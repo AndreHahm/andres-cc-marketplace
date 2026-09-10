@@ -248,7 +248,7 @@ outcome.
 
 **Coverage preamble and evidence metadata:** before writing the summary, prepend the Coverage Preamble
 (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
-origin/Coverage/Confidence/Source metadata block to each disposition entry, per
+origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to each disposition entry, per
 `../../references/report-evidence-convention.md`.
 
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the summary to the
@@ -368,7 +368,7 @@ After Phase 5, verify before presenting output as final:
 - [ ] `github-issue-lifecycle`'s current SKILL.md/workflow file was actually read before the dispatch,
       not assumed from this file's own description of it
 - [ ] The persisted summary carries the Coverage Preamble and each disposition entry carries its Evidence
-      origin/Coverage/Confidence/Source metadata, per `report-evidence-convention.md`
+      origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 - [ ] Every dispatch's real reported outcome (filed/found-as-duplicate/filing-failed) was captured and
       reported accurately in Phase 5 — never defaulted to "filed", and never reported as "not filed" for
       a post-filing verification concern (report that as "filed, but flagged as unverified" instead)

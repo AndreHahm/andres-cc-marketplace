@@ -38,15 +38,31 @@ failure this rule prevents.
 
 ## The Finding Evidence Metadata Block
 
-Every substantive finding (not every observation — see "What Counts as Substantive" below) carries these
-four fields, inline or as a trailing block:
+Every substantive finding (not every observation — see "What Counts as Substantive" below) is wrapped in
+a `<!-- finding:start -->` / `<!-- finding:end -->` marker pair, with these four fields inside:
 
 ```markdown
+<!-- finding:start -->
+<the finding's own existing format — a SWOT row, a suggestion entry, a candidate-pattern block, etc.>
+
 Evidence origin: direct | inherited | inferred
 Coverage: complete | sampled | partial
 Confidence: high | medium | low
-Source: <report path, session identifier, timestamp/event locator, or repository path>
+Evidence source: <report path, session identifier, timestamp/event locator, or repository path>
+<!-- finding:end -->
 ```
+
+**Why explicit boundary markers, not just "somewhere near the finding":** a mechanical validator
+(`validate_report.py`) needs an unambiguous span to check "does *this specific finding* carry its own
+complete metadata block," not just "does the word 'Evidence origin:' appear somewhere in the document." A
+per-document presence check can't tell one annotated finding from ten unannotated ones — the boundary
+markers are what let the check be per-finding instead of per-document.
+
+**Field is `Evidence source:`, not bare `Source:`.** `analyzing-plugin-components`' own pre-existing
+suggestion format already uses `Source: <Strength | Weakness | ...>` for a completely different thing
+(which SWOT quadrant a suggestion came from) — reusing the bare word `Source:` for evidence provenance
+would collide with that field inside the same finding block. `Evidence source:` avoids the collision and
+matches `Evidence origin:`'s own naming.
 
 **Field meanings:**
 
@@ -64,20 +80,26 @@ Source: <report path, session identifier, timestamp/event locator, or repository
   evidence actually available: `high`, `medium`, `low`. This is independent of Coverage — a `partial`-coverage
   finding can still carry `high` confidence if the available fragment is unambiguous, and a
   `complete`-coverage finding can carry `low` confidence if the evidence itself is ambiguous.
-- **Source** — enough for a reader to independently re-check the finding: a report path
+- **Evidence source** — enough for a reader to independently re-check the finding: a report path
   (`.claude/output/<skill>/<scope-slug>-<timestamp>.md`), a session identifier, a `git` SHA/timestamp, or
   a repository file path. Never a bare absolute path that reveals the local OS username — cite the
   basename or repo-relative path instead, matching every report-producing skill's existing redaction
   discipline.
 
 **Inherited findings identify the upstream report by path.** A finding whose `Evidence origin` is
-`inherited` must name the specific source report in its `Source` field — not just "an earlier report,"
-which gives a reader nothing to re-check.
+`inherited` must name the specific source report in its `Evidence source` field — not just "an earlier
+report," which gives a reader nothing to re-check.
 
 **A full-coverage claim can never be paired with "only a subset was inspected" language in the same
 finding.** If the finding text says evidence was sampled, `Coverage` must say `sampled` or `partial`, not
 `complete` — this is a mechanical consistency check any report-producing skill's own self-review can run
 before persisting.
+
+**Every substantive finding needs its own block — no report-wide "one metadata block covers everything."**
+A report with five findings needs five `<!-- finding:start -->`/`<!-- finding:end -->` pairs, each with
+its own complete four-field metadata — not one block anywhere in the document. `validate_report.py`
+enforces this mechanically per skill (see that script and `report-contracts.json`'s
+`requires_evidence_metadata` flag).
 
 ## What Counts as "Substantive"
 

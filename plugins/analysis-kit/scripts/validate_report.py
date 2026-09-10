@@ -115,26 +115,54 @@ def check_dispositions(text: str, disposition_type: str | None) -> list[dict]:
                     "subject": f"{disposition_type}:{ident}",
                 }
             )
+
+    for ident in sorted(set(disposition_counts) - set(inventory_counts)):
+        errors.append(
+            {
+                "code": "orphaned_disposition",
+                "message": (
+                    f"Disposition found for {disposition_type}:{ident} but no matching "
+                    f"inventory marker exists"
+                ),
+                "subject": f"{disposition_type}:{ident}",
+            }
+        )
     return errors
 
 
-EVIDENCE_METADATA_LABELS = ("Evidence origin:", "Coverage:", "Confidence:", "Source:")
+EVIDENCE_METADATA_LABELS = ("Evidence origin:", "Coverage:", "Confidence:", "Evidence source:")
+FINDING_BLOCK_RE = re.compile(r"<!--\s*finding:start\s*-->(.*?)<!--\s*finding:end\s*-->", re.DOTALL)
 
 
 def check_evidence_metadata(text: str, required: bool) -> list[dict]:
     if not required:
         return []
-    missing_labels = [label for label in EVIDENCE_METADATA_LABELS if label not in text]
-    if missing_labels:
+
+    blocks = FINDING_BLOCK_RE.findall(text)
+    if not blocks:
         return [
             {
                 "code": "missing_evidence_metadata",
-                "message": f"Metadata label {label!r} not found anywhere in the report",
+                "message": (
+                    "No <!-- finding:start --> / <!-- finding:end --> blocks found -- cannot "
+                    "verify per-finding evidence metadata"
+                ),
                 "subject": "evidence-metadata",
             }
-            for label in missing_labels
         ]
-    return []
+
+    errors = []
+    for index, block in enumerate(blocks, start=1):
+        for label in EVIDENCE_METADATA_LABELS:
+            if label not in block:
+                errors.append(
+                    {
+                        "code": "missing_evidence_metadata",
+                        "message": f"Finding block {index}: metadata label {label!r} not found",
+                        "subject": f"finding-{index}",
+                    }
+                )
+    return errors
 
 
 def validate(skill: str, text: str, contracts: dict) -> dict:

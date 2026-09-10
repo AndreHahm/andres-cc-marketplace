@@ -14,6 +14,7 @@
 ### SWOT: commit (Skill)
 <!-- disposition: component:commit assessed -->
 <!-- disposition: component:commit assessed -->
+<!-- finding:start -->
 | Quadrant | Observations |
 | Strengths | Clear staging review step |
 | Weaknesses | None observed |
@@ -23,6 +24,7 @@
 Evidence origin: direct
 Coverage: complete
 Confidence: high
-Source: this-conversation
+Evidence source: this-conversation
+<!-- finding:end -->
 
 Next: run `generating-analysis-recommendations` on this report to expand its findings into a WHAT/WHY/HOW action plan.

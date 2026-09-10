@@ -73,7 +73,7 @@ Structure findings as: **Consistencies** (what held steady), **Divergences** (wh
 
 **Coverage preamble and evidence metadata:** before writing the scratch file, prepend the Coverage
 Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
-origin/Coverage/Confidence/Source metadata block to each Consistency/Divergence/Unresolved-recurrence
+origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to each Consistency/Divergence/Unresolved-recurrence
 entry, per `../../references/report-evidence-convention.md`.
 
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/comparing-sessions/<scope-slug>-<timestamp>.md" --label "Session Comparison Report")`, where `<scope-slug>` derives from the two things being compared, e.g. `<current-scope>-vs-<prior-report-slug>`. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Session Comparison Report written: ...` confirmation line — present its printed output as-is. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
@@ -95,7 +95,7 @@ After Phase 4, verify before presenting output as final:
 - [ ] Every entry in the diff's `shared` list was actually compared for content, not just noted as present in both
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
-- [ ] The scratch draft carries the Coverage Preamble and each comparison entry carries its Evidence origin/Coverage/Confidence/Source metadata, per `report-evidence-convention.md`
+- [ ] The scratch draft carries the Coverage Preamble and each comparison entry carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 - [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when 2+ reports share this run's `<current-scope>`) was printed after the `📄 ... written:` line
 
 ## Reference Guide

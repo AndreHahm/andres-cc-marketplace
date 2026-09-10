@@ -166,7 +166,9 @@ the whole consolidation."
 analysis types ran fresh, were reused, or produced an explicit empty contribution — per
 `../../references/report-evidence-convention.md`. Findings consolidated from dispatched reports inherit
 `Evidence origin: inherited` and the narrower of this run's own coverage and each source report's own
-stated coverage.
+stated coverage — wrap each consolidated finding in its own `<!-- finding:start -->`/`<!-- finding:end -->`
+markers with the full four-field block, matching the convention's per-finding shape, even though this
+skill isn't one of the two `validate_report.py`-enforced skills today.
 
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full report to
 the session scratchpad directory (never a bare relative filename, which resolves to the current working

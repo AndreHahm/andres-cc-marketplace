@@ -30,7 +30,10 @@ This plugin has no hard dependency required just to install and run its core ana
 `references/report-contracts.json`, mechanically checks a drafted report against its skill's declared
 contract before persistence: the Coverage Preamble fields, the standard `Next: ...` line (for the 7
 skills that carry it), component/actor disposition completeness (via `<!-- inventory: -->`/
-`<!-- disposition: -->` HTML-comment markers), and presence of finding evidence metadata. Only
+`<!-- disposition: -->` HTML-comment markers, counted per-occurrence so a repeated identical identifier
+still needs its own matching disposition), and per-finding evidence metadata — every substantive finding
+must be wrapped in its own `<!-- finding:start -->`/`<!-- finding:end -->` markers carrying all four
+metadata fields, checked block-by-block rather than as one document-wide presence check. Only
 `analyzing-plugin-components` and `analyzing-actor-behavior` currently write the inventory/disposition
 markers and call this validator before persisting — every other report-producing skill still relies on
 prose discipline alone for its own completeness. Structural checks only; it never judges whether a

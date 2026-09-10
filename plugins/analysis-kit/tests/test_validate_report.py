@@ -81,6 +81,21 @@ def test_repeated_identical_inventory_identifier_with_matching_dispositions_pass
     assert validate_report.check_dispositions(text, "actor") == []
 
 
+def test_orphaned_disposition_with_no_matching_inventory_marker_fails():
+    text = "<!-- disposition: component:not-in-inventory assessed -->\n"
+    errors = validate_report.check_dispositions(text, "component")
+    assert errors == [
+        {
+            "code": "orphaned_disposition",
+            "message": (
+                "Disposition found for component:not-in-inventory but no matching "
+                "inventory marker exists"
+            ),
+            "subject": "component:not-in-inventory",
+        }
+    ]
+
+
 def test_common_fixture_with_missing_next_step_fails():
     result = validate_report.validate(
         "analyzing-plugin-components", _fixture("common-missing-next-step.md"), CONTRACTS
@@ -98,31 +113,69 @@ def test_missing_coverage_preamble_fields_flagged():
     assert len(errors) == len(CONTRACTS["common"]["coverage_fields"])
 
 
-def test_missing_evidence_metadata_flagged_for_each_absent_label_when_required():
-    errors = validate_report.check_evidence_metadata("no metadata block here", required=True)
-    assert [e["code"] for e in errors] == ["missing_evidence_metadata"] * 4
+def _finding_block(
+    *, evidence_origin=True, coverage=True, confidence=True, evidence_source=True
+) -> str:
+    lines = ["<!-- finding:start -->", "Some finding text."]
+    if evidence_origin:
+        lines.append("Evidence origin: direct")
+    if coverage:
+        lines.append("Coverage: complete")
+    if confidence:
+        lines.append("Confidence: high")
+    if evidence_source:
+        lines.append("Evidence source: this-conversation")
+    lines.append("<!-- finding:end -->")
+    return "\n".join(lines)
 
 
-def test_partial_evidence_metadata_flags_only_the_missing_labels():
-    text = "Evidence origin: direct\nConfidence: high\n"
+def test_no_finding_blocks_at_all_flags_missing_evidence_metadata():
+    errors = validate_report.check_evidence_metadata("no finding blocks here at all", required=True)
+    assert [e["code"] for e in errors] == ["missing_evidence_metadata"]
+    assert "finding:start" in errors[0]["message"]
+
+
+def test_finding_block_missing_some_labels_flags_only_those():
+    text = _finding_block(coverage=False, evidence_source=False)
     errors = validate_report.check_evidence_metadata(text, required=True)
     assert len(errors) == 2
-    assert {e["subject"] for e in errors} == {"evidence-metadata"}
+    assert all(e["subject"] == "finding-1" for e in errors)
     messages = " ".join(e["message"] for e in errors)
     assert "'Coverage:'" in messages
-    assert "'Source:'" in messages
+    assert "'Evidence source:'" in messages
     assert "'Evidence origin:'" not in messages
 
 
-def test_all_four_evidence_metadata_labels_present_passes():
+def test_single_complete_finding_block_passes():
+    assert validate_report.check_evidence_metadata(_finding_block(), required=True) == []
+
+
+def test_multi_finding_report_with_one_unannotated_finding_fails():
+    # The exact gap both Codex and Claude confirmed in cross-model review: a
+    # report with several findings but only one carrying real metadata must
+    # not pass just because *a* finding somewhere is fully annotated.
     text = (
-        "Evidence origin: direct\nCoverage: complete\nConfidence: high\nSource: this-conversation\n"
+        _finding_block()
+        + "\n\n"
+        + _finding_block(
+            evidence_origin=False, coverage=False, confidence=False, evidence_source=False
+        )
     )
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert len(errors) == 4
+    assert all(e["subject"] == "finding-2" for e in errors)
+
+
+def test_multi_finding_report_all_annotated_passes():
+    text = _finding_block() + "\n\n" + _finding_block()
     assert validate_report.check_evidence_metadata(text, required=True) == []
 
 
 def test_missing_evidence_metadata_not_flagged_when_not_required():
-    assert validate_report.check_evidence_metadata("no metadata block here", required=False) == []
+    assert (
+        validate_report.check_evidence_metadata("no finding blocks here at all", required=False)
+        == []
+    )
 
 
 def test_missing_section_flagged_for_absent_required_heading():
