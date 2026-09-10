@@ -138,8 +138,8 @@ imposes only on the live path.
 
 - `idea-to-implementation` needs transition review before finalizing a promotion batch, dispatched
   live through `scripts/bridge_caller.py`.
-- A not-yet-built completion workflow would need closure review before emitting `work-closed`,
-  dispatched live through `scripts/bridge_caller.py` — this workflow does not exist yet in this
-  plugin; the bridge-caller script itself is built and live.
+- Wave 2's `merge-to-completion` may dispatch this agent's Acceptance check (step 8 above) before
+  emitting `work-closed`, live through `scripts/bridge_caller.py`, for a large or ambiguous
+  criterion-comparison case — see that skill's own step 9.
 - A human runs this persona directly in the Codex CLI via the standalone `.codex/agents` export,
   outside any Claude Code session, to independently re-check a transition."""
