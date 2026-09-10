@@ -50,7 +50,10 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 5. **Delegate:** invoke `Skill(git-kit:merge-pr)`.
 6. **Read back** the actual GitHub merge state and merge SHA — never assume success from the request
    alone.
-7. **Record `pr-merged`:** via `linear-github-linking`, using the read-back merge SHA.
+7. **Record `pr-merged`:** via `linear-github-linking`, with the read-back merge SHA in the entry's
+   own `merge_commit_sha` field, per `../../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record —
+   never placed in `commits[]`, which holds the PR branch's own pre-merge commits, not the merge
+   result (squash/rebase merges produce a SHA that was never on that branch at all).
 8. **Confirm native communication:** GitHub's own Linear integration (if configured) communicates the
    merge fact informationally only — if it changed Linear's workflow status directly, that's drift;
    report it, don't treat it as the disposition step below.

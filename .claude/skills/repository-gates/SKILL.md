@@ -52,10 +52,13 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    with a manual handoff (see Failure and Resume) — **never** select a broader provider or fall back
    to a raw `git`/`gh` command for a governed operation.
 3. In this repository, the resolved profile always maps every governed operation to `git-kit`
-   exactly per `../../FOUNDATION_CONTRACTS.md`'s Repository Policy Profile table (branch/worktree →
-   `git-kit:starting-work`, commit → `git-kit:commit`, publish → `git-kit:create-pr`/
-   `collaborating-on-a-pr`, review → `git-kit:collaborating-on-a-pr`, merge → `git-kit:merge-pr`,
-   cleanup → `git-kit:finishing-work`).
+   exactly per `../../FOUNDATION_CONTRACTS.md`'s Repository Policy Profile table — read that table
+   directly rather than trusting a paraphrase here, since it's the canonical source and has its own
+   history of drifting out of sync with a summary copied elsewhere (e.g. branch/worktree →
+   `git-kit:starting-work`, commit → `git-kit:commit`, create a new PR → `git-kit:create-pr`, push to
+   an already-existing PR → `git-kit:commit`, mark ready → a disclosed manual handoff with no
+   provider yet, review/link-at-creation → `git-kit:collaborating-on-a-pr`, merge →
+   `git-kit:merge-pr`, cleanup → `git-kit:finishing-work`).
 
 ## Discovering Actual Gates
 

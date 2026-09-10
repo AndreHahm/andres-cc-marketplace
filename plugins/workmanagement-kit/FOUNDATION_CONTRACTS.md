@@ -350,6 +350,7 @@ convention.
   "base_branch": "string, or null",
   "commits": [ {"sha": "string", "recorded_at": "ISO-8601 UTC timestamp"} ],
   "pull_request": {"number": "integer", "url": "string", "state": "draft | open | merged | closed"} | null,
+  "merge_commit_sha": "string, the actual merge SHA read back from GitHub for a pr-merged entry (may differ from any sha in commits[] — a squash/rebase merge produces a new commit not on the PR branch's own history), or null for every other stage",
   "gates": [ {"name": "string", "owner": "string", "result": "pass | fail | pending | bypassed", "sha": "string", "recorded_at": "ISO-8601 UTC timestamp"} ],
   "provider": "string, the git-kit skill that performed the underlying operation (e.g. 'git-kit:starting-work') for a stage a git-kit skill actually performed; 'workmanagement-kit:<skill>' for work-reopened, which has no git-kit operation of its own (e.g. 'workmanagement-kit:merge-to-completion'); or 'manual (<real command>, per <workmanagement-kit skill>'s disclosed handoff)' for a stage reached through a disclosed manual handoff because no git-kit skill owns that action yet (e.g. 'manual (gh pr ready, per pr-to-linear's disclosed handoff)') — never a fabricated git-kit attribution for an operation git-kit didn't actually perform",
   "policy_profile": "string, the repository-policy profile name this evidence was resolved under",
@@ -406,6 +407,21 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
 
 ## Change Log
 
+- 2026-09-10 — Fixed an eleventh and twelfth `cross-model-review` finding, and disclosed a
+  thirteenth as a known gap rather than a workaround. The Git/GitHub Evidence Record schema had no
+  field for a merge's own SHA — `merge-to-completion` needed to record it and `status-and-learning`
+  needed to read it, but the only array field (`commits[]`) holds a PR branch's own pre-merge
+  commits, not the merge result (a squash/rebase merge produces a SHA that was never on that branch).
+  Added a dedicated `merge_commit_sha` field. Separately, `repository-gates`'s own step 3 restated
+  the Repository Policy Profile table as an inline paraphrase that had already drifted out of sync
+  with the canonical table (still describing "publish → create-pr/collaborating-on-a-pr" after an
+  earlier fix split that into three distinct operations) — now points at the canonical table directly
+  instead of repeating a summary that can drift again. Disclosed, not fixed: `development-to-pr`'s
+  existing-PR path pushes via `git-kit:commit`'s own step 16, which has no equivalent to
+  `git-kit:create-pr`'s own mandatory pre-push `cross-model-review` gate — closing this properly needs
+  a `git-kit`-level "commit, review, then push" capability that doesn't exist yet, out of scope for a
+  Wave 2 fix; stated plainly in that skill's own Gotchas and the plugin's README rather than silently
+  left uncovered.
 - 2026-09-10 — Fixed a ninth and tenth `cross-model-review` finding, both tool-grant-vs-claimed-
   capability gaps in Wave 2's newer skills. `pr-to-linear` claimed to read "unresolved threads" via
   `gh pr view`, but that command's own JSON field list has no thread-resolution field (only GraphQL's
