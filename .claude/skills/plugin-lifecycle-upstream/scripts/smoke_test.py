@@ -32,10 +32,14 @@ def check_referenced_files():
     # ("`agent-development`'s `scripts/test-agent-trigger.sh`"), so a bare
     # `scripts/test-agent-trigger.sh` match here is a cross-plugin reference, not a path
     # relative to this skill — already covered by check_bash_grants' full-path check instead.
+    # `marketplace_ci` is excluded for the same reason: the Mirror Sync step's
+    # `scripts/marketplace_ci/` mentions are this repo's own root-level package (invoked
+    # as `python -m scripts.marketplace_ci`, a dotted module path check_bash_grants
+    # matches separately), never a path relative to this skill.
     text = SKILL_MD.read_text(encoding="utf-8")
     pattern = (
         r"`(references/[\w.-]+\.md|workflows/[\w.-]+\.md"
-        r"|scripts/(?!test-agent-trigger\.sh|test-hook\.sh)[\w./-]+)`"
+        r"|scripts/(?!test-agent-trigger\.sh|test-hook\.sh|marketplace_ci\b)[\w./-]+)`"
     )
     missing = []
     for match in re.finditer(pattern, text):

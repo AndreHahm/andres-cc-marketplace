@@ -12,7 +12,7 @@ description: >-
   report, and hands off to plugin-lifecycle-downstream for QA once Test completes. For a single
   already-designed component, use the matching Design skill directly instead of this pipeline.
 argument-hint: "[rough idea, or path to an existing Conception Brief/Concept Card/Plan]"
-allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(git branch:*) Bash(gh pr view:*) Bash(date:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) TaskCreate TaskUpdate
+allowed-tools: Read Glob Grep Skill Agent Edit Write Bash(git add:*) Bash(git commit:*) Bash(git log:*) Bash(git show:*) Bash(git branch:*) Bash(gh pr view:*) Bash(date:*) Bash(*/agent-development/scripts/test-agent-trigger.sh:*) Bash(*/hook-development/scripts/test-hook.sh:*) Bash(uv run python -m scripts.marketplace_ci:*) TaskCreate TaskUpdate
 ---
 
 # Plugin Lifecycle: Upstream
@@ -112,15 +112,48 @@ After Phase 7 (Test)'s gate is approved, stage and commit the built files per th
 
 After the Commit step and before Document, sync `marketplace-inventory`/`plugin-inventory` per `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md`: a brand-new plugin, or a new component in an existing plugin that has never been inventoried at all (no live `marketplace-inventory` record and no `plugin-inventory.json` yet — the actual current state of every plugin in this repo) → run `marketplace-inventory` (mints/confirms the `plugin_id`, through its own Plan → `AskUserQuestion` approval → Apply gate) then `plugin-inventory` to bootstrap the component list — `bootstrap` has no plan/apply step of its own, so get explicit `AskUserQuestion` approval *before* invoking it, not after (see the rule's "No silent writes" bullet); a new component in an existing plugin that already has a `plugin_id` → run that plugin's own `plugin-inventory` only. Commit the result as its own commit, separate from the build commit and from any doc-fix commit the Document step below produces.
 
+## Mirror Sync
+
+This repository's own dogfooding step only — a no-op if `scripts/marketplace_ci/` and
+`.claude/marketplace-sync.json` don't exist (a project this pipeline runs in that doesn't use this repo's
+`.claude/` mirror convention at all). When it applies, run after Inventory Sync and before Document — a
+separate registry from `marketplace-inventory`/`plugin-inventory` above (component database vs. `.claude/`
+mirror parity), so it needs its own check and its own ask, never inferred from Inventory Sync's outcome.
+
+If Phase 5 (Build) produced a brand-new plugin directory under `plugins/` (not just a new component
+inside an already-existing plugin), read `.claude/marketplace-sync.json` and check whether the plugin's
+name is already present in `plugin_mirrors`. If it already is, state that plainly and move on to
+Document — nothing to do. If it isn't, ask via `AskUserQuestion`: "Register `<plugin-name>` in
+`.claude/marketplace-sync.json`'s `plugin_mirrors`, so its skills/agents/commands/hooks/rules sync into
+`.claude/`?" — options "Yes — add and sync" / "No — skip for now". Never add the entry without this ask.
+
+On "Yes": `Edit` the plugin's name into `plugin_mirrors`, then run
+`uv run python -m scripts.marketplace_ci sync-plugin-mirrors --stage` directly via the scoped
+`Bash(uv run python -m scripts.marketplace_ci:*)` tool, followed by
+`uv run python -m scripts.marketplace_ci check-plugin-mirrors` to confirm parity — never hand-write a file
+under `.claude/skills|agents|commands|hooks|rules/` yourself; only the sync command's own generated
+output goes there. Commit the registry edit and the synced files together as their own commit, separate
+from the build commit, the Inventory Sync commit (if one landed), and any doc-fix commit Document
+produces below.
+
+On "No": state plainly that the new plugin's own components won't be loadable as this repo's own project
+skills until mirroring is registered later — a deferred decision, not a silent skip — then move on to
+Document.
+
+A new component added to an *already-mirrored* existing plugin needs no ask here: its plugin name is
+already in `plugin_mirrors`, so the existing sync tooling (e.g. `commit`'s own targeted-repair step)
+picks up the new component automatically the next time it runs. This step only ever asks about a
+brand-new plugin's first-time registration.
+
 ## Document
 
-After the Inventory Sync step, invoke `plugin-documentation` (via `Skill`) against the plugin's human-facing docs (README.md, CHANGELOG.md, CONTRIBUTING.md, etc.) to draft whatever update the newly built components require — it reads the plugin's actual current state and runs its own built-in `human-doc-reviewer` QA pass on what it writes, so this step no longer needs to invoke `human-doc-reviewer` separately or hand-apply its findings. "No update needed" is a common, valid outcome, not a failure. Present the authored diff and `plugin-documentation`'s own review findings; ask via `AskUserQuestion` whether to keep the changes as-is, revise, or discard. Stage and commit any kept doc changes **separately** from the build's own commit — state the file list and message first, same discipline as the Commit step above. This runs before the Post-Commit Handoff Report below, so the report can fold in whichever commit(s) actually happened (build commit, inventory-sync commit if one landed, plus a doc-fix commit if one landed).
+After the Inventory Sync and Mirror Sync steps, invoke `plugin-documentation` (via `Skill`) against the plugin's human-facing docs (README.md, CHANGELOG.md, CONTRIBUTING.md, etc.) to draft whatever update the newly built components require — it reads the plugin's actual current state and runs its own built-in `human-doc-reviewer` QA pass on what it writes, so this step no longer needs to invoke `human-doc-reviewer` separately or hand-apply its findings. "No update needed" is a common, valid outcome, not a failure. Present the authored diff and `plugin-documentation`'s own review findings; ask via `AskUserQuestion` whether to keep the changes as-is, revise, or discard. Stage and commit any kept doc changes **separately** from the build's own commit — state the file list and message first, same discipline as the Commit step above. This runs before the Post-Commit Handoff Report below, so the report can fold in whichever commit(s) actually happened (build commit, inventory-sync commit if one landed, mirror-sync commit if one landed, plus a doc-fix commit if one landed).
 
 **Manifest description check (not covered by `plugin-documentation`):** `plugin-documentation`'s own scope is human-facing docs only — it does not read or write `.claude-plugin/plugin.json` or the marketplace's `.claude-plugin/marketplace.json`. When this run changed the plugin's component count (a skill/agent/command added or removed), separately check whether `plugin.json`'s `description` field (and the matching marketplace entry, which must stay byte-identical to it) still accurately names the plugin's current capability set. If it's stale, update both manifest `description` fields to match the just-updated README's own summary, and fold that edit into the same doc-fix commit as any `plugin-documentation` changes above. This check exists because a stale manifest description shipped twice in one plugin's history before this rule was added (Phase 1, then again after a second build pass) — the gap was never visible to `plugin-documentation` since manifest files are outside its scope. This check is a shared convention — see `plugin-lifecycle-downstream`'s Phase 12 and `plugin-lifecycle-maintenance`'s Document Step for where it also runs.
 
 ## Post-Commit Handoff Report
 
-Immediately after the Commit, Inventory Sync, and Document steps — before the downstream-QA offer below — invoke the `build-handoff-writer` agent (via `Agent`) with the Conception Brief path (if one exists for this build — Phase 1 ran fresh, or an existing approved Brief was consumed to resume at Phase 2 per Auto-Detection Logic), Concept Card path, Plan path (if one exists for this build — Phase 3 ran fresh, or an existing Plan was consumed to resume at Phase 4), a summary of each Design-phase gate outcome, the Build summary, Phase 6's Self-Review findings, Phase 7's test results, and the commit list gathered above (the build commit, inventory-sync commit if one landed, plus a doc-fix commit if Document produced one). This is a **create** call (first report for this build). The agent has no `Write` tool and returns the full report as text — `Write` its returned content to `.claude/output/build-handoff-writer/<slug>-<timestamp>.md` yourself. It does not gate progress and does not require separate user approval to run, since it only synthesizes what already happened and was already approved at Phase 7's gate.
+Immediately after the Commit, Inventory Sync, Mirror Sync, and Document steps — before the downstream-QA offer below — invoke the `build-handoff-writer` agent (via `Agent`) with the Conception Brief path (if one exists for this build — Phase 1 ran fresh, or an existing approved Brief was consumed to resume at Phase 2 per Auto-Detection Logic), Concept Card path, Plan path (if one exists for this build — Phase 3 ran fresh, or an existing Plan was consumed to resume at Phase 4), a summary of each Design-phase gate outcome, the Build summary, Phase 6's Self-Review findings, Phase 7's test results, and the commit list gathered above (the build commit, inventory-sync commit if one landed, mirror-sync commit if one landed, plus a doc-fix commit if Document produced one). This is a **create** call (first report for this build). The agent has no `Write` tool and returns the full report as text — `Write` its returned content to `.claude/output/build-handoff-writer/<slug>-<timestamp>.md` yourself. It does not gate progress and does not require separate user approval to run, since it only synthesizes what already happened and was already approved at Phase 7's gate.
 
 ## Handover to Downstream
 
@@ -130,12 +163,14 @@ After the handoff report is written, ask with `AskUserQuestion`: "Run `plugin-li
 
 ## Testing & Validation
 
-**Eval evidence:** `evals/plugin-lifecycle-upstream/evals.json` — 20 scenarios (Quick Workflow,
-`workspace/iteration-1`), 2/20 eval-covered (scenarios 1a and 1b, Gate 1's Create/non-Create branches);
+**Eval evidence:** `evals/plugin-lifecycle-upstream/evals.json` — 22 scenarios (Quick Workflow,
+`workspace/iteration-1`), 2/22 eval-covered (scenarios 1a and 1b, Gate 1's Create/non-Create branches);
 the remaining scenarios below are design-review-verified only.
 
-**Last dated run record:** 2026-08-27 — `scripts/smoke_test.py` (5/5 checks passing) and the eval
-evidence above (5/5 assertions across scenarios 1a/1b, 100% with_skill pass rate).
+**Last dated run record:** 2026-09-10 — `scripts/smoke_test.py` (5/5 checks passing, re-run after the
+Mirror Sync step was added) and the eval evidence above (5/5 assertions across scenarios 1a/1b, 100%
+with_skill pass rate, unchanged by this edit). Mirror Sync's own detection logic dry-run against
+`example-plugin`: `.claude/output/plugin-lifecycle-upstream/example-plugin-20260910T084106Z.md`.
 
 1. **Cold start** — a rough idea with no existing artifacts; confirm all 7 phases run in order with a gate between each
 1a. **Conceive, Create classification** — Phase 1 classifies the idea as Create; confirm the pipeline proceeds to Phase 2 with the light Conception Brief as `plugin-ideation`'s input
@@ -157,6 +192,8 @@ evidence above (5/5 assertions across scenarios 1a/1b, 100% with_skill pass rate
 11. **Branch-scope check, unscoped branch** — current branch is `main`/`master` or doesn't match `<type>/<description>`; confirm this fires right before Phase 5's first write (not earlier, not later) and offers both the new-branch and continue-anyway options
 12. **Branch-scope check, already scoped** — current branch already matches the convention; confirm Phase 5 proceeds with no ask
 13. **Phase-completion check catches a cancelled dispatch** — a Self-Review reviewer dispatch is cut off mid-run by a session limit; confirm Gate 6 is not presented as a clean pass, and the gap is disclosed per `plugin-rulebook/references/open-item-discipline.md` rather than silently treated as "no findings"
+14. **Mirror Sync step, brand-new plugin, this repo** — a run builds a plugin not yet present in `.claude/marketplace-sync.json`'s `plugin_mirrors`; confirm `AskUserQuestion` fires before any registry edit, and that "Yes" both edits `plugin_mirrors` and runs `sync-plugin-mirrors --stage`/`check-plugin-mirrors` before a separate commit
+14a. **Mirror Sync step, already-mirrored plugin or new component in one** — the built plugin's name is already in `plugin_mirrors`; confirm this step states "nothing to do" and moves on with no `AskUserQuestion` at all
 
 **Verify this skill activates on:**
 - "build a plugin from scratch"
@@ -180,6 +217,7 @@ evidence above (5/5 assertions across scenarios 1a/1b, 100% with_skill pass rate
 - [ ] Phase 7 never runs a component's full trigger-phrase battery or an eval suite — that's `plugin-lifecycle-downstream`'s optional, user-gated Deep Test step
 - [ ] Any unplanned overhead reaching a Phase 7 result (a tool crash, a debugging detour, a retry) is disclosed to the user in plain language before Gate 7
 - [ ] The Commit step always states the file list and message before running, always runs the Pre-Commit Disclosure check first, and never runs before Phase 7's gate is approved
+- [ ] The Mirror Sync step (this repo only) always uses `AskUserQuestion` before adding a brand-new plugin to `.claude/marketplace-sync.json`'s `plugin_mirrors` — never inferred from the Inventory Sync step's own separate ask, and never fired at all for a new component in an already-mirrored plugin
 - [ ] The Document step always runs after the Commit step, and its own doc-fix commit (if any) is always separate from the build's own commit
 - [ ] The downstream handoff offer uses `AskUserQuestion`, never auto-invoked without asking
 - [ ] Every gate that follows a written artifact opens with the standard `📄 ... written:` link line, before the content summary
@@ -193,7 +231,7 @@ evidence above (5/5 assertions across scenarios 1a/1b, 100% with_skill pass rate
 |---|---|
 | `workflows/design-a-plugin.md` | Full 7-phase procedure with gate criteria per phase |
 | `scripts/smoke_test.py` | This skill's own persisted smoke test (frontmatter validity, referenced-file existence, Bash-scope grant consistency, phase-header sequencing, SKILL.md-prose phase-range consistency) — re-run after any SKILL.md/`workflows/*.md` edit |
-| `evals/plugin-lifecycle-upstream/` | Persisted `skill-tester` Quick Workflow eval suite (20 scenarios, 2/20 covered) |
+| `evals/plugin-lifecycle-upstream/` | Persisted `skill-tester` Quick Workflow eval suite (22 scenarios, 2/22 covered) |
 | `plugin-rulebook/references/branch-and-pr-preflight.md` | Open-PR check and Branch-scope check procedures, shared with `plugin-lifecycle-downstream` and `plugin-lifecycle-maintenance` |
 | `plugin-rulebook/references/open-item-discipline.md` | Phase-completion check (every gate) and Pre-Commit Disclosure check (before Commit), shared with `plugin-lifecycle-downstream` and `plugin-lifecycle-maintenance` |
 | `git-kit:starting-work` | Branch-scope check's "create a new branch" option |
@@ -210,6 +248,7 @@ evidence above (5/5 assertions across scenarios 1a/1b, 100% with_skill pass rate
 | `hook-development/scripts/test-hook.sh` | Phase 7, hook components — bounded smoke check only, called directly via the scoped `Bash(*/hook-development/scripts/test-hook.sh:*)` tool (no subagent dispatch), same reasoning as the agent-component check |
 | (manually-followed, no dispatch target) | Phase 7, command components — one live trial against real data, since commands aren't `Skill()`-invocable and have no dedicated test tool |
 | `marketplace-inventory` / `plugin-inventory` skills | Inventory Sync step, after Commit and before Document — see `.claude/rules/require-inventory-updates-for-new-plugins-and-components.md` |
-| `plugin-documentation` skill | Document step, after Inventory Sync and before the handoff report — authors doc updates and runs its own `human-doc-reviewer` QA internally |
+| `scripts/marketplace_ci` (`sync-plugin-mirrors --stage`, `check-plugin-mirrors`) | Mirror Sync step, after Inventory Sync and before Document — this repo only, registers a brand-new plugin in `.claude/marketplace-sync.json`'s `plugin_mirrors` and syncs its components into `.claude/` |
+| `plugin-documentation` skill | Document step, after Inventory Sync and Mirror Sync and before the handoff report — authors doc updates and runs its own `human-doc-reviewer` QA internally |
 | `build-handoff-writer` agent | Post-Commit handoff report (create), before the downstream offer |
 | `plugin-lifecycle-downstream` skill | Handover target after Test; also updates the handoff report |
