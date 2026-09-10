@@ -161,6 +161,15 @@ See Testing & Validation below for the concrete trigger phrases this section sum
   updates that PR automatically on GitHub's side, not because any skill performs an "adopt" action —
   don't look for one, and don't invent a raw `gh pr edit`/push call to fill a gap that doesn't
   actually exist once this is understood correctly.
+- **Disclosed gap: the existing-PR path's push does not go through `create-pr`'s own mandatory
+  pre-push `cross-model-review` gate.** The new-PR path gets that review for free, since
+  `git-kit:create-pr`'s own Pre-flight Checks run it before its first push. The existing-PR path
+  pushes via `git-kit:commit`'s own step 16 instead, which has no equivalent review gate of its own —
+  `git-kit` has no standalone "commit, then review, then push" sequence this skill can compose
+  without re-implementing part of `create-pr`'s own Pre-flight flow (a scope this Wave 2 fix
+  deliberately doesn't take on). If review coverage matters for a specific existing-PR push, ask the
+  user to run `Skill(git-kit:cross-model-review)` themselves before confirming `commit`'s own push
+  question — this skill does not enforce that automatically today.
 
 ## Testing & Validation
 

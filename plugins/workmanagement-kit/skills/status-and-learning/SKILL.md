@@ -45,7 +45,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 1. Read the relevant Linear facts via `linear-work-management` (a Milestone's status, a Project's
    Issue completion rate, whatever the summary is actually about) — and, when the source is a
    completed Wave 2 lifecycle, the same Issue's `git-github-evidence` array (repository, PR
-   identity, merge SHA — never raw check/review transcripts), also via `linear-work-management`
+   identity, the `pr-merged` entry's own `merge_commit_sha` field — never raw check/review
+   transcripts), also via `linear-work-management`
    since it is an ordinary field on the Issue record; see
    `../linear-work-management/references/linear-entity-fields.md`'s Issue table and
    `../../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record.

@@ -105,6 +105,14 @@ Items still open before Wave 2 is fully live:
 - **Each of the 8 Wave 2 skills has one real `skill-tester` Quick Workflow eval scenario** (under
   `evals/<skill-name>/`), not the fuller 2-3-scenario baseline coverage Wave 1's own skills carry —
   a real gap, not a placeholder, worth closing in a follow-up pass.
+- **`development-to-pr`'s existing-PR path pushes without the mandatory pre-push `cross-model-review`
+  gate** the new-PR path gets for free through `git-kit:create-pr`'s own Pre-flight Checks — `git-kit`
+  has no standalone "commit, review, then push" sequence to compose without re-implementing part of
+  `create-pr`'s own flow. Disclosed in that skill's own Gotchas; worth a `git-kit`-level fix in a
+  follow-up rather than a workaround here.
+- **No `git-kit` skill currently owns marking a draft PR ready for review as a callable action** —
+  `pr-to-linear`'s own "Marking ready" step is a disclosed manual handoff (the user runs `gh pr ready`
+  themselves) rather than a delegated mutation. Also worth a `git-kit`-level fix in a follow-up.
 
 Items still open from Wave 1:
 - **The shipped host profile and versioned configuration still ship as schemas with safe
