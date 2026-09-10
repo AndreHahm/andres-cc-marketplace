@@ -80,6 +80,18 @@
       "disposition_type": null,
       "next_step_required": false,
       "requires_evidence_metadata": true
+    },
+    "analyzing-session-outcomes": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
+    },
+    "analyzing-verification-effectiveness": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
     }
   }
 }

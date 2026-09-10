@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The CRLF check is classified 'false_negative', not 'adequate'", "passed": true, "evidence": "'### false_negative ... the CRLF regression check is structurally incapable of detecting the defect it was written to catch'."},
+    {"text": "The report explains why the check cannot fail regardless of actual file content (both sides normalized before comparison)", "passed": true, "evidence": "'.replace is applied to both actual and expected before the == comparison... the assertion produces the identical pass/fail result whether actual actually contains CRLF or not.'"},
+    {"text": "The recommendation names the exact fix (compare without normalization / assert no CR present), not a generic 'add more tests'", "passed": true, "evidence": "'Replace the normalizing comparison with one that asserts on the raw, un-normalized value: assert actual == expected; assert \\'\\\\r\\' not in actual'."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

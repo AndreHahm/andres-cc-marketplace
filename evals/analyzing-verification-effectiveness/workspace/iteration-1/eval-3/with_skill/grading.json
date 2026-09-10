@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "AMENDED after grading: the primary finding correctly applies the High-risk bar (behavior test/manual trial PLUS a distinct security/adversarial check) rather than the eval's original, miscalibrated 'adequate' expectation", "passed": true, "evidence": "'weak ... the risk-to-evidence matrix's High-risk bar requires both a behavior test/manual trial AND a security/adversarial check when the change touches a trust boundary. Only one adversarial-shaped scenario... was verified.' -- correctly quotes and applies risk-to-evidence-matrix.md's own text."},
+    {"text": "The regression-suite finding and the valid-token manual-trial finding are each separately classified 'adequate' at their own (Medium) risk level, distinct from the primary fix's own (High) risk level", "passed": true, "evidence": "'Finding 2 -- Regression safety... Risk here is Medium... adequate' and 'Finding 3 -- Valid-token happy path... Risk here is Medium... adequate', each with its own metadata block distinct from Finding 1's High-risk/weak verdict."}
+  ],
+  "summary": {"assertions_total": 2, "assertions_passed": 2, "pass_rate": 1.0},
+  "note": "Eval 3's original expected_output/assertions in evals.json/eval_metadata.json anticipated an 'adequate' verdict for the primary fix. On review, the skill's own risk-to-evidence-matrix.md text requires a distinct security/adversarial check (not just a behavior test) for a High-risk trust-boundary change -- the agent's 'weak' classification is the textually correct application of the skill's own rules, not a skill defect. The eval's expected_output was corrected after the fact rather than counting this as a failure; see eval_metadata.json's amended assertion text."
+}

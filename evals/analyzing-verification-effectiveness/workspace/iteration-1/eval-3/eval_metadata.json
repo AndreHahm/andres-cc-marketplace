@@ -1,0 +1,8 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-verification-effectiveness/SKILL.md",
+  "assertions": [
+    {"text": "AMENDED after grading (see grading.json note): the primary expired-token-rejection finding correctly applies the risk-to-evidence-matrix's High-risk bar, which requires a behavior test/manual trial PLUS a distinct security/adversarial check for a trust-boundary change -- since only one behavior test covered one scenario, 'weak' (not 'adequate') is the textually correct classification. The original assertion here expected 'adequate'; that expectation was miscalibrated against the skill's own written risk matrix, not a skill defect.", "type": "functionality", "target": "outputs/ report"},
+    {"text": "The regression-suite finding and the valid-token manual-trial finding are each separately classified 'adequate' at their own (Medium) risk level, distinct from the primary fix's own (High) risk level", "type": "quality", "target": "outputs/ report"}
+  ]
+}

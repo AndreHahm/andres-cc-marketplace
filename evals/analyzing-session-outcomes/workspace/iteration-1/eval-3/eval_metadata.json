@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-session-outcomes/SKILL.md",
+  "assertions": [
+    {"text": "The rename goal is verdict 'met' at tier 1 (explicit user acceptance), citing the user's own confirmation directly rather than downgrading to tier 2", "type": "functionality", "target": "outputs/ Acceptance Criteria section"},
+    {"text": "Delivered Artifacts lists the unrequested docstring addition, kept distinct from the Acceptance Criteria section", "type": "structure", "target": "outputs/ report"},
+    {"text": "A Process Compliance Note is present even though the session looks fully successful", "type": "presence", "target": "outputs/ report"}
+  ]
+}

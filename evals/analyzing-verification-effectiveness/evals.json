@@ -1,0 +1,28 @@
+{
+  "skill_name": "analyzing-verification-effectiveness",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-verification-effectiveness/SKILL.md",
+  "description": "Judges whether claimed verification was actually adequate evidence, proportionate to the risk and behavior changed.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Commit-message-only claim, no real test run",
+      "prompt": "Analyze verification effectiveness using the analyzing-verification-effectiveness skill (scope: this-conversation). SESSION TRANSCRIPT SUMMARY: The assistant changed the retry logic in a network client to back off exponentially instead of retrying immediately. The assistant then wrote a commit with the message 'fix: retry logic now backs off correctly, tests pass' and moved on. No test file was created or modified, no test command was run, and no output from any test was ever shown or referenced in the session. Produce the report.",
+      "expected_output": "The retry-logic change is classified 'unverified_claim' (a specific claim of correctness -- 'tests pass' -- with zero verification evidence behind it), not 'adequate' and not merely 'missing'. The report explicitly states the commit message itself is a claim, not evidence. The recommendation names an exact verification command/approach to close the gap (e.g. write and run a test exercising the exponential-backoff timing), not a generic 'add more tests'.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "False-negative check that passed",
+      "prompt": "Analyze verification effectiveness using the analyzing-verification-effectiveness skill (scope: this-conversation). SESSION TRANSCRIPT SUMMARY: The assistant fixed a bug where Windows line endings (CRLF) were being written to a config file instead of the expected LF-only format. The assistant added a check: `assert actual.replace('\\r\\n', '\\n') == expected.replace('\\r\\n', '\\n')`. This check was run and passed. On inspection, this comparison strips \\r from BOTH sides before comparing, so it would pass identically whether or not the actual output actually contained CRLF -- it cannot detect the exact defect it was written to catch. Produce the report.",
+      "expected_output": "The CRLF check is classified 'false_negative', not 'adequate' -- the report explicitly demonstrates why the check cannot fail regardless of the real file content (both sides are normalized before comparison, so a CRLF-vs-LF mismatch is structurally undetectable). The recommendation names the exact fix needed (compare raw bytes/without normalization, or assert '\\r' not in actual) rather than a generic 'add more tests'. The report does not accept 'the check passed' as evidence the fix works.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "High-risk auth change with proportionate, real verification",
+      "prompt": "Analyze verification effectiveness using the analyzing-verification-effectiveness skill (scope: this-conversation). SESSION TRANSCRIPT SUMMARY: The assistant changed the authentication middleware so that an expired session token is now rejected with a 401 instead of being silently treated as valid. The assistant wrote a new test `test_expired_token_rejected` that creates a token with a past expiry, sends a request with it, and asserts a 401 response; this test was run and observed to pass. The assistant also ran the full existing auth test suite (12 tests) and confirmed all still passed, and separately manually tried sending a request with a currently-valid token to confirm normal auth still works. Produce the report.",
+      "expected_output": "CORRECTED after the first run (see workspace/iteration-1/eval-3/with_skill/grading.json note): the primary expired-token-rejection finding should be classified 'weak', not 'adequate' -- risk-to-evidence-matrix.md's High-risk bar requires a behavior test/manual trial PLUS a distinct security/adversarial check for a trust-boundary change, and only one behavior test (a single past-expiry scenario) was performed, with no separate adversarial/edge-case check. The regression-suite run and the valid-token manual trial are separately classified 'adequate' at their own Medium risk level. The original expected_output here (plain 'adequate' for everything) was miscalibrated against the skill's own written risk matrix.",
+      "files": []
+    }
+  ]
+}
