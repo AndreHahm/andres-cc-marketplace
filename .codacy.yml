@@ -19,5 +19,24 @@
 # here since a false-positive-plagued required check blocking every PR
 # that adds a new smoke-test scenario is a worse practical outcome than
 # losing that one narrow directory's own secret-scan coverage.
+#
+# .claude/skills|agents|commands|hooks|rules/** are this repo's own generated mirror
+# tree -- byte-identical copies of the canonical plugins/*/... source, kept in sync by
+# scripts/marketplace_ci (see .claude/marketplace-sync.json's plugin_mirrors and R19's
+# "in-development plugin mirror" exception in plugin-rulebook). The canonical
+# plugins/*/... copy stays fully scanned; excluding the mirror avoids Codacy re-flagging
+# the exact same code a second time under a different path purely because it's new to
+# that specific path, not because it's new content -- confirmed live, PR #306: adding a
+# plugin to plugin_mirrors for the first time surfaced 15 "new" security findings that
+# were really pre-existing, already-accepted findings in the plugin's own canonical
+# source, never independently reviewable or fixable at the mirror path in isolation
+# (fixing them means editing the canonical plugins/*/... file, which then re-syncs here
+# automatically). Same disclosed tradeoff as above: this also silences secret-detection
+# for the mirror tree, accepted since the canonical source is never itself excluded.
 exclude_paths:
   - "plugins/codex-kit/scripts/smoke-tests/**"
+  - ".claude/skills/**"
+  - ".claude/agents/**"
+  - ".claude/commands/**"
+  - ".claude/hooks/**"
+  - ".claude/rules/**"
