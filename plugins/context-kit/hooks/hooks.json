@@ -7,6 +7,7 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-session-init.sh",
+            "shell": "bash",
             "timeout": 5,
             "onError": "warn"
           }
@@ -31,6 +32,7 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-track-and-suggest.sh",
+            "shell": "bash",
             "timeout": 5,
             "onError": "warn",
             "async": true
@@ -45,6 +47,7 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-milestone-detector.sh",
+            "shell": "bash",
             "timeout": 5,
             "onError": "warn"
           }
@@ -69,6 +72,7 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-instructions.sh",
+            "shell": "bash",
             "timeout": 5,
             "onError": "warn"
           },
@@ -87,6 +91,7 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-stop-check.sh",
+            "shell": "bash",
             "timeout": 5,
             "onError": "warn"
           }

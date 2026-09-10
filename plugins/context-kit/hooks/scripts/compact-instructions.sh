@@ -40,12 +40,19 @@ if [ -f "$TRACK_FILE" ]; then
     CONTEXT_INFO=" Session had ${TOTAL} tool calls (${EXPLORATION} exploration, ${IMPLEMENTATION} implementation)."
 fi
 
-# PreCompact doesn't support hookSpecificOutput.additionalContext
-# Only use stderr for user visibility and systemMessage for basic notification
-
+# PreCompact doesn't support hookSpecificOutput.additionalContext — only
+# stderr and systemMessage are used below. Neither is guaranteed reliably
+# visible by default: stderr on a normal (exit 0) hook is shown in verbose
+# mode only, not by default, and systemMessage's exact delivery for
+# PreCompact specifically is not independently confirmed one way or the
+# other. This is deliberately a best-effort nudge, not this plugin's actual
+# state-preservation guarantee — that's pre-compact.py/post-compact-
+# restore.py's capture/restore mechanism (SessionStart's additionalContext,
+# which IS supported and is what this plugin's docs describe as the real
+# behavior).
 COMPACT_MSG="[StrategicCompact] Compacting...${CONTEXT_INFO}"
 
-# Write guidance to stderr so user sees it
+# Write guidance to stderr (visible in verbose mode; not guaranteed otherwise)
 echo "$COMPACT_MSG" >&2
 echo "Preserve: modified files, task progress, decisions, errors, next steps" >&2
 
