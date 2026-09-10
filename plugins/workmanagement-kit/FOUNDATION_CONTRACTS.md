@@ -406,6 +406,17 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
 
 ## Change Log
 
+- 2026-09-10 — Fixed a ninth and tenth `cross-model-review` finding, both tool-grant-vs-claimed-
+  capability gaps in Wave 2's newer skills. `pr-to-linear` claimed to read "unresolved threads" via
+  `gh pr view`, but that command's own JSON field list has no thread-resolution field (only GraphQL's
+  `reviewThreads.isResolved` exposes it) and this skill holds no `gh api graphql` grant — corrected to
+  rely entirely on `handling-review-findings`'s own fixed/filed/declined report (that skill does hold
+  the GraphQL grant) as the sole source of truth for thread state, never independently re-derived.
+  `repository-gates`'s own Invalidating Prior Evidence section compared a recorded gate SHA against
+  "current HEAD" with no tool grant capable of determining that value itself — clarified that both
+  SHAs being compared are always supplied by the calling skill from its own fresh read-back, matching
+  this skill's own stated "discovery and delegation only" design rather than claiming an
+  independent-determination capability it never had.
 - 2026-09-10 — Fixed a fifth and sixth `cross-model-review` finding, both in Wave 2's newer skills:
   `repository-gates` documented running the exact `git ls-files` trust-boundary check this section
   requires before honoring `.claude/workmanagement-kit.local.json`, but its own `allowed-tools` never

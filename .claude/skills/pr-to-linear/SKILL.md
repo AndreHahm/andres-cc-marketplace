@@ -43,16 +43,24 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 ### Review and reflect loop
 
-1. **Read current state:** PR head SHA and mergeability (`gh pr view`), required checks
-   (`gh pr checks`), reviews and unresolved threads (`gh pr view`), and repository policy (via
-   `repository-gates`).
+1. **Read current state:** PR head SHA and mergeability, reviews, and check-rollup summary (all via
+   `gh pr view`), required checks (`gh pr checks`), and repository policy (via `repository-gates`).
+   **This skill cannot read unresolved-thread state itself** — `gh pr view`'s own JSON field list has
+   no thread-resolution field (only GraphQL's `reviewThreads.isResolved` exposes it, live-verified via
+   `gh pr view --help`), and this skill holds no `gh api graphql` grant. Unresolved-thread state comes
+   only from `handling-review-findings`'s own report at step 2 below, never re-derived here.
 2. **Delegate triage and fix:** invoke `Skill(git-kit:handling-review-findings)` for the actual
    finding classification, fix/file/decline decision, fix application (via its own `git-kit:commit`
    delegation), and reply/resolve mechanics. This skill never performs any of that itself — no raw
    `gh pr review`/`gh pr comment`, and no independent re-classification of a finding
-   `handling-review-findings` already triaged.
-3. **Re-read GitHub's resulting state** after the delegated round completes — never assume the
-   triage outcome without confirming it against GitHub's actual current checks/reviews/threads.
+   `handling-review-findings` already triaged. `handling-review-findings` holds its own
+   `gh api graphql` grant and reports fixed/filed/declined/left-unresolved per finding at the end of
+   its own run — this is this skill's sole source of truth for thread-resolution state.
+3. **Re-read GitHub's resulting checks/reviews state** after the delegated round completes (via
+   `gh pr view`/`gh pr checks`) — never assume the triage outcome without confirming it against
+   GitHub's actual current state for everything this skill *can* read. Unresolved-thread state stays
+   whatever `handling-review-findings`'s own step-2 report said; re-confirming it would require
+   dispatching that skill again, not a capability this skill has on its own.
 4. **Reflect only meaningful blockers to Linear** — a deliberate, concise summary via
    `linear-work-management` of what `handling-review-findings` actually did (fixed / filed / declined
    per finding), never a copy of the raw check/review output and never a re-statement of its own
@@ -60,9 +68,13 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 ### Marking ready
 
-5. **Verify** draft state, current head SHA, required checks/reviews, unresolved threads, PR
-   description, and the Linear link are all current — re-read immediately before this step, never
-   reuse an earlier read.
+5. **Verify** draft state, current head SHA, required checks/reviews, and PR description/Linear link
+   are all current — re-read immediately before this step, never reuse an earlier read. **Unresolved
+   threads are not independently re-verified here** (see step 1's own limitation) — this step relies
+   entirely on step 2's `handling-review-findings` report showing every finding fixed, filed, or
+   declined with none left genuinely unresolved; if time has passed since that report and a new
+   inline comment could plausibly have landed, dispatch `handling-review-findings` again before
+   proceeding rather than assuming its earlier report still holds.
 6. **Revalidate** Linear acceptance context and known blockers via `linear-work-management`.
 7. **Present and confirm:** the readiness action and any remaining gaps, via `AskUserQuestion`.
 8. **Request the ready-state mutation as a structured handoff:** no `git-kit` skill currently owns a
@@ -151,3 +163,6 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - [ ] `pr-ready` is only ever recorded for a head SHA re-verified immediately before the mutation.
 - [ ] A native automation status change is always treated as drift to report, never as an expected
       outcome to accept silently.
+- [ ] Unresolved-thread state is never independently re-derived via `gh pr view`/`gh pr checks` —
+      both lack a thread-resolution field; this skill always relies on `handling-review-findings`'s
+      own report as its sole source of truth for that state.

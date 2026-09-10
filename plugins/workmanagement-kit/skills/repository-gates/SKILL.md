@@ -90,11 +90,17 @@ recording is the calling skill's own responsibility once it has real evidence.
 
 ## Invalidating Prior Evidence
 
-A gate's recorded evidence is bound to the exact SHA it covered. When asked to check validity after
-new commits or a changed base:
+A gate's recorded evidence is bound to the exact SHA it covered. **This skill never independently
+determines "current HEAD" itself** — it holds no `git rev-parse`/`git log` grant, and no
+`Skill(linear-github-linking)` grant to read a recorded SHA on its own (see Recording Gate Evidence
+above: reading/writing evidence is always the calling skill's job). Both the recorded SHA and the
+current SHA to compare it against are always supplied by the calling skill, from its own git-kit
+read-back — this skill only compares the two values it's given and advises accordingly. When asked
+to check validity after new commits or a changed base:
 
-- **New commit on the same branch:** any gate whose recorded SHA doesn't match the current HEAD is
-  invalid — report it as requiring a rerun, don't silently treat it as still passing.
+- **New commit on the same branch:** a gate whose recorded SHA (given by the caller) doesn't match
+  the current SHA (also given by the caller, from its own fresh read-back) is invalid — report it as
+  requiring a rerun, don't silently treat it as still passing.
 - **Force-push (rewritten history):** every gate recorded against the old SHA is invalid; the calling
   skill records this by appending a **new** `git-github-evidence` entry whose own `supersedes` field
   names the invalidated entry — the old entry itself is never edited, per
@@ -162,5 +168,6 @@ new commits or a changed base:
       a raw-command fallback.
 - [ ] A branch-protection read failure is always disclosed as ambiguous (permission vs. absence),
       never silently collapsed to "no protection."
-- [ ] Gate evidence invalidation always checks the recorded SHA against current HEAD — never assumes
-      prior evidence still applies after a new commit or force-push.
+- [ ] Gate evidence invalidation always compares two SHAs the calling skill supplied — never assumes
+      prior evidence still applies after a new commit or force-push, and never attempts to determine
+      "current HEAD" independently (this skill holds no tool grant that could).
