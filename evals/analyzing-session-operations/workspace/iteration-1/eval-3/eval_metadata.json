@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-session-operations/SKILL.md",
+  "assertions": [
+    {"text": "The report explicitly states whole-session cost is unavailable, never presenting the subagent-level total as if it covered the whole session", "type": "functionality", "target": "outputs/ Performance & Cost section"},
+    {"text": "The report cites levels_present or equivalent rather than re-deriving the disclosure independently", "type": "quality", "target": "outputs/ report"},
+    {"text": "No monetary/dollar figure is fabricated since no rate was supplied", "type": "quality", "target": "outputs/ report"}
+  ]
+}

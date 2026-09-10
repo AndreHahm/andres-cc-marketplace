@@ -148,6 +148,8 @@ own interpretation from scratch.
 | `managing-review-learnings` | The input `mining-review-learnings` report or user-named finding | Which candidates were actually turned into a proposed diff vs. skipped (already covered, doesn't generalize, etc.) |
 | `analyzing-session-outcomes` | The date range or `this-conversation`/`today` argument resolved in Phase 1, plus whether a spec/acceptance-criteria document was supplied | Which goals/criteria were actually evidenced at tier 1-2 vs. only reachable at a weaker tier (3-5) |
 | `analyzing-verification-effectiveness` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which claimed verifications had independently observable evidence vs. only a narrative claim |
+| `analyzing-session-operations` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which failure/span events were derivable from transcript content vs. left as unresolved/unknown |
+| `analyzing-workflow-usability` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which friction instances had enough evidence for a necessary/avoidable/unclear verdict vs. not_measurable |
 
 `starting-an-analysis` is not in this table — it dispatches to the skills above rather than persisting
 its own report, so it has no coverage preamble of its own to write.

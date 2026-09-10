@@ -38,6 +38,10 @@ Assess agent behavior, human developer behavior, and cross-agent handoff pattern
 - **Per-component (skill/agent/rule) retrospective SWOT** — use `analyzing-plugin-components` instead; this skill assesses actor *behavior in the moment*, not a component's structural quality
 - **Tool or framework usage inventory** (a bare count of which CLI utilities, MCP servers, or subagents were invoked) — use `analyzing-tool-and-framework-use` instead; this skill assesses *how well* an invoked subagent performed, not whether/how often it was invoked
 - **No sub-agents were dispatched and no notable human corrections occurred** — nothing to analyze
+- **User-facing friction or comprehension** (confirmation burden, repeated context, readability,
+  actionability) — use `analyzing-workflow-usability` instead. This skill judges actor *behavior quality*;
+  that skill judges *friction the interaction pattern itself* imposed on the user — a well-performing
+  agent can still produce a high-friction interaction, and vice versa
 
 ## Phase 1: Scope
 

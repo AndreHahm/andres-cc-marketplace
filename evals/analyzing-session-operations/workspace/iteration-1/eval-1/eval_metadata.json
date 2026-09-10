@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-session-operations/SKILL.md",
+  "assertions": [
+    {"text": "The network-timeout failures are classified 'environment', not 'tool'", "type": "functionality", "target": "outputs/ Reliability & Stability section"},
+    {"text": "repeated_failures shows Bash(npm install) with count 2 (two failures before eventual success)", "type": "functionality", "target": "outputs/ report"},
+    {"text": "time_to_recovery_seconds is derived from actual supplied timestamps, not estimated or omitted", "type": "functionality", "target": "outputs/ report"},
+    {"text": "The report explicitly notes no performance/span data was compiled for this run rather than fabricating a Performance & Cost section", "type": "quality", "target": "outputs/ report"}
+  ]
+}
