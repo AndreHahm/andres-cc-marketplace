@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-session-outcomes/SKILL.md",
+  "assertions": [
+    {"text": "AC-1 (401 on missing token) is verdict 'met', citing the user's own direct confirmation or the observed manual test as evidence", "type": "functionality", "target": "outputs/ Acceptance Criteria section"},
+    {"text": "AC-2 (logging) is verdict 'not_met', not 'not_verifiable' -- the report treats direct evidence that no logging code exists as a contradiction, not an absence of evidence", "type": "functionality", "target": "outputs/ Acceptance Criteria section"},
+    {"text": "The report does not fabricate or infer that logging exists", "type": "quality", "target": "outputs/ report"},
+    {"text": "The supplied acceptance-criteria document is cited as the source of the criteria (not re-derived from the user's request alone)", "type": "quality", "target": "outputs/ Goal Inventory or Acceptance Criteria section"}
+  ]
+}

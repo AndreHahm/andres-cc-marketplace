@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The retry-logic change is classified 'unverified_claim', not 'adequate' or plain 'missing'", "passed": true, "evidence": "'### unverified_claim ... The commit message asserts both correctness and verification for the retry change... a claim was actively made, it just isn't backed by any evidence.'"},
+    {"text": "The report explicitly states the commit message is a claim, not evidence", "passed": true, "evidence": "'The only artifact is the narrative commit-message claim' and 'per this skill's own rule is never itself evidence'."},
+    {"text": "The recommendation names an exact verification command/approach, not a generic 'add more tests'", "passed": true, "evidence": "'Run pytest <path-to-network-client-tests> -k retry and show its pass output before the change is treated as verified.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

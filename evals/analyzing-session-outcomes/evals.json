@@ -1,0 +1,28 @@
+{
+  "skill_name": "analyzing-session-outcomes",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-session-outcomes/SKILL.md",
+  "description": "Judges whether a session achieved the user's actual goal and acceptance criteria, kept separate from process compliance.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "No-spec, mixed met/not_verifiable outcome",
+      "prompt": "Analyze the outcome of this session using the analyzing-session-outcomes skill (scope: this-conversation, no spec/acceptance-criteria document supplied). SESSION TRANSCRIPT SUMMARY: The user said 'Add input validation to the signup form so malformed emails get rejected.' The assistant added a validate_email() function to signup_form.py and wired it into the submit handler. The assistant then ran `pytest tests/test_signup.py::test_invalid_email` and observed it pass, confirming malformed emails are rejected. The assistant never ran or wrote a test confirming valid emails still succeed after the change, and the user never commented on that afterward. Produce the six-section report (Goal Inventory, Acceptance Criteria, Delivered Artifacts, Unresolved Scope, User-Visible Value, Recommendations) plus the Process Compliance Note.",
+      "expected_output": "A report with: a Goal Inventory entry for the validation goal tagged at the correct evidence tier (not upgraded); an Acceptance Criteria verdict of 'met' for malformed-email rejection with tier-2 (verified artifact behavior) evidence, cited via a test name/output; a 'not_verifiable' verdict for whether valid emails still succeed, explicitly NOT forced into met or not_met; Unresolved Scope naming the valid-email path as unconfirmed; each Acceptance Criteria/Unresolved Scope entry wrapped in its own separate evidence-metadata block (not one shared block); and a Process Compliance Note stating explicitly that process conformance is not judged here.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Supplied acceptance-criteria document",
+      "prompt": "Analyze the outcome of this session using the analyzing-session-outcomes skill (scope: this-conversation). An acceptance-criteria document was supplied stating: 'AC-1: The API must reject requests missing an auth token with a 401 status. AC-2: The API must log every rejected request with a timestamp.' SESSION TRANSCRIPT SUMMARY: The assistant added token-checking middleware that returns 401 when no token is present; the user ran a manual curl request without a token and confirmed a 401 response was received. No logging code was added or discussed anywhere in the session. Produce the report.",
+      "expected_output": "AC-1 is judged 'met' using tier-1 (explicit user acceptance -- the user directly ran the request and confirmed 401) or tier-2 evidence, correctly citing the supplied acceptance-criteria document as the source of the criterion (tier 3 origin) even though attainment evidence is stronger. AC-2 is judged 'not_met' (not 'not_verifiable') since there is direct evidence that no logging code exists -- this is a contradiction, not an absence of evidence. The report does not fabricate or infer that logging exists just because the rest of the change looks complete.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "Fully achieved session with direct user confirmation",
+      "prompt": "Analyze the outcome of this session using the analyzing-session-outcomes skill (scope: this-conversation, no spec supplied). SESSION TRANSCRIPT SUMMARY: The user asked 'Rename the getUserData function to fetchUserProfile everywhere it's used.' The assistant renamed the function definition and all 4 call sites, ran the existing test suite (all tests passed), and the user replied 'Perfect, that's exactly what I needed, thanks.' The assistant also, unprompted, added a short docstring to the renamed function -- something the user never asked for. Produce the report.",
+      "expected_output": "The rename goal is verdict 'met' at tier 1 (explicit user acceptance -- the user's own confirmation is the strongest evidence available and should be cited as such, not downgraded to tier 2). Delivered Artifacts lists the docstring addition as something delivered even though it wasn't asked for -- Delivered Artifacts and Acceptance Criteria stay visibly distinct sections, the extra docstring doesn't get folded into an acceptance-criteria verdict since nothing was asked for. The Process Compliance Note is present and states plainly that this report does not evaluate process conformance, even though nothing about this session looks process-non-compliant.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Report contains all six required sections: Goal Inventory, Acceptance Criteria, Delivered Artifacts, Unresolved Scope, User-Visible Value, Recommendations", "passed": true, "evidence": "All six headings present in order, plus the Process Compliance Note."},
+    {"text": "The malformed-email criterion is verdict 'met' with tier-2 (verified artifact behavior) evidence citing the actual test run", "passed": true, "evidence": "'Malformed emails are rejected... | met | pytest tests/test_signup.py::test_invalid_email was run this session and observed to pass'."},
+    {"text": "The valid-email criterion is verdict 'not_verifiable', not forced into 'met' or 'not_met'", "passed": true, "evidence": "'Valid emails still succeed after the change | not_verifiable | No test was run and no manual trial was performed...'."},
+    {"text": "Each Acceptance Criteria/Unresolved Scope entry carries its own separate Evidence origin/Coverage/Confidence/Evidence source metadata block, not one shared block for both verdicts", "passed": true, "evidence": "Two separate <!-- finding:start -->/<!-- finding:end --> blocks in Acceptance Criteria, each with its own metadata (Coverage: complete/high for the met row, Coverage: partial/low for the not_verifiable row)."},
+    {"text": "A Process Compliance Note is present and explicitly states process conformance is not judged in this report", "passed": true, "evidence": "'This report judges goal attainment only -- it does not assess whether the session followed project rules or conventions...'."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

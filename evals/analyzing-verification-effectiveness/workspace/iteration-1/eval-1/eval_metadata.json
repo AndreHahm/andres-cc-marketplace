@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-verification-effectiveness/SKILL.md",
+  "assertions": [
+    {"text": "The retry-logic change is classified 'unverified_claim', not 'adequate' or plain 'missing'", "type": "functionality", "target": "outputs/ report"},
+    {"text": "The report explicitly states the commit message is a claim, not evidence", "type": "quality", "target": "outputs/ report"},
+    {"text": "The recommendation names an exact verification command/approach, not a generic 'add more tests'", "type": "quality", "target": "outputs/ Recommendations section"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-verification-effectiveness/SKILL.md",
+  "assertions": [
+    {"text": "The CRLF check is classified 'false_negative', not 'adequate'", "type": "functionality", "target": "outputs/ report"},
+    {"text": "The report explains why the check cannot fail regardless of actual file content (both sides normalized before comparison)", "type": "quality", "target": "outputs/ report"},
+    {"text": "The recommendation names the exact fix (compare without normalization / assert no CR present), not a generic 'add more tests'", "type": "quality", "target": "outputs/ Recommendations section"}
+  ]
+}
