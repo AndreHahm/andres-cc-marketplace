@@ -85,7 +85,7 @@ this specific repository's own discovered configuration actually names a gate wi
 ## Recording Gate Evidence
 
 A gate's `pass`/`fail`/`pending`/`bypassed` result is appended to the calling skill's
-`git-github-evidence` entry (see `../../../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record,
+`git-github-evidence` entry (see `../../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record,
 `gates` array) — this skill returns the discovered gate list and, once the calling skill reports a
 gate's real outcome (from its own read-back, never assumed), tells that skill what to record. This
 skill does not itself write to Linear — it has no `Skill(linear-work-management)` grant, since
@@ -107,7 +107,7 @@ to check validity after new commits or a changed base:
 - **Force-push (rewritten history):** every gate recorded against the old SHA is invalid; the calling
   skill records this by appending a **new** `git-github-evidence` entry whose own `supersedes` field
   names the invalidated entry — the old entry itself is never edited, per
-  `../../../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record.
+  `../../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record.
 - **Changed base branch:** required-checks and review requirements may differ under the new base —
   re-resolve from branch protection against the new base, don't assume the old base's gate list still
   applies.

@@ -96,10 +96,12 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
    - **Malformed content** (missing required fields, wrong type) → structured handoff.
    - **Ambiguous target** (the suggested mapping doesn't clearly resolve to one Notion database/
      page or one Linear entity) → structured handoff, never an inferred pick. Optional: for a
-     genuinely unclear mapping, the plugin's shared Codex bridge-caller component
-     (`scripts/bridge_caller.py`, live) may dispatch `work-intake-classifier` (read-only) for
-     independent classification before falling back to a structured handoff — that dispatch
-     mechanism belongs to the plugin's shared infrastructure, not a tool this skill invokes itself.
+     genuinely unclear mapping, ask via `AskUserQuestion` whether to request independent
+     classification before falling back to a structured handoff. On yes, the plugin's shared Codex
+     bridge-caller component (`scripts/bridge_caller.py`, live) may dispatch `work-intake-classifier`
+     (read-only) for that classification — that dispatch mechanism belongs to the plugin's shared
+     infrastructure, not a tool this skill invokes itself, and the structured handoff proceeds
+     without it when declined or unavailable.
      **This dispatch may only happen after the Unknown-source check's three steps above have
      passed and the payload has cleared the Malformed-content check** — a payload that fails
      either of those goes straight to a structured handoff with no classifier dispatch; the

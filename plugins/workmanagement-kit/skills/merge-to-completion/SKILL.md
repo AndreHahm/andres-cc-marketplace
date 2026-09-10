@@ -62,12 +62,13 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 ### Linear disposition (separate, explicit step)
 
 9. **Compare** the delivered change against each Linear acceptance criterion individually — never a
-   single "merged, therefore done" inference. For a large or ambiguous case, the plugin's shared
-   Codex bridge-caller component (`scripts/bridge_caller.py`, live) may dispatch
-   `work-transition-reviewer` (read-only) to run its Acceptance check — confirming each criterion was
-   individually compared rather than inferred from the merge alone — before finalizing; that dispatch
-   mechanism belongs to the plugin's shared infrastructure, not a tool this skill invokes itself, and
-   the flow proceeds without it when unavailable.
+   single "merged, therefore done" inference. For a large or ambiguous case, ask via
+   `AskUserQuestion` whether to request an independent Acceptance check before finalizing. On yes,
+   the plugin's shared Codex bridge-caller component (`scripts/bridge_caller.py`, live) may dispatch
+   `work-transition-reviewer` (read-only) to run that check — confirming each criterion was
+   individually compared rather than inferred from the merge alone; that dispatch mechanism belongs
+   to the plugin's shared infrastructure, not a tool this skill invokes itself, and the flow proceeds
+   without it when declined or unavailable.
 10. **Classify** each remaining item as: completed, follow-up Linear work, retained Notion
     question/decision, canceled with rationale, or unresolved.
 11. **Present and confirm** the disposition, any follow-ups, and optional Notion learning, via
