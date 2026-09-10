@@ -117,8 +117,18 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 ## Failure and Resume
 
-- **Merge succeeds, Linear update fails:** retain the exact merge evidence recorded in step 7;
-  resume only the Linear disposition steps (9-14) — never re-attempt the merge.
+- **Merge succeeds, step 7's `pr-merged` write itself fails:** the merge already happened for real on
+  GitHub, but no `git-github-evidence` entry exists to prove it — this is distinct from "no evidence
+  because the merge never happened." On resume (whether by this skill or `linear-github-lifecycle`'s
+  own Resume Behavior), never re-invoke `git-kit:merge-pr` on the strength of missing `pr-merged`
+  evidence alone: first re-read the PR's actual current GitHub state directly. If it reads back
+  `MERGED`, append the `pr-merged` entry now (using that fresh read-back's own `merge_commit_sha`,
+  never a value assumed from the earlier failed attempt) and proceed straight to steps 9-14 — never
+  call `merge-pr` again for a PR that's already merged. If it reads back anything else, treat it as
+  the "Unknown merge outcome" case below instead.
+- **Merge succeeds, later Linear disposition (steps 9-14) fails:** step 7's own `pr-merged` evidence
+  already landed successfully in this case — retain it; resume only the disposition steps, never
+  re-attempt the merge.
 - **Unknown merge outcome:** inspect GitHub's actual state (via `linear-github-linking`'s
   classification) before retrying — `pr-merged` is never recorded from an unconfirmed request.
 - **Cleanup fails (inside `merge-pr`'s own step 8):** that's `merge-pr`'s own failure to surface, not
