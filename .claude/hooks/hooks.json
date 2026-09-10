@@ -13,6 +13,29 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-milestone-detector.sh",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/context-monitor.py",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
         "matcher": "Write|Edit",
         "hooks": [
           {
@@ -60,6 +83,28 @@
             "onError": "warn"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-session-init.sh",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "compact|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
       }
     ],
     "SessionEnd": [
@@ -87,6 +132,17 @@
         ]
       },
       {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-stop-check.sh",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
         "matcher": "",
         "hooks": [
           {
@@ -109,6 +165,19 @@
       }
     ],
     "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-track-and-suggest.sh",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn",
+            "async": true
+          }
+        ]
+      },
       {
         "matcher": "^(Bash|PowerShell)$",
         "hooks": [
@@ -151,6 +220,26 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/security-precommit-check.sh",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/compact-instructions.sh",
+            "shell": "bash",
+            "timeout": 5,
+            "onError": "warn"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/pre-compact.py",
+            "timeout": 10,
+            "onError": "warn"
           }
         ]
       }
