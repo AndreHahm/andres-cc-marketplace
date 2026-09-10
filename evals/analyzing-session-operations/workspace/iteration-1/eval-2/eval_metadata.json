@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-session-operations/SKILL.md",
+  "assertions": [
+    {"text": "The two-subagent concurrent dispatch is recognized as realized parallelism (overlapping_seconds > 0) and is not flagged as a problem by itself", "type": "functionality", "target": "outputs/ Performance & Cost section"},
+    {"text": "The two serial Bash calls with no stated dependency are flagged as a potential serial-bottleneck / ineffective-parallelism finding", "type": "functionality", "target": "outputs/ Performance & Cost section"},
+    {"text": "The two situations (good parallelism vs. avoidable serialization) are kept as distinct findings, not conflated", "type": "quality", "target": "outputs/ report"}
+  ]
+}

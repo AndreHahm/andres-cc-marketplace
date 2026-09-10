@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The two-subagent concurrent dispatch is recognized as realized parallelism and is not flagged as a problem by itself", "passed": true, "evidence": "'Realized parallelism (context, not a finding -- no action implied)... this is effective parallel dispatch working as intended -- not flagged as a defect.'"},
+    {"text": "The two serial Bash calls with no stated dependency are flagged as a potential serial-bottleneck / ineffective-parallelism finding", "passed": true, "evidence": "'Serial bottleneck -- two independent Bash calls ran fully serially with no overlap... this is the ineffective-parallelism case'."},
+    {"text": "The two situations are kept as distinct findings, not conflated", "passed": true, "evidence": "Presented as two separate labeled items (parallelism context vs. serial bottleneck finding), each with its own evidence block."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

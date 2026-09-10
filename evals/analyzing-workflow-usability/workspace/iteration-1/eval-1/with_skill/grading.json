@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Both confirmations are verdict 'necessary', not 'avoidable'", "passed": true, "evidence": "'Verdict: necessary (both instances).'"},
+    {"text": "The report explicitly notes the subject (file) changed between the two asks as the reason both are necessary", "passed": true, "evidence": "'the first targeted old-config.json; the second targeted legacy-config.json -- a different file... Subject changed -> each confirmation is judged independently necessary.'"},
+    {"text": "This is not flagged as a confirmation-burden problem", "passed": true, "evidence": "Proposed simplification: 'None' -- explicitly states collapsing them would reduce per-action consent, not recommended."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

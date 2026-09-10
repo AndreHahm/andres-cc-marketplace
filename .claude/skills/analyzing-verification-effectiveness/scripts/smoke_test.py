@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Persisted smoke test for analyzing-verification-effectiveness: frontmatter
-validity, referenced-script existence, Reference-Guide file existence,
-Bash-scope grant usage, and Phase-header sequencing -- structural checks
+validity, Bash-scope grant usage, referenced-script existence, Reference-Guide
+file existence, and Phase-header sequencing (this order matches CHECKS'
+actual execution order below) -- structural checks
 only, since this is a conversational, AskUserQuestion-driven skill with no
 executable logic of its own to simulate (it shells out to shared
 analysis-kit scripts, which own their own correctness)."""

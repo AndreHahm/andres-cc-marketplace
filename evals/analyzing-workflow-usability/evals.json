@@ -1,0 +1,28 @@
+{
+  "skill_name": "analyzing-workflow-usability",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-workflow-usability/SKILL.md",
+  "description": "Analyzes user-facing friction and developer experience, distinguishing necessary safety gates from avoidable friction.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Two destructive-action confirmations, different files",
+      "prompt": "Analyze workflow usability using the analyzing-workflow-usability skill (scope: this-conversation). SESSION TRANSCRIPT SUMMARY: The assistant asked 'Delete old-config.json?' and the user confirmed. Later in the same session, the assistant asked 'Delete legacy-config.json?' (a different file) and the user confirmed again. Nothing else notable happened. Produce the report.",
+      "expected_output": "Both confirmations are verdict 'necessary' -- the safety-gate exception procedure correctly identifies that the subject (file) changed between the two asks, so the second confirmation is not treated as avoidable repetition. The report does not flag this as a confirmation-burden problem.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "Same unchanged-scope confirmation asked twice",
+      "prompt": "Analyze workflow usability using the analyzing-workflow-usability skill (scope: this-conversation). SESSION TRANSCRIPT SUMMARY: The assistant asked 'Use this exact scope (this-conversation) for the analysis?' and the user confirmed. Three steps later, with absolutely nothing about the scope having changed or been discussed in between, the assistant asked 'Just confirming -- use this same scope?' again. Produce the report.",
+      "expected_output": "The first confirmation is 'necessary' (it was the original ask). The second confirmation is verdict 'avoidable' -- nothing changed between the two asks (same subject, same scope, no new risk), matching the safety-gate exception's own worked 'avoidable' example. The recommendation names the evidence frequency, user consequence, a proposed simplification (e.g. don't re-ask when scope is unchanged), and a stated safety tradeoff.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "One severe correction vs. several trivial ones",
+      "prompt": "Analyze workflow usability using the analyzing-workflow-usability skill (scope: this-conversation). SESSION TRANSCRIPT SUMMARY: The user corrected the assistant's phrasing 4 separate times over the course of the session (minor wording tweaks, each dismissed with one word). Separately, once, the user had to stop the assistant from force-pushing to the main branch, which would have overwritten a colleague's unpushed commits. Produce the report.",
+      "expected_output": "The report does not simply report '5 corrections' as a flat count. It explicitly distinguishes the one severe correction (force-push prevention, high consequence: would have caused real data loss) from the four trivial phrasing corrections (low consequence each), and weights/orders the finding by consequence rather than count -- per Phase 3's 'weight by consequence, not count' rule and friction-severity-guide.md's severity-by-consequence guidance.",
+      "files": []
+    }
+  ]
+}

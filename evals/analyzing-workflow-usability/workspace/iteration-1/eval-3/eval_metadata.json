@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-workflow-usability/SKILL.md",
+  "assertions": [
+    {"text": "The report does not present '5 corrections' as a flat, equally-weighted count", "type": "quality", "target": "outputs/ report"},
+    {"text": "The force-push-prevention correction is explicitly distinguished as high-consequence, separate from the four trivial phrasing corrections", "type": "functionality", "target": "outputs/ report"},
+    {"text": "The finding is weighted/ordered by consequence, not by raw count", "type": "quality", "target": "outputs/ report"}
+  ]
+}

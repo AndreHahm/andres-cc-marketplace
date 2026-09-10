@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The report explicitly states whole-session cost is unavailable, never presenting the subagent-level total as if it covered the whole session", "passed": true, "evidence": "'levels_present is [\"subagent\"] only -- whole_session is absent... whole-session cost is unavailable and must not be inferred from the subagent total.'"},
+    {"text": "The report cites levels_present or equivalent rather than re-deriving the disclosure independently", "passed": true, "evidence": "Quoted the script's own scope_note verbatim, per SKILL.md's 'present its printed output as-is' instruction."},
+    {"text": "No monetary/dollar figure is fabricated since no rate was supplied", "passed": true, "evidence": "'No monetary rate was supplied, so cost is stated in tokens/ms only, no dollar conversion offered.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

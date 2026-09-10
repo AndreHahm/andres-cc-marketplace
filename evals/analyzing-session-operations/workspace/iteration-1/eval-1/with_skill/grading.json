@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The network-timeout failures are classified 'environment', not 'tool'", "passed": true, "evidence": "'By category: environment: 2' -- matches failure-taxonomy.md's category 2 example directly."},
+    {"text": "repeated_failures shows Bash(npm install) with count 2", "passed": true, "evidence": "'Repeated failures: yes -- Bash(npm install) failed 2 times... (repeated_failures count: 2)'."},
+    {"text": "time_to_recovery_seconds is derived from actual supplied timestamps, not estimated or omitted", "passed": true, "evidence": "'time_to_recovery_seconds: 35.0 (10:00:00Z -> 10:00:35Z, both timestamps present and parseable)'."},
+    {"text": "The report explicitly notes no performance/span data was compiled for this run rather than fabricating a Performance & Cost section", "passed": true, "evidence": "'Not compiled for this run... This is a stated omission, not a silently skipped phase or a fabricated figure'."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

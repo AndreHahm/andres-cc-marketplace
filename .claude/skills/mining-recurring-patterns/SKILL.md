@@ -42,6 +42,18 @@ Mine a Claude Code session for recurring action sequences, loops, recall/memory 
 - **Tracking whether a recurring failure represents an unresolved rule violation or governance issue** (with a resolved/unresolved/workaround status) — use `analyzing-governance-and-conflicts` instead; this skill's retry-loop detection is a mechanical, sequence-level pattern (the same command repeated with no intervening change), not a governance/rule-conformance classification
 - **Recurring findings across multiple closed PRs' GitHub review history** — use `mining-review-learnings` instead; this skill mines one session's own action sequence, not cross-PR review-finding patterns
 - **No repeated commands, no subagent dispatches, and no repeated questions observed** — nothing to mine
+- **Judging operational failure/recovery quality or end-to-end latency/cost proportionality** — use
+  `analyzing-session-operations` instead. This skill finds *repetition* in the action sequence itself
+  (the same command, question, or loop recurring); that skill's Reliability & Stability section judges
+  failure/recovery specifically (classified causes, time-to-recovery), and its Performance & Cost section
+  judges latency outliers and parallelism against a critical-path analysis — a retry loop this skill flags
+  as a repeated-command pattern may also appear there as a reliability finding with its own category and
+  recovery status, but the two skills answer different questions about it
+- **Judging whether a repeated question or confirmation was avoidable friction** — use
+  `analyzing-workflow-usability` instead. This skill counts *that* the same question was asked more than
+  once; that skill judges *whether* the repetition was avoidable or a legitimate re-ask (its own
+  safety-gate exception checks whether state or risk changed between asks) — a repeated-question finding
+  here may or may not also be a friction finding there
 
 ## Phase 1: Scope
 

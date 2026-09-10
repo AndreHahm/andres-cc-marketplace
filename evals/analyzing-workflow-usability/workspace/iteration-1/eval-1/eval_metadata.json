@@ -1,0 +1,9 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-workflow-usability/SKILL.md",
+  "assertions": [
+    {"text": "Both confirmations are verdict 'necessary', not 'avoidable'", "type": "functionality", "target": "outputs/ report"},
+    {"text": "The report explicitly notes the subject (file) changed between the two asks as the reason both are necessary", "type": "quality", "target": "outputs/ report"},
+    {"text": "This is not flagged as a confirmation-burden problem", "type": "quality", "target": "outputs/ report"}
+  ]
+}
