@@ -160,6 +160,17 @@ def test_coverage_fields_quoted_later_in_the_report_do_not_satisfy_the_preamble(
     assert all(e["code"] == "missing_coverage" for e in errors)
 
 
+def test_coverage_fields_inside_a_fenced_preamble_example_do_not_satisfy_the_real_preamble():
+    text = (
+        "# Report\n\n"
+        "```\n**Requested scope:** x\n**Inspected scope:** y\n"
+        "**Unavailable evidence:** none\n**Limitations:** none\n```\n\n"
+        "## Findings\n\ntext\n"
+    )
+    errors = validate_report.check_common(text, CONTRACTS)
+    assert len(errors) == len(CONTRACTS["common"]["coverage_fields"])
+
+
 def test_coverage_fields_in_the_real_preamble_still_pass_when_report_has_later_sections():
     text = (
         "# Report\n\n"
@@ -369,6 +380,61 @@ def test_marker_example_inside_fenced_block_is_not_mistaken_for_a_real_marker():
         "Evidence source: this-conversation\n"
         "<!-- finding:end -->"
     )
+    assert validate_report.check_evidence_metadata(text, required=True) == []
+
+
+def test_fenced_no_findings_example_does_not_satisfy_the_escape_hatch():
+    # Codex finding (PR #302, round 4): a report quoting <!-- no-findings -->
+    # as a documentation example inside a fenced code block, with no real
+    # finding blocks and no genuine no-findings marker, previously satisfied
+    # the escape hatch anyway.
+    text = (
+        "This report illustrates the convention:\n"
+        "```\n<!-- no-findings -->\n```\n"
+        "No actual finding blocks or genuine no-findings marker here.\n"
+    )
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert [e["code"] for e in errors] == ["missing_evidence_metadata"]
+
+
+def test_fenced_metadata_excerpt_inside_a_real_finding_does_not_satisfy_its_own_requirement():
+    # Codex finding (PR #302, round 4): a real finding block that quotes
+    # another report's metadata inside a fenced excerpt, but carries no real
+    # metadata of its own, previously passed because the per-block search
+    # wasn't fence-aware.
+    text = (
+        "<!-- finding:start -->\n"
+        "Supporting evidence from the source report:\n"
+        "```\nEvidence origin: direct\nCoverage: complete\nConfidence: high\n"
+        "Evidence source: this-conversation\n```\n"
+        "<!-- finding:end -->"
+    )
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert {e["subject"] for e in errors} == {"finding-1"}
+    assert len(errors) == 4
+
+
+def test_fenced_inventory_example_not_counted_as_a_real_inventory_entry():
+    # Codex finding (PR #302, round 4): a fenced <!-- inventory: --> example
+    # (e.g. documenting the convention) was previously counted as a real
+    # inventory entry, requiring a disposition that doesn't exist.
+    text = (
+        "<!-- inventory: component:commit -->\n"
+        "<!-- disposition: component:commit assessed -->\n"
+        "This report documents the convention:\n"
+        "```\n<!-- inventory: component:example -->\n```\n"
+    )
+    assert validate_report.check_dispositions(text, "component") == []
+
+
+def test_fenced_coverage_preamble_excerpt_does_not_satisfy_next_step():
+    text = "# Report\n\nNo real Next line.\n\n```\nNext: run some-skill\n```\n"
+    errors = validate_report.check_next_step(text, required=True)
+    assert [e["code"] for e in errors] == ["missing_next_step"]
+
+
+def test_fenced_stray_metadata_outside_any_block_not_flagged_as_unwrapped():
+    text = _finding_block() + "\n\nDocumentation example:\n```\nEvidence origin: direct\n```\n"
     assert validate_report.check_evidence_metadata(text, required=True) == []
 
 

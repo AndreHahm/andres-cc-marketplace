@@ -51,7 +51,7 @@ def _preamble_region(text: str) -> str:
 
 def check_common(text: str, contracts: dict) -> list[dict]:
     errors = []
-    preamble = _preamble_region(text)
+    preamble = _preamble_region(_strip_fenced(text))
     for field in contracts["common"]["coverage_fields"]:
         value = _label_value(preamble, field)
         if value is None:
@@ -90,7 +90,7 @@ def check_required_headings(text: str, headings: list[str]) -> list[dict]:
 def check_next_step(text: str, required: bool) -> list[dict]:
     if not required:
         return []
-    value = _label_value(text, "Next:")
+    value = _label_value(_strip_fenced(text), "Next:")
     if value is None:
         return [
             {
@@ -113,6 +113,14 @@ def check_next_step(text: str, required: bool) -> list[dict]:
 def check_dispositions(text: str, disposition_type: str | None) -> list[dict]:
     if disposition_type is None:
         return []
+
+    # Fence-stripped once, up front: a report that quotes an
+    # `<!-- inventory: -->`/`<!-- disposition: -->` example inside a fenced
+    # code block (e.g. documenting the convention during self-analysis) must
+    # not have that literal example counted as a real marker. Confirmed live:
+    # without this, a fenced inventory example was counted as a genuine
+    # inventory entry and required a matching disposition that doesn't exist.
+    text = _strip_fenced(text)
 
     errors = []
     # Counts, not a set: the same identifier can legitimately appear more than
@@ -178,6 +186,28 @@ EVIDENCE_METADATA_ENUMS = {
 }
 NO_FINDINGS_RE = re.compile(r"<!--\s*no-findings\s*-->")
 FENCE_RE = re.compile(r"^```.*?^```", re.DOTALL | re.MULTILINE)
+
+
+def _strip_fenced(text: str) -> str:
+    """`text` with every fenced ```...``` code block's own content removed.
+
+    Every structural check in this module (marker/inventory/disposition/
+    coverage/metadata lookups) must not mistake a documentation example -- a
+    report quoting this convention's own syntax as an illustration, often
+    during a skill's own self-analysis -- for real structural content.
+    `_scan_finding_markers` filters fenced marker POSITIONS directly for its
+    own depth-tracking scan (kept as-is, independent of this helper); every
+    other regex/label lookup below instead calls this function first, so a
+    fenced span is never visible to a plain `.search()`/`.findall()`/
+    `_label_value()` call. Confirmed live as three independent false
+    positives beyond the marker-nesting case this module already handled: a
+    fenced `<!-- no-findings -->` example satisfying the no-findings escape
+    hatch on an otherwise metadata-free report, a real finding's own
+    fenced-quoted excerpt of another report's metadata satisfying that
+    finding's own per-block requirement, and a fenced `<!-- inventory: -->`
+    example being counted as a real inventory entry requiring a disposition.
+    """
+    return FENCE_RE.sub("", text)
 
 
 def _label_value(block: str, label: str) -> str | None:
@@ -311,7 +341,14 @@ def check_evidence_metadata(text: str, required: bool) -> list[dict]:
         return marker_errors
 
     if not blocks:
-        if NO_FINDINGS_RE.search(text):
+        # Fence-stripped: a report that quotes <!-- no-findings --> as a
+        # documentation example inside a fenced code block (rather than
+        # actually declaring no findings) must not have that literal example
+        # satisfy the no-findings escape hatch. Confirmed live: without this,
+        # a fenced no-findings example on an otherwise metadata-free report
+        # returned `valid: true`.
+        no_findings_text = _strip_fenced(text)
+        if NO_FINDINGS_RE.search(no_findings_text):
             # A stray, unwrapped evidence-metadata label alongside a
             # <!-- no-findings --> marker means the report actually contains
             # substantive finding content that contradicts its own
@@ -322,7 +359,9 @@ def check_evidence_metadata(text: str, required: bool) -> list[dict]:
             # per-finding metadata requirement via the no-findings escape
             # hatch.
             stray_labels = [
-                label for label in EVIDENCE_METADATA_LABELS if _label_value(text, label) is not None
+                label
+                for label in EVIDENCE_METADATA_LABELS
+                if _label_value(no_findings_text, label) is not None
             ]
             if stray_labels:
                 return [
@@ -375,9 +414,13 @@ def check_evidence_metadata(text: str, required: bool) -> list[dict]:
     # value (e.g. a lone "Evidence origin:" with nothing after it) must still
     # count as stray, unwrapped metadata -- a truthy check silently ignored
     # that case, since `_label_value` returns "" (falsy) for a present-but-empty
-    # label, not None.
+    # label, not None. Fence-stripped too: a fenced example of the metadata
+    # convention sitting outside any real block must not be mistaken for a
+    # genuine stray, unwrapped label.
     stray_labels = [
-        label for label in EVIDENCE_METADATA_LABELS if _label_value(remainder, label) is not None
+        label
+        for label in EVIDENCE_METADATA_LABELS
+        if _label_value(_strip_fenced(remainder), label) is not None
     ]
     if stray_labels:
         errors.append(
@@ -393,8 +436,15 @@ def check_evidence_metadata(text: str, required: bool) -> list[dict]:
         )
 
     for index, block in enumerate(blocks, start=1):
+        # Fence-stripped: a finding may legitimately quote another report's
+        # metadata inside a fenced excerpt as supporting evidence -- that
+        # quoted text must not satisfy THIS finding's own per-block metadata
+        # requirement. Confirmed live: a finding with no real metadata of its
+        # own but a fenced excerpt of another report's four metadata lines
+        # returned `valid: true`.
+        block_stripped = _strip_fenced(block)
         for label in EVIDENCE_METADATA_LABELS:
-            value = _label_value(block, label)
+            value = _label_value(block_stripped, label)
             if value is None:
                 errors.append(
                     {
