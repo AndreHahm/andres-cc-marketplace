@@ -133,9 +133,12 @@ the plugin README for the optional `CONTEXT_KIT_PLANS_DIR`/`CONTEXT_KIT_SESSION_
   passing, commits, builds, deploys) from the command that just ran. `context-monitor.py` (matcher
   `Bash|Agent|Task`) separately estimates overall context-window usage (a coarse percentage, from
   transcript size or a tool-call-count fallback) and nudges at 40/55/65/80/90% thresholds.
-- **`PreCompact`** — `compact-instructions.sh` writes stderr guidance on what to preserve through
-  compaction. `pre-compact.py` captures the active plan's state (see `SessionStart` above) for
-  `post-compact-restore.py` to restore afterward.
+- **`PreCompact`** — `compact-instructions.sh` writes best-effort stderr/`systemMessage` guidance on
+  what to preserve through compaction; this is a nudge, not a guarantee (stderr is verbose-mode-only
+  by default, and `PreCompact` doesn't support `additionalContext` at all — see the script's own
+  comment). The plugin's actual state-preservation guarantee is `pre-compact.py`, which captures the
+  active plan's state (see `SessionStart` above) for `post-compact-restore.py` to restore afterward
+  via `additionalContext` on `SessionStart`, which *is* supported.
 - **`Stop`** — `compact-stop-check.sh` checks for a pending suggestion that hasn't reached the user
   yet and **blocks the stop once** (`{"decision": "block", ...}`) when one exists, guarded by
   `stop_hook_active` so it never re-triggers itself on the resulting continuation. This is the
