@@ -131,7 +131,19 @@ def check_dispositions(text: str, disposition_type: str | None) -> list[dict]:
 
 
 EVIDENCE_METADATA_LABELS = ("Evidence origin:", "Coverage:", "Confidence:", "Evidence source:")
+EVIDENCE_METADATA_ENUMS = {
+    "Evidence origin:": ("direct", "inherited", "inferred"),
+    "Coverage:": ("complete", "sampled", "partial"),
+    "Confidence:": ("high", "medium", "low"),
+}
 FINDING_BLOCK_RE = re.compile(r"<!--\s*finding:start\s*-->(.*?)<!--\s*finding:end\s*-->", re.DOTALL)
+NO_FINDINGS_RE = re.compile(r"<!--\s*no-findings\s*-->")
+
+
+def _label_value(block: str, label: str) -> str | None:
+    """Text after `label` on its line, or None if the label isn't present at all."""
+    match = re.search(re.escape(label) + r"[ \t]*(.*)", block)
+    return match.group(1).strip() if match else None
 
 
 def check_evidence_metadata(text: str, required: bool) -> list[dict]:
@@ -140,12 +152,15 @@ def check_evidence_metadata(text: str, required: bool) -> list[dict]:
 
     blocks = FINDING_BLOCK_RE.findall(text)
     if not blocks:
+        if NO_FINDINGS_RE.search(text):
+            return []
         return [
             {
                 "code": "missing_evidence_metadata",
                 "message": (
-                    "No <!-- finding:start --> / <!-- finding:end --> blocks found -- cannot "
-                    "verify per-finding evidence metadata"
+                    "No <!-- finding:start --> / <!-- finding:end --> blocks found and no "
+                    "<!-- no-findings --> marker present -- cannot verify per-finding evidence "
+                    "metadata"
                 ),
                 "subject": "evidence-metadata",
             }
@@ -154,7 +169,8 @@ def check_evidence_metadata(text: str, required: bool) -> list[dict]:
     errors = []
     for index, block in enumerate(blocks, start=1):
         for label in EVIDENCE_METADATA_LABELS:
-            if label not in block:
+            value = _label_value(block, label)
+            if value is None:
                 errors.append(
                     {
                         "code": "missing_evidence_metadata",
@@ -162,6 +178,30 @@ def check_evidence_metadata(text: str, required: bool) -> list[dict]:
                         "subject": f"finding-{index}",
                     }
                 )
+                continue
+            if not value:
+                errors.append(
+                    {
+                        "code": "invalid_evidence_metadata",
+                        "message": f"Finding block {index}: metadata label {label!r} has no value",
+                        "subject": f"finding-{index}",
+                    }
+                )
+                continue
+            allowed = EVIDENCE_METADATA_ENUMS.get(label)
+            if allowed is not None:
+                first_token = value.split()[0].rstrip(".,;:").lower()
+                if first_token not in allowed:
+                    errors.append(
+                        {
+                            "code": "invalid_evidence_metadata",
+                            "message": (
+                                f"Finding block {index}: {label!r} value {value!r} is not one "
+                                f"of {list(allowed)}"
+                            ),
+                            "subject": f"finding-{index}",
+                        }
+                    )
     return errors
 
 

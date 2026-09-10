@@ -56,9 +56,10 @@ Identify every actor active in scope, from conversation context (this skill has 
 | **Human developer** | Every explicit user decision, correction, approval/denial, or clarifying answer in the conversation |
 
 Tag each identified actor with a stable marker as it's listed — `<!-- inventory: actor:<name> -->`
-(`<name>` is the agent type/description for a sub-agent, or `human-developer` for the human) — this is
-the identifier Phase 3's disposition markers and `validate_report.py`'s pre-persistence check both key
-off. **The same identifier can legitimately repeat** (e.g. two `general-purpose` dispatches for
+(`<name>` is the agent type — a single whitespace-free kebab-case token like `general-purpose` or
+`skill-reviewer`, never a free-text description with spaces, since `validate_report.py`'s marker regex
+requires one unbroken token — or `human-developer` for the human) — this is the identifier Phase 3's
+disposition markers and `validate_report.py`'s pre-persistence check both key off. **The same identifier can legitimately repeat** (e.g. two `general-purpose` dispatches for
 different tasks) — `validate_report.py` counts inventory *occurrences* per identifier, not just
 distinct identifiers, and requires a matching number of disposition markers for that same identifier:
 two `general-purpose` inventory markers need two `general-purpose` disposition markers (each pointing at
