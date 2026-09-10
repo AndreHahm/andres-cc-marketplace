@@ -62,17 +62,25 @@ See Testing & Validation below for the concrete trigger phrases this section sum
     question/decision, canceled with rationale, or unresolved.
 11. **Present and confirm** the disposition, any follow-ups, and optional Notion learning, via
     `AskUserQuestion` — required whenever work remains, cancellation is proposed, or the state change
-    is otherwise consequential.
+    is otherwise consequential. **When an outstanding criterion's only disposition is a follow-up**,
+    present closing-now-with-the-gap-tracked as its own explicit option, distinct from approving the
+    follow-up itself — approving a follow-up must never be read as also approving closure (step 13's
+    condition (b) requires this as a separate confirmation).
 12. **Create/link approved follow-ups** through `Skill(open-item-management)` — never invented
     inline by this skill. `open-item-management` runs its own complete pipeline over these items,
     including its own two separate approvals, as a genuine independent revalidation pass — this
     step's own classification (step 10) is preliminary for this skill's own closure decision, not a
     final disposition `open-item-management` inherits; a different conclusion from
     `open-item-management`'s own revalidation is expected, not a bug.
-13. **Close** the Linear Issue only after every criterion and the remaining-work disposition verify;
-    record Wave 1's own `work-closed` (via `linear-work-management`, through the base Transition
-    Contract — not a new schema field, per `../../FOUNDATION_CONTRACTS.md`'s existing Transition
-    Contract).
+13. **Close** the Linear Issue only when one of two conditions is explicitly true — never inferred
+    from "criteria met plus a follow-up tracked" alone: (a) every criterion is literally met by the
+    delivered change, with no outstanding item; or (b) an outstanding criterion exists, its follow-up
+    is linked (step 12), **and** the user separately confirmed, as its own distinct choice at step
+    11's `AskUserQuestion` — not assumed from approving the follow-up alone — that closing now with
+    that criterion tracked as a follow-up is acceptable. Record Wave 1's own `work-closed` (via
+    `linear-work-management`, through the base Transition Contract — not a new schema field, per
+    `../../FOUNDATION_CONTRACTS.md`'s existing Transition Contract) only once whichever condition
+    applies is actually satisfied; otherwise the Issue stays open.
 14. **Reopen if invalidated:** later evidence contradicting a closure records a `work-reopened`
     Git/GitHub Evidence Record entry (via `linear-github-linking`) alongside the Linear reopen action
     (via `linear-work-management`).

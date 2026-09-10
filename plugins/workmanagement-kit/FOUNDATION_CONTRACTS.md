@@ -168,7 +168,7 @@ instead.
 {
   "transition_id": "string, a stable unique ID for this transition",
   "operation_id": "string, the connector call's own operation/request ID, if the connector provides one, else null",
-  "affected_record": {"system": "notion | linear", "stable_id": "string"},
+  "affected_record": {"system": "notion | linear | github", "stable_id": "string"},
   "source_plugin": "string, the plugin that caused this transition, or 'workmanagement-kit' for a direct user request",
   "verification_evidence": "string, a description of the read-back that confirmed the PRIOR write to this record succeeded, or null if this plugin made no earlier write of its own to this record (e.g. adopting an already-existing record) — see 'Recording verification_evidence' below, including why a newly-created record's first transition-tagged write is NOT this null case",
   "recorded_at": "ISO-8601 UTC timestamp"
@@ -351,7 +351,7 @@ convention.
   "commits": [ {"sha": "string", "recorded_at": "ISO-8601 UTC timestamp"} ],
   "pull_request": {"number": "integer", "url": "string", "state": "draft | open | merged | closed"} | null,
   "gates": [ {"name": "string", "owner": "string", "result": "pass | fail | pending | bypassed", "sha": "string", "recorded_at": "ISO-8601 UTC timestamp"} ],
-  "provider": "string, the git-kit skill that performed the underlying operation, e.g. 'git-kit:starting-work'",
+  "provider": "string, the git-kit skill that performed the underlying operation (e.g. 'git-kit:starting-work') for every stage except work-reopened, which has no git-kit operation of its own — for that one stage, the Wave 2 skill that determined the reopen was needed (e.g. 'workmanagement-kit:merge-to-completion')",
   "policy_profile": "string, the repository-policy profile name this evidence was resolved under",
   "supersedes": "string, evidence_id of an earlier entry this one invalidates (e.g. a force-push changing a recorded SHA for the same branch/PR), or null",
   "transition_id": "string, the base Transition Contract transition_id of the write that appended this entry",
@@ -404,6 +404,19 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
 
 ## Change Log
 
+- 2026-09-10 — Fixed a third `cross-model-review` finding: the Git/GitHub Evidence Record's
+  `provider` field was documented as always "the git-kit skill that performed the underlying
+  operation," but `work-reopened` has no git-kit operation behind it (it's recorded alongside an
+  ordinary Linear reopen via `linear-work-management`) — the field's own description required a
+  provider attribution that stage can never truthfully supply. Carved out an explicit exception:
+  `work-reopened` names the `workmanagement-kit` skill that determined the reopen was needed instead.
+  `work-transition-reviewer`'s own Provider check updated to match, so it no longer flags a legitimate
+  `work-reopened` entry as a missing `git-kit` attribution.
+- 2026-09-10 — Fixed a second `cross-model-review` finding: the base Transition Contract's own
+  `affected_record.system` schema literal still read `"notion | linear"`, never actually updated when
+  the 2026-09-09 entry below extended the enum to include `"github"` — the schema and its own stated
+  extension had drifted apart since the day the extension was written. Now reads
+  `"notion | linear | github"`, matching the extension note.
 - 2026-09-10 — Fixed a self-contradiction in the Git/GitHub Evidence Record found by
   `cross-model-review`: the schema's `superseded_by` field required mutating an *old* entry on every
   force-push/base-change repair, directly contradicting the same section's own "never overwritten"/

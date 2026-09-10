@@ -133,11 +133,13 @@ input for its own closure decision, not a conclusion `open-item-management` is b
 **Step 11 — Present and confirm (approval gate #2).** Since work remains (Criterion C), this is squarely
 "whenever work remains" — the skill's own trigger for a mandatory `AskUserQuestion`. I would present:
 the disposition (2 of 3 criteria met), the proposed follow-up (a new Linear issue for the migration guide
-gap), and ask whether to also retain a Notion learning/decision note. I would not silently create the
-follow-up item or silently decide to close ENG-203 despite the open criterion — both would violate this
-gate.
+gap), and — as its own explicit, separate choice, never bundled into approving the follow-up — whether to
+close ENG-203 once that follow-up is linked, or keep it open until Criterion C is itself met. I would also
+ask whether to retain a Notion learning/decision note. I would not silently create the follow-up item or
+silently decide to close ENG-203 despite the open criterion — both would violate this gate.
 
-*(Simulated: user approves creating the follow-up issue, declines a Notion note.)*
+*(Simulated: user approves creating the follow-up issue, separately confirms closing ENG-203 once that
+follow-up is linked since the merged PR delivers the issue's core scope, and declines a Notion note.)*
 
 **Step 12 — Create/link approved follow-ups.** Route the approved follow-up through
 `Skill(open-item-management)` — never fabricate a new Linear issue inline via `linear-work-management`
@@ -147,22 +149,17 @@ classification. If `open-item-management`'s own pass concluded something differe
 should be folded into a different existing issue rather than a new one), that's an expected, legitimate
 outcome per the skill's own wording, not a contradiction to paper over.
 
-**Step 13 — Close conditionally.** Given the simulated state (Criterion C not yet fully resolved — a
-follow-up now exists but the *original* Issue's own criteria are not all met), ENG-203 would **not** be
-closed yet under this skill's own gate: "Close the Linear Issue only after every criterion and the
-remaining-work disposition verify." "Remaining-work disposition verifies" once the follow-up has actually
-been created/linked (Step 12 completes) and the disposition decision itself is that the *original* issue
-is considered satisfied by "criteria met + follow-up tracked separately" — that's a judgment the skill
-leaves to the user's Step-11 confirmation, not something to assume silently. If the Step 11 confirmation
-had been "close ENG-203 now, follow-up tracked separately," then after Step 12's follow-up is actually
-linked, I would proceed to close and record `work-closed` via `linear-work-management`, through the base
-Transition Contract (`../../FOUNDATION_CONTRACTS.md`) — explicitly *not* a new schema field invented for
-this skill. Only in a scenario where *all* criteria were fully met by #51 alone would Step 13 fire
-immediately after Step 12 with no such judgment call needed.
-
-*(For this walkthrough, I'll resolve it as: user confirmed at Step 11 that ENG-203 should close once the
-follow-up is linked, since the merged PR delivers the issue's core scope. So after Step 12's follow-up
-issue is confirmed created/linked, ENG-203's `work-closed` is recorded.)*
+**Step 13 — Close conditionally.** The skill's own gate names two, and only two, valid paths to
+closure: (a) every criterion literally met by #51 alone — not this case (Criterion C isn't addressed
+by #51), or (b) an outstanding criterion whose follow-up is linked **and** the user separately
+confirmed, as its own distinct choice at Step 11 — not assumed from approving the follow-up alone —
+that closing now with that criterion tracked is acceptable. Step 11's simulated result already
+supplies that separate confirmation, so once Step 12 confirms the follow-up is actually created/linked,
+path (b) is satisfied: I record `work-closed` via `linear-work-management`, through the base Transition
+Contract (`../../FOUNDATION_CONTRACTS.md`) — explicitly *not* a new schema field invented for this
+skill. Had Step 11's confirmation *not* included that separate closure choice (e.g. the user approved
+only the follow-up, said nothing about closing), ENG-203 would stay open — the follow-up's approval
+alone never implies closure.
 
 **Step 14 — Reopen if invalidated.** Not applicable at this point in the flow — this is a standing
 procedure for *later*: if future evidence contradicts this closure (e.g. the merged change is reverted,
@@ -236,8 +233,8 @@ reporting ENG-203's closure pending cleanup succeeding.
 4. No problematic native Linear/GitHub automation detected.
 5. ENG-203's 3 acceptance criteria compared individually against PR #51: 2 met, 1 (migration guide) not
    covered by this PR.
-6. User confirmed via `AskUserQuestion`: create a follow-up issue for the gap, close ENG-203 once linked;
-   declined a Notion note.
+6. User confirmed via `AskUserQuestion`, as two distinct choices: create a follow-up issue for the gap,
+   and separately, close ENG-203 once that follow-up is linked; declined a Notion note.
 7. Follow-up created/linked through `open-item-management`'s own independent pipeline (not inlined).
 8. ENG-203 closed (`work-closed`) via `linear-work-management` through the base Transition Contract, only
    after the follow-up was actually linked.
