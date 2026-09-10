@@ -56,8 +56,9 @@ repository's own `git-kit` lifecycle skills rather than reimplementing any of th
   repair.
 - **`work-to-development`** — validate an accepted Linear Issue's readiness and request governed
   branch/worktree creation through `git-kit:starting-work`.
-- **`development-to-pr`** — supply Linear context and coordinate a governed commit and draft-PR
-  workflow through `git-kit:commit` plus `git-kit:create-pr`/`collaborating-on-a-pr`.
+- **`development-to-pr`** — supply Linear context and coordinate a governed commit, then either a
+  new draft PR via `git-kit:create-pr` or a push to an already-existing PR's own branch via
+  `git-kit:commit`'s own push.
 - **`pr-to-linear`** — read a published PR's checks/reviews/threads, delegate the actual
   finding-triage/fix/reply/resolve cycle to `git-kit:handling-review-findings`, and write
   deliberate blocker summaries into Linear.

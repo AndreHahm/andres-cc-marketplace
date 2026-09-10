@@ -145,11 +145,15 @@ updated risks a duplicate or conflicting change.
   if that change looks obviously correct.
 - **Closure is not this skill's own call.** This skill can change an Issue's status to a
   closed-looking state on direct approved request, but the plugin's actual `work-closed` semantics
-  (criteria evaluated, open items dispositioned, closure read back) belong to a not-yet-built
-  completion workflow, not to a bare status write here — don't conflate "set status to Done" with
-  "the plugin considers this work closed." **This completion workflow does not exist yet** in this
-  Wave 1 scaffold — it is not one of the 7 skills or 2 agents this plugin currently ships; treat
-  any reference to it elsewhere in this plugin the same way.
+  (criteria evaluated, open items dispositioned, closure read back) belong to the completion
+  workflow, not to a bare status write here — don't conflate "set status to Done" with "the plugin
+  considers this work closed." **Wave 2's `merge-to-completion` is that completion workflow** — it
+  evaluates acceptance criteria and open-item disposition separately from the merge itself, then
+  records `work-closed` through this skill's own ordinary status write, via the base Transition
+  Contract (`../../FOUNDATION_CONTRACTS.md`). This skill's own role is unchanged either way: it
+  performs the requested status write and its own read-back, never the criteria evaluation itself —
+  that judgment belongs to whichever skill requested the write (`merge-to-completion`, or a direct
+  user request).
 - **Dependency changes ripple.** Changing a Milestone's date or an Issue's dependency can affect
   other linked Issues' own scheduling assumptions — read the affected graph before applying a
   date/dependency change, not just the single entity being edited.
