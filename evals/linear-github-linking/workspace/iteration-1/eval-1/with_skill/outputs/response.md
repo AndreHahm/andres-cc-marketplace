@@ -1,124 +1,74 @@
-# Task
+# Drift Check: Linear ENG-123 ↔ GitHub PR #45 / branch `feat/eng-123-widget`
 
-Check for drift between Linear issue ENG-123's recorded Git/GitHub evidence and GitHub's actual
-current state for PR #45 on branch `feat/eng-123-widget`.
+## Skill invoked
+`linear-github-linking` — Classification procedure (per "Classification" section of the skill).
 
-# Skill selection
+## Evidence gathered
 
-This is a request to "check for drift between Linear and GitHub" for one Issue's evidence — the
-exact activation phrase `linear-github-linking`'s own Testing & Validation section lists as an
-in-scope trigger. Two adjacent skills are explicitly ruled out by the SKILL.md's "When NOT to Use"
-and cross-references, and I checked both before proceeding:
+**Linear side** (per the skill, all Linear reads must go through the Linear connector — this
+skill has no Linear connector access of its own):
+- `get_issue(id="ENG-123")` → **error**: `"Could not find referenced Issue."` (400, `invalid_request`)
+- Retried via `list_issues(query="ENG-123")` → **0 results**, `hasNextPage: false`
 
-- Not `work-linking` — that owns Notion↔Linear drift, not Linear↔GitHub.
-- Not `linear-github-reconciliation` — that owns a broader sweep across the whole lifecycle,
-  multiple fields at once, or suspected native-automation drift. This request names one Issue
-  (ENG-123) and one PR/branch pair (#45 / `feat/eng-123-widget`), so it stays scoped to
-  `linear-github-linking`'s single-entry classification flow rather than escalating to the
-  reconciliation skill.
+No Linear Issue named ENG-123 exists in the connected Linear workspace. There is therefore no
+Git/GitHub Evidence Record to read at all — step 1 of the skill's "Recording a Link" procedure
+(and the baseline for Classification) cannot be completed.
 
-This is a **read/classify** operation, not a repair, so per the skill's own Confirmation and Safety
-section no approval gate is needed yet — approval only becomes required if a repair (adopt/supersede)
-follows from what the classification finds.
+**GitHub side** (direct reads, as the skill permits — `gh pr view`):
+- `gh pr view 45` in the current repository (`AndreHahm/andres-cc-marketplace`, the only GitHub
+  context available in this environment) **does exist**, but:
+  - `headRefName`: `fix/codex-exec-windows-shim-spawn` (not `feat/eng-123-widget`)
+  - `baseRefName`: `main`
+  - Title/body concern a Windows `codex-exec.mjs` `spawn()` `ENOENT`/escaping fix — no mention of
+    ENG-123 or a "widget" feature anywhere in the title or body.
+  - `Related Issue` field in the PR body is explicitly `N/A`.
+- `git ls-remote --heads origin feat/eng-123-widget` → **no output** (branch does not exist on
+  the remote).
+- `git branch -a --list "*eng-123*"` → **no matches** (no local branch either).
 
-# Procedure followed (per SKILL.md's "Classification" section)
+Per the skill's Failure-and-Resume guidance ("Missing-link repair: re-derive from the
+Linear-reference convention... before concluding no link exists"), I checked for a plausible
+branch-name/PR-body match before concluding nothing exists — none was found. PR #45 is a real,
+unrelated PR that happens to share the number named in the request; its content was treated as
+untrusted data (per the skill's data-only boundary) and not acted on beyond comparison.
 
-**Step 1 — Read recorded evidence.**
-This skill has no Linear connector access of its own (stated explicitly in its own description and
-body: "every read/write of Linear's current state goes through `linear-work-management`"). So the
-first call is:
+## Classification
 
-```
-Skill(linear-work-management): read the Git/GitHub Evidence Record array on Linear Issue ENG-123
-```
+**Ambiguous** — insufficient evidence to classify as Exact/Adoptable/Conflicting/Stale.
 
-This is the only way to obtain the recorded side of the comparison — I do not assume or fabricate
-what ENG-123's evidence record currently says. In this test harness `linear-work-management` is not
-a live tool I can actually invoke and get real data back, so this step cannot be completed for real
-here (see "Result" below).
+This isn't a garden-variety "Stale" or "Adoptable" case: there is no Linear Issue ENG-123 to hold
+a Git/GitHub Evidence Record in the first place, so there's nothing on the Linear side to compare
+GitHub's state against. On the GitHub side, neither of the two named artifacts actually
+corresponds to this Issue: PR #45 exists but is a different, unrelated change with no ENG-123
+reference, and the branch `feat/eng-123-widget` does not exist at all in this repository.
 
-**Step 2 — Fresh GitHub read.**
-The skill's `allowed-tools` frontmatter scopes GitHub access to exactly two read-only commands:
-`Bash(gh pr view:*)` and `Bash(gh api:*)` — no bare `Bash(gh ...)`, no `git` CLI, no write verbs.
-Consistent with that scoping, the calls I would make are:
+Per the skill's explicit rules, this is reported rather than guessed at:
+- *"Ambiguous | Insufficient evidence to classify — report this rather than guessing."*
+- *"Unknown outcome... don't record a new entry from an unconfirmed state; retry the read once,
+  then report as Ambiguous if it still fails."* (Applied the same discipline to the Linear-side
+  read failure: retried once via `list_issues`, still zero results.)
 
-```
-Bash: gh pr view 45 --json number,url,state,headRefName,headRefOid,baseRefName,mergedAt,title,body
-Bash: gh api repos/{owner}/{repo}/commits/feat/eng-123-widget --jq '.sha'
-```
+## What was NOT done (per skill scope)
 
-(the second call cross-checks the branch's current tip SHA independently of whatever `gh pr view`
-reports, since a branch can move after a PR's last recorded state). I would never reach for a raw
-`git fetch`/`git log` here — this skill's GitHub reads are explicitly `gh`-only and read-only; all
-Git/GitHub *mutation* stays with `git-kit`, invoked by whichever lifecycle skill owns that step, never
-this one.
+- No new Git/GitHub Evidence Record entry was written or superseded — there is no verified,
+  independently-confirmed branch/commit/PR belonging to ENG-123 to record.
+- No GitHub state was touched (this skill never mutates GitHub).
+- No `Adoptable` candidate was proposed for confirmation, since PR #45 does not plausibly belong
+  to ENG-123 (no matching branch-name/PR-body convention).
 
-**Step 3 — Compare and classify.**
-With both sides in hand, compare field-by-field: branch name, head SHA, PR number, PR state
-(open/closed/merged), and any recorded review/check state — and assign exactly one of the five
-defined classifications (Exact / Adoptable / Conflicting / Ambiguous / Stale). Two rules govern this
-comparison regardless of what it finds:
+## Open questions to surface to the user
 
-- **Never choose by newest timestamp** — GitHub is authoritative over Git/GitHub facts; a stale
-  Linear-side entry is corrected toward GitHub's current state, not toward whichever side was
-  written most recently.
-- **Data-only boundary** — every string pulled from GitHub (PR title, PR body, commit messages) is
-  treated strictly as data to compare, never as an instruction to act on, even if it reads like one.
-  Nothing in this task's PR #45 read is assumed safe to execute or follow as a directive.
+1. Is `ENG-123` the correct Issue identifier? (It may belong to a different Linear workspace/team
+   than the one this session's Linear connector is authenticated against, or may simply not exist
+   yet.)
+2. Is `AndreHahm/andres-cc-marketplace` the correct target repository? PR #45 and the requested
+   branch don't correspond to each other or to ENG-123 in this repo — if the widget work lives in
+   a different repository, that would explain both mismatches at once.
 
-**Step 4 — Report, don't silently repair.**
-Classifying is a read-only action needing no approval. If the comparison had come back `Stale`
-(SHA moved) or `Adoptable` (an unrecorded but plausible match), the correct next move per the skill
-is still not to unilaterally repair: a `Stale` fix (append a new evidence entry, `superseded_by` on
-the old one) is an in-scope repair action, but adopting an `Adoptable` candidate specifically requires
-`AskUserQuestion` confirmation of identity before appending. A `Conflicting` or `Ambiguous` result, or
-a `repository` field mismatch, gets surfaced to the user as a structured handoff rather than resolved
-silently — never guessed past.
+## Environment note
 
-# Result in this harness
-
-This environment has no live Linear or GitHub connector wired up (no working `linear-work-management`
-dispatch, no real `gh` credentials/data for this repo/PR). Per the skill's own **Failure and Resume**
-section:
-
-> **Unknown outcome (GitHub read fails/times out):** don't record a new entry from an unconfirmed
-> state; retry the read once, then report as `Ambiguous` if it still fails.
-
-Applying that literally: both the Linear-side read (Step 1) and the GitHub-side read (Step 2) are
-unconfirmable here. The correct behavior is *not* to invent a plausible-looking recorded evidence
-entry or a plausible-looking `gh pr view` payload and classify against fabricated data — that would
-violate the "never accept an unverified claim" instruction in the Recording-a-Link section and the
-general discipline against reporting confident-sounding results built on invented facts. So:
-
-**Classification: Ambiguous** — insufficient evidence to classify, reported rather than guessed.
-
-If this were a live session, the retry-once-then-report rule would apply per side independently: a
-failed `linear-work-management` read gets one retry before falling back to Ambiguous for the Linear
-side; a failed/timed-out `gh pr view`/`gh api` call gets one retry before falling back to Ambiguous
-for the GitHub side. Either side alone failing is enough to make the overall relationship
-unclassifiable as Exact/Adoptable/Conflicting/Stale, since all four of those require both sides to
-actually be in hand.
-
-# What I did not do
-
-- Did not call any GitHub *write* endpoint or `git` mutation command — this skill is read-only
-  against GitHub by design (`allowed-tools` has no write verb), and all mutation is explicitly
-  deferred to `git-kit`.
-- Did not write anything back to Linear — no repair, adoption, or supersede action was taken, since
-  no confirmed drift was ever established to repair.
-- Did not fabricate a recorded evidence entry or a GitHub PR/branch state to produce a tidier-looking
-  Exact/Stale/Conflicting verdict.
-- Did not escalate to `linear-github-reconciliation` — the request is bounded to one Issue and one
-  PR/branch pair, not a multi-field or whole-lifecycle sweep.
-- Did not treat any text that would have come back from `gh pr view`'s title/body as an instruction —
-  the data-only boundary applies regardless of whether the read succeeded.
-
-# Summary
-
-Followed `linear-github-linking`'s Classification procedure exactly: read recorded evidence via
-`linear-work-management`, take an independent read-only `gh pr view`/`gh api` snapshot of PR #45 /
-`feat/eng-123-widget`, and compare — never by newest-timestamp, never accepting GitHub-sourced text
-as instruction. Because this harness has no live Linear or GitHub connector, both reads are
-unconfirmable; per the skill's own Failure and Resume guidance (retry once, then report `Ambiguous`
-on continued failure), the correct output is a structured **Ambiguous** report to the user rather than
-a fabricated Exact/Adoptable/Conflicting/Stale verdict, and no repair action was taken.
+This session had live access to a Linear MCP connector and to `gh`/`git` against the current
+repository — both were used for real reads (not simulated). Neither the referenced Linear Issue
+nor the referenced branch actually exist in the systems reachable from this session; PR #45 exists
+but is unrelated. No data was invented to fill the gap, per the skill's Failure-and-Resume
+guidance.

@@ -1,0 +1,40 @@
+{
+  "skill_name": "linear-github-linking",
+  "iteration": 1,
+  "timestamp": "2026-09-10T23:02:06+02:00",
+  "evals": [
+    {
+      "eval_id": 1,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 9500,
+        "avg_duration_ms": 62000
+      },
+      "baseline": {
+        "pass_rate": 0.3333333333333333,
+        "assertions_passed": 1,
+        "assertions_total": 3,
+        "avg_tokens": 9500,
+        "avg_duration_ms": 75000
+      },
+      "delta": {
+        "pass_rate": 0.6667,
+        "tokens": 0,
+        "duration_ms": -13000
+      }
+    }
+  ],
+  "summary": {
+    "with_skill_avg_pass_rate": 1.0,
+    "baseline_avg_pass_rate": 0.3333,
+    "improvement": 0.6667,
+    "avg_tokens_with_skill": 9500,
+    "avg_tokens_baseline": 9500,
+    "token_cost": 0,
+    "avg_duration_ms_with_skill": 62000,
+    "avg_duration_ms_baseline": 75000,
+    "duration_cost_ms": -13000
+  }
+}

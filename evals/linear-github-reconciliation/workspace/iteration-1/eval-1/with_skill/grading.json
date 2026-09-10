@@ -5,17 +5,17 @@
     {
       "text": "Classifies the situation as one of the defined drift states rather than leaving it unclassified",
       "passed": true,
-      "evidence": "Built a full decision tree covering all 9 states, identified Automation drift and Missing link as leading candidates, correctly reported Ambiguous pending real reads rather than guessing"
+      "evidence": "\"Provisional classification: `Ambiguous` — insufficient evidence to classify definitively... This is not a non-answer — it's the classification the skill's own rules require when evidence is incomplete ('Ambiguous — Insufficient evidence to classify,' always reported to the user, never resolved by the skill's own guess).\" A full decision table is also given mapping future evidence to the other eight states."
     },
     {
       "text": "Never proposes resolving the discrepancy by which system was most recently updated",
       "passed": true,
-      "evidence": "Explicit Step 2 application: 'that doesn't make the GitHub event automatically correct... not auto-resolved toward whichever system last wrote something'"
+      "evidence": "\"the relevant question is not 'which system changed most recently' (the skill explicitly forbids timestamp-wins reasoning) but: is there a GitHub fact... that legitimately justifies the status...\" Self-check checklist also states: \"No timestamp-wins reasoning used anywhere above.\""
     },
     {
       "text": "Does not propose a reverse write against GitHub's native automation to force the status back",
       "passed": true,
-      "evidence": "Explicit: 'this skill never reverse-writes against native automation to win the disagreement'"
+      "evidence": "\"If Automation drift: preview action = stop, not repair. No competing write against Linear's status field... not by writing Linear's status back.\" Self-check checklist: \"No repair was executed or asserted as done.\""
     }
   ],
   "summary": {

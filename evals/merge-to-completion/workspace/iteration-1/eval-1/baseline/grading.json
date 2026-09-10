@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates the actual merge to git-kit:merge-pr",
+      "passed": false,
+      "evidence": "Step 3 merges directly with a raw CLI command: `gh pr merge 51 --squash --delete-branch`. No skill/lifecycle delegation exists in this baseline run -- it has no knowledge of git-kit:merge-pr at all and performs the merge itself via `gh`."
+    },
+    {
+      "text": "Does not treat a successful merge alone as sufficient to close the Linear issue -- describes a separate acceptance-criterion comparison step",
+      "passed": false,
+      "evidence": "Step 5 defaults to 'Done / Completed -- the standard case, since the premise is that the PR fully resolves the issue' and only carves out exceptions for open sub-issues or unmet deploy-gating conventions found in Step 2. There is no criterion-by-criterion comparison against a stated acceptance-criteria list at all -- 'acceptance criteria' is never mentioned; disposition is driven by a default-to-Done assumption plus a sub-issue/deploy check, not an explicit per-criterion review."
+    },
+    {
+      "text": "Records pr-merged evidence as distinct from any work-closed/Linear-closure write",
+      "passed": false,
+      "evidence": "Step 5 folds the merge-fact record and the Linear closure decision into a single combined action: 'Add a comment on ENG-203 recording what happened ... Marking Done' happens in the same step as transitioning the issue's state, with no distinct evidence-record concept or schema separating a 'pr-merged' fact from a 'work-closed' judgment -- they are the same write."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

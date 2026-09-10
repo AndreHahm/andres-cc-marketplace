@@ -1,138 +1,158 @@
-# repository-gates: resolving policy and discovering gates for a Wave 2 publish
+# Repository Gates for Publishing a Wave 2 PR
 
-Following `workmanagement-kit`'s `repository-gates` SKILL.md procedure exactly, in the order the
-skill itself lays out: (1) resolve the repository policy profile, (2) discover the actual configured
-gates, (3) state what that means for publishing a PR on a Wave 2 Linear-issue branch. I never ran
-this skill's own internal logic (no linting, no CI re-run, no merge) — only discovery reads, per its
-own "When NOT to Use."
+Resolved by reading this repository's real configuration (`versioned-configuration.json`, the
+local-override trust-boundary check, `FOUNDATION_CONTRACTS.md`'s canonical Repository Policy
+Profile table, `.pre-commit-config.yaml`, the actual `.github/workflows/*.yml` files, and a live
+branch-protection read via `gh_api_readonly.py`) — not assumed from a generic checklist.
 
-## Step 1 — Resolving the Repository Policy Profile
+## 1. Repository Policy Profile
 
-Per SKILL.md's "Resolving the Repository Policy Profile" section, step 1: read
-`versioned-configuration.json`'s (schema v2) `repository_policy.provider_profile` and `github` fields,
-merged with `.claude/workmanagement-kit.local.json`'s override, subject to the same tracked-vs-untracked
-trust-boundary check `FOUNDATION_CONTRACTS.md`'s Local Override section requires.
+- `plugins/workmanagement-kit/versioned-configuration.json` (schema v2) currently ships
+  `repository_policy.provider_profile: null` and `gate_discovery: "unconfigured"` — this is the
+  plugin's shipped, installation-agnostic default, not a live override.
+- Trust-boundary check for `.claude/workmanagement-kit.local.json` (per
+  `FOUNDATION_CONTRACTS.md`'s Local Override section):
+  `git ls-files --error-unmatch ":(top,literal).claude/workmanagement-kit.local.json"` →
+  exit 1, `"did not match any file(s)"` — confirmed **untracked**. A plain filesystem check
+  confirms the file doesn't exist on disk at all in this worktree, so there is no override to
+  merge in.
+- **Disclosed discrepancy:** with no override present, the literal JSON field is still
+  `null`/`unconfigured`. However, `FOUNDATION_CONTRACTS.md`'s own "Repository Policy Profile"
+  section — the canonical source this skill's step 3 points at directly rather than a paraphrase —
+  states plainly: *"For this repository, the profile is fixed — `git-kit` for every governed
+  operation,"* with an explicit table. That table is what actually governs here; the shipped JSON
+  field not being populated to match looks like a latent inconsistency worth flagging, not a
+  blocker.
+- **Resolved profile for publishing a PR** (from that table):
 
-**Shipped config read** (`plugins/workmanagement-kit/versioned-configuration.json`, schema v2):
-
-```json
-{
-  "version": 2,
-  "github": {
-    "repository_slug": null,
-    "canonical_url": null,
-    "default_branch": null,
-    "native_automation": "unconfigured"
-  },
-  "repository_policy": {
-    "provider_profile": null,
-    "gate_discovery": "unconfigured"
-  }
-}
-```
-
-**Local override check:** `Glob` for `**/workmanagement-kit.local.json` found no such file anywhere in
-the worktree. Ran the exact trust-boundary check `FOUNDATION_CONTRACTS.md` specifies for this file
-anyway (mirroring `commit`'s own trust check), as the skill requires doing *before* honoring any
-override:
-
-```
-git ls-files --error-unmatch ":(top,literal).claude/workmanagement-kit.local.json"
-→ exit 1: "did not match any file(s) known to git"
-```
-
-Exit 1 is the "confirmed-untracked" branch of that check — but since the file doesn't exist at all,
-there is nothing to merge in. The shipped defaults stand unmodified: `provider_profile: null`.
-
-**Applying step 2 of the skill's procedure:** `provider_profile` is unset (`null`), and `gate_discovery`
-under the same `repository_policy` block is also `"unconfigured"` — the whole policy block is
-unresolved, not just the one field. Per the skill's own instruction:
-
-> If `provider_profile` is unset/`unconfigured`, or names a provider other than `git-kit`: stop with a
-> manual handoff (see Failure and Resume) — **never** select a broader provider or fall back to a raw
-> `git`/`gh` command for a governed operation.
-
-**Result: this is the skill's documented stop condition.** I am not selecting `git-kit` by inference
-from step 3's table (the fixed-profile table in `FOUNDATION_CONTRACTS.md`'s "Repository Policy Profile"
-section) even though that table *describes* what this repository's profile is supposed to be once
-configured — the live `versioned-configuration.json` this skill is required to read has not actually
-been set to that value yet. Treating the documented-target table as if it were the resolved live config
-would be exactly the "silently select a provider" failure this skill exists to prevent. I am also not
-falling back to a raw `git push` / `gh pr create` for the eventual publish step.
-
-**Manual handoff, stated per "Failure and Resume":**
-- Missing: `repository_policy.provider_profile` in `plugins/workmanagement-kit/versioned-configuration.json` (currently `null`).
-- No `.claude/workmanagement-kit.local.json` exists to supply an override.
-- No raw-command fallback will be attempted for the eventual publish operation.
-- This must be resolved (by running whatever Foundational Setup step in `workmanagement-kit` sets
-  `repository_policy.provider_profile` to `"git-kit"`, matching `FOUNDATION_CONTRACTS.md`'s documented
-  fixed profile for this repo) before any Wave 2 skill may delegate a governed Git/GitHub operation —
-  including publishing this PR.
-
-## Step 2 — Discovering Actual Gates
-
-The skill's "Discovering Actual Gates" section is a separate, read-only concern from policy-profile
-resolution (it discovers *what checks exist*, not *who is allowed to run them*), so per the skill's own
-"No approval needed... all read-only" line under Confirmation and Safety, I still ran it — this is
-exactly the information a human resolving the manual handoff above would need. **This is discovery
-only; none of it authorizes delegating the actual publish to `git-kit` while the profile above is still
-unresolved.**
-
-Per the skill's table, reading the target repository's own configuration — never a hardcoded universal
-list:
-
-| Gate | What I found |
+| Governed operation | Provider |
 |---|---|
-| **Pre-commit** | `.pre-commit-config.yaml` exists at repo root. Real hooks configured: `validate-pyproject`, `check-github-workflows`, `uv-lock`/`uv-sync`, `ruff-check --fix`/`ruff-format` (scoped to `scripts/`, `tests/`, `plugins/session-kit/**`), `gitleaks` (secret detection), `markdownlint-cli2` (scoped to `docs/**`), `yamllint`, `shellcheck`, standard `pre-commit-hooks` (trailing-whitespace, end-of-file-fixer, check-yaml, check-json, check-added-large-files ≤1000KB, check-merge-conflict, check-toml, mixed-line-ending, check-executables-have-shebangs), plus a local hook `marketplace-ci-check-staged` (`uv run python -m scripts.marketplace_ci check-all --staged`) bound to the `pre-commit` stage. **This gate exists** and runs at `git commit` time, before `git-kit:commit` would even reach the remote. |
-| **Pre-push** | Same file's local-hooks block also installs a `pre-push`-staged hook: `marketplace-ci-check-all` (`uv run python -m scripts.marketplace_ci check-all --committed HEAD`). `default_install_hook_types` in the same file explicitly includes `pre-push`, so this is a real, installed local gate distinct from pre-commit — not just a CI-side check. |
-| **PR required checks** | Per the skill's own instruction, this is read via `gh api repos/{owner}/{repo}/branches/{base}/protection` — a live GitHub API call. This test harness has no live `gh`/GitHub API access, so I cannot execute this read and get real branch-protection data back. Per the skill's Failure and Resume / Gotchas, a 403/404 here is treated as "no discoverable required checks, not an error" and must be disclosed as ambiguous (permission-level vs. actually absent) — I extend that same disclosure to "not executable in this harness": **I am not asserting either "protection exists" or "no protection configured."** Origin remote resolves to `https://github.com/AndreHahm/andres-cc-marketplace.git` (`owner/repo` = `AndreHahm/andres-cc-marketplace`), so the real call this step would make is `gh api repos/AndreHahm/andres-cc-marketplace/branches/main/protection`. |
-| **Codex delta review** | Enumerated `.github/workflows/*.yml` (19 files) and grepped each for a Codex/AI-review step keyword, per the skill's instruction to match on the *real display name*, not an assumed one. Found **two distinct Codex-related gates**, not one — worth flagging precisely because the skill warns against inventing or conflating gate identities: 1) `.github/workflows/marketplace-ci.yml` — workflow **"Marketplace CI"**, job `codex-review` with display name **"Codex delta review"** (there's also an upstream job `compute-scope` / "Compute Codex review scope" and a downstream `publish` / "Publish Codex policy result" in the same workflow). 2) `.github/workflows/await-codex-review.yml` — workflow **"Codex review status"**, job `await-codex-review` with display name **"Await Codex review"**, which polls for the live `chatgpt-codex-connector[bot]`'s actual review/comment/reaction on the PR's head SHA (triggers on PR opened/ready-for-review, or an `@codex review`/`@codex full review` comment). These are two separately-named, separately-triggered checks — a `gh pr checks` read against a real PR would need to be matched against both display names independently, never assumed to be the same gate under two file names. |
-| **Review requirements** | Same as PR required checks above — read from branch protection's `required_pull_request_reviews`, which requires the same live `gh api` call I cannot execute here. Not asserted either way. |
-| **Merge rights/method** | Same limitation — `enforce_admins`/`required_approving_review_count` come from the same unreachable branch-protection read; allowed merge methods come from `gh api repos/{owner}/{repo}` (`allow_squash_merge`/`allow_merge_commit`/`allow_rebase_merge`), also unreachable live here. Not asserted either way. |
-| **Cleanup rules** | Per the skill's table, this is explicitly *not* independently discovered here — it's delegated to `git-kit:finishing-work`'s own cleanup hand-off convention. |
+| Create branch/worktree | `git-kit:starting-work` |
+| Commit | `git-kit:commit` |
+| Create a new PR | `git-kit:create-pr` |
+| Push new commits to an already-existing PR | `git-kit:commit` (its own push step) |
+| Mark a PR ready for review | **Manual handoff — no `git-kit` skill owns this yet** (disclosed gap) |
+| Review/comment/link an issue at creation | `git-kit:collaborating-on-a-pr` |
+| Merge | `git-kit:merge-pr` |
+| Post-merge sync/cleanup | `git-kit:finishing-work` |
 
-**Other discoverable CI-side gates worth surfacing to whoever resolves the manual handoff** (found
-incidentally while enumerating `.github/workflows/`, not part of the skill's own fixed table, so
-reported as extra context rather than folded into the table above): `commit-branch-guard.yml`
-("Commit & Branch Guard" → job "Validate commits and branch", triggers on PR opened/synchronize/
-reopened/ready_for_review), `pr-validate-title.yml` ("Validate PR Title"), `pr-require-impact-label.yml`
-("Require Impact Label"), `security.yml` ("Security"), `dependency-review.yml` ("Dependency review").
-Whether any of these are actually configured as *required* status checks on branch protection is exactly
-the still-unanswered branch-protection question above — their existence as workflows doesn't by itself
-mean they're required-to-merge.
+No raw `git`/`gh` command should be used for any of these — only the mapped `git-kit` skill (or,
+for "mark ready," the disclosed manual step).
 
-**Never inventing "Review Changes" as a gate:** consistent with the skill's explicit instruction, I did
-not include a "Review Changes" gate anywhere above — nothing in this repository's own discovered
-configuration (pre-commit config, the 19 workflow files, or the FOUNDATION_CONTRACTS policy table) names
-a gate with that identity.
+## 2. Gates that run before/at publish, in order
 
-## What this means for publishing the Wave 2 PR
+### a) Pre-commit (local Git hook, runs on every commit if hooks are installed)
+Source: `.pre-commit-config.yaml` (repo root). `fail_fast: true`.
+- `validate-pyproject` — pyproject.toml schema check
+- `check-github-workflows` — validates `.github/workflows/*.yml` are well-formed
+- `uv-lock`, `uv-sync --locked --all-packages`
+- `ruff-check --fix`, `ruff-format` (scoped to `scripts/`, `tests/`, `plugins/session-kit/{scripts,tests,skills}`)
+- `gitleaks` — secret scanning
+- `markdownlint-cli2` (scoped to `docs/**/*.md`)
+- `yamllint`
+- `shellcheck`
+- Standard hygiene hooks: trailing-whitespace, end-of-file-fixer, check-yaml, check-json,
+  check-added-large-files (max 1000kb), check-merge-conflict, check-toml, mixed-line-ending,
+  check-executables-have-shebangs
+- **Local hook** `marketplace-ci-check-staged`: `uv run python -m scripts.marketplace_ci
+  check-all --staged`
 
-Per the skill's Confirmation and Safety section, discovery itself needed no approval and performed no
-writes. But the concrete answer to "what gates apply before I can publish a PR":
+### b) Pre-push (local Git hook)
+Source: same `.pre-commit-config.yaml`, `stages: [pre-push]`.
+- **Local hook** `marketplace-ci-check-all`: `uv run python -m scripts.marketplace_ci
+  check-all --committed HEAD`
 
-1. **Blocking, before anything else:** `repository_policy.provider_profile` is unconfigured in this
-   repository's own `versioned-configuration.json`, with no local override present. Per the skill's own
-   Step 2 and Failure and Resume, this is a stop condition — I'm reporting it as a manual handoff, not
-   silently assuming `git-kit` because that's what the target-state table says it *should* eventually
-   resolve to.
-2. **Once that's resolved** (and only then), publishing routes through `git-kit:create-pr` /
-   `git-kit:collaborating-on-a-pr` per `FOUNDATION_CONTRACTS.md`'s Repository Policy Profile table — not
-   a raw `gh pr create`.
-3. **Real, locally-enforced gates that already exist regardless of the profile question:** the
-   `.pre-commit-config.yaml` pre-commit hook set (secret scanning, linting, marketplace-ci
-   `check-all --staged`) and its pre-push counterpart (`marketplace-ci check-all --committed HEAD`) —
-   these run on the commit/push mechanics themselves, independent of who orchestrates the PR.
-4. **Two distinct Codex gates exist in CI**, "Codex delta review" (inside the "Marketplace CI"
-   workflow) and "Await Codex review" (the standalone "Codex review status" workflow) — both would need
-   to be matched by their real display names once an actual PR exists, never by their file names.
-5. **Branch-protection-derived facts** (required status checks, required reviews, merge-rights,
-   merge-method) are genuinely undetermined here — this test harness cannot execute the live
-   `gh api .../branches/{base}/protection` call the skill's own procedure calls for, and per the skill's
-   Gotchas, that absence must be disclosed as "couldn't check," never silently treated as "no
-   protection."
+Both (a) and (b) are local hooks — they only fire if `pre-commit install` has hooked them into
+this checkout's `.git/hooks`. They are not independently visible to GitHub; they're the local
+first line of defense before code ever reaches a PR. `git-kit:commit` is the only sanctioned way
+to actually produce the commit these hooks gate.
 
-Per the skill's "Recording Gate Evidence" section, this skill itself does not write anything (no Linear
-write grant) — it only returns the discovered gate list above; a calling skill (e.g.
-`development-to-pr`) would be the one to record each gate's real pass/fail/pending outcome, from its own
-read-back, into the Wave 2 `git-github-evidence` record once the operations above actually run.
+### c) PR required status checks (GitHub branch protection on `main`)
+Read via `gh_api_readonly.py repos/AndreHahm/andres-cc-marketplace/branches/main/protection`
+(succeeded — readable at the caller's current permission level). `required_status_checks.contexts`
+(all `app_id: 15368`, i.e. GitHub Actions-run checks), matched to their real job/workflow source:
+
+| Required check (real display name) | Workflow file | Job |
+|---|---|---|
+| Hygiene (PR contract) | `marketplace-ci.yml` | `hygiene` |
+| Python quality (ruff, ty, pytest) | `marketplace-ci.yml` | `python-quality` |
+| Marketplace mirror/export parity | `marketplace-ci.yml` | (parity job) |
+| Fork PR (unsupported — explicit terminal result) | `marketplace-ci.yml` | (fork-unsupported terminal job) |
+| Publish Codex policy result | `marketplace-ci.yml` | `publish` (needs `compute-scope`, `codex-review`) |
+| Validate Repository Structure | `validate-marketplace.yml` | (structure job) |
+| Validate Marketplace Plugin Entries | `validate-marketplace.yml` | (entries job) |
+| Validate Individual Plugins | `validate-marketplace.yml` | (per-plugin job) |
+| Check for Duplicate Plugin Names | `validate-marketplace.yml` | (dedup job) |
+
+`required_status_checks.strict: true` — branches must be up to date with `main` before merging.
+
+### d) Codex delta review — real mechanism, not an assumed generic gate
+- The workflow named **"Codex review status"** (`.github/workflows/await-codex-review.yml`, job
+  display name **"Await Codex review"**) triggers on a PR opened non-draft, a draft PR marked
+  ready, or an explicit `@codex review`/`@codex full review` PR comment (not on every push), and
+  waits (up to 33 min) for the external `chatgpt-codex-connector` app's review to land.
+- The *actual* required/blocking check for Codex review is **not** that waiter workflow itself —
+  it's `marketplace-ci.yml`'s `codex-review` job (display name **"Codex delta review"**), whose
+  result is turned into the required check **"Publish Codex policy result"** (job `publish`) shown
+  in the branch-protection table above. Don't conflate "Codex review status"/"Await Codex review"
+  (a helper wait-loop, not itself in the required-checks list) with "Publish Codex policy result"
+  (the actual gate) — they are two different checks from two different workflows.
+
+### e) Review requirements
+- `branches/main/protection.required_pull_request_reviews` came back **empty/absent** — this
+  repository's branch protection does **not** configure a required-approving-review-count gate.
+  `required_signatures.enabled: false`, `required_conversation_resolution.enabled: false`.
+- No `"Review Changes"` gate exists anywhere in this repository's real configuration — not
+  invented here. (`git-kit:merge-pr` separately checks CODEOWNERS/merge rights for the *person*
+  merging, but that's the merge-rights check below, not a branch-protection review-count gate.)
+
+### f) Merge rights / method
+- `enforce_admins.enabled: true` — admins are not exempt from the checks above.
+- `required_linear_history.enabled: true`, `allow_force_pushes: false`, `allow_deletions: false`.
+- Repo-level merge methods (`repos/AndreHahm/andres-cc-marketplace`): `allow_squash_merge: true`,
+  `allow_merge_commit: true`, `allow_rebase_merge: true` — all three merge methods are enabled;
+  `delete_branch_on_merge: true` (branch auto-deleted on merge, which is why
+  `git-kit:finishing-work` → `/git-cleanup` still needs to run for local/worktree cleanup).
+- Actual merge-rights verification (CODEOWNERS match / collaborator permission / repo-owner) for
+  the person merging is `git-kit:merge-pr`'s own job, not something branch protection alone
+  exposes — it's discovered by that skill at merge time, not duplicated here.
+
+### g) Non-required checks that still run on the PR (disclosed for completeness, not blocking)
+`pr-validate-title.yml`, `pr-require-impact-label.yml`, `dependency-review.yml`, `security.yml`,
+`pr-auto-label.yml`, `pr-size-labeler*.yml`, `pr-merge-conflict-labeler.yml`,
+`pr-status-sync.yml`, `pr-clean-caches.yml`, `pr-impact-autofix.yml` all trigger on PR events but
+are **not** in `required_status_checks.contexts` — they can fail or be pending without blocking a
+merge per branch protection (though they may still be worth resolving; that's a judgment call, not
+a discovered gate).
+
+### h) Cleanup
+Not independently discovered here — delegated to `git-kit:finishing-work` (→ `/git-cleanup`) per
+this repository's own convention, as the skill specifies.
+
+## 3. Practical sequence for a Wave 2 Linear-issue branch → PR
+
+1. `git-kit:starting-work` — branch/worktree.
+2. `git-kit:commit` — triggers pre-commit hooks (2a) on each commit.
+3. Before pushing/opening the PR: pre-push hook (2b) runs `marketplace_ci check-all --committed HEAD`.
+4. `git-kit:create-pr` — opens the PR; `marketplace-ci.yml` and `validate-marketplace.yml` fire,
+   producing the 9 required checks in the table above; `await-codex-review.yml` starts its wait
+   loop; the real gating Codex outcome lands as "Publish Codex policy result."
+5. No required-approving-review count is configured, so human review is not a blocking
+   branch-protection gate — but `handling-review-findings`/`collaborating-on-a-pr` still apply if
+   review comments are requested.
+6. `git-kit:merge-pr` re-verifies all of the above (checks passing, not draft, no outstanding
+   change-request reviews) plus the merger's own rights, before merging.
+7. `git-kit:finishing-work` → `/git-cleanup` for post-merge sync and branch/worktree cleanup.
+
+## Caveats
+
+- Branch protection **was** readable in this session (200 response, not 403/404) — so "no
+  discoverable required checks" does not apply here; the 9-context list above is real, not a
+  fallback default.
+- If a future session gets a 403/404 on this same endpoint, that must be reported as "no
+  discoverable required checks — ambiguous, may be the caller's permission level rather than an
+  actual absence of protection," per this skill's Failure and Resume section — not silently read
+  as "no protection configured."
+- The `provider_profile: null` vs. `FOUNDATION_CONTRACTS.md`'s fixed-`git-kit` table discrepancy
+  (section 1) is disclosed rather than silently resolved one way — worth a maintainer decision on
+  whether to populate the JSON field to match the documented table.

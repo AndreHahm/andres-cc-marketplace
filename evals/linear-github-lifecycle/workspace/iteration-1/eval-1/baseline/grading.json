@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Describes delegating each lifecycle phase to its own focused skill (work-to-development, development-to-pr, pr-to-linear, merge-to-completion) rather than performing the phase's logic itself",
+      "passed": false,
+      "evidence": "No named skill or delegation concept appears anywhere in the response. It is one flat 10-step plan (Read issue -> Signal start -> Branch -> Implement -> Commit -> Push/PR -> CI -> Review -> Merge -> Linear disposition) performed directly by the agent itself, with no composition of separate focused components."
+    },
+    {
+      "text": "Follows the documented phase order (start before publish, publish before merge)",
+      "passed": true,
+      "evidence": "Step 2 ('Signal start of work in Linear') precedes Step 6 ('Push and open the PR'), which precedes Step 9 ('Merge') and Step 10 ('Linear disposition') — the same relative start-before-publish-before-merge ordering, arrived at independently rather than from the skill's documented table."
+    },
+    {
+      "text": "Describes getting confirmation before proceeding between phases",
+      "passed": false,
+      "evidence": "Uses self-directed 'Checkpoint' notes (e.g. 'Checkpoint: I have a concrete, unambiguous understanding of done') and internal readiness checks (e.g. Step 9's 'final readiness check'), but never describes pausing to ask the user for confirmation before proceeding to the next step/phase — no AskUserQuestion-equivalent gate appears anywhere in the response."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333333333333333
+  }
+}

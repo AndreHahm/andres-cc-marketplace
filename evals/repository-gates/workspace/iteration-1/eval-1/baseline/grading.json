@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Resolves the repository_policy.provider_profile (and confirms it maps to git-kit) before discovering gates",
+      "passed": false,
+      "evidence": "Notes 'repository_policy.provider_profile: null' and 'gate_discovery: unconfigured' but stops there — never checks a local override, never consults FOUNDATION_CONTRACTS.md's canonical mapping table, and never states or confirms the profile resolves to git-kit anywhere in the response. 'git-kit' is never mentioned once in the output."
+    },
+    {
+      "text": "Discovers gates from actual repository configuration sources named in the skill (pre-commit config, branch protection, workflow files), not a hardcoded universal list",
+      "passed": false,
+      "evidence": "Discovers real branch-protection contexts (live gh api call) and real workflow files, grounded correctly for those two sources — but entirely omits the pre-commit/pre-push local-hook source (.pre-commit-config.yaml is never read or mentioned), missing a whole gate category the skill explicitly names as a discovery source."
+    },
+    {
+      "text": "Never asserts a 'Review Changes' gate exists unless real repo config names one",
+      "passed": true,
+      "evidence": "No mention of a 'Review Changes' gate anywhere; the required-approving-review count is described plainly as 'Required approving reviews: 1' rather than being labeled/invented as a named gate."
+    },
+    {
+      "text": "If branch protection can't be read, discloses this as ambiguous (permission vs. absence) rather than concluding 'no protection'",
+      "passed": false,
+      "evidence": "Branch protection was readable this run, and the response includes a caveat about settings changing over time, but nowhere states the permission-vs-absence ambiguity principle for a future unreadable case — no forward-looking disclosure of that distinction at all."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

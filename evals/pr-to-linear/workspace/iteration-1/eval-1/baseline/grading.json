@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Routes finding triage/fix/reply/resolve to git-kit:handling-review-findings, not to git-kit:collaborating-on-a-pr",
+      "passed": false,
+      "evidence": "No delegation to any skill (none available in baseline). Step 3 has the agent itself decide fix-vs-false-positive-vs-defer, then itself run 'git add <changed files> / git commit -m ... / git push', and itself 'leave an explicit reply on the finding' — the full triage/fix/reply cycle is performed directly by the baseline agent, not delegated anywhere."
+    },
+    {
+      "text": "Never copies a full review comment or check transcript verbatim into the Linear summary",
+      "passed": false,
+      "evidence": "Step 1 states intent to pull 'the Codex finding's actual text, since \"merge-blocking Codex finding\" needs to be quoted precisely, not paraphrased, when it goes into Linear'. Step 5's Linear comment template includes '<exact quoted finding, e.g. \"possible null dereference in `src/foo.ts:42`...\">' — a verbatim quote of the finding text, plus a per-reviewer comment-by-comment rundown, rather than only an implication-level summary."
+    },
+    {
+      "text": "Reflects only meaningful/blocking implications to Linear, described as a deliberate summary",
+      "passed": false,
+      "evidence": "The Linear comment is framed as a factual, link-backed status report rather than a deliberate implication-only summary, and by the response's own stated design explicitly includes the exact quoted finding text and a full per-comment breakdown rather than a distilled implication — the same content flagged as failing the previous assertion."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

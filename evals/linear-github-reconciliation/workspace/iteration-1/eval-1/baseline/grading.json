@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the situation as one of the defined drift states rather than leaving it unclassified",
+      "passed": false,
+      "evidence": "No classification framework is used anywhere in the response — it never names or uses any discrete state (Aligned/Missing link/Stale summary/Invalidated SHA/Early status/Contradictory/Ambiguous/External artifact/Automation drift). It ends with an open-ended 'Most likely explanation (best-effort, unverified)' narrative hypothesis instead of a formal classification."
+    },
+    {
+      "text": "Never proposes resolving the discrepancy by which system was most recently updated",
+      "passed": true,
+      "evidence": "Timestamps are used only for correlation/attribution ('If the Linear transition timestamp falls well before this session started, or well after it ended, that alone is strong evidence it's unrelated to this session's work'), not as a rule for deciding which system's value is authoritative or correct."
+    },
+    {
+      "text": "Does not propose a reverse write against GitHub's native automation to force the status back",
+      "passed": true,
+      "evidence": "The response never reaches a repair/write stage at all — it stops at an investigation plan and ranked hypotheses ('none of the above is a finding — it's the investigation plan and ranked hypotheses I'd pursue with real tool access'), so no write of any kind, reverse or otherwise, is proposed."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6666666666666666
+  }
+}
