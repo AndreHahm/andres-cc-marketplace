@@ -59,7 +59,11 @@ against your own assumption of what "should" be there; review against what was a
    evidence's own `provider` field (in `git-github-evidence`, see `../FOUNDATION_CONTRACTS.md`)
    names a `git-kit` skill, never a raw `git`/`gh` command standing in for one. A transition showing
    evidence of a direct GitHub read/write with no `git-kit` provider attribution is a finding, not
-   an assumption to wave through.
+   an assumption to wave through. **Exception: a `work-reopened` entry's `provider` legitimately
+   names a `workmanagement-kit` skill (e.g. `workmanagement-kit:merge-to-completion`), never a
+   `git-kit` skill** — per `../FOUNDATION_CONTRACTS.md`'s own schema note, that stage has no
+   git-kit operation behind it; flag a `work-reopened` entry only if `provider` is missing entirely
+   or names a raw `git`/`gh` command, not for naming a `workmanagement-kit` skill.
 4. **Evidence check** — is the read-back evidence actually present and does it actually confirm
    what the transition claims happened? A transition claiming success with no read-back evidence
    attached is itself a finding, not something to assume passed.

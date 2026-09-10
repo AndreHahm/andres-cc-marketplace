@@ -8,9 +8,9 @@
       "evidence": "Step 5 delegates, with explicit statement never to independently re-verify checks/approvals to second-guess merge-pr"
     },
     {
-      "text": "Does not treat a successful merge alone as sufficient to close the Linear issue -- describes a separate acceptance-criterion comparison step",
+      "text": "Does not treat a successful merge alone as sufficient to close the Linear issue -- describes a separate acceptance-criterion comparison step, and closure with an outstanding criterion requires its own explicit user confirmation distinct from approving the follow-up",
       "passed": true,
-      "evidence": "Steps 9-13 run a separate 3-criterion comparison, correctly leaving the issue open pending a follow-up for one unmet criterion"
+      "evidence": "Steps 9-13 run a separate 3-criterion comparison (2 of 3 met); for the unmet criterion, the response presents both the follow-up creation and closing-now-with-the-gap-tracked as distinct choices at the AskUserQuestion gate, and only records work-closed after the user separately confirmed closure -- not inferred from approving the follow-up alone"
     },
     {
       "text": "Records pr-merged evidence as distinct from any work-closed/Linear-closure write",

@@ -38,7 +38,15 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    the source for step 7's concise PR summary), its `git-github-evidence` entries (via
    `linear-github-linking`), and the repository policy profile (via `repository-gates`).
 2. **Commit:** invoke `Skill(git-kit:commit)` — never stage or commit directly. Let `git-kit` review
-   staging, scan sensitive files, and confirm the message per its own procedure.
+   staging, scan sensitive files, and confirm the message per its own procedure. **Explicitly instruct
+   `commit`, as part of this invocation, to skip its own step 16 (push) and step 17 (Auto-PR)
+   entirely** — mirroring the exact instruction `create-pr`'s own Pre-flight Checks give `commit` for
+   the identical nested-dependency case (see `plugins/git-kit/skills/commit/SKILL.md`'s step 16/17).
+   Without this, `commit`'s own push confirmation could push the branch — and its own Auto-PR
+   confirmation could create a PR — before this skill's steps 5-8 (gate discovery, existing-PR search,
+   PR metadata, publication confirmation) ever run, risking a duplicate PR if the user says yes to both
+   `commit`'s own prompt and this skill's step 9. Step 9 below is the only push/PR-creation path this
+   skill uses.
 3. **Read back the commit:** confirm the created commit SHA and branch from `git-kit`'s own output.
 4. **Record `commit-linked`:** via `linear-github-linking`, append a `git-github-evidence` entry
    (`stage: "commit-linked"`, `commits: [{sha, recorded_at}]`) per `../../FOUNDATION_CONTRACTS.md`'s
@@ -120,6 +128,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 **Quality gates:**
 - [ ] Never stages, commits, or pushes directly — always through `git-kit:commit` and
       `git-kit:create-pr`/`collaborating-on-a-pr`.
+- [ ] Step 2's `git-kit:commit` invocation always explicitly instructs it to skip its own step 16
+      (push) and step 17 (Auto-PR) — step 9 is the only push/PR-creation path this skill ever uses.
 - [ ] `ci-gates-passed` is only ever recorded for a gate with its own confirmed read-back, bound to
       the exact commit SHA — always read back after step 9's publication, never assumed or recorded
       as a precondition to publishing.
