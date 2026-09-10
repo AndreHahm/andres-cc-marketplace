@@ -132,7 +132,14 @@ On "Yes": `Edit` the plugin's name into `plugin_mirrors`, then run
 `Bash(uv run python -m scripts.marketplace_ci:*)` tool, followed by
 `uv run python -m scripts.marketplace_ci check-plugin-mirrors` to confirm parity — never hand-write a file
 under `.claude/skills|agents|commands|hooks|rules/` yourself; only the sync command's own generated
-output goes there. Commit the registry edit and the synced files together as their own commit, separate
+output goes there. **`--stage` alone will not stage anything here**: it only `git add`s a generated
+destination whose own canonical `plugins/<name>/...` source is already staged in this same commit, but
+by this point in the pipeline that source was already committed by the earlier Commit step, not staged
+— and the `Edit` to `marketplace-sync.json` itself is never staged by `--stage` either, since the
+registry file isn't a canonical plugin source. Explicitly stage both before committing (the registry
+edit and every newly-created/updated destination file `check-plugin-mirrors` just confirmed) — via
+`git-kit:commit`'s own staging flow, or an equivalent explicit `git add` — never assume `--stage`
+already did it. Commit the registry edit and the synced files together as their own commit, separate
 from the build commit, the Inventory Sync commit (if one landed), and any doc-fix commit Document
 produces below.
 
