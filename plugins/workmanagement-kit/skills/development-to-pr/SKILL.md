@@ -38,21 +38,31 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    the source for step 8's concise PR summary), its `git-github-evidence` entries (via
    `linear-github-linking`), and the repository policy profile (via `repository-gates`).
 2. **Search for an existing PR, before committing:** via `linear-github-linking`, check for an
-   already-existing PR by repository, branch, SHA, and Linear ID. Classify per its own table. A
-   `Conflicting`/`Ambiguous` result is a structured handoff — present it to the user via
-   `AskUserQuestion` and resolve it before continuing; never silently pick a candidate. This runs
-   before the commit below because step 3's own instruction to `git-kit:commit` branches on the
-   result: no `git-kit` skill both pushes to an already-open PR's branch **and** owns creating a new
-   one, so which case this is must be known before, not after, the commit.
+   already-existing PR by repository, branch, SHA, and Linear ID. Classify per its own table.
+   - `Conflicting`/`Ambiguous`: a structured handoff — present it to the user via `AskUserQuestion`
+     and resolve it before continuing; never silently pick a candidate.
+   - `Adoptable`: `linear-github-linking`'s own table requires confirming the candidate's identity
+     via `AskUserQuestion` **before treating it as adopted** — a merely plausible match (branch name/
+     PR body convention) is not yet a confirmed existing PR. Present it and get explicit confirmation
+     here, not later; only a user-confirmed `Adoptable` candidate counts as "an existing PR" for step
+     3 below. If declined, treat it as if step 2 found none (the no-existing-PR path).
+   - `Exact`: already unambiguous — no separate confirmation needed beyond this read.
+
+   This search runs before the commit below because step 3's own instruction to `git-kit:commit`
+   branches on the result: no `git-kit` skill both pushes to an already-open PR's branch **and**
+   owns creating a new one, so which case this is must be known — and, for `Adoptable`, confirmed —
+   before, not after, the commit.
 3. **Commit:** invoke `Skill(git-kit:commit)` — never stage or commit directly. Let `git-kit` review
    staging, scan sensitive files, and confirm the message per its own procedure.
-   - **No existing PR (step 2 found none, or a `Stale` one no longer open):** explicitly instruct
-     `commit`, as part of this invocation, to skip its own step 16 (push) and step 17 (Auto-PR)
-     entirely — mirroring the exact instruction `create-pr`'s own Pre-flight Checks give `commit` for
-     the identical nested-dependency case (see `plugins/git-kit/skills/commit/SKILL.md`'s step 16/17).
-     Step 7 below (`git-kit:create-pr`) is this path's only push/PR-creation step.
-   - **An existing PR was confirmed (`Exact`/`Adoptable`):** explicitly instruct `commit` to skip
-     only its own step 17 (Auto-PR) — a PR already exists, so none should be created. Let `commit`'s
+   - **No existing PR (step 2 found none, a `Stale` one no longer open, or a declined `Adoptable`
+     candidate):** explicitly instruct `commit`, as part of this invocation, to skip its own step 16
+     (push) and step 17 (Auto-PR) entirely — mirroring the exact instruction `create-pr`'s own
+     Pre-flight Checks give `commit` for the identical nested-dependency case (see
+     `plugins/git-kit/skills/commit/SKILL.md`'s step 16/17). Step 7 below (`git-kit:create-pr`) is
+     this path's only push/PR-creation step.
+   - **An existing PR (`Exact`, or `Adoptable` confirmed at step 2):** explicitly instruct `commit`
+     to skip only its own step 17 (Auto-PR) — a PR already exists, so none should be created. Let
+     `commit`'s
      own step 16 push normally (it asks its own push confirmation, or follows `commit_auto_push`,
      exactly as it would standalone): pushing new commits to the same branch is exactly what updates
      an already-open PR on GitHub — no PR-mutation skill is needed or exists for this. `commit`'s own
@@ -177,4 +187,7 @@ See Testing & Validation below for the concrete trigger phrases this section sum
       `pending`, `fail`, or `bypassed`) — this skill's own single pass never mints a separate
       `stage: "ci-gates-passed"` entry, and never omits a non-`pass` result.
 - [ ] An existing-PR search always runs before publishing a new PR — never creates a duplicate.
+- [ ] An `Adoptable` classification always gets its own `AskUserQuestion` identity confirmation
+      before being treated as an existing PR — never silently equated with an already-unambiguous
+      `Exact` match.
 - [ ] Native GitHub → Linear status changes are always verified absent, never assumed absent.

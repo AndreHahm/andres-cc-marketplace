@@ -8,7 +8,7 @@ description: >-
   work, or to check whether prior gate evidence is still valid after new commits. Discovery and
   delegation only — never executes a gate's own internal logic, and never invents a gate the
   repository doesn't actually define (in particular, never assumes a "Review Changes" gate exists).
-allowed-tools: Read, Glob, Grep, Bash(gh api:*), Bash(gh pr checks:*)
+allowed-tools: Read, Glob, Grep, Bash(gh api:*), Bash(gh pr checks:*), Bash(git ls-files:*)
 ---
 
 # Repository Gates
@@ -41,10 +41,13 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 ## Resolving the Repository Policy Profile
 
 1. Read `versioned-configuration.json`'s (schema v2) `repository_policy.provider_profile` and
-   `github` fields, merged with `.claude/workmanagement-kit.local.json`'s override per
-   `../../FOUNDATION_CONTRACTS.md`'s Local Override section (same tracked-vs-untracked trust-boundary
-   check that section requires before honoring the override — an untracked, genuinely local file
-   only).
+   `github` fields. Before merging in `.claude/workmanagement-kit.local.json`'s override, run the
+   exact trust-boundary check `../../FOUNDATION_CONTRACTS.md`'s Local Override section requires:
+   `git ls-files --error-unmatch ":(top,literal).claude/workmanagement-kit.local.json"`, branching on
+   its exact outcome (confirmed-untracked only — exit 1 with git's own "did not match any file(s)"
+   message — may honor the override; tracked, or any unverifiable outcome, falls back to the shipped
+   `unconfigured` defaults). This is the reason this skill's own `allowed-tools` carries
+   `Bash(git ls-files:*)` — without it, the check this step names couldn't actually run.
 2. If `provider_profile` is unset/`unconfigured`, or names a provider other than `git-kit`: stop
    with a manual handoff (see Failure and Resume) — **never** select a broader provider or fall back
    to a raw `git`/`gh` command for a governed operation.
