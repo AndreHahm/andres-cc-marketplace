@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The rename goal is verdict 'met' at tier 1 (explicit user acceptance), citing the user's own confirmation directly rather than downgrading to tier 2", "passed": true, "evidence": "'Function definition renamed... | met | User's closing reply (\"Perfect, that's exactly what I needed, thanks\") explicitly accepted the delivered work...' -- Goal Inventory entries 1 and 2 tagged tier 1."},
+    {"text": "Delivered Artifacts lists the unrequested docstring addition, kept distinct from the Acceptance Criteria section", "passed": true, "evidence": "'A short docstring added to the renamed function (not requested by the user).' listed under Delivered Artifacts, not as an Acceptance Criteria row."},
+    {"text": "A Process Compliance Note is present even though the session looks fully successful", "passed": true, "evidence": "Process Compliance Note present, discussing the unrequested docstring as a process question without re-litigating it as an outcome finding."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

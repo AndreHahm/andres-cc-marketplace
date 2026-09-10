@@ -146,6 +146,8 @@ own interpretation from scratch.
 | `running-a-full-retrospective` | The shared scope confirmed once in Phase 1 | Which analysis types actually ran fresh, were reused from an existing report, or produced an explicit empty contribution — see this skill's own source-report table |
 | `mining-review-learnings` | The PR set (explicit list, merge-date range, or "since last cited") | Which PRs' review history was actually fetched, and which had `session-transcript: unavailable` (GitHub history only, no matching transcript found) |
 | `managing-review-learnings` | The input `mining-review-learnings` report or user-named finding | Which candidates were actually turned into a proposed diff vs. skipped (already covered, doesn't generalize, etc.) |
+| `analyzing-session-outcomes` | The date range or `this-conversation`/`today` argument resolved in Phase 1, plus whether a spec/acceptance-criteria document was supplied | Which goals/criteria were actually evidenced at tier 1-2 vs. only reachable at a weaker tier (3-5) |
+| `analyzing-verification-effectiveness` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which claimed verifications had independently observable evidence vs. only a narrative claim |
 
 `starting-an-analysis` is not in this table — it dispatches to the skills above rather than persisting
 its own report, so it has no coverage preamble of its own to write.

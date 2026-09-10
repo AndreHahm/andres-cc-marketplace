@@ -1,8 +1,9 @@
 # Date-Range Scope Convention
 
-Canonical Phase 1 scope-resolution procedure shared by all 5 date-range report-producing skills
+Canonical Phase 1 scope-resolution procedure shared by 7 date-range report-producing skills
 (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`,
-`analyzing-governance-and-conflicts`, `mining-recurring-patterns`). This file is the source of truth —
+`analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `analyzing-session-outcomes`,
+`analyzing-verification-effectiveness`). This file is the source of truth —
 if this procedure changes, sweep every site listed below (R20-style) rather than editing one copy and
 leaving the rest stale.
 
@@ -57,3 +58,10 @@ shared procedure itself lives here.
   file only to distinguish its merge-date PR filter from this shared session/conversation scope
   procedure — it never resolves a session scope itself, so it restates nothing from here to keep in
   sync.
+- `skills/analyzing-session-outcomes/SKILL.md` Phase 1 — addendum: after scope is resolved, an
+  additional `AskUserQuestion` (or a supplied second argument) determines whether a specification/
+  acceptance-criteria document exists; this addendum runs after the shared procedure, not inline within
+  it
+- `skills/analyzing-verification-effectiveness/SKILL.md` Phase 1 — no addendum, procedure only (its
+  Phase 1 explicitly names `session_parser.py`/`codex_session_parser.py` since the shared procedure may
+  invoke them, even though this skill's own Phase 2 doesn't call them separately)

@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/analysis-kit/skills/analyzing-session-outcomes/SKILL.md",
+  "assertions": [
+    {"text": "Report contains all six required sections: Goal Inventory, Acceptance Criteria, Delivered Artifacts, Unresolved Scope, User-Visible Value, Recommendations", "type": "structure", "target": "outputs/ directory"},
+    {"text": "The malformed-email criterion is verdict 'met' with tier-2 (verified artifact behavior) evidence citing the actual test run", "type": "functionality", "target": "outputs/ Acceptance Criteria section"},
+    {"text": "The valid-email criterion is verdict 'not_verifiable', not forced into 'met' or 'not_met'", "type": "functionality", "target": "outputs/ Acceptance Criteria section"},
+    {"text": "Each Acceptance Criteria/Unresolved Scope entry carries its own separate Evidence origin/Coverage/Confidence/Evidence source metadata block, not one shared block for both verdicts", "type": "structure", "target": "outputs/ report"},
+    {"text": "A Process Compliance Note is present and explicitly states process conformance is not judged in this report", "type": "presence", "target": "outputs/ report"}
+  ]
+}

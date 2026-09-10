@@ -44,6 +44,12 @@ Assess rule/boundary conformance and detect conflicts across a Claude Code sessi
 - **Full structural/semantic comparison between two sessions** — this skill's session-vs-session check only flags an unacknowledged contradiction as one conflict category among several; use `comparing-sessions` for a full structural diff plus trend/recurrence interpretation
 - **A full multi-report cross-check across an entire retrospective** (duplicate findings, contradictions, or severity-claim undercuts spanning more than the current-session-vs-one-prior-report pair this skill checks) — use `reviewing-analysis-findings` instead; this skill's session-vs-session category only flags a single unacknowledged contradiction against one prior report as part of a broader governance pass, not a full N-report sweep across a retrospective
 - **Detecting a repeated failing command/retry loop as a session-level pattern, independent of any rule violation** — use `mining-recurring-patterns` instead; this skill's recurring-error tracking classifies mistakes (including command/test failures) only for rule/governance-conformance purposes, not as a general action-sequence loop-detection pass
+- **Whether the session achieved the user's actual goal, independent of process conformance** — use
+  `analyzing-session-outcomes` instead. This skill judges whether the session followed the project's own
+  rules and conventions; `analyzing-session-outcomes` deliberately keeps goal attainment separate from
+  process compliance (its own Process Compliance Note exists precisely so "the process was followed"
+  never substitutes for "the goal was achieved") — a session can be fully conformant here while that
+  sibling skill still finds the underlying goal `not_met`, or vice versa
 
 ## Phase 1: Scope
 

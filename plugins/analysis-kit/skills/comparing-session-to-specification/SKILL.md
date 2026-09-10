@@ -36,6 +36,12 @@ Check whether a session's decisions complied with a project's specification, arc
 - **Comparing two sessions to each other** — use `comparing-sessions` instead
 - **Surface-level spec-vs-code contradiction spotting during a general retrospective** — `analyzing-governance-and-conflicts`' spec-vs-code check already covers a lighter version of this; use this skill when a full section-by-section compliance pass is actually wanted
 - **No specification document exists for the project** — nothing to compare against
+- **Whether the session achieved the user's actual goal or acceptance criteria** — use
+  `analyzing-session-outcomes` instead. This skill audits a session's decisions against a document's own
+  stated structure and statements, section by section, independent of whether the user's underlying goal
+  was served; `analyzing-session-outcomes` judges goal/acceptance-criteria attainment and user-visible
+  value, and may consume a spec only as one evidence source for criteria — it never runs this skill's own
+  section-by-section compliance pass
 
 ## Phase 1: Identify the Specification Document
 
