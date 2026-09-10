@@ -54,13 +54,24 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 | Implement / control scope | Not delegated — ordinary repository work in the active worktree, under the user's own instructions; this skill only tracks that it happened, and requires `AskUserQuestion` confirmation before any material Linear correction | In-scope changes ready to commit |
 | Commit + gates + Publish | `development-to-pr` | `commit-linked` evidence; `pr-published` evidence carrying the observed gate result (`pass`/`pending`/`fail`/`bypassed`) in its own `gates[]` array; draft PR |
 | Review/fix + Ready | `pr-to-linear` | Deliberate blocker summaries, `pr-ready` evidence |
-| Merge + Linear disposition + cleanup | `merge-to-completion` | `pr-merged` evidence, verified Linear disposition, cleanup via `git-kit:finishing-work` |
+| Merge + Linear disposition | `merge-to-completion` | `pr-merged` evidence, verified Linear disposition; post-merge cleanup is reached indirectly, through `git-kit:merge-pr`'s own step 8, not a separate action `merge-to-completion` performs itself |
 | Deliberate Notion learning | `status-and-learning` | Dated outcome/learning record in Notion |
 | Reconcile (on demand, not every run) | `linear-github-reconciliation` | Drift classification and bounded repair, only if invoked |
 
 Each delegated phase keeps its own confirmation gates — this skill adds one more, sequence-level
 gate on top (see Resume Behavior below), it never removes or substitutes for a focused skill's own
 `AskUserQuestion` step.
+
+**Mandatory worktree re-entry between Prepare + Start and Implement.** When `work-to-development`'s
+own delegation to `git-kit:starting-work` creates a worktree (the recommended path), `starting-work`
+only creates it and reports its path — it never changes the calling session's own working directory
+(per its own SKILL.md: "cd-ing into the worktree path is needed before working there"). Before
+treating the Prepare + Start phase as done and moving to Implement, explicitly verify (or change into)
+that reported worktree path — never assume it's already the active directory. Skipping this is exactly
+`.claude/rules/require-worktree-rooted-absolute-paths.md`'s and
+`.claude/rules/starting-work-before-first-change.md`'s own documented failure mode: silent, undetected
+work against the wrong checkout, with every later phase (Implement, then `development-to-pr`'s own
+commit) compounding the same mistake rather than catching it.
 
 ## Resume Behavior
 
@@ -73,13 +84,18 @@ resume point (which phase to re-enter). On resume:
    `merge-to-completion`'s own Merge sub-phase (`work-started` through `pr-merged`), since each of
    those appends its own evidence entry.
 2. **`pr-merged` is not the same as `merge-to-completion` being fully done.** `pr-merged` (step 7 of
-   that skill) is a `git-github-evidence` entry; the Linear disposition that follows it (steps 9-14,
-   ending in `work-closed`) is an ordinary base Transition Contract write with no `git-github-evidence`
-   entry of its own — this array cannot confirm whether that disposition actually completed. When the
-   furthest Git/GitHub evidence is `pr-merged`, separately read the Issue's own current Linear
-   workflow status (via `linear-work-management`) before assuming `merge-to-completion` is done: still
-   open means its Linear-disposition sub-phase (steps 9-14) is the actual resume point, not a phase
-   already past.
+   that skill) is a `git-github-evidence` entry; the Linear disposition that follows it (steps 9-14)
+   is an ordinary base Transition Contract write with no `git-github-evidence` entry of its own — this
+   array cannot confirm whether that disposition actually completed. When the furthest Git/GitHub
+   evidence is `pr-merged`, separately read the Issue's own current Linear workflow status (via
+   `linear-work-management`). **A closed Issue confirms the disposition sub-phase completed — but an
+   open Issue is ambiguous, not definitive:** `merge-to-completion`'s own step 13 explicitly permits a
+   fully-completed disposition to conclude "stays open" (an outstanding criterion whose follow-up is
+   linked, with the user separately declining closure), and that conclusion currently leaves no
+   evidence trail distinguishing it from "steps 9-14 never ran at all." Never silently treat an open
+   Issue as proof the sub-phase needs to (re-)run — ask the user directly via `AskUserQuestion`
+   whether the disposition already concluded "stays open" deliberately, or whether steps 9-14 are the
+   actual resume point, before proceeding either way.
 3. **The Notion-learning phase has no `git-github-evidence` entry of its own either** — `status-and-learning`
    writes to Notion, not to the Issue's Git/GitHub Evidence Record. Only once the Issue's own Linear
    status (step 2) confirms `merge-to-completion` fully completed (Issue closed), always ask the user
@@ -120,10 +136,14 @@ resume point (which phase to re-enter). On resume:
   as part of every normal pass — only when drift is suspected or explicitly requested. Running it
   unconditionally on every phase transition would be needless overhead for the common, aligned case.
 - **`pr-merged` is Git/GitHub evidence that the merge happened, not that `merge-to-completion` is
-  done.** That skill's own Linear disposition (steps 9-14, ending in `work-closed`) is a base
-  Transition Contract write with no `git-github-evidence` entry — resuming past `pr-merged` on the
-  strength of `git-github-evidence` alone would skip re-checking whether the Issue's acceptance
-  criteria and closure decision were ever actually finished (see Resume Behavior step 2).
+  done.** That skill's own Linear disposition (steps 9-14) is a base Transition Contract write with no
+  `git-github-evidence` entry — resuming past `pr-merged` on the strength of `git-github-evidence`
+  alone would skip re-checking whether the Issue's acceptance criteria and closure decision were ever
+  actually finished (see Resume Behavior step 2).
+- **An open Issue after `pr-merged` doesn't mean the disposition sub-phase never ran.** A fully
+  completed disposition can deliberately conclude "stays open" (step 13's condition (b)) — resume must
+  ask the user, never assume "open ⇒ steps 9-14 still pending" (see Resume Behavior step 2's own
+  `AskUserQuestion`).
 - **`git-github-evidence` cannot detect the Notion-learning phase's completion either.** It's a
   Git/GitHub-only record; `status-and-learning` writes to Notion, leaving no trace there. Resuming an
   Issue whose Linear status confirms `merge-to-completion` fully closed always requires an explicit
@@ -148,6 +168,9 @@ resume point (which phase to re-enter). On resume:
       assumes a resume point without checking.
 - [ ] Resume never treats `pr-merged` alone as proof `merge-to-completion` is done — always checks
       the Issue's current Linear status before assuming its disposition sub-phase already finished.
+- [ ] Resume never treats an open Issue as automatic proof the disposition sub-phase (steps 9-14)
+      still needs to run — always asks the user first, since a completed disposition can deliberately
+      conclude "stays open."
 - [ ] Resume never re-enters `status-and-learning` on the strength of `git-github-evidence` alone —
       always asks the user explicitly first, since that phase has no Git/GitHub evidence of its own.
 - [ ] A focused skill's own structured handoff is always surfaced directly, never silently absorbed

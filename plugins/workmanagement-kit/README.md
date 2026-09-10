@@ -113,6 +113,12 @@ Items still open before Wave 2 is fully live:
 - **No `git-kit` skill currently owns marking a draft PR ready for review as a callable action** —
   `pr-to-linear`'s own "Marking ready" step is a disclosed manual handoff (the user runs `gh pr ready`
   themselves) rather than a delegated mutation. Also worth a `git-kit`-level fix in a follow-up.
+- **`git-github-evidence` will hit the same real-connector custom-field limitation an already-tracked
+  Wave 1 issue documents for `notion-link`/`disposition-history`/`open-item-source`/`transition-id`**
+  (`issues/2026-08-31-workmanagement-kit-notion-linear-connector-field-limitations.md`) — the real
+  Linear connector's `save_issue` exposes no generic custom-field mechanism. Resolve with the same
+  workaround encoding (or a real custom field) that issue proposes, before writing `git-github-evidence`
+  against a live connector.
 
 Items still open from Wave 1:
 - **The shipped host profile and versioned configuration still ship as schemas with safe

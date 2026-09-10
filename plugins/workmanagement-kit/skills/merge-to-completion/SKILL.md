@@ -4,10 +4,11 @@ description: >-
   Coordinate governed merge readiness and execution through git-kit:merge-pr, record pr-merged
   from GitHub's own read-back, then separately evaluate each Linear acceptance criterion before any
   disposition — closing the Issue (work-closed) only after criteria and remaining-work disposition
-  verify, routing follow-ups through open-item-management, and delegating post-merge cleanup to
-  git-kit:finishing-work. Use when asked to merge a PR and disposition its Linear issue, or record
-  delivery after a merge. A merge never automatically closes Linear work.
-allowed-tools: Read, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:merge-pr), Skill(git-kit:finishing-work), Skill(open-item-management), AskUserQuestion
+  verify, routing follow-ups through open-item-management. Post-merge cleanup is already
+  merge-pr's own job (its step 8 asks and, on yes, invokes git-kit:finishing-work itself) — this
+  skill never re-invokes it. Use when asked to merge a PR and disposition its Linear issue, or
+  record delivery after a merge. A merge never automatically closes Linear work.
+allowed-tools: Read, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:merge-pr), Skill(open-item-management), AskUserQuestion
 ---
 
 # Merge to Completion
@@ -93,8 +94,14 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 14. **Reopen if invalidated:** later evidence contradicting a closure records a `work-reopened`
     Git/GitHub Evidence Record entry (via `linear-github-linking`) alongside the Linear reopen action
     (via `linear-work-management`).
-15. **Delegate cleanup:** invoke `Skill(git-kit:finishing-work)` after disposition is recorded —
-    cleanup failure is a disclosed follow-up, never a blocker to the disposition already recorded.
+15. **Cleanup is already handled — never re-invoke it here.** `git-kit:merge-pr`'s own step 8 already
+    asked "run `finishing-work` now?" as part of step 5's delegation, and invoked it itself on yes,
+    bound to the exact PR just merged. Invoking `Skill(git-kit:finishing-work)` again here would
+    either override a "no" the user already gave `merge-pr` directly, or run it a second time after
+    the checkout may have already moved to `main` — this skill holds no tool grant for it for exactly
+    this reason. If cleanup is still needed for some reason step 5 didn't cover, that's a fresh,
+    separate request to `git-kit:finishing-work` outside this skill's own flow, never something to
+    fold in here.
 
 ## Confirmation and Safety
 
@@ -114,8 +121,9 @@ See Testing & Validation below for the concrete trigger phrases this section sum
   resume only the Linear disposition steps (9-14) — never re-attempt the merge.
 - **Unknown merge outcome:** inspect GitHub's actual state (via `linear-github-linking`'s
   classification) before retrying — `pr-merged` is never recorded from an unconfirmed request.
-- **Cleanup fails:** disclose it as a follow-up; it does not block or invalidate the disposition
-  already recorded in steps 9-14.
+- **Cleanup fails (inside `merge-pr`'s own step 8):** that's `merge-pr`'s own failure to surface, not
+  something this skill catches or retries — it does not block or invalidate the disposition recorded
+  in steps 9-14, which run independently of whatever step 8 decided.
 
 ## Gotchas
 
@@ -146,3 +154,5 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - [ ] Follow-up work is always created through `open-item-management` — never invented inline.
 - [ ] A merge-succeeds/Linear-fails outcome always resumes only the disposition steps, never
       re-attempts the merge.
+- [ ] Never invokes `git-kit:finishing-work` itself — no tool grant for it — since `git-kit:merge-pr`'s
+      own step 8 (inside step 5's delegation) already owns asking about and running post-merge cleanup.
