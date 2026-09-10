@@ -1,0 +1,472 @@
+#!/usr/bin/env python3
+"""
+Check staleness of a handoff document compared to current project state.
+
+Analyzes:
+- Time since handoff was created
+- Git commits since handoff
+- Files that changed since handoff
+- Branch divergence
+- Modified files status
+
+Usage:
+    python check_staleness.py <handoff-file>
+    python check_staleness.py .claude/handoffs/2026-01-15-143022-auth.md
+"""
+
+from __future__ import annotations
+
+import re
+import subprocess
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+
+def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
+    """Run a command and return (success, output)."""
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=10)
+        return result.returncode == 0, result.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False, ""
+
+
+def parse_handoff_metadata(filepath: str) -> dict:
+    """Extract metadata from a handoff file."""
+    content = Path(filepath).read_text(encoding="utf-8")
+    metadata = {
+        "created": None,
+        "branch": None,
+        "project_path": None,
+        "modified_files": [],
+    }
+
+    # Parse Created timestamp -- accepts both the space-separated "YYYY-MM-DD HH:MM:SS" form
+    # (the handoff template's own default) and ISO-8601 "YYYY-MM-DDTHH:MM:SSZ" (used by some
+    # handoff authors, e.g. Write("Created: 2026-09-03T05:34:17Z", ...)); an unmatched format
+    # previously left `created` as None, which silently suppressed every staleness signal
+    # below rather than surfacing as an unknown/error state.
+    match = re.search(r"Created:\s*(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(Z)?", content)
+    if match:
+        try:
+            naive = datetime.strptime(f"{match.group(1)} {match.group(2)}", "%Y-%m-%d %H:%M:%S")
+            if match.group(3):
+                # Trailing "Z" means these digits are UTC, not local time -- naively
+                # treating them as local (the old behavior) silently shifted every
+                # staleness signal (age, and the git --since boundary) by the local
+                # UTC offset. Convert to the equivalent local wall-clock time so it
+                # stays comparable to datetime.now() and to git's own --since parsing,
+                # both of which are naive-local everywhere else in this script.
+                metadata["created"] = naive.replace(tzinfo=UTC).astimezone().replace(tzinfo=None)
+            else:
+                metadata["created"] = naive
+        except ValueError:
+            pass
+
+    # Parse Branch -- tolerates an optional Markdown code-span wrapper (`` `branch-name` ``,
+    # a real convention some handoff authors use) so its backticks aren't captured into the
+    # value and compared, unequal, against get_current_branch()'s unwrapped result.
+    match = re.search(r"Branch:\s*`?([^\s`]+)`?", content)
+    if match:
+        branch = match.group(1)
+        if branch and not branch.startswith("["):
+            metadata["branch"] = branch
+
+    # Parse Project path
+    match = re.search(r"Project:\s*(.+?)(?:\n|$)", content)
+    if match:
+        metadata["project_path"] = match.group(1).strip()
+
+    # Parse modified files from table
+    table_matches = re.findall(r"\|\s*([a-zA-Z0-9_\-./]+\.[a-zA-Z]+)\s*\|", content)
+    for f in table_matches:
+        if "/" in f and not f.startswith("["):
+            metadata["modified_files"].append(f)
+
+    return metadata
+
+
+def get_commits_since(timestamp: datetime, project_path: str) -> list[str]:
+    """Get list of commits since a given timestamp."""
+    if not timestamp:
+        return []
+
+    iso_time = timestamp.strftime("%Y-%m-%dT%H:%M:%S")
+    success, output = run_cmd(
+        ["git", "log", f"--since={iso_time}", "--oneline", "--no-decorate"], cwd=project_path
+    )
+
+    if success and output:
+        return output.split("\n")
+    return []
+
+
+def get_current_branch(project_path: str) -> str | None:
+    """Get current git branch."""
+    success, branch = run_cmd(["git", "branch", "--show-current"], cwd=project_path)
+    return branch if success else None
+
+
+def get_changed_files_since(timestamp: datetime, project_path: str) -> list[str]:
+    """Get files that changed since timestamp.
+
+    Combines three sources:
+    1. Working-tree changes (unstaged + staged) via ``git diff --name-only HEAD``
+    2. Untracked new files via ``git ls-files --others --exclude-standard``
+    3. Committed changes since *timestamp* via ``git log --since``
+
+    Note: ``git diff`` does not support ``--since``; the time filter only
+    applies to the commit log query.
+    """
+    if not timestamp:
+        return []
+
+    files: set[str] = set()
+
+    # 1. Working-tree changes (uncommitted edits to tracked files)
+    success, output = run_cmd(["git", "diff", "--name-only", "HEAD"], cwd=project_path)
+    if success and output:
+        files.update(f.strip() for f in output.split("\n") if f.strip())
+
+    # 2. Untracked new files (not yet added to git)
+    success, output = run_cmd(
+        ["git", "ls-files", "--others", "--exclude-standard"], cwd=project_path
+    )
+    if success and output:
+        files.update(f.strip() for f in output.split("\n") if f.strip())
+
+    # 3. Committed changes since the handoff timestamp
+    iso_time = timestamp.strftime("%Y-%m-%dT%H:%M:%S")
+    success, output = run_cmd(
+        ["git", "log", f"--since={iso_time}", "--name-only", "--pretty=format:"], cwd=project_path
+    )
+    if success and output:
+        files.update(f.strip() for f in output.split("\n") if f.strip())
+
+    return list(files)
+
+
+def check_files_exist(files: list[str], project_path: str) -> tuple[list[str], list[str]]:
+    """Check which files from handoff still exist."""
+    existing = []
+    missing = []
+    base = Path(project_path).resolve()
+
+    for f in files:
+        # A leading "/" would make pathlib's "/" operator reset to the right-hand side
+        # (an absolute path); stripping it alone still leaves a "../" segment free to
+        # walk outside project_path once resolved. An untrusted handoff table entry
+        # like "../../etc/passwd" must never be reported as an existing reference just
+        # because that unrelated file happens to exist elsewhere on disk -- resolve the
+        # candidate and require it to stay under project_path, same containment check
+        # session_store.py's own _assert_path_within_base() uses.
+        candidate = (Path(project_path) / f.lstrip("/")).resolve()
+        try:
+            candidate.relative_to(base)
+        except ValueError:
+            missing.append(f)
+            continue
+        if candidate.exists():
+            existing.append(f)
+        else:
+            missing.append(f)
+
+    return existing, missing
+
+
+def calculate_staleness_level(
+    days_old: float,
+    commits_since: int,
+    files_changed: int,
+    branch_matches: bool | None,
+    files_missing: int,
+) -> tuple[str, str, list[str]]:
+    """Calculate staleness level and provide recommendations.
+
+    Staleness scoring rationale:
+    - Each factor adds 1-3 points based on severity
+    - Thresholds based on typical development patterns:
+      - Age: 1 day (active work), 7 days (sprint), 30 days (stale)
+      - Commits: 5 (minor changes), 20 (feature work), 50 (major changes)
+      - Files: 5 (localized), 20 (widespread changes)
+    - Final score: 0=FRESH, 1-2=SLIGHTLY_STALE, 3-4=STALE, 5+=VERY_STALE
+    """
+    issues = []
+
+    # Scoring
+    staleness_score = 0
+
+    # Age thresholds: 1 day = active, 7 days = sprint boundary, 30 days = likely stale
+    if days_old > 30:
+        staleness_score += 3  # Over a month: high risk of outdated context
+        issues.append(f"Handoff is {int(days_old)} days old")
+    elif days_old > 7:
+        staleness_score += 2  # Over a week: moderate staleness
+        issues.append(f"Handoff is {int(days_old)} days old")
+    elif days_old > 1:
+        staleness_score += 1  # Over a day: minor staleness
+
+    # Commit thresholds: 5 = routine, 20 = feature work, 50 = major development
+    if commits_since > 50:
+        staleness_score += 3  # Major changes likely invalidate handoff context
+        issues.append(f"{commits_since} commits since handoff - significant changes")
+    elif commits_since > 20:
+        staleness_score += 2  # Substantial work done since handoff
+        issues.append(f"{commits_since} commits since handoff")
+    elif commits_since > 5:
+        staleness_score += 1  # Some changes, worth reviewing
+
+    # Branch mismatch: likely working on different feature/context. branch_matches is
+    # None (not False) when the handoff has no Branch: field to compare -- unknowable,
+    # not confirmed same or different, so it's surfaced as a caveat without silently
+    # contributing to (or being scored the same as a confirmed mismatch in) the total.
+    if branch_matches is False:
+        staleness_score += 2  # Different branch = different context
+        issues.append("Current branch differs from handoff branch")
+    elif branch_matches is None:
+        issues.append("Handoff has no Branch: field on record - branch match unknown")
+
+    # Missing files: 5+ suggests significant restructuring
+    if files_missing > 5:
+        staleness_score += 2  # Many refs broken = codebase restructured
+        issues.append(f"{files_missing} referenced files no longer exist")
+    elif files_missing > 0:
+        staleness_score += 1  # Some refs broken
+        issues.append(f"{files_missing} referenced file(s) missing")
+
+    # Changed files: 5 = localized, 20 = widespread
+    if files_changed > 20:
+        staleness_score += 2  # Widespread changes affect handoff relevance
+        issues.append(f"{files_changed} files changed since handoff")
+    elif files_changed > 5:
+        staleness_score += 1  # Some files changed
+
+    # Staleness levels: 0=fresh, 1-2=slight, 3-4=stale, 5+=very stale
+    if staleness_score == 0:
+        level = "FRESH"
+        recommendation = "Safe to resume - minimal changes since handoff"
+    elif staleness_score <= 2:
+        level = "SLIGHTLY_STALE"
+        recommendation = "Generally safe to resume - review changes before continuing"
+    elif staleness_score <= 4:
+        level = "STALE"
+        recommendation = "Proceed with caution - significant changes may affect context"
+    else:
+        level = "VERY_STALE"
+        recommendation = "Consider creating new handoff - too many changes since original"
+
+    return level, recommendation, issues
+
+
+def check_staleness(handoff_path: str) -> dict:
+    """Run staleness check on a handoff file."""
+    path = Path(handoff_path)
+
+    if not path.exists():
+        return {"error": f"Handoff file not found: {handoff_path}"}
+
+    # Parse handoff
+    metadata = parse_handoff_metadata(handoff_path)
+
+    # Determine project path -- always derive structurally from the handoff file's own
+    # location (.claude/handoffs/<file>.md -> project root). The embedded "Project:" value
+    # in the handoff body is untrusted content (a hand-edited or moved handoff can carry a
+    # stale or unrelated path) and must never become the cwd for the git checks below --
+    # keep it only as metadata to compare against and warn on divergence.
+    project_path = str(path.parent.parent.parent)
+    embedded_project_path = metadata.get("project_path")
+    project_path_mismatch = bool(
+        embedded_project_path
+        and Path(embedded_project_path).resolve() != Path(project_path).resolve()
+    )
+
+    # Check if git repo
+    success, _ = run_cmd(["git", "rev-parse", "--git-dir"], cwd=project_path)
+    is_git_repo = success
+
+    result = {
+        "handoff_file": str(path),
+        "project_path": project_path,
+        "embedded_project_path": embedded_project_path,
+        "project_path_mismatch": project_path_mismatch,
+        "is_git_repo": is_git_repo,
+        "created": metadata["created"],
+        "handoff_branch": metadata["branch"],
+    }
+
+    # Calculate age
+    days_old_value: float = 0
+    if metadata["created"]:
+        age = datetime.now() - metadata["created"]
+        days_old_value = age.total_seconds() / 86400
+        result["days_old"] = days_old_value
+        result["hours_old"] = age.total_seconds() / 3600
+    else:
+        result["days_old"] = None
+        result["hours_old"] = None
+
+    if is_git_repo and not metadata["created"]:
+        # Temporal staleness is unknowable with no valid Created timestamp -- without this
+        # branch, days_old_value stays 0 and get_commits_since/get_changed_files_since both
+        # short-circuit to [] for a None timestamp, so calculate_staleness_level would score
+        # 0 and report FRESH: a false safe-to-resume verdict for a handoff whose age is
+        # actually unknown.
+        result["current_branch"] = get_current_branch(project_path)
+        result["branch_matches"] = None
+        result["commits_since"] = None
+        result["recent_commits"] = []
+        result["files_changed_count"] = None
+        result["files_changed"] = []
+        result["referenced_files_exist"] = 0
+        result["referenced_files_missing"] = []
+        result["staleness_level"] = "UNKNOWN"
+        result["recommendation"] = (
+            "Missing or unparseable Created timestamp - unable to detect staleness"
+        )
+        result["issues"] = ["Handoff has no valid Created timestamp"]
+    elif is_git_repo:
+        # Git-based checks
+        result["current_branch"] = get_current_branch(project_path)
+        # None (not True) when the handoff has no Branch: field to compare against --
+        # branch divergence is unknowable there, not confirmed absent. Defaulting to
+        # True previously reported a stale, branch-switched handoff as FRESH with
+        # "Branch matches: Yes" whenever it simply lacked a Branch: line.
+        result["branch_matches"] = (
+            result["current_branch"] == metadata["branch"] if metadata["branch"] else None
+        )
+
+        commits = get_commits_since(metadata["created"], project_path)
+        result["commits_since"] = len(commits)
+        result["recent_commits"] = commits[:5]  # Show first 5
+
+        changed_files = get_changed_files_since(metadata["created"], project_path)
+        result["files_changed_count"] = len(changed_files)
+        result["files_changed"] = changed_files[:10]  # Show first 10
+
+        # Check if handoff's modified files still exist
+        existing, missing = check_files_exist(metadata["modified_files"], project_path)
+        result["referenced_files_exist"] = len(existing)
+        result["referenced_files_missing"] = missing
+
+        # Calculate staleness
+        level, recommendation, issues = calculate_staleness_level(
+            days_old_value,
+            result["commits_since"],
+            result["files_changed_count"],
+            result["branch_matches"],
+            len(missing),
+        )
+        result["staleness_level"] = level
+        result["recommendation"] = recommendation
+        result["issues"] = issues
+    else:
+        # Non-git checks (limited)
+        result["staleness_level"] = "UNKNOWN"
+        result["recommendation"] = "Not a git repo - unable to detect changes"
+        result["issues"] = ["Project is not a git repository"]
+
+    if project_path_mismatch:
+        result["issues"].insert(
+            0,
+            f"Handoff's Project: field ({embedded_project_path}) differs from its actual "
+            f"location ({project_path}) - the actual location was used for all checks above",
+        )
+
+    return result
+
+
+def print_report(result: dict):
+    """Print staleness report."""
+    if "error" in result:
+        print(f"Error: {result['error']}")
+        return
+
+    print(f"\n{'=' * 60}")
+    print("Handoff Staleness Report")
+    print(f"{'=' * 60}")
+    print(f"File: {result['handoff_file']}")
+    print(f"Project: {result['project_path']}")
+
+    if result["created"]:
+        print(f"Created: {result['created'].strftime('%Y-%m-%d %H:%M:%S')}")
+        if result["days_old"] is not None:
+            if result["days_old"] < 1:
+                print(f"Age: {result['hours_old']:.1f} hours")
+            else:
+                print(f"Age: {result['days_old']:.1f} days")
+
+    print(f"\n{'=' * 60}")
+    print(f"Staleness Level: {result['staleness_level']}")
+    print(f"{'=' * 60}")
+    print(f"\nRecommendation: {result['recommendation']}")
+
+    if result.get("issues"):
+        print("\nIssues detected:")
+        for issue in result["issues"]:
+            print(f"  - {issue}")
+
+    if result.get("is_git_repo"):
+        print("\n--- Git Status ---")
+        print(f"Handoff branch: {result.get('handoff_branch', 'Unknown')}")
+        print(f"Current branch: {result.get('current_branch', 'Unknown')}")
+        _branch_matches = result.get("branch_matches")
+        if _branch_matches is None:
+            _branch_matches_label = "Unknown"
+        else:
+            _branch_matches_label = "Yes" if _branch_matches else "No"
+        print(f"Branch matches: {_branch_matches_label}")
+        print(f"Commits since handoff: {result.get('commits_since', 0)}")
+        print(f"Files changed: {result.get('files_changed_count', 0)}")
+
+        if result.get("recent_commits"):
+            print("\nRecent commits:")
+            for commit in result["recent_commits"][:5]:
+                print(f"  {commit}")
+
+        if result.get("referenced_files_missing"):
+            print("\nMissing referenced files:")
+            for f in result["referenced_files_missing"][:5]:
+                print(f"  - {f}")
+
+    print(f"\n{'=' * 60}")
+
+    # Color-coded verdict (using text indicators)
+    level = result.get("staleness_level", "UNKNOWN")
+    if level == "FRESH":
+        print("Verdict: [OK] Safe to resume")
+    elif level == "SLIGHTLY_STALE":
+        print("Verdict: [OK] Review changes, then resume")
+    elif level == "STALE":
+        print("Verdict: [CAUTION] Verify context before resuming")
+    elif level == "VERY_STALE":
+        print("Verdict: [WARNING] Consider creating fresh handoff")
+    else:
+        print("Verdict: [UNKNOWN] Manual verification needed")
+
+
+def main():
+    sys.stdout.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+    sys.stderr.reconfigure(encoding="utf-8")  # ty: ignore[unresolved-attribute]
+
+    if len(sys.argv) < 2:
+        print("Usage: python check_staleness.py <handoff-file>")
+        print("Example: python check_staleness.py .claude/handoffs/2026-01-15-143022-auth.md")
+        sys.exit(1)
+
+    handoff_path = sys.argv[1]
+    result = check_staleness(handoff_path)
+    print_report(result)
+
+    # Exit code based on staleness
+    level = result.get("staleness_level", "UNKNOWN")
+    if level in ["FRESH", "SLIGHTLY_STALE"]:
+        sys.exit(0)
+    elif level == "STALE":
+        sys.exit(1)
+    else:
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()
