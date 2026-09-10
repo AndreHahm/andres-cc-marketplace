@@ -171,6 +171,59 @@ def test_multi_finding_report_all_annotated_passes():
     assert validate_report.check_evidence_metadata(text, required=True) == []
 
 
+def test_empty_label_value_flagged_as_invalid_not_missing():
+    text = (
+        "<!-- finding:start -->\nEvidence origin:\nCoverage: complete\nConfidence: high\n"
+        "Evidence source: x\n<!-- finding:end -->"
+    )
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert errors == [
+        {
+            "code": "invalid_evidence_metadata",
+            "message": "Finding block 1: metadata label 'Evidence origin:' has no value",
+            "subject": "finding-1",
+        }
+    ]
+
+
+def test_invalid_enum_value_flagged():
+    text = _finding_block().replace("Coverage: complete", "Coverage: invented")
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert len(errors) == 1
+    assert errors[0]["code"] == "invalid_evidence_metadata"
+    assert "Coverage:" in errors[0]["message"]
+    assert "invented" in errors[0]["message"]
+
+
+def test_enum_value_with_trailing_explanation_still_passes():
+    text = _finding_block().replace(
+        "Evidence origin: direct", "Evidence origin: direct (re-verified this run)"
+    )
+    assert validate_report.check_evidence_metadata(text, required=True) == []
+
+
+def test_enum_value_check_is_case_insensitive():
+    text = _finding_block().replace("Confidence: high", "Confidence: High")
+    assert validate_report.check_evidence_metadata(text, required=True) == []
+
+
+def test_evidence_source_has_no_enum_any_nonempty_value_passes():
+    text = _finding_block().replace(
+        "Evidence source: this-conversation", "Evidence source: arbitrary free text is fine"
+    )
+    assert validate_report.check_evidence_metadata(text, required=True) == []
+
+
+def test_no_findings_marker_satisfies_requirement_with_zero_blocks():
+    assert validate_report.check_evidence_metadata("<!-- no-findings -->", required=True) == []
+
+
+def test_no_findings_marker_absent_and_no_blocks_still_fails():
+    errors = validate_report.check_evidence_metadata("nothing relevant here", required=True)
+    assert [e["code"] for e in errors] == ["missing_evidence_metadata"]
+    assert "no-findings" in errors[0]["message"]
+
+
 def test_missing_evidence_metadata_not_flagged_when_not_required():
     assert (
         validate_report.check_evidence_metadata("no finding blocks here at all", required=False)

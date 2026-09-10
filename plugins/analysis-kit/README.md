@@ -42,8 +42,8 @@ finding's content is actually correct.
 **Shared report evidence and coverage convention.** `references/report-evidence-convention.md` (plugin
 root) defines two pieces every report-producing skill's own Persist step restates by reference: a
 Coverage Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) at the top of
-every persisted report, and an Evidence origin/Coverage/Confidence/Source metadata block on every
-substantive finding. This governs reports written from its adoption forward — an existing report written
+every persisted report, and an Evidence origin/Coverage/Confidence/Evidence source metadata block,
+wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, on every substantive finding. This governs reports written from its adoption forward — an existing report written
 before this convention existed is not retroactively invalid, and no skill migrates historical output to
 add the missing fields.
 

@@ -95,6 +95,11 @@ finding.** If the finding text says evidence was sampled, `Coverage` must say `s
 `complete` — this is a mechanical consistency check any report-producing skill's own self-review can run
 before persisting.
 
+**Evidence origin, Coverage, and Confidence must be exactly one of their listed values — no invented
+terms, no blank value.** `validate_report.py` checks this mechanically (case-insensitively, on the first
+word of the field's value, so trailing explanatory text after the value is fine). `Evidence source` has
+no fixed vocabulary — any non-empty, re-checkable value is accepted.
+
 **Every substantive finding needs its own block — no report-wide "one metadata block covers everything."**
 A report with five findings needs five `<!-- finding:start -->`/`<!-- finding:end -->` pairs, each with
 its own complete four-field metadata — not one block anywhere in the document. `validate_report.py`
@@ -108,6 +113,12 @@ observation, a candidate pattern, a comparison delta, a compliance verdict, a re
 **not** apply to the coverage preamble itself (that's a report-level fact, not a finding), to purely
 structural output (an inventory table listing what was found, before any judgment is applied to it), or
 to a skill's own process narration ("Phase 2 ran the inventory script").
+
+**A report with zero substantive findings is a legitimate outcome — mark it explicitly, don't fabricate
+one.** A clean run (nothing wrong found) shouldn't be forced to invent a placeholder finding just to
+satisfy the per-finding metadata check. When a report genuinely has no substantive findings, add
+`<!-- no-findings -->` anywhere in the report instead of any `<!-- finding:start -->` block —
+`validate_report.py` treats this as satisfying the requirement on its own.
 
 ## Backward Compatibility
 
