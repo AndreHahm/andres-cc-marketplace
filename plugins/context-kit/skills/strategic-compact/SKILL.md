@@ -131,8 +131,12 @@ the plugin README for the optional `CONTEXT_KIT_PLANS_DIR`/`CONTEXT_KIT_SESSION_
   what actually delivers it to the user, not this hook's own return value.
 - **`PostToolUse`** — `compact-milestone-detector.sh` (matcher `Bash`) detects milestones (tests
   passing, commits, builds, deploys) from the command that just ran. `context-monitor.py` (matcher
-  `Bash|Agent|Task`) separately estimates overall context-window usage (a coarse percentage, from
-  transcript size or a tool-call-count fallback) and nudges at 40/55/65/80/90% thresholds.
+  `.*`, every tool call) separately estimates overall context-window usage (a coarse percentage,
+  from transcript size or a tool-call-count fallback) and nudges at 40/55/65/80/90% thresholds — its
+  own throttling (60s between checks below the warning threshold, once per threshold above it) keeps
+  this cheap despite firing on every call, and matters more once scoped this broadly rather than only
+  to `Bash|Agent|Task`: without it, a read-heavy session (e.g. `Read`/`Grep`/`Glob`-only) would never
+  get a context-usage nudge at all.
 - **`PreCompact`** — `compact-instructions.sh` writes best-effort stderr/`systemMessage` guidance on
   what to preserve through compaction; this is a nudge, not a guarantee (stderr is verbose-mode-only
   by default, and `PreCompact` doesn't support `additionalContext` at all — see the script's own
@@ -175,7 +179,7 @@ verification record. The checklist below documents that direct-verification surf
 - A session starting (`SessionStart`, any source) — tool-call tracking initializes; a `compact`/
   `resume` source additionally triggers the restore hook.
 - Any tool call — `PreToolUse` tracking fires on every call (matcher `.*`); `context-monitor.py`
-  additionally fires on `Bash`/`Agent`/`Task` (`PostToolUse`).
+  additionally fires on every successful tool call (`PostToolUse`, matcher `.*`).
 - A `Bash` command matching a known test/build/commit/deploy pattern (e.g. `pytest`, `git commit`,
   `npm run build`) — `compact-milestone-detector.sh` fires on `PostToolUse`.
 - A compaction event (manual `/compact` or automatic) — both `PreCompact` hooks fire; the matching
