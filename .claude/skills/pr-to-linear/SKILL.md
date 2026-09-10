@@ -76,7 +76,10 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 9. **Read back** GitHub's actual state — confirming the PR's draft state actually changed, not
    assuming it did because the user was asked — and record `pr-ready` (via `linear-github-linking`)
    only for the exact current head SHA confirmed in step 5 — a readiness action taken against a stale
-   SHA read is invalid; re-verify if any time has passed since step 5.
+   SHA read is invalid; re-verify if any time has passed since step 5. **`provider` is
+   `"manual (gh pr ready, per pr-to-linear's disclosed handoff)"`, per `../../FOUNDATION_CONTRACTS.md`'s
+   schema note** — never a fabricated `git-kit:...` name, since no `git-kit` skill actually performed
+   this mutation.
 10. **Move Linear to In Review/Ready** only if the repository's approved Linear workflow calls for
     it as a distinct, deliberate step — never inferred from GitHub's own native automation.
 

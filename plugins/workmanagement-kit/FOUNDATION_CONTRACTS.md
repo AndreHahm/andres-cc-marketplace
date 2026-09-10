@@ -351,7 +351,7 @@ convention.
   "commits": [ {"sha": "string", "recorded_at": "ISO-8601 UTC timestamp"} ],
   "pull_request": {"number": "integer", "url": "string", "state": "draft | open | merged | closed"} | null,
   "gates": [ {"name": "string", "owner": "string", "result": "pass | fail | pending | bypassed", "sha": "string", "recorded_at": "ISO-8601 UTC timestamp"} ],
-  "provider": "string, the git-kit skill that performed the underlying operation (e.g. 'git-kit:starting-work') for every stage except work-reopened, which has no git-kit operation of its own — for that one stage, the Wave 2 skill that determined the reopen was needed (e.g. 'workmanagement-kit:merge-to-completion')",
+  "provider": "string, the git-kit skill that performed the underlying operation (e.g. 'git-kit:starting-work') for a stage a git-kit skill actually performed; 'workmanagement-kit:<skill>' for work-reopened, which has no git-kit operation of its own (e.g. 'workmanagement-kit:merge-to-completion'); or 'manual (<real command>, per <workmanagement-kit skill>'s disclosed handoff)' for a stage reached through a disclosed manual handoff because no git-kit skill owns that action yet (e.g. 'manual (gh pr ready, per pr-to-linear's disclosed handoff)') — never a fabricated git-kit attribution for an operation git-kit didn't actually perform",
   "policy_profile": "string, the repository-policy profile name this evidence was resolved under",
   "supersedes": "string, evidence_id of an earlier entry this one invalidates (e.g. a force-push changing a recorded SHA for the same branch/PR), or null",
   "transition_id": "string, the base Transition Contract transition_id of the write that appended this entry",
@@ -404,6 +404,19 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
 
 ## Change Log
 
+- 2026-09-10 — Fixed a fourth `cross-model-review` finding, a self-inflicted follow-on from the
+  `pr-ready` structured-handoff fix below: once `pr-to-linear`'s ready-state mutation became a
+  disclosed manual `gh pr ready` run by the user (no `git-kit` skill performs it), the resulting
+  `pr-ready` evidence entry had no truthful value for the `provider` field, which still required
+  "the git-kit skill" with only the `work-reopened` exception carved out. Generalized the `provider`
+  schema note to a third form — `"manual (<real command>, per <skill>'s disclosed handoff)"` — for
+  exactly this case, and updated `pr-to-linear`'s step 9 and `work-transition-reviewer`'s Provider
+  check to use and recognize it. Also fixed a related gap in `development-to-pr`: its own gate
+  read-back (step 12) had no schema-valid place to record a `pending`/`fail` result, since only
+  `ci-gates-passed` existed as a stage and implied success — clarified that the gate result always
+  lands in the `pr-published` entry's own `gates[]` array (which every entry already carries),
+  reserving a separate `ci-gates-passed` stage entry for a later, dedicated resolution check outside
+  this skill's own single-pass scope.
 - 2026-09-10 — Fixed a third `cross-model-review` finding: the Git/GitHub Evidence Record's
   `provider` field was documented as always "the git-kit skill that performed the underlying
   operation," but `work-reopened` has no git-kit operation behind it (it's recorded alongside an

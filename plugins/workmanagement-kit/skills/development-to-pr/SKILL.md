@@ -93,13 +93,17 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 12. **Confirm the pre-push gate's outcome:** only now — after the actual push (step 9's for the
     new-PR path, step 3's for the existing-PR path) — can a required-check-style gate's real result
     be read back (via `repository-gates`, using the gate identity discovered in step 6, bound to the
-    exact head SHA confirmed in step 10). Record `ci-gates-passed` only for a `pass` read-back;
-    record `pending`/`fail` faithfully rather than omitting the entry when the gate hasn't resolved
-    yet or didn't pass — never assume a pass without its own read-back.
+    exact head SHA confirmed in step 10). Never assume a pass without its own read-back.
 13. **Record `pr-published`:** via `linear-github-linking`, append a `git-github-evidence` entry
     (`stage: "pr-published"`) per `../../FOUNDATION_CONTRACTS.md`'s Git/GitHub Evidence Record,
     using the read-back PR identity from step 10 — recorded on both paths, since a new commit
-    reaching an existing PR is publication evidence just as much as creating one is.
+    reaching an existing PR is publication evidence just as much as creating one is. **Carry step
+    12's gate read-back in this same entry's `gates[]` array** — `pass`, `pending`, `fail`, or
+    `bypassed`, exactly as read back, never omitted for a non-`pass` result. This skill's own single
+    pass never mints a separate `stage: "ci-gates-passed"` entry: that stage is for a later,
+    dedicated confirmation once a gate recorded here as `pending`/`fail` subsequently resolves to
+    `pass` — a follow-up check outside this skill's own scope, not something to fabricate here by
+    re-labeling a non-passing result as if it were that stage.
 
 ## Confirmation and Safety
 
@@ -124,9 +128,10 @@ See Testing & Validation below for the concrete trigger phrases this section sum
   whichever skill's own push failed — the commit's own evidence (step 5) still stands regardless; do
   not proceed to a retry until the hook's own failure is resolved.
 - **A required-check-style gate is still pending or failed at step 12's read-back:** record that real
-  state (`pending`/`fail`), not `ci-gates-passed` — the PR is already published at this point, so this
-  is a structured handoff about an unresolved gate on an already-published PR, not something that
-  blocks publication itself.
+  state (`pending`/`fail`) in step 13's `pr-published` entry's own `gates[]` array — never a separate
+  `ci-gates-passed` entry, and never omitted. The PR is already published at this point, so this is a
+  structured handoff about an unresolved gate on an already-published PR, not something that blocks
+  publication itself.
 - **Existing-PR path, step 3's push was declined at `commit`'s own confirmation:** step 10's read-back
   will show no new commit on the PR's remote branch — report this plainly rather than recording
   `pr-published` for a push that didn't happen.
@@ -168,8 +173,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - [ ] The existing-PR path never invokes `git-kit:create-pr` (would create a duplicate) or
       `git-kit:collaborating-on-a-pr` (owns neither pushing nor adopting an existing PR) — it reads
       the existing PR's state back directly via `gh pr view`, read-only.
-- [ ] `ci-gates-passed` is only ever recorded for a gate with its own confirmed read-back, bound to
-      the exact head SHA — always read back after the actual push, never assumed or recorded as a
-      precondition to publishing.
+- [ ] The gate read-back always lands in the `pr-published` entry's own `gates[]` array (`pass`,
+      `pending`, `fail`, or `bypassed`) — this skill's own single pass never mints a separate
+      `stage: "ci-gates-passed"` entry, and never omits a non-`pass` result.
 - [ ] An existing-PR search always runs before publishing a new PR — never creates a duplicate.
 - [ ] Native GitHub → Linear status changes are always verified absent, never assumed absent.
