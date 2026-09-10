@@ -28,10 +28,32 @@ def load_contracts(path: Path = CONTRACTS_PATH) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+PREAMBLE_BOUNDARY_RE = re.compile(r"^#{2,6}[ \t]", re.MULTILINE)
+
+
+def _preamble_region(text: str) -> str:
+    """Text from the start of the document up to the first `##`-or-deeper heading.
+
+    Per report-evidence-convention.md, the Coverage Preamble sits between a
+    report's own title and its first analysis section. Restricting the
+    coverage-field search to this region prevents a later section that
+    merely quotes or excerpts another report's own preamble lines (e.g. a
+    fenced evidence block, or a source-report excerpt inside an
+    `analyzing-plugin-components`/`reviewing-analysis-findings` report) from
+    satisfying THIS report's own coverage-field requirement. Verified live:
+    without this restriction, a report with no real preamble of its own but
+    a later section quoting another report's four coverage lines returned
+    `valid: true`.
+    """
+    match = PREAMBLE_BOUNDARY_RE.search(text)
+    return text[: match.start()] if match else text
+
+
 def check_common(text: str, contracts: dict) -> list[dict]:
     errors = []
+    preamble = _preamble_region(text)
     for field in contracts["common"]["coverage_fields"]:
-        value = _label_value(text, field)
+        value = _label_value(preamble, field)
         if value is None:
             errors.append(
                 {
@@ -154,8 +176,8 @@ EVIDENCE_METADATA_ENUMS = {
     "Coverage:": ("complete", "sampled", "partial"),
     "Confidence:": ("high", "medium", "low"),
 }
-FINDING_BLOCK_RE = re.compile(r"<!--\s*finding:start\s*-->(.*?)<!--\s*finding:end\s*-->", re.DOTALL)
 NO_FINDINGS_RE = re.compile(r"<!--\s*no-findings\s*-->")
+FENCE_RE = re.compile(r"^```.*?^```", re.DOTALL | re.MULTILINE)
 
 
 def _label_value(block: str, label: str) -> str | None:
@@ -176,31 +198,66 @@ FINDING_START_RE = re.compile(r"<!--\s*finding:start\s*-->")
 FINDING_END_RE = re.compile(r"<!--\s*finding:end\s*-->")
 
 
-def _scan_finding_markers(text: str) -> tuple[list[str], list[dict]]:
+def _fenced_spans(text: str) -> list[tuple[int, int]]:
+    """Start/end positions of every fenced ``` ... ``` code block in `text`."""
+    return [(m.start(), m.end()) for m in FENCE_RE.finditer(text)]
+
+
+def _scan_finding_markers(text: str) -> tuple[list[str], list[tuple[int, int]], list[dict]]:
     """Walk finding markers in document order and extract top-level blocks.
 
     A start/end count comparison alone can't catch nesting: two starts
-    followed by two ends balances numerically (2 == 2), but
-    FINDING_BLOCK_RE's non-greedy match collapses the outer start through
-    the FIRST end marker into one block, silently losing independent
-    validation of the inner finding -- verified live, this previously
-    returned no errors at all for a nested pair. Tracking nesting depth
-    explicitly, marker by marker, catches this instead of trusting a count.
+    followed by two ends balances numerically (2 == 2), but a non-greedy
+    single-pass regex match collapses the outer start through the FIRST end
+    marker into one block, silently losing independent validation of the
+    inner finding -- verified live, this previously returned no errors at
+    all for a nested pair. Tracking nesting depth explicitly, marker by
+    marker, catches this instead of trusting a count.
+
+    Markers found inside a fenced ```...``` code block are ignored entirely
+    -- a report that quotes marker syntax as a documentation example (e.g.
+    illustrating this convention inside a self-analysis report) must not
+    have that literal example text mistaken for a real, structural marker.
+    Confirmed live as a real false positive: a valid finding whose own body
+    fenced-quoted the marker convention as an example previously had its
+    real, correctly-paired outer markers reported as improperly nested.
+
+    Returns `(blocks, spans, errors)` -- `blocks` is each top-level finding's
+    own inner content (between its start/end markers, exclusive); `spans` is
+    the corresponding `(start, end)` position of each full block INCLUDING
+    both marker delimiters, in the same order, used by callers that need to
+    compute what's left over once every real block is removed from `text`.
     """
+    fenced_spans = _fenced_spans(text)
+
+    def _outside_fence(pos: int) -> bool:
+        return not any(start <= pos < end for start, end in fenced_spans)
+
     markers = sorted(
-        [(m.start(), m.end(), "start") for m in FINDING_START_RE.finditer(text)]
-        + [(m.start(), m.end(), "end") for m in FINDING_END_RE.finditer(text)],
+        [
+            (m.start(), m.end(), "start")
+            for m in FINDING_START_RE.finditer(text)
+            if _outside_fence(m.start())
+        ]
+        + [
+            (m.start(), m.end(), "end")
+            for m in FINDING_END_RE.finditer(text)
+            if _outside_fence(m.start())
+        ],
         key=lambda item: item[0],
     )
 
     blocks: list[str] = []
+    spans: list[tuple[int, int]] = []
     errors: list[dict] = []
     depth = 0
-    block_start = 0
-    for _pos, marker_end, kind in markers:
+    outer_start = 0
+    content_start = 0
+    for marker_start, marker_end, kind in markers:
         if kind == "start":
             if depth == 0:
-                block_start = marker_end
+                outer_start = marker_start
+                content_start = marker_end
             else:
                 errors.append(
                     {
@@ -228,7 +285,8 @@ def _scan_finding_markers(text: str) -> tuple[list[str], list[dict]]:
                 continue
             depth -= 1
             if depth == 0:
-                blocks.append(text[block_start:_pos])
+                blocks.append(text[content_start:marker_start])
+                spans.append((outer_start, marker_end))
     if depth > 0:
         errors.append(
             {
@@ -241,19 +299,43 @@ def _scan_finding_markers(text: str) -> tuple[list[str], list[dict]]:
                 "subject": "evidence-metadata",
             }
         )
-    return blocks, errors
+    return blocks, spans, errors
 
 
 def check_evidence_metadata(text: str, required: bool) -> list[dict]:
     if not required:
         return []
 
-    blocks, marker_errors = _scan_finding_markers(text)
+    blocks, block_spans, marker_errors = _scan_finding_markers(text)
     if marker_errors:
         return marker_errors
 
     if not blocks:
         if NO_FINDINGS_RE.search(text):
+            # A stray, unwrapped evidence-metadata label alongside a
+            # <!-- no-findings --> marker means the report actually contains
+            # substantive finding content that contradicts its own
+            # no-findings claim -- e.g. a draft that kept a stale
+            # <!-- no-findings --> marker after a finding was added but
+            # never wrapped. Verified live: without this check, that exact
+            # combination returned `valid: true`, silently bypassing the
+            # per-finding metadata requirement via the no-findings escape
+            # hatch.
+            stray_labels = [
+                label for label in EVIDENCE_METADATA_LABELS if _label_value(text, label) is not None
+            ]
+            if stray_labels:
+                return [
+                    {
+                        "code": "contradictory_no_findings",
+                        "message": (
+                            f"<!-- no-findings --> marker present but evidence metadata "
+                            f"label(s) {stray_labels} also found -- report contains "
+                            "unwrapped finding content contradicting the no-findings claim"
+                        ),
+                        "subject": "evidence-metadata",
+                    }
+                ]
             return []
         return [
             {
@@ -271,14 +353,32 @@ def check_evidence_metadata(text: str, required: bool) -> list[dict]:
 
     # A substantive finding whose metadata was written but never wrapped in
     # <!-- finding:start/end --> markers is otherwise invisible to the
-    # per-block loop below (FINDING_BLOCK_RE only sees matched blocks) --
-    # this catches the common case of forgetting the wrapper while still
-    # writing the metadata fields. It cannot catch a finding with no metadata
-    # attempt at all and no markers -- that's a documented, structural-only
-    # limitation (see this script's own module docstring); nothing short of
-    # understanding each skill's own finding format could detect that case.
-    remainder = FINDING_BLOCK_RE.sub("", text)
-    stray_labels = [label for label in EVIDENCE_METADATA_LABELS if _label_value(remainder, label)]
+    # per-block loop below -- this catches the common case of forgetting the
+    # wrapper while still writing the metadata fields. `remainder` is built
+    # from the same fence-aware, nesting-aware block spans `_scan_finding_markers`
+    # already computed, not a second, independently regex-matched pass over
+    # the text -- reusing one source of truth for "what's inside a real
+    # block" avoids the two mechanisms disagreeing on a fenced or nested
+    # example. It cannot catch a finding with no metadata attempt at all and
+    # no markers -- that's a documented, structural-only limitation (see this
+    # script's own module docstring); nothing short of understanding each
+    # skill's own finding format could detect that case.
+    remainder_parts = []
+    prev_end = 0
+    for span_start, span_end in block_spans:
+        remainder_parts.append(text[prev_end:span_start])
+        prev_end = span_end
+    remainder_parts.append(text[prev_end:])
+    remainder = "".join(remainder_parts)
+
+    # `is not None`, not a truthy check: a stray label present with a BLANK
+    # value (e.g. a lone "Evidence origin:" with nothing after it) must still
+    # count as stray, unwrapped metadata -- a truthy check silently ignored
+    # that case, since `_label_value` returns "" (falsy) for a present-but-empty
+    # label, not None.
+    stray_labels = [
+        label for label in EVIDENCE_METADATA_LABELS if _label_value(remainder, label) is not None
+    ]
     if stray_labels:
         errors.append(
             {
