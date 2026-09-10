@@ -176,26 +176,82 @@ FINDING_START_RE = re.compile(r"<!--\s*finding:start\s*-->")
 FINDING_END_RE = re.compile(r"<!--\s*finding:end\s*-->")
 
 
+def _scan_finding_markers(text: str) -> tuple[list[str], list[dict]]:
+    """Walk finding markers in document order and extract top-level blocks.
+
+    A start/end count comparison alone can't catch nesting: two starts
+    followed by two ends balances numerically (2 == 2), but
+    FINDING_BLOCK_RE's non-greedy match collapses the outer start through
+    the FIRST end marker into one block, silently losing independent
+    validation of the inner finding -- verified live, this previously
+    returned no errors at all for a nested pair. Tracking nesting depth
+    explicitly, marker by marker, catches this instead of trusting a count.
+    """
+    markers = sorted(
+        [(m.start(), m.end(), "start") for m in FINDING_START_RE.finditer(text)]
+        + [(m.start(), m.end(), "end") for m in FINDING_END_RE.finditer(text)],
+        key=lambda item: item[0],
+    )
+
+    blocks: list[str] = []
+    errors: list[dict] = []
+    depth = 0
+    block_start = 0
+    for _pos, marker_end, kind in markers:
+        if kind == "start":
+            if depth == 0:
+                block_start = marker_end
+            else:
+                errors.append(
+                    {
+                        "code": "malformed_finding_marker",
+                        "message": (
+                            "Nested <!-- finding:start --> marker found -- findings must not "
+                            "nest; each finding needs its own independent start/end pair"
+                        ),
+                        "subject": "evidence-metadata",
+                    }
+                )
+            depth += 1
+        else:
+            if depth == 0:
+                errors.append(
+                    {
+                        "code": "malformed_finding_marker",
+                        "message": (
+                            "<!-- finding:end --> marker found with no matching "
+                            "<!-- finding:start --> -- every finding must be fully wrapped"
+                        ),
+                        "subject": "evidence-metadata",
+                    }
+                )
+                continue
+            depth -= 1
+            if depth == 0:
+                blocks.append(text[block_start:_pos])
+    if depth > 0:
+        errors.append(
+            {
+                "code": "malformed_finding_marker",
+                "message": (
+                    f"{depth} <!-- finding:start --> marker(s) left unclosed -- every finding "
+                    "must be fully wrapped, and an unmatched marker means at least one finding "
+                    "was not validated"
+                ),
+                "subject": "evidence-metadata",
+            }
+        )
+    return blocks, errors
+
+
 def check_evidence_metadata(text: str, required: bool) -> list[dict]:
     if not required:
         return []
 
-    start_count = len(FINDING_START_RE.findall(text))
-    end_count = len(FINDING_END_RE.findall(text))
-    if start_count != end_count:
-        return [
-            {
-                "code": "malformed_finding_marker",
-                "message": (
-                    f"{start_count} <!-- finding:start --> marker(s) but {end_count} "
-                    "<!-- finding:end --> marker(s) -- every finding must be fully wrapped, and "
-                    "an unmatched marker means at least one finding was not validated"
-                ),
-                "subject": "evidence-metadata",
-            }
-        ]
+    blocks, marker_errors = _scan_finding_markers(text)
+    if marker_errors:
+        return marker_errors
 
-    blocks = FINDING_BLOCK_RE.findall(text)
     if not blocks:
         if NO_FINDINGS_RE.search(text):
             return []

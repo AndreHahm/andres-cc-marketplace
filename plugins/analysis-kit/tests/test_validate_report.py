@@ -175,7 +175,32 @@ def test_unbalanced_finding_markers_flagged():
     text = _finding_block() + "\n\n<!-- finding:start -->\nno end marker here\n"
     errors = validate_report.check_evidence_metadata(text, required=True)
     assert [e["code"] for e in errors] == ["malformed_finding_marker"]
-    assert "2" in errors[0]["message"] and "1" in errors[0]["message"]
+    assert "unclosed" in errors[0]["message"]
+
+
+def test_nested_finding_markers_flagged():
+    # Codex finding (PR #302, round 2): two <!-- finding:start --> markers
+    # followed by two <!-- finding:end --> markers balances numerically
+    # (2 == 2), but FINDING_BLOCK_RE's non-greedy match previously collapsed
+    # the outer start through the FIRST end marker into one block, silently
+    # losing independent validation of the inner finding -- verified live to
+    # return zero errors before this fix.
+    text = (
+        "<!-- finding:start -->\n"
+        + _finding_block()
+        + "\ninner finding with no metadata at all\n"
+        + "<!-- finding:end -->"
+    )
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert [e["code"] for e in errors] == ["malformed_finding_marker"]
+    assert "Nested" in errors[0]["message"]
+
+
+def test_dangling_end_marker_with_no_start_flagged():
+    text = "<!-- finding:end -->\n" + _finding_block()
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert [e["code"] for e in errors] == ["malformed_finding_marker"]
+    assert "no matching" in errors[0]["message"]
 
 
 def test_metadata_written_outside_any_block_flagged_as_unwrapped():
