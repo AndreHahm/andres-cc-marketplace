@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-3-mirrorsync-new-plugin",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "States Mirror Sync checks whether the new plugin's name is already in .claude/marketplace-sync.json's plugin_mirrors", "passed": true, "evidence": "'read `.claude/marketplace-sync.json` and check whether the plugin's name is already present in `plugin_mirrors`.'"},
+    {"text": "States AskUserQuestion fires before any registry edit", "passed": true, "evidence": "'the skill must ask via `AskUserQuestion`... The skill states: \"Never add the entry without this ask.\"'"},
+    {"text": "States 'Yes' edits plugin_mirrors and runs sync-plugin-mirrors --stage then check-plugin-mirrors", "passed": true, "evidence": "'1. Edit the plugin's name into plugin_mirrors. 2. Run uv run python -m scripts.marketplace_ci sync-plugin-mirrors --stage... 3. Then run uv run python -m scripts.marketplace_ci check-plugin-mirrors to confirm parity.'"},
+    {"text": "States the registry edit + synced files are committed separately from the build and inventory-sync commits", "passed": true, "evidence": "'Commit the registry edit and the synced files together as their own commit, separate from the build commit, the Inventory Sync commit (if one landed), and any doc-fix commit Document produces below.'"}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
