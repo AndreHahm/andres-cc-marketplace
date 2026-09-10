@@ -60,6 +60,13 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    (this skill has no `gh api graphql` grant, per step 1) rather than silently omitting it or
    delegating just to fill the gap. If the request explicitly asks to triage, fix, reply to, or resolve
    findings — or if the user, once shown that gap, asks for it — proceed to step 2 as below.
+   **A "mark this PR ready for review" request is neither branch above — route it explicitly, never by
+   falling through either one.** It is not a pure summary ask (the Marking ready section below actually
+   mutates GitHub/Linear state), and its own phrasing rarely says "triage" or "fix" even though its
+   step 5 precondition requires step 2's completed report. Always run step 2 first for a readiness
+   request, exactly as if it had explicitly asked for triage — then continue into the Marking ready
+   section (step 5 onward) once step 2's report is in hand, rather than treating the request as
+   answered once step 2 (or step 3/4's reflection) finishes.
 2. **Delegate triage and fix:** invoke `Skill(git-kit:handling-review-findings)` for the actual
    finding classification, fix/file/decline decision, fix application (via its own `git-kit:commit`
    delegation), and reply/resolve mechanics. This skill never performs any of that itself — no raw

@@ -89,6 +89,18 @@ resume point (which phase to re-enter). On resume:
    sitting after (or interleaved with) the entry that actually supersedes it. Determine the furthest
    phase from the active (non-superseded) entries only — an invalidated entry must never advance the
    resume cursor past required work, even if its own `stage` value would otherwise look furthest.
+   **Partition by artifact chain before computing "furthest" — never across the whole array.**
+   `linear-github-linking` explicitly supports multiple commits/PRs per Issue (each sharing the same
+   `repository` but carrying its own `branch`/`pull_request.number`, per the schema in
+   `../../FOUNDATION_CONTRACTS.md`), so an Issue's active entries can span more than one independent
+   chain — an older chain already at `pr-merged` and a newer chain still at `work-started`. Group active
+   entries by `(repository, branch)` (falling back to `pull_request.number` once a branch's PR is known,
+   since a branch can be reused across chains after a merge), identify which chain the current resume
+   actually concerns (the chain matching this checkout's own branch/PR when known, or the chain with the
+   most recent `recorded_at` when resuming with no branch context yet — surface an `AskUserQuestion` if
+   more than one chain is plausibly current), and compute the furthest-completed phase from *that
+   chain's* active entries only. An older chain's `pr-merged` must never advance a different, newer
+   chain's own resume cursor to disposition.
    **The Implement phase itself needs no separate evidence entry to resume unambiguously**: it has no
    Git/GitHub evidence stage of its own (see the Phases table above), so `work-started` present with
    no `commit-linked` entry after it already identifies Implement as the resume point directly — never
