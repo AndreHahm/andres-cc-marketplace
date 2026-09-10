@@ -54,7 +54,7 @@
         ]
       },
       {
-        "matcher": "Bash|Agent|Task",
+        "matcher": ".*",
         "hooks": [
           {
             "type": "command",

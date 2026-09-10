@@ -7,8 +7,10 @@ Monitors approximate context usage and provides progressive, de-duplicated nudge
 - At 80%: info-level note (auto-compact approaching)
 - At 90%: caution-level note (finish the current task at full quality)
 
-Hook Event: PostToolUse (on common tools). Throttled to 60-second intervals
-when below the warning threshold.
+Hook Event: PostToolUse (matcher ".*", every successful tool call -- a
+narrower Bash/Agent/Task-only matcher would silently skip a read-only
+session and never nudge it). Throttled to 60-second intervals when below
+the warning threshold.
 
 Output contract (PostToolUse, exit 0): emits JSON on stdout with a `systemMessage`
 (shown to the user) AND `hookSpecificOutput.additionalContext` (injected into
@@ -53,6 +55,200 @@ def _env_int(name: str, default: int) -> int:
         return value if value > 0 else default
     except ValueError:
         return default
+
+
+def _win_pid_alive(pid: int) -> bool:
+    """Windows liveness check via OpenProcess + GetExitCodeProcess.
+
+    `os.kill(pid, 0)` is NOT a liveness probe on Windows -- CPython routes
+    signal 0 (== signal.CTRL_C_EVENT) through GenerateConsoleCtrlEvent,
+    whose dwProcessGroupId parameter must be a recognized *process group*
+    id, not an arbitrary PID. Live-tested: os.kill(explorer.exe's real,
+    definitely-alive PID, 0) raises OSError WinError 87 -- the exact
+    signature that would misclassify a genuinely alive, unrelated process
+    as dead and bust its lock. OpenProcess is the actual Win32 existence
+    check; live-tested against an unrelated alive process (explorer.exe),
+    our own PID, a spawned-then-terminated child (alive, then dead after
+    wait()), and a bogus PID -- all four classified correctly.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    STILL_ACTIVE = 259
+    ERROR_INVALID_PARAMETER = 87
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    # Explicit restype/argtypes: without them, ctypes defaults a foreign
+    # function's return value to c_int (32-bit signed) -- OpenProcess
+    # actually returns a pointer-sized HANDLE, so an unset restype risks
+    # silently truncating a handle value with any upper-32-bit content set
+    # on 64-bit Windows. Every real handle value seen in live testing fit
+    # in 32 bits (which is why the untyped version still passed those
+    # tests), but that's not a guarantee -- pin the real types instead.
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.GetExitCodeProcess.restype = wintypes.BOOL
+    kernel32.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not handle:
+        # ERROR_INVALID_PARAMETER means no such PID exists; any other
+        # failure (e.g. access denied to a process owned by another user)
+        # is treated as alive -- fail-safe, never bust a lock we can't
+        # confirm dead.
+        return ctypes.get_last_error() != ERROR_INVALID_PARAMETER
+    try:
+        exit_code = wintypes.DWORD()
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return True  # couldn't query -- fail-safe, assume alive
+        return exit_code.value == STILL_ACTIVE
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _pid_alive(pid: int) -> bool:
+    """Best-effort process-liveness check. POSIX: os.kill(pid, 0) is a
+    real liveness probe there (ProcessLookupError = dead, PermissionError
+    = alive-but-owned-by-another-user). Windows: delegates to
+    _win_pid_alive(), since os.kill(pid, 0) does not check process
+    existence on that platform at all (see that function's docstring).
+    """
+    if os.name == "nt":
+        return _win_pid_alive(pid)
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return True
+
+
+def _write_lock_metadata(lock_dir: Path) -> bool:
+    """Write this process's PID + creation time into an already-`mkdir`'d
+    lock directory. Returns False (and removes the now-metadata-less lock
+    directory) if the write itself fails, so a transient I/O error (disk
+    full, an AV scanner momentarily holding the file, ...) can never leave
+    a permanently stuck lock behind with no `created` file for a later
+    invocation's stale-check to ever read -- every earlier `mkdir`-then-
+    `write_text` call site in this module made that mistake; this helper
+    is the single place both call it through now.
+    """
+    try:
+        (lock_dir / "created").write_text(f"{os.getpid()}\n{int(time.time())}\n", encoding="utf-8")
+        return True
+    except OSError:
+        try:
+            for child in lock_dir.iterdir():
+                child.unlink()
+            lock_dir.rmdir()
+        except OSError:
+            pass
+        return False
+
+
+def _read_lock_metadata(lock_dir: Path) -> tuple[int, int] | None:
+    """Read back the (pid, created_timestamp) recorded in a lock
+    directory's `created` file, or None if it's missing/unparseable."""
+    try:
+        lines = (lock_dir / "created").read_text(encoding="utf-8").splitlines()
+        return int(lines[0]), int(lines[1])
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def _read_lock_owner(lock_dir: Path) -> int | None:
+    """Read back just the PID recorded in a lock directory's `created`
+    file, or None if it's missing/unparseable."""
+    meta = _read_lock_metadata(lock_dir)
+    return meta[0] if meta else None
+
+
+def _acquire_cache_lock(session_dir: Path, max_attempts: int = 60) -> bool:
+    """Acquire an exclusive lock on the session's cache directory via
+    atomic `mkdir` (portable: works the same on POSIX and NTFS/Windows,
+    unlike a plain file-existence check). Mirrors the Bash hook scripts'
+    own two-phase scheme (see compact-track-and-suggest.sh's comment for
+    the full rationale) -- many cheap mkdir-only retries first, then at
+    most one bounded stale-lock check-and-bust before giving up. Returns
+    False (fail-open: caller skips the cache update for this invocation
+    rather than risk a torn read-modify-write) if the lock can't be
+    acquired either way.
+    """
+    lock_dir = session_dir / "context-monitor-cache.lock"
+    for _ in range(max_attempts):
+        try:
+            lock_dir.mkdir()
+            return _write_lock_metadata(lock_dir)
+        except FileExistsError:
+            continue
+        except OSError:
+            return False
+
+    meta = _read_lock_metadata(lock_dir)
+    if meta is None:
+        return False
+    lock_pid, lock_created = meta
+
+    age = time.time() - lock_created
+    if age >= 10 and not _pid_alive(lock_pid):
+        # Re-read immediately before the destructive delete below, rather
+        # than trusting the read above: this narrows -- does not fully
+        # eliminate -- the window in which a different waiter could have
+        # already busted-and-recreated this same lock between the read
+        # above and the delete here, which would otherwise make this
+        # delete destroy a fresh, live lock instead of the stale one this
+        # decision was based on. A fully race-proof version would need an
+        # atomic claim (e.g. rename the stale dir to a uniquely-named path
+        # first, which fails if another waiter already renamed it, before
+        # deleting the renamed copy) -- not done here: this guards a
+        # low-stakes, best-effort nudge cache, not safety-critical data,
+        # and the remaining window is narrow.
+        recheck = _read_lock_metadata(lock_dir)
+        if recheck != meta:
+            return False
+        try:
+            for child in lock_dir.iterdir():
+                child.unlink()
+            lock_dir.rmdir()
+        except OSError:
+            pass
+        try:
+            lock_dir.mkdir()
+        except OSError:
+            return False
+        if not _write_lock_metadata(lock_dir):
+            return False
+        # Another waiter may have raced this same bust-and-recreate
+        # window (two waiters both decide the same lock is stale at
+        # nearly the same time) -- re-read the owner we just wrote and
+        # confirm it's still us before declaring victory. If a different
+        # PID now owns it, that waiter won the race; fail open rather
+        # than proceed believing we hold a lock we don't.
+        return _read_lock_owner(lock_dir) == os.getpid()
+    return False
+
+
+def _release_cache_lock(session_dir: Path) -> None:
+    """Release the cache lock, only if this process still owns it -- a
+    waiter that busted a stale lock and took ownership itself must never
+    have that ownership pulled out from under it, mirroring the Bash hook
+    scripts' own release-only-if-owner check.
+    """
+    lock_dir = session_dir / "context-monitor-cache.lock"
+    owner_pid = _read_lock_owner(lock_dir)
+    if owner_pid is None or owner_pid == os.getpid():
+        try:
+            for child in lock_dir.iterdir():
+                child.unlink()
+            lock_dir.rmdir()
+        except OSError:
+            pass
 
 
 def get_session_dir(session_id: str = "") -> Path:
@@ -192,62 +388,76 @@ def run_context_monitor() -> int:
         hook_input = {}
 
     session_id = hook_input.get("session_id", "") or ""
+    session_dir = get_session_dir(session_id)
 
-    # Estimate current context usage (coarse proxy)
-    percentage = estimate_context_percentage(hook_input, session_id)
+    # This hook can run concurrently for the same session (parallel tool
+    # calls in one turn), and every cache-touching call below (estimate,
+    # throttle check, shown-thresholds read, mark-shown write) forms one
+    # logical read-modify-write cycle -- hold a single lock across all of
+    # them for this invocation, mirroring the Bash hook scripts' own
+    # per-invocation mkdir lock. Fail open (skip this invocation's cache
+    # update and nudge entirely) if the lock can't be acquired, same as
+    # the Bash scripts do -- a missed nudge self-corrects on the next
+    # tool call; a torn cache write does not.
+    if not _acquire_cache_lock(session_dir):
+        return 0
 
-    # Persist the latest estimate so the status line can surface it (best-effort).
     try:
-        (get_session_dir(session_id) / "context-pct.txt").write_text(
-            f"{percentage:.0f}", encoding="utf-8"
-        )
-    except Exception:
-        pass
+        # Estimate current context usage (coarse proxy)
+        percentage = estimate_context_percentage(hook_input, session_id)
 
-    # Check throttling
-    if is_throttled(percentage, session_id):
-        return 0
+        # Persist the latest estimate so the status line can surface it (best-effort).
+        try:
+            (session_dir / "context-pct.txt").write_text(f"{percentage:.0f}", encoding="utf-8")
+        except Exception:
+            pass
 
-    shown = get_shown_thresholds(session_id)
+        # Check throttling
+        if is_throttled(percentage, session_id):
+            return 0
 
-    # Check reusable-discovery thresholds (40%, 55%, 65%)
-    for threshold in LEARN_THRESHOLDS:
-        if percentage >= threshold and threshold not in shown["learn"]:
+        shown = get_shown_thresholds(session_id)
+
+        # Check reusable-discovery thresholds (40%, 55%, 65%)
+        for threshold in LEARN_THRESHOLDS:
+            if percentage >= threshold and threshold not in shown["learn"]:
+                emit(
+                    f"💡 Context ~{percentage:.0f}% (approx) — if a reusable discovery emerged, "
+                    "consider capturing it now before auto-compaction.",
+                    f"Context usage is approximately {percentage:.0f}% (coarse proxy). If a "
+                    "non-obvious discovery or reusable workflow emerged this session, consider "
+                    "capturing it now — e.g. via session-kit's session-wrap-up skill, if "
+                    "installed — before auto-compaction.",
+                )
+                mark_threshold_shown("learn", threshold, session_id)
+                return 0  # Only show one message at a time
+
+        # Check 90% threshold (critical)
+        if percentage >= THRESHOLD_CRITICAL and not shown["warn_90"]:
             emit(
-                f"💡 Context ~{percentage:.0f}% (approx) — if a reusable discovery emerged, "
-                "consider capturing it now before auto-compaction.",
-                f"Context usage is approximately {percentage:.0f}% (coarse proxy). If a "
-                "non-obvious discovery or reusable workflow emerged this session, consider "
-                "capturing it now — e.g. via session-kit's session-wrap-up skill, if "
-                "installed — before auto-compaction.",
+                f"⚠️ Context ~{percentage:.0f}% (approx) — auto-compact approaching. Finish the "
+                "current task at full quality.",
+                f"Context ~{percentage:.0f}% (coarse proxy); auto-compaction is approaching. "
+                "Complete the current task without cutting corners or skipping verification, "
+                "and make sure the session log and active plan are saved to disk — no context "
+                "is lost, but summarize key decisions now.",
             )
-            mark_threshold_shown("learn", threshold, session_id)
-            return 0  # Only show one message at a time
+            mark_threshold_shown("warn_90", True, session_id)
+            return 0  # Non-blocking note (exit 2 would feed stderr to Claude)
 
-    # Check 90% threshold (critical)
-    if percentage >= THRESHOLD_CRITICAL and not shown["warn_90"]:
-        emit(
-            f"⚠️ Context ~{percentage:.0f}% (approx) — auto-compact approaching. Finish the "
-            "current task at full quality.",
-            f"Context ~{percentage:.0f}% (coarse proxy); auto-compaction is approaching. "
-            "Complete the current task without cutting corners or skipping verification, "
-            "and make sure the session log and active plan are saved to disk — no context "
-            "is lost, but summarize key decisions now.",
-        )
-        mark_threshold_shown("warn_90", True, session_id)
-        return 0  # Non-blocking note (exit 2 would feed stderr to Claude)
+        # Check 80% threshold (info)
+        if percentage >= THRESHOLD_WARN and not shown["warn_80"]:
+            emit(
+                f"💡 Context ~{percentage:.0f}% (approx) — auto-compact approaching; no rush.",
+                f"Context ~{percentage:.0f}% (coarse proxy); auto-compaction will trigger soon. "
+                "Ensure the session log and active plan are current on disk.",
+            )
+            mark_threshold_shown("warn_80", True, session_id)
+            return 0
 
-    # Check 80% threshold (info)
-    if percentage >= THRESHOLD_WARN and not shown["warn_80"]:
-        emit(
-            f"💡 Context ~{percentage:.0f}% (approx) — auto-compact approaching; no rush.",
-            f"Context ~{percentage:.0f}% (coarse proxy); auto-compaction will trigger soon. "
-            "Ensure the session log and active plan are current on disk.",
-        )
-        mark_threshold_shown("warn_80", True, session_id)
         return 0
-
-    return 0
+    finally:
+        _release_cache_lock(session_dir)
 
 
 def main() -> int:
