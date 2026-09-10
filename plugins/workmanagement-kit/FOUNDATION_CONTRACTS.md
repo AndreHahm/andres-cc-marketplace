@@ -339,6 +339,20 @@ Stored as an array-valued `git-github-evidence` property directly on the Linear 
 transition, never overwritten — matches Disposition Record's append-only, superseded-not-deleted
 convention.
 
+**Known connector limitation (same class as an already-tracked Wave 1 gap):**
+`issues/2026-08-31-workmanagement-kit-notion-linear-connector-field-limitations.md` documents, from a
+live Foundational Setup run, that the real Linear connector's `save_issue` tool exposes only Linear's
+native fields — no generic custom-field parameter — so none of `notion-link`/`disposition-history`/
+`open-item-source`/`transition-id` (all documented, Wave 1 custom Issue properties) can be created as
+real typed fields; that issue's own workaround was native `links`/attachments or description-embedded
+flat text instead of the literal documented shape. `git-github-evidence` is the identical shape of
+custom array-valued Issue property and will hit the identical limitation once Wave 2 is activated
+against a real connector — this was not caught during Wave 2's own design despite the tracked issue
+already existing. Before `linear-github-linking` writes a real `git-github-evidence` entry against a
+live connector, resolve this the same way that issue proposes for its own fields (adopt a
+connector-supported encoding — `links`/attachments or description-embedded text — or provision a real
+custom field) rather than assuming the schema below can be written as literal JSON via `save_issue`.
+
 **Schema (one array entry per stage transition):**
 
 ```json
@@ -407,6 +421,27 @@ skill stops with a manual handoff rather than falling back to a raw `git`/`gh` c
 
 ## Change Log
 
+- 2026-09-10 — Fixed 4 findings and disclosed 1 from GitHub's own Codex connector review on the PR
+  (`chatgpt-codex-connector`, distinct from the local `cross-model-review` passes above). (1,
+  disclosed) `git-github-evidence` is the same shape of custom array-valued Linear Issue property as
+  `notion-link`/`disposition-history`/`open-item-source`/`transition-id`, all four already documented
+  (`issues/2026-08-31-...connector-field-limitations.md`) as unwritable through the real Linear
+  connector's `save_issue` tool — Wave 2's own design missed this despite the issue already existing;
+  now cross-referenced in this record's own text and the README rather than left for a live write to
+  discover cold. (2) `linear-github-lifecycle` never stated that `starting-work` (via
+  `work-to-development`) creates a worktree but never changes the calling session's own cwd — every
+  phase after "Prepare + Start" could silently run against the wrong checkout; added an explicit
+  worktree-re-entry requirement citing this repo's own `require-worktree-rooted-absolute-paths.md`/
+  `starting-work-before-first-change.md` rules. (3) `development-to-pr`'s existing-PR path let
+  `git-kit:commit` push without ever confirming the current checkout's branch actually matched the
+  selected PR's own branch — added a `git branch --show-current` check before that push, as a
+  structured handoff on mismatch. (4) `linear-github-lifecycle`'s resume treated an open Issue after
+  `pr-merged` as proof the Linear-disposition sub-phase still needed to run, but a fully completed
+  disposition can deliberately conclude "stays open" — changed to ask the user rather than assume.
+  (5) `merge-to-completion`'s own step 15 unconditionally re-invoked `git-kit:finishing-work` after
+  `git-kit:merge-pr`'s own step 8 (inside step 5's delegation) already asks about and runs the same
+  cleanup — the second call could override a "no" the user already gave, or run cleanup twice against
+  a checkout that already moved; removed the tool grant and the redundant step entirely.
 - 2026-09-10 — Fixed an eleventh and twelfth `cross-model-review` finding, and disclosed a
   thirteenth as a known gap rather than a workaround. The Git/GitHub Evidence Record schema had no
   field for a merge's own SHA — `merge-to-completion` needed to record it and `status-and-learning`
