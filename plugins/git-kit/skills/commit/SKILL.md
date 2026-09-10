@@ -8,7 +8,7 @@ description: >-
   into multiple commits, see standalone-commits instead.
 argument-hint: Optional flags (--no-verify, --amend, --push) followed by an optional commit message
 model: haiku
-allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(git checkout -b:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(git rev-parse:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/unstage-flagged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/lint-staged-python.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/stage-selected-files.sh:*), AskUserQuestion, Read, Skill(git-kit:create-pr)
+allowed-tools: Bash(git status:*), Bash(git add:*), Bash(git diff:*), Bash(git commit:*), Bash(git checkout -b:*), Bash(git push -u origin:*), Bash(git push origin:*), Bash(git ls-files:*), Bash(git rev-parse:*), Bash(gh pr view:*), Bash(pnpm lint:*), Bash(npm run lint:*), Bash(yarn lint:*), Bash(bun lint:*), Bash(uv run python -m scripts.marketplace_ci:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan-staged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/unstage-flagged-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/lint-staged-python.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/stage-selected-files.sh:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/lint-commit-message.sh:*), AskUserQuestion, Read, Write, Skill(git-kit:create-pr)
 ---
 
 # Claude Command: Commit
@@ -187,6 +187,20 @@ CRITICAL: Perform the following steps exactly as described:
     here. Continue `commit`'s own flow only for the single commit currently staged (or whatever subset
     the user chooses to keep in this commit).
 13. Creates a commit message for the currently staged changes using conventional commit format (no emoji — see Best Practices). **Never spell out a bot's own review-trigger mention (e.g. `@codex review`, `@codex full review`, `@coderabbitai review`) literally in the subject or body — an ordinary `@username`/`@team` mention notifying a human collaborator is fine; see the "No literal bot-trigger mentions" Best Practice below for the distinction and why.** Include a body when the reason isn't obvious from the diff alone (recommended, not required — see Best Practices). **Before presenting the message in step 14, count the body's own line count against `commit_body_max_lines` (default 5) and cut it to that limit if over — this check applies regardless of how large or multi-part the underlying diff is, and regardless of how detailed a summary of the same change was already given in this conversation; a large multi-fix batch still gets a WHY-only body, never an itemized per-file changelog.** Include a footer trailer only when it applies: a `BREAKING CHANGE:` trailer when the subject uses `!`, a `Refs:`/`Closes:` trailer when the conversation named a specific issue this commit relates to or resolves, and a `Related-PR:` trailer when the conversation named a specific related PR. Don't ask the user for footer content on every commit — only include a trailer when there's a concrete breaking change, issue, or PR already in view (see Commit Message Footer below).
+13.5. **Lint the drafted message against the real commitlint config** (this repository only — no-op if
+   `.commitlintrc.cjs`/`.github/commitlint-tools/package.json` are missing — skipped under `--no-verify`,
+   same as step 7.5). `commit`'s checks above never measure per-line CHARACTER length in the body/footer
+   (only subject length and body line COUNT) — CI's `Validate commits and branch` job does
+   (`body-max-line-length`/`footer-max-line-length`, 100 chars, from `.commitlintrc.cjs`'s extended
+   `@commitlint/config-conventional` base). Run the real tool instead of a driftable approximation:
+   1. Write the exact drafted message to a file in the session's scratchpad directory (never the repo
+      root — per CLAUDE.md and `.claude/rules/require-gitignored-scratch-locations.md`).
+   2. Run `"${CLAUDE_PLUGIN_ROOT}/scripts/lint-commit-message.sh" <path-to-that-file>` (installs the
+      isolated toolchain CI's `commit-branch-guard.yml` uses, on first use if missing).
+   3. **Exit 0** → proceed to step 14. **Non-zero** → the script names the violated rule(s) in brackets
+      (e.g. `[body-max-line-length]`). Rewrap and re-run once for a simple long-line violation (the
+      realistic trigger — an unwrapped paragraph); otherwise, or if still failing, surface the rule and
+      ask via `AskUserQuestion` (mirroring step 7.5): revise, or commit anyway.
 14. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly. **Immediately before running `git commit`** (right after confirmation, or right before committing directly when confirmation is off), run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` — this writes the marker git-kit's commit-guard hook requires; it must be written right before the commit, not earlier in this run, since the hook only accepts a marker up to 60 seconds old.
 15. **Amend**: if `--amend` was given, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` immediately before running it, then use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
 **Steps 16 and 17's numbers below are cited externally** — `plugins/git-kit/skills/create-pr/SKILL.md` names them by number in its own Pre-flight Checks instructions to `commit`. If either step is ever renumbered, update `create-pr`'s citations in the same change.
@@ -317,6 +331,7 @@ pattern/examples, never as a separate source of truth):**
 - If no files are staged, you'll be asked what to stage — nothing is auto-staged unless `commit_auto_stage: true` is set (via `.claude/git-kit.local.json` or the git-tracked `git-kit.settings.json` defaults)
 - Staged files matching sensitive patterns (`.env`, `*secret*`, `*.key`, `*.pem`, `*password*`, `*token*`, SSH/cloud keys, `.npmrc`/`.pgpass`/`.netrc`) are flagged and unstaged automatically
 - In this repository, a staged `.py` file is auto-formatted and auto-fixed with `ruff format`/`ruff check --fix` (re-staged afterward) and type-checked with `ty check` (blocking, not auto-fixed) — unless `--no-verify` was given
+- In this repository, the drafted message is linted against the real commitlint config before you're asked to confirm (unless `--no-verify`) — a rewrap-fixable violation (e.g. an over-length body line) is corrected automatically, otherwise you're asked to revise or commit anyway
 - In this repository, staging a canonical `plugins/<name>/...` or registered `.claude/skills|agents/...`
   source runs the marketplace-CI sync/export CLI and stages only the resulting generated counterparts —
   never a hand-edit of `.claude`/`.agents`/`.codex`. This parity check always runs, even under
@@ -385,6 +400,15 @@ conversational, `AskUserQuestion`-driven skill with no other executable logic of
 - [ ] Step 16 always pushes with `git push origin HEAD` (`git push -u origin HEAD` when there's no
       upstream) — never a branch name typed or interpolated into the push command, including one
       freshly resolved via `git rev-parse` immediately beforehand
+- [ ] Step 13.5 fires before step 14's confirm ask (never lets the user approve a message already known
+      to fail CI), is a no-op without `.commitlintrc.cjs`/`.github/commitlint-tools/package.json`, and is
+      skipped under `--no-verify` (same as step 7.5)
+- [ ] `lint-commit-message.sh` is committed with the executable bit set (`100755`) — this repo's
+      `core.fileMode=false` default silently downgraded it to `100644` on first `git add` once (caught
+      here before commit; see `stage-selected-files.sh`'s own 2026-08-28 incident above)
+- [ ] A body/footer line over 100 characters is rewrapped and re-checked once; a non-wrapping rule (e.g.
+      `type-enum`, `subject-case`) surfaces the exact rule name and asks instead; the script's local
+      `.github/commitlint-tools/.commitlintrc.cjs` mirror stays gitignored, never an untracked file
 - [ ] Step 7.5's `lint-staged-python.sh` always positively confirms full-staging via `git status
       --porcelain` per staged `.py` path before auto-fixing it — a path that isn't confirmed fully
       staged always skips that file's auto-fix rather than risking a blanket `git add` pulling unstaged
@@ -449,6 +473,10 @@ staged correctly with no code execution; out-of-range/non-digit arguments correc
 - [ ] Live invocation: a real `commit` run against a deliberately drifted canonical file, confirming step 8
       actually repairs and stages the right subset in this repository (not yet exercised end-to-end;
       Task 12's rollout PR is the first real opportunity)
+
+**Step 13.5 (real-commitlint check) — verified live, 2026-09-10.** See
+`references/staging-fix-verification-log.md` for the full run narrative. Not yet exercised: a full live
+`commit` run reaching step 13.5 as part of its normal flow rather than a direct script invocation.
 
 **Step 13 (no literal bot-trigger mentions) — incident source, 2026-08-31, PR #257:** see the matching
 Best Practice above for the full incident narrative (a commit message/PR title spelling out the trigger
