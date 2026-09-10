@@ -137,12 +137,25 @@ For each component, produce a SWOT grounded in observed session behavior — not
 ```
 ### SWOT: <name>  (<category>)
 <!-- disposition: component:<name> assessed -->
+<!-- finding:start -->
 | Quadrant     | Observations |
 | Strengths    | … |
 | Weaknesses   | … |
 | Opportunities| … |
 | Threats      | … |
+
+Evidence origin: direct
+Coverage: complete
+Confidence: high
+Evidence source: this-conversation
+<!-- finding:end -->
 ```
+
+The SWOT itself is a substantive finding per `../../references/report-evidence-convention.md`'s own
+"What Counts as Substantive" section — wrap it in `<!-- finding:start -->`/`<!-- finding:end -->` with
+its own metadata block the same way Phase 5's suggestions are, below. One wrap per component's whole
+SWOT (not per quadrant) — matching the one-disposition-marker-per-component granularity already used
+above.
 
 **Every Phase 2 inventory entry must map to its own SWOT here, or to an explicit, stated exclusion
 justification** — e.g. "already SWOT'd in `<report>`, not re-derived to avoid duplicating that
@@ -225,8 +238,8 @@ Close with **Top 5 Actions**: the five highest-impact suggestions across all com
 
 **Coverage preamble and evidence metadata:** before writing the scratch file, prepend the Coverage
 Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
-origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to each substantive suggestion, per
-`../../references/report-evidence-convention.md`.
+origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to **each Phase 3 SWOT and each Phase 5 substantive suggestion** — both are substantive findings per
+`../../references/report-evidence-convention.md`, not suggestions alone.
 
 **Pre-persistence validation:** after writing the scratch file, run
 `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/validate_report.py" --skill analyzing-plugin-components --report <scratch-path>)`.

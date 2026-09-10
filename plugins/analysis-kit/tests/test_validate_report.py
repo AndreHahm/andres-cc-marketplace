@@ -113,6 +113,40 @@ def test_missing_coverage_preamble_fields_flagged():
     assert len(errors) == len(CONTRACTS["common"]["coverage_fields"])
 
 
+def test_blank_coverage_preamble_fields_flagged_as_missing_coverage():
+    text = (
+        "**Requested scope:**\n**Inspected scope:**\n**Unavailable evidence:**\n**Limitations:**\n"
+    )
+    errors = validate_report.check_common(text, CONTRACTS)
+    assert len(errors) == len(CONTRACTS["common"]["coverage_fields"])
+    assert all(e["code"] == "missing_coverage" for e in errors)
+    assert all("has no value" in e["message"] for e in errors)
+
+
+def test_coverage_field_mentioned_in_prose_is_not_mistaken_for_the_real_field():
+    # Codex/CodeRabbit finding: an unanchored substring search would treat a
+    # mid-sentence mention of the label as if it were the actual field.
+    text = "This report discusses Requested scope: informally, not as the real field.\n"
+    errors = validate_report.check_common(text, CONTRACTS)
+    requested = [e for e in errors if e["subject"] == "Requested scope:"]
+    assert requested and requested[0]["code"] == "missing_coverage"
+    assert "not found" in requested[0]["message"]
+
+
+def test_real_bold_markdown_preamble_still_passes():
+    text = (
+        "**Requested scope:** this-conversation\n**Inspected scope:** same\n"
+        "**Unavailable evidence:** none\n**Limitations:** none\n"
+    )
+    assert validate_report.check_common(text, CONTRACTS) == []
+
+
+def test_blank_next_step_line_flagged():
+    errors = validate_report.check_next_step("Next:\n", required=True)
+    assert [e["code"] for e in errors] == ["missing_next_step"]
+    assert "no content" in errors[0]["message"]
+
+
 def _finding_block(
     *, evidence_origin=True, coverage=True, confidence=True, evidence_source=True
 ) -> str:
@@ -133,6 +167,37 @@ def test_no_finding_blocks_at_all_flags_missing_evidence_metadata():
     errors = validate_report.check_evidence_metadata("no finding blocks here at all", required=True)
     assert [e["code"] for e in errors] == ["missing_evidence_metadata"]
     assert "finding:start" in errors[0]["message"]
+
+
+def test_unbalanced_finding_markers_flagged():
+    # CodeRabbit finding: a dangling <!-- finding:start --> with no matching
+    # end marker was previously invisible to FINDING_BLOCK_RE.findall().
+    text = _finding_block() + "\n\n<!-- finding:start -->\nno end marker here\n"
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert [e["code"] for e in errors] == ["malformed_finding_marker"]
+    assert "2" in errors[0]["message"] and "1" in errors[0]["message"]
+
+
+def test_metadata_written_outside_any_block_flagged_as_unwrapped():
+    # Codex finding: a second finding whose metadata was written but never
+    # wrapped in finding:start/end markers was previously invisible.
+    text = (
+        _finding_block()
+        + "\n\n[S02] a second finding\n"
+        + "Evidence origin: inferred\nCoverage: partial\nConfidence: low\n"
+        + "Evidence source: y\n"
+    )
+    errors = validate_report.check_evidence_metadata(text, required=True)
+    assert [e["code"] for e in errors] == ["unwrapped_evidence_metadata"]
+
+
+def test_unwrapped_finding_with_no_metadata_attempt_is_a_documented_residual_gap():
+    # A finding with no markers AND no metadata attempt at all cannot be
+    # mechanically distinguished from ordinary prose without understanding
+    # each skill's own finding format -- documented as a structural-only
+    # limitation, not a bug. This test pins the current (accepted) behavior.
+    text = _finding_block() + "\n\n[S02] a completely unwrapped finding with no markers at all\n"
+    assert validate_report.check_evidence_metadata(text, required=True) == []
 
 
 def test_finding_block_missing_some_labels_flags_only_those():
