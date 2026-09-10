@@ -49,6 +49,17 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    no thread-resolution field (only GraphQL's `reviewThreads.isResolved` exposes it, live-verified via
    `gh pr view --help`), and this skill holds no `gh api graphql` grant. Unresolved-thread state comes
    only from `handling-review-findings`'s own report at step 2 below, never re-derived here.
+1.5. **Resolve intent before deciding whether step 2 runs at all.** A request to *summarize the PR's
+   current review status to Linear* is not the same as a request to *triage/fix/reply-to/resolve* its
+   findings — the former needs only what step 1 already read; the latter needs step 2's delegation.
+   `handling-review-findings` is a mutation-capable workflow (it can fix code, push commits, reply to
+   and resolve GitHub threads) — invoking it for a pure status-summary request would run mutating
+   machinery nobody asked for, just to obtain a read. If the request is a pure summarize/reflect ask
+   with no triage/fix/reply/resolve intent, skip step 2 and go straight to step 3, reflecting step 1's
+   own read: report unresolved-thread state as **not independently knowable this skill's own way**
+   (this skill has no `gh api graphql` grant, per step 1) rather than silently omitting it or
+   delegating just to fill the gap. If the request explicitly asks to triage, fix, reply to, or resolve
+   findings — or if the user, once shown that gap, asks for it — proceed to step 2 as below.
 2. **Delegate triage and fix:** invoke `Skill(git-kit:handling-review-findings)` for the actual
    finding classification, fix/file/decline decision, fix application (via its own `git-kit:commit`
    delegation), and reply/resolve mechanics. This skill never performs any of that itself — no raw
@@ -56,15 +67,18 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    `handling-review-findings` already triaged. `handling-review-findings` holds its own
    `gh api graphql` grant and reports fixed/filed/declined/left-unresolved per finding at the end of
    its own run — this is this skill's sole source of truth for thread-resolution state.
-3. **Re-read GitHub's resulting checks/reviews state** after the delegated round completes (via
-   `gh pr view`/`gh pr checks`) — never assume the triage outcome without confirming it against
-   GitHub's actual current state for everything this skill *can* read. Unresolved-thread state stays
-   whatever `handling-review-findings`'s own step-2 report said; re-confirming it would require
-   dispatching that skill again, not a capability this skill has on its own.
-4. **Reflect only meaningful blockers to Linear** — a deliberate, concise summary via
-   `linear-work-management` of what `handling-review-findings` actually did (fixed / filed / declined
-   per finding), never a copy of the raw check/review output and never a re-statement of its own
-   triage judgment.
+3. **Re-read GitHub's resulting checks/reviews state, only when step 2 ran** (via `gh pr view`/
+   `gh pr checks`) — never assume the triage outcome without confirming it against GitHub's actual
+   current state for everything this skill *can* read. Unresolved-thread state stays whatever
+   `handling-review-findings`'s own step-2 report said; re-confirming it would require dispatching that
+   skill again, not a capability this skill has on its own. **When step 1.5 skipped step 2**, step 1's
+   own read is already current (re-read it if meaningful time has passed since) — there is no
+   delegated-round outcome to re-confirm here.
+4. **Reflect only meaningful blockers to Linear** — a deliberate, concise summary of whichever applies:
+   what `handling-review-findings` actually did (fixed / filed / declined per finding), when step 2
+   ran; or step 1's own read plus the disclosed unresolved-thread-state gap, when step 1.5 skipped it —
+   via `linear-work-management` either way, never a copy of the raw check/review output and never a
+   re-statement of its own triage judgment.
 
 ### Marking ready
 
@@ -156,6 +170,9 @@ See Testing & Validation below for the concrete trigger phrases this section sum
       summary.
 - [ ] Never triages a finding, applies a fix, or replies to/resolves a thread itself — always
       delegates that whole cycle to `git-kit:handling-review-findings`.
+- [ ] A pure status-summary request never triggers step 2's `handling-review-findings` delegation —
+      step 1.5 routes it straight to reflecting step 1's own read, disclosing the unresolved-thread-
+      state gap rather than delegating to a mutation-capable workflow just to fill it.
 - [ ] The ready-state action is always a structured handoff (`AskUserQuestion`, asking the user to
       run `gh pr ready` themselves) — never a raw `gh pr` command invoked by this skill, and never
       silently assumed to be `collaborating-on-a-pr`'s or `create-pr`'s job without that assumption
