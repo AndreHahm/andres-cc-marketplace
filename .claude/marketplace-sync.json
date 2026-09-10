@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "plugin_mirrors": ["plugin-devkit", "git-kit", "analysis-kit", "codex-kit", "workmanagement-kit"],
+  "plugin_mirrors": ["plugin-devkit", "git-kit", "analysis-kit", "codex-kit", "workmanagement-kit", "session-kit"],
   "codex_exports": {
     "skills": ["plugin-marketplace-review"],
     "agents": [
