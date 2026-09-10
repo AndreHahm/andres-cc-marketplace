@@ -13,9 +13,11 @@
 
 ### SWOT: commit (Skill)
 <!-- disposition: component:commit assessed -->
+<!-- finding:start -->
 Evidence origin: direct
 Coverage: complete
 Confidence: high
-Source: this-conversation
+Evidence source: this-conversation
+<!-- finding:end -->
 
 📄 Session Analysis Report written: `.claude/output/analyzing-plugin-components/this-conversation-2026-09-10T00-00-00Z.md`

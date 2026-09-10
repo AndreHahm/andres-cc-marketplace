@@ -204,7 +204,7 @@ finding surfaced in Phase 2.
 
 **Coverage preamble and evidence metadata:** before writing the scratch file, prepend the Coverage
 Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) and attach the Evidence
-origin/Coverage/Confidence/Source metadata block to each candidate learning, per
+origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to each candidate learning, per
 `../../references/report-evidence-convention.md` — a candidate with `session-transcript: unavailable`
 should generally carry `Coverage: partial`, since only GitHub review history (not the fix transcript)
 backs it.
@@ -316,7 +316,7 @@ After Phase 4, verify before presenting output as final:
 - [ ] Every excluded one-off finding states its exclusion reasoning inline, never silently dropped
 - [ ] The report was persisted to `.claude/output/mining-review-learnings/` and its path confirmed with
       the standard `📄 ... written:` line
-- [ ] The scratch draft carries the Coverage Preamble and each candidate learning carries its Evidence origin/Coverage/Confidence/Source metadata, per `report-evidence-convention.md`
+- [ ] The scratch draft carries the Coverage Preamble and each candidate learning carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final
       write — never written directly from the scratch draft
 - [ ] The `managing-review-learnings` next-step line printed only when at least one candidate exists;

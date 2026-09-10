@@ -14,11 +14,13 @@
 
 ### Assessment: skill-reviewer
 <!-- disposition: actor:skill-reviewer assessed -->
+<!-- finding:start -->
 Findings here.
 
 Evidence origin: direct
 Coverage: complete
 Confidence: high
-Source: this-conversation
+Evidence source: this-conversation
+<!-- finding:end -->
 
 Next: run `generating-analysis-recommendations` on this report to expand its findings into a WHAT/WHY/HOW action plan.
