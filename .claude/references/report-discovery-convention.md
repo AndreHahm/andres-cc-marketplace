@@ -2,6 +2,15 @@
 
 Canonical definitions for two facts every report-producing skill and `starting-an-analysis` restate inline: the `<scope-slug>` convention and the report-discovery glob. This file is the source of truth for both — if either changes, sweep every site listed below (R20-style) rather than editing one copy and leaving the rest stale.
 
+**This file, and every other file under `plugins/analysis-kit/references/`, also has a manually-maintained
+mirror under `.claude/references/` — copy any edit there too.** `scripts/marketplace_ci`'s
+`sync-plugin-mirrors` only auto-mirrors `skills/`, `agents/`, `commands/`, `hooks/`, and `rules/`
+(`COMPONENT_DIRS` in `scripts/marketplace_ci/sync.py`) — a plugin-root `references/` directory is
+structurally outside its scope and is never auto-synced. This bit twice in the same PR
+(`report-evidence-convention.md` shipped with no `.claude/` counterpart at all on the first pass, then
+drifted out of sync again on a follow-up edit) before being caught by cross-model review both times —
+don't rely on a reviewer to catch a third recurrence; copy the file yourself in the same edit.
+
 ## `<scope-slug>`
 
 A short kebab-case description of the scope a report covers, used as the filename prefix: `.claude/output/<skill-name>/<scope-slug>-<timestamp>.md`.
@@ -9,7 +18,7 @@ A short kebab-case description of the scope a report covers, used as the filenam
 - **Date-range skills** (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`): derive from the scope argument — `this-conversation`, `today`, or `<start-date>-to-today` (e.g. `2026-07-10-to-today`).
 - **`comparing-sessions`**: derive from the two things being compared, e.g. `<current-scope>-vs-<prior-report-slug>`. `<current-scope>` must never itself contain the literal substring `-vs-` — `starting-an-analysis` Phase 4 parses this compound apart by splitting on the first `-vs-`, so a `<current-scope>` value that already contains it (e.g. inherited from an earlier compound-slugged report) would split wrong; fall back to `this-conversation` in that case.
 - **`comparing-session-to-specification`**: derive from the spec document's own filename, e.g. `<spec-basename>-compliance`.
-- **`reviewing-analysis-findings`**: derive from the reports being cross-checked, e.g. `<skill-a>-and-<skill-b>-<date>`.
+- **`reviewing-analysis-findings`**: for an explicit-list or `"latest N"` run, derive from the reports being cross-checked, e.g. `<skill-a>-and-<skill-b>-<date>`; for a `scope <scope-slug>` run, use the exact input scope-slug unchanged — this is what Phase 1's resolution and Phase 4's supersession check both search for, so persisting under a different, report-comparison-derived slug would make the run's own output unfindable by a later scope run.
 - **`generating-analysis-recommendations`**: derive from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report.
 - **`running-a-full-retrospective`**: reuses whichever `<scope-slug>` its own dispatched date-range analyses used for that run (the shared scope confirmed once in Phase 1) — no independent derivation of its own.
 - **`mining-review-learnings`**: not a `<scope-slug>` in this file's sense at all — its own persisted-filename prefix takes one of 3 forms depending on input mode: `<pr-a>-to-<pr-b>` for a since-last-cited run (e.g. `pr-92-to-172`), `merged-<start>-to-<end>` for a merge-date range (e.g. `merged-2026-08-14-to-2026-08-20`), or `pr-<a>-<b>` for an explicit PR list (e.g. `pr-47-51`) — none of them a session/date-range scope identity.
