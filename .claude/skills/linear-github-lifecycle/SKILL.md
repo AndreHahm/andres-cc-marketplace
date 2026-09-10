@@ -52,7 +52,7 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 |---|---|---|
 | Prepare + Start | `work-to-development` | Verified branch/worktree, `work-started` evidence, Linear Started |
 | Implement / control scope | Not delegated — ordinary repository work in the active worktree, under the user's own instructions; this skill only tracks that it happened, and requires `AskUserQuestion` confirmation before any material Linear correction | In-scope changes ready to commit |
-| Commit + gates + Publish | `development-to-pr` | `commit-linked`, `ci-gates-passed`, `pr-published` evidence; draft PR |
+| Commit + gates + Publish | `development-to-pr` | `commit-linked` evidence; `pr-published` evidence carrying the observed gate result (`pass`/`pending`/`fail`/`bypassed`) in its own `gates[]` array; draft PR |
 | Review/fix + Ready | `pr-to-linear` | Deliberate blocker summaries, `pr-ready` evidence |
 | Merge + Linear disposition + cleanup | `merge-to-completion` | `pr-merged` evidence, verified Linear disposition, cleanup via `git-kit:finishing-work` |
 | Deliberate Notion learning | `status-and-learning` | Dated outcome/learning record in Notion |
