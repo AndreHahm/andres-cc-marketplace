@@ -179,16 +179,26 @@ verification record. The checklist below documents that direct-verification surf
   `SessionStart` restore hook fires on the following turn.
 
 **Verify this skill's hooks do NOT fire a false positive on:**
-- A failing test or failing build command — `compact-milestone-detector.sh` gates `test_pass`/
-  `build` milestone detection on `tool_response.success` being `true`; a failing command must not
-  produce a "milestone reached" suggestion.
 - A `Stop` event where `stop_hook_active` is already `true` — must exit cleanly, never re-block.
+- A Bash command containing an unrelated word that happens to substring-match a milestone-detection
+  pattern (e.g. `majestic`, `cmake build`) — `compact-milestone-detector.sh`'s test/build/deploy
+  patterns are word-boundary-anchored (`\b...\b`) specifically so these don't produce a false
+  milestone suggestion.
+
+**Note on test/build milestone detection:** `compact-milestone-detector.sh` is wired to `PostToolUse`
+only (not `PostToolUseFailure`) — this event fires only after a tool call completes successfully, so a
+failing Bash test/build command never reaches this hook at all, and `test_pass`/`build` milestone
+detection needs no separate success check of its own. An earlier version gated these two milestone
+types on `.tool_response.success`, a field that doesn't exist on a real Bash `PostToolUse` payload —
+that check was always false in practice, silently disabling both milestone types entirely; it was
+removed rather than fixed to check a real field, since `PostToolUse` already guarantees success.
 
 **Pass criteria:**
 - [ ] A session with 50+ tool calls produces exactly one threshold suggestion per configured
       threshold (`T1`/`T2`/`T3`), not a repeated suggestion on every call past the threshold.
-- [ ] A `pytest`/`npm test`/etc. command with `tool_response.success: false` produces no
-      "Tests passed" suggestion.
+- [ ] A successful `pytest`/`npm test`/etc. command produces a `test_pass` milestone suggestion (once
+      per 5-minute window); a successful `npm run build`/`cargo build`/etc. command produces a `build`
+      milestone suggestion the same way.
 - [ ] A compaction event followed by a `SessionStart` with `source=compact` restores the
       previously-captured plan state (when `CONTEXT_KIT_PLANS_DIR` is configured) via
       `additionalContext`, with no crash if no state was ever captured.
