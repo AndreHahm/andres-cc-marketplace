@@ -166,23 +166,23 @@ jobs:
         # registry-redirection gap --ignore-scripts alone can't.
         run: pnpm --dir .github/commitlint-tools install --frozen-lockfile --ignore-scripts
 
-      - name: Fetch default branch
-        # Only the workflow_dispatch/repository_dispatch path below needs
-        # origin/$DEFAULT_BRANCH (for its `git merge-base` call) -- the
-        # pull_request path already has it fully present, un-shallowed,
-        # from the earlier fetch-depth: 0 checkout, and uses base.sha/
-        # head.sha directly. Running this step on pull_request events
-        # re-shallows an already-fully-fetched $DEFAULT_BRANCH tip: a
-        # `--depth=1` fetch of a ref that's already fully present still
-        # writes that ref's tip into .git/shallow, making git treat it as
-        # having zero parents for range-exclusion purposes -- which broke
-        # `commitlint --from base.sha --to head.sha` into walking almost
-        # the entire repo history instead of just the PR's own commits.
-        if: github.event_name != 'pull_request'
-        env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          git fetch origin $DEFAULT_BRANCH --depth=1
+      # No "Fetch default branch" step here. It used to run an unconditional
+      # `git fetch origin $DEFAULT_BRANCH --depth=1` before "Run commitlint"
+      # below -- but the earlier "Checkout" step already does fetch-depth: 0
+      # (full history, all branches and tags) for every event type, so
+      # origin/$DEFAULT_BRANCH's complete ancestry is already present before
+      # this point regardless of trigger. Re-fetching it with --depth=1 was
+      # not just redundant: a `--depth=1` fetch of a ref that's already
+      # fully present still writes that ref's tip into .git/shallow, making
+      # git treat it as having zero parents for ancestry-walk purposes
+      # (range exclusion, and equally `git merge-base`) regardless of what's
+      # actually in the object database. For pull_request events this broke
+      # `commitlint --from base.sha --to head.sha` into walking almost the
+      # entire repo history instead of just the PR's own commits; for
+      # workflow_dispatch/repository_dispatch it could equally have
+      # corrupted the `git merge-base origin/$DEFAULT_BRANCH "$TARGET_REF"`
+      # call below whenever $TARGET_REF diverged from an older commit than
+      # $DEFAULT_BRANCH's current tip. Removing the step avoids both.
 
       - name: Restore commitlint config into the isolated toolchain (trust boundary)
         # Written to .github/commitlint-tools/.commitlintrc.cjs, NOT the
