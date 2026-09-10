@@ -19,6 +19,25 @@
 # here since a false-positive-plagued required check blocking every PR
 # that adds a new smoke-test scenario is a worse practical outcome than
 # losing that one narrow directory's own secret-scan coverage.
+# plugins/*/tests/** is every plugin's own pytest suite. Bandit's B101 ("Use of
+# assert detected...") fires on every bare `assert` statement, which is the
+# actual test mechanism pytest relies on -- these files are never run under
+# `python -O` (the only condition B101 warns about), so the rule is a
+# structural false positive here, not a real finding, for every test file in
+# every plugin, not just one. Verified directly on analysis-kit's two newest
+# test files (PR #302): Codacy reported "92 new security issues"; a local
+# `bandit -r` run against the exact same two files reproduced 60 findings,
+# all B101, 0 of any other rule -- the 92 count is the same 60 real
+# assert-statements with roughly half double-reported by Codacy's own
+# aggregation, not 92 distinct issues. Same whole-path/whole-engine tradeoff
+# as the smoke-tests exclusion below: this also silences secret-detection
+# (gitleaks-style) coverage inside tests/**, accepted here for the same
+# reason -- a false-positive-plagued required check blocking every PR that
+# adds a test function is a worse practical outcome than losing that
+# directory's own secret-scan coverage. Test fixtures that intentionally
+# embed a secret-shaped string (e.g. to exercise redaction logic) should
+# still use an obviously-synthetic placeholder, the same discipline already
+# expected repo-wide -- this exclusion is not a reason to relax that.
 #
 # .claude/skills|agents|commands|hooks|rules/** are this repo's own generated mirror
 # tree -- byte-identical copies of the canonical plugins/*/... source, kept in sync by
@@ -35,6 +54,7 @@
 # for the mirror tree, accepted since the canonical source is never itself excluded.
 exclude_paths:
   - "plugins/codex-kit/scripts/smoke-tests/**"
+  - "plugins/*/tests/**"
   - ".claude/skills/**"
   - ".claude/agents/**"
   - ".claude/commands/**"
