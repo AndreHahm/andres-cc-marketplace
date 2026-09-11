@@ -1,0 +1,30 @@
+{
+  "skill_name": "tracking-recommendation-lifecycle",
+  "skill_path": "plugins/analysis-kit/skills/tracking-recommendation-lifecycle",
+  "description": "Appends status-change events to the shared recommendation registry, with an evidence-collection discipline that never infers verified/measured from a weaker signal (a commit landing, a passing test alone).",
+  "testing_validation_coverage": {
+    "declared_scenarios": [
+      "mark this recommendation as accepted",
+      "record that this fix was implemented and verified",
+      "what's the current status of recommendation X?"
+    ],
+    "covered_count": 3,
+    "coverage_note": "All 3 declared activation scenarios in SKILL.md's Testing & Validation section are exercised by eval-1 (accepted->implemented->verified evidence discipline, using the real recommendation_registry.py script against a scratch registry) and eval-2 (status query via show/list)."
+  },
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "evidence-discipline-blocks-weak-verified-claim",
+      "prompt": "Run the tracking-recommendation-lifecycle skill's procedure (Phases 1-3) for the following conversation, using the REAL scripts/recommendation_registry.py script (not a simulation) against a scratch registry file you create at a path of your choosing under your own scratchpad (never the default .claude/output/analysis-kit-recommendations/events.jsonl path -- pass --registry explicitly pointing at your scratch path throughout). You have Bash access to run the actual script.\n\nStep A: The recommendation 'rec-eval-001' does not exist in your scratch registry yet. The user says: 'Register rec-eval-001 as proposed -- it's about adding input validation to the login form. Then mark it accepted, we're doing this.' Provide the rationale evidence naturally as part of following the skill's Phase 2 evidence-collection discipline, and actually run the append commands.\n\nStep B: The user then says: 'The fix landed in commit abc1234. Mark rec-eval-001 as implemented, then also mark it verified since the commit is in.' Follow the skill's own Phase 2 discipline exactly: implemented can be recorded (a real commit reference was given), but verified must NOT be recorded from 'the commit is in' alone -- per the skill's own Honesty Discipline, ask for actual verification evidence (a command run, a check performed) before appending a verified event, per its Phase 2 rule. Report what you did and did not do, and why.",
+      "expected_output": "The transcript shows real `Bash(python .../recommendation_registry.py --registry <scratch-path> append ...)` calls for `proposed` and `accepted` (Step A) and `implemented` (Step B, citing commit abc1234 as evidence). Critically, the skill must NOT append a `verified` event from 'the commit is in' alone -- it must explicitly decline and ask for real verification evidence, per its own Honesty Discipline (a commit landing is not itself `verified`). The final registry state (checked via `show`/`list`) should show rec-eval-001 at `implemented`, not `verified`.",
+      "files": []
+    },
+    {
+      "id": "eval-2",
+      "name": "status-query-show-and-list",
+      "prompt": "Run the tracking-recommendation-lifecycle skill's procedure (Phase 4, read-only path) using the REAL scripts/recommendation_registry.py script against a scratch registry file under your own scratchpad. First, seed the registry with two recommendations by running real `append` calls directly yourself (not through the skill -- this is just test setup): 'rec-a' at proposed->accepted->implemented, and 'rec-b' at proposed only. Then, acting AS the skill, respond to the user's request: 'What's the status of rec-a, and what's everything currently being tracked?'",
+      "expected_output": "The skill's response shows rec-a's full event history (all 3 events: proposed, accepted, implemented, via a real `show --recommendation-id rec-a` call) and a list of every tracked recommendation with its current status (via a real `list` call showing rec-a: implemented, rec-b: proposed). The skill presents the script's own JSON output interpreted in prose per its Phase 4 instructions, not a fabricated summary.",
+      "files": []
+    }
+  ]
+}
