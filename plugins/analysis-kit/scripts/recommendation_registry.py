@@ -28,6 +28,7 @@ import json
 import os
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -129,12 +130,20 @@ def read_events_locked(registry_path: Path, *, lock_timeout: float = 10.0) -> li
     write in progress -- relevant if the underlying filesystem doesn't guarantee a
     writer's single write() call is atomic (true for typical local POSIX/NTFS appends,
     not guaranteed on every network filesystem)."""
+    if not registry_path.parent.exists():
+        # No parent directory means no registry and no lock file either -- the same
+        # "missing registry is a valid, empty starting state" contract read_events()
+        # already documents, checked here too since acquire_lock()'s own
+        # os.open(O_CREAT|O_EXCL) only catches FileExistsError, not the FileNotFoundError
+        # it raises against a nonexistent parent directory -- without this check, the
+        # very first show/list/validate against a not-yet-initialized registry crashes.
+        return []
     lock_path = registry_path.with_name(registry_path.name + ".lock")
-    acquire_lock(lock_path, timeout=lock_timeout)
+    token = acquire_lock(lock_path, timeout=lock_timeout)
     try:
         return read_events(registry_path)
     finally:
-        release_lock(lock_path)
+        release_lock(lock_path, token)
 
 
 def latest_status(events: list[dict], recommendation_id: str) -> str | None:
@@ -147,24 +156,54 @@ def latest_status(events: list[dict], recommendation_id: str) -> str | None:
     return status
 
 
-def acquire_lock(lock_path: Path, timeout: float = 10.0, poll: float = 0.05) -> None:
+def _read_lock_token(lock_path: Path) -> str | None:
+    try:
+        return lock_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+def _unlink_lock_if_token_matches(lock_path: Path, expected_token: str | None) -> None:
+    """Unlinks lock_path only if its current content still matches expected_token.
+    Guards both release_lock() and the stale-lock breaker below against deleting a lock
+    file some other process has since broken-and-replaced or freshly acquired -- without
+    this check, a blind unlink() can delete another writer's active lock out from under
+    it, breaking the mutual-exclusion guarantee the lock exists to provide."""
+    if expected_token is None:
+        return
+    if _read_lock_token(lock_path) == expected_token:
+        lock_path.unlink(missing_ok=True)
+
+
+def acquire_lock(lock_path: Path, timeout: float = 10.0, poll: float = 0.05) -> str:
     """Acquires the companion lock file via exclusive create, retrying until timeout.
     Raises TimeoutError rather than returning False -- a writer that can't get the lock
     must fail loudly, per AKR-019, never silently skip the append it was asked to make.
     A lock older than LOCK_STALE_SECONDS is treated as orphaned (its writer crashed
     before reaching the release in append_event's `finally`) and broken automatically --
     without this, one crashed writer would deadlock every future writer permanently, with
-    no recovery path short of a human finding and deleting the lock file by hand."""
+    no recovery path short of a human finding and deleting the lock file by hand.
+
+    Returns a unique per-acquisition token written into the lock file's own content.
+    Callers must pass this same token to release_lock() -- both the stale-lock breaker
+    above and release_lock() itself verify a lock's current content still matches the
+    token they're about to remove before unlinking it, so a writer that held the lock
+    past LOCK_STALE_SECONDS while still genuinely alive (not crashed -- e.g. a stalled
+    filesystem write or an OS-scheduler suspension) can no longer delete a second
+    writer's newly-acquired lock out from under it once its own delayed release finally
+    runs; the token comparison detects the lock was already stolen and skips the unlink."""
+    token = f"{os.getpid()}:{uuid.uuid4().hex}"
     start = time.monotonic()
     while True:
         try:
             fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, token.encode("utf-8"))
             os.close(fd)
-            return
+            return token
         except FileExistsError as exc:
             try:
                 if time.time() - lock_path.stat().st_mtime > LOCK_STALE_SECONDS:
-                    lock_path.unlink(missing_ok=True)
+                    _unlink_lock_if_token_matches(lock_path, _read_lock_token(lock_path))
                     continue
             except OSError:
                 pass  # lock vanished between the failed open and this stat -- benign, just retry
@@ -178,8 +217,8 @@ def acquire_lock(lock_path: Path, timeout: float = 10.0, poll: float = 0.05) -> 
             time.sleep(poll)
 
 
-def release_lock(lock_path: Path) -> None:
-    lock_path.unlink(missing_ok=True)
+def release_lock(lock_path: Path, token: str) -> None:
+    _unlink_lock_if_token_matches(lock_path, token)
 
 
 def append_event(registry_path: Path, event: dict, *, lock_timeout: float = 10.0) -> None:
@@ -198,7 +237,7 @@ def append_event(registry_path: Path, event: dict, *, lock_timeout: float = 10.0
     registry_path.parent.mkdir(parents=True, exist_ok=True)
 
     lock_path = registry_path.with_name(registry_path.name + ".lock")
-    acquire_lock(lock_path, timeout=lock_timeout)
+    token = acquire_lock(lock_path, timeout=lock_timeout)
     try:
         existing = read_events(registry_path)
         current = latest_status(existing, event["recommendation_id"])
@@ -210,7 +249,7 @@ def append_event(registry_path: Path, event: dict, *, lock_timeout: float = 10.0
         with registry_path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(line)  # single buffered write() call -- append-only, no rewrite.
     finally:
-        release_lock(lock_path)
+        release_lock(lock_path, token)
 
 
 def list_recommendations(events: list[dict]) -> list[dict]:
