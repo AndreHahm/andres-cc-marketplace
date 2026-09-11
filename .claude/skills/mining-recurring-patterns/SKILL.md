@@ -126,6 +126,18 @@ categories, per
 
 ## Testing & Validation
 
+**Verify this skill activates on:**
+- "find repeated command sequences a script or skill could automate"
+- "was the same clarifying question asked more than once this session?"
+- "review where subagent dispatch tokens/time actually went"
+
+**Verify it does NOT activate on:**
+- "give me a full whole-session token/time cost breakdown" -> not this skill (subagent-observable usage
+  only, never a whole-session total)
+- "is this recurring failure an unresolved rule violation or governance issue" ->
+  `analyzing-governance-and-conflicts`
+- "judge failure/recovery quality or latency/cost proportionality" -> `analyzing-session-operations`
+
 After Phase 5, verify before presenting output as final:
 
 - [ ] The action-token list was actually written to a file and mined via the script, not eyeballed

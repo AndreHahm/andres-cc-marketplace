@@ -112,6 +112,17 @@ origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- find
 
 ## Testing & Validation
 
+**Verify this skill activates on:**
+- "which external tools/MCP servers did this session actually invoke, not just mention?"
+- "which developer framework does this project use?"
+- "did the GSD execution companion stay within its subordinate role under GG-SAD?"
+
+**Verify it does NOT activate on:**
+- "per-component retrospective SWOT on a skill/agent/rule" -> `analyzing-plugin-components`
+- "was the subagent dispatch choice appropriate, how did the agent perform" -> `analyzing-actor-behavior`
+- "is this a real security/privacy trust-boundary violation, not just a role-conformance check" ->
+  `analyzing-security-and-privacy`
+
 After Phase 5, verify these gates before presenting output as final:
 
 - [ ] Framework detection (Phase 2) always runs before the tool inventory (Phase 3), even when scope is "this conversation"

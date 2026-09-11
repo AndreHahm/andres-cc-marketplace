@@ -87,6 +87,17 @@ per `../../references/report-evidence-convention.md`.
 
 ## Testing & Validation
 
+**Verify this skill activates on:**
+- "did this session's decisions comply with our stated specification/architecture document?"
+- "audit this session against our project constitution or brief for scope/non-goal violations"
+- "build compliance evidence that this change actually followed the approved spec"
+
+**Verify it does NOT activate on:**
+- "compare two sessions to each other" -> `comparing-sessions`
+- "just a quick spec-vs-code contradiction as one item in a general retrospective" ->
+  `analyzing-governance-and-conflicts`
+- "did the session achieve the user's actual goal or acceptance criteria" -> `analyzing-session-outcomes`
+
 After Phase 4, verify before presenting output as final:
 
 - [ ] Every section of the specification document got an explicit classification (Compliant/Violated/Unaddressed/Ambiguous/Extra implementation), none skipped
