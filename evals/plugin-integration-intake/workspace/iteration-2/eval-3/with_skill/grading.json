@@ -1,0 +1,27 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output recognizes the suggested_mapping as ambiguous and does not guess or infer a specific Notion database/page or Linear entity on its own",
+      "passed": true,
+      "evidence": "'Result: FAIL — Ambiguous target ... I will not silently default this to \"Reports\" just because the content looks report-shaped, and I will not treat \"not sure if this belongs in Reports or Notes\" as permission to guess between the two.'"
+    },
+    {
+      "text": "Output either goes straight to a structured handoff, or asks via AskUserQuestion whether to request independent classification before falling back to one",
+      "passed": true,
+      "evidence": "Simulates an AskUserQuestion ('Would you like independent classification attempted before falling back to a structured handoff?') and, with no live answer available, produces the structured handoff JSON with reason 'ambiguous_target'."
+    },
+    {
+      "text": "If a classifier dispatch is described, it is attributed to the work-intake-classifier persona reached via the Codex Bridge-Caller Dispatch procedure in plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md (a Bash(bridge_caller.py) call), not a native Agent()/Skill() call directly",
+      "passed": true,
+      "evidence": "'Yes — dispatch work-intake-classifier for a read-only classification pass (via ${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py, per FOUNDATION_CONTRACTS.md's Codex Bridge-Caller Dispatch procedure).' -- correctly routes through the Bash-scoped bridge caller, not a direct Agent()/Skill() call."
+    },
+    {
+      "text": "Output never presents a preview with a confirmed target scope for this ambiguous payload",
+      "passed": true,
+      "evidence": "'Steps not reached, and why -- Step 3 (preview target record): not reached — there is no resolved single target to preview yet; previewing against a guessed database would be exactly the \"inferred pick\" Step 2 prohibits.'"
+    }
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

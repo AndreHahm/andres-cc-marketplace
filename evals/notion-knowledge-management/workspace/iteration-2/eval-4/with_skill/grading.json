@@ -1,0 +1,11 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output identifies this as a Decision record with decision-state 'proposed', not 'accepted'", "passed": true, "evidence": "'decision-state | proposed (default per the Decision State Machine) — open question above: user may want accepted instead'."},
+    {"text": "Output states live approval via AskUserQuestion is required before writing", "passed": true, "evidence": "'Present the finished record ... via AskUserQuestion for live approval — required unconditionally for creating any Decision record, no exception for how low-risk it looks.' No write is described as executed; only a preview was built."},
+    {"text": "Output does NOT invoke or describe invoking the classification-help path (work-intake-classifier) for this clear, unambiguous single-item capture", "passed": true, "evidence": "'I did not dispatch work-intake-classifier for independent classification help — this capture is small and unambiguous (a single, clearly-scoped Decision), not the \"large or unclear capture\" case that section gates on.'"},
+    {"text": "Output does NOT describe writing a bridge evidence file or invoking bridge_caller.py for this capture", "passed": true, "evidence": "No mention of .temp/workmanagement-kit-bridge/ or bridge_caller.py anywhere in the response — consistent with correctly not treating this as needing the classification-help procedure."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

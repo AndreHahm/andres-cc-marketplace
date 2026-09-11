@@ -16,6 +16,13 @@
       "prompt": "Another plugin's workflow (source_plugin: totally-made-up-plugin, source_skill: some-skill) submits: {\"content\": {\"title\": \"Test\", \"body\": \"Test content\"}, \"target_system\": \"notion\", \"suggested_mapping\": {\"notion_database\": \"Reports\", \"rationale\": \"test\"}}. Process this submission.",
       "expected_output": "Rejects this as unknown source (and independently as malformed content, since a Report requires summary too) before ever building a preview, and returns a structured handoff rather than guessing.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Ambiguous target — no confident classifier pick",
+      "prompt": "Another plugin's workflow (source_plugin: analysis-kit, source_skill: running-a-full-retrospective) submits: {\"content\": {\"title\": \"Retrospective Notes\", \"summary\": \"Loose notes, not yet categorized.\", \"body\": \"Assorted findings.\"}, \"target_system\": \"notion\", \"suggested_mapping\": {\"notion_database\": null, \"rationale\": \"not sure if this belongs in Reports or Notes\"}}. Process this submission.",
+      "expected_output": "Recognizes the target as ambiguous (no clear single Notion database/page), never infers or picks one itself. Either returns a structured handoff directly, or asks via AskUserQuestion whether to request independent classification first -- and if it describes a classifier dispatch, attributes it to work-intake-classifier reached through plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md's Codex Bridge-Caller Dispatch procedure (a scoped Bash(bridge_caller.py) call), not a direct Agent()/Skill() call. Never presents a preview with a confirmed target scope for this payload.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

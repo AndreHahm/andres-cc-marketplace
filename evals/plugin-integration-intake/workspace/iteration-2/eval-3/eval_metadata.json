@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {"text": "Output recognizes the suggested_mapping as ambiguous and does not guess or infer a specific Notion database/page or Linear entity on its own", "type": "functionality", "target": "outputs/"},
+    {"text": "Output either goes straight to a structured handoff, or asks via AskUserQuestion whether to request independent classification before falling back to one", "type": "functionality", "target": "outputs/"},
+    {"text": "If a classifier dispatch is described, it is attributed to the work-intake-classifier persona reached via the Codex Bridge-Caller Dispatch procedure in plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md (a Bash(bridge_caller.py) call), not a native Agent()/Skill() call directly to a classifier", "type": "quality", "target": "outputs/"},
+    {"text": "Output never presents a preview with a confirmed target scope for this ambiguous payload", "type": "quality", "target": "outputs/"}
+  ]
+}

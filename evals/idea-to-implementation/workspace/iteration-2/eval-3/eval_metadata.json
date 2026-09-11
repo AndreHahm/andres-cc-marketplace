@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/idea-to-implementation/SKILL.md",
+  "assertions": [
+    {"text": "Output reads the source Idea and drafts the full proposed hierarchy before discussing review", "type": "functionality", "target": "outputs/"},
+    {"text": "Output asks via AskUserQuestion whether to request an independent review before finalizing", "type": "functionality", "target": "outputs/"},
+    {"text": "Output names FOUNDATION_CONTRACTS.md's Codex Bridge-Caller Dispatch procedure (or its exact steps) when describing how the review is dispatched, citing work-transition-reviewer as the reviewer", "type": "quality", "target": "outputs/"},
+    {"text": "Output describes writing the evidence under review to .temp/workmanagement-kit-bridge/<dispatch-id>.md via Write, then invoking bridge_caller.py with --agent work-transition-reviewer --target-paths --dispatch-id --execution-profile read-only", "type": "structure", "target": "outputs/"},
+    {"text": "Output still requires one batch approval via AskUserQuestion before creating/adopting any Linear records, independent of the review outcome", "type": "quality", "target": "outputs/"}
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates the actual merge to git-kit:merge-pr",
+      "passed": true,
+      "evidence": "Step 2: 'this step is entirely delegated -- merge-to-completion never re-derives SHA state, required-checks status, or merge-rights itself.' Step 5 lists 'Skill(git-kit:merge-pr) executes the merge.' No raw gh pr merge command is ever proposed."
+    },
+    {
+      "text": "Does not treat a successful merge alone as sufficient to close the Linear issue -- describes a separate acceptance-criterion comparison step",
+      "passed": true,
+      "evidence": "Distinct '## Linear disposition phase (separate, explicit step)' section; step 9 states this 'requires ENG-203's actual criteria list ... Never inferable as merged, therefore done.' Step 13 condition explicitly requires either all criteria literally met or an explicit separate user confirmation."
+    },
+    {
+      "text": "Records pr-merged evidence as distinct from any work-closed/Linear-closure write",
+      "passed": true,
+      "evidence": "Step 7 describes recording 'pr-merged' via linear-github-linking with merge_commit_sha, explicitly separate from step 13's work-closed write via linear-work-management; the response also independently discovered and flagged that host-profile.json's linear.write is 'unconfigured', correctly blocking both writes rather than performing either."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

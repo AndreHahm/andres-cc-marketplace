@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {"text": "Output validates source_plugin, content shape, and target mapping before building a preview", "type": "functionality", "target": "outputs/"},
+    {"text": "Preview is identical in form to a direct user-initiated capture, not a summary of caller intent", "type": "quality", "target": "outputs/"},
+    {"text": "Output states this requires fresh live approval regardless of any prior approval the calling plugin had", "type": "quality", "target": "outputs/"},
+    {"text": "Output records the transition tagged with the source plugin's identity", "type": "functionality", "target": "outputs/"}
+  ]
+}

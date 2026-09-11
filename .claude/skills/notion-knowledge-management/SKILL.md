@@ -212,7 +212,10 @@ might have partially succeeded.
   drafts the Outcome/Learning content from Linear facts and calls this skill only to execute the
   write
 
-**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-1/ (2026-08-30)
+**Last dated run record:** evals/notion-knowledge-management/workspace/iteration-2/ (2026-09-11) —
+Phase 7 Deep Test re-run verifying the Write/`Bash(bridge_caller.py:*)` grants and the restructured
+classification-help approval gate; prior run: evals/notion-knowledge-management/workspace/iteration-1/
+(2026-08-30)
 
 **Quality gates:**
 - [ ] Every write is preceded by a preview and, where required, live approval.

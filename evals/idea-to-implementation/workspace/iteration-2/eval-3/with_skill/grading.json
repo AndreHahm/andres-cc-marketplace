@@ -1,0 +1,12 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output reads the source Idea and drafts the full proposed hierarchy before discussing review", "passed": true, "evidence": "Step 1 reads the Notion Idea record (including flagging an embedded-instruction line) and Step 2 drafts the full 11-operation hierarchy, both before Step 4's review gate."},
+    {"text": "Output asks via AskUserQuestion whether to request an independent review before finalizing", "passed": true, "evidence": "Step 4 shows an explicit AskUserQuestion prompt with 'Yes, run the review' / 'No, skip the review' options."},
+    {"text": "Output names FOUNDATION_CONTRACTS.md's Codex Bridge-Caller Dispatch procedure (or its exact steps) when describing how the review is dispatched, citing work-transition-reviewer as the reviewer", "passed": true, "evidence": "Step 5 header: 'Codex Bridge-Caller Dispatch (per FOUNDATION_CONTRACTS.md's procedure)', dispatches work-transition-reviewer explicitly."},
+    {"text": "Output describes writing the evidence under review to .temp/workmanagement-kit-bridge/<dispatch-id>.md via Write, then invoking bridge_caller.py with --agent work-transition-reviewer --target-paths --dispatch-id --execution-profile read-only", "passed": true, "evidence": "Step 5a shows Write(file_path: '.temp/workmanagement-kit-bridge/idea-to-implementation-notifrouting-20260911.md', ...); Step 5c shows the exact bridge_caller.py command with all four flags."},
+    {"text": "Output still requires one batch approval via AskUserQuestion before creating/adopting any Linear records, independent of the review outcome", "passed": true, "evidence": "Step 7 re-presents the full updated (post-review) hierarchy and shows an explicit AskUserQuestion batch-approval prompt with Approve/Request changes/Cancel options before Step 8's creation begins."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

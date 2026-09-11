@@ -1,0 +1,22 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output rejects the payload as unknown source",
+      "passed": true,
+      "evidence": "'\"totally-made-up-plugin\" matches zero of these seven name values exactly. Zero matches is defined by the skill as unknown source — full stop.' / structured handoff has 'reason': 'unknown_source'."
+    },
+    {
+      "text": "Output never builds a preview or reaches an approval step for this payload",
+      "passed": true,
+      "evidence": "'No preview of a target Notion record is built ... No AskUserQuestion approval gate is presented ... notion-knowledge-management is not invoked. No connector call, no write, no draft page, nothing touches Notion.'"
+    },
+    {
+      "text": "Output returns a structured handoff rather than guessing at the real source",
+      "passed": true,
+      "evidence": "Emits a structured JSON object with status 'rejected', reason 'unknown_source', and a 'next_step' telling the caller to resend with a real plugin.json name -- explicitly 'does not attempt to guess or correct the identity on the caller's behalf.'"
+    }
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}
