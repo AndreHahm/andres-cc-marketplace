@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-security-and-privacy",
+  "assertions": [
+    {"text": "Report includes a finding classified as fail_open_behavior", "type": "presence", "target": "report content"},
+    {"text": "Finding identifies the permission-check script defaulting to ALLOW on an unhandled exception as the guard failure", "type": "quality", "target": "report content"},
+    {"text": "Finding is mapped to Critical severity because the bypassed write actually went through", "type": "quality", "target": "report content"},
+    {"text": "Report states the fail-open classification applies regardless of whether the specific action was itself harmless", "type": "quality", "target": "report content"}
+  ]
+}
