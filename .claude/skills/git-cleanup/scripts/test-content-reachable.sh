@@ -188,9 +188,10 @@ scenario_trivial_merge_skipped() {
 # review finding, PR #275 round 2). Constructs a genuine failure by
 # deleting a merge commit's own second-parent's object: `git rev-parse
 # --verify --quiet "$commit^2"` still succeeds (it only reads the commit's
-# own header text, correctly detecting a merge), while `git diff-tree --cc`
-# genuinely fails with "fatal: unable to read tree" -- live-verified this
-# combination is real, not simulated.
+# own header text, correctly detecting a merge), while `git diff-tree -m`
+# (originally `--cc`; both read the merge commit's own tree the same way,
+# see the corruption comment below) genuinely fails with "fatal: unable to
+# read tree" -- live-verified this combination is real, not simulated.
 #
 # Every non-merge commit's content IS also replayed on main (unlike a
 # scenario that only wants to test the merge in isolation) -- this is
@@ -264,11 +265,12 @@ scenario_bad_ref_fails_closed() (
   # TREE object instead left merge-base intact, but that same tree is ALSO
   # what feature2's own standalone (non-merge) diff-tree walk needs later in
   # this same loop, corrupting it too and producing a return 1 for an
-  # unrelated reason. The merge's OWN tree is needed only by `--cc` (which
-  # compares it against both parents) -- live-verified: merge-base stays
-  # intact, `git diff-tree --cc` on the merge fails cleanly ("fatal: unable
-  # to read tree"), and both feature1's and feature2's own standalone diffs
-  # are completely unaffected, since neither reads the merge's own tree.
+  # unrelated reason. The merge's OWN tree is needed only by `-m` (which
+  # compares it against both parents; originally `--cc`, same requirement)
+  # -- live-verified: merge-base stays intact, `git diff-tree -m` on the
+  # merge fails cleanly ("fatal: unable to read tree"), and both feature1's
+  # and feature2's own standalone diffs are completely unaffected, since
+  # neither reads the merge's own tree.
   merge_tree=$(git rev-parse "${merge_sha}^{tree}")
   rm -f ".git/objects/${merge_tree:0:2}/${merge_tree:2}"
 
@@ -872,6 +874,76 @@ scenario_default_branch_merge_conflict_content_recognized() {
   )
 }
 
+# Scenario 20: negative counterpart to scenario_trivial_merge_skipped -- a
+# merge that force-resolves to exactly ONE parent's state for a path must
+# NOT be silently skipped, even though `--cc` (the old check this replaced)
+# reports it as trivial. Regression coverage for the `-m`-based unification
+# of is_tag_content_reachable's merge and non-merge handling (GitHub
+# automated review, PR #315, Codex connector P1 on commit bd9ea5de4c):
+# `--cc` only shows a path that differs from EVERY parent, so it's blind to
+# a merge that drops content matching one parent exactly, even when that
+# represents real, unrecoverable loss relative to the OTHER parent.
+#
+# Construction (isolated in a scratch repo -- three earlier attempts each
+# had a confound before this one isolated the bug cleanly, see this
+# session's own investigation): parent1 (main) adds secret.txt in its own
+# commit; parent2 is a divergent branch with ONLY an --allow-empty commit
+# (zero real content changes of its own, so it can never be independently
+# caught by check_diff_records' per-parent walk the way a real standalone
+# change would be). The tag's own merge combines them but is FORCED (via
+# `git rm` before committing) to drop secret.txt, making the merge's
+# resulting tree match parent2 exactly -- which is exactly why `--cc`
+# reports no diff at all. `main` is left unchanged and still has
+# secret.txt, so the merge's own deletion was never actually reflected
+# there.
+scenario_merge_resolves_to_one_parent_content_loss_fails_closed() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > base.txt
+    git add base.txt && git commit -q -m base
+    # The tag's own merge is built on a SEPARATE branch, never merged back
+    # into main -- if the merge were built directly on main, merge-base(tag,
+    # main) would collapse to the tag's own tip (main IS the tag at that
+    # point), making tag_commits empty and the check pass trivially for the
+    # wrong reason, regardless of whether the bug under test is fixed (the
+    # same construction pitfall scenario_bad_ref_fails_closed's own comment
+    # documents).
+    git branch p2
+    git checkout -q -b tagbranch
+    printf 'secret\n' > secret.txt
+    git add secret.txt && git commit -q -m "p1 (main): add secret.txt"
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git merge -q --ff-only tagbranch
+    git checkout -q p2
+    git commit -q --allow-empty -m "p2: divergent but empty commit"
+    git checkout -q tagbranch
+    git merge --no-ff --no-commit p2 >/dev/null 2>&1 || true
+    git rm -q -f secret.txt
+    git commit -q -m "merge p2 (forced to drop secret.txt to match p2 exactly)"
+    git tag -a mergeblindspot-rebase-backup-20260101-000000 -m backup tagbranch
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D p2 tagbranch >/dev/null
+    # main is intentionally left exactly as-is -- it still has secret.txt,
+    # which the tag's own merge discarded without that discard ever landing
+    # on main.
+  )
+  (
+    cd "$repo"
+    default_branch=main
+    # default_branch is read by is_tag_content_reachable via eval "$FUNCS" below,
+    # which shellcheck can't see through -- false positive.
+    # shellcheck disable=SC2034
+    git show-ref --verify --quiet refs/heads/main || default_branch=master
+    eval "$FUNCS"
+    if is_tag_content_reachable mergeblindspot-rebase-backup-20260101-000000; then
+      exit 1  # main still has secret.txt -- this must fail closed
+    else
+      exit 0
+    fi
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -901,6 +973,7 @@ run scenario_deletion_check_survives_corrupted_blob "a deletion check fails clos
 run scenario_pre_divergence_blob_not_reachable "a blob present on default_branch only before divergence does not satisfy reachability"
 run scenario_content_inherited_from_merge_base_recognized "content inherited unchanged from the merge-base is still recognized as reachable"
 run scenario_default_branch_merge_conflict_content_recognized "default_branch's own merge-conflict-resolution content is still recognized"
+run scenario_merge_resolves_to_one_parent_content_loss_fails_closed "a tag's own merge resolving to exactly one parent's state still fails closed on lost content"
 
 echo ""
 echo "$PASS passed, $FAIL failed"

@@ -156,20 +156,21 @@ is_tag_content_reachable() {
   local tag_commits
   tag_commits=$(git rev-list "$mb..$tag" 2>/dev/null)
   [ -z "$tag_commits" ] && return 1
-  local commit cc_diff cc_rc diff_file diff_rc
+  local commit diff_file diff_rc
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
-    if git rev-parse --verify --quiet "$commit^2" >/dev/null 2>&1; then
-      cc_diff=$(git diff-tree --cc -p --no-commit-id -r --no-ext-diff --no-textconv "$commit" 2>/dev/null)
-      cc_rc=$?
-      [ "$cc_rc" -ne 0 ] && return 1
-      if [ -z "$cc_diff" ]; then
-        continue
-      fi
-      return 1
-    fi
+    # One code path for merge AND non-merge commits -- see
+    # delete-rebase-backup-tags.sh's identical comment for the full
+    # rationale and live-verified detail (GitHub automated review, PR #315,
+    # Codex connector P1 on commit bd9ea5de4c): `-m` is a no-op for a
+    # non-merge commit but makes a merge commit show a full per-parent diff
+    # instead of nothing, closing a real false positive where the old
+    # `--cc`-based check silently skipped verification whenever a merge
+    # force-resolved to exactly one parent's state (invisible to `--cc`,
+    # which only shows paths differing from EVERY parent) even though that
+    # represented genuine content loss relative to the OTHER parent.
     diff_file=$(mktemp) || return 1
-    git diff-tree -r -z --no-commit-id --no-ext-diff --no-textconv --root "$commit" > "$diff_file"
+    git diff-tree -r -z -m --no-commit-id --no-ext-diff --no-textconv --root "$commit" > "$diff_file"
     diff_rc=$?
     if [ "$diff_rc" -ne 0 ]; then
       rm -f "$diff_file"
