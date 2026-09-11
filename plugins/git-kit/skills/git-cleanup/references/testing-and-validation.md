@@ -198,7 +198,11 @@ repo actually has.
 **Verify the content-reachability fallback (`is_tag_content_reachable`, PR #275), live-verified
 2026-09-01 against this repository's own real rebase-backup tags and a set of isolated scratch-repo
 tests for each underlying git mechanic — not a hypothetical claim about how `git patch-id`/
-`git diff-tree` behave, each was independently reproduced live:**
+`git diff-tree` behave, each was independently reproduced live. Superseded 2026-09-11 by a per-path,
+per-blob redesign (see "Live results, 2026-09-11" below) that drops `git patch-id`/exact-diff-text
+matching entirely — the mechanics this block documents (patch-id narrowing, exact-diff-text acceptance)
+no longer exist in the current script; kept here as the historical record of what PR #275 actually
+shipped and tested, same as PR #275's own "Superseded by" note above it did for its predecessor:**
 - [ ] A rebase-merged tag (SHA differs from the default branch, content identical) is recognized as
       content-reachable and eligible for deletion — live-verified against this repo's real
       `feat/merge-pr-conflict-checks-rebase-backup-20260901-064237` tag: all 6 commits unique to the tag
@@ -233,12 +237,100 @@ tests for each underlying git mechanic — not a hypothetical claim about how `g
       interface — live-verified with a throwaway tag: created with its branch already deleted, confirmed
       it appeared in `--list`, deleted by index, confirmed removal via a follow-up `git tag -l`
 
-**Now covered by a persisted, repeatable fixture** (flagged by Devin's automated PR review on PR #275;
-addressed in the same PR rather than deferred): `scripts/test-content-reachable.sh` sources
-`default_branch_patchids`/`is_tag_content_reachable` directly from `delete-rebase-backup-tags.sh` --
-never a hand-copied re-implementation, so it can't silently drift from the real code -- and exercises 5
-scenarios in isolated, throwaway git repos: a genuine rebase-merge (SHA differs, content identical) is
-recognized as reachable; a whitespace-only difference does NOT falsely match; a trivial merge commit
-doesn't abort the walk; a `git diff-tree` failure is distinguished from an empty diff; and the atomic
-compare-and-delete succeeds on a matching oid and refuses on a stale one. Run directly:
-`bash scripts/test-content-reachable.sh`. All 5 passed on the fix that shipped in PR #275.
+**Covered by a persisted, repeatable fixture** (flagged by Devin's automated PR review on PR #275;
+addressed in the same PR rather than deferred; updated 2026-09-11 for the per-path/per-blob redesign
+below): `scripts/test-content-reachable.sh` sources `is_path_blob_reachable`/`is_tag_content_reachable`
+directly from `delete-rebase-backup-tags.sh` -- never a hand-copied re-implementation, so it can't
+silently drift from the real code -- and exercises 7 scenarios in isolated, throwaway git repos: a
+genuine rebase-merge (SHA differs, content identical) is recognized as reachable; a whitespace-only
+difference does NOT falsely match; a trivial merge commit doesn't abort the walk; a `git diff-tree`
+failure is distinguished from an empty diff; the atomic compare-and-delete succeeds on a matching oid and
+refuses on a stale one; content the default branch reorganized into a different commit grouping than the
+tag recorded is still recognized as reachable; that same reorganized-grouping case doesn't mask a
+file that genuinely never landed; a parentless (root) commit's content is checked rather than silently
+skipped, in both the reachable and genuinely-missing direction; a non-ASCII path deletion is checked
+against `$default_branch`'s real state rather than a mis-parsed literal string, in both directions; and a
+`git diff-tree` failure on a non-merge commit fails closed rather than being misread as an empty diff. Run
+directly: `bash scripts/test-content-reachable.sh`. All 5 passed on the fix that shipped in PR #275; all 12
+(7 from the 2026-09-11 redesign + 5 more from the same day's security-reviewer follow-up) pass on the
+current script.
+
+**Live results, 2026-09-11 (per-path/per-blob content-reachability redesign):** the exact-diff-text
+approach above was found to have a much higher real-world failure rate than its own disclosed limitation
+suggested -- not just "an unrelated part of the same file changed," but any case where the destination
+branch's history reorganizes a tag commit's changes into a *different set of commits* than the tag
+recorded. Live-verified against this repository's own real rebase-backup tags at the time:
+- `feat/pr-ci-governance-rebase-backup-20260907-210042` -- one commit, 13 files added together. The
+  matching commit on `main` (same message, found via `git log --all --grep`) carried only 12 of them; the
+  13th (`.github/actions/fork-safety/action.yml`) landed via a wholly separate, later commit
+  (`be72cbeb`, "vendor composite actions referenced by new label workflows"). The old exact-diff-text
+  check could never match this (12-file diff ≠ 13-file diff); the new per-path check finds the exact
+  blob for every one of the 13 files somewhere in `main`'s own history at that path, correctly recognizing
+  the tag as content-reachable. Confirmed via `delete-rebase-backup-tags.sh --list`: this tag went from
+  absent (old algorithm) to listed (new algorithm), with no other repo state change in between.
+- Three other tags with 10-19 unique commits each (`feat/ci-pipeline-foundation` ×2,
+  `feat-analysis-kit-new-dimensions`) remained correctly unreachable under the new algorithm too --
+  spot-checked several of their reported-missing paths (e.g.
+  `.github/actions/workflow-killswitch/action.yml`) and confirmed those exact blobs never appear
+  anywhere in `main`'s own history at that path, even though the path currently exists there with
+  different content -- genuine evidence the tag's specific content was superseded/rewritten rather than
+  merely reorganized, correctly kept unreachable rather than a false negative.
+- Performance: `--list` over 5 tags (one with 19 unique commits) completed in ~15s against this
+  repository's real history (~3800 tracked files, hundreds of commits) -- acceptable for a manually
+  triggered, interactive cleanup tool with no hot-path requirement.
+
+**Live results, 2026-09-11 (security-reviewer follow-up on the redesign above):** a mandatory
+`security-reviewer` dispatch against the redesign (per
+`.claude/rules/require-security-review-before-new-gate.md` -- this redesign is a structural change to an
+existing destructive-action gate's own pass/fail logic) found one Critical and two Major findings, all
+verified live in an isolated scratch repo before fixing (never fixed on the reviewer's say-so alone):
+- **Critical (C1):** a PARENTLESS commit (a `git subtree --squash` import, a
+  `merge --allow-unrelated-histories` root, a grafted/shallow boundary commit) inside the tag's own unique
+  history produced NO `git diff-tree` output at all without `--root` -- live-verified in a scratch repo
+  (empty stdout, exit 0) -- which the inner loop read as "this commit changed nothing" and passed
+  unverified, regardless of whether its content ever actually landed on `$default_branch`. Fixed by adding
+  `--root`, which makes such a commit show its whole tree as `A` (add) entries the existing per-path check
+  already handles correctly.
+- **Major (M1):** the non-merge commit's own `git diff-tree` call never checked its exit status separately
+  from empty output -- the exact sibling of the `cc_rc` guard the merge-commit branch already carries
+  (Codex fresh-eyes finding F1, PR #275). Live-verified: corrupting a commit's own tree object (deleting
+  its `.git/objects/<sha>` blob) produced empty stdout + exit 128, which the unfixed code read as "no
+  changes" rather than a verification failure. Fixed by capturing the exit status separately (mirroring
+  the merge branch) and failing closed on non-zero.
+- **Major (M2):** the raw tab-delimited `git diff-tree` format C-quotes any path containing a non-ASCII
+  byte (under the default `core.quotePath=true`) or a literal quote/backslash/control character -- that
+  quoted string is not the real path. Live-verified against a real `café.txt`: `git cat-file -e
+  "$default_branch:\"caf\\303\\251.txt\""` (the literal quoted form) fails as a bad revision spec
+  regardless of whether the real, correctly-named file exists on `$default_branch` or not -- which the
+  deletion branch's `&&` misread as "path absent," silently treating a genuinely-not-reflected deletion as
+  satisfied. Fixed by switching to `-z` (NUL-delimited, unquoted) output, parsed via `read -r -d ''` into a
+  temp file (a `$(...)` variable can't hold `-z` output -- a NUL byte truncates a bash string) --
+  live-verified afterward: `git cat-file -e "$default_branch:café.txt"` (the real, correctly-parsed path)
+  behaves correctly in both directions.
+- A `trap ... RETURN` for the new temp file's cleanup was considered and rejected: bash's `RETURN` trap is
+  process-wide, not scoped to one function invocation, so it would also fire when `is_path_blob_reachable`
+  (called from inside the same diff-record loop) returns, unlinking the temp file while the outer loop's
+  `read -r -d '' ... < "$file"` redirection might still be reading it -- harmless on Linux (unlink doesn't
+  invalidate an already-open fd) but not guaranteed on the Windows/Git-Bash environment this script
+  actually runs in. Used explicit `rm -f` at every return path instead, isolated to a small
+  `check_diff_records` helper so the caller only needs 3 cleanup call sites rather than one per return
+  inside the parsing loop.
+- 5 new regression scenarios added to `test-content-reachable.sh` (12 total, up from 7): a root commit's
+  content recognized when it lands, and correctly kept unreachable when it doesn't; a non-ASCII deletion
+  recognized when reflected on `$default_branch`, and correctly kept unreachable when it isn't; and a
+  `git diff-tree` failure on a non-merge commit failing closed. All 12 passed after the fixes; re-ran
+  `delete-rebase-backup-tags.sh --list` against this repository's real remaining tags afterward and
+  confirmed no regression (`feat/pr-ci-governance-rebase-backup-20260907-210042` still the only one
+  listed, ~17s).
+- **R20 sweep found a real, live drift this same pass:** `phase1-analysis.sh` carries its own independent
+  copy of the reachability check (for Gate 1's "reachable from `<default>`: yes/no" display), explicitly
+  commented "this script's report must agree with what that script would actually delete" -- it still had
+  the OLD patch-id/exact-diff-text implementation, which would have kept reporting
+  `feat/pr-ci-governance-rebase-backup-20260907-210042` as unreachable at Gate 1 while `--list` (already
+  fixed) correctly offered it for deletion at Gate 2 -- a real, user-visible contradiction between what
+  the skill displays and what it would actually do. Replaced with the same `is_path_blob_reachable`/
+  `check_diff_records`/`is_tag_content_reachable` functions (kept byte-identical between the two scripts
+  deliberately). Re-ran `phase1-analysis.sh` against this repository afterward and confirmed its output
+  now agrees exactly with `--list`: `feat/pr-ci-governance-rebase-backup-20260907-210042` reports
+  "reachable from main: yes (content match after rebase...)"; the other three multi-commit tags still
+  correctly report "NO."

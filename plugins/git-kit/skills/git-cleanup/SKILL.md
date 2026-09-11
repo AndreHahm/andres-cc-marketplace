@@ -416,13 +416,18 @@ through still lets the rest proceed, and reports which index (if any) failed.
     rebasing rewrites commit SHAs in the merged case (a merged branch's current tip being an ancestor of
     the default branch says nothing about whether the tag's own pre-rebase commit is) - Phase 3.6 proposes
     deletion in either case once the tag's own commit is verified reachable from the default branch, by
-    either of two signals: raw-SHA ancestry (`git merge-base --is-ancestor`), or - when that fails,
-    since a rebase rewrites every commit's SHA while preserving its content - an exact, byte-for-byte
-    diff-text match against the default branch's history (patch-id used only as a cheap pre-filter, never
-    the acceptance criterion by itself, since it's whitespace-insensitive; see
-    `delete-rebase-backup-tags.sh`'s own `is_tag_content_reachable` for the full mechanism, including its
-    fail-closed handling of merge commits and `git diff-tree` failures) - a tag unreachable by both
-    signals is reported separately as needing manual review, never included in "delete all recommended"
+    either of two signals: raw-SHA ancestry (`git merge-base --is-ancestor`), or - when that fails, since a
+    rebase rewrites every commit's SHA while preserving its content - a per-path, per-blob history search:
+    every path each of the tag's own commits changed must have that exact post-image blob somewhere in the
+    default branch's own history at that same path (a plain deletion instead requires the path to be
+    absent from the default branch's current tree). Git blobs are purely content-addressed, so this is
+    already exact byte-for-byte equality with no whitespace-insensitivity to guard against, and - unlike an
+    earlier version that required one single commit on the default branch to reproduce a tag commit's
+    entire diff byte-for-byte - it recognizes content the default branch's own history reorganized into a
+    different commit grouping than the tag recorded (see `delete-rebase-backup-tags.sh`'s own
+    `is_tag_content_reachable`/`is_path_blob_reachable` for the full mechanism, including its fail-closed
+    handling of merge commits and `git diff-tree` failures) - a tag unreachable by both signals is reported
+    separately as needing manual review, never included in "delete all recommended"
 11. **Never type a tag name into a command, at all, for any reason** - a git tag name is legal with
     almost any shell metacharacter (`git check-ref-format` accepts e.g.
     `` `$(cmd)-rebase-backup-20260831-120000` ``), and no character-class check on a value the agent then
@@ -449,7 +454,8 @@ These are common shortcuts that lead to data loss. Reject them:
 | "This remote branch has no local copy, so its PR must be merged and it's safe to delete" | No local copy only means nobody has it checked out here — it could be an open PR someone else is working on, or a branch with no PR at all. Phase 3.5 always confirms `state: MERGED` live via `gh pr view` before ever proposing deletion. |
 | "This rebase-backup tag is old, it's probably safe to delete" | Age alone says nothing about whether the branch it protects is still active — a long-running feature branch can be rebased repeatedly with none of its backup tags becoming safe to delete. Phase 3.6 only proposes deletion once the derived branch is confirmed gone or merged. |
 | "The branch is gone, so its backup tag must be redundant" | The branch's own deletion was never verified by this skill run — it may have been force-deleted outside git-cleanup's own evidence trail. Phase 3.6 always confirms the tag's commit is reachable from the default branch (by raw-SHA ancestry, or, when a rebase rewrote the SHA, by an exact content match) before proposing deletion in this case; a tag unreachable by both signals may be the only remaining copy of its commits. |
-| "The branch is merged, so its backup tag must be redundant" | Rebasing rewrites commit SHAs — a merged branch's current tip being an ancestor of the default branch does not mean the tag's own pre-rebase commit is (live-verified: a plain rebase-then-merge sequence leaves the branch showing merged while the tag's exact pre-rebase commit stays unreachable by raw SHA). Phase 3.6 runs the same two-signal reachability check (raw-SHA ancestry, then content match) for the merged case as for the branch-gone case — never skips it just because the branch itself is already known-safe to delete, and never treats a content match alone as sufficient without also verifying it's byte-exact, not just patch-id-equal (patch-id ignores whitespace). |
+| "The branch is merged, so its backup tag must be redundant" | Rebasing rewrites commit SHAs — a merged branch's current tip being an ancestor of the default branch does not mean the tag's own pre-rebase commit is (live-verified: a plain rebase-then-merge sequence leaves the branch showing merged while the tag's exact pre-rebase commit stays unreachable by raw SHA). Phase 3.6 runs the same two-signal reachability check (raw-SHA ancestry, then per-path blob-history content match) for the merged case as for the branch-gone case — never skips it just because the branch itself is already known-safe to delete. |
+| "The default branch reorganized this content into different commits, so a content match will never find it" | An earlier version of this check required one single commit on the default branch to reproduce a tag commit's entire diff byte-for-byte, which genuinely couldn't see this case (disclosed as an accepted limitation in an earlier revision). The current check matches per path and per blob against that path's own history on the default branch instead — it finds the content regardless of which commit(s) it landed via (live-verified against this repo's own `feat/pr-ci-governance-rebase-backup-20260907-210042` tag, whose one commit's 13 files landed on the default branch split across two separate commits). |
 
 ## Testing & Validation
 
