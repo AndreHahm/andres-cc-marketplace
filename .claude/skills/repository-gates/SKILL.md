@@ -133,6 +133,11 @@ to check validity after new commits or a changed base:
   `--method GET` internally and rejects any argument other than `--jq`/`--paginate` before ever
   invoking the real `gh api` — an allowlist, not a denylist, so an unrecognized flag fails closed. See
   `plugins/workmanagement-kit/scripts/gh_api_readonly.py`'s own header for the full rationale.
+  **Direct-path invocation (no `python` prefix) is live-verified, not just assumed:** the script's
+  exec bit and `#!/usr/bin/env python3` shebang let `${CLAUDE_PLUGIN_ROOT}/scripts/gh_api_readonly.py
+  <args>` run correctly through Claude Code's `Bash` tool — the only way this skill's `allowed-tools`
+  grant is ever actually exercised — confirmed 2026-09-11 by a direct invocation that produced the
+  script's own expected error output with no execution failure.
 
 ## Failure and Resume
 
