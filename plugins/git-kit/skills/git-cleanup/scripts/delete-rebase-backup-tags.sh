@@ -252,50 +252,42 @@ is_tag_content_reachable() {
   local tag_commits
   tag_commits=$(git rev-list "$mb..$tag" 2>/dev/null)
   [ -z "$tag_commits" ] && return 1
-  local commit cc_diff cc_rc diff_file diff_rc
+  local commit diff_file diff_rc
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
-    if git rev-parse --verify --quiet "$commit^2" >/dev/null 2>&1; then
-      # Merge commit: unchanged from PR #275 -- plain `-p` (used below for
-      # every other commit) always shows no diff for a merge, which would
-      # otherwise fail the whole tag closed regardless of whether the merge
-      # actually introduced any unique content -- each parent's own changes
-      # are already walked separately as their own entries in this same
-      # rev-list. `--cc` shows only lines that differ from every parent (a
-      # real conflict-resolution edit); an empty `--cc` diff means this
-      # merge contributes nothing new beyond its parents, so skip it rather
-      # than treating it as unverifiable.
-      #
-      # Capture the exit status separately from stdout -- a `git diff-tree`
-      # failure (bad object, corrupted ref) also produces empty stdout
-      # (live-verified: exit 128, nothing on stdout, error on stderr), and
-      # `[ -z "$cc_diff" ]` alone can't tell that apart from a genuinely
-      # trivial merge. Every other empty-result check in this function
-      # already fails closed on empty data; this is the one place empty was
-      # instead read as a meaningful "safe to skip" signal, so it's the one
-      # place a failed command could get silently misread as that signal
-      # too (Codex fresh-eyes finding F1, cross-model-review round 3).
-      cc_diff=$(git diff-tree --cc -p --no-commit-id -r --no-ext-diff --no-textconv "$commit" 2>/dev/null)
-      cc_rc=$?
-      [ "$cc_rc" -ne 0 ] && return 1
-      if [ -z "$cc_diff" ]; then
-        continue
-      fi
-      # A merge with real conflict-resolution content has no single path's
-      # "before" state to diff against -- fail closed rather than accepting
-      # unverified content, same as PR #275's original merge-commit handling.
-      return 1
-    fi
-    # Non-merge commit: check every changed path's post-image blob against
-    # $default_branch's own history at that path -- not against one
-    # commit's whole diff.
+    # One code path for merge AND non-merge commits -- `-m` is a no-op for a
+    # non-merge commit (verified: identical output with or without it) and,
+    # for a merge, makes `git diff-tree` show a full per-parent diff instead
+    # of the default "no diff at all for a merge" behavior. This replaces an
+    # earlier `--cc`-based merge-only branch that treated an empty `--cc`
+    # diff as "this merge contributes nothing new, skip it" -- live-verified
+    # to be a real false positive (GitHub automated review, PR #315, Codex
+    # connector P1 on commit bd9ea5de4c): `--cc` only shows a path that
+    # differs from EVERY parent, so a merge that force-resolves to exactly
+    # ONE parent's state for a path is invisible to `--cc` even when that
+    # represents real content loss relative to the OTHER parent -- built a
+    # scratch-repo case where parent1 adds a file, parent2 is a divergent
+    # branch with no changes to it at all, and the merge is forced to match
+    # parent2 (dropping the file): `--cc` reported empty (correctly, by its
+    # own definition) but `$default_branch` still had the file the tag's own
+    # merge discarded, which the old `continue` on empty `cc_diff` silently
+    # let through as "reachable". `-m` surfaces this: the diff against
+    # parent1 shows the file as deleted, which flows through
+    # `check_diff_records` exactly like any other deletion and correctly
+    # fails closed since `$default_branch` still has it. A genuinely trivial
+    # merge (no unique content vs. either parent) still produces zero
+    # records against both parents and passes, unaffected
+    # (`scenario_trivial_merge_skipped`). A merge with real hand-resolved
+    # conflict content produces a record (against whichever parent's
+    # pre-image differs from the resolution) that is checked the same way
+    # any other path change is -- no more "no single path's before state to
+    # diff against" special case; `-m`'s per-parent diff already resolves
+    # unambiguously to a concrete pre-image per parent.
     #
     # `--root`: without it, a PARENTLESS commit (a `git subtree --squash`
     # import, a `merge --allow-unrelated-histories` root, a grafted/shallow
     # boundary commit) produces NO diff-tree output at all and would
     # silently pass unverified, since the inner loop below then never runs
-    # -- exactly the same "empty output" ambiguity `cc_rc` above already
-    # guards against for merge commits, just on the non-merge path instead
     # (security-reviewer finding C1). `--root` makes such a commit show its
     # whole tree as a set of `A` (add) entries instead, which the existing
     # per-path check already handles correctly.
@@ -319,12 +311,14 @@ is_tag_content_reachable() {
     # `-z` output can't be captured into a `$(...)` variable (a NUL byte
     # truncates a bash string), so this reads into a temp file instead --
     # which is also the only way to check the exit status separately from
-    # "produced no records", the same gap `cc_rc` above closes for the
-    # merge branch (security-reviewer finding M1: an object read failure on
-    # this path previously produced empty stdout, indistinguishable from a
-    # genuinely empty/no-op commit, and was silently treated as satisfied).
+    # "produced no records" (security-reviewer finding M1: an object read
+    # failure on this path previously produced empty stdout,
+    # indistinguishable from a genuinely empty/no-op commit, and was
+    # silently treated as satisfied -- the same class of bug `--cc`'s empty
+    # diff had for merges, now closed the same way on both paths since
+    # there's only one path left).
     diff_file=$(mktemp) || return 1
-    git diff-tree -r -z --no-commit-id --no-ext-diff --no-textconv --root "$commit" > "$diff_file"
+    git diff-tree -r -z -m --no-commit-id --no-ext-diff --no-textconv --root "$commit" > "$diff_file"
     diff_rc=$?
     if [ "$diff_rc" -ne 0 ]; then
       rm -f "$diff_file"

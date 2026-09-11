@@ -223,7 +223,12 @@ shipped and tested, same as PR #275's own "Superseded by" note above it did for 
       genuine conflict-free merge; a merge commit with real hand-resolved conflict content (`--cc`
       non-empty, content differing from every parent) still fails the tag closed, since there's nothing
       on the default branch to verify it against — live-verified with a genuine hand-resolved 3-way
-      conflict (found by Claude fresh-eyes, `cross-model-review` round 2)
+      conflict (found by Claude fresh-eyes, `cross-model-review` round 2). **Superseded 2026-09-11
+      (later the same day, in a separate round from the per-path/per-blob redesign this whole block
+      documents): the `--cc`-based skip itself was a real false positive, not just a to-be-improved
+      mechanic — see the "a second Codex connector round" entry further below. `--cc`'s "no unique
+      content" reading is blind to a merge that force-resolves to exactly one parent's state; the
+      current check diffs against each parent separately (`-m`) instead of using `--cc` at all.**
 - [ ] A `git diff-tree` failure (bad object, corrupted ref) is distinguished from a genuinely empty/
       trivial merge diff by checking the exit status separately from stdout emptiness — live-verified: a
       deliberately invalid commit reference produced empty stdout AND exit 128, which the fix correctly
@@ -485,3 +490,46 @@ for it regardless).
   found by the batched search. All 19 passed after the fix; re-ran `delete-rebase-backup-tags.sh --list`
   and `phase1-analysis.sh` against this repository's real remaining tags afterward and confirmed no
   regression -- both scripts' output stayed identical to every prior round.
+
+**Live results, 2026-09-11 (a second Codex connector round, on the just-merged CodeRabbit-nitpick
+commit): the `--cc`-based merge-commit skip inside `is_tag_content_reachable` itself had the exact
+same "empty diff misread as safe-to-skip" blind spot the earlier rounds in this file already fixed
+elsewhere, just in a place none of them touched.**
+- **Confirmed (the Codex connector, P1 on commit `bd9ea5de4c`): a merge inside the tag's own history
+  that force-resolves to exactly ONE parent's state for a path is invisible to `--cc`, even when that
+  represents real content loss relative to the OTHER parent.** The original (PR #275) merge-commit
+  handling used `git diff-tree --cc`, which only shows a path that differs from EVERY parent, and
+  treated an empty `--cc` diff as "this merge contributes nothing new, skip it" -- correct for a
+  genuinely trivial merge, but not for a merge that discards content matching one parent exactly, since
+  that case is *also* `--cc`-empty by `--cc`'s own definition. Three scratch-repo constructions were
+  needed to isolate this cleanly before fixing: the first two were each masked by a confound (the
+  dropped content's own standalone commit was independently caught by the existing per-parent walk in
+  one case; an unrelated unreachable change on the same branch in the other) -- the third finally
+  isolated it: one parent (`main`) adds a file in its own commit; the other parent is a divergent branch
+  with only an `--allow-empty` commit (zero real content changes of its own, so nothing else in the walk
+  can catch it); the tag's own merge is forced (`git rm` before committing) to drop the file, exactly
+  matching the empty-change parent's tree. `--cc` reported no diff at all; `main` still had the file the
+  merge discarded. Fixed by replacing the `--cc`-based special case with the same `-m` (per-parent raw
+  diff) technique already used elsewhere in this file (`is_path_blob_reachable`'s batched search): `-m`
+  is a no-op for a non-merge commit (verified identical output with and without it) but makes a merge
+  commit show a full diff against EACH parent separately, so a path that matches one parent exactly but
+  differs from the other still produces a record -- which then flows through the existing
+  `check_diff_records`/`is_path_blob_reachable` machinery exactly like any other path change, with no
+  special-casing left for merges at all. This also removes the earlier "a merge with real
+  conflict-resolution content has no single path's before-state to diff against, fail closed" limitation
+  entirely -- `-m`'s per-parent diff already resolves an unambiguous pre-image per parent, so that content
+  is now verified rather than unconditionally rejected.
+- 1 new regression scenario added to `test-content-reachable.sh` (20 total, up from 19):
+  `scenario_merge_resolves_to_one_parent_content_loss_fails_closed`, reproducing the isolated
+  scratch-repo construction above -- built on a separate branch from the tag's own merge (never merged
+  back into `main` directly), the same construction pitfall `scenario_bad_ref_fails_closed`'s own
+  comment already documents (merging directly into `main` collapses the merge-base to the tag's own tip,
+  making the check pass trivially for the wrong reason regardless of whether the fix works). Re-ran the
+  existing `scenario_trivial_merge_skipped` (a genuinely trivial merge, no unique content from either
+  side) and `scenario_bad_ref_fails_closed` (a corrupted merge tree) to confirm the `-m` unification
+  doesn't regress either: both still pass, since `-m` produces zero records for a genuinely trivial merge
+  and `git diff-tree -m` still fails non-zero (fails closed) when the merge's own tree object is
+  unreadable, exactly as the old `--cc` call did. All 20 passed after the fix; re-ran
+  `delete-rebase-backup-tags.sh --list` and `phase1-analysis.sh` against this repository's real remaining
+  tags afterward and confirmed no regression -- both scripts' output stayed identical to every prior
+  round.
