@@ -17,5 +17,12 @@
       "expected_output": "Classifies the result as exactly one of the six defined drift states (never leaves it ambiguous without an Unknown classification), and does not propose resolving by newest timestamp.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "\"repair this broken link\""
+    ]
+  }
 }

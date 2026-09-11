@@ -10,5 +10,13 @@
       "expected_output": "Delegates the actual finding triage/fix/reply/resolve cycle to git-kit:handling-review-findings rather than doing it itself or routing it to git-kit:collaborating-on-a-pr; reflects only a concise, deliberate summary to Linear, never a raw transcript copy.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      "\"reflect the blocking findings into the Linear issue\"",
+      "\"mark this PR ready for review\""
+    ]
+  }
 }

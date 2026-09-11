@@ -7,8 +7,16 @@
       "id": 1,
       "name": "linear-github-lifecycle primary scenario",
       "prompt": "Take accepted Linear issue ENG-205 all the way from start of work through to a merged PR and Linear disposition.",
-      "expected_output": "Composes the 7 focused Wave 2 skills (work-to-development, development-to-pr, pr-to-linear, merge-to-completion, status-and-learning, plus reconciliation on demand) in the documented phase order, delegating each phase's actual logic rather than reimplementing it; gets confirmation at phase transitions.",
+      "expected_output": "Composes the 7 focused Wave 2 skills (work-to-development, development-to-pr, pr-to-linear, merge-to-completion, status-and-learning, linear-github-linking for resume reads, plus linear-github-reconciliation on demand) in the documented phase order, delegating each phase's actual logic rather than reimplementing it; gets confirmation at phase transitions.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      "\"take this accepted issue all the way to merge\"",
+      "\"resume this interrupted Wave 2 lifecycle run\""
+    ]
+  }
 }

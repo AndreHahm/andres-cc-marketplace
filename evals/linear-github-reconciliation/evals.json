@@ -10,5 +10,13 @@
       "expected_output": "Compares Linear, Git, GitHub, and recorded evidence against the authority model; classifies the discrepancy as exactly one of the nine defined states (likely 'Early status' or 'Automation drift' here); never uses newest-timestamp precedence; does not attempt to reverse-write against native automation, and stops consequential workflows pending investigation.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      "\"why did this issue's status change unexpectedly\"",
+      "\"check for drift across this issue's whole lifecycle\""
+    ]
+  }
 }

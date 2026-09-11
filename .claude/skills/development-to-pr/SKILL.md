@@ -203,6 +203,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - "start work on this issue" → `work-to-development`
 - "summarize the PR review to Linear" → `pr-to-linear`
 
+**Last dated run record:** evals/development-to-pr/workspace/iteration-1/ (2026-09-10)
+
 **Quality gates:**
 - [ ] Never stages, commits, or pushes directly — always through `git-kit:commit` and, on the
       new-PR path only, `git-kit:create-pr`.

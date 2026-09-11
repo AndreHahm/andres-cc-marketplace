@@ -8,7 +8,7 @@ description: >-
   own prior approval never substitutes. Use when another plugin's workflow needs to store
   something in Notion or act on something in Linear; this is the only path any other plugin in
   this repository may use for that.
-allowed-tools: Read, Glob, Skill(notion-knowledge-management), Skill(linear-work-management), AskUserQuestion
+allowed-tools: Read, Write, Glob, Skill(notion-knowledge-management), Skill(linear-work-management), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py:*), AskUserQuestion
 ---
 
 # Plugin Integration Intake
@@ -97,11 +97,10 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
    - **Ambiguous target** (the suggested mapping doesn't clearly resolve to one Notion database/
      page or one Linear entity) → structured handoff, never an inferred pick. Optional: for a
      genuinely unclear mapping, ask via `AskUserQuestion` whether to request independent
-     classification before falling back to a structured handoff. On yes, the plugin's shared Codex
-     bridge-caller component (`scripts/bridge_caller.py`, live) may dispatch `work-intake-classifier`
-     (read-only) for that classification — that dispatch mechanism belongs to the plugin's shared
-     infrastructure, not a tool this skill invokes itself, and the structured handoff proceeds
-     without it when declined or unavailable.
+     classification before falling back to a structured handoff. On yes, dispatch
+     `work-intake-classifier` (read-only) for that classification per
+     `../../FOUNDATION_CONTRACTS.md`'s Codex Bridge-Caller Dispatch procedure; the structured
+     handoff proceeds without it when declined, or when the dispatch returns a typed failure.
      **This dispatch may only happen after the Unknown-source check's three steps above have
      passed and the payload has cleared the Malformed-content check** — a payload that fails
      either of those goes straight to a structured handoff with no classifier dispatch; the
@@ -109,8 +108,10 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
 3. On a valid payload, preview the exact proposed target record(s) — identical in form to what a
    direct user-initiated capture/promotion would show, never a summary of "what the calling plugin
    wants." **This preview's target workspace/database/team scope must reflect a trust-checked
-   value, not an assumed one.** This skill has no `Bash` grant and never runs
-   `FOUNDATION_CONTRACTS.md`'s Local Override tracked-vs-untracked trust check itself — that check
+   value, not an assumed one.** This skill's only `Bash` grant is scoped to
+   `bridge_caller.py` (for the optional classifier dispatch in step 2 above) — it holds no
+   `git ls-files`-capable grant and never runs `FOUNDATION_CONTRACTS.md`'s Local Override
+   tracked-vs-untracked trust check itself — that check
    belongs to whichever service skill (`notion-knowledge-management`/`linear-work-management`)
    ultimately resolves the target scope. If the preview is built before that check has run and been
    confirmed, state the scope as **unverified, pending trust check** on the preview itself, so the

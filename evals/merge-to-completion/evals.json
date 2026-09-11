@@ -10,5 +10,13 @@
       "expected_output": "Delegates the merge to git-kit:merge-pr; records pr-merged evidence from GitHub's read-back, not from the request; treats the merge as necessary-but-not-sufficient for closing the Linear issue -- runs a separate criterion-by-criterion comparison before any closure decision, rather than closing immediately because the merge succeeded.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      "\"record delivery after merge\"",
+      "\"close out this issue now that the PR is merged\""
+    ]
+  }
 }

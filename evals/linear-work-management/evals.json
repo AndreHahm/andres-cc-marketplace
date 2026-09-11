@@ -17,5 +17,12 @@
       "expected_output": "Treats this as a read requiring no approval, resolves the target by stable ID rather than assuming a unique name match, and reports status without applying any pending change it happens to notice.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "\"check the status of this Linear project\""
+    ]
+  }
 }

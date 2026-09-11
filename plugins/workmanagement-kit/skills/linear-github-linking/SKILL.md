@@ -136,6 +136,8 @@ attachment, and never fights configured native automation with a competing write
 - "check for drift between Notion and Linear" → `work-linking`
 - "merge this PR" → `git-kit:merge-pr`, via `merge-to-completion`
 
+**Last dated run record:** evals/linear-github-linking/workspace/iteration-1/ (2026-09-10)
+
 **Quality gates:**
 - [ ] Drift is always classified as exactly one of the five defined states, never left ambiguous
       without an `Ambiguous` classification.

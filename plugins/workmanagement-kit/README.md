@@ -1,9 +1,10 @@
 # workmanagement-kit
 
-The sole Notion/Linear access point for this repository. Notion owns knowledge and intent
-(Ideas, Decisions, proposed Goals, Notes, Research, Reports, and Outcome/Learning records); Linear
-owns accepted strategy and execution (Goals, Roadmaps, Projects, Milestones, Issues). Claude Code
-is the only agent that mutates either system; Codex is a secondary, read-only reviewer.
+The sole Notion/Linear access point for this repository, per `FOUNDATION_CONTRACTS.md`'s Authority
+Model: Notion owns knowledge and intent (Ideas, Decisions, proposed Goals, Notes, Research,
+Reports, and Outcome/Learning records), Linear owns accepted strategy and execution (Goals,
+Roadmaps, Projects, Milestones, Issues), and GitHub owns repository facts. Claude Code is the only
+agent that mutates either Notion or Linear; Codex is a secondary, read-only reviewer.
 
 No other plugin in this repository implements its own Notion or Linear connector. A plugin whose
 own workflow produces something worth storing in Notion or acting on in Linear (e.g. an output
@@ -41,9 +42,11 @@ report) routes it through this plugin's `plugin-integration-intake` skill instea
   workflow uses to submit content for Notion/Linear storage or action, under the same live
   approval gate as a direct user request.
 - **`work-transition-reviewer`** and **`work-intake-classifier`** — read-only Codex reviewer
-  personas. Both the standalone path (via the `.claude/agents` → `.codex/agents` export for direct
-  Codex CLI use) and the live path (via this plugin's own `scripts/bridge_caller.py`, dispatching
-  through `codex-kit`'s `codex-review-bridge`) are built and live (see Status).
+  personas. The standalone path (via the `.claude/agents` → `.codex/agents` export for direct
+  Codex CLI use) is built and live; the live in-session path (via this plugin's own
+  `scripts/bridge_caller.py`, dispatching through `codex-kit`'s `codex-review-bridge`) is built and
+  confirmed working in this monorepo's own checkout, but currently only in that layout — see Status
+  for the open marketplace-install limitation.
 
 Wave 2 additively bridges accepted Linear work to Git/GitHub implementation, orchestrating this
 repository's own `git-kit` lifecycle skills rather than reimplementing any of them:
@@ -66,7 +69,7 @@ repository's own `git-kit` lifecycle skills rather than reimplementing any of th
   `git-kit:merge-pr`, then separately evaluate each Linear acceptance criterion before any
   closure decision — a merge alone never closes Linear work.
 - **`linear-github-reconciliation`** — a broader drift sweep across Linear, Git, GitHub, and
-  recorded evidence against the authority matrix, repairing only bounded fields.
+  recorded evidence against the Authority Model, repairing only bounded fields.
 - **`linear-github-lifecycle`** — composes `work-to-development`, `development-to-pr`,
   `pr-to-linear`, `merge-to-completion`, and Wave 1's `status-and-learning` end to end (plus
   `linear-github-linking` for evidence lookups and `linear-github-reconciliation` on demand),
@@ -82,7 +85,11 @@ Install from this marketplace the same way as any other plugin in this repositor
 repository's own installation instructions). `codex-kit` must also be installed for the live
 Codex review path to function; without it (or on a Codex dispatch failure), `scripts/bridge_caller.py`
 returns the bridge's own typed failure rather than silently skipping the review — see Status for
-the script's current known reliability caveat on Windows. `git-kit` must be installed for any Wave 2
+the script's current known reliability caveat on Windows. **The live Codex review path currently
+only works when both plugins are installed as part of this monorepo's own checkout** —
+`scripts/bridge_caller.py` resolves its own repo root and its `codex-kit` dependency by assuming a
+shared monorepo layout, and returns a typed failure rather than dispatching when installed as two
+independent marketplace plugins outside that layout (see Status). `git-kit` must be installed for any Wave 2
 skill's governed Git/GitHub operations to resolve — without it, `repository-gates` fails closed with
 a manual handoff rather than falling back to a raw `git`/`gh` command.
 
@@ -98,6 +105,13 @@ governed operations will resolve (see `repository-gates`'s own Failure and Resum
 repository has not yet activated a local override for that field.
 
 Items still open before Wave 2 is fully live:
+- **The live Codex review path (`scripts/bridge_caller.py`) only works inside this monorepo's own
+  checkout layout** — it cannot locate its own repo root or its `codex-kit` dependency when
+  `workmanagement-kit` is installed standalone via the plugin marketplace mechanism into a
+  consumer project. Tracked at
+  `issues/2026-09-01-workmanagement-kit-bridge-caller-marketplace-install-path.md`. Doesn't block
+  this repository's own live use (confirmed working end-to-end), but blocks the "install this
+  plugin as usual" story for any installation outside this monorepo.
 - **`versioned-configuration.json`'s schema-v2 `github`/`repository_policy` fields ship unconfigured
   by design**, same shippable-defaults-plus-local-override model every existing field already uses —
   an installation activates them via `.claude/workmanagement-kit.local.json`, never by editing the

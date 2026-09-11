@@ -24,5 +24,10 @@
       "expected_output": "Reads relevant Linear facts and the Issue's git-github-evidence array via linear-work-management (not linear-github-linking); produces a dated summary explicitly labeled as a snapshot, not live state; gets approval before the Notion write; never treats itself as a live GitHub automation endpoint.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
+  }
 }

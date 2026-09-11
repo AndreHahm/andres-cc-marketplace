@@ -30,7 +30,7 @@
           "graded_at": "2026-08-31T04:34:07Z",
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-idea-to-implementation.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-idea-to-implementation.json",
           "report_sha256": "06e1e51b6e0b32f81dee0966428c5bf4ead4fd702d15b3cf5427cc694807f400",
           "score": 9.9,
           "target": "idea-to-implementation",
@@ -44,7 +44,7 @@
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
           "is_na": false,
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-idea-to-implementation.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-idea-to-implementation.json",
           "report_sha256": "06e1e51b6e0b32f81dee0966428c5bf4ead4fd702d15b3cf5427cc694807f400",
           "security_score": 9.5,
           "source_field": "dimensions.safety_risk_handling.score",
@@ -96,7 +96,7 @@
           "graded_at": "2026-08-31T04:34:07Z",
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-linear-work-management.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-linear-work-management.json",
           "report_sha256": "be465023c55507cbd7189441bd8c50128d165d14cf8da1227a09e4dee0c87048",
           "score": 9.9,
           "target": "linear-work-management",
@@ -110,7 +110,7 @@
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
           "is_na": false,
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-linear-work-management.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-linear-work-management.json",
           "report_sha256": "be465023c55507cbd7189441bd8c50128d165d14cf8da1227a09e4dee0c87048",
           "security_score": 10.0,
           "source_field": "dimensions.safety_risk_handling.score",
@@ -162,7 +162,7 @@
           "graded_at": "2026-08-31T04:34:07Z",
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-notion-knowledge-management.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-notion-knowledge-management.json",
           "report_sha256": "6063ab641ae08db1f7fd7cfd6c3694c399e0961ee32a592c51f45d9b0dd907fb",
           "score": 9.8,
           "target": "notion-knowledge-management",
@@ -176,7 +176,7 @@
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
           "is_na": false,
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-notion-knowledge-management.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-notion-knowledge-management.json",
           "report_sha256": "6063ab641ae08db1f7fd7cfd6c3694c399e0961ee32a592c51f45d9b0dd907fb",
           "security_score": 9.5,
           "source_field": "dimensions.safety_risk_handling.score",
@@ -228,7 +228,7 @@
           "graded_at": "2026-08-31T04:34:07Z",
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-open-item-management.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-open-item-management.json",
           "report_sha256": "0d2e5bf0af0165d48613d9354a5c5072f1ea7395e486b177828869156cebca03",
           "score": 9.9,
           "target": "open-item-management",
@@ -242,7 +242,7 @@
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
           "is_na": false,
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-open-item-management.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-open-item-management.json",
           "report_sha256": "0d2e5bf0af0165d48613d9354a5c5072f1ea7395e486b177828869156cebca03",
           "security_score": 9.5,
           "source_field": "dimensions.safety_risk_handling.score",
@@ -294,7 +294,7 @@
           "graded_at": "2026-08-31T04:34:07Z",
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-plugin-integration-intake.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-plugin-integration-intake.json",
           "report_sha256": "1db8456342401a34553b06d5858889b18df2501217ffbfa3da871e48689ef5f3",
           "score": 9.8,
           "target": "plugin-integration-intake",
@@ -308,7 +308,7 @@
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
           "is_na": false,
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-plugin-integration-intake.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-plugin-integration-intake.json",
           "report_sha256": "1db8456342401a34553b06d5858889b18df2501217ffbfa3da871e48689ef5f3",
           "security_score": 9.0,
           "source_field": "dimensions.safety_risk_handling.score",
@@ -360,7 +360,7 @@
           "graded_at": "2026-08-31T04:34:07Z",
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-status-and-learning.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-status-and-learning.json",
           "report_sha256": "7b76cee84f280a2b904baaa7fd85d9238a0f5b625c03e473bbe2059726ef5d04",
           "score": 9.9,
           "target": "status-and-learning",
@@ -374,7 +374,7 @@
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
           "is_na": false,
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-status-and-learning.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-status-and-learning.json",
           "report_sha256": "7b76cee84f280a2b904baaa7fd85d9238a0f5b625c03e473bbe2059726ef5d04",
           "security_score": 9.5,
           "source_field": "dimensions.safety_risk_handling.score",
@@ -426,7 +426,7 @@
           "graded_at": "2026-08-31T04:34:07Z",
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-linking.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-work-linking.json",
           "report_sha256": "3136a111f10636d1e1cd6ae6b8511b92f0f417a972a58e5b4986172d0c970572",
           "score": 9.9,
           "target": "work-linking",
@@ -440,7 +440,7 @@
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
           "is_na": false,
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-linking.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-work-linking.json",
           "report_sha256": "3136a111f10636d1e1cd6ae6b8511b92f0f417a972a58e5b4986172d0c970572",
           "security_score": 9.5,
           "source_field": "dimensions.safety_risk_handling.score",
@@ -492,7 +492,7 @@
           "graded_at": "2026-08-31T04:34:07Z",
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-intake-classifier.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-work-intake-classifier.json",
           "report_sha256": "87451d52e4d9bcb168e696c71d57026636c30c09b116f82cf4453418aca7b305",
           "score": 10.0,
           "target": "work-intake-classifier",
@@ -506,7 +506,7 @@
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
           "is_na": false,
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-intake-classifier.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-work-intake-classifier.json",
           "report_sha256": "87451d52e4d9bcb168e696c71d57026636c30c09b116f82cf4453418aca7b305",
           "security_score": 10.0,
           "source_field": "dimensions.safety_risk_handling.score",
@@ -558,7 +558,7 @@
           "graded_at": "2026-08-31T04:34:07Z",
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-transition-reviewer.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-work-transition-reviewer.json",
           "report_sha256": "047b4b39c7065f28b99ad7565bcfeb8a40fda44a39d1112ccd6df54098346267",
           "score": 10.0,
           "target": "work-transition-reviewer",
@@ -572,7 +572,7 @@
           "grader_schema_version": "1.1.0",
           "imported_on": "2026-08-31",
           "is_na": false,
-          "report_path": "C:/Users/andre/AppData/Local/Temp/claude/C--Dev-Repos-andres-cc-marketplace/3c99244b-a4f5-4a17-8dd8-593c1029c137/scratchpad/component-report-work-transition-reviewer.json",
+          "report_path": "<redacted-local-scratchpad-path>/component-report-work-transition-reviewer.json",
           "report_sha256": "047b4b39c7065f28b99ad7565bcfeb8a40fda44a39d1112ccd6df54098346267",
           "security_score": 10.0,
           "source_field": "dimensions.safety_risk_handling.score",
@@ -596,12 +596,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-10",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "development-to-pr-bridge",
+      "functional_role": "workflow",
       "id": "component_eafb261e",
       "name": "development-to-pr",
       "naming_history": [
@@ -637,12 +637,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-10",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "linear-github-lifecycle-orchestration",
+      "functional_role": "workflow",
       "id": "component_c129685c",
       "name": "linear-github-lifecycle",
       "naming_history": [
@@ -678,12 +678,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-10",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-github-linking",
+      "functional_role": "workflow",
       "id": "component_24b082f8",
       "name": "linear-github-linking",
       "naming_history": [
@@ -719,12 +719,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-10",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "git-github-reconciliation",
+      "functional_role": "workflow",
       "id": "component_4ee314d0",
       "name": "linear-github-reconciliation",
       "naming_history": [
@@ -760,12 +760,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-10",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "merge-completion",
+      "functional_role": "workflow",
       "id": "component_5fe83069",
       "name": "merge-to-completion",
       "naming_history": [
@@ -801,12 +801,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-10",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "pr-review-sync",
+      "functional_role": "workflow",
       "id": "component_28c09ddb",
       "name": "pr-to-linear",
       "naming_history": [
@@ -842,12 +842,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-10",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "repository-gate-discovery",
+      "functional_role": "infrastructure",
       "id": "component_e55654c2",
       "name": "repository-gates",
       "naming_history": [
@@ -883,12 +883,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-10",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "issue-to-branch-bridge",
+      "functional_role": "workflow",
       "id": "component_60be3c3b",
       "name": "work-to-development",
       "naming_history": [
@@ -927,5 +927,5 @@
   "plugin_id": "plugin_39dae8d5",
   "plugin_name": "workmanagement-kit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-09-09"
+  "updated_on": "2026-09-11"
 }

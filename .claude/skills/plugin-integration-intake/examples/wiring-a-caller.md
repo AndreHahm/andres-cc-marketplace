@@ -76,6 +76,6 @@ to the user for a submission from an unverifiable source.
 A crafted payload claiming `source_plugin: "analysis-kit"` (a real, installed plugin) with
 `source_skill: "../../workmanagement-kit/skills/plugin-integration-intake"` or `source_skill: "*"`
 fails at step 2a's allowlist check (`^[a-z0-9][a-z0-9-]*$`) before either value is ever used in a
-`Glob` pattern — the JSON Schema's own `pattern` constraint on both fields rejects it even earlier,
-before this skill's own procedure runs at all. Neither a path-traversal segment nor a glob
-metacharacter passes; both are equally rejected by the same allowlist, not by two separate checks.
+`Glob` pattern. Neither a path-traversal segment nor a glob metacharacter passes. (The JSON Schema
+asset encodes the same allowlist as a `pattern` constraint, but nothing currently invokes that
+schema at runtime — step 2a's own check is what actually runs and rejects this payload.)

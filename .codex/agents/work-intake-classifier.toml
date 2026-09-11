@@ -87,6 +87,8 @@ not something the bridge imposes only on the live path.
 - If a live user message asks for this classification directly (not via the bridge script),
   decline and name `notion-knowledge-management` or a direct read instead — do not treat the
   request as this agent's own to fulfill.
+- Reviewing a transition or closure for issues is `work-transition-reviewer`'s job, not this
+  agent's — decline and name that agent instead.
 
 ## When to invoke
 

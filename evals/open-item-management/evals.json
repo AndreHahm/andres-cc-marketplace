@@ -24,5 +24,10 @@
       "expected_output": "Revalidates each item against current state rather than just replaying merge-to-completion's own preliminary classification; classifies each item as exactly one of resolved/retained-knowledge/decision-needed/actionable-work; gets two separate approvals (the follow-up batch, and the full disposition record).",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 2,
+    "uncovered": []
+  }
 }
