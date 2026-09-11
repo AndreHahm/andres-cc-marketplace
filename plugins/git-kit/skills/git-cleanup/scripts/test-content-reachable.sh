@@ -44,6 +44,21 @@ new_repo() {
   git -C "$dir" config user.email test@test.com
   git -C "$dir" config user.name test
   git -C "$dir" config core.autocrlf false
+  # On a host where core.filemode defaults to true (typical on Linux/ext4 --
+  # this repo's own machine defaults to false, typical on Windows/NTFS,
+  # which has no real POSIX executable bit), `git update-index --chmod=+x`
+  # (used by the mode-change scenarios below) updates only the INDEX, not
+  # the working-tree file's real permission bits -- with filemode tracking
+  # on, git then sees the working tree as locally modified (index/disk mode
+  # mismatch) and a later `git checkout` to switch branches refuses,
+  # breaking those scenarios on any host where filemode defaults to true.
+  # Forced false here so scenario behavior is deterministic across hosts,
+  # matching this repo's own actual setting rather than depending on
+  # whatever the running machine happens to default to (GitHub automated
+  # review, PR #315, Codex connector P2 -- live-verified: forcing
+  # core.filemode=true on an already-built scratch repo from this suite
+  # made `git status` immediately report the mode-changed file as modified).
+  git -C "$dir" config core.filemode false
   echo "$dir"
 }
 
@@ -712,6 +727,96 @@ scenario_deletion_check_survives_corrupted_blob() {
   )
 }
 
+# Scenario 17: a blob that existed on $default_branch only BEFORE the
+# branches diverged -- added, then deleted, entirely pre-divergence -- must
+# NOT satisfy reachability just because the tag's own branch happens to
+# re-add byte-identical content. Without bounding the search to
+# $mb..$default_branch, an unbounded full-history walk finds this stale
+# pre-divergence blob and incorrectly reports "reachable" (GitHub automated
+# review, PR #315, Codex connector P1 -- live-verified against this exact
+# fixture before writing it: the unbounded version reported reachable even
+# though $default_branch never contained the file after the branches split).
+scenario_pre_divergence_blob_not_reachable() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'secret content\n' > data.txt
+    git add data.txt && git commit -q -m "add data.txt"
+    git rm -q data.txt
+    git commit -q -m "main deletes data.txt (before any branch exists)"
+    git branch feature
+    git checkout -q feature
+    printf 'secret content\n' > data.txt
+    git add data.txt && git commit -q -m "feature re-adds identical data.txt"
+    git tag -a predivtag-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+    # main never restores data.txt after the branches diverged.
+  )
+  (
+    cd "$repo"
+    default_branch=main
+    git show-ref --verify --quiet refs/heads/main || default_branch=master
+    eval "$FUNCS"
+    if is_tag_content_reachable predivtag-rebase-backup-20260101-000000; then
+      exit 1  # data.txt was never restored post-divergence -- must fail closed
+    else
+      exit 0
+    fi
+  )
+}
+
+# Scenario 18: positive counterpart/regression guard for scenario 17 --
+# bounding the search to $mb..$default_branch must not introduce a NEW false
+# negative for content genuinely inherited unchanged from the shared
+# ancestor itself. The tag's history has two commits: one that modifies a
+# path away from $mb's content (independently verified reachable too, via a
+# separate main commit reproducing the same modification -- this isolates
+# the fast path under test from the unrelated "every commit's own content
+# must be reachable" requirement, which would otherwise fail the tag closed
+# for a wholly different reason and mask what this scenario means to check),
+# and one that reverts the path back to exactly $mb's own original content.
+# $default_branch never independently reintroduces that original content
+# after $mb -- it's only ever inherited from $mb itself, unchanged -- so
+# only checking $mb's own tree directly (not just $mb..$default_branch,
+# which excludes $mb) recognizes the revert commit correctly (live-verified
+# before writing this fixture: excluding $mb from the check incorrectly
+# reports this unreachable, even though $default_branch's current tree
+# still has the pre-divergence content it never touched).
+scenario_content_inherited_from_merge_base_recognized() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'shared content\n' > shared.txt
+    git add shared.txt && git commit -q -m "add shared.txt"
+    git branch feature
+    git checkout -q feature
+    printf 'MODIFIED\n' > shared.txt
+    git add shared.txt && git commit -q -m "feature: modify shared.txt"
+    printf 'shared content\n' > shared.txt
+    git add shared.txt && git commit -q -m "feature: revert shared.txt to original"
+    git tag -a reverttag-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+    # main independently lands the SAME intermediate modification (so that
+    # commit's own content is verifiable too) but never reintroduces the
+    # original content afterward -- the revert commit's own reachability can
+    # only come from $mb's own tree, inherited unchanged.
+    printf 'MODIFIED\n' > shared.txt
+    git add shared.txt && git commit -q -m "main independently makes the same modification"
+  )
+  (
+    cd "$repo"
+    default_branch=main
+    # default_branch is read by is_tag_content_reachable via eval "$FUNCS" below,
+    # which shellcheck can't see through -- false positive.
+    # shellcheck disable=SC2034
+    git show-ref --verify --quiet refs/heads/main || default_branch=master
+    eval "$FUNCS"
+    is_tag_content_reachable reverttag-rebase-backup-20260101-000000
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -738,6 +843,8 @@ run scenario_mode_change_recognized "a mode-only change (chmod +x) reflected on 
 run scenario_mode_change_not_reflected_fails_closed "a mode-only change not reflected on default_branch fails closed"
 run scenario_special_char_filename_recognized "a filename containing a pathspec metacharacter is still matched literally"
 run scenario_deletion_check_survives_corrupted_blob "a deletion check fails closed when the path's blob is unreadable, not just when absent"
+run scenario_pre_divergence_blob_not_reachable "a blob present on default_branch only before divergence does not satisfy reachability"
+run scenario_content_inherited_from_merge_base_recognized "content inherited unchanged from the merge-base is still recognized as reachable"
 
 echo ""
 echo "$PASS passed, $FAIL failed"
