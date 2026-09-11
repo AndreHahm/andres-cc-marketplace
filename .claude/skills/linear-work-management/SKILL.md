@@ -172,7 +172,7 @@ updated risks a duplicate or conflicting change.
 - "create a Linear issue based on/from this idea/decision/goal" — a Notion source is named as the
   request's origin, so this is a promotion, not a direct ask → `idea-to-implementation`
 
-**Last dated run record:** evals/linear-work-management/workspace/iteration-1/ (2026-08-30)
+**Last dated run record:** evals/linear-work-management/workspace/iteration-1/eval-3/ (2026-09-11)
 
 **Quality gates:**
 - [ ] Every material change is preceded by a preview and live approval.

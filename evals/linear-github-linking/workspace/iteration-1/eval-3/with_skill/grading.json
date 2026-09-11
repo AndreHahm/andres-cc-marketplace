@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Repair is modeled as appending a NEW evidence entry whose own `supersedes` field names the earlier entry's evidence_id, never editing or deleting the earlier entry itself",
+      "passed": true,
+      "evidence": "'supersedes: E_old — the only field that links back to the entry being corrected; E_old itself is left completely untouched (no edit, no deletion)' — the procedure is described as appending a brand-new entry with a full field list, never mutating the prior one."
+    },
+    {
+      "text": "Repair never touches GitHub state directly — GitHub is read only to verify the current state, never mutated",
+      "passed": true,
+      "evidence": "'Never touch GitHub state to \"fix\" anything there, never write back to correct GitHub's own native Linear integration...' — explicit statement; all GitHub calls performed/planned (gh pr view, git ls-remote) are read-only."
+    },
+    {
+      "text": "Never resolves the stale entry by newest-timestamp comparison; correction is toward GitHub's actual current state, since GitHub is authoritative over Git/GitHub facts",
+      "passed": true,
+      "evidence": "'Verify GitHub's actual current state independently... never trust the stale recorded SHA, and never resolve by comparing timestamps' — explicit statement, and the described correction target is GitHub's current HEAD SHA, not a timestamp comparison."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

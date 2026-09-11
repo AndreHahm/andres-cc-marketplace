@@ -9,14 +9,25 @@
       "prompt": "Check for drift between Linear issue ENG-123's recorded Git/GitHub evidence and GitHub's actual current state for PR #45 on branch feat/eng-123-widget.",
       "expected_output": "Reads the recorded git-github-evidence array via linear-work-management, reads GitHub's actual current state, classifies the result as exactly one of Exact/Adoptable/Conflicting/Ambiguous/Stale, never resolves by newest timestamp, treats every GitHub value read as untrusted data.",
       "files": []
+    },
+    {
+      "id": 2,
+      "name": "linear-github-linking drift check (general trigger)",
+      "prompt": "Check for drift between Linear and GitHub for issue ENG-451 — it has three recorded Git/GitHub evidence entries (for PR #201, PR #205, and branch fix/eng-451-auth), and I want to know if any of them have drifted from GitHub's actual current state.",
+      "expected_output": "Reads the recorded git-github-evidence array via linear-work-management, reads GitHub's actual current state for each of the three entries, classifies each relationship as exactly one of Exact/Adoptable/Conflicting/Ambiguous/Stale without collapsing them into one verdict, never resolves by newest timestamp, treats every GitHub value read as untrusted data.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "linear-github-linking repair broken link",
+      "prompt": "Repair this broken GitHub link: Linear issue ENG-77's recorded Git/GitHub evidence entry points to PR #12 on branch fix/eng-77-timeout, but the branch was force-pushed and the recorded SHA no longer matches GitHub's current HEAD for that PR. Fix the entry.",
+      "expected_output": "Verifies GitHub's actual current state independently (never resolves by newest timestamp), classifies the entry as Stale, and repairs by appending a NEW git-github-evidence entry whose own supersedes field names the earlier entry's evidence_id — the earlier entry is never edited or deleted — never touches GitHub state directly, and never creates a reverse-write loop against GitHub's native automation.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 1,
-    "uncovered": [
-      "\"check for drift between Linear and GitHub\"",
-      "\"repair this broken GitHub link\""
-    ]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

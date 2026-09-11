@@ -1,0 +1,22 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md",
+  "prompt": "Resume this interrupted Wave 2 lifecycle run for Linear issue ENG-288. The git-github-evidence array shows, in order: a work-started entry (repository acme/api, branch feat/eng-288-webhook-retries), a commit-linked entry for the same branch, and a pr-published entry for the same branch whose gates[] array is [{name: lint, result: pass}, {name: unit-tests, result: pass}]. No pr-ready or pr-merged entry exists. The issue currently shows status 'In Review' in Linear. Continue the lifecycle from here.",
+  "assertions": [
+    {
+      "text": "Correctly determines the resume point as Phase 4 (Review/fix + Ready, delegated to pr-to-linear) from the furthest active evidence entry (pr-published), without re-running the already-completed Prepare+Start, Implement, or Commit+gates+Publish phases",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Presents the resume point to the user via AskUserQuestion before continuing, rather than silently resuming from an assumed point",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Treats the Issue's Linear status ('In Review') as informative context only, never as proof of what phase completed — bases the resume determination on the git-github-evidence array",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

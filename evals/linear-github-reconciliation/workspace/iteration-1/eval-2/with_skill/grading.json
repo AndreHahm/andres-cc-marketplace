@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the discrepancy as exactly one of the nine defined drift states rather than assuming an explanation without evidence",
+      "passed": true,
+      "evidence": "\"Working classification: `Automation drift`.\" followed by an explicit elimination of each of the other eight states in turn (Aligned, Missing link, Stale summary, Invalidated SHA, Contradictory, Ambiguous, External artifact, with Early status named as the closest adjacent candidate and explained rather than silently dropped)."
+    },
+    {
+      "text": "Does not treat the more recently changed system (Linear's 'Done' status) as automatically correct via newest-timestamp precedence",
+      "passed": true,
+      "evidence": "\"neither 'Linear is newer' nor 'GitHub is newer' matters here — timestamp is never the tiebreaker. The question is whether Linear's Done write is *justified by evidence*, and on the given facts, it structurally is not.\""
+    },
+    {
+      "text": "Flags the 'Done' status vs. still-open-draft-PR mismatch as requiring investigation and AskUserQuestion confirmation before any repair, rather than silently accepting or silently correcting it",
+      "passed": true,
+      "evidence": "Step 6 explicitly frames the proposed status revert as an `AskUserQuestion` with a yes/no/investigate-further structure, and states \"No repair is applied yet — this is a preview only\" in Step 5, plus \"Approval required: ... a Linear field change always needs confirmation first.\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

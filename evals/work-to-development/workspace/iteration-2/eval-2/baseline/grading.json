@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reads Linear Issue context before proposing any Git action",
+      "passed": true,
+      "evidence": "Refuses to fabricate ticket content as fact and does not commit to any git action; Step 3's branch-creation example is explicitly labeled 'Simulated example only', and the response ends by asking for the real issue content before proceeding."
+    },
+    {
+      "text": "Resolves repository policy (confirms git-kit is the provider) before requesting a branch",
+      "passed": false,
+      "evidence": "No mention anywhere of repository-gates, a policy profile, or a required provider check — the illustrated branch step uses raw git commands with no provider gate considered at all."
+    },
+    {
+      "text": "Checks for an existing branch/commit/PR for this Issue before proposing a new branch",
+      "passed": false,
+      "evidence": "'Confirm repo state' only checks git status/HEAD (clean-tree check) on the current branch — no search of existing branches, commit history, or open PRs for ENG-310 is performed or mentioned anywhere."
+    },
+    {
+      "text": "Explicitly asks for confirmation before invoking git-kit:starting-work, and never claims to create a branch directly itself",
+      "passed": false,
+      "evidence": "git-kit is never mentioned; the illustrated Step 3 shows raw `git checkout -b eng-310-<slug>` as what it would run directly, with no confirmation gate and no delegation to git-kit at any point."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

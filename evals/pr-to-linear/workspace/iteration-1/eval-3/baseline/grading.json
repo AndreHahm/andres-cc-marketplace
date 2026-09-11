@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Routes a 'mark ready' request through step 2 (git-kit:handling-review-findings) first, per step 1.5's explicit named routing for readiness requests — never treated as a pure-summary shortcut",
+      "passed": false,
+      "evidence": "The response has no concept of git-kit:handling-review-findings or any dedicated finding-triage delegation step. It goes directly from a general state check (step 3, 'Decide whether to actually flip it') to running the ready mutation (step 4) with no intervening triage/fix/reply/resolve cycle."
+    },
+    {
+      "text": "Never invokes gh pr ready (or any raw gh pr mutation) directly — presents the ready-state action as a structured handoff via AskUserQuestion asking the user to run it themselves",
+      "passed": false,
+      "evidence": "Step 4 runs the mutation directly: 'gh pr ready 77 ... This is the actual mechanism.' No AskUserQuestion gate or structured handoff is used at any point; the response executes (in trace form) the raw command itself rather than asking the user to."
+    },
+    {
+      "text": "Records pr-ready only for the exact current head SHA re-verified immediately before the mutation, with provider 'manual (gh pr ready, per pr-to-linear's disclosed handoff)' — never a fabricated git-kit:... provider",
+      "passed": false,
+      "evidence": "There is no pr-ready evidence record or provider field concept anywhere in the response. Step 7 instead describes manually moving the Linear issue's workflow status ('Move status from \"In Progress\" -> \"In Review\"') with no SHA-binding and no structured provider disclosure."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

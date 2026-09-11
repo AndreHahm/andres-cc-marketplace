@@ -9,14 +9,25 @@
       "prompt": "Linear issue ENG-204's workflow status changed to 'In Review' but no Wave 2 skill in this session recorded that transition. Investigate.",
       "expected_output": "Compares Linear, Git, GitHub, and recorded evidence against the authority model; classifies the discrepancy as exactly one of the nine defined states (likely 'Early status' or 'Automation drift' here); never uses newest-timestamp precedence; does not attempt to reverse-write against native automation, and stops consequential workflows pending investigation.",
       "files": []
+    },
+    {
+      "id": 2,
+      "name": "why did this issue's status change unexpectedly",
+      "prompt": "Linear issue PLAT-77 unexpectedly moved from 'In Progress' to 'Done' overnight, but the PR linked to it is still open and marked as a draft. No one on the team recalls closing it manually. Investigate why the status changed and what should happen next.",
+      "expected_output": "Classifies the discrepancy as exactly one of the nine defined states (most defensibly 'Automation drift', with 'Early status' named as the closest adjacent candidate); never treats Linear's more recently changed 'Done' status as automatically correct via newest-timestamp precedence; flags the Done-vs-open-draft-PR mismatch as requiring investigation and AskUserQuestion confirmation before any repair rather than silently accepting or silently correcting it; stops consequential downstream workflows pending resolution.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "check for drift across this issue's whole lifecycle",
+      "prompt": "Before closing out Linear issue ENG-311, do a full reconciliation across its whole lifecycle -- not just its current status. Check Linear's current recorded state, the full Git/GitHub Evidence Record history recorded for it so far, and current GitHub state (its PR/branch), and flag anything across that whole history that doesn't line up, not just the most recent change.",
+      "expected_output": "Checks multiple lifecycle dimensions (Linear's current recorded state, the Git/GitHub Evidence Record history, and current GitHub state), not only the most recent change; classifies each discrepancy found as exactly one of the nine defined states, never leaving one unclassified (including 'Ambiguous' when evidence is genuinely insufficient); proposes only bounded repairs scoped to the specific drifted field/link, never a broad bidirectional sync across the whole lifecycle.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 1,
-    "uncovered": [
-      "\"why did this issue's status change unexpectedly\"",
-      "\"check for drift across this issue's whole lifecycle\""
-    ]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

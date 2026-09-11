@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates each lifecycle phase to its own named focused skill (work-to-development, development-to-pr, pr-to-linear, merge-to-completion, status-and-learning) rather than performing the phase's logic itself",
+      "passed": false,
+      "evidence": "No named skill, delegation concept, or evidence-record schema appears anywhere in the response. It is one flat 11-step plan (pull issue -> assign/In Progress -> branch -> implement -> commit -> open PR -> CI/review -> verify merge-readiness -> merge -> Linear disposition -> post-merge cleanup) performed directly by the responding agent itself, with no composition of separate focused components."
+    },
+    {
+      "text": "Follows the documented phase order (Prepare + Start before Commit+gates+Publish, Publish before Merge, Merge before Notion learning)",
+      "passed": true,
+      "evidence": "Step 2 ('Assign and transition the issue to In Progress') precedes Step 6 ('Open the PR'), which precedes Step 9 ('Merge') and Step 10 ('Linear disposition') — the same relative start-before-publish-before-merge-before-disposition ordering, arrived at independently from general practice rather than the skill's documented table. (No Notion-learning step exists in this response at all, so that specific ordering claim is not itself addressed, but the covered portion of the order is correct.)"
+    },
+    {
+      "text": "Describes an AskUserQuestion confirmation gate at each phase transition, additive to each delegated skill's own internal gate",
+      "passed": false,
+      "evidence": "Uses scattered self-directed judgment calls ('I'd stop and ask rather than invent requirements unilaterally', 'I'd check', 'I would not mark the issue Done if...') and ends with an open invitation ('tell me the actual repo and Linear workspace conventions... or execute it step by step with you supplying outputs at each checkpoint'), but never describes a structured pause-and-confirm gate between each of the 11 steps before proceeding — no AskUserQuestion-equivalent construct appears at any step boundary."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333333333333333
+  }
+}

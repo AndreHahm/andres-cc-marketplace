@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/work-linking/SKILL.md",
+  "assertions": [
+    {"text": "Before concluding the Notion record was deleted, re-resolves by stable ID within the owning system (Notion), not by substituting a content/title-based search guess", "type": "functionality", "target": "outputs/"},
+    {"text": "Classifies this as a 'Broken link' per the skill's six defined drift states, not a generic or ad-hoc label", "type": "structure", "target": "outputs/"},
+    {"text": "Does not silently resolve the link by a guessed replacement or by newest timestamp; surfaces the uncertainty to the user instead of writing a repair unprompted", "type": "functionality", "target": "outputs/"}
+  ]
+}

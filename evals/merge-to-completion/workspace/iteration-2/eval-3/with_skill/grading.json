@@ -1,0 +1,36 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Records pr-merged via linear-github-linking using GitHub's own fresh read-back merge SHA, never assumed from the request or the task's own claim that the PR already merged cleanly",
+      "passed": true,
+      "evidence": "Step 6: '[SIMULATED] gh pr view 92 --json state,mergeCommit -> state: \"MERGED\", mergeCommit oid ... pr-merged is recorded only because this read-back says MERGED -- not because the task description asserted \"merged cleanly.\"' Step 7 then invokes linear-github-linking and writes merge_commit_sha from that exact read-back value into the git-github-evidence entry."
+    },
+    {
+      "text": "Runs the Linear disposition as a separate, explicit step -- an individual, criterion-by-criterion comparison against each of the 4 acceptance criteria -- rather than closing the issue immediately because the task states the PR already merged cleanly with criteria already verified by the implementer",
+      "passed": true,
+      "evidence": "Step 9: 'Even though the task states all 4 criteria ... this skill does not substitute that assertion for its own comparison -- it still performs an individual, criterion-by-criterion check against the actual delivered diff, never \"merged, therefore done.\"' Produces AC1-AC4 each with its own Met/evidence line."
+    },
+    {
+      "text": "Only records work-closed (via linear-work-management) once every criterion is confirmed literally met under step 13's condition (a), not inferred directly from a successful merge or from the implementer's own claim alone",
+      "passed": true,
+      "evidence": "Step 13: 'Condition (a) is satisfied: every criterion literally met, no outstanding item, confirmed at step 11. Record ... work-closed transition via linear-work-management' -- explicitly gated on step 11's confirmation of the step-9 comparison, not on the merge or the implementer's claim."
+    },
+    {
+      "text": "Checks and discloses whether GitHub's native Linear integration might already have changed the issue's workflow status as a side effect of the merge, treating that as drift to report rather than as satisfying the disposition step",
+      "passed": true,
+      "evidence": "Step 8 explicitly simulates the native integration moving the issue to 'Done' on merge and states: 'This is reported as drift, not treated as the disposition ... That status change is GitHub's own integration acting informationally/automatically -- it is not merge-to-completion's own work-closed transition.' Step 13 reiterates the distinction when actually closing."
+    },
+    {
+      "text": "Never re-invokes git-kit:finishing-work itself, citing that merge-pr's own step 8 (inside step 5's delegation) already owns asking about and running post-merge cleanup",
+      "passed": true,
+      "evidence": "Step 15: 'merge-pr's own step 8 ... already asked ... and invoked Skill(git-kit:finishing-work) itself ... merge-to-completion holds no tool grant for git-kit:finishing-work (confirmed against its allowed-tools frontmatter ...) and does not attempt to invoke it a second time.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

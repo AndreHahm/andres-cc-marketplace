@@ -16,13 +16,18 @@
       "prompt": "Check the status of the Q3 roadmap project in Linear.",
       "expected_output": "Treats this as a read requiring no approval, resolves the target by stable ID rather than assuming a unique name match, and reports status without applying any pending change it happens to notice.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Check status of an unnamed project",
+      "prompt": "Check the status of this Linear project.",
+      "expected_output": "Recognizes that no project name, ID, or link was given (and none was established earlier in the conversation), asks the user to identify the target rather than guessing one, and states that checking status is a read-only operation needing no approval once a target is resolved — without fabricating any status data for an unresolved target.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 2,
-    "uncovered": [
-      "\"check the status of this Linear project\""
-    ]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

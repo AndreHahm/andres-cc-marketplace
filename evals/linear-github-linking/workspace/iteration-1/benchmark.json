@@ -1,7 +1,7 @@
 {
   "skill_name": "linear-github-linking",
   "iteration": 1,
-  "timestamp": "2026-09-10T23:02:06+02:00",
+  "timestamp": "2026-09-11T10:00:00+02:00",
   "evals": [
     {
       "eval_id": 1,
@@ -24,17 +24,61 @@
         "tokens": 0,
         "duration_ms": -13000
       }
+    },
+    {
+      "eval_id": 2,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 106382,
+        "avg_duration_ms": 160715
+      },
+      "baseline": {
+        "pass_rate": 0.3333333333333333,
+        "assertions_passed": 1,
+        "assertions_total": 3,
+        "avg_tokens": 96239,
+        "avg_duration_ms": 77504
+      },
+      "delta": {
+        "pass_rate": 0.6667,
+        "tokens": 10143,
+        "duration_ms": 83211
+      }
+    },
+    {
+      "eval_id": 3,
+      "with_skill": {
+        "pass_rate": 1.0,
+        "assertions_passed": 3,
+        "assertions_total": 3,
+        "avg_tokens": 100631,
+        "avg_duration_ms": 99089
+      },
+      "baseline": {
+        "pass_rate": 0.6666666666666666,
+        "assertions_passed": 2,
+        "assertions_total": 3,
+        "avg_tokens": 97062,
+        "avg_duration_ms": 152919
+      },
+      "delta": {
+        "pass_rate": 0.3333,
+        "tokens": 3569,
+        "duration_ms": -53830
+      }
     }
   ],
   "summary": {
     "with_skill_avg_pass_rate": 1.0,
-    "baseline_avg_pass_rate": 0.3333,
-    "improvement": 0.6667,
-    "avg_tokens_with_skill": 9500,
-    "avg_tokens_baseline": 9500,
-    "token_cost": 0,
-    "avg_duration_ms_with_skill": 62000,
-    "avg_duration_ms_baseline": 75000,
-    "duration_cost_ms": -13000
+    "baseline_avg_pass_rate": 0.4444,
+    "improvement": 0.5556,
+    "avg_tokens_with_skill": 72171,
+    "avg_tokens_baseline": 67600,
+    "token_cost": 4571,
+    "avg_duration_ms_with_skill": 107268,
+    "avg_duration_ms_baseline": 101808,
+    "duration_cost_ms": 5460
   }
 }

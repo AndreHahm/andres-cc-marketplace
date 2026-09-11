@@ -172,7 +172,7 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - "triage the review findings on this PR" / "reply to and resolve this review thread" →
   `git-kit:handling-review-findings`
 
-**Last dated run record:** evals/pr-to-linear/workspace/iteration-1/ (2026-09-10)
+**Last dated run record:** evals/pr-to-linear/workspace/iteration-1/ (2026-09-11) — 3 eval scenarios, all with_skill 1.0 pass rate vs. baseline 0.0
 
 **Quality gates:**
 - [ ] Never copies a full PR/check/review transcript into Linear — always a concise, deliberate

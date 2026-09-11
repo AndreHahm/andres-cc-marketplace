@@ -9,14 +9,25 @@
       "prompt": "Start work on accepted Linear issue ENG-200 (an accepted, ready-to-implement issue in this repository).",
       "expected_output": "Reads Issue context via linear-work-management; resolves repository policy via repository-gates; searches for an existing branch/commit/PR via linear-github-linking before proposing a new one; presents the proposed git-kit:starting-work request and gets explicit confirmation before invoking it; never creates a branch directly itself.",
       "files": []
+    },
+    {
+      "id": 2,
+      "name": "work-to-development \"begin development for issue X\" scenario",
+      "prompt": "Begin development for Linear issue ENG-310 — it's accepted and ready to implement in this repository.",
+      "expected_output": "Reads Issue context via linear-work-management; resolves repository policy via repository-gates; searches for an existing branch/commit/PR via linear-github-linking before proposing a new one; presents the proposed git-kit:starting-work request and gets explicit confirmation before invoking it; never creates a branch directly itself.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "work-to-development \"prepare this accepted issue for implementation\" scenario",
+      "prompt": "Prepare this accepted issue for implementation: ENG-415 is accepted and ready to go in this repository.",
+      "expected_output": "Reads Issue context via linear-work-management; resolves repository policy via repository-gates; searches for an existing branch/commit/PR via linear-github-linking before proposing a new one; presents the proposed git-kit:starting-work request and gets explicit confirmation before invoking it; never creates a branch directly itself.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 1,
-    "uncovered": [
-      "\"begin development for issue X\"",
-      "\"prepare this accepted issue for implementation\""
-    ]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates the commit to git-kit:commit rather than staging/committing directly",
+      "passed": true,
+      "evidence": "Never ran git add/git commit; stopped at Step 1 (context resolution) and explicitly named the intended action as 'invoke Skill(git-kit:commit) instructing it to skip its own push/Auto-PR steps' as the correct next step once context resolves -- reasoned through the delegation rather than defaulting to a raw command."
+    },
+    {
+      "text": "Explicitly invokes and relies on linear-work-management's own resolution rules when determining which Linear issue is meant, rather than treating a bare keyword/name match as sufficient",
+      "passed": true,
+      "evidence": "Step 5 dispatched Skill(linear-work-management) directly and quoted its own rule verbatim: 'Never infer a target from a display name when more than one match exists... a name search returns zero candidates is also a structured handoff... never silently create a new entity to fill the gap' -- then applied that rule to reject AND-7 as a guess despite it being the most topically plausible candidate."
+    },
+    {
+      "text": "Searches for an existing PR before proposing to create a new one",
+      "passed": true,
+      "evidence": "Step 2 ran `gh pr list --head chore/workmanagement-kit-downstream-qa --state all` and `gh pr status` before any proposal, confirming no existing PR for the branch."
+    },
+    {
+      "text": "Would get explicit AskUserQuestion confirmation before publishing the PR, never a silent guess-and-publish path",
+      "passed": true,
+      "evidence": "Explicitly named step 8's AskUserQuestion confirmation as part of the path it would still need to take: 'present the new-PR metadata via AskUserQuestion, then invoke Skill(git-kit:create-pr)' -- cites the specific checkpoint rather than describing a straight line to publication."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -9,14 +9,25 @@
       "prompt": "Take accepted Linear issue ENG-205 all the way from start of work through to a merged PR and Linear disposition.",
       "expected_output": "Composes the 7 focused Wave 2 skills (work-to-development, development-to-pr, pr-to-linear, merge-to-completion, status-and-learning, linear-github-linking for resume reads, plus linear-github-reconciliation on demand) in the documented phase order, delegating each phase's actual logic rather than reimplementing it; gets confirmation at phase transitions.",
       "files": []
+    },
+    {
+      "id": 2,
+      "name": "linear-github-lifecycle \"take this accepted issue all the way to merge\" trigger",
+      "prompt": "Take this accepted issue all the way to merge — Linear issue ENG-311, 'Add rate limiting to the public API', is already Accepted. Run it through to a merged PR and Linear disposition.",
+      "expected_output": "Activates on this exact declared trigger phrase and delegates each lifecycle phase to its own named focused skill (work-to-development, development-to-pr, pr-to-linear, merge-to-completion, status-and-learning) in the documented phase order, rather than performing any phase's logic itself; fires an AskUserQuestion confirmation gate at each phase transition, additive to each delegated skill's own internal gate.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "linear-github-lifecycle \"resume this interrupted Wave 2 lifecycle run\" trigger",
+      "prompt": "Resume this interrupted Wave 2 lifecycle run for Linear issue ENG-288. The git-github-evidence array shows, in order: a work-started entry (repository acme/api, branch feat/eng-288-webhook-retries), a commit-linked entry for the same branch, and a pr-published entry for the same branch whose gates[] array is [{name: lint, result: pass}, {name: unit-tests, result: pass}]. No pr-ready or pr-merged entry exists. The issue currently shows status 'In Review' in Linear. Continue the lifecycle from here.",
+      "expected_output": "Activates on this exact declared trigger phrase, applies Resume Behavior to determine the furthest-completed phase (Commit + gates + Publish, via the pr-published entry) and correctly identifies Review/fix + Ready (pr-to-linear) as the resume point without re-running already-completed phases; presents the resume point to the user via AskUserQuestion before continuing rather than silently resuming; treats the Issue's 'In Review' Linear status as informative context only, never as proof of phase completion.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 1,
-    "uncovered": [
-      "\"take this accepted issue all the way to merge\"",
-      "\"resume this interrupted Wave 2 lifecycle run\""
-    ]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

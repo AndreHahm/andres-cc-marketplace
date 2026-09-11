@@ -117,10 +117,14 @@ repair pass is needed.
 **Verify it does NOT activate on:**
 - "promote this idea to Linear" (creating new work, not linking existing records) → `idea-to-implementation`
 
-**Last dated run record:** evals/work-linking/workspace/iteration-1/ (2026-08-30) — `evals.json`'s
-expected_output was updated 2026-08-31 for the Transition Contract redesign (issue #254). Connectors
-are now verified live (see README's Status section); a fresh `skill-tester` re-run against the
-redesigned expected_output is still worth doing, but is no longer blocked on Foundational Setup.
+**Last dated run record:** evals/work-linking/workspace/iteration-2/ (2026-09-11) — adds eval-3
+("repair this broken link"), closing the R28 coverage gap (with_skill 1.0 pass rate vs. baseline
+0.33; see `evals/work-linking/workspace/iteration-2/benchmark.json`). Evals 1-2 were last exercised
+in `evals/work-linking/workspace/iteration-1/` (2026-08-30); `evals.json`'s expected_output was
+updated 2026-08-31 for the Transition Contract redesign (issue #254). Connectors are now verified
+live (see README's Status section); a fresh full-suite `skill-tester` re-run covering evals 1-2
+against the redesigned expected_output is still worth doing, but is no longer blocked on
+Foundational Setup.
 
 **Quality gates:**
 - [ ] Drift is always classified as exactly one of the six defined states, never left ambiguous

@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md",
+  "assertions": [
+    {
+      "text": "Routes a 'mark ready' request through step 2 (git-kit:handling-review-findings) first, per step 1.5's explicit named routing for readiness requests — never treated as a pure-summary shortcut",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never invokes gh pr ready (or any raw gh pr mutation) directly — presents the ready-state action as a structured handoff via AskUserQuestion asking the user to run it themselves",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Records pr-ready only for the exact current head SHA re-verified immediately before the mutation, with provider 'manual (gh pr ready, per pr-to-linear's disclosed handoff)' — never a fabricated git-kit:... provider",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

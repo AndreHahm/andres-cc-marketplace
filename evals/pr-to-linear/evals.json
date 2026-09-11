@@ -9,14 +9,25 @@
       "prompt": "PR #50 (linked to Linear issue ENG-202) has review comments and a merge-blocking Codex finding. Summarize its review status to Linear and get the blocking finding resolved.",
       "expected_output": "Delegates the actual finding triage/fix/reply/resolve cycle to git-kit:handling-review-findings rather than doing it itself or routing it to git-kit:collaborating-on-a-pr; reflects only a concise, deliberate summary to Linear, never a raw transcript copy.",
       "files": []
+    },
+    {
+      "id": 2,
+      "name": "pr-to-linear pure reflect scenario",
+      "prompt": "PR #64 (linked to Linear issue ENG-214) already had its review comments addressed in earlier rounds, but there's still one open thread flagged as blocking by a reviewer. Reflect the blocking findings into the Linear issue.",
+      "expected_output": "Resolves this as a pure summarize/reflect request under step 1.5 and skips delegating to git-kit:handling-review-findings entirely; discloses the unresolved-thread-state limitation explicitly (no gh api graphql grant) rather than fabricating an independently-confirmed answer; writes only a concise, deliberate implication-level summary to Linear, never a verbatim reviewer comment quote or full transcript.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "pr-to-linear mark-ready scenario",
+      "prompt": "PR #77 (linked to Linear issue ENG-230) looks done to me. Mark this PR ready for review.",
+      "expected_output": "Routes the request through step 2 (git-kit:handling-review-findings) first per step 1.5's explicit named routing for readiness requests, never treated as a pure-summary shortcut; never invokes gh pr ready or any raw gh pr mutation directly, instead presenting the ready-state action as a structured handoff via AskUserQuestion asking the user to run it themselves; records pr-ready only for the exact current head SHA re-verified immediately before the mutation, with provider \"manual (gh pr ready, per pr-to-linear's disclosed handoff)\" and never a fabricated git-kit:... provider.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 1,
-    "uncovered": [
-      "\"reflect the blocking findings into the Linear issue\"",
-      "\"mark this PR ready for review\""
-    ]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

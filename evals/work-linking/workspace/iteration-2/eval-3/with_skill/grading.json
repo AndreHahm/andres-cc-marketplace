@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Before concluding the Notion record was deleted, re-resolves by stable ID within the owning system (Notion), not by substituting a content/title-based search guess", "passed": true, "evidence": "States it performed 'a direct-by-ID fetch against Notion, which is the strongest form of re-resolution available' and explicitly rejects a title/content search as 'not a re-resolution, it's an invented answer'"},
+    {"text": "Classifies this as a 'Broken link' per the skill's six defined drift states, not a generic or ad-hoc label", "passed": true, "evidence": "States 'Classification: Broken link.' explicitly, using the skill's own taxonomy term"},
+    {"text": "Does not silently resolve the link by a guessed replacement or by newest timestamp; surfaces the uncertainty to the user instead of writing a repair unprompted", "passed": true, "evidence": "Declines to clear or guess-replace the field unilaterally, presents 3 options, and asks 'How would you like to proceed?' rather than acting"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

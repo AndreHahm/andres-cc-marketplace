@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-reconciliation/SKILL.md",
+  "assertions": [
+    {
+      "text": "Checks multiple lifecycle dimensions (Linear's current recorded state, the Git/GitHub Evidence Record history, and current GitHub state) rather than only the most recent change",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Classifies each discrepancy found as exactly one of the nine defined drift states, never leaving one unclassified",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Proposes only bounded repairs scoped to the specific drifted field/link for each discrepancy, never a broad bidirectional sync across the whole lifecycle",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output treats this as a read requiring no approval once a target is resolved", "passed": false, "evidence": "Never mentions approval status or that checking status is a no-approval read operation"},
+    {"text": "Output does not guess or assume a specific project when no name/ID is given, and asks for disambiguation instead", "passed": true, "evidence": "Checked the workspace directly, found no visible projects, and asked for the project's name or URL rather than guessing"},
+    {"text": "Output does not fabricate project status data for an unresolved target", "passed": true, "evidence": "No fabricated status data; reported the real empty-workspace-list result and asked for clarification"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.67}
+}

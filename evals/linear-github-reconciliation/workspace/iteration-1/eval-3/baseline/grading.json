@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Checks multiple lifecycle dimensions (Linear's current recorded state, the Git/GitHub Evidence Record history, and current GitHub state) rather than only the most recent change",
+      "passed": true,
+      "evidence": "The response explicitly organizes around 'three independent data sources': Linear's current state, Linear's history of changes, and GitHub's current state, and states the goal is 'building one combined timeline... not just comparing the two endpoints.'"
+    },
+    {
+      "text": "Classifies each discrepancy found as exactly one of the nine defined drift states, never leaving one unclassified",
+      "passed": false,
+      "evidence": "No nine-state classification vocabulary is used anywhere — findings are instead organized into ad-hoc pattern categories (A. Status vs. PR state mismatches, B. Timestamp ordering, C. Reopen/regression history, D. Linkage integrity, E. Ownership, F. Scope drift) with no mapping to Aligned/Missing link/Stale summary/Invalidated SHA/Early status/Contradictory/Ambiguous/External artifact/Automation drift."
+    },
+    {
+      "text": "Proposes only bounded repairs scoped to the specific drifted field/link for each discrepancy, never a broad bidirectional sync across the whole lifecycle",
+      "passed": true,
+      "evidence": "The response never proposes writing to Linear or GitHub at all -- its only recommendation is to not close the issue and to 'leave a comment on the issue documenting the specific discrepancy' pending human confirmation, which is not a sync of any kind, broad or otherwise."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6666666666666666
+  }
+}

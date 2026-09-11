@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Resolves repository_policy.provider_profile via the local-override trust-boundary check (git ls-files --error-unmatch) before reporting a profile, and states the profile maps to git-kit per FOUNDATION_CONTRACTS.md's canonical table",
+      "passed": true,
+      "evidence": "Section 1 reads versioned-configuration.json (provider_profile: null), runs the exact git ls-files trust-boundary check for the local override (confirmed-untracked outcome), then defers to FOUNDATION_CONTRACTS.md's canonical table per the skill's own step 3, resolving the profile to git-kit for every governed operation and disclosing the null-vs-table discrepancy as a flagged gap rather than silently picking one."
+    },
+    {
+      "text": "Enumerates all gate categories from real repo config (pre-commit via .pre-commit-config.yaml, pre-push, PR required checks via a live branch-protection read, Codex delta review via workflow files/gh pr checks display names, review requirements, merge rights/method) rather than a generic checklist",
+      "passed": true,
+      "evidence": "Sections 2-7 cover each category with real, sourced detail: actual pre-commit/pre-push hook ids, a live gh_api_readonly.py branch-protection read with the real 9 required-check display names, both real Codex-review workflow mechanisms distinguished by display name, review-requirements absence, and live merge-rights/method data."
+    },
+    {
+      "text": "Never asserts a 'Review Changes' gate exists unless real repo config names one",
+      "passed": true,
+      "evidence": "Section 6 states explicitly: 'Never invented a \"Review Changes\" gate — none of the discovered configuration (branch protection, workflow files, CODEOWNERS) names anything by that identity.'"
+    },
+    {
+      "text": "If branch protection can't be read, discloses this as ambiguous (permission vs. absence) rather than concluding 'no protection'",
+      "passed": true,
+      "evidence": "Section 4 explicitly distinguishes the two outcomes even though this run succeeded: 'returned a real 200 response, not a 403/404, so this is a clean read, not an ambiguous absence' — showing the permission-vs-absence distinction is actively applied, not just assumed away."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

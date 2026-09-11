@@ -9,14 +9,25 @@
       "prompt": "What gates apply to this repository before I can publish a PR for a Wave 2 Linear-issue branch? Resolve the repository policy profile and discover the actual configured gates.",
       "expected_output": "Resolves repository_policy.provider_profile from versioned-configuration.json (merged with any local override) before anything else; discovers gates from real repo config (.pre-commit-config.yaml, branch protection, workflow files) rather than assuming a universal list; never invents a 'Review Changes' gate; discloses ambiguity if branch protection can't be read rather than treating that as 'no protection'.",
       "files": []
+    },
+    {
+      "id": 2,
+      "name": "repository-gates discovery scenario",
+      "prompt": "Before we start any Wave 2 work on this repository, discover the repository policy profile and the actual gates that are configured — I need the full picture (provider profile, pre-commit, pre-push, PR required checks, Codex delta review, review requirements, merge rights) grounded in this repo's real configuration, not assumptions.",
+      "expected_output": "Resolves repository_policy.provider_profile via the local-override trust-boundary check (git ls-files --error-unmatch) before reporting a profile, and states the profile maps to git-kit per FOUNDATION_CONTRACTS.md's canonical table; enumerates all gate categories (pre-commit via .pre-commit-config.yaml, pre-push, PR required checks via a live branch-protection read, Codex delta review via workflow files/gh pr checks display names, review requirements, merge rights/method) from real repo config rather than a generic checklist; never invents a 'Review Changes' gate; discloses branch-protection read ambiguity (permission vs. absence) if unreadable rather than assuming no protection.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "repository-gates evidence-invalidation scenario",
+      "prompt": "We recorded gate evidence for this PR's required checks 'Python quality (ruff, ty, pytest)' and 'Publish Codex policy result' as passing at SHA a1b2c3d. I just pushed a new commit onto the same PR branch and the branch's current HEAD (per my own git-kit read-back) is now e4f5a6b — no rebase, no force-push, just one new commit on top. Are those two recorded gates still valid, or do I need to rerun them before merging? Also, how would this be different if I had force-pushed instead?",
+      "expected_output": "Never independently determines 'current HEAD' itself — treats both the recorded SHA (a1b2c3d) and current SHA (e4f5a6b) as values already supplied by the caller, with no git rev-parse/git log call of its own; correctly reports the SHA mismatch means both gates are invalid and must be rerun rather than still-passing; for the force-push follow-up, correctly states every gate recorded against the old SHA is invalid and the calling skill records this as a new git-github-evidence entry whose 'supersedes' field names the invalidated entry, without editing the old entry; does not conflate the plain-new-commit case with the force-push case.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 1,
-    "uncovered": [
-      "\"discover repository policy and gates\"",
-      "\"check if the gates for this PR are still valid after the new commit\""
-    ]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

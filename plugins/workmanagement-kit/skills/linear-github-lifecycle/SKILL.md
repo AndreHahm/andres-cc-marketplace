@@ -195,7 +195,7 @@ resume point (which phase to re-enter). On resume:
 - "just start work on this issue" → `work-to-development` directly
 - "just merge this PR" → `merge-to-completion` directly
 
-**Last dated run record:** evals/linear-github-lifecycle/workspace/iteration-1/ (2026-09-10)
+**Last dated run record:** evals/linear-github-lifecycle/workspace/iteration-1/ (2026-09-11) — 3/3 declared scenarios covered (eval-1 primary composition run, eval-2 "take this accepted issue all the way to merge" trigger, eval-3 "resume this interrupted Wave 2 lifecycle run" trigger), all passing 3/3 assertions with_skill vs. 1/3 baseline.
 
 **Quality gates:**
 - [ ] Never implements a phase's own logic directly — always delegates to the matching focused

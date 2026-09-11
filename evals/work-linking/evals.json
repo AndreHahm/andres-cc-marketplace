@@ -16,13 +16,18 @@
       "prompt": "Check for drift between Notion and Linear on the CSV export work.",
       "expected_output": "Classifies the result as exactly one of the six defined drift states (never leaves it ambiguous without an Unknown classification), and does not propose resolving by newest timestamp.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Repair a broken link",
+      "prompt": "Linear issue AND-7's notion-link field points to a Notion page ID that now returns \"Page not found\". Repair this broken link.",
+      "expected_output": "Classifies this as a Broken link per the six defined drift states, re-resolves by stable ID within the owning system (Notion) before concluding the target record was deleted rather than guessing from a content/title search, and does not silently write a repair (via a guessed replacement or newest-timestamp resolution) without surfacing the uncertainty to the user.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 2,
-    "uncovered": [
-      "\"repair this broken link\""
-    ]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

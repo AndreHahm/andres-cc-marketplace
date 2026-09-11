@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reads Linear Issue context before proposing any Git action",
+      "passed": true,
+      "evidence": "Refuses to fabricate ticket content as fact ('everything ticket-specific below is illustrative/simulated, not confirmed fact') and does not commit to any real git action; the branch step is explicitly labeled SIMULATED/illustrative and the response ends asking for the real issue content or live access."
+    },
+    {
+      "text": "Resolves repository policy (confirms git-kit is the provider) before requesting a branch",
+      "passed": false,
+      "evidence": "No mention anywhere of repository-gates, a policy profile, or a required-provider check — only a real `git status` dirty-tree check is performed, which is unrelated to provider policy."
+    },
+    {
+      "text": "Checks for an existing branch/commit/PR for this Issue before proposing a new branch",
+      "passed": false,
+      "evidence": "No search of existing branches, commits, or open PRs referencing ENG-415 is performed or mentioned anywhere; the only real check done is the current worktree's own dirty-tree state, not an ENG-415-specific artifact search."
+    },
+    {
+      "text": "Explicitly asks for confirmation before invoking git-kit:starting-work, and never claims to create a branch directly itself",
+      "passed": false,
+      "evidence": "git-kit is never mentioned; Step 4 shows raw `git switch main` / `git pull` / `git checkout -b eng-415-retry-handling-x-integration` as the illustrative action it would take directly, with no confirmation gate and no delegation to any git-kit skill."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

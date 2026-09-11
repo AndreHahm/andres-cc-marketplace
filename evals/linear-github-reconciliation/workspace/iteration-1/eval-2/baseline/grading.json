@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies the discrepancy as exactly one of the nine defined drift states rather than assuming an explanation without evidence",
+      "passed": false,
+      "evidence": "No classification framework of any kind is used — the response is organized entirely as a ranked list of hypotheses (H1-H8, e.g. 'wrong-issue keyword match', 'sub-issue auto-completion') with no reference to any discrete drift state, and ends with 'the two strongest candidates are H1/H2... and H6' rather than a formal classification."
+    },
+    {
+      "text": "Does not treat the more recently changed system (Linear's 'Done' status) as automatically correct via newest-timestamp precedence",
+      "passed": true,
+      "evidence": "The response never argues Linear's Done status should be trusted because it's the most recent change; it explicitly concludes 'I would not conclude this was a deliberate/correct closure' based on the PR being open/draft, not on recency."
+    },
+    {
+      "text": "Flags the 'Done' status vs. still-open-draft-PR mismatch as requiring investigation and AskUserQuestion confirmation before any repair, rather than silently accepting or silently correcting it",
+      "passed": false,
+      "evidence": "Section 4 'Immediate' step 1 instructs to 'Move PLAT-77 back to \"In Progress\" ... now' before root-causing, with no confirmation/approval gate of any kind — the response has no concept of asking for confirmation before changing the tracker; it recommends the field change as an unconditional first action rather than a preview pending approval."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333333333333333
+  }
+}

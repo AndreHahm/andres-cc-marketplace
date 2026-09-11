@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Checks multiple lifecycle dimensions (Linear's current recorded state, the Git/GitHub Evidence Record history, and current GitHub state) rather than only the most recent change",
+      "passed": true,
+      "evidence": "Step 1's table names five distinct dimensions read (Linear current state, the full `git-github-evidence` array 'every entry in chronological order', current GitHub state, repository policy, native integration links); Step 2 lists seven explicit cross-entry comparison checks (stage sequencing, SHA/branch currency per entry, provider attribution per entry, status-vs-evidence timing, automation scope, unclaimed artifacts, snapshot currency) rather than only comparing the latest status."
+    },
+    {
+      "text": "Classifies each discrepancy found as exactly one of the nine defined drift states, never leaving one unclassified",
+      "passed": true,
+      "evidence": "Since no live data was available, the response correctly classifies the reconciliation attempt itself as 'Ambiguous' ('the correct and only honest label'), explicitly reasoned against all nine states in a table, rather than leaving it unclassified or guessing a more specific state without evidence."
+    },
+    {
+      "text": "Proposes only bounded repairs scoped to the specific drifted field/link for each discrepancy, never a broad bidirectional sync across the whole lifecycle",
+      "passed": true,
+      "evidence": "Step 5's table scopes each hypothetical repair to a single field/entry (e.g. 'Append the missing git-github-evidence entry... not a rewrite of any other field'; 'bounded to the status field alone, never bundled with other Linear field changes') and states explicitly: 'No repair here would ever be a \"broad bidirectional sync\" — each is scoped to the single drifted field or link.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

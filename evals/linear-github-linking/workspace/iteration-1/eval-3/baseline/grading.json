@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Repair is modeled as appending a NEW evidence entry whose own `supersedes` field names the earlier entry's evidence_id, never editing or deleting the earlier entry itself",
+      "passed": false,
+      "evidence": "Output's 'Apply the fix' step proposes directly overwriting the issue description's SHA in place, or optionally 'editing in place' a comment ('unless the workspace convention is to edit in place, in which case use the comment-edit path instead') — no append-only evidence-array model, no supersedes/evidence_id concept, and the earlier record is not guaranteed to stay untouched."
+    },
+    {
+      "text": "Repair never touches GitHub state directly — GitHub is read only to verify the current state, never mutated",
+      "passed": true,
+      "evidence": "All GitHub calls performed or planned (gh pr view, git ls-remote, gh api branches, git merge-base) are read-only; the proposed 'Apply the fix' step only writes to Linear (save_issue/save_comment/create_attachment), never to GitHub."
+    },
+    {
+      "text": "Never resolves the stale entry by newest-timestamp comparison; correction is toward GitHub's actual current state, since GitHub is authoritative over Git/GitHub facts",
+      "passed": true,
+      "evidence": "'Pull the current, authoritative state from GitHub (source of truth for the SHA)' — independently arrives at the same authoritative-source principle and proposes correcting toward GitHub's real headRefOid, not a timestamp comparison."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6666666666666666
+  }
+}

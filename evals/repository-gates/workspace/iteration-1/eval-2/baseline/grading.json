@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Resolves repository_policy.provider_profile via the local-override trust-boundary check (git ls-files --error-unmatch) before reporting a profile, and states the profile maps to git-kit per FOUNDATION_CONTRACTS.md's canonical table",
+      "passed": false,
+      "evidence": "Never reads plugins/workmanagement-kit/versioned-configuration.json, never runs the git ls-files trust-boundary check for the local override, never consults FOUNDATION_CONTRACTS.md, and never mentions 'git-kit' or a resolved provider_profile anywhere in the response — instead answers with generic GitHub platform/repo settings (visibility, merge methods, workflow killswitch)."
+    },
+    {
+      "text": "Enumerates all gate categories from real repo config (pre-commit via .pre-commit-config.yaml, pre-push, PR required checks via a live branch-protection read, Codex delta review via workflow files/gh pr checks display names, review requirements, merge rights/method) rather than a generic checklist",
+      "passed": true,
+      "evidence": "Independently discovered and correctly grounded every gate category from real files/live API reads: .pre-commit-config.yaml (pre-commit + pre-push hooks with exact hook ids), a live branch-protection read with the real 9 required-check display names, the Codex delta-review chain (compute-scope/codex-review/publish jobs, bypass-attestation protocol), review requirements (required_pull_request_reviews absent, with the .github/settings.yml rationale comment), and merge rights (live collaborators API)."
+    },
+    {
+      "text": "Never asserts a 'Review Changes' gate exists unless real repo config names one",
+      "passed": true,
+      "evidence": "No mention of a 'Review Changes' gate anywhere in the response."
+    },
+    {
+      "text": "If branch protection can't be read, discloses this as ambiguous (permission vs. absence) rather than concluding 'no protection'",
+      "passed": false,
+      "evidence": "Branch protection was readable this run, and the response states results plainly as live-verified facts, but nowhere discloses the forward-looking principle that an unreadable branch-protection response (403/404) should be reported as ambiguous rather than 'no protection configured' — that distinction is never raised."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}
