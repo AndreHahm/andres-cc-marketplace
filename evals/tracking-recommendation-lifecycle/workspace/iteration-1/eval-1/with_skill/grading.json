@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Real append calls were run for proposed and accepted via recommendation_registry.py",
+      "passed": true,
+      "evidence": "Both calls executed for real (exit code 0 each), returned real JSON output, correct fields."
+    },
+    {
+      "text": "A real append call was run for implemented, citing commit abc1234 as evidence",
+      "passed": true,
+      "evidence": "'evidence': 'Commit abc1234' recorded, citing the user-supplied commit reference verbatim."
+    },
+    {
+      "text": "No verified event was appended from 'the commit is in' alone -- the skill explicitly declined and asked for real verification evidence",
+      "passed": true,
+      "evidence": "Agent explicitly states 'I did NOT mark it verified... a commit landing is not itself verification' and asks for a real verification command/check before it would append verified."
+    },
+    {
+      "text": "Final registry state (via show/list) shows rec-eval-001 at implemented, not verified",
+      "passed": true,
+      "evidence": "Final show call returns exactly 3 events ending at 'implemented', confirmed via real script execution."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
