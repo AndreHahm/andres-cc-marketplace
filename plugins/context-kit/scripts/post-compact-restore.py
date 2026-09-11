@@ -216,6 +216,24 @@ def main() -> int:
         return 0
 
     session_id = hook_input.get("session_id", "") or ""
+
+    # Signal context-monitor.py to reset its byte baseline and shown-threshold
+    # flags: compaction retains the whole prior transcript (plus a summary) in
+    # the same file, so an unreset percentage estimate would stay pegged near
+    # 100% forever, and an already-shown threshold would never re-fire as the
+    # new, post-compaction context climbs back through it. SessionStart's own
+    # payload isn't confirmed to carry transcript_path, so the actual byte
+    # baseline is captured lazily by context-monitor.py itself, on its first
+    # PostToolUse call after this marker is set (see its own
+    # _maybe_reset_baseline docstring). Scoped to "compact" only, not
+    # "resume" -- this addresses the compaction-retains-history case
+    # specifically, not a session resumed from a saved state.
+    if session_source == "compact":
+        try:
+            (get_session_dir(session_id) / "compact-baseline-reset-pending").touch()
+        except OSError:
+            pass
+
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
     if not project_dir:
         return 0

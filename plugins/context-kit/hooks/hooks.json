@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v uv >/dev/null 2>&1 && exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py || command -v python3 >/dev/null 2>&1 && exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py || exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py",
+            "command": "command -v uv >/dev/null 2>&1 && { uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py; ec=$?; [ \"$ec\" -eq 0 ] && exit 0; }; command -v python3 >/dev/null 2>&1 && exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py || exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/post-compact-restore.py",
             "shell": "bash",
             "timeout": 5,
             "onError": "warn"
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v uv >/dev/null 2>&1 && exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/context-monitor.py || command -v python3 >/dev/null 2>&1 && exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/context-monitor.py || exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/context-monitor.py",
+            "command": "command -v uv >/dev/null 2>&1 && { uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/context-monitor.py; ec=$?; [ \"$ec\" -eq 0 ] && exit 0; }; command -v python3 >/dev/null 2>&1 && exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/context-monitor.py || exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/context-monitor.py",
             "shell": "bash",
             "timeout": 5,
             "onError": "warn"
@@ -80,7 +80,7 @@
           },
           {
             "type": "command",
-            "command": "command -v uv >/dev/null 2>&1 && exec uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/pre-compact.py || command -v python3 >/dev/null 2>&1 && exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/pre-compact.py || exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/pre-compact.py",
+            "command": "command -v uv >/dev/null 2>&1 && { uv run --no-project \"${CLAUDE_PLUGIN_ROOT}\"/scripts/pre-compact.py; ec=$?; [ \"$ec\" -eq 0 ] && exit 0; }; command -v python3 >/dev/null 2>&1 && exec python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/pre-compact.py || exec python \"${CLAUDE_PLUGIN_ROOT}\"/scripts/pre-compact.py",
             "shell": "bash",
             "timeout": 10,
             "onError": "warn"
