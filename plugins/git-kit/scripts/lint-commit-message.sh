@@ -153,12 +153,25 @@ if ! cmp -s "$CONFIG_FILE" "$TRUSTED_CONFIG"; then
 fi
 
 # Only reinstall when the trusted manifest/lockfile actually changed since
-# the last run (or nothing is installed yet) -- avoids a multi-second pnpm
-# install on every single commit once the local cache is warm.
+# the last SUCCESSFUL install (or nothing is installed yet) -- avoids a
+# multi-second pnpm install on every single commit once the local cache is
+# warm. Compared against a separate "last successfully installed" marker
+# pair, never against package.json/pnpm-lock.yaml themselves -- those two
+# get overwritten below unconditionally (pnpm needs them physically present
+# at this exact path to run install at all), so comparing against them
+# would read a promoted-but-not-yet-installed manifest as "already
+# installed": if install then failed, the next run would see the cache
+# files already matching the trusted copy and skip reinstalling entirely,
+# silently executing the prior, stale node_modules/.bin/commitlint against
+# rules that no longer match .commitlintrc.cjs (found by cross-model-review
+# round 6 on the live PR, reproduced with a real ERR_PNPM_OUTDATED_LOCKFILE
+# failure). The marker is only written after install actually succeeds.
+INSTALLED_PKG_MARKER="$LOCAL_TOOLCHAIN_DIR/.last-installed-package.json"
+INSTALLED_LOCK_MARKER="$LOCAL_TOOLCHAIN_DIR/.last-installed-pnpm-lock.yaml"
 NEEDS_INSTALL=1
 if [ -x "$LOCAL_TOOLCHAIN_DIR/node_modules/.bin/commitlint" ] \
-   && cmp -s "$LOCAL_TOOLCHAIN_DIR/package.json" "$TRUSTED_PKG" 2>/dev/null \
-   && cmp -s "$LOCAL_TOOLCHAIN_DIR/pnpm-lock.yaml" "$TRUSTED_LOCK" 2>/dev/null; then
+   && cmp -s "$INSTALLED_PKG_MARKER" "$TRUSTED_PKG" 2>/dev/null \
+   && cmp -s "$INSTALLED_LOCK_MARKER" "$TRUSTED_LOCK" 2>/dev/null; then
   NEEDS_INSTALL=0
 fi
 
@@ -176,6 +189,11 @@ if [ "$NEEDS_INSTALL" -eq 1 ]; then
     echo "SKIP: commitlint toolchain install failed -- local commitlint check could not run (CI will still enforce it)" >&2
     exit 2
   fi
+  # Install confirmed successful -- only now record what was installed, so
+  # a failed install (caught above) never marks a manifest/lockfile pair as
+  # trusted-and-installed when node_modules doesn't actually match it.
+  cp "$LOCAL_TOOLCHAIN_DIR/package.json" "$INSTALLED_PKG_MARKER"
+  cp "$LOCAL_TOOLCHAIN_DIR/pnpm-lock.yaml" "$INSTALLED_LOCK_MARKER"
 fi
 
 # A commitlint crash for a non-rule reason (a corrupted install, or a
