@@ -58,7 +58,7 @@ add the missing fields.
 
 ## Prerequisites
 
-Every skill that calls a shared script shells out to `python` (must resolve to Python 3.9+ on PATH — several scripts use PEP 585 builtin generics that fail on 3.8 and earlier). `scripts/pr_review_fetcher.py`'s own test suite (`tests/test_pr_review_fetcher.py`, 12 tests) and `scripts/recommendation_registry.py`'s own test suite (`tests/test_recommendation_registry.py`, 20 tests) additionally require `pytest` — not needed to run any skill, only to develop against this plugin's own scripts.
+Every skill that calls a shared script shells out to `python` (must resolve to Python 3.9+ on PATH — several scripts use PEP 585 builtin generics that fail on 3.8 and earlier). This plugin's own `tests/` directory has 7 test modules covering its shared scripts (`test_critical_path_analyzer.py`, 8 tests; `test_failure_aggregator.py`, 8 tests; `test_persist_report.py`, 6 tests; `test_pr_review_fetcher.py`, 19 tests; `test_recommendation_registry.py`, 20 tests; `test_token_time_aggregator.py`, 6 tests; `test_validate_report.py`, 48 tests — 115 tests total) and additionally require `pytest` — not needed to run any skill, only to develop against this plugin's own scripts.
 
 ## Installation
 
