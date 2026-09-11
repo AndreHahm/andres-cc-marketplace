@@ -42,9 +42,3 @@ site/
 
 # Transient advisory-lock files from marketplace-inventory/plugin-inventory's atomic-write mechanism
 **/.claude-plugin/*.lock
-
-# Local mirror of the repo-root .commitlintrc.cjs that git-kit's commit skill
-# (via scripts/lint-commit-message.sh) refreshes on every run so commitlint's
-# own extends-resolution can find @commitlint/config-conventional relative to
-# this directory -- never the source of truth, regenerated every run
-.github/commitlint-tools/.commitlintrc.cjs
