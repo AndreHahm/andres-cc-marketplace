@@ -110,6 +110,12 @@
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
+    },
+    "identifying-feature-opportunities": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
     }
   }
 }

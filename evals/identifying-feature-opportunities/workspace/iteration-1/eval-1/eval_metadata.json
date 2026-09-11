@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/analysis-kit/skills/identifying-feature-opportunities",
+  "assertions": [
+    {"text": "Report includes a finding classified as `candidate`", "type": "presence", "target": "report content"},
+    {"text": "Finding cites repeated evidence (3+ instances of the same manual workaround) as the qualifying threshold", "type": "quality", "target": "report content"},
+    {"text": "Finding includes all four scoring bands: reach, expected value, confidence, effort", "type": "structure", "target": "report content"},
+    {"text": "Finding states an overlap check was performed with no meaningful overlap found", "type": "quality", "target": "report content"}
+  ]
+}

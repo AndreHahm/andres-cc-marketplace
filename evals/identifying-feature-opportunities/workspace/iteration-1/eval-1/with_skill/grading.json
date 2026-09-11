@@ -1,0 +1,32 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report includes a finding classified as `candidate` (not insufficient-evidence)",
+      "passed": false,
+      "evidence": "The skill correctly disposed the finding as `merge-with-existing`, not `candidate` -- it found that scripts/persist_report.py already centralizes the redact/write/verify-LF-only logic the fixture's user asks for, real and verified by reading the actual plugin repo. This is an eval-fixture design flaw, not a skill defect: this fixture's wording ('no shared script exists for it yet') was copied from the same stale assumption that opportunity-rubric.md's own worked example had to be corrected for during self-review earlier in this session (persist_report.py already exists in this plugin) -- the skill's actual behavior is self-consistent and correct given real plugin state, it just doesn't match this eval's now-inaccurate premise."
+    },
+    {
+      "text": "Finding cites repeated evidence (3+ instances of the same manual workaround) as the qualifying threshold",
+      "passed": true,
+      "evidence": "'Evidence threshold: Met via repeated evidence (3 instances of the same underlying gap, not a single occurrence)'"
+    },
+    {
+      "text": "Finding includes all four scoring bands: reach, expected value, confidence, effort",
+      "passed": true,
+      "evidence": "Scoring table present with all four bands populated (Medium/Medium/High/Medium) -- the skill correctly still scores a merge-with-existing entry, per its own Phase 4 rule that only insufficient-evidence/reject entries skip scoring."
+    },
+    {
+      "text": "Finding states that an overlap check was performed with no meaningful overlap found",
+      "passed": false,
+      "evidence": "An overlap check was genuinely performed (real Glob/read of scripts/ and references/), but it found real overlap (persist_report.py + the convention-file pattern) rather than none -- again a mismatch with this eval's flawed premise, not a skill defect. The overlap-check mechanism itself worked exactly as designed."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5,
+    "note": "The 2 failing assertions trace to a design flaw in this eval's own fixture (inherited the same stale 'no shared script exists' premise that opportunity-rubric.md's worked example needed correcting for during this session's self-review), not to a skill defect. The skill's actual disposition (merge-with-existing, correctly scored, correctly citing real overlap with scripts/persist_report.py) is well-reasoned and verifiably grounded in the plugin's real current state."
+  }
+}

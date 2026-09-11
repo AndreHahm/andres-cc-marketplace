@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report includes a finding classified as `merge-with-existing`",
+      "passed": true,
+      "evidence": "Disposition: 'merge-with-existing -- comparing-sessions already addresses this need close to end-to-end...'"
+    },
+    {
+      "text": "Finding names `comparing-sessions` as the specific overlapping existing skill",
+      "passed": true,
+      "evidence": "Explicitly named and quoted comparing-sessions' own description, with two adjacent skills (comparing-session-to-specification, tracking-recommendation-lifecycle) checked and ruled out."
+    },
+    {
+      "text": "Finding describes the gap between what comparing-sessions does today and what the candidate asks for, not just 'it's related'",
+      "passed": true,
+      "evidence": "States two concrete extension points: (a) confirm starting-an-analysis routes trend-oriented phrasing to comparing-sessions, (b) no evidence reports are actually being persisted session-to-session for this project."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

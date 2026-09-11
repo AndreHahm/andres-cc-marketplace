@@ -272,7 +272,7 @@ This report is the terminal artifact of the review-learnings chain (`mining-revi
 ## Gotchas
 
 - **This skill's report is also deliberately excluded from `report-discovery-convention.md`'s
-  9-directory glob**, the same as its sibling `mining-review-learnings`: its `<source-slug>` is
+  15-directory glob**, the same as its sibling `mining-review-learnings`: its `<source-slug>` is
   inherited from a PR-set slug (or `direct-finding-<date>`), which has no session/date-range identity a
   sibling report could plausibly share.
 

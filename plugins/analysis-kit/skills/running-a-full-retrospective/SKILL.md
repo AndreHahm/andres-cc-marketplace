@@ -359,7 +359,7 @@ available (5a) or no open findings existed.
 ## Gotchas
 
 - **This skill produces a *meta*-report, not a new analysis type.** Its own persisted report is
-  deliberately excluded from the report-discovery glob's 9-directory enumeration other analysis-kit
+  deliberately excluded from the report-discovery glob's 15-directory enumeration other analysis-kit
   skills check for "does 2+ reports exist for this scope" — counting a consolidation of other reports as
   a 10th independent report would double-count coverage that was already established by the reports it
   consolidates. `mining-review-learnings`/`managing-review-learnings` are also excluded from that same

@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/analysis-kit/skills/identifying-feature-opportunities",
+  "assertions": [
+    {"text": "Report includes a finding classified as `insufficient-evidence`", "type": "presence", "target": "report content"},
+    {"text": "Finding does NOT include reach/expected-value/confidence/effort scores", "type": "quality", "target": "report content"},
+    {"text": "Finding states the reason (no repeated evidence, no high-consequence impact) rather than a bare 'not enough evidence'", "type": "quality", "target": "report content"}
+  ]
+}

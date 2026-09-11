@@ -34,7 +34,7 @@ A short kebab-case description of the scope a report covers, used as the filenam
 | `comparing-session-to-specification`'s own Next-step block | none — any other report besides the one just written | No shared-scope input exists (only a spec path); its own slug (`<spec-basename>-compliance`) is a per-report identifier with no shared counterpart |
 | `starting-an-analysis` Phase 5, when `comparing-session-to-specification` was dispatched | none — same "any other report" check | Same reason as above |
 | `comparing-sessions` Phase 1 "latest" resolution, `mining-recurring-patterns` Phase 3 memory-recall, `generating-analysis-recommendations` Phase 1, `reviewing-analysis-findings` Arguments block and Phase 1 (`"latest N"` mode) | none — bare, unfiltered glob | These sites list/discover candidate reports generally, not a "does this specific scope already have 2+ reports" check |
-| `reviewing-analysis-findings` Phase 1 (`scope <scope-slug>` mode) | `<scope-slug>-*.md` against the 9-directory enumeration **minus `reviewing-analysis-findings` itself** (8 directories), exact-prefix boundary enforced (not a bare substring match) | Resolves the complete compatible *source*-report set for one scope. `reviewing-analysis-findings`'s own persisted-filename slug in scope mode is exactly the input scope-slug (see the `<scope-slug>` table above), so including its own directory here would always self-match a prior aggregation run over this same scope as if it were an independent source report |
+| `reviewing-analysis-findings` Phase 1 (`scope <scope-slug>` mode) | `<scope-slug>-*.md` against the 15-directory enumeration **minus `reviewing-analysis-findings` itself** (14 directories), exact-prefix boundary enforced (not a bare substring match) | Resolves the complete compatible *source*-report set for one scope. `reviewing-analysis-findings`'s own persisted-filename slug in scope mode is exactly the input scope-slug (see the `<scope-slug>` table above), so including its own directory here would always self-match a prior aggregation run over this same scope as if it were an independent source report |
 | `reviewing-analysis-findings`'s own Phase 4 supersession check | `<scope-slug>-*.md` against `reviewing-analysis-findings/` only, same exact-prefix boundary as Phase 1's resolution | Checks for an earlier findings-review report over the same scope to supersede — deliberately separate from Phase 1's source-report resolution above, which excludes this directory entirely. Applies the same exact-prefix boundary Phase 1 uses (not a bare substring match) — a scope of `team` must not match `team-alpha-<timestamp>.md` here either |
 | `running-a-full-retrospective` Phase 1 reuse check | `<scope-slug>-*.md`, filtered per candidate analysis type's own report directory | Checks whether a report already exists for the confirmed scope before dispatching, mirroring each date-range skill's own Next-step filter |
 | `mining-review-learnings` Phase 1 "since last cited" resolution | none — bare `Grep` against the live document, not a report glob | Resolves the last-cited PR number from `THIRD_PARTY_REVIEW_LEARNINGS.md` itself, not from a prior report |
@@ -44,14 +44,15 @@ A short kebab-case description of the scope a report covers, used as the filenam
 
 ## Report-Discovery Glob
 
-analysis-kit's own 14 report directories, named explicitly rather than matched by a prefix wildcard:
+analysis-kit's own 15 report directories, named explicitly rather than matched by a prefix wildcard:
 
 ```
-.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy}/*.md
+.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/*.md
 ```
 
 **Interim state, 2026-09-10/11:** `analyzing-session-outcomes`, `analyzing-verification-effectiveness`,
-`analyzing-session-operations`, `analyzing-workflow-usability`, and `analyzing-security-and-privacy` were
+`analyzing-session-operations`, `analyzing-workflow-usability`, `analyzing-security-and-privacy`, and
+`identifying-feature-opportunities` were
 added here ahead of the Wave 2 plan's own Task 11 (the batch picker/severity/README integration pass)
 because
 `reviewing-analysis-findings`' own hardcoded discovery globs are load-bearing -- without this
@@ -73,7 +74,7 @@ Every site below must match this file. If you change either definition here, upd
 - `skills/comparing-sessions/SKILL.md` — Phase 1 "latest" resolution (glob) and `<current-scope>` derivation (scope-slug), Persist step (scope-slug), Next-step block (glob) — three sites
 - `skills/comparing-session-to-specification/SKILL.md` — Persist step (scope-slug), Next-step block (glob)
 - `skills/generating-analysis-recommendations/SKILL.md` — Phase 1 (glob), Persist step (scope-slug) — two sites
-- `skills/reviewing-analysis-findings/SKILL.md` — Arguments block (glob, 9 directories), Phase 1 `"latest N"` mode (bare glob, 9 directories), Phase 1 `scope <scope-slug>` mode (filtered glob, exact-prefix boundary, **8 directories — excludes `reviewing-analysis-findings` itself**, see the table above), Phase 4 supersession check (filtered glob against its own report directory only), Persist step (scope-slug) — five sites
+- `skills/reviewing-analysis-findings/SKILL.md` — Arguments block (glob, 15 directories), Phase 1 `"latest N"` mode (bare glob, 15 directories), Phase 1 `scope <scope-slug>` mode (filtered glob, exact-prefix boundary, **14 directories — excludes `reviewing-analysis-findings` itself**, see the table above), Phase 4 supersession check (filtered glob against its own report directory only), Persist step (scope-slug) — five sites
 - `skills/running-a-full-retrospective/SKILL.md` — Phase 1 reuse check (glob, filtered per chosen analysis
   type's own scope-slug), Phase 3 Persist step (scope-slug, reusing whichever date-range scope this run's
   own dispatches used) — two sites. Its own persisted report is deliberately *not* added to the 9-directory
@@ -88,15 +89,16 @@ Every site below must match this file. If you change either definition here, upd
   not scope-shape mismatch)
 - `skills/managing-review-learnings/SKILL.md` — Phase 1 report resolution (bare glob, see table above),
   Persist step (`<source-slug>` derivation, see above) — two sites. Like `mining-review-learnings`, its
-  own report is deliberately *not* added to the 14-directory glob enumeration, for the same scope-shape
+  own report is deliberately *not* added to the 15-directory glob enumeration, for the same scope-shape
   reason: a `<source-slug>` inherited from a PR-set slug (or `direct-finding-<date>`) has no session/
   date-range identity a sibling report could plausibly share
 - `skills/analyzing-session-outcomes/SKILL.md`, `skills/analyzing-verification-effectiveness/SKILL.md`,
   `skills/analyzing-session-operations/SKILL.md`, `skills/analyzing-workflow-usability/SKILL.md`,
-  `skills/analyzing-security-and-privacy/SKILL.md` — each skill's own Persist step (scope-slug) and
-  Next-step block (glob, already written against the 14-directory enumeration including itself, ahead of
+  `skills/analyzing-security-and-privacy/SKILL.md`, `skills/identifying-feature-opportunities/SKILL.md`
+  — each skill's own Persist step (scope-slug) and
+  Next-step block (glob, already written against the 15-directory enumeration including itself, ahead of
   the rest of this sweep -- see the "Interim state" note above)
 - `skills/reviewing-analysis-findings/SKILL.md` — swept as part of this same interim registration
-  (Arguments block, `"latest N"` mode, and `scope <scope-slug>` mode all now enumerate 14/13 directories
+  (Arguments block, `"latest N"` mode, and `scope <scope-slug>` mode all now enumerate 15/14 directories
   respectively) since its own discovery is load-bearing, unlike the individual date-range skills' own
   Next-step-block globs, which remain 9-directory pending Task 11
