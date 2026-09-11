@@ -8,8 +8,10 @@
 # drift by construction.
 #
 # A no-op (exit 0, no output) when this repository has no commitlint setup
-# at all (.commitlintrc.cjs / .github/commitlint-tools/package.json
-# missing) -- git-kit is a marketplace plugin used across repos that may
+# at all -- checked against both the working tree and origin's default
+# branch, so a fetched branch deleting .commitlintrc.cjs/package.json
+# locally can't silently suppress the check for a repo that legitimately
+# has one -- git-kit is a marketplace plugin used across repos that may
 # not have either.
 #
 # Trust boundary: .commitlintrc.cjs is a CommonJS module (commitlint's
@@ -62,20 +64,10 @@ GIT_DIR="$(git rev-parse --git-dir)"
 WORKTREE_TOOLCHAIN_DIR="$REPO_ROOT/.github/commitlint-tools"
 CONFIG_FILE="$REPO_ROOT/.commitlintrc.cjs"
 
-if [ ! -f "$CONFIG_FILE" ] || [ ! -f "$WORKTREE_TOOLCHAIN_DIR/package.json" ]; then
-  # This repository has no commitlint setup -- nothing to check against.
-  # A plain existence check against the working tree, not a content read --
-  # never executed, so this doesn't need the trust boundary below.
-  exit 0
-fi
-
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo "SKIP: pnpm not available -- local commitlint check could not run (CI will still enforce it)" >&2
-  exit 2
-fi
-
 # Resolve the default branch the same way starting-work/finishing-work do,
 # falling back to 'main' if origin/HEAD isn't set (e.g. no origin remote).
+# Resolved before the no-op check below (not after) -- that check now needs
+# it too.
 DEFAULT_BRANCH=""
 if REMOTE_HEAD="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null)"; then
   # Wrapped in `if` rather than piped through `sed` -- under this script's
@@ -87,6 +79,36 @@ if REMOTE_HEAD="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null)"; then
   DEFAULT_BRANCH="${REMOTE_HEAD#refs/remotes/origin/}"
 fi
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
+
+# "Does this repo use commitlint at all" is checked against BOTH the
+# working tree (cheap, the common case for the many git-kit-using repos
+# that never set commitlint up at all) AND the trusted ref -- checking the
+# working tree alone let a fetched/contributed branch delete
+# .commitlintrc.cjs/package.json locally to silently suppress this whole
+# check, even though the trusted origin/<default-branch> setup was still
+# there (found by cross-model-review, round 4). Exit 0 (genuine no-op)
+# only when NEITHER signal indicates a setup -- so an ordinary repo with no
+# commitlint setup at all still gets a silent, fast no-op exactly as
+# before, with no spurious "couldn't resolve a trusted ref" noise.
+WORKTREE_HAS_SETUP=1
+if [ ! -f "$CONFIG_FILE" ] || [ ! -f "$WORKTREE_TOOLCHAIN_DIR/package.json" ]; then
+  WORKTREE_HAS_SETUP=0
+fi
+
+TRUSTED_HAS_SETUP=0
+if MSYS_NO_PATHCONV=1 git cat-file -e "origin/$DEFAULT_BRANCH:.commitlintrc.cjs" 2>/dev/null \
+   && MSYS_NO_PATHCONV=1 git cat-file -e "origin/$DEFAULT_BRANCH:.github/commitlint-tools/package.json" 2>/dev/null; then
+  TRUSTED_HAS_SETUP=1
+fi
+
+if [ "$WORKTREE_HAS_SETUP" -eq 0 ] && [ "$TRUSTED_HAS_SETUP" -eq 0 ]; then
+  exit 0
+fi
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "SKIP: pnpm not available -- local commitlint check could not run (CI will still enforce it)" >&2
+  exit 2
+fi
 
 # Install/run entirely outside the tracked working tree, under .git/ -- a
 # location every git-kit script already treats as local, untracked scratch
