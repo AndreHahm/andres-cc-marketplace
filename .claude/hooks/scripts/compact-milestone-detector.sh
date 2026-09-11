@@ -102,6 +102,22 @@ TIME_SINCE_MILESTONE=$((CURRENT_TIME - LAST_MILESTONE_TIME))
 # several occur in the same command.
 MILESTONE_TYPE=""
 
+# Split the command into "segments" on ;, &&, ||, | (plus any literal
+# newlines already in $COMMAND) so each pattern below can be anchored to
+# the START of its own segment, rather than matching anywhere in the
+# string. Without this, a runner/build/deploy keyword appearing only as
+# another command's own argument or search text (e.g. `rg -n pytest
+# README.md`, `grep -n "git commit" docs.md`) is indistinguishable from an
+# actual invocation — found live by Codex review, reproduced with
+# `rg -n pytest README.md` wrongly reporting a test-pass milestone despite
+# no test ever running.
+COMMAND_SEGMENTS=$(printf '%s\n' "$COMMAND" | sed -E 's/(&&|\|\||[;|])/\n/g')
+# A segment's real command name may be preceded by simple VAR=value
+# assignments and/or one known wrapper-command prefix (uv run, npx, poetry
+# run, pnpm exec) — allow those between the segment start and the actual
+# keyword, but nothing else.
+CMD_START='^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(env[[:space:]]+)?(uv run |npx |poetry run |pnpm exec )?'
+
 # Test commands — PostToolUse only fires after the Bash call completed
 # successfully (see the comment above), so no separate success check is
 # needed here. `\b...\b` word-boundary-anchors every alternative
@@ -117,27 +133,27 @@ MILESTONE_TYPE=""
 # heuristic: only the exact trailing `|| true` / `; true` pattern
 # (optionally followed by a shell comment, e.g. `|| true  # flaky`),
 # not every possible failure-swallowing shape (found by cross-model-review).
-if echo "$COMMAND" | grep -qiE '\b(npm test|npm run test|yarn test|pnpm test|jest|vitest|pytest|python -m pytest|go test|cargo test|rspec|phpunit|mvn test|gradle test)\b' \
+if echo "$COMMAND_SEGMENTS" | grep -qiE "${CMD_START}(npm test|npm run test|yarn test|pnpm test|jest|vitest|pytest|python -m pytest|go test|cargo test|rspec|phpunit|mvn test|gradle test)\\b" \
     && ! echo "$COMMAND" | grep -qE '(\|\|[[:space:]]*true|;[[:space:]]*true)[[:space:]]*(#.*)?$'; then
     MILESTONE_TYPE="test_pass"
 fi
 
 # Git commit
-if echo "$COMMAND" | grep -qE 'git commit'; then
+if echo "$COMMAND_SEGMENTS" | grep -qiE "${CMD_START}git commit\\b"; then
     MILESTONE_TYPE="commit"
 fi
 
 # Build commands — same PostToolUse-implies-success and word-boundary
 # reasoning as above (`make build` would otherwise substring-match inside
 # `cmake build`).
-if echo "$COMMAND" | grep -qiE '\b(npm run build|yarn build|pnpm build|cargo build|go build|make build|gradle build|mvn package)\b'; then
+if echo "$COMMAND_SEGMENTS" | grep -qiE "${CMD_START}(npm run build|yarn build|pnpm build|cargo build|go build|make build|gradle build|mvn package)\\b"; then
     MILESTONE_TYPE="build"
 fi
 
 # Deploy commands — same word-boundary reasoning as above, swept here for
 # consistency (this block predates the SUCCESS-gate fix and was already
 # live, but shares the same unanchored-substring shape).
-if echo "$COMMAND" | grep -qiE '\b(deploy|npm run deploy|vercel|netlify|heroku|kubectl apply|docker push)\b'; then
+if echo "$COMMAND_SEGMENTS" | grep -qiE "${CMD_START}(deploy|npm run deploy|vercel|netlify|heroku|kubectl apply|docker push)\\b"; then
     MILESTONE_TYPE="deploy"
 fi
 
