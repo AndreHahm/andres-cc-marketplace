@@ -195,11 +195,11 @@ full sweep is complete; every report-producing skill's own restated glob now enu
 
 ## Testing & Validation
 
-No `evals/analyzing-session-outcomes/evals.json` exists yet. This is a conversational,
-evidence-tiering skill with no branching logic beyond the evidence-hierarchy/verdict rules already
-spelled out in full in Phase 2-3 and `references/outcome-assessment-framework.md` -- structural
-correctness is covered by `scripts/smoke_test.py` below; a full eval suite is deferred pending real
-usage rather than added speculatively.
+**Eval evidence:** `evals/analyzing-session-outcomes/evals.json` -- 3 scenarios, 12/12 assertions
+passing. This is a conversational, evidence-tiering skill with no branching logic beyond the
+evidence-hierarchy/verdict rules already spelled out in full in Phase 2-3 and
+`references/outcome-assessment-framework.md`; structural correctness is additionally covered by
+`scripts/smoke_test.py` below.
 
 **Verify this skill activates on:**
 - "did we actually accomplish what the user asked for?"

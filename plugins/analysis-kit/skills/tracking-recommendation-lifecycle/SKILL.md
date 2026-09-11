@@ -57,9 +57,13 @@ Resolve the `recommendation_id` (from `$ARGUMENTS`, or ask) and confirm it again
 not-yet-registered ID from a fresh `generating-analysis-recommendations` plan also has empty history
 the first time it's seen here:
 
-- **The ID traces to a `generating-analysis-recommendations` plan the user just approved for
-  tracking** (named directly in `$ARGUMENTS`, or the user confirms it against a plan they're holding) --
-  proceed to Phase 2's own registration path, which appends the initial `proposed` event for it.
+- **The ID traces to a `generating-analysis-recommendations` plan** (named directly in `$ARGUMENTS`, or
+  the user confirms it against a plan they're holding) -- per that skill's own Phase 3, its assigned IDs
+  "may be registered only after user approval": confirm via `AskUserQuestion` that the user actually
+  wants this specific ID tracked in the registry, rather than auto-registering every ID a plan happens to
+  contain. On approval, the registry's own transition rules require a new ID's first event to be
+  `proposed` -- skip Phase 2's evidence-collection bullets (none of them apply to a first registration)
+  and go straight to Phase 3 to append it.
 - **Any other empty result** (an ID typed from memory, guessed, or otherwise not traceable to an
   approved plan) -- this ID has never been proposed; direct the user to
   `generating-analysis-recommendations` first rather than inventing a status history for it.
@@ -74,10 +78,6 @@ Ask which status the recommendation should move to next.
 - **`accepted`/`declined`** -- ask for the decision rationale (why), not just the decision itself.
 - **`implemented`** -- ask which commit/change actually made the fix, cited by path or commit reference --
   never inferred from "the session moved on" or a vague "should be done by now."
-  - **When registering IDs from a fresh `generating-analysis-recommendations` plan:** per that skill's own
-    Phase 3, its assigned IDs "may be registered only after user approval" -- confirm via
-    `AskUserQuestion` that the user actually wants this specific ID tracked in the registry before the
-    first `append` call for it, rather than auto-registering every ID a plan happens to contain.
 - **`verified`** -- ask for the actual verification command/evidence that confirms the fix works, exactly
   the same evidence-not-claim bar `analyzing-verification-effectiveness` already applies. A commit message
   claiming success is never itself evidence.

@@ -68,13 +68,30 @@ Per `references/classification-rubric.md`'s WHAT/WHY/HOW format:
 
 Never populate `WHAT`/`HOW` with content not traceable to the source finding or to something actually read this session — don't invent a fix for a finding that wasn't given.
 
-**Assign each entry a stable `recommendation_id`:** `<scope-slug>-rec-<NN>`, a two-digit zero-padded
-index within this report (`01`, `02`, ...), in the order entries are written. This ID is stable within
-this source report — re-running this skill against the same report later must reassign the same IDs in
-the same order, never regenerate them from prose similarity. Print each entry's ID alongside its
-WHAT/WHY/HOW block. **This skill never itself registers an ID in the recommendation-lifecycle registry**
+**Assign each entry a stable `recommendation_id`:** `<id-prefix>-rec-<NN>`, a two-digit zero-padded
+index within this report (`01`, `02`, ...), in the order entries are written. `<id-prefix>` is **not**
+the bare `<scope-slug>` — a scope-slug alone collides across two independent source reports for the same
+scope (e.g. two separate `this-conversation` reports would both produce `this-conversation-rec-01`,
+letting a fresh registration silently corrupt an unrelated recommendation's registry history). Derive
+`<id-prefix>` from the source report's own identity instead:
+
+- **A supplied or discovered source report path** — use that report's own filename with the `.md`
+  extension stripped (e.g. `analyzing-plugin-components-this-conversation-2026-09-11T14-42-26Z`,
+  derived from `.claude/output/analyzing-plugin-components/this-conversation-2026-09-11T14-42-26Z.md`,
+  prefixed with the source skill's own directory name to also disambiguate two different skills' reports
+  that happen to share a scope-slug and timestamp). This is stable across re-runs (the same report file
+  has the same name every time) and collision-free across distinct reports (each has its own timestamp).
+- **Findings pasted directly, with no source report path** — use `pasted-findings-<persist-timestamp>`
+  (the same timestamp this skill's own Persist step already computes for the plan's own filename). This
+  case has no stable report identity to re-derive on a later run — re-running this skill against the same
+  pasted text later assigns fresh IDs, since nothing on disk marks the two runs as "the same input"; state
+  this limitation plainly if asked, rather than implying pasted-findings IDs are idempotent the way a
+  report-derived prefix's are.
+
+Print each entry's ID alongside its WHAT/WHY/HOW block. **This skill never itself registers an ID in the
+recommendation-lifecycle registry**
 — an ID may be registered only after the user explicitly approves tracking it, which is
-`tracking-recommendation-lifecycle`'s own job (its Phase 2 gates on that approval before its first
+`tracking-recommendation-lifecycle`'s own job (its Phase 1 gates on that approval before its first
 `append` call for a fresh ID).
 
 ## Phase 4: Report
@@ -103,8 +120,10 @@ After Phase 4, verify before presenting output as final:
 - [ ] Every finding supplied in Phase 1 has a corresponding plan entry, or an explicit note explaining why it wasn't expanded
 - [ ] Every plan entry's WHAT/WHY/HOW traces to the source finding or to content actually read this session
 - [ ] Priority buckets are assigned per the rubric's bands, not by gut feel
-- [ ] Every plan entry has a stable `recommendation_id` (`<scope-slug>-rec-<NN>`), assigned in write order
-      and never re-derived from prose similarity on a later re-run
+- [ ] Every plan entry has a stable `recommendation_id` (`<id-prefix>-rec-<NN>`, `<id-prefix>` derived
+      from the source report's own filename, or `pasted-findings-<persist-timestamp>` with no source
+      report), assigned in write order and never re-derived from prose similarity on a later re-run --
+      never a bare `<scope-slug>` prefix, which collides across two independent reports for the same scope
 - [ ] This skill never calls `recommendation_registry.py` itself -- IDs are assigned here only; actually
       registering one is `tracking-recommendation-lifecycle`'s job, gated on user approval
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line

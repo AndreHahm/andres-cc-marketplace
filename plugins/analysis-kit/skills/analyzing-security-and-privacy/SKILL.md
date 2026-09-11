@@ -173,11 +173,9 @@ full sweep is complete, same as the other Wave 2 skills' own Next-step blocks.
 
 ## Testing & Validation
 
-No `evals/analyzing-security-and-privacy/evals.json` exists yet. This skill's threat-model fields and
-finding taxonomy are fully spelled out in Phase 2-4 and the two `references/` files; structural
-correctness is covered by `scripts/smoke_test.py` below; a full eval suite -- including sanitized
-injection/credential/trust-boundary/fail-open fixtures -- is deferred pending real usage, consistent with
-this repo's forward-looking testing-mandate rollout.
+**Eval evidence:** `evals/analyzing-security-and-privacy/evals.json` -- 3 scenarios (sanitized
+injection/credential/trust-boundary/fail-open fixtures), 13/14 assertions passing. Structural
+correctness is additionally covered by `scripts/smoke_test.py` below.
 
 **Verify this skill activates on:**
 - "check this session for security or privacy issues"
