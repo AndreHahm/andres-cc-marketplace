@@ -83,7 +83,7 @@ def find_active_plan(project_dir: str) -> dict | None:
     """Find the most recent non-completed plan.
 
     Mirrors pre-compact.py's find_active_plan() exactly (same Status-field
-    regex, same last-3/skip-completed scan, same status vocabulary) — the
+    regex, same full-scan/skip-completed logic, same status vocabulary) — the
     two must agree, since this function's whole job is to report back the
     same plan pre-compact.py captured before compaction happened.
     """
@@ -93,7 +93,11 @@ def find_active_plan(project_dir: str) -> dict | None:
 
     plan_files = sorted(plans_dir.glob("*.md"), key=lambda f: f.stat().st_mtime, reverse=True)
 
-    for plan_file in plan_files[:3]:  # Check last 3 plans
+    # Scan every plan file, not just the N most recently modified — a completed
+    # plan touched more recently than an older still-active one must not shadow
+    # it (found live by Codex review: slicing before filtering silently returned
+    # None whenever the 3 newest files all happened to be completed).
+    for plan_file in plan_files:
         try:
             content = plan_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
