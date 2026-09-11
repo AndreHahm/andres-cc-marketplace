@@ -12,6 +12,13 @@
 # missing) -- git-kit is a marketplace plugin used across repos that may
 # not have either.
 #
+# Exit codes: 0 = no-op or checked-and-clean; 1 = a real commitlint rule
+# violation (its own output names the rule(s) in brackets); 2 = the check
+# could not run at all (pnpm missing, or the toolchain install failed --
+# e.g. offline/blocked registry) -- distinct from 1 so a caller never
+# mistakes an infrastructure failure for a message-content violation. Every
+# exit-2 path prints a line prefixed "SKIP:" to stderr identifying why.
+#
 # Usage: lint-commit-message.sh <path-to-drafted-message-file>
 #
 # Called by the commit skill (step 13.5), immediately before step 14's
@@ -42,13 +49,16 @@ if [ ! -f "$CONFIG_FILE" ] || [ ! -f "$TOOLCHAIN_DIR/package.json" ]; then
 fi
 
 if ! command -v pnpm >/dev/null 2>&1; then
-  echo "pnpm not available -- skipping local commitlint check (CI will still enforce it)" >&2
-  exit 0
+  echo "SKIP: pnpm not available -- local commitlint check could not run (CI will still enforce it)" >&2
+  exit 2
 fi
 
 if [ ! -x "$TOOLCHAIN_DIR/node_modules/.bin/commitlint" ]; then
   echo "Installing isolated commitlint toolchain (.github/commitlint-tools/, first run only)..." >&2
-  pnpm --dir "$TOOLCHAIN_DIR" install --frozen-lockfile --ignore-scripts >&2
+  if ! pnpm --dir "$TOOLCHAIN_DIR" install --frozen-lockfile --ignore-scripts >&2; then
+    echo "SKIP: commitlint toolchain install failed -- local commitlint check could not run (CI will still enforce it)" >&2
+    exit 2
+  fi
 fi
 
 # commitlint's own resolveExtends resolves module specifiers (e.g.
