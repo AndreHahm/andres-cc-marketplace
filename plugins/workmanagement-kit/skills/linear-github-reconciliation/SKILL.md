@@ -1,8 +1,8 @@
 ---
 name: linear-github-reconciliation
 description: >-
-  Compare Linear, Git, GitHub, and recorded transition history against the authority and
-  communication matrices, classify drift, and repair only bounded fields through their owning
+  Compare Linear, Git, GitHub, and recorded transition history against the plugin's Authority
+  Model, classify drift, and repair only bounded fields through their owning
   provider — never by newest-timestamp precedence, and never as a reverse-write loop against
   GitHub's native automation. Use when asked to reconcile Linear and GitHub state, check for drift
   across the whole lifecycle (not just one link), or investigate an unexplained status change.
@@ -14,8 +14,8 @@ allowed-tools: Read, Skill(linear-work-management), Skill(linear-github-linking)
 # Linear-GitHub Reconciliation
 
 `linear-github-linking` handles routine link drift for one Issue's own evidence. This skill is the
-broader sweep: comparing Linear's recorded state, GitHub's actual state, and the authority matrix
-together, across everything a Wave 2 lifecycle touched — including cases `linear-github-linking`
+broader sweep: comparing Linear's recorded state, GitHub's actual state, and `../../FOUNDATION_CONTRACTS.md`'s
+Authority Model together, across everything a Wave 2 lifecycle touched — including cases `linear-github-linking`
 alone wouldn't surface, like a native-automation setting that started changing Linear's workflow
 status when it shouldn't.
 
@@ -41,7 +41,7 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    calls — branch/PR state and branch-protection rules, respectively; `gh_api_readonly.py` enforces
    GET-only, never bare `gh api`), repository policy (via `repository-gates`), and native
    Linear↔GitHub integration links.
-2. **Compare** using `../../FOUNDATION_CONTRACTS.md`'s authority model — Linear owns execution state,
+2. **Compare** using `../../FOUNDATION_CONTRACTS.md`'s Authority Model — Linear owns execution state,
    GitHub owns repository facts, Notion owns knowledge — never a fresher-timestamp-wins rule.
 3. **Classify** each discrepancy as exactly one of:
 
@@ -114,6 +114,8 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 **Verify it does NOT activate on:**
 - "check for drift on this one PR's link" → `linear-github-linking`
 - "change the priority on this issue" → `linear-work-management` directly
+
+**Last dated run record:** evals/linear-github-reconciliation/workspace/iteration-1/ (2026-09-10)
 
 **Quality gates:**
 - [ ] Every discrepancy is classified as exactly one of the nine defined states — never left

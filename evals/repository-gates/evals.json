@@ -10,5 +10,13 @@
       "expected_output": "Resolves repository_policy.provider_profile from versioned-configuration.json (merged with any local override) before anything else; discovers gates from real repo config (.pre-commit-config.yaml, branch protection, workflow files) rather than assuming a universal list; never invents a 'Review Changes' gate; discloses ambiguity if branch protection can't be read rather than treating that as 'no protection'.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      "\"discover repository policy and gates\"",
+      "\"check if the gates for this PR are still valid after the new commit\""
+    ]
+  }
 }

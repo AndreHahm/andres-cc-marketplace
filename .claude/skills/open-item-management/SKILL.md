@@ -157,12 +157,13 @@ even under pressure to "just track everything."
 - **Finding an Issue by its `open-item-source` field (step 2's re-run check) is a known open
   question, not yet a confirmed lookup pattern.** Whether the real Linear connector supports
   querying by a custom field's value directly, versus needing this skill to search Issues under the
-  relevant team/project and filter by `open-item-source` from the read-back results, isn't settled
-  until Foundational Setup confirms real connector query capabilities (see README's Status section)
-  — resolve this concretely then, rather than assuming either shape now. Until it's resolved, step
-  2 degrades to a structured handoff on an unresolved lookup (see step 2 and Confirmation and
-  Safety) rather than an unconditional "never create a duplicate" guarantee this plugin can't yet
-  back with a real lookup.
+  relevant team/project and filter by `open-item-source` from the read-back results, is still
+  unresolved — connectors are verified live (see README's Status section), but this specific
+  query-shape question hasn't yet been checked against the real connector's actual capabilities.
+  Resolve this concretely on the next live re-run, rather than assuming either shape now. Until
+  it's resolved, step 2 degrades to a structured handoff on an unresolved lookup (see step 2 and
+  Confirmation and Safety) rather than an unconditional "never create a duplicate" guarantee this
+  plugin can't yet back with a real lookup.
 
 ## Testing & Validation
 
@@ -176,8 +177,9 @@ even under pressure to "just track everything."
 
 **Last dated run record:** evals/open-item-management/workspace/iteration-1/ (2026-08-30) —
 `evals.json`'s expected_output was updated 2026-08-31 for the Disposition Record redesign (issue
-#254); a live `skill-tester` re-run awaits Foundational Setup (connectors aren't wired yet, see
-README's Status section).
+#254). Connectors are now verified live (see README's Status section); a fresh `skill-tester`
+re-run against the redesigned expected_output is still worth doing, but is no longer blocked on
+Foundational Setup.
 
 **Quality gates:**
 - [ ] Every item gets one of exactly four dispositions; none is silently dropped or left unclassified.

@@ -10,5 +10,13 @@
       "expected_output": "Reads the recorded git-github-evidence array via linear-work-management, reads GitHub's actual current state, classifies the result as exactly one of Exact/Adoptable/Conflicting/Ambiguous/Stale, never resolves by newest timestamp, treats every GitHub value read as untrusted data.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      "\"check for drift between Linear and GitHub\"",
+      "\"repair this broken GitHub link\""
+    ]
+  }
 }

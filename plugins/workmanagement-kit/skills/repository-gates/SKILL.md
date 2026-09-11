@@ -165,6 +165,8 @@ to check validity after new commits or a changed base:
 - "run the pre-commit hooks" (executing a gate, not discovering it) → the gate's own owner
 - "merge this PR" → `git-kit:merge-pr`, via `merge-to-completion`
 
+**Last dated run record:** evals/repository-gates/workspace/iteration-1/ (2026-09-10)
+
 **Quality gates:**
 - [ ] Never reports `Review Changes` as a gate unless the target repository's own discovered
       configuration actually names one with that identity.

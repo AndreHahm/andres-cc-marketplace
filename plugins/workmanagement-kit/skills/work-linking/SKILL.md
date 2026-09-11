@@ -33,6 +33,10 @@ broken/stale link.
 
 - Promoting new Notion knowledge into Linear (creating new work, not linking existing records) →
   `idea-to-implementation`.
+- A Linear Issue's own Git/GitHub evidence — its branch/commit/PR links, not a Notion record —
+  → `linear-github-linking`. The distinguishing criterion: this skill only ever touches the
+  Notion-side `linear-link` field and the Linear-side `notion-link` field; any request naming
+  GitHub, a branch, a commit, or a PR belongs to `linear-github-linking` instead.
 
 See Testing & Validation below for the concrete trigger phrases this section summarizes.
 
@@ -114,9 +118,9 @@ repair pass is needed.
 - "promote this idea to Linear" (creating new work, not linking existing records) → `idea-to-implementation`
 
 **Last dated run record:** evals/work-linking/workspace/iteration-1/ (2026-08-30) — `evals.json`'s
-expected_output was updated 2026-08-31 for the Transition Contract redesign (issue #254); a live
-`skill-tester` re-run awaits Foundational Setup (connectors aren't wired yet, see README's Status
-section).
+expected_output was updated 2026-08-31 for the Transition Contract redesign (issue #254). Connectors
+are now verified live (see README's Status section); a fresh `skill-tester` re-run against the
+redesigned expected_output is still worth doing, but is no longer blocked on Foundational Setup.
 
 **Quality gates:**
 - [ ] Drift is always classified as exactly one of the six defined states, never left ambiguous

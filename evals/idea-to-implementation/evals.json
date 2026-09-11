@@ -17,5 +17,13 @@
       "expected_output": "Reads the source Decision, proposes the Linear hierarchy implied by it, and does not silently expand scope beyond what the Decision itself calls for.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 4,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "\"accept this proposed goal into execution\"",
+      "\"create a Linear issue based on/from this idea\""
+    ]
+  }
 }

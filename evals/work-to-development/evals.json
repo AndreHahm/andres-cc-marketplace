@@ -10,5 +10,13 @@
       "expected_output": "Reads Issue context via linear-work-management; resolves repository policy via repository-gates; searches for an existing branch/commit/PR via linear-github-linking before proposing a new one; presents the proposed git-kit:starting-work request and gets explicit confirmation before invoking it; never creates a branch directly itself.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      "\"begin development for issue X\"",
+      "\"prepare this accepted issue for implementation\""
+    ]
+  }
 }

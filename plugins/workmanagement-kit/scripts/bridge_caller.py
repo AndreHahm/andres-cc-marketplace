@@ -13,6 +13,12 @@ contain it), then calls bridge-invoke.mjs and returns the parsed canonical
 envelope (or typed failure) as a dict.
 
 Per GitHub issue #251 / plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md.
+
+Known limitation: repo_root_from()'s .git-ancestor search and dispatch()'s hardcoded
+<root>/plugins/codex-kit/... path only resolve correctly when this plugin and codex-kit
+share one monorepo checkout -- both fail with a typed precondition error when
+workmanagement-kit is installed standalone via the plugin marketplace mechanism.
+See issues/2026-09-01-workmanagement-kit-bridge-caller-marketplace-install-path.md.
 """
 
 import argparse

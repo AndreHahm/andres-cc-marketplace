@@ -12,10 +12,15 @@
     },
     {
       "id": 2,
-      "name": "Invalid submission — unknown source",
+      "name": "Invalid submission \u2014 unknown source",
       "prompt": "Another plugin's workflow (source_plugin: totally-made-up-plugin, source_skill: some-skill) submits: {\"content\": {\"title\": \"Test\", \"body\": \"Test content\"}, \"target_system\": \"notion\", \"suggested_mapping\": {\"notion_database\": \"Reports\", \"rationale\": \"test\"}}. Process this submission.",
       "expected_output": "Rejects this as unknown source (and independently as malformed content, since a Report requires summary too) before ever building a preview, and returns a structured handoff rather than guessing.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 1,
+    "declared_scenarios_covered": 1,
+    "uncovered": []
+  }
 }

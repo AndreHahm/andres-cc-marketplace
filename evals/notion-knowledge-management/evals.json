@@ -17,5 +17,13 @@
       "expected_output": "Builds a Decision record with decision-state 'proposed' (not 'accepted') unless explicit acceptance is requested, states that Accept/Supersede/Reverse require the live approval gate, and does not overwrite any prior Decision content.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 4,
+    "declared_scenarios_covered": 2,
+    "uncovered": [
+      "\"propose a goal for Q3\"",
+      "\"log this as a research note\""
+    ]
+  }
 }

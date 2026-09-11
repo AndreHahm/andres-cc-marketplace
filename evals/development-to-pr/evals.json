@@ -10,5 +10,12 @@
       "expected_output": "Delegates the commit to git-kit:commit (never stages/commits directly itself); records commit-linked evidence per FOUNDATION_CONTRACTS.md's Git/GitHub Evidence Record; searches for an existing PR before proposing a new one; presents PR metadata and gets confirmation before publishing.",
       "files": []
     }
-  ]
+  ],
+  "testing_validation_coverage": {
+    "declared_scenarios_total": 2,
+    "declared_scenarios_covered": 1,
+    "uncovered": [
+      "\"publish a draft PR for this Linear issue\""
+    ]
+  }
 }
