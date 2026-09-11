@@ -24,6 +24,23 @@ set -euo pipefail
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "Error: not inside a git repository" >&2; exit 1; }
 cd "$(git rev-parse --show-toplevel)"
 
+# Disables pathspec glob/wildcard magic for every git call this process makes
+# (never touches ref-name matching -- only the `-- <path>` argument commands
+# like `rev-list`/`ls-tree` accept). Without it, a real path containing a
+# pathspec metacharacter (`*`, `?`, `[`) is glob-interpreted rather than
+# matched literally -- live-verified: an unquoted `release*txt.txt` pathspec
+# matched an unrelated `releaseXtxt.txt` file in a scratch repo, and
+# `GIT_LITERAL_PATHSPECS=1` correctly found nothing once no file was
+# literally named that. Safe-direction only regardless: is_path_blob_reachable's
+# actual acceptance test below is an exact blob (and, since the
+# security-reviewer/cross-model-review mode-tracking fix, mode) comparison at
+# a specific commit, so a broadened or narrowed candidate set from pathspec
+# matching can never turn a real content mismatch into a false "reachable" --
+# without this, it could only ever cause a spurious "needs manual review"
+# (cross-model-review finding, Codex fresh-eyes + Claude fresh-eyes
+# independently, both confirmed by the other side's Phase 2 pass).
+export GIT_LITERAL_PATHSPECS=1
+
 SNAPSHOT="$(git rev-parse --git-dir)/delete-rebase-backup-tags.snapshot"
 
 # Get default branch name. Not `... || echo "main"` -- `sed` exits 0 even on
@@ -76,13 +93,25 @@ default_branch="${default_branch:-main}"
 # original deletion did land at some point. Content additions/modifications
 # don't share this limitation -- they're checked against the path's FULL
 # history on $default_branch, not just its current tip.
+#
+# Requires BOTH blob and mode to match at the same historical commit, not
+# blob alone -- a mode-only change (chmod +x, or a regular-file/symlink swap
+# whose content happens to be byte-identical) is content the tag captured,
+# and blob equality alone can't tell "this exact change landed" apart from
+# "an unrelated commit happens to have the same bytes at this path but a
+# different mode" (cross-model-review finding: Codex fresh-eyes found this
+# independently, Claude's Phase 2 pass confirmed it and corrected the
+# severity upward from this session's earlier security-reviewer pass, which
+# had filed the identical gap as merely informational). `git ls-tree` returns
+# mode and blob together in one call rather than needing a second lookup.
 is_path_blob_reachable() {
-  local path="$1" wanted_blob="$2"
-  local commit blob
+  local path="$1" wanted_blob="$2" wanted_mode="$3"
+  local commit mode blob
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
-    blob=$(git rev-parse --verify --quiet "${commit}:${path}" 2>/dev/null) || continue
-    [ "$blob" = "$wanted_blob" ] && return 0
+    read -r mode _ blob _ < <(git ls-tree "$commit" -- "$path" 2>/dev/null)
+    [ -z "$blob" ] && continue
+    [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ] && return 0
   done < <(git rev-list "$default_branch" -- "$path")
   return 1
 }
@@ -104,11 +133,11 @@ is_path_blob_reachable() {
 # Git-Bash environment this script actually runs in).
 check_diff_records() {
   local file="$1"
-  local meta path new_blob status
+  local meta path new_mode new_blob status
   while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
     # meta: ":<old_mode> <new_mode> <old_blob> <new_blob> <status>" -- old
     # mode/blob aren't needed here, only the post-image
-    read -r _ _ _ new_blob status <<< "${meta#:}"
+    read -r _ new_mode _ new_blob status <<< "${meta#:}"
     if [ "$status" = "D" ]; then
       # Deletion: satisfied only if $default_branch's CURRENT tree also no
       # longer has this path -- if it does, the tag's removal was never
@@ -117,7 +146,7 @@ check_diff_records() {
       git cat-file -e "${default_branch}:${path}" 2>/dev/null && return 1
     else
       [ -z "$new_blob" ] && return 1
-      is_path_blob_reachable "$path" "$new_blob" || return 1
+      is_path_blob_reachable "$path" "$new_blob" "$new_mode" || return 1
     fi
   done < "$file"
   return 0

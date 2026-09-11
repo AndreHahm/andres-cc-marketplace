@@ -550,6 +550,118 @@ scenario_diff_tree_failure_fails_closed() {
   )
 }
 
+# Scenario 13: a MODE-ONLY change (chmod +x, same blob) that genuinely lands
+# on $default_branch must be recognized as reachable -- cross-model-review
+# finding (Codex fresh-eyes, confirmed by Claude's Phase 2 pass, severity
+# corrected upward from this session's earlier security-reviewer pass, which
+# had filed the identical gap as merely informational). Uses
+# `git update-index --chmod=+x` rather than a real filesystem `chmod`, since
+# this repo's own `core.filemode=false` default (typical on Windows/NTFS,
+# which has no real POSIX executable bit) makes a real `chmod` invisible to
+# git entirely -- `update-index --chmod` forces the mode directly in the
+# index regardless of platform, live-verified before writing this fixture.
+scenario_mode_change_recognized() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'script content\n' > run.sh
+    git add run.sh && git commit -q -m base
+    git branch feature
+    git checkout -q feature
+    git update-index --chmod=+x run.sh
+    git commit -q -m "make run.sh executable"
+    git tag -a modetag-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+    # main independently makes the identical mode change.
+    git update-index --chmod=+x run.sh
+    git commit -q -m "main also makes run.sh executable"
+  )
+  (
+    cd "$repo"
+    default_branch=main
+    git show-ref --verify --quiet refs/heads/main || default_branch=master
+    eval "$FUNCS"
+    is_tag_content_reachable modetag-rebase-backup-20260101-000000
+  )
+}
+
+# Scenario 14: negative counterpart to scenario 13 -- the mode change is
+# NEVER reflected on $default_branch (same blob, but $default_branch's own
+# copy stays at the original mode). Before this fix, blob equality alone
+# would have reported this "reachable" even though the mode change -- the
+# only thing the tag's commit actually did -- never landed anywhere else;
+# live-verified as a real false-positive-on-the-reachability-question against
+# this exact fixture before the fix, and confirmed correctly failing closed
+# after it.
+scenario_mode_change_not_reflected_fails_closed() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'script content\n' > run.sh
+    git add run.sh && git commit -q -m base
+    git branch feature
+    git checkout -q feature
+    git update-index --chmod=+x run.sh
+    git commit -q -m "make run.sh executable"
+    git tag -a modemiss-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+    # main never chmods run.sh -- it stays at its original mode forever.
+  )
+  (
+    cd "$repo"
+    default_branch=main
+    git show-ref --verify --quiet refs/heads/main || default_branch=master
+    eval "$FUNCS"
+    if is_tag_content_reachable modemiss-rebase-backup-20260101-000000; then
+      exit 1  # the mode change was never verified -- must fail closed
+    else
+      exit 0
+    fi
+  )
+}
+
+# Scenario 15: a real filename containing a pathspec metacharacter (`[`)
+# must still be recognized when its content genuinely lands on
+# $default_branch via a separate commit -- regression coverage for
+# GIT_LITERAL_PATHSPECS=1 (cross-model-review finding: Claude fresh-eyes,
+# confirmed by Codex's Phase 2 pass) to confirm the fix doesn't itself break
+# matching for exactly the kind of filename it targets.
+scenario_special_char_filename_recognized() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > base.txt
+    git add base.txt && git commit -q -m base
+    git branch feature
+    git checkout -q feature
+    printf 'v1\n' > "release[1].txt"
+    git add "release[1].txt" && git commit -q -m "feature: add release[1].txt"
+    git tag -a bracketfile-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+    printf 'v1\n' > "release[1].txt"
+    git add "release[1].txt" && git commit -q -m "release[1].txt lands on main"
+  )
+  (
+    cd "$repo"
+    default_branch=main
+    # default_branch is read by is_tag_content_reachable via eval "$FUNCS" below,
+    # which shellcheck can't see through -- false positive.
+    # shellcheck disable=SC2034
+    git show-ref --verify --quiet refs/heads/main || default_branch=master
+    # Exported explicitly here to match the real script's own top-level
+    # `export GIT_LITERAL_PATHSPECS=1` -- FUNCS only sources the individual
+    # function bodies via sed, not that top-level line, so without this the
+    # scenario would test default (glob) pathspec matching instead of the
+    # actual fix as deployed.
+    export GIT_LITERAL_PATHSPECS=1
+    eval "$FUNCS"
+    is_tag_content_reachable bracketfile-rebase-backup-20260101-000000
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -572,6 +684,9 @@ run scenario_root_commit_missing_fails_closed "a parentless commit's missing con
 run scenario_nonascii_deletion_not_reflected_fails_closed "a non-ASCII path deletion not reflected on default_branch fails closed"
 run scenario_nonascii_deletion_reflected_recognized "a non-ASCII path deletion reflected on default_branch is recognized"
 run scenario_diff_tree_failure_fails_closed "a git diff-tree failure on a non-merge commit fails closed"
+run scenario_mode_change_recognized "a mode-only change (chmod +x) reflected on default_branch is recognized"
+run scenario_mode_change_not_reflected_fails_closed "a mode-only change not reflected on default_branch fails closed"
+run scenario_special_char_filename_recognized "a filename containing a pathspec metacharacter is still matched literally"
 
 echo ""
 echo "$PASS passed, $FAIL failed"
