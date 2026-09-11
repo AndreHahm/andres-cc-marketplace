@@ -181,6 +181,24 @@ message; the existing no-origin-remote-but-has-commitlint-files test repo from r
 exits 2 with the `SKIP:` message; and the full regression (clean pass, real violation exit 1,
 pnpm-missing exit 2) against the real repo, all unchanged.
 
+**Round 6, 2026-09-11 — a real Codex review round on the live PR (#310) found a cache-invalidation bug
+in round 4's `.git/`-based install:** the cache's `package.json`/`pnpm-lock.yaml` were promoted to the
+new trusted content *before* `pnpm install` confirmed success. A failed install (reproduced live with
+`ERR_PNPM_OUTDATED_LOCKFILE`) then left the next run's `NEEDS_INSTALL` check comparing against
+already-promoted files that matched the trusted copy, skipping reinstall and silently executing the
+prior, stale `node_modules/.bin/commitlint` against rules that no longer matched `.commitlintrc.cjs`.
+Fixed by tracking "last successfully installed" via a separate marker pair
+(`.last-installed-package.json`/`.last-installed-pnpm-lock.yaml`), written only after `pnpm install`
+actually succeeds — `package.json`/`pnpm-lock.yaml` themselves still get overwritten unconditionally
+(pnpm needs them physically present to run install at all), but the marker, not those files, is what
+`NEEDS_INSTALL` now compares against. Verified live in three steps: (1) corrupted the marker while the
+live cache files already matched trusted content — confirmed this alone forces a reinstall, proving the
+marker is genuinely load-bearing, not the raw files; (2) forced a real install failure via a fake `pnpm`
+binary on `PATH` that exits 1 — confirmed the marker was left unpromoted (still corrupted) afterward;
+(3) reran with the real `pnpm` restored — confirmed the still-mismatched marker correctly triggered a
+retry rather than a skip. Also re-ran the full regression (clean pass, real violation exit 1, warm-cache
+fast path with no reinstall) — all unchanged. `git status` clean except the one script file throughout.
+
 ## Step 16 (push) — fixed and verified live, 2026-08-28
 
 This PR's first pass at step 16 replaced "retype/recompose the branch name" with "resolve it fresh
