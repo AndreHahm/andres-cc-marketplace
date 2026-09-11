@@ -116,6 +116,26 @@ and still validated against the trusted copy, not the tampered one; exit 1 (real
 package.json restored via `git checkout --` and the real toolchain reinstalled afterward) all still work
 unchanged. `git status` confirmed clean (only the intended script edit) after every restore step.
 
+**Self-review, same commit, before dispatching a third `cross-model-review` pass:** re-reading the
+just-committed security fix found two more gaps on its own, closed before even re-invoking the reviewer:
+(1) the "no trusted ref available" branch (no `origin` remote, or the file doesn't exist there yet) was
+still falling back to the raw working-tree copy — silently re-opening the exact execution risk the fix
+existed to close, for a caller with no way to tell "genuinely my own branch" apart from "a fetched branch
+never inspected." Changed to `exit 2` (skip the check) instead of falling back. (2) Verifying that fix
+against a throwaway no-origin-remote test repository (built fresh under the scratchpad, `git init` with
+no `origin` configured, `.commitlintrc.cjs`/toolchain manifest copied in) surfaced a real, independent bug:
+`DEFAULT_BRANCH="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed ...)"` aborted the whole
+script with exit 128 under this script's own `set -o pipefail` — `git symbolic-ref` failing (no origin)
+still fails the *pipeline*, even piped into a `sed` that itself succeeds, and `pipefail` propagates that
+into the command-substitution assignment, triggering `set -e` before the new exit-2 logic further down
+was ever reached. Neither round 2's test suite nor round 3's Codex dispatch had exercised a genuinely
+no-origin repository, since every prior live test ran inside this actual repo (which has `origin`).
+Fixed by wrapping the fallible `git symbolic-ref` in an `if` (matching the pattern already used for the
+`pnpm install` guard above) instead of piping it. Re-verified against the same no-origin test repo:
+correctly prints `SKIP: could not read a trusted origin/main copy...` and exits 2. Also re-ran the full
+regression (clean pass, violation, pnpm-missing) against the real repo — all unchanged, `git status` clean
+except the one script file.
+
 ## Step 16 (push) — fixed and verified live, 2026-08-28
 
 This PR's first pass at step 16 replaced "retype/recompose the branch name" with "resolve it fresh

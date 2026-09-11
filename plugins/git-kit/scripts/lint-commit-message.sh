@@ -82,7 +82,16 @@ fi
 # ref (origin/<default branch>), never the working tree directly. Resolve
 # the default branch the same way starting-work/finishing-work do, falling
 # back to 'main' if origin/HEAD isn't set (e.g. no origin remote).
-DEFAULT_BRANCH="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's#^refs/remotes/origin/##')"
+DEFAULT_BRANCH=""
+if REMOTE_HEAD="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null)"; then
+  # Wrapped in `if` rather than piped through `sed` -- under this script's
+  # own `set -o pipefail`, a no-origin-remote repo makes `git symbolic-ref`
+  # fail, and piping its output into `sed` would still propagate that
+  # failure through the pipeline and abort the whole script here (verified
+  # live in a throwaway no-origin test repo: exit 128, never reaching this
+  # section's own exit-2 handling below).
+  DEFAULT_BRANCH="${REMOTE_HEAD#refs/remotes/origin/}"
+fi
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 
 TRUSTED_CONFIG="$(mktemp)"
@@ -92,19 +101,21 @@ TRUSTED_CONFIG="$(mktemp)"
 # "origin\main;.commitlintrc.cjs" argument without this, making the lookup
 # always fail and silently fall through to the working-tree copy below --
 # defeating this fix's entire purpose on the platform it was written on).
-if MSYS_NO_PATHCONV=1 git show "origin/$DEFAULT_BRANCH:.commitlintrc.cjs" > "$TRUSTED_CONFIG" 2>/dev/null; then
-  if ! cmp -s "$CONFIG_FILE" "$TRUSTED_CONFIG"; then
-    echo "Note: .commitlintrc.cjs differs from origin/$DEFAULT_BRANCH -- validating against the trusted origin/$DEFAULT_BRANCH copy, not this branch's own edit." >&2
-  fi
-  CONFIG_SOURCE="$TRUSTED_CONFIG"
-else
+if ! MSYS_NO_PATHCONV=1 git show "origin/$DEFAULT_BRANCH:.commitlintrc.cjs" > "$TRUSTED_CONFIG" 2>/dev/null; then
   # No origin remote, or the file doesn't exist there yet (e.g. bootstrapping
-  # this same feature) -- fall back to the working-tree copy, the only one
-  # available; still better than refusing to check anything at all.
-  echo "Note: could not read a trusted origin/$DEFAULT_BRANCH copy of .commitlintrc.cjs -- falling back to this branch's own working-tree copy." >&2
-  CONFIG_SOURCE="$CONFIG_FILE"
+  # this same feature). Never fall back to the working-tree copy here -- that
+  # would silently re-open the exact execution risk this trusted-ref lookup
+  # exists to close, for a caller with no way to tell "genuinely my own
+  # branch" apart from "a fetched branch I haven't inspected." Skip the
+  # check instead, same as the other infrastructure-gap cases above.
+  echo "SKIP: could not read a trusted origin/$DEFAULT_BRANCH copy of .commitlintrc.cjs -- local commitlint check could not run (CI will still enforce it)" >&2
+  rm -f "$TRUSTED_CONFIG"
+  exit 2
 fi
-if ! cp "$CONFIG_SOURCE" "$TOOLCHAIN_DIR/.commitlintrc.cjs"; then
+if ! cmp -s "$CONFIG_FILE" "$TRUSTED_CONFIG"; then
+  echo "Note: .commitlintrc.cjs differs from origin/$DEFAULT_BRANCH -- validating against the trusted origin/$DEFAULT_BRANCH copy, not this branch's own edit." >&2
+fi
+if ! cp "$TRUSTED_CONFIG" "$TOOLCHAIN_DIR/.commitlintrc.cjs"; then
   echo "SKIP: could not write the local commitlint config copy -- local commitlint check could not run (CI will still enforce it)" >&2
   rm -f "$TRUSTED_CONFIG"
   exit 2
