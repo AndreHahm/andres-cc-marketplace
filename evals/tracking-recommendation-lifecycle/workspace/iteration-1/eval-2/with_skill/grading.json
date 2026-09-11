@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "A real `show --recommendation-id rec-a` call was run and its full 3-event history was presented",
+      "passed": true,
+      "evidence": "Real show call returned the 3-event proposed/accepted/implemented history for rec-a, presented accurately in prose with timestamps and rationale/evidence."
+    },
+    {
+      "text": "A real `list` call was run and both tracked recommendations were shown with correct current status (rec-a: implemented, rec-b: proposed)",
+      "passed": true,
+      "evidence": "Real list call returned both rec-a (implemented) and rec-b (proposed), both correctly reported."
+    },
+    {
+      "text": "The response interprets the script's own JSON output in prose, not a fabricated summary",
+      "passed": true,
+      "evidence": "Final response explicitly states 'This reflects the registry's own JSON output directly; nothing here is inferred beyond what the show/list calls returned.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

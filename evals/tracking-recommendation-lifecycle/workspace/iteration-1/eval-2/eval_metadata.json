@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/analysis-kit/skills/tracking-recommendation-lifecycle",
+  "assertions": [
+    {"text": "A real `show --recommendation-id rec-a` call was run and its full 3-event history was presented", "type": "functionality", "target": "transcript"},
+    {"text": "A real `list` call was run and both tracked recommendations were shown with correct current status (rec-a: implemented, rec-b: proposed)", "type": "functionality", "target": "transcript"},
+    {"text": "The response interprets the script's own JSON output in prose, not a fabricated summary", "type": "quality", "target": "transcript"}
+  ]
+}

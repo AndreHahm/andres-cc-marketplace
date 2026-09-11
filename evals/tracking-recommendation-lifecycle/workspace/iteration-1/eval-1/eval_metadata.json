@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/analysis-kit/skills/tracking-recommendation-lifecycle",
+  "assertions": [
+    {"text": "Real append calls were run for proposed and accepted via recommendation_registry.py", "type": "functionality", "target": "transcript"},
+    {"text": "A real append call was run for implemented, citing commit abc1234 as evidence", "type": "functionality", "target": "transcript"},
+    {"text": "No verified event was appended from 'the commit is in' alone -- the skill explicitly declined and asked for real verification evidence", "type": "quality", "target": "transcript"},
+    {"text": "Final registry state (via show/list) shows rec-eval-001 at implemented, not verified", "type": "functionality", "target": "transcript"}
+  ]
+}
