@@ -544,11 +544,298 @@
         }
       ],
       "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_d87d98c4",
+      "name": "analyzing-security-and-privacy",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/analyzing-security-and-privacy"
+          ],
+          "name": "analyzing-security-and-privacy",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/analyzing-security-and-privacy",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/analyzing-security-and-privacy"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_dbc2540d",
+      "name": "analyzing-session-operations",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/analyzing-session-operations"
+          ],
+          "name": "analyzing-session-operations",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/analyzing-session-operations",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/analyzing-session-operations"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_aea383cc",
+      "name": "analyzing-session-outcomes",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/analyzing-session-outcomes"
+          ],
+          "name": "analyzing-session-outcomes",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/analyzing-session-outcomes",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/analyzing-session-outcomes"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_9500c116",
+      "name": "analyzing-verification-effectiveness",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/analyzing-verification-effectiveness"
+          ],
+          "name": "analyzing-verification-effectiveness",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/analyzing-verification-effectiveness",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/analyzing-verification-effectiveness"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_e8839d71",
+      "name": "analyzing-workflow-usability",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/analyzing-workflow-usability"
+          ],
+          "name": "analyzing-workflow-usability",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/analyzing-workflow-usability",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/analyzing-workflow-usability"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_5a32057f",
+      "name": "identifying-feature-opportunities",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/identifying-feature-opportunities"
+          ],
+          "name": "identifying-feature-opportunities",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/identifying-feature-opportunities",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/identifying-feature-opportunities"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
+    },
+    {
+      "compatibility": {},
+      "created_on": null,
+      "details": {
+        "schema": "skill"
+      },
+      "domain": null,
+      "functional_role": null,
+      "id": "component_70ada647",
+      "name": "tracking-recommendation-lifecycle",
+      "naming_history": [
+        {
+          "evidence": [
+            "skills/tracking-recommendation-lifecycle"
+          ],
+          "name": "tracking-recommendation-lifecycle",
+          "reason": "Current name at inventory bootstrap.",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "path": "skills/tracking-recommendation-lifecycle",
+      "provenance": {},
+      "score": null,
+      "scoring_history": [],
+      "security_score": null,
+      "security_scoring_history": [],
+      "status": "active",
+      "status_history": [
+        {
+          "evidence": [
+            "skills/tracking-recommendation-lifecycle"
+          ],
+          "reason": "Discovered by plugin-inventory Build/Plan.",
+          "status": "active",
+          "valid_from": "2026-09-11",
+          "valid_to": null
+        }
+      ],
+      "type": "skill"
     }
   ],
   "extensions": {},
   "plugin_id": "plugin_97cc39b8",
   "plugin_name": "analysis-kit",
   "schema_version": "1.0.0",
-  "updated_on": "2026-08-29"
+  "updated_on": "2026-09-11"
 }
