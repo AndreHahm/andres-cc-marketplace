@@ -124,8 +124,10 @@ satisfy the per-finding metadata check. When a report genuinely has no substanti
 
 This convention governs reports written from this convention's adoption forward. An existing persisted
 report written before this file existed is not retroactively invalid, and no skill needs to migrate or
-re-annotate historical output — see `AKR-NFR-005` (backward compatibility) in
-`.draft/_done/analysis-kit/new-dimensions/` for the source requirement. When a skill reads an older report
+re-annotate historical output — see `AKR-NFR-005` (backward compatibility) in the Wave 2 requirements doc
+under `.draft/analysis-kit/new-dimensions/` (a local, gitignored planning directory — the doc currently
+sits under `_open/` pending this work's own merge, and may move to `_done/` afterward; look under either
+if the exact subdirectory has since moved) for the source requirement. When a skill reads an older report
 that lacks this metadata, treat the absence itself as `Coverage: partial` / `Confidence: low` for whatever
 it inherits from that report, and say so, rather than assuming the missing fields would have said
 `complete`/`high`.
@@ -151,6 +153,7 @@ own interpretation from scratch.
 | `analyzing-session-operations` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which failure/span events were derivable from transcript content vs. left as unresolved/unknown |
 | `analyzing-workflow-usability` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which friction instances had enough evidence for a necessary/avoidable/unclear verdict vs. not_measurable |
 | `analyzing-security-and-privacy` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which threat-model fields were directly observable vs. inferred; sensitive values are never inspected in a way that would need disclosing here |
+| `identifying-feature-opportunities` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which candidate signals were actually gathered and screened against Phase 3's evidence threshold vs. left unscreened for lack of evidence |
 
 `starting-an-analysis` is not in this table — it dispatches to the skills above rather than persisting
 its own report, so it has no coverage preamble of its own to write.
