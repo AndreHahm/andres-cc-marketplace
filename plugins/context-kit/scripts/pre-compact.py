@@ -84,7 +84,11 @@ def find_active_plan(project_dir: str) -> dict | None:
 
     plan_files = sorted(plans_dir.glob("*.md"), key=lambda f: f.stat().st_mtime, reverse=True)
 
-    for plan_file in plan_files[:3]:  # Check last 3 plans
+    # Scan every plan file, not just the N most recently modified — a completed
+    # plan touched more recently than an older still-active one must not shadow
+    # it (found live by Codex review: slicing before filtering silently returned
+    # None whenever the 3 newest files all happened to be completed).
+    for plan_file in plan_files:
         try:
             content = plan_file.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
