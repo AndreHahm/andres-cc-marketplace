@@ -114,10 +114,11 @@ MILESTONE_TYPE=""
 # command's own exit status, not the test framework's, so a command
 # shaped this way can complete successfully (firing this hook) even
 # though the tests inside it actually failed. Narrow, deliberate
-# heuristic: only the exact trailing `|| true` / `; true` pattern, not
-# every possible failure-swallowing shape (found by cross-model-review).
+# heuristic: only the exact trailing `|| true` / `; true` pattern
+# (optionally followed by a shell comment, e.g. `|| true  # flaky`),
+# not every possible failure-swallowing shape (found by cross-model-review).
 if echo "$COMMAND" | grep -qiE '\b(npm test|npm run test|yarn test|pnpm test|jest|vitest|pytest|python -m pytest|go test|cargo test|rspec|phpunit|mvn test|gradle test)\b' \
-    && ! echo "$COMMAND" | grep -qE '(\|\|[[:space:]]*true|;[[:space:]]*true)[[:space:]]*$'; then
+    && ! echo "$COMMAND" | grep -qE '(\|\|[[:space:]]*true|;[[:space:]]*true)[[:space:]]*(#.*)?$'; then
     MILESTONE_TYPE="test_pass"
 fi
 
