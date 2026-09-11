@@ -126,7 +126,7 @@ from memory when the registry itself is the authoritative source.
 
 ## Testing & Validation
 
-**Deterministic-script coverage:** `tests/test_recommendation_registry.py` (14 tests) covers valid
+**Deterministic-script coverage:** `tests/test_recommendation_registry.py` (20 tests) covers valid
 transitions, invalid-transition rejection, append-only history, reopened items, supersession, missing
 optional fields, and the lock's fail-loud-on-timeout guarantee -- run via
 `python -m pytest plugins/analysis-kit/tests/test_recommendation_registry.py -q`. This skill's own
@@ -155,7 +155,7 @@ repo's forward-looking testing-mandate rollout.
 
 **Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing (frontmatter,
 Bash-grant usage, referenced-script existence, Reference Guide file existence, Phase-header sequencing);
-`python -m pytest plugins/analysis-kit/tests/test_recommendation_registry.py -q`, 14/14 passing.
+`python -m pytest plugins/analysis-kit/tests/test_recommendation_registry.py -q`, 20/20 passing.
 
 ## Reference Guide
 
