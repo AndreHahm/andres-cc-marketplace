@@ -1,0 +1,14 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Phase 4 runs (a real registry was supplied and non-empty)", "passed": true, "evidence": "Real list/show queries against the registry, cited in Inspected scope and the Recommendation Impact section."},
+    {"text": "cache-layer-latency-rec-01 checked: Expected Effect / Before Evidence / After Evidence / Impact Verdict reported as four distinct fields", "passed": true, "evidence": "Recommendation Impact finding uses exactly these four labeled bullets, not merged."},
+    {"text": "cache-layer-latency-rec-01's Impact Verdict is 'improved'", "passed": true, "evidence": "Explicitly stated: 'Impact Verdict: improved -- 6ms is below both the SLA target and the expected <10ms target.'"},
+    {"text": "billing-service-timeout-rec-07 correctly excluded from Phase 4's checked set (still 'proposed' only) despite near-verbatim prose overlap with a recurring finding", "passed": true, "evidence": "Both the Unresolved-recurrences finding and a dedicated 'Note on billing-service-timeout-rec-07' explicitly state exclusion is by status gate, not prose, and call out that its rationale text closely resembles the recurring finding as the exact near-miss this is testing."},
+    {"text": "billing-service recurrence reported as Unresolved recurrence, not folded into Recommendation Impact", "passed": true, "evidence": "Reported under 'Unresolved recurrences' with an explicit cross-reference explaining why it isn't in the Impact section."},
+    {"text": "cache-layer section reported as a Divergence", "passed": true, "evidence": "Divergences section, 'Needs attention' -> 'Compliant', citing both reports' specific evidence."},
+    {"text": "notification-service noted as a new component, not miscategorized as a divergence of an existing one", "passed": true, "evidence": "Explicit finding title: 'new in current report, not a divergence of an existing component... scope growth.'"}
+  ],
+  "summary": {"assertions_total": 7, "assertions_passed": 7, "pass_rate": 1.0}
+}

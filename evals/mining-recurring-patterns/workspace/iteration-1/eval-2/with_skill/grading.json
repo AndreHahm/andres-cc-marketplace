@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Phase 4 subagent-level aggregation runs token_time_aggregator.py for real against the three actual dispatch figures", "passed": true, "evidence": "Real table + aggregator totals (121000 tokens, 188000ms, levels_present: [\"subagent\"]) cited directly."},
+    {"text": "Top-tokens and top-duration rankings both rank stale-claim-scan first, doc-audit second, final-doc-review third", "passed": true, "evidence": "Both rankings listed explicitly and match exactly: stale-claim-scan (58000/94000) > doc-audit (42000/61000) > final-doc-review (21000/33000)."},
+    {"text": "Skill-level ranking explicitly skipped with a stated reason (no session_parser data for this scope)", "passed": true, "evidence": "Dedicated 'Skill-level (not available for this run)' section citing the transcript's own explicit statement and the skill's own Gotcha against fabrication."},
+    {"text": "The grep-pattern correction NOT flagged as a retry loop", "passed": true, "evidence": "Dedicated finding explicitly titled 'Not a retry loop -- a legitimate multi-step correction,' citing the intervening Read as new information distinguishing it from the mechanology's actual retry-loop definition."},
+    {"text": "Report does not claim or imply a whole-session total", "passed": true, "evidence": "Explicitly labels the aggregator total as 'a subagent-only total, not a whole-session total,' citing levels_present."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

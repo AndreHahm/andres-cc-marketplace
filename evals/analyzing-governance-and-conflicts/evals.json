@@ -1,0 +1,18 @@
+{
+  "skill_path": "plugins/analysis-kit/skills/analyzing-governance-and-conflicts",
+  "mode": "quick_workflow",
+  "evals": [
+    {
+      "eval_id": "eval-1",
+      "scenario_summary": "Real rule (starting-work-before-first-change.md) violated and shipped uncorrected -- tests Phase 2 conformance + severity guidance"
+    },
+    {
+      "eval_id": "eval-2",
+      "scenario_summary": "Agent-vs-agent conflict: two reviewers directly contradict each other on the same field of the same file"
+    },
+    {
+      "eval_id": "eval-3",
+      "scenario_summary": "Maintainability finding: a duplicated fact fixed at one site but left stale at 2 others -- full blast radius must be reported as one consolidated finding"
+    }
+  ]
+}

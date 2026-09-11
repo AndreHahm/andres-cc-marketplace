@@ -1,0 +1,14 @@
+{
+  "eval_id": "eval-1",
+  "scenario": "Core Phase 2 structural diff + Phase 3 semantic interpretation: one consistency, one unresolved recurrence, one dropped-from-scope section, one genuinely new section -- no recommendation registry supplied at all (tests the 'no registry is a normal case' gate)",
+  "skill_invocation": "comparing-sessions with prior report path evals/comparing-sessions/workspace/iteration-1/eval-1/prior-report.md, current report path evals/comparing-sessions/workspace/iteration-1/eval-1/current-report.md (both already persisted this session -- do not re-run an upstream analysis skill). No recommendation registry path is supplied and none exists at the default path (.claude/output/analysis-kit-recommendations/events.jsonl does not exist in this worktree) -- Phase 4 should be skipped gracefully, not treated as an error or a coverage gap.",
+  "assertions": [
+    "Phase 2's structural diff runs before any semantic interpretation, and correctly identifies audit-log as only-in-prior and session-store as only-in-current",
+    "auth-service reported as a Consistency (verdict and content unchanged)",
+    "rate-limiter reported as an Unresolved recurrence (same suggestion -- per-IP rate limiting -- present in both reports, explicitly noted as not yet acted on)",
+    "audit-log (only in prior) is noted as dropped from this session's scope, not silently omitted from the report and not mischaracterized as a compliance regression",
+    "session-store (only in current) is noted as a new component, not a divergence of an existing one",
+    "No Recommendation Impact section is included in the report (Phase 4 found nothing to check -- no registry available), and this is not presented as a gap or limitation in this skill's own coverage",
+    "Report explicitly states Phase 4 was skipped due to no registry existing, per the skill's own Phase 4 graceful-degradation instruction"
+  ]
+}

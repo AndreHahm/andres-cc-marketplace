@@ -1,0 +1,14 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Phase 2's structural diff runs before semantic interpretation, correctly identifying audit-log as only-in-prior and session-store as only-in-current", "passed": true, "evidence": "Requested/Inspected scope block explicitly references the real comparator.py run; both findings cite 'only_in_a'/'only_in_b per the structural diff'."},
+    {"text": "auth-service reported as a Consistency", "passed": true, "evidence": "Consistencies section, identical verdict noted."},
+    {"text": "rate-limiter reported as an Unresolved recurrence", "passed": true, "evidence": "Unresolved Recurrences section, citing the current report's own 'has not changed since the prior report' line."},
+    {"text": "audit-log noted as dropped from scope, not mischaracterized as a regression", "passed": true, "evidence": "Finding title states exactly this: 'dropped from this session's scope, not a compliance regression,' citing the current report's own Unavailable evidence line as the reason."},
+    {"text": "session-store noted as a new component, not a divergence of an existing one", "passed": true, "evidence": "Finding title states exactly this: 'newly analyzed, not a divergence of an existing component.'"},
+    {"text": "No Recommendation Impact section included; Phase 4 skip not presented as a coverage gap", "passed": true, "evidence": "Phase 4 section explicitly states this is 'the normal, expected path... not a gap or limitation,' citing the skill's own Gotcha, and omits any Recommendation Impact section."},
+    {"text": "Report explicitly states Phase 4 was skipped because no registry exists", "passed": true, "evidence": "States the default path was checked and confirmed absent, per the graceful-degradation instruction."}
+  ],
+  "summary": {"assertions_total": 7, "assertions_passed": 7, "pass_rate": 1.0}
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": "eval-1",
+  "scenario": "must-vs-should severity + unaddressed-not-violated",
+  "skill_invocation": "comparing-session-to-specification with spec path evals/comparing-session-to-specification/workspace/iteration-1/eval-1/spec-project-brief.md, session scope = the transcript at evals/comparing-session-to-specification/workspace/iteration-1/eval-1/session-transcript-must-vs-should.md (treat its entire content as 'this conversation')",
+  "assertions": [
+    "Retry Policy section classified Violated (spec requires 3 retries with backoff; session implemented only 1 retry, no backoff)",
+    "Non-Goal: No Email Channel section classified Violated, and flagged as more severe than the Retry Policy violation because it violates an explicit non-goal using must-level language, per the checklist's severity guidance",
+    "Logging section classified Compliant (structured JSON with request_id, matching the should-level guidance)",
+    "Rate Limiting section classified Unaddressed, NOT Violated -- the session simply never touched it, which is exactly the checklist's named common mistake to avoid",
+    "Scope section classified Compliant or Unaddressed (delivery-only scope was respected -- no content-authoring logic was added), not Violated",
+    "Report cites specific spec text and specific session evidence for both Violated findings"
+  ]
+}

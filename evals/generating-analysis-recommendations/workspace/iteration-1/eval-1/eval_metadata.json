@@ -1,0 +1,14 @@
+{
+  "eval_id": "eval-1",
+  "scenario": "Report-path input with 4 findings spanning all 4 priority buckets, testing recommendation_id derivation from the source report's own filename (prefixed with the source skill directory) and correct complexity/risk/benefit banding per the rubric",
+  "skill_invocation": "generating-analysis-recommendations with argument = the path evals/generating-analysis-recommendations/workspace/iteration-1/eval-1/source-report.md (treat this as the supplied source report path for Phase 1)",
+  "assertions": [
+    "Finding A (stale README count) classified Quick Win: Low complexity (single-line edit), Low risk (additive/no behavior change to a doc), Medium benefit",
+    "Finding B (unvalidated shared parsing function, 12 call sites, 3 production incidents, no existing pattern to follow) classified Strategic Investment: High complexity (no existing pattern, touches 6 files), High risk (widely-used shared component), High benefit (prevents a recurring category of production failure)",
+    "Finding C (log capitalization inconsistency) classified Nice-to-Have: Low complexity, Low risk, Low benefit (explicitly cosmetic, no downstream effect per the finding's own text)",
+    "Finding D (persistence-layer full-rewrite suggestion for a narrow, fully-explained edge case with a 5-line fix and an existing pattern already in this codebase to copy) classified Reconsider, explicitly recommending the narrow 5-line atomic-write fix instead of a full rewrite -- not silently omitted, and not accepted as proposed",
+    "Every plan entry's recommendation_id follows <id-prefix>-rec-<NN> where <id-prefix> derives from the source report's own filename (source-report, prefixed with a skill-directory-style qualifier) -- not a bare scope-slug",
+    "Every WHAT/WHY/HOW cites the specific evidence from its source finding (call-site counts, incident counts, existing codebase patterns) -- none is generic or fabricated",
+    "The report's order-of-operations / bucket grouping puts the Quick Win (Finding A) ahead of the Strategic Investment (Finding B)"
+  ]
+}

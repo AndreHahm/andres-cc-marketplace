@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-governance-and-conflicts",
+  "scenario": "A real rule in this repo (.claude/rules/starting-work-before-first-change.md) is violated -- a shippable edit was committed directly on main with no starting-work call and no branch -- and the violation was never caught or corrected within the session. Fixture: session-transcript-rule-violation.md.",
+  "assertions": [
+    {"text": "Phase 2's rule inventory (via component_inventory.py) is actually run against the real repo and finds starting-work-before-first-change.md among the discovered rules", "type": "functionality", "target": "report"},
+    {"text": "The report identifies starting-work-before-first-change.md as violated in this session -- the edit was committed directly on main with no starting-work call", "type": "functionality", "target": "report"},
+    {"text": "The violation is correctly characterized as shipped/uncorrected (not caught-and-fixed within the session) -- per conflict-taxonomy.md's own severity guidance, a violation that shipped is more severe than one caught and corrected in-session", "type": "quality", "target": "report"},
+    {"text": "The finding is reported under Phase 2's Rule and Boundary Conformance section (or equivalent), not miscategorized as one of Phase 3's four conflict categories -- this is a conformance violation, not a conflict between two things", "type": "quality", "target": "report"}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Retry Policy section classified Violated", "passed": true, "evidence": "Verdict: Violated (Major), citing 1-retry-no-backoff vs. required 3-retry-with-backoff."},
+    {"text": "Non-Goal: No Email Channel classified Violated, flagged more severe than Retry Policy", "passed": true, "evidence": "Verdict: Violated (Critical: violates an explicit non-goal/scope boundary), explicitly contrasted with Retry Policy's Major severity in that finding's own subtitle."},
+    {"text": "Logging section classified Compliant", "passed": true, "evidence": "Compliant, citing structlog JSON output with request_id field."},
+    {"text": "Rate Limiting section classified Unaddressed, not Violated", "passed": true, "evidence": "Explicitly labeled 'a legitimate Unaddressed verdict, not a violation,' citing both the spec's own optional framing and the transcript's closing note."},
+    {"text": "Scope section classified Compliant or Unaddressed, not Violated", "passed": true, "evidence": "Compliant, with a thoughtful note explaining why the email-channel evidence isn't double-counted here vs. the Non-Goal finding."},
+    {"text": "Report cites specific spec text and specific session evidence for both Violated findings", "passed": true, "evidence": "Both findings quote the exact spec sentence and cite the specific Write tool-result text."}
+  ],
+  "summary": {"assertions_total": 6, "assertions_passed": 6, "pass_rate": 1.0},
+  "notes": "Report also correctly reasoned about avoiding double-counting the email-channel evidence across the Scope and Non-Goal sections -- a nuance beyond the assertion bar."
+}

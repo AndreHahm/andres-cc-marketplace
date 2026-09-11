@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Phase 2's rule inventory is actually run against the real repo and finds starting-work-before-first-change.md among the discovered rules", "passed": true, "evidence": "component_inventory.py run for real, returned 23 rules including this one."},
+    {"text": "The report identifies starting-work-before-first-change.md as violated in this session", "passed": true, "evidence": "Explicit finding block with direct quotes tracing the violation to the transcript."},
+    {"text": "The violation is correctly characterized as shipped/uncorrected, the more severe case per conflict-taxonomy.md", "passed": true, "evidence": "Explicit: \"this is the more severe outcome: a violation that shipped uncorrected, not one caught and fixed within scope.\""},
+    {"text": "The finding is reported under Phase 2's Rule and Boundary Conformance section, not miscategorized as a Phase 3 conflict", "passed": true, "evidence": "Correctly placed under \"## Phase 2: Rule and Boundary Conformance\"."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

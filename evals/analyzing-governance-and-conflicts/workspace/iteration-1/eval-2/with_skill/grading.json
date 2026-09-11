@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Phase 3's agent-vs-agent conflict category is triggered and reports the contradiction between skill-reviewer and consistency-reviewer", "passed": true, "evidence": "Headline finding of the report, with a side-by-side verdict table."},
+    {"text": "The report correctly identifies which verdict is actually correct (consistency-reviewer's Critical finding)", "passed": true, "evidence": "Independently verified against real plugin-rulebook/assets/settings.json and size-rules.md, not taken on either agent's word -- confirmed 1180 > 1024 is Critical."},
+    {"text": "The conflict is reported as unresolved/still-open, not incorrectly presented as already resolved", "passed": true, "evidence": "\"the transcript ends with the contradiction still unresolved.\""},
+    {"text": "Reported under Phase 3's Conflict Detection section, agent-vs-agent category", "passed": true, "evidence": "Correctly placed and labeled."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+  "notes": "Exceeded scope in a genuinely useful way: independently traced the root cause to skill-reviewer.md never wiring in an R21 check at all, by reading the real agent definition files -- not required by the assertions but directly relevant, well-evidenced, and correctly flagged as Phase 5 material."
+}

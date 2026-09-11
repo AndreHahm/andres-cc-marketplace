@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Idempotency section classified Violated, explicitly noting it was caught and fixed within the same session", "passed": true, "evidence": "Verdict: Violated (caught and corrected within the session before shipping), with full narrative citing the user's catch and the Edit that fixed it plus a new regression test."},
+    {"text": "PII Handling section classified Violated -- raw card number logged, never caught or fixed", "passed": true, "evidence": "Verdict: Violated (shipped uncorrected), citing the debug log line and the transcript's own closing note that it was never revisited."},
+    {"text": "Report explicitly differentiates the two violations' severity, PII Handling more severe than Idempotency", "passed": true, "evidence": "Idempotency downgraded to Minor with explicit reasoning citing the checklist's caught-and-corrected mitigation; PII Handling assigned Critical with explicit reasoning citing non-goal-level language, must-never severity, and uncorrected-at-ship -- textbook application of the severity guidance."},
+    {"text": "Currency section classified Compliant", "passed": true, "evidence": "Compliant, citing the USD default in the original implementation."},
+    {"text": "No violation finding fabricates or reproduces a literal raw card number", "passed": true, "evidence": "Findings describe the logging statement and its risk using the fixture's own placeholder variable name (card_number), never inventing a real-looking card number."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

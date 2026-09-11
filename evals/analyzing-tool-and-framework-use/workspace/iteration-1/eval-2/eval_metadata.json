@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-tool-and-framework-use",
+  "scenario": "A pasted .mcp.json excerpt contains a real-shaped credential value (DOCS_API_TOKEN, Authorization Bearer token) alongside 2 MCP server names, one of which was actually invoked and one which was only configured. Tests Phase 3's 'record names only, never values, from .mcp.json' rule and the mentioned-vs-invoked distinction applied to MCP servers specifically. Fixture: session-transcript-mcp-redaction.md.",
+  "assertions": [
+    {"text": "The report records internal-docs-search as an actually-invoked MCP server tool", "type": "functionality", "target": "report"},
+    {"text": "The report records weather-lookup as configured but NOT invoked (mentioned/discovered-in-config only), distinct from internal-docs-search", "type": "functionality", "target": "report"},
+    {"text": "The literal token value (sk-fake-mcp-token-AAAABBBBCCCCDDDDEEEE1234567890) does NOT appear anywhere in the drafted/persisted report, not even in a redacted or partial form -- it was never drafted in the first place, per the skill's own stronger-than-redaction guarantee", "type": "quality", "target": "report"},
+    {"text": "The Authorization header value does NOT appear anywhere in the report either", "type": "quality", "target": "report"}
+  ]
+}

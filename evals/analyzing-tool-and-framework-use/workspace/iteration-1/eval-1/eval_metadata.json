@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-tool-and-framework-use",
+  "scenario": "A conversation mentions several tools (pytest-xdist, mypy) without ever invoking them, and actually invokes two others (ruff, pytest) for real. Tests Phase 3's mentioned-vs-invoked required distinction. Fixture: session-transcript-mentioned-vs-invoked.md.",
+  "assertions": [
+    {"text": "ruff and pytest are both recorded as actually-invoked tools with invocation counts (ruff: 1, pytest: 1)", "type": "functionality", "target": "report"},
+    {"text": "pytest-xdist is NOT recorded as an invoked tool -- it was only discussed/considered, never run", "type": "functionality", "target": "report"},
+    {"text": "mypy is NOT recorded as an invoked tool, and is instead noted as a tool that was checked for and confirmed absent from the project (not even configured), distinct from a merely-discussed tool", "type": "quality", "target": "report"},
+    {"text": "The report explicitly distinguishes 'mentioned but not invoked' from 'actually invoked' for at least the pytest-xdist/ruff pair, per the skill's own Required Distinctions -- not silently collapsing both into one undifferentiated tool list", "type": "quality", "target": "report"}
+  ]
+}

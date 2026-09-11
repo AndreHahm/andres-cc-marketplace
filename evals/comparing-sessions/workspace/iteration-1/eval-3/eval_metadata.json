@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-3",
+  "scenario": "Report-format-drift gotcha: an only-in-prior section is pure report-schema boilerplate (not a real content signal) sitting alongside a genuinely new only-in-current component and a genuine content divergence in a shared section -- tests whether the skill correctly separates format noise from real signal rather than treating every only-in-A/only-in-B entry as equally meaningful",
+  "skill_invocation": "comparing-sessions with prior report path evals/comparing-sessions/workspace/iteration-1/eval-3/prior-report.md, current report path evals/comparing-sessions/workspace/iteration-1/eval-3/current-report.md (both already persisted this session -- do not re-run an upstream analysis skill). No recommendation registry needed for this scenario -- Phase 4 should skip gracefully as usual.",
+  "assertions": [
+    "'Findings: Legacy Format Note' (only in prior) is explicitly identified as report-format/schema drift, not as a dropped component or a real content signal -- its own text (an earlier-version boilerplate disclaimer) is cited as the basis for this call",
+    "'Component: autocomplete' (only in current) is correctly identified as a genuinely new component, not lumped together with the format-drift note as 'noise'",
+    "query-router is reported as a real Divergence: verdict changed from 'Needs attention' to 'Compliant', with the specific evidence (short-TTL cache added, 61% hit rate) cited from the current report and the specific gap (no caching, suggestion to add one) cited from the prior report",
+    "indexer and result-cache are reported as Consistencies (unchanged verdict and content in both reports)",
+    "The report does not treat every only-in-A/only-in-B entry as an equally-weighted finding -- the format-drift item and the genuine-new-component item are explicitly distinguished from each other, not both reported the same way"
+  ]
+}

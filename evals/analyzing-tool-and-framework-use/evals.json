@@ -1,0 +1,9 @@
+{
+  "skill_path": "plugins/analysis-kit/skills/analyzing-tool-and-framework-use",
+  "mode": "quick_workflow",
+  "evals": [
+    {"eval_id": "eval-1", "scenario_summary": "Mentioned-vs-invoked tool distinction (pytest-xdist/mypy discussed, ruff/pytest actually run)"},
+    {"eval_id": "eval-2", "scenario_summary": "MCP config redaction: real-shaped token value must never appear in the report, mentioned-vs-invoked applied to MCP servers"},
+    {"eval_id": "eval-3", "scenario_summary": "GG-SAD/GSD pairing (real temporary markers) -- Gate-Order and Phase-Permission Checks for a companion tool overstepping its role"}
+  ]
+}

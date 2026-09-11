@@ -1,0 +1,13 @@
+{
+  "eval_id": "eval-1",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-actor-behavior",
+  "scenario": "Multi-agent handoff: 2 sub-agent dispatches (security-reviewer, scripts-reviewer) in a sequential handoff where the second agent's task was directly informed by the first agent's finding, plus one human correction (asking for an explicit regression test) and one unprompted-but-good human follow-through (confirming the fix). Fixture: session-transcript-multiagent.md.",
+  "assertions": [
+    {"text": "The report's actor inventory includes both security-reviewer and scripts-reviewer as separate sub-agent dispatches, each with its own <!-- inventory: --> marker", "type": "functionality", "target": "report"},
+    {"text": "Phase 5 (Cross-Agent Flow Analysis) actually runs and is present in the report, since 2 agents were dispatched in scope", "type": "functionality", "target": "report"},
+    {"text": "The cross-agent flow is correctly classified as sequential delegation (scripts-reviewer's task was directly informed by security-reviewer's finding), not parallel dispatch or handback-without-context", "type": "quality", "target": "report"},
+    {"text": "Both agent dispatches are assessed as appropriate (each was a purpose-built reviewer for its specific task) with no unwarranted broad-dispatch finding invented", "type": "quality", "target": "report"},
+    {"text": "The human's request for an explicit regression test is recorded as a real, notable correction/contribution in Phase 4, not omitted or lumped in as trivial", "type": "quality", "target": "report"},
+    {"text": "Every actor in the inventory (security-reviewer, scripts-reviewer, human-developer) has exactly one matching disposition marker -- no actor is silently left unassessed", "type": "functionality", "target": "report"}
+  ]
+}

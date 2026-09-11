@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-2",
+  "scenario": "Phase 4 subagent-level real usage aggregation (3 real Agent-tool dispatch results with explicit tokens/duration_ms figures) with skill-level aggregation explicitly skipped and stated (no session_parser data exists for this scope), plus a legitimate 2-step retry with a real intervening fix (the wrong-grep-pattern correction) that should NOT be flagged as a retry loop",
+  "skill_invocation": "mining-recurring-patterns with scope = 'this conversation', where the entire content of evals/mining-recurring-patterns/workspace/iteration-1/eval-2/session-transcript-subagent-usage.md is treated as the session being mined. No session_parser.py/codex_session_parser.py data is available for this scope at all (state this plainly if asked, or run the script for real and observe it produces nothing usable for a pasted-transcript scope) -- Phase 4's skill-level ranking must be explicitly skipped for this reason.",
+  "assertions": [
+    "Phase 4's subagent-level aggregation runs token_time_aggregator.py for real against the three actual dispatch figures (doc-audit: 42000 tokens/61000ms, stale-claim-scan: 58000 tokens/94000ms, final-doc-review: 21000 tokens/33000ms)",
+    "The subagent-level top-tokens and top-duration rankings both correctly rank stale-claim-scan first (58000 tokens, 94000ms), doc-audit second, final-doc-review third",
+    "Phase 4's skill-level ranking is explicitly skipped, with a stated reason (no session_parser.py/codex_session_parser.py data available for this pasted-transcript scope) -- not silently omitted and not fabricated from conversation-context impressions",
+    "The grep-pattern correction (wrong pattern -> read the actual finding -> correct pattern -> found the match) is NOT flagged as a retry loop -- it's a legitimate two-step correction with a real intervening fix (reading the agent's actual finding text), distinct from a true retry loop where the same failing action repeats with no intervening change",
+    "The report does not claim or imply a whole-session token/time total -- only the subagent-dispatch figures actually supplied, per the skill's own explicit out-of-scope statement about main-conversation totals"
+  ]
+}

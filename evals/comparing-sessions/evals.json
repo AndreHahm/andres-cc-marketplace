@@ -1,0 +1,23 @@
+{
+  "skill_path": "plugins/analysis-kit/skills/comparing-sessions",
+  "mode": "quick_workflow",
+  "evals": [
+    {
+      "eval_id": "eval-1",
+      "scenario_summary": "Core structural diff + semantic interpretation -- one consistency, one unresolved recurrence, one dropped-from-scope section, one genuinely new section -- with no recommendation registry at all, testing the 'no registry is normal' graceful-degradation path"
+    },
+    {
+      "eval_id": "eval-2",
+      "scenario_summary": "Phase 4 realized-impact comparison against a real recommendation registry built via the actual recommendation_registry.py CLI -- stable-ID matching with a near-miss decoy (a proposed-only recommendation whose rationale text closely resembles a recurring finding), and the four-field Before/Expected/After/Verdict extraction"
+    },
+    {
+      "eval_id": "eval-3",
+      "scenario_summary": "Report-format-drift gotcha -- an only-in-prior section that's pure report-schema boilerplate sits alongside a genuinely new only-in-current component and a real content divergence in a shared section, testing whether format noise is correctly separated from real signal"
+    }
+  ],
+  "summary": {
+    "assertions_total": 19,
+    "assertions_passed": 19,
+    "pass_rate": 1.0
+  }
+}
