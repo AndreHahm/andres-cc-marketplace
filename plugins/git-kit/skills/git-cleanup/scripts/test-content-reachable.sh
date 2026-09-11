@@ -662,6 +662,56 @@ scenario_special_char_filename_recognized() {
   )
 }
 
+# Scenario 16: a deletion record's verification must fail closed when
+# $default_branch's own object for that path can't be read -- not just when
+# the path is genuinely absent. `git cat-file -e "$default_branch:$path"`
+# fails (nonzero exit) both when the path is genuinely gone AND when the
+# path still exists but its blob object is missing/corrupted -- the two
+# cases are indistinguishable by exit code alone, so the old `&&`-based
+# check silently misread a corrupted-but-present path as "deletion
+# satisfied" (cross-model-review finding, round 2, Codex fresh-eyes;
+# live-verified before writing this fixture: deleting a blob object out from
+# under an otherwise-intact tree entry makes `cat-file -e` fail while the
+# path is still genuinely present in the tree). Fixed with `git ls-tree`
+# instead, which never needs to open the blob to answer "does this path
+# exist" -- live-verified separately: exit 0 with the entry still listed
+# even when that same blob is deleted.
+scenario_deletion_check_survives_corrupted_blob() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'secret content\n' > secret.txt
+    git add secret.txt && git commit -q -m "add secret.txt"
+    secret_blob=$(git rev-parse HEAD:secret.txt)
+    git branch feature
+    git checkout -q feature
+    git rm -q secret.txt
+    git commit -q -m "feature deletes secret.txt"
+    git tag -a delcorrupttag-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+    # main still genuinely has secret.txt -- the deletion never landed. Now
+    # corrupt ONLY its blob object (not the tree entry) to confirm the check
+    # still correctly reports "not reflected" rather than being fooled by
+    # the resulting read failure into reporting "satisfied".
+    rm -f ".git/objects/${secret_blob:0:2}/${secret_blob:2}"
+  )
+  (
+    cd "$repo"
+    default_branch=main
+    # default_branch is read by is_tag_content_reachable via eval "$FUNCS" below,
+    # which shellcheck can't see through -- false positive.
+    # shellcheck disable=SC2034
+    git show-ref --verify --quiet refs/heads/main || default_branch=master
+    eval "$FUNCS"
+    if is_tag_content_reachable delcorrupttag-rebase-backup-20260101-000000; then
+      exit 1  # secret.txt is still genuinely present -- must fail closed
+    else
+      exit 0
+    fi
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -687,6 +737,7 @@ run scenario_diff_tree_failure_fails_closed "a git diff-tree failure on a non-me
 run scenario_mode_change_recognized "a mode-only change (chmod +x) reflected on default_branch is recognized"
 run scenario_mode_change_not_reflected_fails_closed "a mode-only change not reflected on default_branch fails closed"
 run scenario_special_char_filename_recognized "a filename containing a pathspec metacharacter is still matched literally"
+run scenario_deletion_check_survives_corrupted_blob "a deletion check fails closed when the path's blob is unreadable, not just when absent"
 
 echo ""
 echo "$PASS passed, $FAIL failed"

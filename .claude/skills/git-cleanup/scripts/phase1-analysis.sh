@@ -99,11 +99,20 @@ is_path_blob_reachable() {
 
 check_diff_records() {
   local file="$1"
-  local meta path new_mode new_blob status
+  local meta path new_mode new_blob status del_out del_rc
   while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
     read -r _ new_mode _ new_blob status <<< "${meta#:}"
     if [ "$status" = "D" ]; then
-      git cat-file -e "${default_branch}:${path}" 2>/dev/null && return 1
+      # `git ls-tree`, not `git cat-file -e` -- see
+      # delete-rebase-backup-tags.sh's identical comment for the live-verified
+      # detail (cross-model-review finding, round 2): `cat-file -e` fails
+      # indistinguishably whether the path is genuinely absent or merely has
+      # an unreadable blob object, while `ls-tree` never needs to open the
+      # blob to answer "does this path exist in the tree."
+      del_out=$(git ls-tree "$default_branch" -- "$path" 2>/dev/null)
+      del_rc=$?
+      [ "$del_rc" -ne 0 ] && return 1
+      [ -n "$del_out" ] && return 1
     else
       [ -z "$new_blob" ] && return 1
       is_path_blob_reachable "$path" "$new_blob" "$new_mode" || return 1
