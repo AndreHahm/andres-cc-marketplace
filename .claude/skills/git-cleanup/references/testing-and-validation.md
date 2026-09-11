@@ -238,11 +238,11 @@ shipped and tested, same as PR #275's own "Superseded by" note above it did for 
       it appeared in `--list`, deleted by index, confirmed removal via a follow-up `git tag -l`
 
 **Covered by a persisted, repeatable fixture** (flagged by Devin's automated PR review on PR #275;
-addressed in the same PR rather than deferred; updated 2026-09-11 for the per-path/per-blob redesign and
-its two `cross-model-review` follow-up rounds below): `scripts/test-content-reachable.sh` sources
-`is_path_blob_reachable`/`check_diff_records`/`is_tag_content_reachable` directly from
+addressed in the same PR rather than deferred; updated 2026-09-11 for the per-path/per-blob redesign, its
+two `cross-model-review` follow-up rounds, and the GitHub automated-review round below): `scripts/test-content-reachable.sh`
+sources `is_path_blob_reachable`/`check_diff_records`/`is_tag_content_reachable` directly from
 `delete-rebase-backup-tags.sh` -- never a hand-copied re-implementation, so it can't silently drift from
-the real code -- and currently exercises 16 scenarios in isolated, throwaway git repos, covering: a
+the real code -- and currently exercises 18 scenarios in isolated, throwaway git repos, covering: a
 genuine rebase-merge (SHA differs, content identical) recognized as reachable; a whitespace-only
 difference NOT falsely matching; a trivial merge commit not aborting the walk; a `git diff-tree` failure
 (merge and non-merge) distinguished from an empty diff; the atomic compare-and-delete succeeding on a
@@ -250,11 +250,12 @@ matching oid and refusing on a stale one; content reorganized into a different c
 recognized, and that not masking a file that genuinely never landed; a parentless (root) commit's content
 checked in both directions; a non-ASCII path deletion checked against `$default_branch`'s real state
 rather than a mis-parsed literal string, in both directions; a mode-only change (`chmod +x`) checked in
-both directions; a filename containing a pathspec metacharacter still matched literally; and a deletion
-check failing closed when the path's blob is unreadable, not just when the path is absent. Run directly:
-`bash scripts/test-content-reachable.sh`. All 5 passed on the fix that shipped in PR #275; all 16 pass on
-the current script (see the three dated "Live results" entries above for the redesign and each
-`cross-model-review` round that grew this count from 5 to 16).
+both directions; a filename containing a pathspec metacharacter still matched literally; a deletion
+check failing closed when the path's blob is unreadable, not just when the path is absent; a blob present
+on `$default_branch` only before divergence not satisfying reachability; and content genuinely inherited
+unchanged from the merge-base still recognized. Run directly: `bash scripts/test-content-reachable.sh`.
+All 5 passed on the fix that shipped in PR #275; all 18 pass on the current script (see the four dated
+"Live results" entries above for the redesign and each review round that grew this count from 5 to 18).
 
 **Live results, 2026-09-11 (per-path/per-blob content-reachability redesign):** the exact-diff-text
 approach above was found to have a much higher real-world failure rate than its own disclosed limitation
@@ -402,3 +403,47 @@ code change to the diff being reviewed.
 - Claude's own Phase 1 pass on this round reported no findings (`verdict: approve`) — the only finding
   this round came from Codex fresh-eyes, confirmed independently (Claude re-derived the same code-level
   facts and live-verified them before accepting the finding, rather than trusting Codex's report alone).
+  A third round then had both models converge on zero findings, closing the `cross-model-review` loop.
+
+**Live results, 2026-09-11 (GitHub's own automated PR review, after the PR was opened):** `cross-model-review`
+only ever reviews the local working diff before a PR exists (see that skill's own "When NOT to Use") — once
+PR #315 was opened, GitHub's own automated reviewers (the Codex connector, CodeRabbit, Devin) ran
+independently against the pushed commits, per `handling-review-findings`. Two real findings surfaced, both
+verified live before fixing rather than accepted on the reviewer's say-so:
+- **Confirmed (the Codex connector, P1 — the most serious defect found across this entire fix): the
+  history search had no lower bound at all.** `is_path_blob_reachable` searched `$default_branch`'s
+  *entire* history for a matching blob+mode, with no restriction to commits at or after the tag's own
+  divergence point. This is a genuine false positive, not a safe-direction limitation like the other
+  findings in this file: a path added then deleted from `$default_branch` entirely BEFORE a tag's branch
+  even existed, then coincidentally re-added with byte-identical content on that branch, matches the stale
+  PRE-divergence blob and gets reported "reachable" even though `$default_branch` never actually restored
+  it after diverging -- live-reproduced exactly as the reviewer described before fixing: added `data.txt`
+  on `main`, deleted it, branched off, re-added identical `data.txt` on the branch, deleted the branch --
+  confirmed the unbounded search reported the resulting backup tag reachable while `main` never contained
+  the file post-divergence. Fixed by passing the tag's own merge-base (`$mb`, already computed in
+  `is_tag_content_reachable`) down through `check_diff_records` into `is_path_blob_reachable`, which now
+  checks `$mb`'s own tree directly first (content already present at the shared ancestor is inherited by
+  `$default_branch` automatically, even if no commit strictly after `$mb` ever touches that path again --
+  live-verified separately with a tag that modifies a path then reverts it back to `$mb`'s own original
+  content, confirming excluding `$mb` from the search would introduce a *new* false negative), then walks
+  only `$mb..$default_branch` for everything else.
+- **Confirmed (the Codex connector, P2): the mode-change test fixtures were not portable to Linux CI.**
+  `new_repo()` never set `core.filemode`, so the mode-change scenarios' `git update-index --chmod=+x`
+  behaved differently depending on the host's own default -- harmless on this repository's own
+  Windows/NTFS machine (`core.filemode=false`, no real POSIX executable bit to compare against), but on a
+  host where `core.filemode` defaults to `true` (typical on Linux/ext4, i.e. this repository's own GitHub
+  Actions runners), the index-only mode change leaves the working-tree file's real permission bits
+  mismatched, and the very next `git checkout` to switch branches refuses due to that apparent local
+  modification. Live-verified: forcing `core.filemode=true` on an already-built scratch repo from this
+  suite made `git status` immediately report the mode-changed file as modified; forcing it back to `false`
+  (matching the fix, applied in `new_repo()` before any of the scenario logic runs) confirmed clean.
+- 2 new regression scenarios added to `test-content-reachable.sh` for the P1 fix (18 total, up from 16): a
+  blob present on `$default_branch` only before divergence does not satisfy reachability, and content
+  genuinely inherited unchanged from the merge-base is still recognized (the second scenario required
+  isolating the merge-base fast path from the unrelated "every commit's own content must independently be
+  reachable" requirement -- an earlier draft of this fixture masked the very thing it meant to test by
+  conflating the two, caught before persisting it by actually running it against the real function rather
+  than reasoning about it in the abstract). P2's fix needed no new scenario -- it's a fixture-environment
+  correctness fix, not new behavior to cover. All 18 passed after both fixes; re-ran
+  `delete-rebase-backup-tags.sh --list` against this repository's real remaining tags afterward and
+  confirmed no regression (`feat/pr-ci-governance-rebase-backup-20260907-210042` still the only one listed).

@@ -91,8 +91,7 @@ default_branch="${default_branch:-main}"
 # deleted on $default_branch at some point but has since been re-added
 # (unusual, but possible), this reports "not reachable" even though the
 # original deletion did land at some point. Content additions/modifications
-# don't share this limitation -- they're checked against the path's FULL
-# history on $default_branch, not just its current tip.
+# don't share this limitation the same way -- see the $mb parameter below.
 #
 # Requires BOTH blob and mode to match at the same historical commit, not
 # blob alone -- a mode-only change (chmod +x, or a regular-file/symlink swap
@@ -104,15 +103,42 @@ default_branch="${default_branch:-main}"
 # severity upward from this session's earlier security-reviewer pass, which
 # had filed the identical gap as merely informational). `git ls-tree` returns
 # mode and blob together in one call rather than needing a second lookup.
+#
+# `$mb` (the tag's own merge-base with $default_branch, passed down from
+# is_tag_content_reachable) bounds the history search to commits AT OR AFTER
+# the point the branches actually diverged -- searching $default_branch's
+# FULL history without this bound is a real false-positive, not just a
+# theoretical one: a path added then deleted from $default_branch entirely
+# BEFORE $mb, then re-added with byte-identical content on the tag's own
+# branch, would otherwise match that stale pre-divergence blob and be
+# reported "reachable" even though the content was never restored to
+# $default_branch after the branches diverged -- live-verified (GitHub
+# automated review, PR #315, Codex connector P1): built exactly this
+# scenario in a scratch repo (add data.txt, delete it, branch off, re-add
+# identical data.txt on the branch, delete the branch) and confirmed the
+# unbounded search reported "reachable" while `main` never actually
+# contained the file post-divergence. Checking `$mb`'s own tree first (not
+# just `$mb..$default_branch` history, which excludes `$mb` itself) also
+# matters for correctness in the other direction: content already present
+# AT the shared ancestor is inherited by $default_branch automatically
+# (every commit on $default_branch descends from $mb by construction), even
+# if no commit strictly after $mb ever touches that path again -- live
+# -verified separately with a tag that modifies a path then reverts it back
+# to $mb's own original content, confirming this still correctly reports
+# reachable rather than a new false negative from excluding $mb.
 is_path_blob_reachable() {
-  local path="$1" wanted_blob="$2" wanted_mode="$3"
+  local path="$1" wanted_blob="$2" wanted_mode="$3" mb="$4"
   local commit mode blob
+  read -r mode _ blob _ < <(git ls-tree "$mb" -- "$path" 2>/dev/null)
+  if [ -n "$blob" ] && [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ]; then
+    return 0
+  fi
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
     read -r mode _ blob _ < <(git ls-tree "$commit" -- "$path" 2>/dev/null)
     [ -z "$blob" ] && continue
     [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ] && return 0
-  done < <(git rev-list "$default_branch" -- "$path")
+  done < <(git rev-list "${mb}..${default_branch}" -- "$path")
   return 1
 }
 
@@ -132,7 +158,7 @@ is_path_blob_reachable() {
 # doesn't invalidate an already-open fd) but not guaranteed on the Windows/
 # Git-Bash environment this script actually runs in).
 check_diff_records() {
-  local file="$1"
+  local file="$1" mb="$2"
   local meta path new_mode new_blob status del_out del_rc
   while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
     # meta: ":<old_mode> <new_mode> <old_blob> <new_blob> <status>" -- old
@@ -162,7 +188,7 @@ check_diff_records() {
       [ -n "$del_out" ] && return 1
     else
       [ -z "$new_blob" ] && return 1
-      is_path_blob_reachable "$path" "$new_blob" "$new_mode" || return 1
+      is_path_blob_reachable "$path" "$new_blob" "$new_mode" "$mb" || return 1
     fi
   done < "$file"
   return 0
@@ -253,7 +279,7 @@ is_tag_content_reachable() {
       rm -f "$diff_file"
       return 1
     fi
-    if ! check_diff_records "$diff_file"; then
+    if ! check_diff_records "$diff_file" "$mb"; then
       rm -f "$diff_file"
       return 1
     fi

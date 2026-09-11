@@ -85,20 +85,35 @@ comm -23 \
 # `-z`, not the tab-delimited default, or a deletion check can silently pass
 # on a mis-parsed literal string) -- not restated here to avoid a second
 # copy of the same rationale drifting out of sync with the code itself.
+# $mb (the tag's own merge-base with $default_branch) bounds the history
+# search to commits at or after divergence -- see
+# delete-rebase-backup-tags.sh's identical comment for the live-verified
+# detail (GitHub automated review, PR #315, Codex connector P1): an
+# unbounded full-history search can match a blob that existed on
+# $default_branch only BEFORE $mb (added then deleted pre-divergence, then
+# coincidentally re-added with identical content on the tag's own branch),
+# reporting "reachable" even though $default_branch never actually
+# contained it after the branches diverged. Checking $mb's own tree first
+# (not just $mb..$default_branch, which excludes $mb itself) still correctly
+# recognizes content genuinely inherited unchanged from the shared ancestor.
 is_path_blob_reachable() {
-  local path="$1" wanted_blob="$2" wanted_mode="$3"
+  local path="$1" wanted_blob="$2" wanted_mode="$3" mb="$4"
   local commit mode blob
+  read -r mode _ blob _ < <(git ls-tree "$mb" -- "$path" 2>/dev/null)
+  if [ -n "$blob" ] && [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ]; then
+    return 0
+  fi
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
     read -r mode _ blob _ < <(git ls-tree "$commit" -- "$path" 2>/dev/null)
     [ -z "$blob" ] && continue
     [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ] && return 0
-  done < <(git rev-list "$default_branch" -- "$path")
+  done < <(git rev-list "${mb}..${default_branch}" -- "$path")
   return 1
 }
 
 check_diff_records() {
-  local file="$1"
+  local file="$1" mb="$2"
   local meta path new_mode new_blob status del_out del_rc
   while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
     read -r _ new_mode _ new_blob status <<< "${meta#:}"
@@ -115,7 +130,7 @@ check_diff_records() {
       [ -n "$del_out" ] && return 1
     else
       [ -z "$new_blob" ] && return 1
-      is_path_blob_reachable "$path" "$new_blob" "$new_mode" || return 1
+      is_path_blob_reachable "$path" "$new_blob" "$new_mode" "$mb" || return 1
     fi
   done < "$file"
   return 0
@@ -147,7 +162,7 @@ is_tag_content_reachable() {
       rm -f "$diff_file"
       return 1
     fi
-    if ! check_diff_records "$diff_file"; then
+    if ! check_diff_records "$diff_file" "$mb"; then
       rm -f "$diff_file"
       return 1
     fi

@@ -426,10 +426,16 @@ through still lets the rest proceed, and reports which index (if any) failed.
     commit's entire diff byte-for-byte - it recognizes content the default branch's own history reorganized
     into a different commit grouping than the tag recorded, and - unlike an earlier version of this
     redesign itself - it also catches a mode-only change (`chmod +x`, or a file/symlink swap with identical
-    blob bytes) that never landed, and matches every path literally rather than as a pathspec glob (see
-    `delete-rebase-backup-tags.sh`'s own `is_tag_content_reachable`/`is_path_blob_reachable` for the full
-    mechanism, including its fail-closed handling of merge commits and `git diff-tree` failures) - a tag
-    unreachable by both signals is reported separately as needing manual review, never included in "delete
+    blob bytes) that never landed, matches every path literally rather than as a pathspec glob, and bounds
+    the history search to commits at or after the tag's own merge-base with the default branch (an
+    unbounded full-history search is a real false positive, not just theoretical: a path added then
+    deleted from the default branch entirely BEFORE the branches diverged, then coincidentally re-added
+    with byte-identical content on the tag's own branch, would otherwise match that stale pre-divergence
+    state and be reported reachable even though the default branch never actually restored it after
+    diverging) - see `delete-rebase-backup-tags.sh`'s own `is_tag_content_reachable`/`is_path_blob_reachable`
+    for the full mechanism, including its fail-closed handling of merge commits and `git diff-tree`
+    failures - a tag unreachable by both signals is reported separately as needing manual review, never
+    included in "delete
     all recommended"
 11. **Never type a tag name into a command, at all, for any reason** - a git tag name is legal with
     almost any shell metacharacter (`git check-ref-format` accepts e.g.
@@ -461,6 +467,7 @@ These are common shortcuts that lead to data loss. Reject them:
 | "The default branch reorganized this content into different commits, so a content match will never find it" | An earlier version of this check required one single commit on the default branch to reproduce a tag commit's entire diff byte-for-byte, which genuinely couldn't see this case (disclosed as an accepted limitation in an earlier revision). The current check matches per path and per blob against that path's own history on the default branch instead — it finds the content regardless of which commit(s) it landed via (live-verified against this repo's own `feat/pr-ci-governance-rebase-backup-20260907-210042` tag, whose one commit's 13 files landed on the default branch split across two separate commits). |
 | "The blob already matches on the default branch, so this path's change is reachable" | Blob equality alone isn't enough — a tag commit whose only change was a mode flip (`chmod +x`, or a file/symlink swap with byte-identical content) leaves the blob unchanged but the mode different, and a mode-only match to some unrelated historical commit at that path says nothing about whether *this specific mode change* ever landed. The check requires both blob AND mode to match at the same historical commit (`git ls-tree`, not `git rev-parse "$commit:$path"` alone) — found by `cross-model-review` (Codex fresh-eyes, confirmed by Claude's Phase 2 pass), which corrected an earlier, too-lenient informational classification of the same gap from this session's own `security-reviewer` dispatch. |
 | "The default-branch lookup for a deleted path failed, so the path must be gone" | A failed git object lookup isn't the same as "path absent" — `git cat-file -e "$default_branch:$path"` fails identically whether the path is genuinely gone or merely has an unreadable/corrupted blob object at a path that's still very much present. The deletion check uses `git ls-tree` instead, which never needs to open the blob to answer "does this path exist in the tree" — found by `cross-model-review` round 2 (Codex fresh-eyes), the exact same read-failure-vs-absence anti-pattern already fixed twice elsewhere in this check, missed in this one remaining spot. |
+| "The blob exists somewhere in the default branch's history, so it's reachable" | Existing *anywhere* in history isn't enough — a path added then deleted from the default branch entirely BEFORE the tag's own branch diverged, then coincidentally re-added with byte-identical content on the tag's own branch, matches that stale PRE-divergence state under an unbounded search, even though the default branch never actually restored it after diverging. The check bounds the search to the tag's own merge-base with the default branch onward (plus the merge-base's own tree directly, for content genuinely inherited unchanged) — found live on the real PR by GitHub's automated Codex connector review (P1), reproduced in a scratch repo before fixing: delete a file on `main`, re-add it identically only on a feature branch, delete the branch — the unbounded search reported the backup tag reachable even though the file was never restored to `main`. |
 
 ## Testing & Validation
 
