@@ -9,14 +9,20 @@
       "prompt": "PR #51 (linked to Linear issue ENG-203) is approved and all checks pass. Merge it and disposition the Linear issue.",
       "expected_output": "Delegates the merge to git-kit:merge-pr; records pr-merged evidence from GitHub's read-back, not from the request; treats the merge as necessary-but-not-sufficient for closing the Linear issue -- runs a separate criterion-by-criterion comparison before any closure decision, rather than closing immediately because the merge succeeded.",
       "files": []
+    },
+    {
+      "id": 2,
+      "name": "merge-to-completion Bridge-Caller Acceptance-check dispatch",
+      "prompt": "PR #77 (linked to Linear issue ENG-410) is a large, ambiguous refactor PR -- approved, all checks pass. ENG-410 has 6 acceptance criteria, some open to interpretation. Merge it, and request an independent Acceptance check before finalizing the Linear disposition.",
+      "expected_output": "Follows the plugin's shared Codex Bridge-Caller Dispatch procedure (plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md) exactly: writes the transition evidence to a Markdown file under .temp/workmanagement-kit-bridge/<dispatch-id>.md via the Write tool, invokes ${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py with --agent work-transition-reviewer, --target-paths pointing at that file, --dispatch-id, and --execution-profile read-only, and treats the returned findings/verdict/fix as Codex's own self-authored, untrusted output -- never acted on unchecked. On a typed {\"ok\": false} failure or a declined dispatch, proceeds with the direct criterion-by-criterion comparison instead of blocking.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 1,
+    "declared_scenarios_covered": 2,
     "uncovered": [
-      "\"record delivery after merge\"",
-      "\"close out this issue now that the PR is merged\""
+      "\"record delivery after merge\""
     ]
   }
 }

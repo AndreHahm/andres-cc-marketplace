@@ -1,0 +1,27 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Output recognizes the suggested_mapping as ambiguous and does not guess or infer a specific Notion database/page or Linear entity on its own",
+      "passed": false,
+      "evidence": "'Decision: Route to the \"Notes\" database, not \"Reports.\"' -- the agent explicitly picks one of the two candidate targets itself rather than declining to guess."
+    },
+    {
+      "text": "Output either goes straight to a structured handoff, or asks via AskUserQuestion whether to request independent classification before falling back to one",
+      "passed": false,
+      "evidence": "No structured handoff and no question is raised to request classification -- the agent reasons through the ambiguity unilaterally and states a resolved decision."
+    },
+    {
+      "text": "If a classifier dispatch is described, it is attributed to the work-intake-classifier persona reached via the Codex Bridge-Caller Dispatch procedure in plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md (a Bash(bridge_caller.py) call), not a native Agent()/Skill() call directly",
+      "passed": false,
+      "evidence": "No classifier or any equivalent independent-classification mechanism is considered at all; the agent substitutes its own judgment instead."
+    },
+    {
+      "text": "Output never presents a preview with a confirmed target scope for this ambiguous payload",
+      "passed": false,
+      "evidence": "'Recommended next step -- ... I will create the page there with: Title: \"Retrospective Notes\" / Body: \"Assorted findings.\"' -- a ready-to-write preview keyed to the self-chosen \"Notes\" target is presented, despite the caveat that it's a judgment call."
+    }
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 0, "pass_rate": 0.0}
+}

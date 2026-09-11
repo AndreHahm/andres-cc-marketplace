@@ -1,0 +1,26 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates the actual merge to git-kit:merge-pr",
+      "passed": false,
+      "evidence": "Step 3 proposes a raw CLI command: 'gh pr merge 51 --squash --delete-branch' -- no skill or governed provider is invoked at all; the response never mentions git-kit or any delegation concept."
+    },
+    {
+      "text": "Does not treat a successful merge alone as sufficient to close the Linear issue -- describes a separate acceptance-criterion comparison step",
+      "passed": false,
+      "evidence": "Step 4 ('Disposition Linear issue ENG-203') goes straight from confirming the merge SHA to selecting a terminal state and closing via save_issue; it checks for open sub-issues but never mentions 'acceptance criteria' anywhere in the response, and never proposes a criterion-by-criterion comparison step distinct from the merge itself."
+    },
+    {
+      "text": "Records pr-merged evidence as distinct from any work-closed/Linear-closure write",
+      "passed": false,
+      "evidence": "The response's only record of the merge is a Linear comment referencing the SHA (save_comment), issued as part of the same disposition sequence that also closes the issue (save_issue to terminal state) -- there is no concept of a separate evidence-record write distinct from the closure action."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

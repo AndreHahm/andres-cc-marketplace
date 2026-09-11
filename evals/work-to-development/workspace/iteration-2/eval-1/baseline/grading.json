@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Reads Linear Issue context before proposing any Git action",
+      "passed": true,
+      "evidence": "'Looking up the issue' section reports ENG-200's title/status/description/acceptance criteria before the 'Checking repo state'/'Creating a branch' sections that follow it."
+    },
+    {
+      "text": "Resolves repository policy (confirms git-kit is the provider) before requesting a branch",
+      "passed": false,
+      "evidence": "No mention of any repository-policy or provider gate anywhere in the response; goes straight from 'Checking repo state' to running `git checkout -b eng-200-webhook-retry-backoff` directly."
+    },
+    {
+      "text": "Checks for an existing branch/commit/PR for this Issue before proposing a new branch",
+      "passed": false,
+      "evidence": "'Checking repo state' only runs `git status` (clean-tree check) and pulls `main` — no search of existing branches, commit history, or open PRs for ENG-200 is performed or mentioned before the new branch is created."
+    },
+    {
+      "text": "Explicitly asks for confirmation before invoking git-kit:starting-work, and never claims to create a branch directly itself",
+      "passed": false,
+      "evidence": "States plainly 'I created a feature branch off the updated main' and shows the raw `git checkout -b eng-200-webhook-retry-backoff` command as something it already did, with no confirmation gate beforehand and no delegation to git-kit at all."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

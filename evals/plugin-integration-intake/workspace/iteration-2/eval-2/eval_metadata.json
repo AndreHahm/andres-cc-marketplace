@@ -1,0 +1,9 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/plugin-integration-intake/SKILL.md",
+  "assertions": [
+    {"text": "Output rejects the payload as unknown source", "type": "functionality", "target": "outputs/"},
+    {"text": "Output never builds a preview or reaches an approval step for this payload", "type": "functionality", "target": "outputs/"},
+    {"text": "Output returns a structured handoff rather than guessing at the real source", "type": "quality", "target": "outputs/"}
+  ]
+}

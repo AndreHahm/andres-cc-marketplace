@@ -1,0 +1,31 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads Linear Issue context before proposing any Git action",
+      "passed": true,
+      "evidence": "Step 1 invokes Skill(linear-work-management) and reports full Issue context (title, state, owner, priority, acceptance criteria, dependency ENG-188 Done, Notion rationale) before any git/branch discussion; Step 6 is the first mention of a branch."
+    },
+    {
+      "text": "Resolves repository policy (confirms git-kit is the provider) before requesting a branch",
+      "passed": true,
+      "evidence": "Step 3 invokes Skill(repository-gates) and reports 'git-kit is confirmed as the required provider for branch/worktree creation' before Step 6/7 requests anything."
+    },
+    {
+      "text": "Checks for an existing branch/commit/PR for this Issue before proposing a new branch",
+      "passed": true,
+      "evidence": "Step 4 invokes Skill(linear-github-linking) and classifies the result as 'None' (no existing artifact) per the skill's own Exact/Adoptable/Conflicting/Ambiguous/Stale table, before proposing the new branch name in Step 6."
+    },
+    {
+      "text": "Explicitly asks for confirmation before invoking git-kit:starting-work, and never claims to create a branch directly itself",
+      "passed": true,
+      "evidence": "Step 6 issues an explicit AskUserQuestion ('Ready to request git-kit:starting-work to create branch ... This is the point of no return...') before Step 7's Skill(git-kit:starting-work) delegation; never runs a raw git command itself, and Step 8 explicitly reads back git-kit's actual output rather than assuming the request was honored."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output identifies this as a Decision record with decision-state 'proposed', not 'accepted'", "passed": false, "evidence": "Response's '## Status' field is 'Approved' — no proposed/accepted decision-state model is used at all; the record is written as already-approved with no propose step."},
+    {"text": "Output states live approval via AskUserQuestion is required before writing", "passed": false, "evidence": "The response is a finished, already-written decision record with no preceding approval question of any kind — it is presented as done, not as a preview awaiting confirmation."},
+    {"text": "Output does NOT invoke or describe invoking the classification-help path (work-intake-classifier) for this clear, unambiguous single-item capture", "passed": true, "evidence": "No mention of any classifier — trivially satisfied since baseline has no awareness of that mechanism."},
+    {"text": "Output does NOT describe writing a bridge evidence file or invoking bridge_caller.py for this capture", "passed": true, "evidence": "No mention of a bridge evidence file or bridge_caller.py — trivially satisfied for the same reason."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 2, "pass_rate": 0.5}
+}

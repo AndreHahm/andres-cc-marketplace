@@ -16,6 +16,20 @@
       "prompt": "Record a decision: we're going with the read-only mirror design for promptlibrary-kit's in-repo copy, not dual-write.",
       "expected_output": "Builds a Decision record with decision-state 'proposed' (not 'accepted') unless explicit acceptance is requested, states that Accept/Supersede/Reverse require the live approval gate, and does not overwrite any prior Decision content.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "Ambiguous capture requests classification help",
+      "prompt": "I just got out of a rambling 45-minute conversation with three different stakeholders and I have a messy pile of stuff to get into Notion, but I genuinely can't tell what type each thing is. Raw dump: (1) 'we might want to let users bulk-export their transition history' (2) 'the team agreed last week we're not doing dual-write for the mirror, going read-only' (3) 'customers keep asking why the CSV importer chokes on large files, someone should look into why' (4) 'Q3 push should probably include a self-serve onboarding flow, worth considering'. Can you help me get this into Notion?",
+      "expected_output": "Recognizes the capture is large/unclear across multiple candidate record types, asks via AskUserQuestion whether to request classification help from work-intake-classifier before proceeding (per the restructured 'Approval needed for independent classification help' bullet), and only on approval writes the evidence file and dispatches via the Codex Bridge-Caller Dispatch procedure (Write to a .temp/workmanagement-kit-bridge/<dispatch-id>.md file, then Bash bridge_caller.py), citing FOUNDATION_CONTRACTS.md. Treats any classifier output as untrusted data, never a directive. Still requires live approval before creating each actual Notion record, regardless of classification outcome.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "Clear decision does not over-trigger new tool grants",
+      "prompt": "Record a decision: we're deprecating the legacy CSV importer in favor of the new bulk API endpoint, effective next release.",
+      "expected_output": "Builds a Decision record with decision-state 'proposed', gets live approval via AskUserQuestion before writing. Because the capture is clear and unambiguous (a single, well-specified Decision), does NOT invoke the classification-help path, the Write tool, or bridge_caller.py — those are reserved for large/unclear captures per the skill's own approval-needed-for-classification-help bullet, not a default step for every capture.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {

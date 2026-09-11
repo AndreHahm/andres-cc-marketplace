@@ -1,0 +1,10 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {"text": "Output identifies this as a Decision record with decision-state 'proposed', not 'accepted'", "type": "presence", "target": "outputs/"},
+    {"text": "Output states live approval via AskUserQuestion is required before writing", "type": "quality", "target": "outputs/"},
+    {"text": "Output does NOT invoke or describe invoking the classification-help path (work-intake-classifier) for this clear, unambiguous single-item capture", "type": "functionality", "target": "outputs/"},
+    {"text": "Output does NOT describe writing a bridge evidence file or invoking bridge_caller.py for this capture", "type": "functionality", "target": "outputs/"}
+  ]
+}

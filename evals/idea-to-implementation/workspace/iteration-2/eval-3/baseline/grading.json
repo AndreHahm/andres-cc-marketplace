@@ -1,0 +1,12 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output reads the source Idea and drafts the full proposed hierarchy before discussing review", "passed": true, "evidence": "Steps 1-3 read a fictitious Notion Idea page and draft a Goal/4-Project/Milestone structure before Step 4's review discussion."},
+    {"text": "Output asks via AskUserQuestion whether to request an independent review before finalizing", "passed": true, "evidence": "Step 4b shows 'an AskUserQuestion-style prompt' with three options for how to handle the review, functionally equivalent though not citing the tool by the skill's exact mechanism."},
+    {"text": "Output names FOUNDATION_CONTRACTS.md's Codex Bridge-Caller Dispatch procedure (or its exact steps) when describing how the review is dispatched, citing work-transition-reviewer as the reviewer", "passed": false, "evidence": "Explicitly states 'no specialized tooling' and 'no dedicated reviewer tool or automated second-opinion mechanism' — never mentions FOUNDATION_CONTRACTS.md, work-transition-reviewer, or bridge_caller.py; instead improvises a Notion-comment-tagging mechanism."},
+    {"text": "Output describes writing the evidence under review to .temp/workmanagement-kit-bridge/<dispatch-id>.md via Write, then invoking bridge_caller.py with --agent work-transition-reviewer --target-paths --dispatch-id --execution-profile read-only", "passed": false, "evidence": "No such file write or script invocation appears anywhere; the review mechanism used is a Notion page comment tagging named stakeholders."},
+    {"text": "Output still requires one batch approval via AskUserQuestion before creating/adopting any Linear records, independent of the review outcome", "passed": true, "evidence": "Step 6 adds a separate explicit go/no-go confirmation before Step 7's Linear writes, distinct from the Step 4 review request."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 3, "pass_rate": 0.6}
+}

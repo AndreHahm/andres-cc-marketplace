@@ -183,7 +183,12 @@ A direct user request to capture knowledge or manage work → `notion-knowledge-
 - a direct user request to capture knowledge or manage work → `notion-knowledge-management` /
   `linear-work-management` directly, no intake payload involved
 
-**Last dated run record:** evals/plugin-integration-intake/workspace/iteration-1/ (2026-08-30)
+**Last dated run record:** evals/plugin-integration-intake/workspace/iteration-2/ (2026-09-11) — re-run
+after the Phase 6/7 fix batch (Write + scoped `Bash(bridge_caller.py:*)` grants, Ambiguous-target dispatch
+text citing `FOUNDATION_CONTRACTS.md`, Step 3's stale no-Bash-grant claim corrected); with_skill 100% vs.
+baseline 19.4% pass rate across 3 evals (the third added specifically to exercise the fixed
+Ambiguous-target/classifier-dispatch path). Prior run: evals/plugin-integration-intake/workspace/iteration-1/
+(2026-08-30).
 
 **Quality gates:**
 - [ ] Every submission gets the same live approval gate as a direct user request — no exceptions.

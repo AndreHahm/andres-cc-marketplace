@@ -1,0 +1,27 @@
+{
+  "eval_id": 1,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Output validates source_plugin, content shape, and target mapping before building a preview",
+      "passed": true,
+      "evidence": "Runs the full three-step Unknown-source check (allowlist, manifest name match against plugins/analysis-kit/.claude-plugin/plugin.json, Glob-resolve of source_skill), the Malformed-content check, and the Ambiguous-target check, all under 'Step 2 — Validate', before 'Step 3 — Build the preview'."
+    },
+    {
+      "text": "Preview is identical in form to a direct user-initiated capture, not a summary of caller intent",
+      "passed": true,
+      "evidence": "'This is the same preview a direct user-initiated capture into notion-knowledge-management would produce — not a summary of \"what analysis-kit wants\"' followed by a concrete Proposed Notion write block."
+    },
+    {
+      "text": "Output states this requires fresh live approval regardless of any prior approval the calling plugin had",
+      "passed": true,
+      "evidence": "'Per this skill's absolute rule, a calling plugin's own prior approval ... does not substitute here. This submission re-enters the live approval gate fresh, exactly like a direct user request would.'"
+    },
+    {
+      "text": "Output records the transition tagged with the source plugin's identity",
+      "passed": true,
+      "evidence": "Step 6: 'Whatever record notion-knowledge-management creates/updates gets tagged with source_plugin = \"analysis-kit\" — recorded explicitly as a caller-supplied claim ... alongside that write's own affected_record.'"
+    }
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
