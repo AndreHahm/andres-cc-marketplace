@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Explicitly resolves request intent as a pure summarize/reflect ask (not triage/fix) and on that basis skips delegating to git-kit:handling-review-findings entirely",
+      "passed": true,
+      "evidence": "Step 1.5: 'It does not ask me to triage, fix, reply to, or resolve the open thread. The verb is \"reflect.\" ... So this is the first branch: a pure summarize/reflect ask. Per step 1.5, that means I skip step 2 ... I would not invoke handling-review-findings here even though the user's own phrasing implies triage happened in \"earlier rounds\".' Step 3 confirms: 'Not run. No delegation to handling-review-findings.'"
+    },
+    {
+      "text": "Discloses the unresolved-thread-state limitation explicitly (no gh api graphql grant; this skill cannot independently verify thread status) rather than fabricating an independently-confirmed answer",
+      "passed": true,
+      "evidence": "Step 2 states the skill 'would not reach for gh api graphql ... the skill is explicit that it holds no such grant.' Step 5's Linear write includes an explicit disclosure line: 'Unresolved-thread state is not independently verifiable by this skill (gh pr view/gh pr checks expose no thread-resolution field, and this skill holds no gh api graphql grant); the above reflects the requester's report, not a GitHub read by this skill.'"
+    },
+    {
+      "text": "Writes only a concise, deliberate implication-level summary to Linear — never a verbatim reviewer comment quote or full transcript",
+      "passed": true,
+      "evidence": "Step 5 lists explicit exclusions: 'No raw copy of the review comment thread or its full discussion. No paste of gh pr checks log output. No restatement of my own judgment...' The included content is described as 'paraphrased' rather than a verbatim quote."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

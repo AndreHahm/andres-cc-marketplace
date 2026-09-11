@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Before concluding the Notion record was deleted, re-resolves by stable ID within the owning system (Notion), not by substituting a content/title-based search guess", "passed": false, "evidence": "Proposes 'Search Notion for the likely source page ... rather than trusting the dead ID alone' via title/content matching instead of a stable-ID re-resolution — the exact substitution the with_skill response flags as an invented answer"},
+    {"text": "Classifies this as a 'Broken link' per the skill's six defined drift states, not a generic or ad-hoc label", "passed": false, "evidence": "Never names a drift-state taxonomy or the term 'Broken link'; describes the situation only informally ('a dead ID')"},
+    {"text": "Does not silently resolve the link by a guessed replacement or by newest timestamp; surfaces the uncertainty to the user instead of writing a repair unprompted", "passed": true, "evidence": "Uses no timestamp-based logic, and ends by asking the user for identifying detail before proceeding rather than acting immediately"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 1, "pass_rate": 0.3333}
+}

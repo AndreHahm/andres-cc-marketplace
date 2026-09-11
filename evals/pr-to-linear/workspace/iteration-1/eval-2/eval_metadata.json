@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/pr-to-linear/SKILL.md",
+  "assertions": [
+    {
+      "text": "Explicitly resolves request intent as a pure summarize/reflect ask (not triage/fix) and on that basis skips delegating to git-kit:handling-review-findings entirely",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Discloses the unresolved-thread-state limitation explicitly (no gh api graphql grant; this skill cannot independently verify thread status) rather than fabricating an independently-confirmed answer",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Writes only a concise, deliberate implication-level summary to Linear — never a verbatim reviewer comment quote or full transcript",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

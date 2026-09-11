@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates each lifecycle phase to its own named focused skill (work-to-development, development-to-pr, pr-to-linear, merge-to-completion, status-and-learning) rather than performing the phase's logic itself",
+      "passed": true,
+      "evidence": "Each phase heading explicitly states 'Delegated to: Skill(work-to-development)' / 'Skill(development-to-pr)' / 'Skill(pr-to-linear)' / 'Skill(merge-to-completion)' / 'Skill(status-and-learning)', with an 'internally (not performed by this skill...)' subsection under each phase attributing the actual mechanics (git-kit:starting-work, git-kit:commit, git-kit:create-pr, git-kit:merge-pr, repository-gates) to the delegated skill rather than to itself."
+    },
+    {
+      "text": "Follows the documented phase order (Prepare + Start before Commit+gates+Publish, Publish before Merge, Merge before Notion learning)",
+      "passed": true,
+      "evidence": "Response is structured Phase 0 (prerequisite/resume check) -> Phase 1 (Prepare+Start) -> worktree re-entry checkpoint -> Phase 2 (Implement) -> Phase 3 (Commit+gates+Publish, draft PR #412) -> Phase 4 (Review/fix+Ready, pr-ready) -> Phase 5 (Merge+Linear disposition, pr-merged) -> Phase 6 (Notion learning), matching the skill's own Phases table order exactly, with a final evidence-summary table confirming the same sequence."
+    },
+    {
+      "text": "Describes an AskUserQuestion confirmation gate at each phase transition, additive to each delegated skill's own internal gate",
+      "passed": true,
+      "evidence": "An explicit 'AskUserQuestion (fired by linear-github-lifecycle)' block with question text and options appears before Phase 1, Phase 3, Phase 4, Phase 5, and Phase 6, each described as separate from and additive to the delegated skill's own internal gate (e.g. Phase 1 distinguishes the sequence-level gate from 'work-to-development's own internal confirmation gate' which 'fires here too'); the closing summary explicitly lists all five gates as 'each additive to (not a substitute for) the focused skill's own internal confirmation.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

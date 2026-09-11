@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Reads Linear Issue context before proposing any Git action",
+      "passed": true,
+      "evidence": "Step 1 invokes linear-work-management and reports full simulated Issue context (title, state, outcome, owner, priority, dependencies) before any branch/git discussion; branching is not proposed until Step 6."
+    },
+    {
+      "text": "Resolves repository policy (confirms git-kit is the provider) before requesting a branch",
+      "passed": true,
+      "evidence": "Step 3 invokes repository-gates and reports 'git-kit confirmed as the required provider for this repository' before Step 6/7 requests anything, and explicitly notes no fallback to raw git checkout -b would be permitted if that had come back empty."
+    },
+    {
+      "text": "Checks for an existing branch/commit/PR for this Issue before proposing a new branch",
+      "passed": true,
+      "evidence": "Step 4 invokes linear-github-linking and reports 'no match found' against the Exact/Adoptable/Conflicting/Ambiguous/Stale table before Step 6 proposes the new branch name."
+    },
+    {
+      "text": "Explicitly asks for confirmation before invoking git-kit:starting-work, and never claims to create a branch directly itself",
+      "passed": true,
+      "evidence": "Step 6 simulates an explicit AskUserQuestion ('Proceed with requesting this branch from git-kit?') before Step 7's Skill(git-kit:starting-work) delegation; Step 8 explicitly reads back what git-kit actually created rather than assuming the request was honored, and the response states this skill never creates the branch itself."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

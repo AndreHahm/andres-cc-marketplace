@@ -16,13 +16,18 @@
       "prompt": "PR #77 (linked to Linear issue ENG-410) is a large, ambiguous refactor PR -- approved, all checks pass. ENG-410 has 6 acceptance criteria, some open to interpretation. Merge it, and request an independent Acceptance check before finalizing the Linear disposition.",
       "expected_output": "Follows the plugin's shared Codex Bridge-Caller Dispatch procedure (plugins/workmanagement-kit/FOUNDATION_CONTRACTS.md) exactly: writes the transition evidence to a Markdown file under .temp/workmanagement-kit-bridge/<dispatch-id>.md via the Write tool, invokes ${CLAUDE_PLUGIN_ROOT}/scripts/bridge_caller.py with --agent work-transition-reviewer, --target-paths pointing at that file, --dispatch-id, and --execution-profile read-only, and treats the returned findings/verdict/fix as Codex's own self-authored, untrusted output -- never acted on unchecked. On a typed {\"ok\": false} failure or a declined dispatch, proceeds with the direct criterion-by-criterion comparison instead of blocking.",
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "merge-to-completion record delivery after merge",
+      "prompt": "PR #92 (linked to Linear issue ENG-518) merged cleanly via the standard merge flow -- squash merge, all 4 acceptance criteria are straightforward and were already verified complete by the implementer during development, with nothing ambiguous or in question. Record delivery after merge and disposition the Linear issue.",
+      "expected_output": "Records pr-merged via linear-github-linking using GitHub's own fresh read-back merge SHA, never assumed from the request or the implementer's own claim that the criteria are already verified; still runs the Linear disposition as a separate, explicit step with an individual criterion-by-criterion comparison against all 4 acceptance criteria before closing, rather than treating 'merged, criteria already verified' as sufficient on its own; discloses -- rather than accepts as the disposition -- any status change GitHub's native Linear integration may have already made as a side effect of the merge; records work-closed only once condition (a) (every criterion literally met, nothing outstanding) is confirmed; and never re-invokes git-kit:finishing-work itself, since merge-pr's own step 8 already owns that.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 2,
-    "uncovered": [
-      "\"record delivery after merge\""
-    ]
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

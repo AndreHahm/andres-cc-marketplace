@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Routes a 'mark ready' request through step 2 (git-kit:handling-review-findings) first, per step 1.5's explicit named routing for readiness requests — never treated as a pure-summary shortcut",
+      "passed": true,
+      "evidence": "Step 1.5: 'the skill is explicit that \"mark this PR ready for review\" is neither branch ... always run step 2 first for a readiness request, exactly as if it had explicitly asked for triage, and only then continue into the Marking Ready section.' Step 2 confirms 'Skill(git-kit:handling-review-findings)' is invoked before any Marking Ready step runs."
+    },
+    {
+      "text": "Never invokes gh pr ready (or any raw gh pr mutation) directly — presents the ready-state action as a structured handoff via AskUserQuestion asking the user to run it themselves",
+      "passed": true,
+      "evidence": "Step 8: 'I never invoke gh pr ready or any other raw gh pr mutation command myself ... my own allowed-tools frontmatter doesn't grant any gh pr mutation Bash pattern in the first place.' The action is presented 'via AskUserQuestion and ask them to run gh pr ready 77 themselves, outside this skill's own delegated flow.'"
+    },
+    {
+      "text": "Records pr-ready only for the exact current head SHA re-verified immediately before the mutation, with provider 'manual (gh pr ready, per pr-to-linear's disclosed handoff)' — never a fabricated git-kit:... provider",
+      "passed": true,
+      "evidence": "Step 9: 'I read back GitHub's actual state ... to confirm the draft state actually changed ... tied to the exact current head SHA confirmed in this same re-read ... provider is recorded as the literal string \"manual (gh pr ready, per pr-to-linear's disclosed handoff)\" ... never a fabricated git-kit:... provider name.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

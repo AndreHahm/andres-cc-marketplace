@@ -470,7 +470,7 @@ repository, the profile is fixed — `git-kit` for every governed operation:
 | Create a new PR | `git-kit:create-pr` |
 | Push new commits to an already-existing PR's branch | `git-kit:commit` (its own push step — no `git-kit` skill owns a distinct "update an existing PR" mutation; see `development-to-pr`'s own Gotchas) |
 | Mark a PR ready for review | Manual handoff — no `git-kit` skill currently owns this action (see `pr-to-linear`'s own disclosed gap and the `provider` schema note below) |
-| Review/comment/link an issue at creation | `git-kit:collaborating-on-a-pr` |
+| Review/comment/link an issue at creation | `git-kit:collaborating-on-a-pr` (forward-looking — no current Wave 2 skill holds this grant yet; `pr-to-linear`/`development-to-pr` mention it only in prose to explain what they don't do, confirmed by `plugin-validator` during this plugin's `plugin-lifecycle-downstream` QA run, 2026-09-11) |
 | Merge | `git-kit:merge-pr` |
 | Post-merge sync/cleanup | `git-kit:finishing-work` |
 

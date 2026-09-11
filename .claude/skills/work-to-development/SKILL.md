@@ -109,7 +109,7 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - "commit this and open a PR" → `development-to-pr`
 - "this issue isn't accepted yet, help me refine it" → `linear-work-management`
 
-**Last dated run record:** evals/work-to-development/workspace/iteration-1/ (2026-09-10)
+**Last dated run record:** evals/work-to-development/workspace/iteration-2/ — 3/3 declared scenarios covered, 4/4 assertions passed on each with_skill run vs. 1/4 on each baseline run (2026-09-11)
 
 **Quality gates:**
 - [ ] Never creates a branch/worktree directly — always delegates to `git-kit:starting-work` and

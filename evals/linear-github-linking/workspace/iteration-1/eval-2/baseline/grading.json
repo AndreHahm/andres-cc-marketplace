@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies each of the three recorded evidence relationships as exactly one of the five defined states (Exact/Adoptable/Conflicting/Ambiguous/Stale)",
+      "passed": false,
+      "evidence": "Output never uses any of the five-state vocabulary anywhere; each entry's 'Result' column just says 'Not found', and the conclusion is a free-form 'bottom line' rather than a classification into a defined taxonomy the baseline was never given."
+    },
+    {
+      "text": "States explicitly that multiple commits/PRs per Issue must be modeled as separate, non-collapsed evidence entries, never resolved into one blanket verdict",
+      "passed": false,
+      "evidence": "Output never states this principle. It does list the three entries in a findings table, but as a side effect of reporting raw lookup results, not as an articulated rule about evidence-array modeling — no mention of entries needing to stay separate or not be collapsed."
+    },
+    {
+      "text": "Never uses a newest-timestamp rule to resolve the drift",
+      "passed": true,
+      "evidence": "No timestamp-based resolution logic anywhere in the output; no drift was found to resolve by any rule (trivially satisfied, same pattern as eval-1's baseline)."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 1,
+    "pass_rate": 0.3333333333333333
+  }
+}

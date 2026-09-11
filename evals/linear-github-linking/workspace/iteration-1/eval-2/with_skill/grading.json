@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Classifies each of the three recorded evidence relationships as exactly one of the five defined states (Exact/Adoptable/Conflicting/Ambiguous/Stale)",
+      "passed": true,
+      "evidence": "Output's '## Classification' table assigns each of the three entries (PR #201, PR #205, branch fix/eng-451-auth) its own explicit 'Ambiguous' verdict, and the '## Reasoning' section walks through why Stale/Conflicting/Exact don't apply to each, citing the skill's own 'insufficient evidence to classify — report this rather than guessing' rule."
+    },
+    {
+      "text": "States explicitly that multiple commits/PRs per Issue must be modeled as separate, non-collapsed evidence entries, never resolved into one blanket verdict",
+      "passed": true,
+      "evidence": "'Each of the three entries is reported as a separate array-position finding, per the \"multiple entries must never be collapsed\" rule' — explicit statement of the principle, followed by a 3-row table giving each entry its own independent verdict rather than one combined conclusion."
+    },
+    {
+      "text": "Never uses a newest-timestamp rule to resolve the drift",
+      "passed": true,
+      "evidence": "'Never resolve by newest timestamp: Not applicable/not invoked — there was no pair of conflicting timestamped values to arbitrate between... I did not substitute a \"most recently touched\" value for a missing comparison.' Explicit statement, no timestamp logic anywhere in the output."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

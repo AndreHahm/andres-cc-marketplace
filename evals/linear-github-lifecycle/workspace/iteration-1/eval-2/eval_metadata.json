@@ -1,0 +1,22 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-lifecycle/SKILL.md",
+  "prompt": "Take this accepted issue all the way to merge — Linear issue ENG-311, 'Add rate limiting to the public API', is already Accepted. Run it through to a merged PR and Linear disposition.",
+  "assertions": [
+    {
+      "text": "Delegates each lifecycle phase to its own named focused skill (work-to-development, development-to-pr, pr-to-linear, merge-to-completion, status-and-learning) rather than performing the phase's logic itself",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Follows the documented phase order (Prepare + Start before Commit+gates+Publish, Publish before Merge, Merge before Notion learning)",
+      "type": "structure",
+      "target": "outputs/"
+    },
+    {
+      "text": "Describes an AskUserQuestion confirmation gate at each phase transition, additive to each delegated skill's own internal gate",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

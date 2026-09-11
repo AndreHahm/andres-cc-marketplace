@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Never independently determines 'current HEAD' itself — treats both the recorded SHA and the current SHA as values already supplied by the caller, with no git rev-parse/git log call of its own",
+      "passed": true,
+      "evidence": "Made zero tool calls and reasoned entirely from the two SHAs given in the prompt, never attempting to look up or verify a real current HEAD independently."
+    },
+    {
+      "text": "Correctly reports the SHA mismatch (a1b2c3d vs e4f5a6b) means both gates are invalid and must be rerun rather than still-passing",
+      "passed": true,
+      "evidence": "'No — you need to rerun both required checks before merging,' with per-check reasoning for both named checks based on GitHub's SHA-bound check semantics."
+    },
+    {
+      "text": "For the force-push follow-up, correctly states every gate recorded against the old SHA is invalid and the calling skill records this as a new git-github-evidence entry whose 'supersedes' field names the invalidated entry, without editing the old entry",
+      "passed": false,
+      "evidence": "Discusses force-push consequences in generic GitHub terms (orphaned commits, harder-to-audit diffs, re-attestation) but never states the specific repository-gates/FOUNDATION_CONTRACTS.md recording contract — no mention of a 'git-github-evidence' entry, a 'supersedes' field, or the old-entry-never-edited rule. This is expected: the baseline was blocked from reading the skill that defines this contract."
+    },
+    {
+      "text": "Does not conflate the plain-new-commit case with the force-push case — gives distinct, correct reasoning for each",
+      "passed": true,
+      "evidence": "Presents a explicit comparison table separating the two cases (ancestor status, traceability, diff scope, review-approval dismissal, attestation validity) rather than treating them as the same."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

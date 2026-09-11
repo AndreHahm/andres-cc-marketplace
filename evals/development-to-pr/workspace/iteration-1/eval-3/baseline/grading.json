@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Verifies both the current checkout's repository (via git remote get-url origin) and branch match the selected PR's own headRefName before treating any push as safe -- never assumes a branch-name match alone suffices",
+      "passed": true,
+      "evidence": "Ran `git remote get-url origin` at the start and separately confirmed via `git ls-remote --heads` and `git merge-base --is-ancestor` that the current branch is unrelated to PR #303's real headRefName (feat/workmanagement-kit-wave2-git-github-bridge) -- reached the correct repo/branch conclusion through real commands, though without the skill's own named two-check gate."
+    },
+    {
+      "text": "Correctly classifies PR #303 as not a valid, currently-open existing PR (real gh pr view shows MERGED) rather than trusting the task's stated premise at face value",
+      "passed": true,
+      "evidence": "`gh pr view 303 --json ...state` returned `\"state\":\"MERGED\"`, `mergedAt: 2026-09-10T19:51:02Z`; explicitly states 'the task's premise... is factually false.'"
+    },
+    {
+      "text": "Explicitly frames the stop as the skill's own 'structured handoff' concept (or references the git-github-evidence / FOUNDATION_CONTRACTS.md record this path would need), not generic reasoning alone",
+      "passed": false,
+      "evidence": "No mention of 'structured handoff', git-github-evidence, or FOUNDATION_CONTRACTS.md anywhere in response.md -- the stop is justified with generic, ad-hoc reasoning ('three independent reasons') rather than any named skill construct, since no skill was consulted."
+    },
+    {
+      "text": "Never proposes or executes a direct git push / gh pr create / gh pr edit as the resolution -- reports the mismatch instead of silently working around it",
+      "passed": true,
+      "evidence": "No git/gh mutation was executed; explicitly states it is 'reporting this discrepancy instead of guessing at what the user actually intended,' and only describes the hypothetical push command as something it did not run."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

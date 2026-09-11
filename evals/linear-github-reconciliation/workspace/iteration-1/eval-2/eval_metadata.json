@@ -1,0 +1,21 @@
+{
+  "eval_id": 2,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-reconciliation/SKILL.md",
+  "assertions": [
+    {
+      "text": "Classifies the discrepancy as exactly one of the nine defined drift states rather than assuming an explanation without evidence",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Does not treat the more recently changed system (Linear's 'Done' status) as automatically correct via newest-timestamp precedence",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Flags the 'Done' status vs. still-open-draft-PR mismatch as requiring investigation and AskUserQuestion confirmation before any repair, rather than silently accepting or silently correcting it",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

@@ -120,7 +120,7 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - "check for drift on this one PR's link" → `linear-github-linking`
 - "change the priority on this issue" → `linear-work-management` directly
 
-**Last dated run record:** evals/linear-github-reconciliation/workspace/iteration-1/ (2026-09-10)
+**Last dated run record:** evals/linear-github-reconciliation/workspace/iteration-1/ (2026-09-11) -- 3 of 3 declared scenarios covered (eval-1 through eval-3), all with_skill runs pass 3/3 assertions.
 
 **Quality gates:**
 - [ ] Every discrepancy is classified as exactly one of the nine defined states — never left

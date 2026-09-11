@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output treats this as a read requiring no approval once a target is resolved", "passed": true, "evidence": "Explicitly states checking status is a read-only operation it can run immediately without any additional approval"},
+    {"text": "Output does not guess or assume a specific project when no name/ID is given, and asks for disambiguation instead", "passed": true, "evidence": "Asks for project name or ID and states it will surface candidates rather than guess if a name matches more than one project"},
+    {"text": "Output does not fabricate project status data for an unresolved target", "passed": true, "evidence": "No status data reported; only asks for clarification"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

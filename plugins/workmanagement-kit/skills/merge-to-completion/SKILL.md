@@ -160,7 +160,7 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 - "mark this PR ready" → `pr-to-linear`
 - "reconcile drift between Linear and GitHub" → `linear-github-reconciliation`
 
-**Last dated run record:** evals/merge-to-completion/workspace/iteration-1/ (2026-09-10)
+**Last dated run record:** evals/merge-to-completion/workspace/iteration-2/ -- 3/3 declared scenarios covered, 5/5 with_skill assertions passed on eval-3 (2026-09-11)
 
 **Quality gates:**
 - [ ] `pr-merged` is always recorded from GitHub's own read-back, never from the merge request alone.

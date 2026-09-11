@@ -1,0 +1,31 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Never independently determines 'current HEAD' itself — treats both the recorded SHA and the current SHA as values already supplied by the caller, with no git rev-parse/git log call of its own",
+      "passed": true,
+      "evidence": "Explicit scoping note: 'repository-gates never independently determines \"current HEAD\" — it holds no git rev-parse/git log grant — so the validity call here is only as good as your own read-back being accurate.' Both SHAs are treated as caller-supplied throughout, never re-derived."
+    },
+    {
+      "text": "Correctly reports the SHA mismatch (a1b2c3d vs e4f5a6b) means both gates are invalid and must be rerun rather than still-passing",
+      "passed": true,
+      "evidence": "Opens with 'No — both recorded gates ... are invalid at the current HEAD and need to be rerun before you merge,' quoting the skill's own new-commit-same-branch rule and applying it uniformly to both named gates."
+    },
+    {
+      "text": "For the force-push follow-up, correctly states every gate recorded against the old SHA is invalid and the calling skill records this as a new git-github-evidence entry whose 'supersedes' field names the invalidated entry, without editing the old entry",
+      "passed": true,
+      "evidence": "States 'every gate recorded against that old SHA is invalid — not just the two gates you named' and 'appends a new git-github-evidence entry whose supersedes field names the invalidated old entry — the original entry is preserved as-is, never edited.'"
+    },
+    {
+      "text": "Does not conflate the plain-new-commit case with the force-push case — gives distinct, correct reasoning for each",
+      "passed": true,
+      "evidence": "Explicit two-bullet contrast: 'New commit ... history is linear ... requires a rerun' vs. 'Force-push (rewritten history) ... every gate ... invalid ... appends a new entry' — the two cases are never merged into one explanation."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

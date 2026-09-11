@@ -1,0 +1,21 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-github-linking/SKILL.md",
+  "assertions": [
+    {
+      "text": "Repair is modeled as appending a NEW evidence entry whose own `supersedes` field names the earlier entry's evidence_id, never editing or deleting the earlier entry itself",
+      "type": "functionality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Repair never touches GitHub state directly — GitHub is read only to verify the current state, never mutated",
+      "type": "quality",
+      "target": "outputs/"
+    },
+    {
+      "text": "Never resolves the stale entry by newest-timestamp comparison; correction is toward GitHub's actual current state, since GitHub is authoritative over Git/GitHub facts",
+      "type": "quality",
+      "target": "outputs/"
+    }
+  ]
+}

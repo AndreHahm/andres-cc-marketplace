@@ -1,0 +1,9 @@
+{
+  "eval_id": 3,
+  "skill_path": "plugins/workmanagement-kit/skills/linear-work-management/SKILL.md",
+  "assertions": [
+    {"text": "Output treats this as a read requiring no approval once a target is resolved", "type": "quality", "target": "outputs/"},
+    {"text": "Output does not guess or assume a specific project when no name/ID is given, and asks for disambiguation instead", "type": "functionality", "target": "outputs/"},
+    {"text": "Output does not fabricate project status data for an unresolved target", "type": "functionality", "target": "outputs/"}
+  ]
+}

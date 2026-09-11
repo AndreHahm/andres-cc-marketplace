@@ -1,0 +1,31 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Delegates the commit to git-kit:commit rather than staging/committing directly",
+      "passed": false,
+      "evidence": "No git-kit concept mentioned anywhere. Its own 'What I would have done if the issue were identifiable' section describes staging via `git add`, then `git commit`, `git push -u origin ...`, then `gh pr create --draft` directly -- raw commands, no delegation."
+    },
+    {
+      "text": "Explicitly invokes and relies on linear-work-management's own resolution rules when determining which Linear issue is meant, rather than treating a bare keyword/name match as sufficient",
+      "passed": false,
+      "evidence": "No Skill() call was made at all (forbidden by the baseline instructions). Resolution was done via ad-hoc Linear MCP `list_issues` calls and generic reasoning about the one 'AND-7' string match found in an eval fixture, with no structured resolution rule (e.g. a zero-candidates-is-a-handoff rule) cited or followed."
+    },
+    {
+      "text": "Searches for an existing PR before proposing to create a new one",
+      "passed": true,
+      "evidence": "Step 2 ran `gh pr list --head chore/workmanagement-kit-downstream-qa --state all` and `gh pr status` before concluding no existing PR exists, ahead of any hypothetical proposal."
+    },
+    {
+      "text": "Would get explicit AskUserQuestion confirmation before publishing the PR, never a silent guess-and-publish path",
+      "passed": false,
+      "evidence": "The 'What I would have done' section goes straight from `git push -u origin ...` to `gh pr create --draft --title ... --body ...` with no user-confirmation checkpoint mentioned anywhere in the hypothetical path."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 1,
+    "pass_rate": 0.25
+  }
+}

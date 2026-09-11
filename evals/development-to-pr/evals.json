@@ -9,13 +9,25 @@
       "prompt": "Commit the current changes and open a draft PR for Linear issue ENG-201's already-started branch.",
       "expected_output": "Delegates the commit to git-kit:commit (never stages/commits directly itself); records commit-linked evidence per FOUNDATION_CONTRACTS.md's Git/GitHub Evidence Record; searches for an existing PR before proposing a new one; presents PR metadata and gets confirmation before publishing.",
       "files": []
+    },
+    {
+      "id": 2,
+      "name": "development-to-pr publish-draft-PR scenario",
+      "prompt": "Publish a draft PR for this Linear issue.",
+      "expected_output": "Resolves which Linear issue is meant via linear-work-management's own resolution rules rather than guessing from a bare keyword match; searches for an existing PR before proposing a new one; delegates the commit to git-kit:commit (never stages/commits directly); gets explicit AskUserQuestion confirmation before publishing via git-kit:create-pr.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "development-to-pr existing-PR push scenario",
+      "prompt": "There's already an open PR on GitHub for the Linear issue linked to this branch -- push these new commits so they land on that PR, don't open a new one.",
+      "expected_output": "Verifies both the current checkout's repository (via git remote get-url origin, never gh repo view alone) and branch match the selected PR's own headRefName before pushing; classifies the candidate PR correctly (Exact/Adoptable/Conflicting/Ambiguous/Stale) using a live gh pr view read rather than trusting the stated premise; on any mismatch or non-open state, stops with a structured handoff instead of pushing or creating a duplicate PR.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 2,
-    "declared_scenarios_covered": 1,
-    "uncovered": [
-      "\"publish a draft PR for this Linear issue\""
-    ]
+    "declared_scenarios_total": 3,
+    "declared_scenarios_covered": 3,
+    "uncovered": []
   }
 }

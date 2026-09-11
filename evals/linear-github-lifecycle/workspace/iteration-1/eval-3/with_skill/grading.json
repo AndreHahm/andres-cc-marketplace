@@ -1,0 +1,26 @@
+{
+  "eval_id": 3,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Correctly determines the resume point as Phase 4 (Review/fix + Ready, delegated to pr-to-linear) from the furthest active evidence entry (pr-published), without re-running the already-completed Prepare+Start, Implement, or Commit+gates+Publish phases",
+      "passed": true,
+      "evidence": "Step 1 explicitly computes the furthest active entry as pr-published, concludes 'Commit + gates + Publish' is fully done and 'the resume point is the Review/fix + Ready phase (pr-to-linear)'; Step 5 explicitly lists Prepare+Start, Implement, and Commit+gates+Publish as phases it does 'not re-run... because their own evidence already confirms completion', and names Skill(pr-to-linear) as the only phase actually re-entered."
+    },
+    {
+      "text": "Presents the resume point to the user via AskUserQuestion before continuing, rather than silently resuming from an assumed point",
+      "passed": true,
+      "evidence": "Step 4 is an explicit 'AskUserQuestion (mandatory, before continuing)' block with full question text and three numbered options (resume now, re-verify first, stop), preceded by the statement 'I would not proceed past this gate on my own judgment' and citing the skill's own 'never silently resume from an assumed point' language."
+    },
+    {
+      "text": "Treats the Issue's Linear status ('In Review') as informative context only, never as proof of what phase completed — bases the resume determination on the git-github-evidence array",
+      "passed": true,
+      "evidence": "A dedicated section 'On the In Review Linear status' states it is treated as 'informative context, never proof', explicitly notes it 'is not independent confirmation of anything I can't already see in the evidence array', and that the resume determination in Step 1 was derived entirely from the git-github-evidence array, not from the Linear status field."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

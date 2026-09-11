@@ -1,0 +1,26 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Explicitly resolves request intent as a pure summarize/reflect ask (not triage/fix) and on that basis skips delegating to git-kit:handling-review-findings entirely",
+      "passed": false,
+      "evidence": "The response has no concept of git-kit:handling-review-findings or any delegation boundary at all — there is no intent-resolution step distinguishing a summarize/reflect ask from a triage/fix ask. Instead it independently runs its own investigation (raw gh api graphql calls) and unilaterally drafts an acknowledgment comment on the PR thread itself ('I'd also drop a short acknowledgment comment on the GitHub PR thread itself')."
+    },
+    {
+      "text": "Discloses the unresolved-thread-state limitation explicitly (no gh api graphql grant; this skill cannot independently verify thread status) rather than fabricating an independently-confirmed answer",
+      "passed": false,
+      "evidence": "The response directly issues its own gh api graphql query against reviewThreads.isResolved and treats the result as independently confirmed ('From that output I'd find the one thread where isResolved: false'), with no disclosure of any access limitation."
+    },
+    {
+      "text": "Writes only a concise, deliberate implication-level summary to Linear — never a verbatim reviewer comment quote or full transcript",
+      "passed": false,
+      "evidence": "The drafted Linear comment's 'Finding' field explicitly instructs pasting '[verbatim or lightly-trimmed quote of the reviewer's comment — the actual blocking concern, e.g. \"This retry logic doesn't back off on 429s...\"]' — a near-verbatim reproduction of the reviewer's comment body, the exact full-transcript-style copy the skill prohibits."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}
