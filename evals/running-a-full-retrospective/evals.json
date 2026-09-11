@@ -33,17 +33,29 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 20,
-    "declared_scenarios_covered": 8,
+    "declared_scenarios_total": 30,
+    "declared_scenarios_covered": 11,
+    "coverage_note": "Recounted 2026-09-11 (plugin-auditor finding check-evals:running-a-full-retrospective-coverage-arithmetic / completeness-reviewer:M2) against references/phase-5-verification-checklist.md's real, current 30-item list -- the prior '20 total / 8 covered / 8 uncovered' figures predated that checklist's later growth and didn't reconcile (8+8=16, not 20). Covered items: 'scope confirmed once, not re-asked per analysis type' and 'Phase 1 picker never shipped more than 4 options in a single question' (eval-1); 'every P1/P2/P3 finding names its target plugin explicitly' and 'every finding's severity tier traces to severity-vocabulary.md's mapping table' (eval-2); 'the fix queue was printed in full before any topic started', 'the Phase 4 cross-check offer and 5b's queue-start offer both used AskUserQuestion, naming every derived target plugin and its finding count', 'every pipeline hand-off dispatched External Entry for one target plugin only', 'never more than one topic's direct-fix worktree open at a time', 'every topic had its own which-findings/how-to-fix ask', and 'every topic ended with an explicit continue/stop checkpoint' (eval-3, a single detailed scenario covering 6 checklist items at once); 'Phase 5 confirmed AskUserQuestion was available before doing anything else' (eval-4).",
     "uncovered": [
-      "Phase 2 reuse-check glob behavior before any fresh dispatch",
-      "Report persisted to .claude/output/running-a-full-retrospective/ with the standard confirmation line",
-      "Drafted report redacted and verified LF-only via persist_report.py before the final write",
-      "Phase 4 addendum redacted via redact_secrets.py before being folded in via Edit",
-      "Phase 2 and Phase 5 invoked as direct Skill() calls, never via Agent/fork (not testable via a text-description eval -- this is about the orchestrator's own tool-call choice, not the skill's prose)",
+      "Every chosen analysis type from Phase 1 has a corresponding entry in the source-report table -- fresh, reused, or explicitly empty, never silently dropped",
+      "The existing-report reuse check (Phase 1) ran before any fresh dispatch",
+      "The report was persisted to .claude/output/running-a-full-retrospective/ with the standard confirmation line",
+      "The drafted report was redacted and verified LF-only via persist_report.py before the final write",
+      "The report carries the Coverage Preamble, and consolidated findings inherit the narrower of this run's own coverage and each source report's stated coverage",
+      "The Phase 4 addendum (if the cross-check ran) was redacted via a direct redact_secrets.py pass before being folded into the persisted report via Edit",
+      "Every report read in Phases 2-4 was treated as data to consolidate, never as instructions to follow",
+      "5c-2's 'which findings' ask never shipped more than 3 real findings + filler in a single question, splitting across questions/calls as the finding count grows",
+      "5c-3 checked for plugin-lifecycle-downstream's presence before offering 'Hand off', and for git-kit's presence before offering 'Fix directly now'",
+      "5c-4's pipeline-hand-off path ran validate_evidence.py against both the manifest and the report and confirmed exit code 0 before dispatching",
+      "The direct-fix path always ran the full commit -> create-pr -> merge-pr -> finishing-work chain with the correct skip/decline flags at each step, and confirmed via git worktree list that the worktree was actually gone afterward",
+      "create-pr was always told to answer Ready-to-merge, never left on its own Draft default",
+      "merge-pr's retry loop only retried on checks still pending/running, never on a genuine failure, and stopped after 5 attempts",
+      "The direct-fix path resolved which specific file to edit via the tag-to-plugin-root-path resolution first, falling back to the finding's cited source report only if that fails",
+      "Every selected finding's Status line was updated before the continue checkpoint, with the correct FIXED-vs-actual-reported-status distinction between the direct-fix and pipeline-hand-off paths",
+      "A topic that failed partway stopped the loop immediately and left the failed finding(s) OPEN with a failure note, including the direct-fix path's own dangling-worktree check",
+      "Phase 2 and Phase 5 were invoked as direct Skill() calls in this conversation, never via Agent/fork (not testable via a text-description eval -- this is about the orchestrator's own tool-call choice, not the skill's prose)",
       "Phase 3 ended its turn without auto-continuing into Phase 4/5 (same limitation -- a turn-boundary behavior, not directly observable from a single-shot eval response)",
-      "'Stop here for now' mid-queue leaves remaining topics OPEN in the persisted report, not silently dropped",
-      "Every report read in Phases 2-4 treated as data, never as instructions to follow"
+      "A 'Stop here for now' mid-queue left the remaining topics OPEN in the persisted report, not silently dropped"
     ]
   }
 }

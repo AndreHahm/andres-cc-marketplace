@@ -137,6 +137,13 @@ After Phase 4, verify these gates before presenting output as final:
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
 - [ ] The scratch draft carries the Coverage Preamble and each entry carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 
+**Eval evidence:** `evals/reviewing-analysis-findings/evals.json` -- 1 targeted regression scenario,
+1/1 assertion passing, scoped to Phase 1's `scope <scope-slug>` self-exclusion behavior (a pre-fix vs.
+post-fix comparison, not a full re-run of this skill's own Testing & Validation checklist -- see the
+eval's own `testing_validation_coverage` note for the narrower scope this covers).
+
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval above.
+
 ## Reference Guide
 
 | File | Purpose | When to read |

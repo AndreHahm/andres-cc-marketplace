@@ -61,7 +61,11 @@ def check_bash_grants():
     ref_guide_start = body.find("\n## Reference Guide\n")
     searchable_body = body[:ref_guide_start] if ref_guide_start != -1 else body
     unused = [
-        cmd for cmd in granted_cmds if not re.search(re.escape(cmd.split(" ")[0]), searchable_body)
+        cmd
+        for cmd in granted_cmds
+        if not re.search(
+            r"(?<![\w-])" + re.escape(cmd.split(" ")[0]) + r"(?![\w-])", searchable_body
+        )
     ]
     if unused:
         return False, "Bash grant(s) never invoked anywhere in the body: " + ", ".join(

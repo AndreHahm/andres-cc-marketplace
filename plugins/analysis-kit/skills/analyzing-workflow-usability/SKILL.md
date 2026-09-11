@@ -83,6 +83,9 @@ Assign each friction instance exactly one verdict:
 - **`not_measurable`** -- the dimension doesn't apply to what's in scope, or no evidence exists to assess
   it at all.
 
+If a finding's severity needs grounding against another analysis-kit skill's report,
+`../../references/severity-vocabulary.md` maps these four verdicts onto the shared severity scale.
+
 **The safety-gate exception: repeated confirmation is not automatically friction.** Before marking a
 repeated confirmation `avoidable`, check whether state or risk changed since the prior answer -- read
 `references/friction-severity-guide.md` for the full decision procedure. A destructive-action confirmation
@@ -171,6 +174,7 @@ dimensions and the safety-gate exception already spelled out in full in Phase 2-
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `references/usability-dimensions.md` | The eight dimensions in full | Phase 2 |
 | `references/friction-severity-guide.md` | The safety-gate exception decision procedure and severity guidance | Phase 3 |
+| `../../references/severity-vocabulary.md` | Maps this skill's own `avoidable`/`necessary`/`unclear`/`not_measurable` verdicts onto the shared severity scale | When a finding's severity needs grounding against other skills' reports |
 | `../../references/date-range-scope-convention.md` | Shared Phase 1 scope-resolution procedure this skill's own Phase 1 restates by reference | Phase 1 |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background -- sweep this file's site list when editing either |

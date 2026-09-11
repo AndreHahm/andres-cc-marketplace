@@ -146,14 +146,14 @@ full sweep is complete, same as the other Wave 2 skills' own Next-step blocks.
 
 ## Testing & Validation
 
-**Eval evidence:** `evals/identifying-feature-opportunities/evals.json` -- 3 scenarios, 8/10 assertions
-passing. The 2 misses (both in eval-1) traced to a stale assumption in that scenario's own fixture, not
-a skill defect -- the skill correctly classified a finding as `merge-with-existing` against a
-shared-script that already existed, when the fixture's expected answer (`candidate`) assumed no such
-script existed yet. The fixture has been corrected (repointed at a different, still-open gap) but not
-yet re-run; re-run it before trusting a future 10/10 claim here. This skill's evidence threshold, scoring
-bands, and disposition rules are fully spelled out in Phase 3-4 and the two `references/` files;
-structural correctness is additionally covered by `scripts/smoke_test.py` below.
+**Eval evidence:** `evals/identifying-feature-opportunities/evals.json` -- 3 scenarios, 10/10 assertions
+passing (repeated-evidence candidate, one-off insufficient-evidence, and merge-with-existing overlap).
+Eval-1's fixture was corrected once (2026-09-11) after an eval-design flaw (a stale assumption that no
+shared persist/redact script existed yet, when `scripts/persist_report.py` already did) and re-run clean
+against the corrected fixture -- see `evals.json`'s own `coverage_note` for the full history. This
+skill's evidence threshold, scoring bands, and disposition rules are fully spelled out in Phase 3-4 and
+the two `references/` files; structural correctness is additionally covered by `scripts/smoke_test.py`
+below.
 
 **Verify this skill activates on:**
 - "is this worth turning into a feature?"

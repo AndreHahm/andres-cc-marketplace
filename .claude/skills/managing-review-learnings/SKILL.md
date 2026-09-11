@@ -146,10 +146,10 @@ this phase doesn't mean `github-issue-lifecycle` will find no duplicate, and vic
 Present every candidate that survived Phase 3 together in one `AskUserQuestion` (`multiSelect`,
 respecting the tool's real per-question option cap — split across multiple sequential questions in the
 same call for more than 3-4 candidates, the same pattern `running-a-full-retrospective` Phase 1 already
-uses for its own 5-option split). **`AskUserQuestion` also caps at 4 questions per call, independently of
-the per-question option cap** — the same limit `running-a-full-retrospective` Phase 1 documents for
-itself: cap at 3 real candidates + a "None of these" filler per question, so one call covers up to 12
-candidates (4 questions × 3 real options). A survivor set larger than 12 can't fit into a single call —
+uses for its own 11-analysis-type split across 4 questions). **`AskUserQuestion` also caps at 4 questions
+per call, independently of the per-question option cap** — the same limit `running-a-full-retrospective`
+Phase 1 documents for itself: cap at 3 real candidates + a "None of these" filler per question, so one
+call covers up to 12 candidates (4 questions × 3 real options). A survivor set larger than 12 can't fit into a single call —
 continue across multiple separate `AskUserQuestion` calls (present the next batch of up to 12 remaining
 candidates the same way, wait for that response, then continue) rather than assuming one call can absorb
 an unbounded number of candidates. State the real cost in the question itself: each approved candidate

@@ -41,6 +41,13 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
     ("jwt_token", re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\b")),
     ("pem_private_key_block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL)),
+    # Matches only the drive/home-root-plus-username prefix (e.g. "C:\Users\andre",
+    # "C:/Users/andre", "/home/andre", "/Users/andre") -- the character class excludes
+    # both path separators, so it stops at the username and never consumes the trailing
+    # repo-relative segment, which stays intact as citable evidence (per
+    # report-evidence-convention.md's "never a bare absolute path that reveals the OS
+    # username" rule -- this is the mechanical backstop that rule already claimed to have).
+    ("home_directory_path", re.compile(r"(?:[A-Za-z]:[\\/]Users[\\/][^\\/]+|/home/[^/]+|/Users/[^/]+)")),
 ]
 
 # A generic "long mixed-alphanumeric string" entropy heuristic was tried and

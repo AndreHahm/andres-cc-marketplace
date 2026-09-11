@@ -134,7 +134,9 @@ For every goal and acceptance criterion in the inventory, assign exactly one ver
   legitimate, honest verdict (AKR-NFR-004) -- never force a `met`/`not_met` conclusion to avoid saying
   "cannot tell."
 
-Cite the specific evidence tier and source for every verdict, not just the verdict itself.
+Cite the specific evidence tier and source for every verdict, not just the verdict itself. If a
+finding's severity needs grounding against another analysis-kit skill's report,
+`../../references/severity-vocabulary.md` maps these four verdicts onto the shared severity scale.
 
 ## Phase 4: Report
 
@@ -237,6 +239,7 @@ Bash-grant usage, referenced-script existence, Reference Guide file existence, P
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `references/outcome-assessment-framework.md` | The full evidence-hierarchy and verdict-assignment procedure | Phase 2-3 |
 | `references/outcome-report-template.md` | Worked example of the six-section report plus Process Compliance Note | Phase 4 |
+| `../../references/severity-vocabulary.md` | Maps this skill's own `met`/`partially_met`/`not_met`/`not_verifiable` verdicts onto the shared severity scale | When a finding's severity needs grounding against other skills' reports |
 | `../../references/date-range-scope-convention.md` | Shared Phase 1 scope-resolution procedure this skill's own Phase 1 restates by reference | Phase 1 |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background -- sweep this file's site list when editing either |

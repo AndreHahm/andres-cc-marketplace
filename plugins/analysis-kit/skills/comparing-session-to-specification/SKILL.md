@@ -109,6 +109,14 @@ After Phase 4, verify before presenting output as final:
 - [ ] The scratch draft carries the Coverage Preamble and each finding carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 - [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when at least one other analysis-kit report exists besides the one just written) was printed after the `📄 ... written:` line
 
+**Eval evidence:** `evals/comparing-session-to-specification/evals.json` -- 3 scenarios, 16/17 assertions
+passing (must-vs-should severity differentiation, an ambiguous spec section alongside a prompt-injection
+attempt embedded in the spec document, and two same-report violations of different severity). The one
+failed assertion traces to an eval-fixture design ambiguity, not a skill defect -- see that eval's own
+`grading.json` notes.
+
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval suite above.
+
 ## Reference Guide
 
 | File | Purpose | When to read |

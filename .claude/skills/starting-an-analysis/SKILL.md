@@ -3,20 +3,19 @@ name: starting-an-analysis
 description: >-
   Guided front door for analysis-kit — helps pick which of its 13
   report-producing analysis skills fits a given need, asks for that
-  skill's own required scope, runs it, and then offers a gated next
-  step (generating-analysis-recommendations
-  to expand a finding, reviewing-analysis-findings to cross-check reports
-  already found once enough of them exist). Use when a request names no
-  specific analysis type — no mention of outcome/verification, component/
-  skill performance, tools/frameworks, actor behavior, governance/rules/
-  security/usability, recurring patterns/feature opportunities, or a
-  session/spec comparison — such as a bare "run a retrospective" or
-  "analyze this session," when explicitly asking "which analysis-kit skill
-  do I need" for a session/date-range scope, or wanting the whole
-  analyze-then-follow-up flow walked through step by step instead of
-  invoking each skill by hand. Not for running several analysis types at
-  once and consolidating them into one report, even when phrased as a bare
-  "run a full retrospective" — use running-a-full-retrospective for that.
+  skill's own required scope, runs it, and then offers a gated next step
+  (generating-analysis-recommendations to expand a finding,
+  reviewing-analysis-findings to cross-check reports already found once
+  enough of them exist). Use when a request names no specific analysis
+  dimension (outcome/verification, component/skill performance,
+  tools/frameworks, actor behavior, governance/security/usability,
+  recurring patterns/feature opportunities, or a session/spec comparison)
+  — e.g. a bare "run a retrospective" or "analyze this session," asking
+  which analysis-kit skill fits a session/date-range scope, or wanting
+  the analyze-then-follow-up flow walked through instead of invoking each
+  skill by hand. Not for running several analysis types at once and
+  consolidating them, even when phrased as "run a full retrospective" —
+  use running-a-full-retrospective for that.
 allowed-tools: Read Glob AskUserQuestion Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(analyzing-session-outcomes) Skill(analyzing-verification-effectiveness) Skill(analyzing-session-operations) Skill(analyzing-workflow-usability) Skill(analyzing-security-and-privacy) Skill(identifying-feature-opportunities) Skill(comparing-sessions) Skill(comparing-session-to-specification) Skill(generating-analysis-recommendations) Skill(reviewing-analysis-findings)
 argument-hint: [optional: what you want to analyze, in your own words]
 ---

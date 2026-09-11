@@ -135,14 +135,15 @@ from memory when the registry itself is the authoritative source.
 
 ## Testing & Validation
 
-**Deterministic-script coverage:** `tests/test_recommendation_registry.py` (23 tests) covers valid
+**Deterministic-script coverage:** `tests/test_recommendation_registry.py` (24 tests) covers valid
 transitions, invalid-transition rejection, append-only history, reopened items, supersession, missing
-optional fields, and the lock's fail-loud-on-timeout guarantee -- run via
-`python -m pytest plugins/analysis-kit/tests/test_recommendation_registry.py -q`. This skill's own
-conversational logic (evidence-collection discipline, Phase 1-4 branching) has no
-`evals/tracking-recommendation-lifecycle/evals.json` yet; structural correctness is covered by
-`scripts/smoke_test.py` below, and a full eval suite is deferred pending real usage, consistent with this
-repo's forward-looking testing-mandate rollout.
+optional fields, secret redaction on free-text fields, and the lock's fail-loud-on-timeout guarantee --
+run via `python -m pytest plugins/analysis-kit/tests/test_recommendation_registry.py -q`.
+
+**Eval evidence:** `evals/tracking-recommendation-lifecycle/evals.json` -- 2 scenarios, all 3 declared
+activation scenarios covered (eval-1: the accepted->implemented->verified evidence discipline, using the
+real `recommendation_registry.py` script against a scratch registry; eval-2: a status query via real
+`show`/`list` calls). Structural correctness is additionally covered by `scripts/smoke_test.py` below.
 
 **Verify this skill activates on:**
 - "mark this recommendation as accepted"
@@ -164,7 +165,8 @@ repo's forward-looking testing-mandate rollout.
 
 **Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing (frontmatter,
 Bash-grant usage, referenced-script existence, Reference Guide file existence, Phase-header sequencing);
-`python -m pytest plugins/analysis-kit/tests/test_recommendation_registry.py -q`, 23/23 passing.
+`python -m pytest plugins/analysis-kit/tests/test_recommendation_registry.py -q`, 24/24 passing; eval
+suite above.
 
 ## Reference Guide
 

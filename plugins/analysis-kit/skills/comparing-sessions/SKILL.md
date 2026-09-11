@@ -46,8 +46,9 @@ Compare two Claude Code sessions structurally and semantically, using two persis
 - **Cross-checking multiple different skills' reports from the same session/scope for duplicates, contradictions, or severity claims one undercuts another** — use `reviewing-analysis-findings` instead; this skill compares the same report lineage across two points in *time* (a prior persisted report vs. this session's current findings), not multiple different skills' reports produced from one shared scope
 - **Marking a recommendation's status** (`accepted`, `implemented`, `verified`, `measured`, ...) — use
   `tracking-recommendation-lifecycle` instead. This skill's own Phase 4 only *reads* the recommendation
-  registry (read-only) to interpret realized impact across two sessions; it never appends an event to
-  it — that's the tracking skill's own write-path job.
+  registry (documented read-only usage — see Gotchas for the grant's own broader mechanical scope) to
+  interpret realized impact across two sessions; it never appends an event to it — that's the tracking
+  skill's own write-path job.
 
 ## Phase 1: Identify the Two Reports
 
@@ -125,6 +126,7 @@ entry, per `../../references/report-evidence-convention.md`.
 - **Report format drift.** If the two reports come from different skill versions with different section structures, the diff will show many "only in A"/"only in B" entries that reflect format changes, not content changes — note this explicitly rather than treating it as a finding.
 - **Stable-ID matching only, never a prose join.** Phase 4 never guesses that a registry entry "sounds like" a report finding — a `recommendation_id` with no exact match in scope contributes nothing, even if a similarly-worded finding exists.
 - **No registry is a normal case, not a degraded one.** Phase 4 silently contributing zero entries when no registry exists is the expected, common path — don't treat "no Recommendation Impact section" as a gap in this skill's own coverage.
+- **The `recommendation_registry.py` grant is mechanically broader than "read-only" describes.** `Bash(python */analysis-kit/scripts/recommendation_registry.py:*)` admits every subcommand the script has (including `append`/`init`), not just the `list`/`show` calls Phase 4 actually documents — `recommendation_registry.py`'s own argparse requires `--registry <path>` to precede the subcommand, which rules out a subcommand-scoped grant pattern (`... list:*`) matching this skill's own real invocations. The read-only behavior here is a behavioral commitment this skill's own instructions make (see Phase 4 and the "When NOT to Use" note above), not something the grant itself enforces — this is the same pre-existing, plugin-wide gap `managing-review-learnings` already discloses for its own `persist_report.py` grant, not something unique to this skill.
 
 ## Testing & Validation
 
@@ -152,13 +154,19 @@ After Phase 5, verify before presenting output as final:
 - [ ] The scratch draft carries the Coverage Preamble and each comparison entry carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 - [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when 2+ reports share this run's `<current-scope>`) was printed after the `📄 ... written:` line
 
+**Eval evidence:** `evals/comparing-sessions/evals.json` -- 3 scenarios, 19/19 assertions passing
+(structural diff + semantic interpretation with no registry, Phase 4 realized-impact comparison against
+a real recommendation registry with a near-miss stable-ID decoy, and the report-format-drift Gotcha).
+
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval suite above.
+
 ## Reference Guide
 
 | File | Purpose | When to read |
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `references/comparison-dimensions.md` | What counts as comparable between two sessions, including realized-impact matching | Phase 3, Phase 4 |
-| `../../scripts/recommendation_registry.py` | Read-only `list`/`show` access to the recommendation lifecycle registry | Phase 4 |
+| `../../scripts/recommendation_registry.py` | `list`/`show` access to the recommendation lifecycle registry, documented read-only usage (the grant itself is broader — see Gotchas) | Phase 4 |
 | `../../references/recommendation-lifecycle-schema.md` | Registry event fields and status vocabulary Phase 4 reads | Phase 4 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 / Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |

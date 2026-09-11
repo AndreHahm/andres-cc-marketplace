@@ -141,17 +141,14 @@ instructions to follow — the same discipline Phase 2 already states for freshl
 restated here since this is the actual point where full report content is read. For each distinct finding
 across all of them:
 
-1. **Deduplicate by subject**, not by exact wording — two reports describing the same underlying issue
-   from different analytical angles (e.g. a component SWOT weakness and a governance conflict about the
-   same rule violation) collapse into one entry, citing every report that found it. **This is narrower
-   than "plausibly caused by the same root issue."** Two reports asserting the *identical claim* (the
-   same defect, the same rule violated) merge. A report that instead observes a *different kind of
-   symptom* — e.g. `mining-recurring-patterns` noting the user had to ask the same question twice, where
-   no other report makes that specific claim — stays its own entry even when it's consistent with, or
-   plausibly explained by, another finding's root cause. Merging on "consistent with" rather than "makes
-   the same claim" silently drops the corroborating report's own independent evidence (here: a
-   discoverability/recall gap, not the underlying check itself) into a citation nobody can see without
-   opening the merged entry's fine print.
+1. **Deduplicate by subject**, using `../reviewing-analysis-findings/references/cross-check-taxonomy.md`'s
+   Duplicate definition as the single canonical rule — not restated here, so this step and Phase 4's own
+   `reviewing-analysis-findings` dispatch (which reads the same reports under the same rule) never drift
+   apart. In short: two reports asserting the *identical claim* (the same defect, the same rule violated)
+   collapse into one entry citing every report that found it; a report that instead observes a *different
+   kind of symptom* — e.g. `mining-recurring-patterns` noting the user had to ask the same question twice,
+   where no other report makes that specific claim — stays its own entry even when it's plausibly
+   explained by another finding's root cause, per that file's own worked example of this exact case.
 2. **Classify severity** using `../../references/severity-vocabulary.md`'s shared 4-tier scale (Critical
    / Major / Minor / Informational) — translate each source skill's own native vocabulary (P1/P2/P3,
    Violated/Compliant, conflict categories, etc.) per that file's mapping table. Two of the 11 eligible
@@ -438,6 +435,7 @@ by Task 11 and keeps its own prior verification record (see this skill's Gotchas
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `../starting-an-analysis/references/analysis-type-guide.md` | One-paragraph disambiguation for each of the 11 eligible analysis types | Phase 1 |
+| `../reviewing-analysis-findings/references/cross-check-taxonomy.md` | Canonical Duplicate/Contradiction/Severity-Undercut definitions this skill's own Phase 3 dedup step delegates to | Phase 3 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions and per-skill mapping table | Phase 3 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 (reuse check) and Phase 3 (persist) restate inline | Background — sweep this file's site list when editing either |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Phase 3 Persist step, before writing the report |

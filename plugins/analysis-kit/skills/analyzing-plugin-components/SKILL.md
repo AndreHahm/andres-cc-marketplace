@@ -1,20 +1,18 @@
 ---
 name: analyzing-plugin-components
 description: >-
-  Analyzes Claude Code sessions from a user-defined start date through today. Executes
-  SWOT analyses, self-critiques, and self-reflections for each skill, sub-agent, command,
-  workflow-skill, and rule active in the session range, reading generated output artifacts
-  in scope and re-verifying their stated open items against current repo state rather than
-  trusting them at face value. With explicit per-instance confirmation, also corrects a
-  non-resolving commit SHA it finds in a re-verified artifact, narrowly scoped to that
-  replacement only. Generates classified improvement suggestions grouped by
-  component and priority, persisted to .claude/output/analyzing-plugin-components/.
-  Use when a request already names component/skill/agent/rule performance
-  specifically — auditing skill or agent performance, building an
-  improvement backlog, or identifying systemic issues across skills,
-  agents, and rules from a session or date range. A bare, typeless "run a
-  retrospective" or "analyze this session" request routes to
-  `starting-an-analysis` instead.
+  Analyzes Claude Code sessions over a user-defined date range. Executes SWOT analyses and
+  self-critiques for each skill, sub-agent, command, workflow-skill, and rule in scope,
+  re-verifying artifacts' stated open items against current repo state rather than trusting
+  them at face value. With per-instance confirmation, also corrects a non-resolving commit
+  SHA found in a re-verified artifact, narrowly scoped to that replacement. Generates
+  classified improvement suggestions grouped by component and priority, persisted to
+  .claude/output/analyzing-plugin-components/. Use when a request already names
+  component/skill/agent/rule performance specifically — auditing component performance,
+  building an improvement backlog, or finding systemic cross-component issues. A bare,
+  typeless "run a retrospective" or "analyze this session" request routes to
+  `starting-an-analysis` instead. Standalone fork of `plugin-devkit`'s `analyzing-sessions`,
+  no cross-plugin dependency — canonical for standalone use.
 allowed-tools: Read Glob Grep Write Edit AskUserQuestion Bash(python */analysis-kit/scripts/component_inventory.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */analysis-kit/scripts/validate_report.py:*) Bash(git log:*) Bash(git show:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
@@ -241,20 +239,32 @@ Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) a
 origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to **each Phase 3 SWOT and each Phase 5 substantive suggestion** — both are substantive findings per
 `../../references/report-evidence-convention.md`, not suggestions alone.
 
-**Pre-persistence validation:** after writing the scratch file, run
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full Phase 2-6 output to a scratch file — Phase 2's own `<!-- inventory: -->` markers must be included, not just Phase 3-6, or the pre-persistence validator below receives Phase 3's disposition markers with no matching inventory markers to check them against and rejects every one as `orphaned_disposition`. **The scratch draft must include the literal `Next: ...` line itself** (see the next paragraph for its exact text) — `validate_report.py`'s `check_next_step` requires that line inside the report text it validates, not merely printed to the conversation afterward; write it into the draft now, before validation, matching `tests/fixtures/reports/component-valid.md`'s own shape.
+
+**Next step:** the scratch draft's own closing line must read `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also add a second line to the draft: `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+
+**Pre-persistence validation:** after writing the scratch file (Next-step line included), run
 `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/validate_report.py" --skill analyzing-plugin-components --report <scratch-path>)`.
 If it exits non-zero, its stderr lists the specific `[code] subject: message` lines — revise the draft to
 close each one (a missing/duplicate disposition, a missing coverage-preamble field, a missing next-step
 line, or missing evidence metadata) and re-run the check before persisting. Never persist a report the
 validator rejects.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full Phase 2-6 output to a scratch file — Phase 2's own `<!-- inventory: -->` markers must be included, not just Phase 3-6, or the pre-persistence validator above receives Phase 3's disposition markers with no matching inventory markers to check them against and rejects every one as `orphaned_disposition` — then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/analyzing-plugin-components/<scope-slug>-<timestamp>.md" --label "Session Analysis Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Session Analysis Report written: ...` confirmation line — present its printed output as its own line before the rest of Phase 6's output. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
-
-**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**Run persist_report.py:** run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/analyzing-plugin-components/<scope-slug>-<timestamp>.md" --label "Session Analysis Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Session Analysis Report written: ...` confirmation line — present its printed output as its own line before the rest of Phase 6's output, followed by the persisted report's own `Next:`/`Also:` line(s) already embedded in it. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
 Use one file per run (`<scope-slug>-<timestamp>.md`) as the persistence convention — this lets a later run in the same project link back to a specific prior retro instead of re-deriving one, and gives the Verify Open Items check above something concrete to point future re-checks at. If `.claude/output/analyzing-plugin-components/` already contains files from an older, different naming convention, don't migrate or delete them before persisting a new report — `Glob` the directory first only if a specific old file's content matters for the current run.
 
 ## Testing & Validation
+
+**Verify this skill activates on:**
+- "audit how the skills, sub-agents, commands, or rules performed in this session"
+- "build an improvement backlog from these observed failures"
+- "run a component-level SWOT retrospective on this session"
+
+**Verify it does NOT activate on:**
+- "a bare 'run a retrospective' with no component/skill performance mentioned" -> `starting-an-analysis`
+- "which tools/frameworks did this session use" -> `analyzing-tool-and-framework-use`
+- "did this session actually follow our project rules" -> `analyzing-governance-and-conflicts`
 
 After Phase 6, verify these gates before presenting output as final:
 
@@ -287,6 +297,12 @@ After Phase 6, verify these gates before presenting output as final:
 - **Self-referential sessions.** When `analyzing-plugin-components` is itself one of the components being analyzed, the assessment is inherently limited — the skill cannot objectively observe its own execution from outside. Note this explicitly in the SWOT weakness quadrant rather than producing inflated self-assessments.
 - **Don't trust an artifact's own "Open Items" section at face value.** A handoff report (or similar) reflects what its author believed was true at write time — it is not re-verified just by existing. Treat every "still open" or "resolved" claim as a hypothesis to check against current repo state (Phase 2's Verify Open Items step), not a fact to relay forward. An artifact that's wrong about its own open items is itself a finding about the component that produced it, not noise to filter out.
 - **Verify prior-state claims before writing them into a commit message or report — including this skill's own.** A claim like "this is new" or "X didn't exist before" is a testable assertion about current repo state, the same category as an artifact's Open Items claim above. `Glob`/`Read` the relevant directory before asserting novelty, whether the claim is about another component or about this one.
+
+**Eval evidence:** `evals/analyzing-plugin-components/evals.json` -- 3 scenarios (Quick Workflow style:
+prompt + expected narrative answer, not a full report-generation run) covering the Phase 2
+`AskUserQuestion` confirmation gate and the Verify Open Items SHA-validation guard.
+
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval suite above.
 
 ## Reference Guide
 

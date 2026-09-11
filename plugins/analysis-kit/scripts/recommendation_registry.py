@@ -32,6 +32,16 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from redact_secrets import redact  # noqa: E402
+
+# Free-text fields a caller could plausibly paste a credential/token into (e.g. "the actual
+# verification command/evidence" tracking-recommendation-lifecycle's own Phase 2 asks for) --
+# redacted before every write, the same secret-shaped-pattern gate persist_report.py already
+# applies to every other persisted analysis-kit artifact. recommendation_id/status/timestamp/
+# source_report/actor are structural fields, never redacted.
+REDACTED_FREE_TEXT_FIELDS = ("rationale", "evidence", "expected_effect", "observed_effect")
+
 DEFAULT_REGISTRY_PATH = ".claude/output/analysis-kit-recommendations/events.jsonl"
 
 # A lock file older than this is treated as orphaned (its writer crashed before releasing
@@ -265,7 +275,12 @@ def append_event(registry_path: Path, event: dict, *, lock_timeout: float = 10.0
                 "be against stale state, re-run the append rather than retrying blindly"
             )
 
-        line = json.dumps(event, ensure_ascii=False) + "\n"
+        redacted_event = dict(event)
+        for field in REDACTED_FREE_TEXT_FIELDS:
+            if field in redacted_event and isinstance(redacted_event[field], str):
+                redacted_event[field], _ = redact(redacted_event[field])
+
+        line = json.dumps(redacted_event, ensure_ascii=False) + "\n"
         with registry_path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(line)  # single buffered write() call -- append-only, no rewrite.
     finally:

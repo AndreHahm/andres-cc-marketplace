@@ -7,5 +7,5 @@
     {"text": "No downstream skill is dispatched in this same turn — Phase 3's confirm-before-dispatch gate should block that", "passed": true, "evidence": "Response explicitly stopped after Phase 1 and stated Tier 2/Phase 2/3/4 are pending on the user's answer."},
     {"text": "Response does not crash, error, or produce malformed/incomplete output", "passed": true, "evidence": "Single well-formed tool-call description, no fabricated continuation."}
   ],
-  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0, "note": "Independently re-verified 2026-09-11 via a fresh blind dispatch against the current SKILL.md (13-skill, 4-tier-bucket picker) -- still passes; not merely read-through-checked, per plugin-auditor finding completeness-reviewer:M5."}
 }

@@ -34,7 +34,7 @@ Turn one or more findings from any analysis-kit report into a classified, action
 
 ## When NOT to Use
 
-- **Producing the original finding** — this skill only expands an existing finding; run the matching analysis skill first (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `comparing-sessions`, `comparing-session-to-specification`) to produce one, or `mining-review-learnings` — its report isn't in Phase 1's auto-discovery glob (see that skill's own `<scope-slug>` exclusion), so supply its path explicitly rather than expecting it to appear among the offered candidates. `managing-review-learnings`' own report is deliberately **not** valid input here, unlike `mining-review-learnings`' — it's a disposition/run summary (which candidates got a doc-diff, which were dropped, filing outcomes), not itself a findings report; there's no unexpanded finding left in it to turn into a WHAT/WHY/HOW plan. (`reviewing-analysis-findings` accepts it for a different reason — cross-checking its stated dispositions against other reports for contradictions, not expanding a finding.)
+- **Producing the original finding** — this skill only expands an existing finding; run the matching analysis skill first to produce one. Phase 1's auto-discovery glob covers all 13 of analysis-kit's report-producing skills (`starting-an-analysis/references/analysis-type-guide.md` is the canonical, current list — consult it rather than a hand-restated list here, which drifts as skills are added), or `mining-review-learnings` — its report isn't in Phase 1's auto-discovery glob (see that skill's own `<scope-slug>` exclusion), so supply its path explicitly rather than expecting it to appear among the offered candidates. `managing-review-learnings`' own report is deliberately **not** valid input here, unlike `mining-review-learnings`' — it's a disposition/run summary (which candidates got a doc-diff, which were dropped, filing outcomes), not itself a findings report; there's no unexpanded finding left in it to turn into a WHAT/WHY/HOW plan. (`reviewing-analysis-findings` accepts it for a different reason — cross-checking its stated dispositions against other reports for contradictions, not expanding a finding.)
 - **Applying the plan** — this skill stops at a written plan; it never edits code or commits changes itself
 - **Tracking a recommendation's status over time (accepted, implemented, verified, measured, ...)** — use
   `tracking-recommendation-lifecycle` instead. This skill assigns each plan entry's stable
@@ -140,6 +140,15 @@ After Phase 4, verify before presenting output as final:
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
 - [ ] The scratch draft carries the Coverage Preamble and each recommendation carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
+
+**Eval evidence:** `evals/generating-analysis-recommendations/evals.json` -- 3 scenarios, 17/19 assertions
+passing (all 4 priority buckets including a Reconsider verdict, pasted-findings input with a
+too-ambiguous finding correctly not forced into a plan entry, and a dependency between two plan entries
+alongside an embedded classification-override injection). The 2 failed assertions trace to a single
+eval-fixture ambiguity in the classification rubric's benefit banding, not a skill defect -- see that
+eval's own `grading.json` notes.
+
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval suite above.
 
 ## Reference Guide
 

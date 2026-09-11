@@ -12,7 +12,7 @@ description: >-
   recurring findings", or "what should go in the learnings doc next" — not
   mining-recurring-patterns' single-session sequence mining, and not
   reviewing-analysis-findings' cross-check of analysis-kit's own reports.
-allowed-tools: Read Glob Grep Write AskUserQuestion Bash(gh pr list:*) Bash(gh pr view:*) Bash(gh repo view:*) Bash(git worktree list:*) Bash(echo:*) Bash(python */analysis-kit/scripts/pr_review_fetcher.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
+allowed-tools: Read Glob Grep Write AskUserQuestion Bash(gh pr list:*) Bash(gh pr view:*) Bash(gh repo view:*) Bash(git worktree list:*) Bash(echo $HOME) Bash(python */analysis-kit/scripts/pr_review_fetcher.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
 argument-hint: [PR numbers | merge-date range | "since last cited"]
 ---
 
