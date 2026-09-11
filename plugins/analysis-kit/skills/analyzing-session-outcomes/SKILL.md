@@ -54,6 +54,12 @@ may be omitted; Phase 1 asks for whatever wasn't supplied.
   tier of its own evidence hierarchy when judging goal attainment, but does not itself judge whether the
   verification method used was proportionate or sufficient -- that adequacy question belongs to the
   sibling skill.
+- **Turning a recurring unmet need into a proposed feature/capability candidate** -- use
+  `identifying-feature-opportunities` instead. This skill's Unresolved Scope section records what one
+  session's own goal left undone, judged against that session's own request/criteria; that skill looks
+  for a *recurring* unmet need across scope (or across persisted reports) and gates promotion to a
+  candidate behind its own evidence threshold and overlap check -- an Unresolved Scope item here is not
+  itself evidence of recurrence and is never auto-promoted to a feature candidate.
 
 ## Phase 1: Scope and Acceptance-Criteria Source
 
@@ -168,12 +174,12 @@ data.
 
 **Next step:** after presenting the `📄 ... written:` line, print
 `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.`
-If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes}/<scope-slug>-*.md')`
+If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
 finds 2+ analysis-kit reports already written for this scope, also print
 `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
-This glob restates the shared 9-directory enumeration plus this skill's own directory -- Task 11 of the
-Wave 2 plan sweeps every sibling skill's own restated glob to add all Wave 2 directories in one pass; this
-skill's own glob is written ahead of that sweep since it needs to see its own prior reports immediately.
+This glob restates the shared 15-directory enumeration, including this skill's own directory -- Task 11's
+full sweep is complete; every report-producing skill's own restated glob now enumerates the same
+15 directories.
 
 ## Gotchas
 
@@ -233,5 +239,5 @@ Bash-grant usage, referenced-script existence, Reference Guide file existence, P
 | `references/outcome-report-template.md` | Worked example of the six-section report plus Process Compliance Note | Phase 4 |
 | `../../references/date-range-scope-convention.md` | Shared Phase 1 scope-resolution procedure this skill's own Phase 1 restates by reference | Phase 1 |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
-| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background -- sweep this file's site list when editing either (Task 11) |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background -- sweep this file's site list when editing either |
 | `.claude/output/analyzing-session-outcomes/` | Where this skill's own reports are persisted, one file per run | Phase 4 (write) |

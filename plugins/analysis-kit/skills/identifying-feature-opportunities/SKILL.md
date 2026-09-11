@@ -51,6 +51,12 @@ omitted, Phase 1 asks interactively.
   overlap check -- never inherited automatically from the other skill's own finding.
 - **A single one-off inconvenience with no repeated evidence and no high-consequence impact** -- per
   Phase 3's threshold, this is `insufficient-evidence`, not a candidate; don't force it into scoring.
+- **Judging whether a single session achieved its goal, or what scope was left unresolved for that one
+  session** -- use `analyzing-session-outcomes` instead. That skill's Unresolved Scope section records
+  goal-attainment gaps for one session against its own request/criteria; this skill only acts once a
+  *recurring* unmet need (2+ instances, or one high-consequence instance) clears its own Phase 3
+  evidence threshold -- a single session's unresolved scope, on its own, is not sufficient evidence for
+  a candidate here.
 
 ## Phase 1: Scope
 
@@ -124,8 +130,8 @@ successful persist.
 If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
 finds 2+ analysis-kit reports already written for this scope, also print
 `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
-This glob restates the shared enumeration plus this skill's own directory ahead of Task 11's full sweep,
-same reasoning as the other Wave 2 skills' own Next-step blocks.
+This glob restates the shared 15-directory enumeration, including this skill's own directory -- Task 11's
+full sweep is complete, same as the other Wave 2 skills' own Next-step blocks.
 
 ## Gotchas
 
@@ -178,5 +184,5 @@ Bash-grant usage, referenced-script existence, Reference Guide file existence, P
 | `references/overlap-check.md` | How to check a candidate against existing functionality | Phase 4 |
 | `../../references/date-range-scope-convention.md` | Shared Phase 1 scope-resolution procedure this skill's own Phase 1 restates by reference | Phase 1 |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
-| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background -- sweep this file's site list when editing either (Task 11) |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background -- sweep this file's site list when editing either |
 | `.claude/output/identifying-feature-opportunities/` | Where this skill's own reports are persisted, one file per run | Phase 5 (write) |

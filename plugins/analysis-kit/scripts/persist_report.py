@@ -8,7 +8,7 @@ LF-only, write the final file, re-verify the written file is still
 LF-only, and print the standard confirmation line. Centralizes the exact
 bug class this plugin already found and fixed once (redact_secrets.py's
 missing newline="\\n" on stdout, which corrupted every report written on
-Windows before that fix) behind one call site instead of ten
+Windows before that fix) behind one call site instead of eighteen
 independently-trusting ones.
 """
 

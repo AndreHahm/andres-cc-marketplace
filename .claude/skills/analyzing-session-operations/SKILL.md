@@ -140,12 +140,12 @@ problem -- report that error and stop, never present it as a successful persist.
 
 **Next step:** after presenting the `📄 ... written:` line, print
 `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.`
-If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations}/<scope-slug>-*.md')`
+If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
 finds 2+ analysis-kit reports already written for this scope, also print
 `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
-This glob restates the shared enumeration plus this skill's own directory ahead of Task 11's full sweep,
-same reasoning as `analyzing-session-outcomes`'/`analyzing-verification-effectiveness`'s own Next-step
-blocks.
+This glob restates the shared 15-directory enumeration, including this skill's own directory -- Task 11's
+full sweep is complete, same as `analyzing-session-outcomes`'/`analyzing-verification-effectiveness`'s own
+Next-step blocks.
 
 ## Gotchas
 
@@ -210,5 +210,5 @@ tests/test_failure_aggregator.py tests/test_critical_path_analyzer.py -q`, 14/14
 | `../../tests/test_critical_path_analyzer.py` | Unit tests for `critical_path_analyzer.py` | Before modifying that script |
 | `../../references/date-range-scope-convention.md` | Shared Phase 1 scope-resolution procedure this skill's own Phase 1 restates by reference | Phase 1 |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
-| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background -- sweep this file's site list when editing either (Task 11) |
+| `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background -- sweep this file's site list when editing either |
 | `.claude/output/analyzing-session-operations/` | Where this skill's own reports are persisted, one file per run | Phase 5 (write) |
