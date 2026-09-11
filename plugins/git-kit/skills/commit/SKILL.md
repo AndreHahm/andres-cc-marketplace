@@ -411,8 +411,10 @@ conversational, `AskUserQuestion`-driven skill with no other executable logic of
       `core.fileMode=false` silently downgraded it to `100644` on first `git add` once (caught here
       before commit; see `stage-selected-files.sh`'s own 2026-08-28 incident above)
 - [ ] A body/footer line over 100 characters (exit 1) is rewrapped and re-checked once; a non-wrapping
-      rule (e.g. `type-enum`, `subject-case`) surfaces the exact rule name and asks instead; the local
-      `.commitlintrc.cjs` mirror under `.github/commitlint-tools/` stays gitignored
+      rule (e.g. `type-enum`, `subject-case`) surfaces the exact rule name and asks instead
+- [ ] The config/manifest/lockfile the check runs against always come from `origin/<default-branch>`,
+      never the checked-out working tree — the install itself lives under `.git/`, never touching the
+      repo's own tracked `.github/commitlint-tools/package.json`/`pnpm-lock.yaml` as a side effect
 - [ ] Step 7.5's `lint-staged-python.sh` always positively confirms full-staging via `git status
       --porcelain` per staged `.py` path before auto-fixing it — a path that isn't confirmed fully
       staged always skips that file's auto-fix rather than risking a blanket `git add` pulling unstaged
