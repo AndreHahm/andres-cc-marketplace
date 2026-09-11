@@ -1,0 +1,9 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/analysis-kit/skills/identifying-feature-opportunities",
+  "assertions": [
+    {"text": "Report includes a finding classified as `merge-with-existing`", "type": "presence", "target": "report content"},
+    {"text": "Finding names `comparing-sessions` as the specific overlapping existing skill", "type": "quality", "target": "report content"},
+    {"text": "Finding describes the gap between what comparing-sessions does today and what the candidate asks for, not just 'it's related'", "type": "quality", "target": "report content"}
+  ]
+}

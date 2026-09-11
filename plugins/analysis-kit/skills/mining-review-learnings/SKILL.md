@@ -229,7 +229,7 @@ legitimate, common outcome, not a failure.
 
 ## Gotchas
 
-- **This skill's report is deliberately excluded from `report-discovery-convention.md`'s 9-directory
+- **This skill's report is deliberately excluded from `report-discovery-convention.md`'s 15-directory
   glob** — a different reason than `running-a-full-retrospective`'s own exclusion from the same glob
   (that skill's report is a *consolidation* of other reports, so counting it too would double-count
   coverage; this skill's report is a fresh, independent finding set, not a consolidation). This skill's

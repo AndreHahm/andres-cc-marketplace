@@ -49,6 +49,13 @@ Mine a Claude Code session for recurring action sequences, loops, recall/memory 
   judges latency outliers and parallelism against a critical-path analysis — a retry loop this skill flags
   as a repeated-command pattern may also appear there as a reliability finding with its own category and
   recovery status, but the two skills answer different questions about it
+- **Deciding whether a recurring pattern is worth turning into a proposed feature/capability** — use
+  `identifying-feature-opportunities` instead. This skill's "automation candidate" framing is mechanical
+  and session-sequence-level (the same command sequence repeating, found by `sequence_miner.py`); that
+  skill's feature-candidate framing is product-level and evidence-across-scope (a recurring *unmet need*,
+  which may or may not correspond to any one mined sequence). A finding here can be cited as one piece of
+  evidence there, but that skill's own evidence-threshold and overlap check still gate whether it actually
+  becomes a candidate — never inherited automatically from this skill's own automation-candidate label
 - **Judging whether a repeated question or confirmation was avoidable friction** — use
   `analyzing-workflow-usability` instead. This skill counts *that* the same question was asked more than
   once; that skill judges *whether* the repetition was avoidable or a legitimate re-ask (its own

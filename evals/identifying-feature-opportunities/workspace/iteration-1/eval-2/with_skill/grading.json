@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Report includes a finding classified as `insufficient-evidence`",
+      "passed": true,
+      "evidence": "Disposition: 'insufficient-evidence -- checked against references/opportunity-rubric.md's Evidence Threshold...'"
+    },
+    {
+      "text": "Finding does NOT include reach/expected-value/confidence/effort scores",
+      "passed": true,
+      "evidence": "No scoring bands present anywhere in the finding; explicit note: 'this stays insufficient-evidence with no reach/expected-value/confidence/effort scores assigned, per Phase 3.'"
+    },
+    {
+      "text": "Finding states the reason (no repeated evidence, no high-consequence impact) rather than a bare 'not enough evidence'",
+      "passed": true,
+      "evidence": "Explicitly checks and states both conditions: '(1) repeated evidence -- not met, only 1 instance...; (2) single high-consequence instance -- not met, no stated severe cost or risk...'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}
