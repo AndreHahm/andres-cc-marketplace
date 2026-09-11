@@ -190,17 +190,20 @@ CRITICAL: Perform the following steps exactly as described:
 13.5. **Lint the drafted message against the real commitlint config** (this repository only — no-op if
    `.commitlintrc.cjs`/`.github/commitlint-tools/package.json` are missing — skipped under `--no-verify`,
    same as step 7.5). `commit`'s checks above never measure per-line CHARACTER length in the body/footer
-   (only subject length and body line COUNT) — CI's `Validate commits and branch` job does
-   (`body-max-line-length`/`footer-max-line-length`, 100 chars, from `.commitlintrc.cjs`'s extended
-   `@commitlint/config-conventional` base). Run the real tool instead of a driftable approximation:
+   (only subject length, body line COUNT) — CI's `Validate commits and branch` job does
+   (`body-max-line-length`/`footer-max-line-length`, 100 chars, from its extended config base). Run the
+   real tool, not a driftable approximation:
    1. Write the exact drafted message to a file in the session's scratchpad directory (never the repo
       root — per CLAUDE.md and `.claude/rules/require-gitignored-scratch-locations.md`).
-   2. Run `"${CLAUDE_PLUGIN_ROOT}/scripts/lint-commit-message.sh" <path-to-that-file>` (installs the
-      isolated toolchain CI's `commit-branch-guard.yml` uses, on first use if missing).
-   3. **Exit 0** → proceed to step 14. **Non-zero** → the script names the violated rule(s) in brackets
-      (e.g. `[body-max-line-length]`). Rewrap and re-run once for a simple long-line violation (the
-      realistic trigger — an unwrapped paragraph); otherwise, or if still failing, surface the rule and
-      ask via `AskUserQuestion` (mirroring step 7.5): revise, or commit anyway.
+   2. Run `"${CLAUDE_PLUGIN_ROOT}/scripts/lint-commit-message.sh" <path-to-that-file>` (installs on first use).
+   3. **Exit 0** → clean (or no-op) — proceed to step 14. **Exit 2** → the check couldn't run (pnpm
+      missing, or the toolchain install failed — offline/blocked registry; the script's own
+      `SKIP:`-prefixed stderr line names which) — an infrastructure gap, not a message problem: state
+      this plainly, then proceed to step 14 anyway, mirroring `lint-staged-python.sh`'s `uv`-unavailable
+      handling (warn, don't block). **Exit 1** → a real commitlint violation, named in brackets (e.g.
+      `[body-max-line-length]`). Rewrap and re-run once for a simple long-line violation (the realistic
+      trigger — an unwrapped paragraph); otherwise, or if still failing, surface the rule and ask via
+      `AskUserQuestion` (mirroring step 7.5): revise, or commit anyway.
 14. **Confirm before committing**: when `commit_confirm_before_commit` is `true` (the default), use AskUserQuestion to show the generated commit message and ask the user to proceed; only run `git commit` after confirmation. When `false`, commit directly. **Immediately before running `git commit`** (right after confirmation, or right before committing directly when confirmation is off), run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` — this writes the marker git-kit's commit-guard hook requires; it must be written right before the commit, not earlier in this run, since the hook only accepts a marker up to 60 seconds old.
 15. **Amend**: if `--amend` was given, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" git-commit commit` immediately before running it, then use `git commit --amend` instead of a plain commit. Before amending, check with `git status` whether the branch is ahead of its remote and warn if the target commit was already pushed.
 **Steps 16 and 17's numbers below are cited externally** — `plugins/git-kit/skills/create-pr/SKILL.md` names them by number in its own Pre-flight Checks instructions to `commit`. If either step is ever renumbered, update `create-pr`'s citations in the same change.
@@ -400,15 +403,16 @@ conversational, `AskUserQuestion`-driven skill with no other executable logic of
 - [ ] Step 16 always pushes with `git push origin HEAD` (`git push -u origin HEAD` when there's no
       upstream) — never a branch name typed or interpolated into the push command, including one
       freshly resolved via `git rev-parse` immediately beforehand
-- [ ] Step 13.5 fires before step 14's confirm ask (never lets the user approve a message already known
-      to fail CI), is a no-op without `.commitlintrc.cjs`/`.github/commitlint-tools/package.json`, and is
-      skipped under `--no-verify` (same as step 7.5)
+- [ ] Step 13.5 fires before step 14's confirm ask, is a no-op without `.commitlintrc.cjs`/
+      `.github/commitlint-tools/package.json`, and is skipped under `--no-verify` (same as step 7.5)
+- [ ] Exit 2 (pnpm missing or toolchain install failed) is always an infrastructure skip — reported
+      plainly, proceeds like a clean pass — never routed through exit 1's revise-or-ask branch
 - [ ] `lint-commit-message.sh` is committed with the executable bit set (`100755`) — this repo's
-      `core.fileMode=false` default silently downgraded it to `100644` on first `git add` once (caught
-      here before commit; see `stage-selected-files.sh`'s own 2026-08-28 incident above)
-- [ ] A body/footer line over 100 characters is rewrapped and re-checked once; a non-wrapping rule (e.g.
-      `type-enum`, `subject-case`) surfaces the exact rule name and asks instead; the script's local
-      `.github/commitlint-tools/.commitlintrc.cjs` mirror stays gitignored, never an untracked file
+      `core.fileMode=false` silently downgraded it to `100644` on first `git add` once (caught here
+      before commit; see `stage-selected-files.sh`'s own 2026-08-28 incident above)
+- [ ] A body/footer line over 100 characters (exit 1) is rewrapped and re-checked once; a non-wrapping
+      rule (e.g. `type-enum`, `subject-case`) surfaces the exact rule name and asks instead; the local
+      `.commitlintrc.cjs` mirror under `.github/commitlint-tools/` stays gitignored
 - [ ] Step 7.5's `lint-staged-python.sh` always positively confirms full-staging via `git status
       --porcelain` per staged `.py` path before auto-fixing it — a path that isn't confirmed fully
       staged always skips that file's auto-fix rather than risking a blanket `git add` pulling unstaged
@@ -475,8 +479,7 @@ staged correctly with no code execution; out-of-range/non-digit arguments correc
       Task 12's rollout PR is the first real opportunity)
 
 **Step 13.5 (real-commitlint check) — verified live, 2026-09-10.** See
-`references/staging-fix-verification-log.md` for the full run narrative. Not yet exercised: a full live
-`commit` run reaching step 13.5 as part of its normal flow rather than a direct script invocation.
+`references/staging-fix-verification-log.md` for the run narrative and open items.
 
 **Step 13 (no literal bot-trigger mentions) — incident source, 2026-08-31, PR #257:** see the matching
 Best Practice above for the full incident narrative (a commit message/PR title spelling out the trigger

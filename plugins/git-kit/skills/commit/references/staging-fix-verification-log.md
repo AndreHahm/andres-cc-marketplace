@@ -69,6 +69,23 @@ verification ran the script directly to confirm its own logic and the underlying
 first real `commit` invocation on a message with a genuinely long body line is the next opportunity to
 close this out.
 
+**Round 2, 2026-09-11 — `cross-model-review` found the script conflated "couldn't check" with "checked
+and clean" (exit 0 either way) and, separately, "install failed" with "message violates a rule" (both
+just a non-zero exit under `set -e`):** Claude's own Phase 1 pass found the install-failure case; Codex's
+independent Phase 1 pass found the pnpm-missing case; each confirmed the other's finding in Phase 2
+cross-examination (both High confidence — Claude's rated major, Codex's rated minor, both retained at
+their own severity). Fixed by giving both non-lint-related early exits their own exit code (2, with a
+`SKIP:`-prefixed stderr line naming the reason) distinct from exit 1 (a real commitlint violation);
+step 13.5 now branches three ways instead of two. Verified live against all four paths: clean pass (exit
+0), a real 190-char body-line violation (exit 1, unchanged from round 1), pnpm hidden from `PATH` (exit
+2, `SKIP: pnpm not available`), and a deliberately desynced `pnpm-lock.yaml` forcing a real
+`--frozen-lockfile` install failure (exit 2, `SKIP: commitlint toolchain install failed`) — the install
+failure reproduced pnpm's own `ERR_PNPM_OUTDATED_LOCKFILE` error, not a network-dependent flake, so it's
+reproducible without needing an actually unreachable registry. `.github/commitlint-tools/package.json`
+was restored via `git checkout --` and the real toolchain reinstalled immediately after, confirmed clean
+via `git status`. Still not yet exercised: a live `commit` run reaching either exit-2 path through its
+own normal flow rather than a direct script invocation.
+
 ## Step 16 (push) — fixed and verified live, 2026-08-28
 
 This PR's first pass at step 16 replaced "retype/recompose the branch name" with "resolve it fresh
