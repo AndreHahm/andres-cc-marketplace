@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-governance-and-conflicts",
+  "scenario": "Two dispatched reviewer agents (skill-reviewer, consistency-reviewer) reach directly contradictory verdicts about the exact same subject (the same frontmatter description field's character-count validity) with no reconciliation in the transcript. Fixture: session-transcript-agent-conflict.md.",
+  "assertions": [
+    {"text": "Phase 3's agent-vs-agent conflict category is triggered and reports the contradiction between skill-reviewer and consistency-reviewer about the same description field", "type": "functionality", "target": "report"},
+    {"text": "The report correctly identifies which verdict is actually correct (consistency-reviewer's Critical finding -- 1180 chars does exceed a 1024-char limit) rather than presenting both as equally plausible or picking the wrong one", "type": "quality", "target": "report"},
+    {"text": "The conflict is reported as unresolved/still-open in this session (the transcript shows no reconciliation happened), not incorrectly presented as already resolved", "type": "quality", "target": "report"},
+    {"text": "This finding is reported under Phase 3's Conflict Detection section specifically (agent-vs-agent category), not miscategorized as a rule conformance issue", "type": "quality", "target": "report"}
+  ]
+}

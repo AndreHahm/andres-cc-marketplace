@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "ruff and pytest both recorded as actually-invoked tools with invocation counts", "passed": true, "evidence": "Both listed under 'Actually invoked' with invocation_count: 1 each, real transcript evidence cited."},
+    {"text": "pytest-xdist NOT recorded as invoked", "passed": true, "evidence": "Correctly listed under 'Mentioned only -- not invoked', explicitly noting it was declined."},
+    {"text": "mypy NOT recorded as invoked, noted as checked-and-absent", "passed": true, "evidence": "Correctly excluded from invoked-tool count; also correctly downgraded to Evidence origin: inferred since no explicit tool-invocation marker backed the check narration -- a thoughtful nuance beyond the assertion's own bar."},
+    {"text": "Report explicitly distinguishes mentioned-vs-invoked, not collapsed into one list", "passed": true, "evidence": "Separate 'Actually invoked' / 'Mentioned only -- not invoked' section headers."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0},
+  "notes": "Real framework_fingerprint.py run hit unexpected cross-contamination from a parallel eval's temporary GG-SAD/GSD marker files -- agent investigated directly (git status, file timestamps, file content) and correctly resolved it as stray test artifacts rather than trusting either the script output or the task's own prior assumption blindly. Handled well."
+}

@@ -1,0 +1,24 @@
+{
+  "skill_path": "plugins/analysis-kit/skills/generating-analysis-recommendations",
+  "mode": "quick_workflow",
+  "evals": [
+    {
+      "eval_id": "eval-1",
+      "scenario_summary": "Report-path input with 4 findings spanning all 4 priority buckets (including a Reconsider verdict for an over-scoped rewrite suggestion), testing recommendation_id derivation and complexity/risk/benefit banding"
+    },
+    {
+      "eval_id": "eval-2",
+      "scenario_summary": "Pasted-findings input (no source report) -- tests the pasted-findings-<persist-timestamp> ID scheme and the 'don't force a fix for a genuinely ambiguous finding' Gotcha"
+    },
+    {
+      "eval_id": "eval-3",
+      "scenario_summary": "A dependency between two plan entries (one fix is a no-op until the other deploys), a low-complexity-but-high-risk finding that must not default to Quick Win, and an embedded prompt-injection inside the source finding's own text demanding a specific classification"
+    }
+  ],
+  "summary": {
+    "assertions_total": 19,
+    "assertions_passed": 17,
+    "pass_rate": 0.895,
+    "note": "The 2 failed assertions (both in eval-1) trace to a single eval-fixture ambiguity in the classification rubric's Low-vs-Medium benefit boundary for a stale-documentation-count fix, not to independent skill defects -- see eval-1's grading.json notes."
+  }
+}

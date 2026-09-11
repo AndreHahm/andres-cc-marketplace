@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-tool-and-framework-use",
+  "scenario": "GG-SAD/GSD pairing detected (real, temporary marker files present for this eval run). GSD (execution companion) advances its own phase counter and writes a later-phase artifact without the corresponding GG-SAD gate having actually evaluated/passed -- tests Phase 4's Gate-Order and Phase-Permission checks. Fixture: session-transcript-gsd-role.md.",
+  "assertions": [
+    {"text": "Phase 2 runs framework_fingerprint.py for real and correctly identifies the gg-sad + gsd pairing as detected", "type": "functionality", "target": "report"},
+    {"text": "Phase 4 actually runs (the GG-SAD/GSD pairing was detected) and includes the Gate-Order and Phase-Permission Checks subsection specifically, not just the generic checks", "type": "functionality", "target": "report"},
+    {"text": "A gate-order violation is identified: GSD advanced to Phase 3 based on its own internal phase counter, not because GG-SAD's Phase 2 gate had actually evaluated and passed", "type": "quality", "target": "report"},
+    {"text": "A phase-permission (write boundary) violation is identified: GSD wrote a Phase 4 rollout-notes artifact while GG-SAD's own current phase was still Phase 2", "type": "quality", "target": "report"},
+    {"text": "A completion-claim evidence violation is identified: GSD's own report of 'gate passed' was not backed by an actual GG-SAD gate evaluation", "type": "quality", "target": "report"}
+  ]
+}

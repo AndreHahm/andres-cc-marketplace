@@ -1,0 +1,13 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Phase 2 runs framework_fingerprint.py for real and correctly identifies the gg-sad + gsd pairing", "passed": true, "evidence": "Real script run, both candidates correctly identified and correctly treated as a confirmed pairing per the fixture's own setup note."},
+    {"text": "Phase 4 actually runs and includes the Gate-Order and Phase-Permission Checks subsection specifically", "passed": true, "evidence": "All 5 findings explicitly map to the GG-SAD/GSD-specific checks (Gate-Order, Phase-Permission, Completion-Claim Evidence), not just generic checks."},
+    {"text": "Gate-order violation identified", "passed": true, "evidence": "Finding 1, explicit and well-evidenced."},
+    {"text": "Phase-permission (write boundary) violation identified", "passed": true, "evidence": "Finding 2, explicit and well-evidenced."},
+    {"text": "Completion-claim evidence violation identified", "passed": true, "evidence": "Finding 3, explicit and well-evidenced."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0},
+  "notes": "Real temporary marker files (.ggsad/config.yaml, .planning/README.md) were created specifically for this eval to genuinely trigger auto-detection of the pairing, then removed after this eval completed."
+}

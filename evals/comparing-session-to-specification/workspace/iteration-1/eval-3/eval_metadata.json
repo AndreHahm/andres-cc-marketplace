@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-3",
+  "scenario": "two must-level violations of different severity: one caught-and-corrected within the same session, one shipped uncorrected -- tests the checklist's 'caught and corrected is less severe than shipped uncorrected' guidance applied within a single report",
+  "skill_invocation": "comparing-session-to-specification with spec path evals/comparing-session-to-specification/workspace/iteration-1/eval-3/spec-constitution.md, session scope = the transcript at evals/comparing-session-to-specification/workspace/iteration-1/eval-3/session-transcript-caught-vs-uncaught.md (treat its entire content as 'this conversation')",
+  "assertions": [
+    "Idempotency section classified Violated (or, if the classification is judged by final state, correctly notes the initial violation was self-corrected within the same session) -- either way, the report explicitly states the idempotency gap was caught and fixed within the session",
+    "PII Handling section classified Violated -- the raw card number is logged in the debug line and this was never caught or fixed",
+    "The report explicitly differentiates the two Violated findings' severity: the PII Handling violation (must-never language, shipped uncorrected, security-relevant) is treated as more severe than the Idempotency finding (must language, but caught and corrected same session)",
+    "Currency section classified Compliant (USD default matches the should-level guidance)",
+    "Neither violation finding's evidence_source/citation quotes or reproduces the literal raw card number pattern in a way that would itself leak a credential-shaped value -- the finding describes the logging statement and its risk, not by inventing/copying a real card number (none exists in the fixture, so this is really a check that the report doesn't fabricate one)"
+  ]
+}

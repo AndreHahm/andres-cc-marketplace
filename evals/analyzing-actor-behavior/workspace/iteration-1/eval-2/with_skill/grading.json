@@ -1,0 +1,16 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The report's actor inventory includes exactly one sub-agent dispatch (general-purpose) and the human-developer, with no fabricated second agent", "passed": true, "evidence": "Inventory table lists exactly 1 general-purpose dispatch and 2 human-developer occurrences (initial request, feedback turn)."},
+    {"text": "Phase 5 (Cross-Agent Flow Analysis) does NOT run and is either absent or explicitly stated as skipped", "passed": true, "evidence": "\"Not applicable. Only one sub-agent... was active in scope\" -- explicit, not silently omitted."},
+    {"text": "The general-purpose dispatch is flagged as a dispatch-appropriateness finding", "passed": true, "evidence": "Explicit finding: \"Dispatch choice was broader than the task warranted, confirmed directly by the human's own feedback.\""},
+    {"text": "The human's correction (use general-purpose less) is recorded in Phase 4 as a real, substantive correction about dispatch choice, not phrasing", "passed": true, "evidence": "Turn 2 assessed as a genuine process correction, correctly distinguished from a correctness correction."},
+    {"text": "Every actor in the inventory has exactly one matching disposition marker", "passed": true, "evidence": "3 inventory markers, 3 matching disposition markers (general-purpose assessed, human-developer excluded + assessed)."}
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Phase 2 builds a real action-token list and runs sequence_miner.py for real", "passed": true, "evidence": "13-token list, real script invocation cited with 12 raw repeated-subsequence entries, explicitly consolidated per the skill's own Gotcha."},
+    {"text": "Retry loop identified (3 identical failed cycles), distinct from the 4th successful cycle which is NOT flagged", "passed": true, "evidence": "Dedicated finding explicitly separates 'Attempts 1-3' (the loop) from 'Attempt 4' (the real fix), citing the intervening Read as the distinguishing action."},
+    {"text": "Memory-recall gap identified, citing the real prior report by path and noting the avoidable larger implementation", "passed": true, "evidence": "Cites the exact path, quotes the report's own Suggestion field, and explicitly states this contradicts the from-scratch class actually written."},
+    {"text": "The single AskUserQuestion call correctly NOT flagged as a repeated-question loop; user's re-ask correctly distinguished", "passed": true, "evidence": "Explicit 'no finding' for the mechanical repeated-question check, with a clear separate note distinguishing the user's own forgetting from an assistant-side repeated AskUserQuestion, deliberately given no evidence-metadata block since it isn't a match for the sub-pattern's actual definition."},
+    {"text": "Short repeated 2-token subsequences not treated as independent findings beyond the one real retry-loop finding", "passed": true, "evidence": "Explicitly states the 8 shorter overlapping raw-output entries are 'sub-fragments of the same pattern, not independent findings,' per the skill's own Gotcha, citing it by name."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0},
+  "notes": "Also correctly self-recovered from a real scratchpad filename collision with a concurrently-running sibling eval agent (detected, diagnosed, redrafted to a collision-resistant path, verified byte-for-byte) rather than silently persisting corrupted content."
+}

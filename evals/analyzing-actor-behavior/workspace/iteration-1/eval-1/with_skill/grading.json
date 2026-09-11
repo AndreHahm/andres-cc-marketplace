@@ -1,0 +1,17 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The report's actor inventory includes both security-reviewer and scripts-reviewer as separate sub-agent dispatches, each with its own <!-- inventory: --> marker", "passed": true, "evidence": "Both listed as separate rows in the Phase 2 inventory table with their own markers (lines 12-13)."},
+    {"text": "Phase 5 (Cross-Agent Flow Analysis) actually runs and is present in the report, since 2 agents were dispatched in scope", "passed": true, "evidence": "Full Phase 5 section present, correctly triggered by the 2-agent threshold."},
+    {"text": "The cross-agent flow is correctly classified as sequential delegation, not parallel dispatch or handback-without-context", "passed": true, "evidence": "\"Sequential delegation, efficient -- no lost context\" with explicit reasoning tracing the handoff."},
+    {"text": "Both agent dispatches are assessed as appropriate with no unwarranted broad-dispatch finding invented", "passed": true, "evidence": "Both explicitly marked as correct purpose-built-over-broad dispatch choices."},
+    {"text": "The human's request for an explicit regression test is recorded as a real, notable correction/contribution in Phase 4", "passed": true, "evidence": "Turn 2 assessed with 'genuine unprompted contribution' framing, correctly noting neither agent nor orchestrator proposed it."},
+    {"text": "Every actor in the inventory has exactly one matching disposition marker", "passed": true, "evidence": "4 inventory markers (security-reviewer, scripts-reviewer, human-developer x2), 4 matching disposition markers, no mismatch."}
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 6,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-actor-behavior",
+  "scenario": "Single-agent session: exactly 1 sub-agent dispatch (general-purpose, for a behavior-diff check), plus a human correction explicitly noting the dispatch choice was disproportionate (general-purpose used where a lighter dedicated check would have fit better). Fixture: session-transcript-single-agent.md.",
+  "assertions": [
+    {"text": "The report's actor inventory includes exactly one sub-agent dispatch (general-purpose) and the human-developer, with no fabricated second agent", "type": "functionality", "target": "report"},
+    {"text": "Phase 5 (Cross-Agent Flow Analysis) does NOT run and is either absent from the report or explicitly stated as skipped, since only 1 agent was dispatched in scope", "type": "functionality", "target": "report"},
+    {"text": "The general-purpose dispatch is flagged as a dispatch-appropriateness finding -- a narrower/lighter check plausibly existed for a straightforward before/after behavior comparison -- per the skill's own 'a broad dispatch isn't automatically a finding' Gotcha, this should be flagged because the human's own correction confirms a narrower option was plausible, not just assumed", "type": "quality", "target": "report"},
+    {"text": "The human's correction (use general-purpose less for this kind of check) is recorded in Phase 4 as a real, substantive correction about dispatch choice, not phrasing", "type": "quality", "target": "report"},
+    {"text": "Every actor in the inventory has exactly one matching disposition marker", "type": "functionality", "target": "report"}
+  ]
+}

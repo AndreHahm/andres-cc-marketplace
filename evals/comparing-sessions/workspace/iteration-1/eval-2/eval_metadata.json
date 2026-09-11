@@ -1,0 +1,14 @@
+{
+  "eval_id": "eval-2",
+  "scenario": "Phase 4 realized-impact comparison with a real recommendation registry -- stable-ID matching, four-field extraction (Before/Expected/After/Verdict), scope filtering by status and relevance",
+  "skill_invocation": "comparing-sessions with prior report path evals/comparing-sessions/workspace/iteration-1/eval-2/prior-report.md, current report path evals/comparing-sessions/workspace/iteration-1/eval-2/current-report.md (both already persisted this session -- do not re-run an upstream analysis skill, just use these two files directly as the two sides of the comparison), and recommendation registry path evals/comparing-sessions/workspace/iteration-1/eval-2/registry-events.jsonl (a real, valid registry built via the actual recommendation_registry.py CLI -- run list/show against it for real)",
+  "assertions": [
+    "Phase 4 runs (a real registry was supplied and is non-empty)",
+    "cache-layer-latency-rec-01 is checked: its Expected Effect ('should bring P99 read latency under 10ms'), Before Evidence (prior report's 42ms P99 finding), After Evidence (registry's own observed_effect: dropped from 42ms to 6ms, OR the current report's own 6ms finding), and Impact Verdict are all reported as four distinct fields, not merged",
+    "cache-layer-latency-rec-01's Impact Verdict is 'improved' (6ms vs a <10ms expected target, down from 42ms)",
+    "billing-service-timeout-rec-07 is correctly EXCLUDED from Phase 4's checked set because it never reached implemented/verified/measured status (still 'proposed' only) -- even though the billing-service finding recurs almost verbatim between the two reports and would be an easy prose-similarity false-match target",
+    "The billing-service recurrence (same suggestion text in both reports, no registry entry to check against) is instead reported in Phase 3/Phase 5 as an Unresolved recurrence, not folded into Phase 4's Recommendation Impact section",
+    "The cache-layer section is reported as a Divergence (verdict changed from 'Needs attention' to 'Compliant')",
+    "The notification-service section (only in current report) is noted as a new component, not miscategorized as a divergence of an existing one"
+  ]
+}

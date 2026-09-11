@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "'Findings: Legacy Format Note' identified as report-format/schema drift, not a dropped component or real content signal, citing its own boilerplate text", "passed": true, "evidence": "Dedicated 'Report format drift, not a content finding' callout explicitly quotes the section's own self-disclaiming text and cites the skill's own Gotcha by name."},
+    {"text": "'Component: autocomplete' correctly identified as a genuinely new component, not lumped with the format-drift note", "passed": true, "evidence": "Separate Divergences finding titled 'new in scope (content signal, not format drift)' -- explicitly contrasts itself against the format-drift item."},
+    {"text": "query-router reported as a real Divergence with specific evidence from both reports", "passed": true, "evidence": "Divergences finding cites the prior gap, the current fix (30s TTL cache, 61% hit rate), and notes the metric direction supports the verdict change."},
+    {"text": "indexer and result-cache reported as Consistencies", "passed": true, "evidence": "Both listed under Consistencies with word-for-word matching verdicts cited."},
+    {"text": "Format-drift item and genuine-new-component item explicitly distinguished from each other, not both reported the same way", "passed": true, "evidence": "The two are structurally distinguished -- autocomplete carries a full finding:start/end evidence-metadata block as a substantive claim, while the format-drift note is explicitly called out as carrying no evidence metadata block 'because it isn't a substantive claim about the project.'"}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0}
+}

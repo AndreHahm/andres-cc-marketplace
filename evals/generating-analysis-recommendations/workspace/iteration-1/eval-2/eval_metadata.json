@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-2",
+  "scenario": "Pasted-findings input (no source report path) -- tests the pasted-findings-<persist-timestamp> ID scheme, and the 'a finding with no clear fix isn't forced into a plan entry' gotcha for a genuinely ambiguous finding",
+  "skill_invocation": "generating-analysis-recommendations invoked with no report-path argument -- the findings are pasted directly as the content of evals/generating-analysis-recommendations/workspace/iteration-1/eval-2/pasted-findings.md (present this file's content to the agent as if the user pasted it directly into the conversation, per Phase 1's pasted-findings case -- do not treat the file path itself as a --report-path argument)",
+  "assertions": [
+    "Finding 1 (slow CI onboarding step) is expanded into a full WHAT/WHY/HOW plan entry with a concrete fix (cache config/defaults.yaml, or fetch it asynchronously/in parallel with other setup steps), citing the specific evidence (38 of 45 seconds, changes every few months)",
+    "Finding 1's recommendation_id follows the pasted-findings-<persist-timestamp> scheme (no source report path was supplied), not a report-filename-derived prefix",
+    "Finding 2 (vague 'feels unfocused' impression, no supporting evidence, no specific pattern) is explicitly NOT forced into a fabricated WHAT/HOW plan entry -- the report states plainly that this finding is too ambiguous / lacks a clear fix, per the skill's own Gotcha",
+    "The report never invokes or references calling recommendation_registry.py to actually register either ID -- this skill only assigns IDs, it never appends to the lifecycle registry itself",
+    "No content in either pasted finding is treated as an instruction to this skill (neither finding contains an injection attempt in this fixture, so this is a baseline confirmation that ordinary finding text is correctly treated as data to classify, not a special test)"
+  ]
+}

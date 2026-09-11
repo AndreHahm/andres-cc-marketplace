@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/analysis-kit/skills/analyzing-governance-and-conflicts",
+  "scenario": "A session fixed one restatement of a duplicated fact (a skill-count claim) in one doc, while the fixture explicitly discloses that the same fact is independently restated -- and left stale -- in 2 other sites not touched by the session. Tests Phase 5's discipline: report the full blast radius (all 3 sites, current state per site), not just the one the session happened to touch, as one consolidated finding (not 3 separate ones). Fixture: session-transcript-blast-radius.md.",
+  "assertions": [
+    {"text": "The report identifies this as a Duplication / canonical-fact-drift finding under Phase 5, naming a canonical source and listing all 3 known consumer sites (docs/onboarding.md, plugins/widget-kit/README.md, plugins/widget-kit/.claude-plugin/plugin.json), not just the one the session touched", "type": "functionality", "target": "report"},
+    {"text": "The report states the current state per consumer accurately: docs/onboarding.md now correct (7), the other 2 sites still stale (6)", "type": "functionality", "target": "report"},
+    {"text": "This is reported as ONE consolidated finding naming all 3 sites, not 3 separate per-site findings, per change-impact-checklist.md's 'one root cause, one finding' consolidation discipline", "type": "quality", "target": "report"},
+    {"text": "The finding does not silently present the fix as complete just because the session's own touched site is now correct -- the 2 still-stale sites are flagged as the actual remaining work", "type": "quality", "target": "report"}
+  ]
+}

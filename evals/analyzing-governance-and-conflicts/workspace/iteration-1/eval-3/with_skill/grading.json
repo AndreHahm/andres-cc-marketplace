@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "The report identifies this as a Duplication/canonical-fact-drift finding under Phase 5, naming a canonical source and listing all 3 known consumer sites", "passed": true, "evidence": "\"All known consumers (3):\" list names all 3 exact sites (docs/onboarding.md, plugins/widget-kit/README.md, plugins/widget-kit/.claude-plugin/plugin.json)."},
+    {"text": "The report states the current state per consumer accurately: docs/onboarding.md now correct (7), the other 2 sites still stale (6)", "passed": true, "evidence": "Explicitly stated per-site, plus a summary line \"1 of 3 sites matches the real count (7); 2 of 3 are stale.\""},
+    {"text": "Reported as ONE consolidated finding naming all 3 sites, not 3 separate per-site findings", "passed": true, "evidence": "Single finding block covers all 3 sites together."},
+    {"text": "Does not silently present the fix as complete -- the 2 still-stale sites are flagged as the actual remaining work", "passed": true, "evidence": "Top Actions #1 explicitly calls out fixing the 2 remaining stale sites."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
