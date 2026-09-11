@@ -116,12 +116,11 @@ Items still open before Wave 2 is fully live:
   by design**, same shippable-defaults-plus-local-override model every existing field already uses —
   an installation activates them via `.claude/workmanagement-kit.local.json`, never by editing the
   shipped file.
-- **7 of the 8 Wave 2 skills still have only one real `skill-tester` Quick Workflow eval scenario**
-  (under `evals/<skill-name>/`), not the fuller 2-3-scenario baseline coverage Wave 1's own skills
-  carry — a real gap, not a placeholder, worth closing in a follow-up pass.
-  `merge-to-completion` is the one exception so far: a second scenario was added and passed during
-  this plugin's `plugin-lifecycle-downstream` QA run (2026-09-11), directly exercising its rewritten
-  Codex Bridge-Caller Dispatch path.
+- **RESOLVED (2026-09-11):** all Wave 2 skills, plus `linear-work-management` and `work-linking` from
+  Wave 1, now carry at least 3 real `skill-tester` Quick Workflow eval scenarios each (under
+  `evals/<skill-name>/`), matching plugin-rulebook's `min_eval_scenarios` threshold — closed during
+  this plugin's `plugin-lifecycle-downstream` QA run via 17 new scenarios and 34 real
+  with_skill-vs-baseline comparison runs.
 - **`development-to-pr`'s existing-PR path pushes without the mandatory pre-push `cross-model-review`
   gate** the new-PR path gets for free through `git-kit:create-pr`'s own Pre-flight Checks — `git-kit`
   has no standalone "commit, review, then push" sequence to compose without re-implementing part of
