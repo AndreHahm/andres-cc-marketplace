@@ -114,8 +114,8 @@ This skill works with hooks that:
 ## Integration
 
 Works automatically via plugin hooks. No manual configuration needed for the default behavior (see
-the plugin README for the optional `CONTEXT_KIT_PLANS_DIR`/`CONTEXT_KIT_SESSION_LOGS_DIR`/
-`CLAUDE_PRECOMPACT_BLOCK_ON_DRAFT` env vars). The full hook wiring, by event:
+the plugin README for the optional `CONTEXT_KIT_PLANS_DIR`/`CONTEXT_KIT_SESSION_LOGS_DIR` env vars).
+The full hook wiring, by event:
 
 - **`SessionStart`** — `compact-session-init.sh` (always) initializes tool-call tracking for the new
   session. `post-compact-restore.py` (matcher `compact|resume`) reads back whatever
@@ -157,11 +157,6 @@ the plugin README for the optional `CONTEXT_KIT_PLANS_DIR`/`CONTEXT_KIT_SESSION_
 session; a `mkdir`-based lock (bounded retries, fail-open, with stale-lock detection for a
 crashed/killed prior invocation) guards every read-modify-write against the two hooks racing each
 other when Claude Code dispatches multiple tool calls in close succession.
-
-**A second, opt-in blocking path exists.** `pre-compact.py` can also block compaction once, when
-`CLAUDE_PRECOMPACT_BLOCK_ON_DRAFT=1` is set and the active plan's status is still DRAFT — off by
-default, since blocking the harness's automatic compaction can strand a user at the context ceiling.
-It blocks at most once per DRAFT plan.
 
 ## Testing & Validation
 

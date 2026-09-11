@@ -47,7 +47,6 @@ values fall back to safe, no-op-if-unconfigured defaults:
 | `CLAUDE_CONTEXT_MAX_TOOL_CALLS` | `400` | Fallback tool-call-count proxy when a transcript file isn't available |
 | `STRATEGIC_COMPACT_T1` / `_T2` / `_T3` | `50` / `75` / `100` | Tool-call-count thresholds for `strategic-compact`'s suggestions |
 | `STRATEGIC_COMPACT_TIME` | `1800` (30 min) | Time-based suggestion threshold, in seconds |
-| `CLAUDE_PRECOMPACT_BLOCK_ON_DRAFT` | unset (off) | Opt-in: block compaction once when an active plan (see below) is still DRAFT |
 | `CONTEXT_KIT_PLANS_DIR` | unset (feature inert) | Optional plan-file directory (absolute, or relative to `$CLAUDE_PROJECT_DIR`) `pre-compact.py`/`post-compact-restore.py` scan for an active plan's status/current-task |
 | `CONTEXT_KIT_SESSION_LOGS_DIR` | unset (feature inert) | Optional session-log directory (same path rules) for a compaction note and the most-recent-log pointer surfaced on restore |
 
