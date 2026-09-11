@@ -133,7 +133,7 @@ is_path_blob_reachable() {
 # Git-Bash environment this script actually runs in).
 check_diff_records() {
   local file="$1"
-  local meta path new_mode new_blob status
+  local meta path new_mode new_blob status del_out del_rc
   while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
     # meta: ":<old_mode> <new_mode> <old_blob> <new_blob> <status>" -- old
     # mode/blob aren't needed here, only the post-image
@@ -142,8 +142,24 @@ check_diff_records() {
       # Deletion: satisfied only if $default_branch's CURRENT tree also no
       # longer has this path -- if it does, the tag's removal was never
       # reflected there (see is_path_blob_reachable's own "known, accepted
-      # limitation" comment above).
-      git cat-file -e "${default_branch}:${path}" 2>/dev/null && return 1
+      # limitation" comment above). `git ls-tree`, not `git cat-file -e`: the
+      # latter also fails (nonzero exit) when the path exists but its BLOB
+      # object is unreadable/corrupted, which is indistinguishable from "path
+      # absent" by exit code alone -- live-verified: deleting a blob object
+      # out from under an otherwise-intact tree entry makes `cat-file -e`
+      # fail with the path still genuinely present, which the old `&&`
+      # silently misread as "deletion satisfied" (cross-model-review finding,
+      # round 2, Codex fresh-eyes). `ls-tree` never needs to open the blob at
+      # all to answer "does this path exist in the tree" -- live-verified:
+      # it returns exit 0 with the entry listed even when that same blob is
+      # deleted, and exit 0 with empty output only when the path is
+      # genuinely absent; a nonzero exit here means $default_branch itself
+      # couldn't be read (a bad ref, or a corrupted root tree), which fails
+      # closed the same way the non-merge diff-tree call above already does.
+      del_out=$(git ls-tree "$default_branch" -- "$path" 2>/dev/null)
+      del_rc=$?
+      [ "$del_rc" -ne 0 ] && return 1
+      [ -n "$del_out" ] && return 1
     else
       [ -z "$new_blob" ] && return 1
       is_path_blob_reachable "$path" "$new_blob" "$new_mode" || return 1

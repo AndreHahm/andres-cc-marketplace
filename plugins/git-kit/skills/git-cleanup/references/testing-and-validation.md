@@ -238,22 +238,23 @@ shipped and tested, same as PR #275's own "Superseded by" note above it did for 
       it appeared in `--list`, deleted by index, confirmed removal via a follow-up `git tag -l`
 
 **Covered by a persisted, repeatable fixture** (flagged by Devin's automated PR review on PR #275;
-addressed in the same PR rather than deferred; updated 2026-09-11 for the per-path/per-blob redesign
-below): `scripts/test-content-reachable.sh` sources `is_path_blob_reachable`/`is_tag_content_reachable`
-directly from `delete-rebase-backup-tags.sh` -- never a hand-copied re-implementation, so it can't
-silently drift from the real code -- and exercises 7 scenarios in isolated, throwaway git repos: a
-genuine rebase-merge (SHA differs, content identical) is recognized as reachable; a whitespace-only
-difference does NOT falsely match; a trivial merge commit doesn't abort the walk; a `git diff-tree`
-failure is distinguished from an empty diff; the atomic compare-and-delete succeeds on a matching oid and
-refuses on a stale one; content the default branch reorganized into a different commit grouping than the
-tag recorded is still recognized as reachable; that same reorganized-grouping case doesn't mask a
-file that genuinely never landed; a parentless (root) commit's content is checked rather than silently
-skipped, in both the reachable and genuinely-missing direction; a non-ASCII path deletion is checked
-against `$default_branch`'s real state rather than a mis-parsed literal string, in both directions; and a
-`git diff-tree` failure on a non-merge commit fails closed rather than being misread as an empty diff. Run
-directly: `bash scripts/test-content-reachable.sh`. All 5 passed on the fix that shipped in PR #275; all 12
-(7 from the 2026-09-11 redesign + 5 more from the same day's security-reviewer follow-up) pass on the
-current script.
+addressed in the same PR rather than deferred; updated 2026-09-11 for the per-path/per-blob redesign and
+its two `cross-model-review` follow-up rounds below): `scripts/test-content-reachable.sh` sources
+`is_path_blob_reachable`/`check_diff_records`/`is_tag_content_reachable` directly from
+`delete-rebase-backup-tags.sh` -- never a hand-copied re-implementation, so it can't silently drift from
+the real code -- and currently exercises 16 scenarios in isolated, throwaway git repos, covering: a
+genuine rebase-merge (SHA differs, content identical) recognized as reachable; a whitespace-only
+difference NOT falsely matching; a trivial merge commit not aborting the walk; a `git diff-tree` failure
+(merge and non-merge) distinguished from an empty diff; the atomic compare-and-delete succeeding on a
+matching oid and refusing on a stale one; content reorganized into a different commit grouping still
+recognized, and that not masking a file that genuinely never landed; a parentless (root) commit's content
+checked in both directions; a non-ASCII path deletion checked against `$default_branch`'s real state
+rather than a mis-parsed literal string, in both directions; a mode-only change (`chmod +x`) checked in
+both directions; a filename containing a pathspec metacharacter still matched literally; and a deletion
+check failing closed when the path's blob is unreadable, not just when the path is absent. Run directly:
+`bash scripts/test-content-reachable.sh`. All 5 passed on the fix that shipped in PR #275; all 16 pass on
+the current script (see the three dated "Live results" entries above for the redesign and each
+`cross-model-review` round that grew this count from 5 to 16).
 
 **Live results, 2026-09-11 (per-path/per-blob content-reachability redesign):** the exact-diff-text
 approach above was found to have a much higher real-world failure rate than its own disclosed limitation
@@ -371,3 +372,33 @@ single-model fallback, full two-model run both phases.
   before writing the fixture. All 15 passed after the fixes; re-ran `delete-rebase-backup-tags.sh --list`
   against this repository's real remaining tags afterward and confirmed no regression
   (`feat/pr-ci-governance-rebase-backup-20260907-210042` still the only one listed).
+
+**Live results, 2026-09-11 (`cross-model-review` round 2, on the mode-tracking/literal-pathspec fix
+above):** re-run per the skill's own re-commit-then-re-review loop, since the round 1 fix was itself a
+code change to the diff being reviewed.
+- **Confirmed (High confidence): the deletion branch's own object-read failure wasn't distinguished from
+  genuine absence.** Codex fresh-eyes found that `check_diff_records`' deletion check,
+  `git cat-file -e "${default_branch}:${path}" 2>/dev/null && return 1`, fails (nonzero exit) both when
+  the path is genuinely absent from `$default_branch` AND when the path still exists there but its blob
+  object is missing or corrupted — the two cases are indistinguishable by exit code alone, and the `&&`
+  silently treated both as "deletion satisfied." Live-verified before fixing: deleting a blob object out
+  from under an otherwise-intact tree entry made `cat-file -e` fail while the path was still genuinely
+  present, and the old code read that failure as a clean pass. This is the exact same anti-pattern
+  (`cc_rc`, the non-merge `diff_rc` check) already fixed twice elsewhere in this same diff, just missed
+  in the one remaining place it applied — a real instance of exactly what
+  `.claude/rules/require-tests-for-behavior-changes.md`'s "Fix Completeness: Sweep Sibling Occurrences"
+  section warns against. Fixed by switching to `git ls-tree "$default_branch" -- "$path"`, which never
+  needs to open the blob at all to answer "does this path exist in the tree" — live-verified separately:
+  it returns exit 0 with the entry still listed even when that same blob is deleted, and exit 0 with
+  empty output only when the path is genuinely absent; a nonzero exit means `$default_branch` itself
+  couldn't be read (a bad ref or corrupted root tree), which now fails closed the same way the non-merge
+  `diff-tree` call already does.
+- 1 new regression scenario added to `test-content-reachable.sh` (16 total, up from 15): a deletion
+  record's verification fails closed when the path's blob is unreadable, not just when the path is
+  absent — built by corrupting a real blob object out from under an otherwise-intact tree entry, mirroring
+  the live-verification technique used to find the bug itself. All 16 passed after the fix; re-ran
+  `delete-rebase-backup-tags.sh --list` against this repository's real remaining tags afterward and
+  confirmed no regression.
+- Claude's own Phase 1 pass on this round reported no findings (`verdict: approve`) — the only finding
+  this round came from Codex fresh-eyes, confirmed independently (Claude re-derived the same code-level
+  facts and live-verified them before accepting the finding, rather than trusting Codex's report alone).
