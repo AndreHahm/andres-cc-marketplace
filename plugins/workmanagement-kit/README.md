@@ -116,9 +116,12 @@ Items still open before Wave 2 is fully live:
   by design**, same shippable-defaults-plus-local-override model every existing field already uses —
   an installation activates them via `.claude/workmanagement-kit.local.json`, never by editing the
   shipped file.
-- **Each of the 8 Wave 2 skills has one real `skill-tester` Quick Workflow eval scenario** (under
-  `evals/<skill-name>/`), not the fuller 2-3-scenario baseline coverage Wave 1's own skills carry —
-  a real gap, not a placeholder, worth closing in a follow-up pass.
+- **7 of the 8 Wave 2 skills still have only one real `skill-tester` Quick Workflow eval scenario**
+  (under `evals/<skill-name>/`), not the fuller 2-3-scenario baseline coverage Wave 1's own skills
+  carry — a real gap, not a placeholder, worth closing in a follow-up pass.
+  `merge-to-completion` is the one exception so far: a second scenario was added and passed during
+  this plugin's `plugin-lifecycle-downstream` QA run (2026-09-11), directly exercising its rewritten
+  Codex Bridge-Caller Dispatch path.
 - **`development-to-pr`'s existing-PR path pushes without the mandatory pre-push `cross-model-review`
   gate** the new-PR path gets for free through `git-kit:create-pr`'s own Pre-flight Checks — `git-kit`
   has no standalone "commit, review, then push" sequence to compose without re-implementing part of
@@ -172,3 +175,11 @@ Items still open from Wave 1:
   this plugin's `plugin-lifecycle-downstream` QA run (2026-08-30); the Critical and Major findings
   from that pass are fixed in that skill's own file. Re-run the pass again before this gate is
   wired to a live connector.
+
+## Contributing
+
+See `CONTRIBUTING.md` for this plugin's preferred scripting language and change-proposal process.
+
+## License
+
+Licensed under Apache 2.0 — see `LICENSE`.
