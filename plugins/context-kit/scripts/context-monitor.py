@@ -297,21 +297,71 @@ def save_cache(data: dict, session_id: str = "") -> None:
         pass
 
 
+def _maybe_reset_baseline(transcript_path: str, session_id: str = "") -> None:
+    """If post-compact-restore.py signaled a compaction just completed (via a
+    marker file in the shared session dir), reset the byte baseline and every
+    progressive-nudge flag.
+
+    Compaction does not truncate the transcript file -- it retains every
+    pre-compaction message plus a compact-summary marker in the same file
+    (confirmed against plugins/session-kit/skills/session-recover/references/
+    file-structure.md, this repo's own trusted reference: "the last compact
+    boundary's summary reflects the most recent state... messages after the
+    last boundary are the hot zone"). Without a baseline, `os.path.getsize()`
+    on the whole file stays pegged near 100% forever after the first
+    compaction, and a threshold already marked shown pre-compaction would
+    never re-fire as the new, post-compaction context climbs back through it.
+
+    The marker is set at SessionStart(source=compact) time (post-compact-
+    restore.py) but consumed here, on the first PostToolUse call after it --
+    SessionStart's own payload isn't confirmed to carry transcript_path, but
+    PostToolUse's reliably does (live-verified this session), so this is the
+    first point a byte baseline can actually be measured. The small gap
+    between compact completing and this first tool call is negligible growth.
+    """
+    marker = get_session_dir(session_id) / "compact-baseline-reset-pending"
+    if not marker.exists():
+        return
+    try:
+        marker.unlink()
+    except OSError:
+        pass
+
+    cache = read_cache(session_id)
+    cache["shown_learn"] = []
+    cache["shown_warn_80"] = False
+    cache["shown_warn_90"] = False
+    cache["tool_calls"] = 0
+    baseline_bytes = 0
+    if transcript_path:
+        try:
+            baseline_bytes = os.path.getsize(transcript_path)
+        except OSError:
+            baseline_bytes = 0
+    cache["baseline_bytes"] = baseline_bytes
+    save_cache(cache, session_id)
+
+
 def estimate_context_percentage(hook_input: dict, session_id: str = "") -> float:
     """
     Estimate context usage as a percentage (0-100). COARSE PROXY.
 
-    Preferred: a token estimate from the transcript file size against the model's
-    context window (CLAUDE_CONTEXT_WINDOW_TOKENS). Fallback when no transcript is
-    available: a tool-call counter (CLAUDE_CONTEXT_MAX_TOOL_CALLS). Neither is exact.
+    Preferred: a token estimate from the transcript file size (minus any
+    post-compaction baseline -- see _maybe_reset_baseline) against the
+    model's context window (CLAUDE_CONTEXT_WINDOW_TOKENS). Fallback when no
+    transcript is available: a tool-call counter (CLAUDE_CONTEXT_MAX_TOOL_CALLS).
+    Neither is exact.
     """
     window = _env_int("CLAUDE_CONTEXT_WINDOW_TOKENS", DEFAULT_CONTEXT_WINDOW_TOKENS)
-
     transcript_path = hook_input.get("transcript_path", "")
+    _maybe_reset_baseline(transcript_path, session_id)
+
     if transcript_path:
         try:
             size_bytes = os.path.getsize(transcript_path)
-            approx_tokens = size_bytes / APPROX_BYTES_PER_TOKEN
+            baseline = int(read_cache(session_id).get("baseline_bytes", 0))
+            effective_bytes = max(size_bytes - baseline, 0)
+            approx_tokens = effective_bytes / APPROX_BYTES_PER_TOKEN
             return min(approx_tokens / window * 100, 100)
         except OSError:
             pass
@@ -440,6 +490,15 @@ def run_context_monitor() -> int:
                 "is lost, but summarize key decisions now.",
             )
             mark_threshold_shown("warn_90", True, session_id)
+            # Also mark every lower, subsumed threshold shown -- otherwise a
+            # sudden jump straight to 90%+ (skipping past 80% and the learn
+            # thresholds without ever observing them individually) leaves
+            # those flags False, and the next few tool calls would surface
+            # progressively *less* urgent notices right after the most
+            # urgent one already fired (found live by cross-model-review).
+            mark_threshold_shown("warn_80", True, session_id)
+            for threshold in LEARN_THRESHOLDS:
+                mark_threshold_shown("learn", threshold, session_id)
             return 0  # Non-blocking note (exit 2 would feed stderr to Claude)
 
         # Check 80% threshold (info)
@@ -450,6 +509,9 @@ def run_context_monitor() -> int:
                 "Ensure the session log and active plan are current on disk.",
             )
             mark_threshold_shown("warn_80", True, session_id)
+            # Same subsumed-threshold reasoning as the 90% branch above.
+            for threshold in LEARN_THRESHOLDS:
+                mark_threshold_shown("learn", threshold, session_id)
             return 0
 
         # Check reusable-discovery thresholds (40%, 55%, 65%)
