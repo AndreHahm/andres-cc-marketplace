@@ -239,10 +239,10 @@ shipped and tested, same as PR #275's own "Superseded by" note above it did for 
 
 **Covered by a persisted, repeatable fixture** (flagged by Devin's automated PR review on PR #275;
 addressed in the same PR rather than deferred; updated 2026-09-11 for the per-path/per-blob redesign, its
-two `cross-model-review` follow-up rounds, and the GitHub automated-review round below): `scripts/test-content-reachable.sh`
+two `cross-model-review` follow-up rounds, and the two GitHub automated-review rounds below): `scripts/test-content-reachable.sh`
 sources `is_path_blob_reachable`/`check_diff_records`/`is_tag_content_reachable` directly from
 `delete-rebase-backup-tags.sh` -- never a hand-copied re-implementation, so it can't silently drift from
-the real code -- and currently exercises 18 scenarios in isolated, throwaway git repos, covering: a
+the real code -- and currently exercises 19 scenarios in isolated, throwaway git repos, covering: a
 genuine rebase-merge (SHA differs, content identical) recognized as reachable; a whitespace-only
 difference NOT falsely matching; a trivial merge commit not aborting the walk; a `git diff-tree` failure
 (merge and non-merge) distinguished from an empty diff; the atomic compare-and-delete succeeding on a
@@ -252,10 +252,12 @@ checked in both directions; a non-ASCII path deletion checked against `$default_
 rather than a mis-parsed literal string, in both directions; a mode-only change (`chmod +x`) checked in
 both directions; a filename containing a pathspec metacharacter still matched literally; a deletion
 check failing closed when the path's blob is unreadable, not just when the path is absent; a blob present
-on `$default_branch` only before divergence not satisfying reachability; and content genuinely inherited
-unchanged from the merge-base still recognized. Run directly: `bash scripts/test-content-reachable.sh`.
-All 5 passed on the fix that shipped in PR #275; all 18 pass on the current script (see the four dated
-"Live results" entries above for the redesign and each review round that grew this count from 5 to 18).
+on `$default_branch` only before divergence not satisfying reachability; content genuinely inherited
+unchanged from the merge-base still recognized; and `$default_branch`'s own genuine merge-conflict-resolution
+content still recognized after the per-path history search was batched into one `git log --raw` call. Run
+directly: `bash scripts/test-content-reachable.sh`. All 5 passed on the fix that shipped in PR #275; all 19
+pass on the current script (see the six dated 2026-09-11 "Live results" entries above for the redesign
+and each review round that grew this count from 5 to 19).
 
 **Live results, 2026-09-11 (per-path/per-blob content-reachability redesign):** the exact-diff-text
 approach above was found to have a much higher real-world failure rate than its own disclosed limitation
@@ -447,3 +449,39 @@ verified live before fixing rather than accepted on the reviewer's say-so:
   correctness fix, not new behavior to cover. All 18 passed after both fixes; re-ran
   `delete-rebase-backup-tags.sh --list` against this repository's real remaining tags afterward and
   confirmed no regression (`feat/pr-ci-governance-rebase-backup-20260907-210042` still the only one listed).
+
+**Live results, 2026-09-11 (CodeRabbit nitpick: batch the per-commit `git ls-tree` loop):** requested by
+the user after triaging the round above; not gated on `review_findings_severity_gate` (this repo's
+default is `false` -- every finding gets fixed regardless of severity -- and the user explicitly asked
+for it regardless).
+- **The naive version of this optimization has a real correctness trap, caught before shipping it.**
+  CodeRabbit's own suggested replacement -- `git log --raw -z --root` in place of the per-commit
+  `git ls-tree` loop -- silently drops a genuine match for any merge commit with real hand-resolved
+  conflict content: `git log --raw` (unlike `git ls-tree`, which reads a commit's final tree directly)
+  shows nothing at all for a merge commit's own diff unless given `-m` (or `--cc`), since a merge has no
+  single parent to diff against by default. Live-verified in an isolated scratch repo before writing the
+  fix: a real 2-way conflict, resolved and committed, produced zero raw records under plain `--raw`, and
+  correct records under `-m`. This exact pattern (a merge commit silently reads as "nothing changed" via
+  a diff-based tool where a tree-based one wouldn't have that blind spot) is the same shape as this
+  file's own C1/M1 findings from earlier rounds -- caught here by testing the actual git behavior first,
+  per `.claude/rules/verify-tool-behavior-before-instructing.md`, rather than trusting the reviewer's
+  one-line suggestion or its own auto-generated "prompt for AI agents" text (which didn't mention merge
+  commits at all).
+- **A second, independent gotcha found only by running the change against the existing test suite:**
+  `git log --raw`'s default raw-format object names are ABBREVIATED (short), unlike `git diff-tree`'s
+  raw format (already used everywhere else in this file), which defaults to FULL 40-char hashes with no
+  extra flag needed. The first version of this fix (missing this) broke 7 of the 18 existing regression
+  scenarios -- every blob comparison silently failed for the wrong reason, since a 7-char abbreviated
+  hash can never equal the full `$wanted_blob` this function receives. `--full-index` (the flag
+  `git diff`/`git diff-tree` themselves document for exactly this purpose) was tried first and found NOT
+  sufficient for `git log` specifically -- `--no-abbrev` is the flag that actually works there, found by
+  testing each in isolation rather than assuming the documented `diff`/`diff-tree` flag would transfer.
+- **Performance verified with a controlled, back-to-back A/B comparison** (not a single before/after
+  timing, which this repository's own shared, concurrently-active state makes noisy) -- same shell
+  session, same 5 real tags, old and new implementations run back to back, twice each: old ~20.2-20.4s,
+  new ~14.6-15.9s, a consistent ~25-30% improvement both times.
+- 1 new regression scenario added to `test-content-reachable.sh` (19 total, up from 18): a merge commit
+  on `$default_branch`'s own side (not the tag's) with genuine hand-resolved conflict content is still
+  found by the batched search. All 19 passed after the fix; re-ran `delete-rebase-backup-tags.sh --list`
+  and `phase1-analysis.sh` against this repository's real remaining tags afterward and confirmed no
+  regression -- both scripts' output stayed identical to every prior round.
