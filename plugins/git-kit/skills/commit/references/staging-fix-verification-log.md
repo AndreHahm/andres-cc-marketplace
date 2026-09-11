@@ -164,6 +164,23 @@ design. Not re-exercised this round: a genuine install failure (the guard logic 
 round 2's already-verified version, just relocated) and a live `commit` run through the skill's own
 normal flow rather than a direct script invocation.
 
+**Round 5, 2026-09-11 — a fourth `cross-model-review` pass found one more gap, correctly rated minor:**
+the "does this repo use commitlint at all" no-op check still read only the working tree — a fetched
+branch could delete `.commitlintrc.cjs`/`package.json` locally to silently suppress the entire check
+while the trusted `origin/<default-branch>` setup was still there. The straightforward fix (always
+require a resolvable trusted ref before deciding) would have regressed the common case: every other
+git-kit-using repo with no commitlint setup and no `origin` remote would print a confusing
+`SKIP: could not resolve a trusted ref` on every commit. Fixed instead by checking both signals
+(working tree via `[ -f ... ]`, trusted ref via `git cat-file -e "origin/$DEFAULT_BRANCH:<path>"`) and
+exiting 0 only when *neither* indicates a setup — an ordinary repo without commitlint still gets a
+silent, fast no-op exactly as before. Verified live: the exact bypass scenario (working-tree
+`.commitlintrc.cjs` moved aside via `mv`, trusted ref still has it) still correctly ran the check and
+caught a real violation, restored via `mv` back afterward, `git status` clean; a genuinely fresh
+throwaway repo with no commitlint setup anywhere and no `origin` still exits 0 silently, no spurious
+message; the existing no-origin-remote-but-has-commitlint-files test repo from round 3 still correctly
+exits 2 with the `SKIP:` message; and the full regression (clean pass, real violation exit 1,
+pnpm-missing exit 2) against the real repo, all unchanged.
+
 ## Step 16 (push) — fixed and verified live, 2026-08-28
 
 This PR's first pass at step 16 replaced "retype/recompose the branch name" with "resolve it fresh
