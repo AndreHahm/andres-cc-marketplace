@@ -139,10 +139,11 @@ The full hook wiring, by event:
   get a context-usage nudge at all.
 - **`PreCompact`** — `compact-instructions.sh` writes best-effort stderr/`systemMessage` guidance on
   what to preserve through compaction; this is a nudge, not a guarantee (stderr is verbose-mode-only
-  by default, and `PreCompact` doesn't support `additionalContext` at all — see the script's own
-  comment). The plugin's actual state-preservation guarantee is `pre-compact.py`, which captures the
-  active plan's state (see `SessionStart` above) for `post-compact-restore.py` to restore afterward
-  via `additionalContext` on `SessionStart`, which *is* supported.
+  by default). `PreCompact` **does** support `hookSpecificOutput.additionalContext` per Claude Code's
+  own docs — `compact-instructions.sh` simply doesn't use it (an implementation choice, not a contract
+  limitation; see the script's own comment). The plugin's actual state-preservation guarantee is
+  `pre-compact.py`, which captures the active plan's state (see `SessionStart` above) for
+  `post-compact-restore.py` to restore afterward via `additionalContext` on `SessionStart`.
 - **`Stop`** — `compact-stop-check.sh` checks for a pending suggestion that hasn't reached the user
   yet and **blocks the stop once** (`{"decision": "block", ...}`) when one exists, guarded by
   `stop_hook_active` so it never re-triggers itself on the resulting continuation. This is the

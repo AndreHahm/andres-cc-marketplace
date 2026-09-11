@@ -120,11 +120,15 @@ CMD_START='^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(env[
 
 # Test commands — PostToolUse only fires after the Bash call completed
 # successfully (see the comment above), so no separate success check is
-# needed here. `\b...\b` word-boundary-anchors every alternative
-# (GNU grep, already relied on elsewhere in this script) so a short token
-# like `jest` only matches a real word, not a substring of an unrelated
-# command (e.g. `majestic`, `jester`) — this branch was dead code before
-# the SUCCESS-gate removal above, so this substring-match exposure is new.
+# needed here. `-w` (whole-word match around the entire matched pattern)
+# ensures a short token like `jest` only matches a real word, not a
+# substring of an unrelated command (e.g. `majestic`, `jester`) — this
+# branch was dead code before the SUCCESS-gate removal above, so this
+# substring-match exposure is new. Uses `-w`, not `\b`: BSD grep (macOS's
+# default `/usr/bin/grep`) doesn't support the GNU-only `\b` word-boundary
+# escape at all — it's treated as a literal `b`, silently matching nothing
+# on that platform (corrected 2026-09-11, found by CodeRabbit's automated
+# review; `-w` is supported by both GNU and BSD grep).
 # Skip the milestone when the command itself swallows a failing test's
 # exit code (e.g. `pytest || true`) — PostToolUse fires on the outer
 # command's own exit status, not the test framework's, so a command
@@ -133,27 +137,28 @@ CMD_START='^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(env[
 # heuristic: only the exact trailing `|| true` / `; true` pattern
 # (optionally followed by a shell comment, e.g. `|| true  # flaky`),
 # not every possible failure-swallowing shape (found by cross-model-review).
-if echo "$COMMAND_SEGMENTS" | grep -qiE "${CMD_START}(npm test|npm run test|yarn test|pnpm test|jest|vitest|pytest|python -m pytest|go test|cargo test|rspec|phpunit|mvn test|gradle test)\\b" \
+if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}(npm test|npm run test|yarn test|pnpm test|jest|vitest|pytest|python -m pytest|go test|cargo test|rspec|phpunit|mvn test|gradle test)" \
     && ! echo "$COMMAND" | grep -qE '(\|\|[[:space:]]*true|;[[:space:]]*true)[[:space:]]*(#.*)?$'; then
     MILESTONE_TYPE="test_pass"
 fi
 
 # Git commit
-if echo "$COMMAND_SEGMENTS" | grep -qiE "${CMD_START}git commit\\b"; then
+if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}git commit"; then
     MILESTONE_TYPE="commit"
 fi
 
-# Build commands — same PostToolUse-implies-success and word-boundary
-# reasoning as above (`make build` would otherwise substring-match inside
-# `cmake build`).
-if echo "$COMMAND_SEGMENTS" | grep -qiE "${CMD_START}(npm run build|yarn build|pnpm build|cargo build|go build|make build|gradle build|mvn package)\\b"; then
+# Build commands — same PostToolUse-implies-success and `-w` (not `\b`,
+# for BSD-grep portability — see the test-commands comment above) reasoning
+# as above (`make build` would otherwise substring-match inside `cmake
+# build`).
+if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}(npm run build|yarn build|pnpm build|cargo build|go build|make build|gradle build|mvn package)"; then
     MILESTONE_TYPE="build"
 fi
 
-# Deploy commands — same word-boundary reasoning as above, swept here for
-# consistency (this block predates the SUCCESS-gate fix and was already
+# Deploy commands — same `-w`/BSD-portability reasoning as above, swept here
+# for consistency (this block predates the SUCCESS-gate fix and was already
 # live, but shares the same unanchored-substring shape).
-if echo "$COMMAND_SEGMENTS" | grep -qiE "${CMD_START}(deploy|npm run deploy|vercel|netlify|heroku|kubectl apply|docker push)\\b"; then
+if echo "$COMMAND_SEGMENTS" | grep -qiwE "${CMD_START}(deploy|npm run deploy|vercel|netlify|heroku|kubectl apply|docker push)"; then
     MILESTONE_TYPE="deploy"
 fi
 
