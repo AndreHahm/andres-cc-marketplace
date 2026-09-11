@@ -11,6 +11,11 @@ default_branch=$(git symbolic-ref refs/remotes/origin/HEAD \
   2>/dev/null | sed 's@^refs/remotes/origin/@@')
 default_branch="${default_branch:-main}"
 
+# Disables pathspec glob/wildcard magic for every git call this process makes
+# -- matches delete-rebase-backup-tags.sh's own identical fix; see that
+# script's comment for the live-verified detail (cross-model-review finding).
+export GIT_LITERAL_PATHSPECS=1
+
 # Protected branches - never analyze or delete
 protected='^(main|master|develop|release/.*)$'
 
@@ -81,26 +86,27 @@ comm -23 \
 # on a mis-parsed literal string) -- not restated here to avoid a second
 # copy of the same rationale drifting out of sync with the code itself.
 is_path_blob_reachable() {
-  local path="$1" wanted_blob="$2"
-  local commit blob
+  local path="$1" wanted_blob="$2" wanted_mode="$3"
+  local commit mode blob
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
-    blob=$(git rev-parse --verify --quiet "${commit}:${path}" 2>/dev/null) || continue
-    [ "$blob" = "$wanted_blob" ] && return 0
+    read -r mode _ blob _ < <(git ls-tree "$commit" -- "$path" 2>/dev/null)
+    [ -z "$blob" ] && continue
+    [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ] && return 0
   done < <(git rev-list "$default_branch" -- "$path")
   return 1
 }
 
 check_diff_records() {
   local file="$1"
-  local meta path new_blob status
+  local meta path new_mode new_blob status
   while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
-    read -r _ _ _ new_blob status <<< "${meta#:}"
+    read -r _ new_mode _ new_blob status <<< "${meta#:}"
     if [ "$status" = "D" ]; then
       git cat-file -e "${default_branch}:${path}" 2>/dev/null && return 1
     else
       [ -z "$new_blob" ] && return 1
-      is_path_blob_reachable "$path" "$new_blob" || return 1
+      is_path_blob_reachable "$path" "$new_blob" "$new_mode" || return 1
     fi
   done < "$file"
   return 0

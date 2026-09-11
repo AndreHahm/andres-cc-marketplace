@@ -334,3 +334,40 @@ verified live in an isolated scratch repo before fixing (never fixed on the revi
   now agrees exactly with `--list`: `feat/pr-ci-governance-rebase-backup-20260907-210042` reports
   "reachable from main: yes (content match after rebase...)"; the other three multi-commit tags still
   correctly report "NO."
+
+**Live results, 2026-09-11 (`cross-model-review` pass on the redesign + security fixes above):** run
+before opening the PR, per `create-pr`'s own mandatory pre-push gate. Both Claude and Codex reviewed the
+full diff independently (Phase 1), then each cross-examined the other's findings (Phase 2) — no
+single-model fallback, full two-model run both phases.
+- **Confirmed (High confidence, both sides): mode-only changes weren't verified.** Codex fresh-eyes found
+  that `check_diff_records` discarded both mode fields from the raw diff-tree record, and
+  `is_path_blob_reachable` compared blob identity only — a tag commit whose only change was `chmod +x`
+  (or a file/symlink swap with byte-identical content) would be reported "content-reachable" even if that
+  mode change never landed on `main`. Claude's Phase 2 pass independently re-derived the same code-level
+  facts and confirmed it, additionally correcting the severity: this session's own earlier
+  `security-reviewer` dispatch had filed the identical gap as informational ("no blob content is lost"),
+  but the whole point of this check is whether the tag's content is genuinely present elsewhere, and a
+  mode change is content the tag captured — Major, not informational, is the accurate severity. Fixed by
+  capturing `new_mode` from the raw diff-tree record (previously discarded) and switching
+  `is_path_blob_reachable`'s acceptance test from `git rev-parse "$commit:$path"` (blob only) to
+  `git ls-tree "$commit" -- "$path"` (mode + blob together, requiring both to match).
+- **Confirmed (High confidence, both sides): non-literal pathspec matching.** Claude fresh-eyes found
+  that `git rev-list "$default_branch" -- "$path"` treats `$path` as a pathspec, not a literal string —
+  a real filename containing `*`, `?`, or `[` could be glob-interpreted. Codex's Phase 2 pass
+  independently confirmed it and agreed it's safe-direction only (the actual acceptance check right
+  after is an exact literal-path lookup, so this could only ever cause a spurious "needs manual review,"
+  never a false "safe to delete"). Fixed with `export GIT_LITERAL_PATHSPECS=1` once near the top of both
+  scripts (rather than patching every individual pathspec argument), live-verified in a scratch repo
+  before applying it: an unquoted `release*txt.txt` pathspec matched an unrelated `releaseXtxt.txt` file
+  without the env var, and matched nothing (correctly) with it set.
+- Both findings were user-approved for fixing (not deferred) before the PR was opened. 3 new regression
+  scenarios added to `test-content-reachable.sh` (15 total, up from 12): a mode-only change recognized
+  when reflected on `$default_branch`, and correctly kept unreachable when it isn't; and a filename
+  containing a pathspec metacharacter (`release[1].txt`) still correctly matched under
+  `GIT_LITERAL_PATHSPECS=1`. The mode-change scenarios use `git update-index --chmod=+x` rather than a
+  real filesystem `chmod` — this repository's own `core.filemode=false` default (typical on Windows/NTFS,
+  which has no real POSIX executable bit) makes a real `chmod` invisible to git entirely;
+  `update-index --chmod` forces the mode directly in the index regardless of platform, live-verified
+  before writing the fixture. All 15 passed after the fixes; re-ran `delete-rebase-backup-tags.sh --list`
+  against this repository's real remaining tags afterward and confirmed no regression
+  (`feat/pr-ci-governance-rebase-backup-20260907-210042` still the only one listed).
