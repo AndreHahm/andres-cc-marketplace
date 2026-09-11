@@ -34,96 +34,95 @@ default_branch=$(git symbolic-ref refs/remotes/origin/HEAD \
   2>/dev/null | sed 's@^refs/remotes/origin/@@')
 default_branch="${default_branch:-main}"
 
-# Patch-id (content) index of every commit on $default_branch, built lazily
-# on first use and cached for the rest of this script run (a fresh process
-# per invocation, so this never crosses the --list / delete TOCTOU boundary
-# described below). A rebase-then-merge sequence rewrites every commit's SHA
-# but preserves each commit's own diff content, so `git merge-base
-# --is-ancestor` (object-identity based) alone reports "not reachable" even
-# when a tag's entire history genuinely landed on $default_branch via
-# rebase -- live-verified against this repo's own PR #269
-# (feat/merge-pr-conflict-checks-rebase-backup-20260901-064237): all 6
-# commits unique to the tag had an exact patch-id match on main, despite
-# every one having a different SHA post-rebase. Same two-signal approach
-# (identity first, content fallback) already reviewed and shipped in
-# remap-handoff-shas.py's own patch-id index.
-#
-# `default_branch_patchids` must be called bare (never as `$(...)`) --
-# command substitution forks a subshell, and an assignment to
-# $main_patchid_log made inside that subshell is discarded when it exits,
-# silently defeating the cache on every call (found by security-reviewer,
-# PR #269 follow-up; live-verified: this bug alone took the 22-tag --list
-# run from an expected ~2s to 80s, rebuilding the full-history index once
-# per tag instead of once per script run).
-#
-# `--no-ext-diff --no-textconv` on both the index build and the per-commit
-# check below: without them, a repo-configured `diff.external` driver or a
-# `.gitattributes` textconv filter could substitute a lossy rendering for
-# real content on either side of a comparison, letting two genuinely
-# different blobs render identically and falsely match (security-reviewer,
-# M2).
-#
-# This index build keeps `git log -p`'s default pretty format (commit
-# header + full message + diff) rather than a message-suppressed one --
-# `--format=''` was tried and reverted: `git patch-id` splits a multi-commit
-# stream into per-commit patches using the "commit <sha>" header line that
-# format produces, and suppressing it collapses the entire branch history
-# into one giant patch-id instead of one per commit (live-verified: the
-# 667-commit index came back as a single id). The commit-message content
-# this format includes is not a live risk here regardless -- see the
-# per-commit check below, which avoids it by construction.
-#
-# `main_patchid_log` keeps the full `git patch-id` output ("<patch-id>
-# <commit-sha>" per line), not just a deduped set of ids -- patch-id alone
-# is a pre-filter, not the final verdict. `git patch-id` is documented to
-# ignore whitespace when hashing, so two commits whose diffs differ ONLY in
-# whitespace can share a patch-id (live-verified: adding 2 vs. 4 leading
-# spaces to the same line produced identical patch-ids for genuinely
-# different diff bytes -- Codex fresh-eyes finding F1, cross-model-review,
-# PR #269 follow-up). Trusting patch-id equality alone would let a tag
-# whose real content differs from $default_branch only by whitespace be
-# misclassified as safe to delete. `is_tag_content_reachable` below uses
-# this log to narrow candidates by patch-id cheaply, then requires an exact
-# byte-for-byte diff-text match against at least one candidate before
-# accepting -- confirmed this doesn't reject the genuine rebase-merge case:
-# a rebase preserves file content, and git blob hashes are purely
-# content-addressed, so the "index <old>..<new>" line inside a rebased
-# commit's diff text stays byte-identical too (live-verified against this
-# repo's real PR #269 commit pair).
-main_patchid_log=""
-
-default_branch_patchids() {
-  if [ -z "$main_patchid_log" ]; then
-    main_patchid_log=$(git log -p --no-ext-diff --no-textconv \
-      "$default_branch" -- 2>/dev/null \
-      | git patch-id --stable)
-  fi
-}
-
 # Content-based fallback for is_tag_safe_to_delete below. Requires every
 # commit unique to the tag (since its own merge-base with $default_branch)
-# to have an exact, byte-for-byte diff-text match against some commit on
-# $default_branch's full history -- a single unmatched commit keeps the tag
-# flagged unsafe, since it may be the only remaining copy of that one
-# commit's changes. Patch-id narrows the candidate set cheaply (typically to
-# zero or one commit); it is never the acceptance criterion by itself -- see
-# the comment above default_branch_patchids for why.
+# to have every path it changed reachable on $default_branch -- but
+# "reachable" is checked per (path, post-image blob) pair against that
+# path's own history on $default_branch, not as one whole-commit diff that
+# has to match a single commit there byte-for-byte. Since git blobs are
+# purely content-addressed, this also makes patch-id unnecessary as a
+# pre-filter: blob-id equality already IS exact byte-for-byte equality, with
+# none of patch-id's own whitespace-insensitivity to work around (see
+# is_path_blob_reachable below).
 #
-# Known, accepted limitation (safe direction only -- a false negative, never
-# a false positive): if $default_branch changed an unrelated part of the
-# SAME file between the tag's branch creation and its rebase-merge, the
-# rebased commit's diff text (surrounding context lines, and the "index
-# <old>..<new>" blob hashes on both sides) can differ from the tag's own
-# pre-rebase commit even though the actual logical change -- what this
-# commit itself adds/removes -- is identical. The exact-text comparison
-# then correctly finds no match and fails the tag closed, even though its
-# content genuinely did land on $default_branch. Fixing this precisely
-# would mean replacing exact-diff-text comparison with a real
-# content-equivalence check tolerant of a changed base (e.g. comparing
-# final blob state rather than the diff text itself) -- a real algorithm
-# redesign, not a quick patch, so it's deliberately not attempted here.
-# (Devin automated PR review finding, PR #275; disclosed and accepted
-# rather than fixed in this PR.)
+# This replaces PR #275's exact-diff-text approach specifically to close its
+# disclosed, accepted limitation: if $default_branch's own history
+# reorganizes a tag commit's changes differently than the tag recorded them
+# -- e.g. one file the tag added in a single commit lands on $default_branch
+# via a LATER, separate commit instead of the same one -- a whole-commit
+# diff-text comparison never finds a match, even though every changed path's
+# content is genuinely present. Per-path blob-history search finds it
+# regardless of which commit(s) $default_branch's own history split it
+# across (live-verified against this repo's real
+# feat/pr-ci-governance-rebase-backup-20260907-210042 tag: its one commit
+# added 13 files in a single diff, but main's matching commit only carried
+# 12 of them -- the 13th, .github/actions/fork-safety/action.yml, landed via
+# a wholly separate later commit; a whole-commit diff match could never see
+# this, per-path blob search finds the exact blob at that later commit).
+#
+# `--no-ext-diff --no-textconv` on the raw diff below: without them, a
+# repo-configured `diff.external` driver or a `.gitattributes` textconv
+# filter could substitute a lossy rendering for real content on either side
+# of a comparison, letting two genuinely different blobs render identically
+# and falsely match (security-reviewer, M2 -- same concern PR #275 raised
+# against the diff-text approach this replaces, still applicable to the raw
+# diff-tree output used here).
+#
+# Known, accepted limitation (still safe-direction-only -- a false negative,
+# never a false positive): a deleted path is only checked against
+# $default_branch's CURRENT tip, not its full history -- if the path was
+# deleted on $default_branch at some point but has since been re-added
+# (unusual, but possible), this reports "not reachable" even though the
+# original deletion did land at some point. Content additions/modifications
+# don't share this limitation -- they're checked against the path's FULL
+# history on $default_branch, not just its current tip.
+is_path_blob_reachable() {
+  local path="$1" wanted_blob="$2"
+  local commit blob
+  while IFS= read -r commit; do
+    [ -z "$commit" ] && continue
+    blob=$(git rev-parse --verify --quiet "${commit}:${path}" 2>/dev/null) || continue
+    [ "$blob" = "$wanted_blob" ] && return 0
+  done < <(git rev-list "$default_branch" -- "$path")
+  return 1
+}
+
+# Checks every raw NUL-delimited diff-tree record in file $1 (a real file,
+# never a `$(...)`-captured variable -- NUL bytes silently truncate a bash
+# string, so `-z` output can only be read back from a file or an open fd)
+# against $default_branch. Caller owns creating/removing $1; this function
+# never touches it. Split out from is_tag_content_reachable purely so every
+# early-return path here can't leak the caller's temp file -- the caller
+# does its own single `rm -f` after this returns, on every path, rather
+# than repeating cleanup before each of this function's several `return`
+# points (security-reviewer finding M1/C1 follow-up: a `trap ... RETURN`
+# was considered instead and rejected -- bash's RETURN trap is process-wide,
+# not scoped to one function invocation, so it would also fire when this
+# very function returns while the caller's `while read -d ''` is still
+# reading the same file, unlinking it mid-read; harmless on Linux (unlink
+# doesn't invalidate an already-open fd) but not guaranteed on the Windows/
+# Git-Bash environment this script actually runs in).
+check_diff_records() {
+  local file="$1"
+  local meta path new_blob status
+  while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
+    # meta: ":<old_mode> <new_mode> <old_blob> <new_blob> <status>" -- old
+    # mode/blob aren't needed here, only the post-image
+    read -r _ _ _ new_blob status <<< "${meta#:}"
+    if [ "$status" = "D" ]; then
+      # Deletion: satisfied only if $default_branch's CURRENT tree also no
+      # longer has this path -- if it does, the tag's removal was never
+      # reflected there (see is_path_blob_reachable's own "known, accepted
+      # limitation" comment above).
+      git cat-file -e "${default_branch}:${path}" 2>/dev/null && return 1
+    else
+      [ -z "$new_blob" ] && return 1
+      is_path_blob_reachable "$path" "$new_blob" || return 1
+    fi
+  done < "$file"
+  return 0
+}
+
 is_tag_content_reachable() {
   local tag="$1"
   local mb
@@ -131,21 +130,19 @@ is_tag_content_reachable() {
   local tag_commits
   tag_commits=$(git rev-list "$mb..$tag" 2>/dev/null)
   [ -z "$tag_commits" ] && return 1
-  default_branch_patchids
-  [ -z "$main_patchid_log" ] && return 1
-  local commit tag_diff pid candidates cand exact_match cc_diff cc_rc
+  local commit cc_diff cc_rc diff_file diff_rc
   while IFS= read -r commit; do
     [ -z "$commit" ] && continue
     if git rev-parse --verify --quiet "$commit^2" >/dev/null 2>&1; then
-      # Merge commit: plain `-p` (used below for every other commit) always
-      # shows no diff for a merge, which would otherwise fail the whole tag
-      # closed regardless of whether the merge actually introduced any
-      # unique content -- each parent's own changes are already walked
-      # separately as their own entries in this same rev-list. `--cc` shows
-      # only lines that differ from every parent (a real conflict-resolution
-      # edit); an empty `--cc` diff means this merge contributes nothing new
-      # beyond its parents, so skip it rather than treating it as
-      # unverifiable.
+      # Merge commit: unchanged from PR #275 -- plain `-p` (used below for
+      # every other commit) always shows no diff for a merge, which would
+      # otherwise fail the whole tag closed regardless of whether the merge
+      # actually introduced any unique content -- each parent's own changes
+      # are already walked separately as their own entries in this same
+      # rev-list. `--cc` shows only lines that differ from every parent (a
+      # real conflict-resolution edit); an empty `--cc` diff means this
+      # merge contributes nothing new beyond its parents, so skip it rather
+      # than treating it as unverifiable.
       #
       # Capture the exit status separately from stdout -- a `git diff-tree`
       # failure (bad object, corrupted ref) also produces empty stdout
@@ -162,27 +159,60 @@ is_tag_content_reachable() {
       if [ -z "$cc_diff" ]; then
         continue
       fi
-      # A merge with real conflict-resolution content has no comparable
-      # entry in $main_patchid_log -- that index is built from plain
-      # `git log -p`, which equally skips merge diffs, so there is nothing
-      # to match this content against. Fail closed rather than accepting
-      # unverified content.
+      # A merge with real conflict-resolution content has no single path's
+      # "before" state to diff against -- fail closed rather than accepting
+      # unverified content, same as PR #275's original merge-commit handling.
       return 1
     fi
-    tag_diff=$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$commit")
-    pid=$(printf '%s\n' "$tag_diff" | git patch-id --stable | awk '{print $1}')
-    [ -z "$pid" ] && return 1
-    candidates=$(printf '%s\n' "$main_patchid_log" | awk -v p="$pid" '$1 == p {print $2}')
-    [ -z "$candidates" ] && return 1
-    exact_match=false
-    while IFS= read -r cand; do
-      [ -z "$cand" ] && continue
-      if [ "$(git diff-tree -p --no-commit-id -r --no-ext-diff --no-textconv "$cand")" = "$tag_diff" ]; then
-        exact_match=true
-        break
-      fi
-    done <<< "$candidates"
-    $exact_match || return 1
+    # Non-merge commit: check every changed path's post-image blob against
+    # $default_branch's own history at that path -- not against one
+    # commit's whole diff.
+    #
+    # `--root`: without it, a PARENTLESS commit (a `git subtree --squash`
+    # import, a `merge --allow-unrelated-histories` root, a grafted/shallow
+    # boundary commit) produces NO diff-tree output at all and would
+    # silently pass unverified, since the inner loop below then never runs
+    # -- exactly the same "empty output" ambiguity `cc_rc` above already
+    # guards against for merge commits, just on the non-merge path instead
+    # (security-reviewer finding C1). `--root` makes such a commit show its
+    # whole tree as a set of `A` (add) entries instead, which the existing
+    # per-path check already handles correctly.
+    #
+    # `-z` (NUL-delimited, unquoted) instead of the default tab-delimited
+    # format: without it, git C-quotes any path containing non-ASCII bytes
+    # (under the default `core.quotePath=true`) or a literal quote/
+    # backslash/control character, and that quoted string is not the real
+    # path -- handing it to `git cat-file -e` below in the deletion branch
+    # makes that command fail as a bad revision spec, which the `&&` there
+    # would otherwise misread as "path absent from $default_branch",
+    # silently treating a genuinely-not-reflected deletion as satisfied
+    # (security-reviewer finding M2, live-verified against a real `café.txt`
+    # path). `-r` still recurses into subtrees; no `-M`/`-C` (no rename
+    # detection) so a rename is reported as a plain delete of the old path
+    # plus an add of the new one, which this loop already handles without
+    # any special-casing -- enabling rename detection here would also
+    # actively break the NUL-delimited parsing below, since a `-z` rename
+    # record carries two paths per entry instead of one.
+    #
+    # `-z` output can't be captured into a `$(...)` variable (a NUL byte
+    # truncates a bash string), so this reads into a temp file instead --
+    # which is also the only way to check the exit status separately from
+    # "produced no records", the same gap `cc_rc` above closes for the
+    # merge branch (security-reviewer finding M1: an object read failure on
+    # this path previously produced empty stdout, indistinguishable from a
+    # genuinely empty/no-op commit, and was silently treated as satisfied).
+    diff_file=$(mktemp) || return 1
+    git diff-tree -r -z --no-commit-id --no-ext-diff --no-textconv --root "$commit" > "$diff_file"
+    diff_rc=$?
+    if [ "$diff_rc" -ne 0 ]; then
+      rm -f "$diff_file"
+      return 1
+    fi
+    if ! check_diff_records "$diff_file"; then
+      rm -f "$diff_file"
+      return 1
+    fi
+    rm -f "$diff_file"
   done <<< "$tag_commits"
   return 0
 }
