@@ -55,6 +55,29 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # ratchet:tj-actions/changed-files@v47.0.6
         with:
+          # secretlint's own DEFAULT_IGNORE_PATTERNS (search.js) always skips
+          # .secretlintrc* and .secretlintignore* regardless of what's passed
+          # on its command line -- so a PR whose *only* changed file is one
+          # of these two ends up invoking secretlint with a target list that
+          # resolves to zero files after its own internal filtering, which
+          # secretlint treats as a hard error ("Not found target files",
+          # exit 2), not a clean no-op -- verified live, PR #311. Excluding
+          # both from this action's own changed-file computation makes
+          # `any_changed` correctly become `false` in that case (skipping
+          # "Run secretlint" entirely below, same as any other PR with no
+          # scannable changes), rather than the step running and crashing.
+          # This doesn't reduce scan coverage: secretlint already never
+          # content-scans these two files even when other real files are
+          # changed alongside them (verified live: it silently drops them
+          # from its own target list either way). This list is a narrower,
+          # hand-maintained mirror of secretlint's own DEFAULT_IGNORE_PATTERNS
+          # (.secretlintrc*/.secretlintignore*) -- re-sync it if this repo
+          # ever adopts a different rc filename/extension (e.g.
+          # .secretlintrc.yml) or moves either file, or the same crash will
+          # recur for that new path (security-reviewer finding, PR #311).
+          files_ignore: |
+            .secretlintignore
+            .secretlintrc.json
           # Double-quoted so YAML actually escapes this to a real newline --
           # single-quoted '\n' is the literal two-character string backslash+n
           # (YAML single-quoted scalars never process escapes), and this
