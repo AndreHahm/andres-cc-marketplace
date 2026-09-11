@@ -75,13 +75,39 @@ def _configured_dir(env_var: str, project_dir: str) -> Path | None:
     return path if path.is_absolute() else Path(project_dir) / path
 
 
+def _is_contained_regular_file(path: Path, base_dir: Path) -> bool:
+    """True only if `path` is a regular file (not a symlink) whose resolved
+    location stays within `base_dir`'s own resolved boundary.
+
+    CONTEXT_KIT_PLANS_DIR/CONTEXT_KIT_SESSION_LOGS_DIR are project-controlled
+    directories a plan/log's *.md entry could be a symlink inside — reading
+    or appending through it would then follow the link anywhere on disk
+    (CWE-59, found by CodeRabbit's automated review, 2026-09-11). `is_symlink()`
+    rejects the symlink entry itself; the resolved-path containment check
+    additionally rejects a regular file reached only through a symlinked
+    parent directory.
+    """
+    if path.is_symlink():
+        return False
+    try:
+        resolved = path.resolve(strict=True)
+        resolved_base = base_dir.resolve(strict=True)
+    except OSError:
+        return False
+    return resolved == resolved_base or resolved_base in resolved.parents
+
+
 def find_active_plan(project_dir: str) -> dict | None:
     """Find the most recent non-completed plan."""
     plans_dir = _configured_dir("CONTEXT_KIT_PLANS_DIR", project_dir)
     if plans_dir is None or not plans_dir.exists():
         return None
 
-    plan_files = sorted(plans_dir.glob("*.md"), key=lambda f: f.stat().st_mtime, reverse=True)
+    plan_files = sorted(
+        (p for p in plans_dir.glob("*.md") if _is_contained_regular_file(p, plans_dir)),
+        key=lambda f: f.stat().st_mtime,
+        reverse=True,
+    )
 
     # Scan every plan file, not just the N most recently modified — a completed
     # plan touched more recently than an older still-active one must not shadow
@@ -147,7 +173,11 @@ def append_to_session_log(project_dir: str, trigger: str) -> None:
     if logs_dir is None or not logs_dir.exists():
         return
 
-    log_files = sorted(logs_dir.glob("*.md"), key=lambda f: f.stat().st_mtime, reverse=True)
+    log_files = sorted(
+        (p for p in logs_dir.glob("*.md") if _is_contained_regular_file(p, logs_dir)),
+        key=lambda f: f.stat().st_mtime,
+        reverse=True,
+    )
     if not log_files:
         return
 

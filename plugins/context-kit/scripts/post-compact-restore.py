@@ -63,6 +63,28 @@ def _configured_dir(env_var: str, project_dir: str) -> Path | None:
     return path if path.is_absolute() else Path(project_dir) / path
 
 
+def _is_contained_regular_file(path: Path, base_dir: Path) -> bool:
+    """True only if `path` is a regular file (not a symlink) whose resolved
+    location stays within `base_dir`'s own resolved boundary.
+
+    Mirrors pre-compact.py's own `_is_contained_regular_file()` exactly.
+    CONTEXT_KIT_PLANS_DIR/CONTEXT_KIT_SESSION_LOGS_DIR are project-controlled
+    directories a plan/log's *.md entry could be a symlink inside — reading
+    through it would then follow the link anywhere on disk (CWE-59, found by
+    CodeRabbit's automated review, 2026-09-11). `is_symlink()` rejects the
+    symlink entry itself; the resolved-path containment check additionally
+    rejects a regular file reached only through a symlinked parent directory.
+    """
+    if path.is_symlink():
+        return False
+    try:
+        resolved = path.resolve(strict=True)
+        resolved_base = base_dir.resolve(strict=True)
+    except OSError:
+        return False
+    return resolved == resolved_base or resolved_base in resolved.parents
+
+
 def read_pre_compact_state(session_id: str = "") -> dict | None:
     """Read and delete the pre-compact state file."""
     session_dir = get_session_dir(session_id)
@@ -91,7 +113,11 @@ def find_active_plan(project_dir: str) -> dict | None:
     if plans_dir is None or not plans_dir.exists():
         return None
 
-    plan_files = sorted(plans_dir.glob("*.md"), key=lambda f: f.stat().st_mtime, reverse=True)
+    plan_files = sorted(
+        (p for p in plans_dir.glob("*.md") if _is_contained_regular_file(p, plans_dir)),
+        key=lambda f: f.stat().st_mtime,
+        reverse=True,
+    )
 
     # Scan every plan file, not just the N most recently modified — a completed
     # plan touched more recently than an older still-active one must not shadow
@@ -146,7 +172,11 @@ def find_recent_session_log(project_dir: str) -> dict | None:
     if logs_dir is None or not logs_dir.exists():
         return None
 
-    log_files = sorted(logs_dir.glob("*.md"), key=lambda f: f.stat().st_mtime, reverse=True)
+    log_files = sorted(
+        (p for p in logs_dir.glob("*.md") if _is_contained_regular_file(p, logs_dir)),
+        key=lambda f: f.stat().st_mtime,
+        reverse=True,
+    )
     if not log_files:
         return None
 
@@ -225,16 +255,30 @@ def main() -> int:
     # flags: compaction retains the whole prior transcript (plus a summary) in
     # the same file, so an unreset percentage estimate would stay pegged near
     # 100% forever, and an already-shown threshold would never re-fire as the
-    # new, post-compaction context climbs back through it. SessionStart's own
-    # payload isn't confirmed to carry transcript_path, so the actual byte
-    # baseline is captured lazily by context-monitor.py itself, on its first
-    # PostToolUse call after this marker is set (see its own
-    # _maybe_reset_baseline docstring). Scoped to "compact" only, not
-    # "resume" -- this addresses the compaction-retains-history case
-    # specifically, not a session resumed from a saved state.
+    # new, post-compaction context climbs back through it. transcript_path is
+    # a common field on every hook's input, SessionStart included (confirmed
+    # against Claude Code's own docs) -- captured right now, at SessionStart
+    # time, and written into the marker's own content, so context-monitor.py's
+    # _maybe_reset_baseline() reads a baseline that doesn't include the first
+    # post-compaction tool result's own bytes (found by CodeRabbit's automated
+    # review, 2026-09-11). Falls back to an empty marker -- and
+    # _maybe_reset_baseline()'s own lazy PostToolUse-time measurement -- when
+    # transcript_path is missing or unreadable here. Scoped to "compact"
+    # only, not "resume" -- this addresses the compaction-retains-history
+    # case specifically, not a session resumed from a saved state.
     if session_source == "compact":
         try:
-            (get_session_dir(session_id) / "compact-baseline-reset-pending").touch()
+            marker = get_session_dir(session_id) / "compact-baseline-reset-pending"
+            transcript_path = hook_input.get("transcript_path", "")
+            baseline_bytes = None
+            if transcript_path:
+                try:
+                    baseline_bytes = os.path.getsize(transcript_path)
+                except OSError:
+                    baseline_bytes = None
+            marker.write_text(
+                str(baseline_bytes) if baseline_bytes is not None else "", encoding="utf-8"
+            )
         except OSError:
             pass
 

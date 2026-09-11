@@ -40,13 +40,18 @@ if [ -f "$TRACK_FILE" ]; then
     CONTEXT_INFO=" Session had ${TOTAL} tool calls (${EXPLORATION} exploration, ${IMPLEMENTATION} implementation)."
 fi
 
-# PreCompact doesn't support hookSpecificOutput.additionalContext — only
-# stderr and systemMessage are used below. Neither is guaranteed reliably
-# visible by default: stderr on a normal (exit 0) hook is shown in verbose
-# mode only, not by default, and systemMessage's exact delivery for
-# PreCompact specifically is not independently confirmed one way or the
-# other. This is deliberately a best-effort nudge, not this plugin's actual
-# state-preservation guarantee — that's pre-compact.py/post-compact-
+# This script only emits stderr and systemMessage below, not
+# hookSpecificOutput.additionalContext -- even though Claude Code's own docs
+# (https://code.claude.com/docs/en/hooks) confirm PreCompact DOES support
+# additionalContext as an output field. That's an implementation choice here,
+# not a contract limitation (corrected 2026-09-11, found by CodeRabbit's
+# automated review -- an earlier version of this comment wrongly claimed
+# PreCompact doesn't support additionalContext at all). Neither stderr nor
+# systemMessage is guaranteed reliably visible by default: stderr on a normal
+# (exit 0) hook is shown in verbose mode only, and systemMessage's exact
+# delivery for PreCompact specifically is not independently confirmed one way
+# or the other. This is deliberately a best-effort nudge, not this plugin's
+# actual state-preservation guarantee — that's pre-compact.py/post-compact-
 # restore.py's capture/restore mechanism (SessionStart's additionalContext,
 # which IS supported and is what this plugin's docs describe as the real
 # behavior).

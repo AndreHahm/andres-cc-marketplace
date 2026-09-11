@@ -288,13 +288,17 @@ def read_cache(session_id: str = "") -> dict:
         return {}
 
 
-def save_cache(data: dict, session_id: str = "") -> None:
-    """Save the context monitor cache."""
+def save_cache(data: dict, session_id: str = "") -> bool:
+    """Save the context monitor cache. Returns True on success, False on a
+    write failure -- callers that must not treat the write as done until it
+    actually landed (see _maybe_reset_baseline's marker-unlink ordering)
+    check this instead of assuming success."""
     cache_file = get_session_dir(session_id) / "context-monitor-cache.json"
     try:
         cache_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        return True
     except OSError:
-        pass
+        return False
 
 
 def _maybe_reset_baseline(transcript_path: str, session_id: str = "") -> None:
@@ -313,19 +317,31 @@ def _maybe_reset_baseline(transcript_path: str, session_id: str = "") -> None:
     never re-fire as the new, post-compaction context climbs back through it.
 
     The marker is set at SessionStart(source=compact) time (post-compact-
-    restore.py) but consumed here, on the first PostToolUse call after it --
-    SessionStart's own payload isn't confirmed to carry transcript_path, but
-    PostToolUse's reliably does (live-verified this session), so this is the
-    first point a byte baseline can actually be measured. The small gap
-    between compact completing and this first tool call is negligible growth.
+    restore.py) and consumed here, on the first PostToolUse call after it.
+    post-compact-restore.py writes the transcript's byte size *at SessionStart
+    time* into the marker's own content when `transcript_path` was present in
+    its hook input (confirmed present on SessionStart's payload per Claude
+    Code's own docs) -- read that pre-captured value here when present, so the
+    baseline doesn't include the first post-compaction tool result's own bytes
+    (found by CodeRabbit's automated review, 2026-09-11). Falls back to
+    measuring `transcript_path` right now (this function's own long-standing
+    behavior) when the marker is empty -- e.g. an older marker format, or
+    post-compact-restore.py couldn't read transcript_path either.
+
+    The marker is deleted only after the reset is durably persisted via
+    save_cache() -- if that write hits a transient OSError, the marker stays
+    in place so this reset is retried on the next PostToolUse call instead of
+    silently being lost (found by CodeRabbit's automated review, 2026-09-11).
     """
     marker = get_session_dir(session_id) / "compact-baseline-reset-pending"
     if not marker.exists():
         return
+
+    marker_content = ""
     try:
-        marker.unlink()
-    except OSError:
-        pass
+        marker_content = marker.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        marker_content = ""
 
     cache = read_cache(session_id)
     cache["shown_learn"] = []
@@ -333,13 +349,19 @@ def _maybe_reset_baseline(transcript_path: str, session_id: str = "") -> None:
     cache["shown_warn_90"] = False
     cache["tool_calls"] = 0
     baseline_bytes = 0
-    if transcript_path:
+    if marker_content.isdigit():
+        baseline_bytes = int(marker_content)
+    elif transcript_path:
         try:
             baseline_bytes = os.path.getsize(transcript_path)
         except OSError:
             baseline_bytes = 0
     cache["baseline_bytes"] = baseline_bytes
-    save_cache(cache, session_id)
+    if save_cache(cache, session_id):
+        try:
+            marker.unlink()
+        except OSError:
+            pass
 
 
 def estimate_context_percentage(hook_input: dict, session_id: str = "") -> float:
