@@ -4,10 +4,11 @@ description: >-
   Expands a finding from any analysis-kit skill's persisted report into a
   classified WHAT/WHY/HOW action plan, scored on complexity, risk, and
   benefit, and bucketed into Quick Win / Strategic Investment / Nice-to-Have
-  / Reconsider. Self-contained — has no dependency on any other plugin. Use
-  when turning a finding or suggestion into a concrete action plan, asking
-  "what should I do about this," or prioritizing a list of findings before
-  acting on them.
+  / Reconsider. Assigns each plan entry a stable recommendation_id for later
+  lifecycle tracking, but never registers it itself. Self-contained — has no
+  dependency on any other plugin. Use when turning a finding or suggestion
+  into a concrete action plan, asking "what should I do about this," or
+  prioritizing a list of findings before acting on them.
 allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
 argument-hint: [path to a persisted analysis-kit report, or paste findings directly]
 ---
@@ -35,6 +36,15 @@ Turn one or more findings from any analysis-kit report into a classified, action
 
 - **Producing the original finding** — this skill only expands an existing finding; run the matching analysis skill first (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `comparing-sessions`, `comparing-session-to-specification`) to produce one, or `mining-review-learnings` — its report isn't in Phase 1's auto-discovery glob (see that skill's own `<scope-slug>` exclusion), so supply its path explicitly rather than expecting it to appear among the offered candidates. `managing-review-learnings`' own report is deliberately **not** valid input here, unlike `mining-review-learnings`' — it's a disposition/run summary (which candidates got a doc-diff, which were dropped, filing outcomes), not itself a findings report; there's no unexpanded finding left in it to turn into a WHAT/WHY/HOW plan. (`reviewing-analysis-findings` accepts it for a different reason — cross-checking its stated dispositions against other reports for contradictions, not expanding a finding.)
 - **Applying the plan** — this skill stops at a written plan; it never edits code or commits changes itself
+- **Tracking a recommendation's status over time (accepted, implemented, verified, measured, ...)** — use
+  `tracking-recommendation-lifecycle` instead. This skill assigns each plan entry's stable
+  `recommendation_id` (see Phase 3) but never itself appends to the lifecycle registry; that's the
+  tracking skill's own job, and only for an ID the user has explicitly approved registering.
+- **Proposing a brand-new capability that isn't a finding yet at all** — use
+  `identifying-feature-opportunities` instead. This skill expands a finding another analysis-kit skill
+  already surfaced into a WHAT/WHY/HOW plan; that skill's job is upstream of this one -- it decides
+  whether an *unmet need* (not yet any kind of finding) has enough evidence to become a candidate in the
+  first place, with its own evidence-threshold and overlap check this skill doesn't perform.
 
 ## Phase 1: Identify the Findings
 
@@ -57,6 +67,15 @@ Per `references/classification-rubric.md`'s WHAT/WHY/HOW format:
 ```
 
 Never populate `WHAT`/`HOW` with content not traceable to the source finding or to something actually read this session — don't invent a fix for a finding that wasn't given.
+
+**Assign each entry a stable `recommendation_id`:** `<scope-slug>-rec-<NN>`, a two-digit zero-padded
+index within this report (`01`, `02`, ...), in the order entries are written. This ID is stable within
+this source report — re-running this skill against the same report later must reassign the same IDs in
+the same order, never regenerate them from prose similarity. Print each entry's ID alongside its
+WHAT/WHY/HOW block. **This skill never itself registers an ID in the recommendation-lifecycle registry**
+— an ID may be registered only after the user explicitly approves tracking it, which is
+`tracking-recommendation-lifecycle`'s own job (its Phase 2 gates on that approval before its first
+`append` call for a fresh ID).
 
 ## Phase 4: Report
 
@@ -84,6 +103,10 @@ After Phase 4, verify before presenting output as final:
 - [ ] Every finding supplied in Phase 1 has a corresponding plan entry, or an explicit note explaining why it wasn't expanded
 - [ ] Every plan entry's WHAT/WHY/HOW traces to the source finding or to content actually read this session
 - [ ] Priority buckets are assigned per the rubric's bands, not by gut feel
+- [ ] Every plan entry has a stable `recommendation_id` (`<scope-slug>-rec-<NN>`), assigned in write order
+      and never re-derived from prose similarity on a later re-run
+- [ ] This skill never calls `recommendation_registry.py` itself -- IDs are assigned here only; actually
+      registering one is `tracking-recommendation-lifecycle`'s job, gated on user approval
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
 - [ ] The scratch draft carries the Coverage Preamble and each recommendation carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
@@ -97,3 +120,4 @@ After Phase 4, verify before presenting output as final:
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 / Persist step restate inline | Background — sweep this file's site list when editing either |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
 | `.claude/output/generating-analysis-recommendations/` | Where this skill's own reports are persisted, one file per run | Phase 4 (write) |
+| `tracking-recommendation-lifecycle` skill | Registers and tracks a plan entry's stable `recommendation_id` over time, after user approval | Downstream consumer, not called from here |

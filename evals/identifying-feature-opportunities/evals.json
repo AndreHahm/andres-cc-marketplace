@@ -1,0 +1,37 @@
+{
+  "skill_name": "identifying-feature-opportunities",
+  "skill_path": "plugins/analysis-kit/skills/identifying-feature-opportunities",
+  "description": "Converts recurring unmet needs into evidence-backed feature-opportunity candidates, gated by an evidence threshold and an overlap check, classified into candidate/merge-with-existing/insufficient-evidence/reject.",
+  "testing_validation_coverage": {
+    "declared_scenarios": [
+      "is this worth turning into a feature?",
+      "we keep having to do this manually, should we build something for it?",
+      "does this idea already overlap with an existing skill?"
+    ],
+    "covered_count": 3,
+    "coverage_note": "All 3 declared activation scenarios in SKILL.md's Testing & Validation section are exercised by eval-1 (repeated-evidence candidate), eval-2 (one-off insufficient-evidence), and eval-3 (merge-with-existing overlap). Eval-1's fixture was corrected mid-session (2026-09-11): its original wording assumed 'no shared persist-and-redact script exists yet', which was already false at the time this skill was tested -- scripts/persist_report.py already exists, so the with_skill run correctly (and reproducibly) disposed it as merge-with-existing, not candidate; that run's grading.json documents this as an eval-design flaw, not a skill defect. The fixture now uses mining-recurring-patterns' own documented, still-open gap (its Phase 2 action-token abstraction is explicitly undocumented-as-manual in that skill's own Gotchas) instead. The corrected fixture has not yet been re-run through with_skill -- eval-1's grading.json reflects the pre-correction run."
+  },
+  "evals": [
+    {
+      "id": "eval-1",
+      "name": "repeated-evidence-qualifies-as-candidate",
+      "prompt": "Run the identifying-feature-opportunities skill's procedure (Phases 1-5) against the synthetic session transcript in session-transcript-repeated.md. Treat that file's content as the full session record in scope -- skip Phase 1's interactive scope prompt (there is no real session log to parse, just this fixture); read the fixture directly as your evidence source for Phase 2. Produce the actual feature-opportunity report content Phase 5 would write (present the drafted report text directly, no need to call persist_report.py).",
+      "expected_output": "A report with a finding classified as `candidate` (not insufficient-evidence or merge-with-existing), citing the repeated-evidence threshold (the same manual workaround -- hand-building mining-recurring-patterns' action-token abstraction -- observed 3+ times across sessions). The entry must include all four scoring bands (reach, expected value, confidence, effort) as qualitative bands, and must state that an overlap check was performed against this plugin's real scripts/references (no existing script automates the token-abstraction step itself, only the mining step that consumes it).",
+      "files": ["session-transcript-repeated.md"]
+    },
+    {
+      "id": "eval-2",
+      "name": "one-off-insufficient-evidence",
+      "prompt": "Run the identifying-feature-opportunities skill's procedure (Phases 1-5) against the synthetic session transcript in session-transcript-oneoff.md. Treat that file's content as the full session record in scope -- skip Phase 1's interactive scope prompt; read the fixture directly. Produce the actual feature-opportunity report content Phase 5 would write.",
+      "expected_output": "A report with a finding classified as `insufficient-evidence` (the single typo-fix instance has no repeated evidence and no stated high-consequence impact). The entry must NOT include reach/expected-value/confidence/effort scores, per the skill's own Phase 3 rule against forcing precision onto a single qualitative instance.",
+      "files": ["session-transcript-oneoff.md"]
+    },
+    {
+      "id": "eval-3",
+      "name": "merge-with-existing-overlap",
+      "prompt": "Run the identifying-feature-opportunities skill's procedure (Phases 1-5) against the synthetic session transcript in session-transcript-overlap.md. Treat that file's content as the full session record in scope -- skip Phase 1's interactive scope prompt; read the fixture directly. You have access to Glob against the real plugins/analysis-kit/skills/*/SKILL.md files for the overlap check in Phase 4 -- actually search them. Produce the actual feature-opportunity report content Phase 5 would write.",
+      "expected_output": "A report with a finding classified as `merge-with-existing`, naming `comparing-sessions` as the specific existing skill that already covers (or could be extended to cover) the requested capability (comparing two sessions' trend over time), per the fixture's own repeatedly-stated request.",
+      "files": ["session-transcript-overlap.md"]
+    }
+  ]
+}
