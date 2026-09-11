@@ -86,6 +86,36 @@ was restored via `git checkout --` and the real toolchain reinstalled immediatel
 via `git status`. Still not yet exercised: a live `commit` run reaching either exit-2 path through its
 own normal flow rather than a direct script invocation.
 
+**Round 3, 2026-09-11 — a second `cross-model-review` pass (mandatory re-check after round 2's fix,
+before push) found two more issues, one substantial:** Codex's independent Phase 1 pass found the `cp`/
+final-`commitlint`-invocation misclassification gap (confirmed by Claude's Phase 2, downgraded to minor —
+both trigger conditions are rarer/more visible than round 1's, since a broken repo-wide config would also
+break CI for everyone). Separately, Codex's own Phase 2 pass (with nothing to cross-examine, since
+Claude's Phase 1 found nothing new) did its own fresh independent read and found a **novel, major
+security issue**: `.commitlintrc.cjs` is a CommonJS module — commitlint's `--config` flag `require()`s
+it, executing arbitrary code, not reading data — and the script was loading the raw checked-out
+working-tree copy rather than a trusted ref, contradicting the file's own now-inaccurate comment ("no
+trust-boundary step needed locally, since a local commit run only ever lints the developer's own drafted
+message") and breaking the exact "attacker-controlled on a fetched branch" threat model every sibling
+script in this same file (`scan-staged-files.sh`, `stage-selected-files.sh`, `lint-staged-python.sh`)
+already treats as live. User chose the recommended fix: load `.commitlintrc.cjs` from a trusted ref
+(`origin/<default-branch>`, resolved the same way `starting-work`/`finishing-work` do) instead of the
+working tree, warning (not blocking) on divergence so a developer editing the config on their own branch
+isn't silently ignored. **A second, environment-specific bug surfaced while implementing this fix**: on
+this Windows git-bash environment, MSYS's automatic path-conversion heuristic silently mangled the
+`origin/main:.commitlintrc.cjs` refspec into an invalid argument (verified live —
+`git show origin/main:.commitlintrc.cjs` failed until `MSYS_NO_PATHCONV=1` was set, confirming the exact
+mechanism per `.claude/rules/verify-tool-behavior-before-instructing.md`'s checked-against-the-real-tool
+discipline), which would have made the trusted-ref lookup always silently fail and fall through to the
+working-tree copy — defeating the fix's entire purpose on the platform it was written and tested on.
+Fixed by setting `MSYS_NO_PATHCONV=1` on that one `git show` call. Verified live end-to-end: a clean
+trusted-ref pass (no note printed, matching content); a deliberately diverged working-tree config
+(appended a marker line, restored via `git checkout --` afterward) correctly printed the divergence note
+and still validated against the trusted copy, not the tampered one; exit 1 (real violation), exit 2
+(pnpm missing), and exit 2 (install failure, via the same desynced-lockfile technique as round 2,
+package.json restored via `git checkout --` and the real toolchain reinstalled afterward) all still work
+unchanged. `git status` confirmed clean (only the intended script edit) after every restore step.
+
 ## Step 16 (push) — fixed and verified live, 2026-08-28
 
 This PR's first pass at step 16 replaced "retype/recompose the branch name" with "resolve it fresh
