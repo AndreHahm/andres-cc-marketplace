@@ -149,6 +149,18 @@ The dispatched skill's own printed Next-step line already named the natural foll
 
 ## Testing & Validation
 
+**Verify this skill activates on:**
+- "run a retrospective on this session"
+- "analyze this session" (no specific analysis type named)
+- "which analysis-kit skill do I need for checking how the subagents behaved?"
+- "I want to look at how this went, not sure what angle"
+
+**Verify it does NOT activate on:**
+- "run a full retrospective" / "run every analysis and give me one consolidated list" -> `running-a-full-retrospective`, even though the phrasing echoes this skill's own trigger language
+- "run `analyzing-actor-behavior` on this conversation" (a specific analysis type already named) -> call it directly, no front door needed
+- "what's the current status of recommendation X?" -> `tracking-recommendation-lifecycle`
+- "compare this session's report against yesterday's" once a specific comparison target is already named -> still routes through this skill's own Phase 1 only if the target is unclear; a fully-specified comparison can call `comparing-sessions`/`comparing-session-to-specification` directly
+
 - [ ] Phase 1 never presents more than 4 options in a single `AskUserQuestion` call
 - [ ] Phase 2 asks the scope shape that actually matches the chosen skill (date-range vs. report-path vs. spec-path) — never a one-size-fits-all prompt
 - [ ] Phase 3's confirmation always runs before Phase 4's dispatch, even when Phases 1-2 were unambiguous
