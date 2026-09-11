@@ -163,12 +163,12 @@ Next-step blocks.
 
 ## Testing & Validation
 
-No `evals/analyzing-session-operations/evals.json` exists yet. This skill's two deterministic scripts
-(`failure_aggregator.py`, `critical_path_analyzer.py`) are covered by `tests/test_failure_aggregator.py`
-and `tests/test_critical_path_analyzer.py` (7 cases each, all passing) -- direct execution against
-fixtures, not blind agent testing, per this repo's own scope carve-out for deterministic script/code
-logic. The semantic skill layer (Phase 2's event-building, Phase 5's report) is smoke-tested via
-`scripts/smoke_test.py` below; a full eval suite is deferred pending real usage.
+**Eval evidence:** `evals/analyzing-session-operations/evals.json` -- 3 scenarios, 10/10 assertions
+passing. This skill's two deterministic scripts (`failure_aggregator.py`, `critical_path_analyzer.py`)
+are additionally covered by `tests/test_failure_aggregator.py` and `tests/test_critical_path_analyzer.py`
+(8 cases each, all passing) -- direct execution against fixtures, not blind agent testing, per this
+repo's own scope carve-out for deterministic script/code logic. The semantic skill layer (Phase 2's
+event-building, Phase 5's report) is additionally smoke-tested via `scripts/smoke_test.py` below.
 
 **Verify this skill activates on:**
 - "how reliable was this session, did anything fail and recover?"

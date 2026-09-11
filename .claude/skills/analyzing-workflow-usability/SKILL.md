@@ -136,10 +136,10 @@ full sweep is complete, same as the other Wave 2 skills' own Next-step blocks.
 
 ## Testing & Validation
 
-No `evals/analyzing-workflow-usability/evals.json` exists yet. This is a conversational,
-judgment-per-instance skill with no branching logic beyond the eight dimensions and the safety-gate
-exception already spelled out in full in Phase 2-3 and the two `references/` files -- structural
-correctness is covered by `scripts/smoke_test.py` below; a full eval suite is deferred pending real usage.
+**Eval evidence:** `evals/analyzing-workflow-usability/evals.json` -- 3 scenarios, 9/9 assertions
+passing. This is a conversational, judgment-per-instance skill with no branching logic beyond the eight
+dimensions and the safety-gate exception already spelled out in full in Phase 2-3 and the two
+`references/` files; structural correctness is additionally covered by `scripts/smoke_test.py` below.
 
 **Verify this skill activates on:**
 - "was this session's workflow actually usable, or was there a lot of friction?"

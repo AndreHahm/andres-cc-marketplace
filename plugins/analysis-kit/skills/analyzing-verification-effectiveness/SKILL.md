@@ -152,11 +152,10 @@ full sweep is complete, same as `analyzing-session-outcomes`' own Next-step bloc
 
 ## Testing & Validation
 
-No `evals/analyzing-verification-effectiveness/evals.json` exists yet. This is a conversational,
-classification skill with no branching logic beyond the seven finding classes and risk-tier rules
-already spelled out in full in Phase 2-3 and the two `references/` files -- structural correctness is
-covered by `scripts/smoke_test.py` below; a full eval suite is deferred pending real usage rather than
-added speculatively.
+**Eval evidence:** `evals/analyzing-verification-effectiveness/evals.json` -- 3 scenarios, 8/8 assertions
+passing. This is a conversational, classification skill with no branching logic beyond the seven finding
+classes and risk-tier rules already spelled out in full in Phase 2-3 and the two `references/` files;
+structural correctness is additionally covered by `scripts/smoke_test.py` below.
 
 **Verify this skill activates on:**
 - "was this fix actually verified, or just claimed to be?"
