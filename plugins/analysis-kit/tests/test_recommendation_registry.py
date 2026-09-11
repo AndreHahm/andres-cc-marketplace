@@ -174,18 +174,32 @@ def test_acquire_lock_breaks_a_stale_lock(tmp_path):
     os.utime(lock_path, (stale_time, stale_time))
     # A lock older than LOCK_STALE_SECONDS is broken automatically -- this must succeed
     # immediately, not wait out the timeout or raise.
-    rr.acquire_lock(lock_path, timeout=0.2, poll=0.05)
+    token = rr.acquire_lock(lock_path, timeout=0.2, poll=0.05)
     assert lock_path.exists()  # re-acquired by this call, not left absent
-    rr.release_lock(lock_path)
+    rr.release_lock(lock_path, token)
 
 
 def test_lock_release_then_reacquire_succeeds(tmp_path):
     lock_path = tmp_path / "events.jsonl.lock"
-    rr.acquire_lock(lock_path, timeout=1.0)
-    rr.release_lock(lock_path)
+    token = rr.acquire_lock(lock_path, timeout=1.0)
+    rr.release_lock(lock_path, token)
     # A second, sequential acquire after a clean release must not be blocked by the first.
-    rr.acquire_lock(lock_path, timeout=1.0)
-    rr.release_lock(lock_path)
+    token = rr.acquire_lock(lock_path, timeout=1.0)
+    rr.release_lock(lock_path, token)
+
+
+def test_release_lock_does_not_delete_a_lock_it_no_longer_owns(tmp_path):
+    # Regression test for the lock-hijack race: if this lock was already broken as stale
+    # and re-acquired by someone else, release_lock() must not delete their active lock.
+    lock_path = tmp_path / "events.jsonl.lock"
+    token_a = rr.acquire_lock(lock_path, timeout=1.0)
+    # Simulate a second writer breaking A's lock as stale and acquiring its own, without
+    # A's own release ever running -- write a different token directly, as the stale-break
+    # path's own re-acquire would.
+    lock_path.write_text("someone-elses-token", encoding="utf-8")
+    rr.release_lock(lock_path, token_a)
+    assert lock_path.exists()
+    assert lock_path.read_text(encoding="utf-8") == "someone-elses-token"
 
 
 def test_append_event_creates_parent_directory_before_locking(tmp_path):
@@ -213,6 +227,19 @@ def test_read_events_locked_matches_read_events(tmp_path):
     assert rr.read_events_locked(registry_path) == rr.read_events(registry_path)
     # The lock must be released afterward, not left held.
     assert not (tmp_path / "events.jsonl.lock").exists()
+
+
+def test_read_events_locked_against_uninitialized_registry_returns_empty_list(tmp_path):
+    # Regression test: show/list/validate must not crash with an unhandled
+    # FileNotFoundError against a registry whose parent directory was never created
+    # (no prior init or append) -- acquire_lock()'s own os.open(O_CREAT|O_EXCL) only
+    # catches FileExistsError, not the FileNotFoundError it raises against a missing
+    # parent directory.
+    registry_path = tmp_path / "never-created-subdir" / "events.jsonl"
+    assert not registry_path.parent.exists()
+    assert rr.read_events_locked(registry_path) == []
+    # Must not have created the lock file (or anything else) as a side effect.
+    assert not registry_path.parent.exists()
 
 
 def test_cli_append_then_show_then_list_roundtrip(tmp_path, capsys, monkeypatch):

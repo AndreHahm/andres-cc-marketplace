@@ -53,9 +53,18 @@ which recommendation and what status change.
 
 Resolve the `recommendation_id` (from `$ARGUMENTS`, or ask) and confirm it against
 `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/recommendation_registry.py" show --recommendation-id
-<id>)` -- an empty result means this ID has never been proposed; direct the user to
-`generating-analysis-recommendations` first rather than inventing a status history for an ID that was
-never registered. Ask which status the recommendation should move to next.
+<id>)`. An empty result branches two ways -- **never a blanket redirect**, since a legitimate,
+not-yet-registered ID from a fresh `generating-analysis-recommendations` plan also has empty history
+the first time it's seen here:
+
+- **The ID traces to a `generating-analysis-recommendations` plan the user just approved for
+  tracking** (named directly in `$ARGUMENTS`, or the user confirms it against a plan they're holding) --
+  proceed to Phase 2's own registration path, which appends the initial `proposed` event for it.
+- **Any other empty result** (an ID typed from memory, guessed, or otherwise not traceable to an
+  approved plan) -- this ID has never been proposed; direct the user to
+  `generating-analysis-recommendations` first rather than inventing a status history for it.
+
+Ask which status the recommendation should move to next.
 
 ## Phase 2: Collect Status Evidence
 
