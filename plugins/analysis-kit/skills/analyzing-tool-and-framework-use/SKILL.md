@@ -41,6 +41,12 @@ Inventory the external tools a Claude Code session actually used, detect which d
 - **Per-component (skill/agent/rule) retrospective SWOT** — use `analyzing-plugin-components` instead
 - **Code-level drift between implementation and a specification document** — outside this skill's scope
 - **Sub-agent dispatch-quality assessment** (was the dispatch choice appropriate, how did the agent perform, human-vs-agent contribution) — use `analyzing-actor-behavior` instead; this skill only counts *that* a subagent was invoked as one instance of external-tool usage, not *how well* it performed
+- **A security/privacy threat-model finding** (permission escalation as an actual trust-boundary
+  violation, credential exposure, prompt/command injection) — use `analyzing-security-and-privacy`
+  instead. This skill's role-conformance check only compares observed companion-tool usage against its
+  framework's own documented role; it never builds a threat model or judges whether a boundary was
+  crossed with real security consequence — a role-nonconformance finding here may or may not also be a
+  security finding there, depending on what was actually put at risk.
 
 ## Phase 1: Scope
 
@@ -96,7 +102,7 @@ origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- find
 
 **Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/analyzing-tool-and-framework-use/<scope-slug>-<timestamp>.md" --label "Tool and Framework Analysis Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-08-01-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Tool and Framework Analysis Report written: ...` confirmation line — present its printed output as its own line before the rest of the report. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
-**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
 
 ## Gotchas
 

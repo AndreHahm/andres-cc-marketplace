@@ -12,7 +12,7 @@ description: >-
   prioritized list" — not a single analysis type (use starting-an-analysis
   for that) and not cross-checking reports that already exist (use
   reviewing-analysis-findings directly for that).
-allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(cd:*) Bash(sleep:*) Bash(git log -1:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */plugin-rulebook/scripts/validate_evidence.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-downstream) Skill(plugin-devkit:plugin-rulebook) Skill(git-kit:starting-work) Skill(git-kit:commit) Skill(git-kit:create-pr) Skill(git-kit:merge-pr) Skill(git-kit:finishing-work)
+allowed-tools: Read Glob Write Edit AskUserQuestion Bash(date:*) Bash(cd:*) Bash(sleep:*) Bash(git log -1:*) Bash(git worktree list:*) Bash(python */analysis-kit/scripts/redact_secrets.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(python */plugin-rulebook/scripts/validate_evidence.py:*) Skill(analyzing-plugin-components) Skill(analyzing-tool-and-framework-use) Skill(analyzing-actor-behavior) Skill(analyzing-governance-and-conflicts) Skill(mining-recurring-patterns) Skill(analyzing-session-outcomes) Skill(analyzing-verification-effectiveness) Skill(analyzing-session-operations) Skill(analyzing-workflow-usability) Skill(analyzing-security-and-privacy) Skill(identifying-feature-opportunities) Skill(reviewing-analysis-findings) Skill(plugin-devkit:plugin-lifecycle-downstream) Skill(plugin-devkit:plugin-rulebook) Skill(git-kit:starting-work) Skill(git-kit:commit) Skill(git-kit:create-pr) Skill(git-kit:merge-pr) Skill(git-kit:finishing-work)
 argument-hint: [optional: which analyses to run, and/or a scope]
 ---
 
@@ -66,7 +66,7 @@ stop and say so; do not substitute a judgment call for a human decision.
   the matching development skill for that component; this skill's own Phase 5 loop exists for findings
   just consolidated here, worked through one topic at a time, not a single already-known fix
 - **Mining merged PRs for review-learning patterns** — use `mining-review-learnings` instead, even when
-  phrased as a bare "run a full retrospective on recent PR reviews"; this skill only consolidates the 5
+  phrased as a bare "run a full retrospective on recent PR reviews"; this skill only consolidates the 11
   session/date-range analysis types, none of which take a PR-set scope
 
 ## Phase 1: Pick Analyses and Scope
@@ -76,19 +76,32 @@ N analyses back to back would otherwise re-ask the same scope N times (a real, c
 plugin's own `mining-recurring-patterns` skill found: the same scope-confirmation question asked and
 answered identically 4 times in one conversation):
 
-1. **Which analyses** (`AskUserQuestion`, `multiSelect: true`): the 5 date-range report-producing skills
-   — `analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`,
-   `analyzing-governance-and-conflicts`, `mining-recurring-patterns` — using each one's own one-line
-   purpose from `../starting-an-analysis/references/analysis-type-guide.md` (the same reference
-   `starting-an-analysis` Phase 1 already uses) as the option description. **`AskUserQuestion` hard-caps
-   each question at 4 options — split these 5 across two questions in the same call** (e.g. 3 options in
-   one question, the remaining 2 plus a "None of these" filler in a second), never one question with all
-   5; a single 5-option question fails outright with `InputValidationError` on every call. `comparing-sessions`
-   and `comparing-session-to-specification`
-   are deliberately excluded from this picker: both take a comparison target (a prior report path, or a
-   spec document path) rather than a bare scope, which doesn't fit a single shared-scope multi-select —
-   run those individually via `starting-an-analysis` instead, then feed their reports into this skill's
-   own Phase 3 cross-check if wanted.
+1. **Which analyses** (`AskUserQuestion`, `multiSelect: true`): the 11 bare-scope date-range
+   report-producing skills — `analyzing-plugin-components`, `analyzing-tool-and-framework-use`,
+   `analyzing-actor-behavior`, `analyzing-governance-and-conflicts`, `mining-recurring-patterns`,
+   `analyzing-session-outcomes`, `analyzing-verification-effectiveness`, `analyzing-session-operations`,
+   `analyzing-workflow-usability`, `analyzing-security-and-privacy`, `identifying-feature-opportunities` —
+   using each one's own one-line purpose from
+   `../starting-an-analysis/references/analysis-type-guide.md` (the same reference `starting-an-analysis`
+   Phase 1 already uses) as the option description. **`AskUserQuestion` hard-caps each question at 4
+   options and each call at 4 questions — split these 11 across four questions in the same call, 3 real
+   options + a "None of these" filler per question** (never fewer questions with more real options per
+   question; a 5+-option question fails outright with `InputValidationError` on every call). **This
+   Q1-Q4 split is packing-order only, not a semantic grouping** — unlike `starting-an-analysis`'s own
+   Tier-1 buckets (which group by domain), these four questions simply pack 11 skills into
+   4-option batches; don't read a shared theme into which skills land in the same question:
+   - Q1: `analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior` + filler
+   - Q2: `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `analyzing-session-outcomes` + filler
+   - Q3: `analyzing-verification-effectiveness`, `analyzing-session-operations`, `analyzing-workflow-usability` + filler
+   - Q4: `analyzing-security-and-privacy`, `identifying-feature-opportunities` + filler (room for one more
+     if this set ever grows to 12)
+
+   `comparing-sessions` and `comparing-session-to-specification` are deliberately excluded from this
+   picker: both take a comparison target (a prior report path, or a spec document path) rather than a bare
+   scope, which doesn't fit a single shared-scope multi-select — run those individually via
+   `starting-an-analysis` instead, then feed their reports into this skill's own Phase 3 cross-check if
+   wanted. `tracking-recommendation-lifecycle` is excluded for the same reason: it needs a specific
+   `recommendation_id`, not a bare scope.
 2. **Scope, once** (a date string, `"today"`, or `"this conversation"`) — reused verbatim for every
    chosen analysis in Phase 2, never re-asked per type.
 
@@ -141,11 +154,18 @@ across all of them:
    opening the merged entry's fine print.
 2. **Classify severity** using `../../references/severity-vocabulary.md`'s shared 4-tier scale (Critical
    / Major / Minor / Informational) — translate each source skill's own native vocabulary (P1/P2/P3,
-   Violated/Compliant, conflict categories, etc.) per that file's mapping table. Two of the five eligible
+   Violated/Compliant, conflict categories, etc.) per that file's mapping table. Two of the 11 eligible
    source skills (`analyzing-actor-behavior`, `mining-recurring-patterns`) report findings with no native
    severity term of their own — for those, apply the tier definitions directly per that file's own stated
    fallback, rather than treating the absence of a mapping-table row as a gap to work around. An
-   Informational-tier observation goes in "No action needed," not into the P1-P3 buckets.
+   Informational-tier observation goes in "No action needed," not into the P1-P3 buckets. **A third case,
+   `identifying-feature-opportunities` (also among the 11 eligible source skills, per
+   `severity-vocabulary.md`'s own enumeration), doesn't produce severity-rated findings at all** — its
+   report's `candidate`/`merge-with-existing` entries are proposals, not defects, per
+   `severity-vocabulary.md`'s own opening note. Never force a `candidate` into a P1/P2/P3 bucket; route it
+   to the separate "Feature Opportunities Identified" section instead (see the report structure below).
+   `insufficient-evidence`/`reject` entries from that skill contribute nothing to the consolidated report
+   at all — they were already screened out at the source.
 3. **Tag the target plugin and component explicitly on the finding itself** — e.g. "C1 —
    `git-kit`'s `merge-pr`" — not only as a "reported in report #N" citation back to the source-report
    table. A reader (or a later automated pass) must be able to sort findings by target without
@@ -158,8 +178,14 @@ across all of them:
 resolved this scope" section for fixes that landed during the analysis runs themselves, P1/P2/P3 buckets
 (each item: `### <id>. <one-line finding> — <plugin>'s <component>`, `**Reported in:** #N, #M`,
 `**Status:** OPEN. <fix summary, or "needs a design decision">` — P3 may use a collapsible `<details>`
-block for length), a "No action needed" section for informational-tier items, and a closing "Top 5 across
-the whole consolidation."
+block for length), a "No action needed" section for informational-tier items, a "Feature Opportunities
+Identified" section (only when `identifying-feature-opportunities` was among the chosen analyses and
+produced at least one `candidate`/`merge-with-existing` entry — each item restates that skill's own
+disposition and scoring bands verbatim, never re-rated into a P1/P2/P3 severity it was never meant to
+carry; this section is Phase 5's fix loop out of scope, since a feature candidate is a proposal for later
+`generating-analysis-recommendations`/`tracking-recommendation-lifecycle` work, not a defect to fix here),
+and a closing "Top 5 across the whole consolidation" (severity-rated findings only — a feature
+opportunity, having no severity tier, is never ranked into this list).
 
 **Coverage preamble and evidence metadata:** before writing the report, prepend the Coverage Preamble
 (Requested scope, Inspected scope, Unavailable evidence, Limitations) — Inspected scope here is which
@@ -253,7 +279,7 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
    this topic." **Same 4-option cap as Phase 1 applies here too** — cap at 3 real findings + the "None of
    these" filler per question. A topic with 4+ findings splits across multiple sequential questions in the
    same call (3 findings + filler in the first, the remainder + filler in the next, and so on), exactly
-   the pattern Phase 1 already uses for its own 5-option split — never one question listing every finding
+   the pattern Phase 1 already uses for its own 11-across-4-questions split — never one question listing every finding
    in a large topic. **`AskUserQuestion` itself caps at 4 questions per call, so this only covers up to 12
    findings (4 questions × 3 real options) in one call.** A topic with more than 12 open findings can't fit
    the whole split into a single call at all — continue across multiple separate `AskUserQuestion` calls
@@ -361,7 +387,7 @@ available (5a) or no open findings existed.
 - **This skill produces a *meta*-report, not a new analysis type.** Its own persisted report is
   deliberately excluded from the report-discovery glob's 15-directory enumeration other analysis-kit
   skills check for "does 2+ reports exist for this scope" — counting a consolidation of other reports as
-  a 10th independent report would double-count coverage that was already established by the reports it
+  a 16th independent report would double-count coverage that was already established by the reports it
   consolidates. `mining-review-learnings`/`managing-review-learnings` are also excluded from that same
   enumeration and cite this skill's own exclusion reasoning as a *distinct* case (their exclusion is
   about scope-shape mismatch — a PR-set slug has no session/date-range identity — not consolidation
@@ -459,12 +485,19 @@ After Phase 5, verify before presenting output as final:
 - [ ] A "Stop here for now" mid-queue left the remaining topics `OPEN` in the persisted report, not
       silently dropped
 
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing (frontmatter,
+Bash-grant usage, referenced-script existence, Reference Guide file existence, Phase-header sequencing).
+Task 11's Phase 1 picker redesign (11-skill/4-question multi-select split) and Phase 3's
+`identifying-feature-opportunities` disposition carve-out were verified by direct read-through, not a
+live dispatch run -- this phase's own security-sensitive fix-execution machinery (Phase 5) was untouched
+by Task 11 and keeps its own prior verification record (see this skill's Gotchas section).
+
 ## Reference Guide
 
 | File | Purpose | When to read |
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
-| `../starting-an-analysis/references/analysis-type-guide.md` | One-paragraph disambiguation for each of the 5 eligible analysis types | Phase 1 |
+| `../starting-an-analysis/references/analysis-type-guide.md` | One-paragraph disambiguation for each of the 11 eligible analysis types | Phase 1 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions and per-skill mapping table | Phase 3 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Phase 1 (reuse check) and Phase 3 (persist) restate inline | Background — sweep this file's site list when editing either |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Phase 3 Persist step, before writing the report |
