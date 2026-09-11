@@ -109,6 +109,17 @@ Included/Excluded Reports sections describe the same fact — keep them consiste
 
 ## Testing & Validation
 
+**Verify this skill activates on:**
+- "just ran 2+ analysis-kit skills this retrospective, sanity-check these reports against each other"
+- "do these two reports actually agree with each other?"
+- "is this severity claim still supported once the other report's evidence is considered?"
+
+**Verify it does NOT activate on:**
+- "compare this session's own report to a prior session's report over time" -> `comparing-sessions`
+- "just one narrow spec-vs-code contradiction to check, not a full multi-report cross-check" ->
+  `analyzing-governance-and-conflicts`
+- "the reports don't exist yet, run the analyses and consolidate them" -> `running-a-full-retrospective`
+
 After Phase 4, verify these gates before presenting output as final:
 
 - [ ] At least 2 report paths were resolved before Phase 2 ran — a single report never proceeds past Phase 1

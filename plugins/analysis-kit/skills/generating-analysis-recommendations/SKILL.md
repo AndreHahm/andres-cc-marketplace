@@ -115,6 +115,17 @@ underlying evidence.
 
 ## Testing & Validation
 
+**Verify this skill activates on:**
+- "turn this finding from an analysis-kit report into a concrete action plan"
+- "prioritize this list of findings before I decide what to act on"
+- "what should I actually do about this?"
+
+**Verify it does NOT activate on:**
+- "apply the plan / make the actual code change" -> not this skill, it stops at a written plan
+- "track this recommendation's status over time (accepted, implemented, verified, measured)" ->
+  `tracking-recommendation-lifecycle`
+- "propose a brand-new capability that isn't a finding yet" -> `identifying-feature-opportunities`
+
 After Phase 4, verify before presenting output as final:
 
 - [ ] Every finding supplied in Phase 1 has a corresponding plan entry, or an explicit note explaining why it wasn't expanded

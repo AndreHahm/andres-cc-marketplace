@@ -131,6 +131,16 @@ close each one and re-run the check before persisting. Never persist a report th
 
 ## Testing & Validation
 
+**Verify this skill activates on:**
+- "how well did the subagent perform on that dispatched task?"
+- "what did the human contribute vs. correct this session?"
+- "review the multi-agent handoff pattern for friction or redundancy"
+
+**Verify it does NOT activate on:**
+- "per-component retrospective SWOT on a skill/agent/rule" -> `analyzing-plugin-components`
+- "just count which tools/frameworks/subagents were invoked" -> `analyzing-tool-and-framework-use`
+- "was this confirmation/interaction pattern itself frustrating for the user" -> `analyzing-workflow-usability`
+
 After Phase 6, verify before presenting output as final:
 
 - [ ] Every dispatched sub-agent in scope has its own behavior assessment, or is covered by an explicit, stated grouping/exclusion justification — count Phase 2's inventory against Phase 3's assessment headings before persisting, not just at a glance; `validate_report.py`'s pre-persistence check now enforces this mechanically via the `<!-- inventory: -->`/`<!-- disposition: -->` markers

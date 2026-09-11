@@ -151,10 +151,24 @@ maintainability/change-impact finding, per `../../references/report-evidence-con
 
 ## Testing & Validation
 
-No `evals/analyzing-governance-and-conflicts/evals.json` exists yet for the new Phase 5 addition. Phase
-5's own dimensions and affected-site inventory format are fully spelled out in
+**Eval evidence:** `evals/analyzing-governance-and-conflicts/evals.json` -- 3 scenarios, 12/12 assertions
+passing (a real rule violation shipped uncorrected, an agent-vs-agent conflict verified against a real
+R21 threshold, and a Phase 5 maintainability/blast-radius finding across 3 sites). Phase 5's own
+dimensions and affected-site inventory format are fully spelled out in
 `references/maintainability-taxonomy.md` and `references/change-impact-checklist.md`; structural
 correctness is covered by `scripts/smoke_test.py`.
+
+**Verify this skill activates on:**
+- "did this session actually follow our project's own `.claude/rules/` conventions?"
+- "find contradictions between two agents' conclusions, two rules, or a spec and its implementation"
+- "is the same mistake or rule violation recurring?"
+
+**Verify it does NOT activate on:**
+- "per-component retrospective SWOT" -> `analyzing-plugin-components`
+- "deep code-level traceability against a spec, not just a surface conflict flag" ->
+  `comparing-session-to-specification`
+- "a repeated failing command as a general loop-detection pass, independent of any rule violation" ->
+  `mining-recurring-patterns`
 
 **Verify Phase 5 activates on:**
 - "did this session's changes introduce duplication or coupling risk?"

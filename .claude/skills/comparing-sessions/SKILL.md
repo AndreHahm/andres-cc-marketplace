@@ -128,6 +128,17 @@ entry, per `../../references/report-evidence-convention.md`.
 
 ## Testing & Validation
 
+**Verify this skill activates on:**
+- "compare this session's findings against a prior session's persisted report"
+- "were the prior session's suggestions actually acted on this time?"
+- "is this trend improving, worsening, or stable across sessions?"
+
+**Verify it does NOT activate on:**
+- "compare this session against a specification/architecture document, not a prior session" ->
+  `comparing-session-to-specification`
+- "just flag whether two sessions merely contradict each other" -> `analyzing-governance-and-conflicts`
+- "cross-check multiple different skills' reports from the same scope" -> `reviewing-analysis-findings`
+
 After Phase 5, verify before presenting output as final:
 
 - [ ] The structural diff (Phase 2) ran before any semantic interpretation
