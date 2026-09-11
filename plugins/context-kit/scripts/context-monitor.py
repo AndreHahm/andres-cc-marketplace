@@ -267,8 +267,16 @@ def get_session_dir(session_id: str = "") -> Path:
     import hashlib
 
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
-    project_hash = hashlib.md5(project_dir.encode()).hexdigest()[:8] if project_dir else "default"
-    session_hash = hashlib.md5(session_id.encode()).hexdigest()[:8] if session_id else "default"
+    project_hash = (
+        hashlib.md5(project_dir.encode(), usedforsecurity=False).hexdigest()[:8]
+        if project_dir
+        else "default"
+    )
+    session_hash = (
+        hashlib.md5(session_id.encode(), usedforsecurity=False).hexdigest()[:8]
+        if session_id
+        else "default"
+    )
 
     session_dir = Path.home() / ".claude" / "sessions" / f"{project_hash}-{session_hash}"
     session_dir.mkdir(parents=True, exist_ok=True)
