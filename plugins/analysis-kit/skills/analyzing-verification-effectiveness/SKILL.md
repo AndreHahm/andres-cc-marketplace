@@ -44,9 +44,9 @@ omitted, Phase 1 asks interactively.
 - **General runtime reliability, retries, or recovery from failure** -- use `analyzing-session-operations`
   instead. This skill judges whether *claimed verification* was adequate evidence; it does not judge
   whether the session ran reliably in general.
-- **Whether a security control was adequate** -- when `analyzing-security-and-privacy` exists, it performs
-  the actual threat-model/mitigation assessment; this skill's own job there is narrower -- judging whether
-  a *claimed* security test or check was itself adequate evidence, not building the threat model.
+- **Whether a security control was adequate** -- use `analyzing-security-and-privacy` instead. That skill
+  performs the actual threat-model/mitigation assessment; this skill's own job there is narrower -- judging
+  whether a *claimed* security test or check was itself adequate evidence, not building the threat model.
 
 ## Phase 1: Scope
 
@@ -166,9 +166,9 @@ added speculatively.
 **Verify it does NOT activate on:**
 - "did we actually accomplish what the user asked for?" -> `analyzing-session-outcomes`
 - "how reliable was this session overall, did anything fail and recover?" -> `analyzing-session-operations`
-- "was the security control itself adequate" (once `analyzing-security-and-privacy` exists) -> that skill
-  performs the threat-model/mitigation assessment; this skill only judges whether a *claimed* security
-  test was itself adequate evidence
+- "was the security control itself adequate" -> `analyzing-security-and-privacy`, which performs the
+  threat-model/mitigation assessment; this skill only judges whether a *claimed* security test was itself
+  adequate evidence
 
 **Quality gates:** after Phase 4, verify before presenting output as final:
 

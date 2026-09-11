@@ -44,15 +44,16 @@ A short kebab-case description of the scope a report covers, used as the filenam
 
 ## Report-Discovery Glob
 
-analysis-kit's own 13 report directories, named explicitly rather than matched by a prefix wildcard:
+analysis-kit's own 14 report directories, named explicitly rather than matched by a prefix wildcard:
 
 ```
-.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability}/*.md
+.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy}/*.md
 ```
 
-**Interim state, 2026-09-10:** `analyzing-session-outcomes`, `analyzing-verification-effectiveness`,
-`analyzing-session-operations`, and `analyzing-workflow-usability` were added here ahead of the Wave 2
-plan's own Task 11 (the batch picker/severity/README integration pass) because
+**Interim state, 2026-09-10/11:** `analyzing-session-outcomes`, `analyzing-verification-effectiveness`,
+`analyzing-session-operations`, `analyzing-workflow-usability`, and `analyzing-security-and-privacy` were
+added here ahead of the Wave 2 plan's own Task 11 (the batch picker/severity/README integration pass)
+because
 `reviewing-analysis-findings`' own hardcoded discovery globs are load-bearing -- without this
 registration, these skills' reports would be silently invisible to the plugin's own cross-check
 aggregator. The remaining Task 11 scope (picker taxonomy, severity-vocabulary
@@ -87,15 +88,15 @@ Every site below must match this file. If you change either definition here, upd
   not scope-shape mismatch)
 - `skills/managing-review-learnings/SKILL.md` — Phase 1 report resolution (bare glob, see table above),
   Persist step (`<source-slug>` derivation, see above) — two sites. Like `mining-review-learnings`, its
-  own report is deliberately *not* added to the 13-directory glob enumeration, for the same scope-shape
+  own report is deliberately *not* added to the 14-directory glob enumeration, for the same scope-shape
   reason: a `<source-slug>` inherited from a PR-set slug (or `direct-finding-<date>`) has no session/
   date-range identity a sibling report could plausibly share
 - `skills/analyzing-session-outcomes/SKILL.md`, `skills/analyzing-verification-effectiveness/SKILL.md`,
-  `skills/analyzing-session-operations/SKILL.md`, `skills/analyzing-workflow-usability/SKILL.md` — each
-  skill's own Persist step (scope-slug) and Next-step block (glob, already written against the
-  13-directory enumeration including itself, ahead of the rest of this sweep -- see the "Interim state"
-  note above)
+  `skills/analyzing-session-operations/SKILL.md`, `skills/analyzing-workflow-usability/SKILL.md`,
+  `skills/analyzing-security-and-privacy/SKILL.md` — each skill's own Persist step (scope-slug) and
+  Next-step block (glob, already written against the 14-directory enumeration including itself, ahead of
+  the rest of this sweep -- see the "Interim state" note above)
 - `skills/reviewing-analysis-findings/SKILL.md` — swept as part of this same interim registration
-  (Arguments block, `"latest N"` mode, and `scope <scope-slug>` mode all now enumerate 13/12 directories
+  (Arguments block, `"latest N"` mode, and `scope <scope-slug>` mode all now enumerate 14/13 directories
   respectively) since its own discovery is load-bearing, unlike the individual date-range skills' own
   Next-step-block globs, which remain 9-directory pending Task 11
