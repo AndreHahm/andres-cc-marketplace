@@ -126,20 +126,71 @@ default_branch="${default_branch:-main}"
 # -verified separately with a tag that modifies a path then reverts it back
 # to $mb's own original content, confirming this still correctly reports
 # reachable rather than a new false negative from excluding $mb.
+#
+# One `git log --raw` pass per path replaces what used to be one `rev-list`
+# plus one `ls-tree` subprocess PER commit touching that path -- on this
+# repo's own real tag history, checking 5 tags this way took ~15-17s
+# (CodeRabbit automated PR review, PR #315, live-verified: a recorded run
+# over 5 tags with many changed paths each spawned a subprocess per
+# (path, commit) pair). `-m` is required, not optional -- without it, `git
+# log --raw` shows NOTHING for a merge commit with genuine hand-resolved
+# conflict content (`git ls-tree`, used before this batching, never had this
+# blind spot, since it reads the commit's final tree directly rather than
+# diffing against a parent) -- live-verified in an isolated scratch repo:
+# a merge commit with real conflict-resolution content produced zero raw
+# records under plain `--raw`, but `-m` (diff against each parent
+# separately) correctly surfaces the resolved blob+mode either way, since
+# every parent-comparison's "new" side reflects the same final tree state
+# regardless of which parent it's diffed against. `--format=` (empty)
+# suppresses the commit header entirely -- deliberately: this function
+# doesn't need to know WHICH commit a match came from, only whether any
+# record anywhere in the whole flattened, NUL-delimited stream matches, so
+# dropping the header avoids having to track commit boundaries across a
+# multi-commit, multi-parent batch at all. No separate exit-status check
+# here (unlike check_diff_records's own diff-tree call): empty output --
+# whether from a genuine no-match or an underlying git failure -- already
+# produces the correct fail-closed `return 1` either way, since there is no
+# code path here where a failure could be misread as a positive "reachable"
+# signal (`.claude/rules/require-tests-for-behavior-changes.md`'s own
+# sibling-occurrence sweep was applied here and found no gap: every OTHER
+# empty-means-safe-to-skip anti-pattern in this file involves treating
+# emptiness as permission to CONTINUE past a check, which this function
+# never does).
+#
+# `--no-abbrev`: `git log --raw`'s default raw-format hashes are
+# ABBREVIATED (short, e.g. 7 chars) -- a real, verified difference from
+# `git diff-tree`'s raw format used everywhere else in this file, which
+# already defaults to full 40-char hashes with no extra flag needed.
+# Without `--no-abbrev` here, every blob comparison below silently fails
+# closed for the wrong reason (a 7-char prefix can never equal the full
+# `$wanted_blob` this function receives), live-verified: this exact gap
+# broke 7 of this file's own persisted regression scenarios the first time
+# this batching was written, before `--no-abbrev` was added. `--full-index`
+# alone -- the flag `git diff`/`git diff-tree` themselves document for this
+# purpose -- was tried first and found NOT sufficient for `git log`
+# specifically; `--no-abbrev` is the flag that actually works there,
+# confirmed by testing each in isolation.
 is_path_blob_reachable() {
   local path="$1" wanted_blob="$2" wanted_mode="$3" mb="$4"
-  local commit mode blob
+  local mode blob
   read -r mode _ blob _ < <(git ls-tree "$mb" -- "$path" 2>/dev/null)
   if [ -n "$blob" ] && [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ]; then
     return 0
   fi
-  while IFS= read -r commit; do
-    [ -z "$commit" ] && continue
-    read -r mode _ blob _ < <(git ls-tree "$commit" -- "$path" 2>/dev/null)
-    [ -z "$blob" ] && continue
-    [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ] && return 0
-  done < <(git rev-list "${mb}..${default_branch}" -- "$path")
-  return 1
+  local hist_file meta new_mode new_blob found
+  hist_file=$(mktemp) || return 1
+  git log --raw -m --root -z --no-abbrev --no-ext-diff --no-textconv --format= \
+    "${mb}..${default_branch}" -- "$path" > "$hist_file" 2>/dev/null
+  found=1
+  while IFS= read -r -d '' meta && IFS= read -r -d ''; do
+    read -r _ new_mode _ new_blob _ <<< "${meta#:}"
+    if [ "$new_blob" = "$wanted_blob" ] && [ "$new_mode" = "$wanted_mode" ]; then
+      found=0
+      break
+    fi
+  done < "$hist_file"
+  rm -f "$hist_file"
+  return "$found"
 }
 
 # Checks every raw NUL-delimited diff-tree record in file $1 (a real file,

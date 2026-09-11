@@ -817,6 +817,61 @@ scenario_content_inherited_from_merge_base_recognized() {
   )
 }
 
+# Scenario 19: $default_branch's OWN history contains a merge commit with
+# genuine hand-resolved conflict content (not the tag's own merge -- that
+# case is scenario_trivial_merge_skipped, about the merge-commit handling
+# INSIDE is_tag_content_reachable's own walk of the tag's history; this one
+# is about is_path_blob_reachable's batched `git log --raw` search finding
+# a match that originates from such a merge commit on $default_branch's
+# side). Regression coverage for the `-m` flag specifically (CodeRabbit
+# automated PR review, PR #315): without it, `git log --raw` shows NOTHING
+# for a merge commit with real conflict-resolution content, silently
+# missing a genuine match -- live-verified before writing this fixture.
+scenario_default_branch_merge_conflict_content_recognized() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    base_commit=$(git rev-parse HEAD)
+    git branch branchA
+    git branch branchB
+    git checkout -q branchA
+    printf 'A-content\n' > shared.txt
+    git commit -q -am "branchA change"
+    git checkout -q branchB
+    printf 'B-content\n' > shared.txt
+    git commit -q -am "branchB change"
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git merge -q branchA -m "merge branchA"
+    # A real, hand-resolved conflict -- not a trivial/no-op merge.
+    git merge --no-ff -m "merge branchB (conflict)" branchB 2>&1 || true
+    printf 'RESOLVED-content\n' > shared.txt
+    git add shared.txt && git commit -q -m "merge branchB (conflict)"
+    git branch -D branchA branchB >/dev/null
+    # The tag's own branch independently arrives at the SAME resolved
+    # content, via an ordinary commit off the original base -- never
+    # touching $default_branch's own merge at all.
+    git branch feature "$base_commit"
+    git checkout -q feature
+    printf 'RESOLVED-content\n' > shared.txt
+    git commit -q -am "feature independently arrives at the resolved content"
+    git tag -a mergeconflict-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+  )
+  (
+    cd "$repo"
+    default_branch=main
+    # default_branch is read by is_tag_content_reachable via eval "$FUNCS" below,
+    # which shellcheck can't see through -- false positive.
+    # shellcheck disable=SC2034
+    git show-ref --verify --quiet refs/heads/main || default_branch=master
+    eval "$FUNCS"
+    is_tag_content_reachable mergeconflict-rebase-backup-20260101-000000
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -845,6 +900,7 @@ run scenario_special_char_filename_recognized "a filename containing a pathspec 
 run scenario_deletion_check_survives_corrupted_blob "a deletion check fails closed when the path's blob is unreadable, not just when absent"
 run scenario_pre_divergence_blob_not_reachable "a blob present on default_branch only before divergence does not satisfy reachability"
 run scenario_content_inherited_from_merge_base_recognized "content inherited unchanged from the merge-base is still recognized as reachable"
+run scenario_default_branch_merge_conflict_content_recognized "default_branch's own merge-conflict-resolution content is still recognized"
 
 echo ""
 echo "$PASS passed, $FAIL failed"

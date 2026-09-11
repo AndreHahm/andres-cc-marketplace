@@ -96,20 +96,33 @@ comm -23 \
 # contained it after the branches diverged. Checking $mb's own tree first
 # (not just $mb..$default_branch, which excludes $mb itself) still correctly
 # recognizes content genuinely inherited unchanged from the shared ancestor.
+# One `git log --raw` pass per path (not one `ls-tree` per commit) -- see
+# delete-rebase-backup-tags.sh's identical comment for the full rationale,
+# the `-m`/merge-commit blind-spot detail, and the `--no-abbrev` requirement
+# (CodeRabbit automated PR review, PR #315; live-verified ~25-30% faster
+# against this repository's own real tag history, controlled A/B, 2 runs
+# each).
 is_path_blob_reachable() {
   local path="$1" wanted_blob="$2" wanted_mode="$3" mb="$4"
-  local commit mode blob
+  local mode blob
   read -r mode _ blob _ < <(git ls-tree "$mb" -- "$path" 2>/dev/null)
   if [ -n "$blob" ] && [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ]; then
     return 0
   fi
-  while IFS= read -r commit; do
-    [ -z "$commit" ] && continue
-    read -r mode _ blob _ < <(git ls-tree "$commit" -- "$path" 2>/dev/null)
-    [ -z "$blob" ] && continue
-    [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ] && return 0
-  done < <(git rev-list "${mb}..${default_branch}" -- "$path")
-  return 1
+  local hist_file meta new_mode new_blob found
+  hist_file=$(mktemp) || return 1
+  git log --raw -m --root -z --no-abbrev --no-ext-diff --no-textconv --format= \
+    "${mb}..${default_branch}" -- "$path" > "$hist_file" 2>/dev/null
+  found=1
+  while IFS= read -r -d '' meta && IFS= read -r -d ''; do
+    read -r _ new_mode _ new_blob _ <<< "${meta#:}"
+    if [ "$new_blob" = "$wanted_blob" ] && [ "$new_mode" = "$wanted_mode" ]; then
+      found=0
+      break
+    fi
+  done < "$hist_file"
+  rm -f "$hist_file"
+  return "$found"
 }
 
 check_diff_records() {
