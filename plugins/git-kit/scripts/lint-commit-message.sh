@@ -1,23 +1,41 @@
 #!/bin/bash
 # Lints a drafted commit message against this repository's real commitlint
-# config, using the same isolated toolchain CI's commit-branch-guard.yml
-# workflow installs (.github/commitlint-tools/) -- not a hand-maintained
-# approximation of commitlint's rules (e.g. a hardcoded 100-char setting),
-# which could silently drift out of sync with .commitlintrc.cjs or its
-# extended @commitlint/config-conventional base if either ever changes.
-# Running the real tool can't drift by construction.
+# config, using the same commitlint version CI's commit-branch-guard.yml
+# workflow installs -- not a hand-maintained approximation of commitlint's
+# rules (e.g. a hardcoded 100-char setting), which could silently drift out
+# of sync with .commitlintrc.cjs or its extended @commitlint/config-
+# conventional base if either ever changes. Running the real tool can't
+# drift by construction.
 #
 # A no-op (exit 0, no output) when this repository has no commitlint setup
 # at all (.commitlintrc.cjs / .github/commitlint-tools/package.json
 # missing) -- git-kit is a marketplace plugin used across repos that may
 # not have either.
 #
+# Trust boundary: .commitlintrc.cjs is a CommonJS module (commitlint's
+# --config flag `require()`s it, executing whatever it contains, not just
+# reading it as data), and the toolchain's package.json/pnpm-lock.yaml
+# control what gets installed and later executed as the "commitlint"
+# binary. All three are read from a TRUSTED ref (origin/<default branch>),
+# never the checked-out working tree -- otherwise a fetched/contributed
+# branch's own copies would run with this developer's local privileges the
+# moment `commit` runs on it, the same "attacker-controlled on a fetched
+# branch" threat model this file's own scan-staged-files.sh/
+# stage-selected-files.sh/lint-staged-python.sh siblings already treat as
+# live, and the exact scenario commit-branch-guard.yml's own CI workflow
+# already defends against for these same files (found by cross-model-
+# review across rounds 2-3). The install itself lives outside the tracked
+# working tree entirely (under .git/), so this never mutates a developer's
+# own checked-out copies of these files as a side effect of running a
+# local lint check.
+#
 # Exit codes: 0 = no-op or checked-and-clean; 1 = a real commitlint rule
 # violation (its own output names the rule(s) in brackets); 2 = the check
-# could not run at all (pnpm missing, or the toolchain install failed --
-# e.g. offline/blocked registry) -- distinct from 1 so a caller never
-# mistakes an infrastructure failure for a message-content violation. Every
-# exit-2 path prints a line prefixed "SKIP:" to stderr identifying why.
+# could not run at all (pnpm missing, a trusted ref couldn't be read, or
+# the toolchain install failed -- e.g. offline/blocked registry) --
+# distinct from 1 so a caller never mistakes an infrastructure failure for
+# a message-content violation. Every exit-2 path prints a line prefixed
+# "SKIP:" to stderr identifying why.
 #
 # Usage: lint-commit-message.sh <path-to-drafted-message-file>
 #
@@ -40,11 +58,14 @@ MESSAGE_FILE="$MESSAGE_FILE_DIR/$(basename "$MESSAGE_FILE")"
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "Error: not inside a git repository" >&2; exit 1; }
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-TOOLCHAIN_DIR="$REPO_ROOT/.github/commitlint-tools"
+GIT_DIR="$(git rev-parse --git-dir)"
+WORKTREE_TOOLCHAIN_DIR="$REPO_ROOT/.github/commitlint-tools"
 CONFIG_FILE="$REPO_ROOT/.commitlintrc.cjs"
 
-if [ ! -f "$CONFIG_FILE" ] || [ ! -f "$TOOLCHAIN_DIR/package.json" ]; then
+if [ ! -f "$CONFIG_FILE" ] || [ ! -f "$WORKTREE_TOOLCHAIN_DIR/package.json" ]; then
   # This repository has no commitlint setup -- nothing to check against.
+  # A plain existence check against the working tree, not a content read --
+  # never executed, so this doesn't need the trust boundary below.
   exit 0
 fi
 
@@ -53,35 +74,8 @@ if ! command -v pnpm >/dev/null 2>&1; then
   exit 2
 fi
 
-if [ ! -x "$TOOLCHAIN_DIR/node_modules/.bin/commitlint" ]; then
-  echo "Installing isolated commitlint toolchain (.github/commitlint-tools/, first run only)..." >&2
-  if ! pnpm --dir "$TOOLCHAIN_DIR" install --frozen-lockfile --ignore-scripts >&2; then
-    echo "SKIP: commitlint toolchain install failed -- local commitlint check could not run (CI will still enforce it)" >&2
-    exit 2
-  fi
-fi
-
-# commitlint's own resolveExtends resolves module specifiers (e.g.
-# @commitlint/config-conventional, named by this repo's own .commitlintrc.cjs
-# `extends`) relative to process.cwd() -- verified locally: neither --cwd
-# nor -g change that, only actually changing the shell's own working
-# directory does (same finding commit-branch-guard.yml's own comment
-# documents for CI). `cd` into the toolchain directory so the extended base
-# config resolves from ITS OWN install, not the repo root, which has no
-# node_modules at all.
-#
-# .commitlintrc.cjs is a CommonJS module -- commitlint's --config flag
-# `require()`s it, executing whatever top-level code it contains, not just
-# reading it as data. Loading the raw checked-out working-tree copy would
-# let a fetched/contributed branch's own .commitlintrc.cjs run with this
-# developer's local privileges the moment `commit` runs on it -- the same
-# "attacker-controlled on a fetched branch" threat model this file's own
-# scan-staged-files.sh/stage-selected-files.sh/lint-staged-python.sh
-# siblings already treat as live (found by cross-model-review, round 2).
-# Mirror CI's own trust-boundary restore instead: load it from a trusted
-# ref (origin/<default branch>), never the working tree directly. Resolve
-# the default branch the same way starting-work/finishing-work do, falling
-# back to 'main' if origin/HEAD isn't set (e.g. no origin remote).
+# Resolve the default branch the same way starting-work/finishing-work do,
+# falling back to 'main' if origin/HEAD isn't set (e.g. no origin remote).
 DEFAULT_BRANCH=""
 if REMOTE_HEAD="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null)"; then
   # Wrapped in `if` rather than piped through `sed` -- under this script's
@@ -89,38 +83,78 @@ if REMOTE_HEAD="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null)"; then
   # fail, and piping its output into `sed` would still propagate that
   # failure through the pipeline and abort the whole script here (verified
   # live in a throwaway no-origin test repo: exit 128, never reaching this
-  # section's own exit-2 handling below).
+  # script's own exit-2 handling).
   DEFAULT_BRANCH="${REMOTE_HEAD#refs/remotes/origin/}"
 fi
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 
-TRUSTED_CONFIG="$(mktemp)"
+# Install/run entirely outside the tracked working tree, under .git/ -- a
+# location every git-kit script already treats as local, untracked scratch
+# space (write-git-kit-marker.sh's own marker file lives at
+# "$GIT_DIR/git-kit-marker.txt"). This is what lets every file below be
+# sourced from a trusted ref without ever mutating the developer's own
+# checked-out copies as a side effect of running this check.
+LOCAL_TOOLCHAIN_DIR="$GIT_DIR/commitlint-local-check"
+mkdir -p "$LOCAL_TOOLCHAIN_DIR"
+
 # MSYS_NO_PATHCONV=1: on Windows git-bash, MSYS's automatic path-conversion
 # heuristic mangles a "ref:path" refspec containing a dotfile (verified
 # live: "origin/main:.commitlintrc.cjs" silently became an invalid
-# "origin\main;.commitlintrc.cjs" argument without this, making the lookup
-# always fail and silently fall through to the working-tree copy below --
-# defeating this fix's entire purpose on the platform it was written on).
-if ! MSYS_NO_PATHCONV=1 git show "origin/$DEFAULT_BRANCH:.commitlintrc.cjs" > "$TRUSTED_CONFIG" 2>/dev/null; then
-  # No origin remote, or the file doesn't exist there yet (e.g. bootstrapping
-  # this same feature). Never fall back to the working-tree copy here -- that
-  # would silently re-open the exact execution risk this trusted-ref lookup
-  # exists to close, for a caller with no way to tell "genuinely my own
-  # branch" apart from "a fetched branch I haven't inspected." Skip the
-  # check instead, same as the other infrastructure-gap cases above.
-  echo "SKIP: could not read a trusted origin/$DEFAULT_BRANCH copy of .commitlintrc.cjs -- local commitlint check could not run (CI will still enforce it)" >&2
-  rm -f "$TRUSTED_CONFIG"
+# "origin\main;.commitlintrc.cjs" argument without this, making every
+# lookup below always fail).
+fetch_trusted() {
+  # $1 = path at the trusted ref, $2 = destination file. Returns non-zero,
+  # writing nothing to $2, if the trusted ref can't supply that path (no
+  # origin remote, or the file doesn't exist there yet -- e.g. bootstrapping
+  # this same feature).
+  MSYS_NO_PATHCONV=1 git show "origin/$DEFAULT_BRANCH:$1" > "$2" 2>/dev/null
+}
+
+TRUSTED_CONFIG="$LOCAL_TOOLCHAIN_DIR/.commitlintrc.cjs.new"
+TRUSTED_PKG="$LOCAL_TOOLCHAIN_DIR/package.json.new"
+TRUSTED_LOCK="$LOCAL_TOOLCHAIN_DIR/pnpm-lock.yaml.new"
+if ! fetch_trusted ".commitlintrc.cjs" "$TRUSTED_CONFIG" \
+   || ! fetch_trusted ".github/commitlint-tools/package.json" "$TRUSTED_PKG" \
+   || ! fetch_trusted ".github/commitlint-tools/pnpm-lock.yaml" "$TRUSTED_LOCK"; then
+  # Never fall back to the working-tree copies here -- that would silently
+  # re-open the exact execution risk this trusted-ref lookup exists to
+  # close, for a caller with no way to tell "genuinely my own branch"
+  # apart from "a fetched branch I haven't inspected." Skip the check
+  # instead, same as the other infrastructure-gap cases in this script.
+  echo "SKIP: could not read a trusted origin/$DEFAULT_BRANCH copy of the commitlint config/toolchain -- local commitlint check could not run (CI will still enforce it)" >&2
+  rm -f "$TRUSTED_CONFIG" "$TRUSTED_PKG" "$TRUSTED_LOCK"
   exit 2
 fi
+
 if ! cmp -s "$CONFIG_FILE" "$TRUSTED_CONFIG"; then
   echo "Note: .commitlintrc.cjs differs from origin/$DEFAULT_BRANCH -- validating against the trusted origin/$DEFAULT_BRANCH copy, not this branch's own edit." >&2
 fi
-if ! cp "$TRUSTED_CONFIG" "$TOOLCHAIN_DIR/.commitlintrc.cjs"; then
-  echo "SKIP: could not write the local commitlint config copy -- local commitlint check could not run (CI will still enforce it)" >&2
-  rm -f "$TRUSTED_CONFIG"
+
+# Only reinstall when the trusted manifest/lockfile actually changed since
+# the last run (or nothing is installed yet) -- avoids a multi-second pnpm
+# install on every single commit once the local cache is warm.
+NEEDS_INSTALL=1
+if [ -x "$LOCAL_TOOLCHAIN_DIR/node_modules/.bin/commitlint" ] \
+   && cmp -s "$LOCAL_TOOLCHAIN_DIR/package.json" "$TRUSTED_PKG" 2>/dev/null \
+   && cmp -s "$LOCAL_TOOLCHAIN_DIR/pnpm-lock.yaml" "$TRUSTED_LOCK" 2>/dev/null; then
+  NEEDS_INSTALL=0
+fi
+
+if ! mv "$TRUSTED_CONFIG" "$LOCAL_TOOLCHAIN_DIR/.commitlintrc.cjs" \
+   || ! mv "$TRUSTED_PKG" "$LOCAL_TOOLCHAIN_DIR/package.json" \
+   || ! mv "$TRUSTED_LOCK" "$LOCAL_TOOLCHAIN_DIR/pnpm-lock.yaml"; then
+  echo "SKIP: could not write the local commitlint toolchain files -- local commitlint check could not run (CI will still enforce it)" >&2
+  rm -f "$TRUSTED_CONFIG" "$TRUSTED_PKG" "$TRUSTED_LOCK"
   exit 2
 fi
-rm -f "$TRUSTED_CONFIG"
+
+if [ "$NEEDS_INSTALL" -eq 1 ]; then
+  echo "Installing isolated commitlint toolchain ($LOCAL_TOOLCHAIN_DIR, first use or after an update)..." >&2
+  if ! pnpm --dir "$LOCAL_TOOLCHAIN_DIR" install --frozen-lockfile --ignore-scripts >&2; then
+    echo "SKIP: commitlint toolchain install failed -- local commitlint check could not run (CI will still enforce it)" >&2
+    exit 2
+  fi
+fi
 
 # A commitlint crash for a non-rule reason (a corrupted install, or a
 # genuinely malformed .commitlintrc.cjs -- which would also be breaking CI
@@ -131,5 +165,11 @@ rm -f "$TRUSTED_CONFIG"
 # possible from the exit code alone without parsing its own output format,
 # which would be fragile (found by cross-model-review, round 2; downgraded
 # from the reviewer's proposed full fix as disproportionate to the risk).
-cd "$TOOLCHAIN_DIR"
+#
+# commitlint's own resolveExtends resolves module specifiers (e.g.
+# @commitlint/config-conventional) relative to process.cwd() -- verified
+# locally: neither --cwd nor -g change that, only actually changing the
+# shell's own working directory does. `cd` here so the extended base
+# config resolves from this directory's own install.
+cd "$LOCAL_TOOLCHAIN_DIR"
 ./node_modules/.bin/commitlint --config .commitlintrc.cjs < "$MESSAGE_FILE"

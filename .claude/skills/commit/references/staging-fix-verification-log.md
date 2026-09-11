@@ -136,6 +136,34 @@ correctly prints `SKIP: could not read a trusted origin/main copy...` and exits 
 regression (clean pass, violation, pnpm-missing) against the real repo — all unchanged, `git status` clean
 except the one script file.
 
+**Round 4, 2026-09-11 — a third `cross-model-review` pass found the trust boundary from round 2 was
+incomplete:** `.commitlintrc.cjs` was now trusted, but the toolchain's `package.json`/`pnpm-lock.yaml`
+were still read from the working tree — a fetched branch could alter either to make the isolated install
+pull and later execute attacker-controlled code, the exact scenario `commit-branch-guard.yml`'s own CI
+workflow already restores both files specifically to prevent. Confirmed independently, and separately
+verified live that the existing `pnpm --dir` usage already correctly isolates `.npmrc` registry-redirect
+risk the same way an actual `cd` would (`pnpm --dir .github/commitlint-tools config get
+@commitlint:registry` and `(cd .github/commitlint-tools && pnpm config get ...)` both correctly returned
+`undefined` against a repo-root `.npmrc` override) — that sub-risk was already closed; the manifest/
+lockfile content itself was the real gap. Rather than restoring the trusted files on top of the tracked
+working-tree copies (which would leave a developer's real `.github/commitlint-tools/package.json`/
+`pnpm-lock.yaml` locally modified as a side effect of running a local lint check whenever they differed
+from the trusted ref), redesigned the whole install to live under `.git/commitlint-local-check/` —
+outside the tracked tree entirely, matching `write-git-kit-marker.sh`'s own convention of using `$GIT_DIR`
+for local git-kit state. All three trusted files (`.commitlintrc.cjs`, `package.json`, `pnpm-lock.yaml`)
+are fetched from `origin/<default-branch>` into that location; a stale/matching local cache skips
+reinstall. Verified live: cold install (fresh `.git/.../commitlint-local-check`, real `pnpm install`);
+warm-cache fast path (second run, no install, same exit 0); a corrupted local cache manifest correctly
+detected as stale and reinstalled; clean pass, real violation (exit 1), pnpm-missing (exit 2), the
+divergence note (working-tree `.commitlintrc.cjs` temporarily modified, restored via `git checkout --`
+afterward), and the same no-origin-remote throwaway test repo from round 3 (still correctly exits 2) —
+all unchanged in behavior. Confirmed via `git diff --stat` that `.github/commitlint-tools/package.json`/
+`pnpm-lock.yaml` are never touched by any of these runs. Also removed the now-stale `.gitignore` entry
+and leftover local artifact from round 2's superseded `.github/commitlint-tools/.commitlintrc.cjs`
+design. Not re-exercised this round: a genuine install failure (the guard logic itself is unchanged from
+round 2's already-verified version, just relocated) and a live `commit` run through the skill's own
+normal flow rather than a direct script invocation.
+
 ## Step 16 (push) — fixed and verified live, 2026-08-28
 
 This PR's first pass at step 16 replaced "retype/recompose the branch name" with "resolve it fresh
