@@ -31,6 +31,8 @@ This is a 4-tier scale, not the 5-tier model some external session-analysis conc
 | `analyzing-tool-and-framework-use` | Framework role-conformance authority-check violations | Critical (these are governance-boundary crossings by definition) |
 | `analyzing-tool-and-framework-use` | Framework role-conformance process/artifact-check violations | Major |
 | `reviewing-analysis-findings` | Severity-undercut findings | Inherits the lower of the two reports' own severities for that subject, flagged as a discrepancy rather than silently resolved |
+| `analyzing-security-and-privacy` | Any of the seven finding classes, safety-boundary bypass actually occurred | Critical |
+| `analyzing-security-and-privacy` | Any of the seven finding classes, material defense gap with no actual bypass this run | Major |
 
 When a skill's own term isn't listed here, use the tier definitions above directly — don't leave severity ungrounded just because this table doesn't happen to name that skill's exact wording yet.
 

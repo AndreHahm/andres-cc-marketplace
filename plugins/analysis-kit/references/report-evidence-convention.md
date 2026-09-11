@@ -150,6 +150,7 @@ own interpretation from scratch.
 | `analyzing-verification-effectiveness` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which claimed verifications had independently observable evidence vs. only a narrative claim |
 | `analyzing-session-operations` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which failure/span events were derivable from transcript content vs. left as unresolved/unknown |
 | `analyzing-workflow-usability` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which friction instances had enough evidence for a necessary/avoidable/unclear verdict vs. not_measurable |
+| `analyzing-security-and-privacy` | The date range or `this-conversation`/`today` argument resolved in Phase 1 | Which threat-model fields were directly observable vs. inferred; sensitive values are never inspected in a way that would need disclosing here |
 
 `starting-an-analysis` is not in this table — it dispatches to the skills above rather than persisting
 its own report, so it has no coverage preamble of its own to write.

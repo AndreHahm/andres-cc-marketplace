@@ -104,6 +104,12 @@
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
+    },
+    "analyzing-security-and-privacy": {
+      "required_headings": [],
+      "disposition_type": null,
+      "next_step_required": true,
+      "requires_evidence_metadata": true
     }
   }
 }
