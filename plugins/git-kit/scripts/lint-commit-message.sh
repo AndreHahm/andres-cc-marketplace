@@ -70,11 +70,55 @@ fi
 # config resolves from ITS OWN install, not the repo root, which has no
 # node_modules at all.
 #
-# The local .commitlintrc.cjs copy here is a plain, always-refreshed mirror
-# of the repo-root file -- no trust-boundary restore-from-base-SHA step like
-# CI's is needed locally, since a local commit run only ever lints the
-# developer's own drafted message, never a fetched branch's CI grading.
-cp "$CONFIG_FILE" "$TOOLCHAIN_DIR/.commitlintrc.cjs"
+# .commitlintrc.cjs is a CommonJS module -- commitlint's --config flag
+# `require()`s it, executing whatever top-level code it contains, not just
+# reading it as data. Loading the raw checked-out working-tree copy would
+# let a fetched/contributed branch's own .commitlintrc.cjs run with this
+# developer's local privileges the moment `commit` runs on it -- the same
+# "attacker-controlled on a fetched branch" threat model this file's own
+# scan-staged-files.sh/stage-selected-files.sh/lint-staged-python.sh
+# siblings already treat as live (found by cross-model-review, round 2).
+# Mirror CI's own trust-boundary restore instead: load it from a trusted
+# ref (origin/<default branch>), never the working tree directly. Resolve
+# the default branch the same way starting-work/finishing-work do, falling
+# back to 'main' if origin/HEAD isn't set (e.g. no origin remote).
+DEFAULT_BRANCH="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's#^refs/remotes/origin/##')"
+DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 
+TRUSTED_CONFIG="$(mktemp)"
+# MSYS_NO_PATHCONV=1: on Windows git-bash, MSYS's automatic path-conversion
+# heuristic mangles a "ref:path" refspec containing a dotfile (verified
+# live: "origin/main:.commitlintrc.cjs" silently became an invalid
+# "origin\main;.commitlintrc.cjs" argument without this, making the lookup
+# always fail and silently fall through to the working-tree copy below --
+# defeating this fix's entire purpose on the platform it was written on).
+if MSYS_NO_PATHCONV=1 git show "origin/$DEFAULT_BRANCH:.commitlintrc.cjs" > "$TRUSTED_CONFIG" 2>/dev/null; then
+  if ! cmp -s "$CONFIG_FILE" "$TRUSTED_CONFIG"; then
+    echo "Note: .commitlintrc.cjs differs from origin/$DEFAULT_BRANCH -- validating against the trusted origin/$DEFAULT_BRANCH copy, not this branch's own edit." >&2
+  fi
+  CONFIG_SOURCE="$TRUSTED_CONFIG"
+else
+  # No origin remote, or the file doesn't exist there yet (e.g. bootstrapping
+  # this same feature) -- fall back to the working-tree copy, the only one
+  # available; still better than refusing to check anything at all.
+  echo "Note: could not read a trusted origin/$DEFAULT_BRANCH copy of .commitlintrc.cjs -- falling back to this branch's own working-tree copy." >&2
+  CONFIG_SOURCE="$CONFIG_FILE"
+fi
+if ! cp "$CONFIG_SOURCE" "$TOOLCHAIN_DIR/.commitlintrc.cjs"; then
+  echo "SKIP: could not write the local commitlint config copy -- local commitlint check could not run (CI will still enforce it)" >&2
+  rm -f "$TRUSTED_CONFIG"
+  exit 2
+fi
+rm -f "$TRUSTED_CONFIG"
+
+# A commitlint crash for a non-rule reason (a corrupted install, or a
+# genuinely malformed .commitlintrc.cjs -- which would also be breaking CI
+# identically for every contributor, not a silent local-only problem) still
+# exits non-zero here, indistinguishable from exit 1's real rule-violation
+# case. Accepted as a known limitation rather than solved: reliably telling
+# "commitlint crashed" from "commitlint reported a real violation" isn't
+# possible from the exit code alone without parsing its own output format,
+# which would be fragile (found by cross-model-review, round 2; downgraded
+# from the reviewer's proposed full fix as disproportionate to the risk).
 cd "$TOOLCHAIN_DIR"
 ./node_modules/.bin/commitlint --config .commitlintrc.cjs < "$MESSAGE_FILE"
