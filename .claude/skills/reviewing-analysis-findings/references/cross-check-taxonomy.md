@@ -10,6 +10,17 @@ Three categories for classifying a candidate finding pair across two analysis-ki
 - Look for shared proper nouns first (the same file path, skill name, rule name, or component) as a candidate signal, then confirm the underlying claim actually matches.
 - A duplicate can come from two skills examining the same evidence from different angles (a SWOT weakness and a governance conflict both citing the same missing gate) — this is expected overlap between analysis-kit's own skills, not a sign either skill is wrong.
 - Not a duplicate: two findings about the same component that describe *different* problems (e.g. one about a missing test, one about a naming violation) — same subject, different root cause, so these stay separate findings.
+- **Not a duplicate: a different *kind* of symptom that is merely plausibly explained by the same root
+  cause.** This is narrower than "plausibly caused by the same root issue" — two findings only merge when
+  they assert the *identical claim* (the same defect, the same check missing). A finding that instead
+  observes a different kind of symptom — e.g. a recurring-pattern finding noting the user had to ask the
+  same question twice, where the underlying cause is plausibly the same missing check another report
+  already flagged directly — stays its own entry, citing the other finding as related context rather than
+  being merged into it. Merging on "consistent with" rather than "makes the same claim" silently drops the
+  corroborating finding's own independent evidence (here: a discoverability/recall gap, not the missing
+  check itself) into a citation nobody sees without opening the merged entry's fine print. (This is the
+  single canonical Duplicate definition analysis-kit uses; `running-a-full-retrospective`'s own Phase 3
+  consolidation step points here rather than restating it, so the two never drift apart.)
 
 **What to report:** cite both reports' finding text side by side, and note that a reader acting on both should treat this as one action item, not two.
 

@@ -101,6 +101,9 @@ Assign each verification claim exactly one finding class:
   legitimate, common outcome -- don't force a lower-confidence class when the evidence genuinely supports
   `adequate`.
 
+If a finding's severity needs grounding against another analysis-kit skill's report,
+`../../references/severity-vocabulary.md` maps these classes onto the shared severity scale.
+
 **Insufficient first fixes are their own pattern, not just `weak`.** When a fix was verified, shipped, and
 then found insufficient by a *second* pass (a follow-up review, a second reviewer, a regression), record
 both the original `weak`/`false_negative` classification and the fact that a second pass was what actually
@@ -193,6 +196,7 @@ Bash-grant usage, referenced-script existence, Reference Guide file existence, P
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `references/verification-taxonomy.md` | The six evidence classes and detection patterns | Phase 2 |
 | `references/risk-to-evidence-matrix.md` | How much evidence a given risk level warrants | Phase 2-3 |
+| `../../references/severity-vocabulary.md` | Maps this skill's own `failed`/`false_negative`/`missing`/`weak`/`skipped`/`unverified_claim` verdicts onto the shared severity scale | When a finding's severity needs grounding against other skills' reports |
 | `../../references/date-range-scope-convention.md` | Shared Phase 1 scope-resolution procedure this skill's own Phase 1 restates by reference | Phase 1 |
 | `../../references/report-evidence-convention.md` | Coverage preamble and finding evidence metadata shared across every report-producing skill | Persist step, before writing the scratch file |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background -- sweep this file's site list when editing either |

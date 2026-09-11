@@ -114,14 +114,16 @@ Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) a
 origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to each actor-behavior finding, per
 `../../references/report-evidence-convention.md`.
 
-**Pre-persistence validation:** after writing the scratch file, run
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file. **The scratch draft must include the literal `Next: ...` line itself** (see the next paragraph for its exact text) — `validate_report.py`'s `check_next_step` requires that line inside the report text it validates, not merely printed to the conversation afterward; write it into the draft now, before validation, matching `tests/fixtures/reports/component-valid.md`'s own shape.
+
+**Next step:** the scratch draft's own closing line must read `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also add a second line to the draft: `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+
+**Pre-persistence validation:** after writing the scratch file (Next-step line included), run
 `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/validate_report.py" --skill analyzing-actor-behavior --report <scratch-path>)`.
 If it exits non-zero, its stderr lists the specific `[code] subject: message` lines — revise the draft to
 close each one and re-run the check before persisting. Never persist a report the validator rejects.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/analyzing-actor-behavior/<scope-slug>-<timestamp>.md" --label "Actor Behavior Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Actor Behavior Report written: ...` confirmation line — present its printed output as-is. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
-
-**Next step:** after presenting the `📄 ... written:` line, print `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')` finds 2+ analysis-kit reports already written for this scope, also print `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**Run persist_report.py:** run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/analyzing-actor-behavior/<scope-slug>-<timestamp>.md" --label "Actor Behavior Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Actor Behavior Report written: ...` confirmation line — present its printed output as-is, followed by the persisted report's own `Next:`/`Also:` line(s) already embedded in it. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
 ## Gotchas
 
@@ -150,6 +152,12 @@ After Phase 6, verify before presenting output as final:
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
 - [ ] The scratch draft carries the Coverage Preamble and each substantive finding carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 - [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when 2+ reports exist for this scope) was printed after the `📄 ... written:` line
+
+**Eval evidence:** `evals/analyzing-actor-behavior/evals.json` -- 3 scenarios, 15/15 assertions passing
+(multi-agent handoff exercising Phase 5's cross-agent flow analysis, a single-agent session correctly
+skipping Phase 5, and a data-only-boundary/prompt-injection scenario).
+
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval suite above.
 
 ## Reference Guide
 

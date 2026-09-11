@@ -7,6 +7,8 @@ added to the document yet.
 
 ## Fields
 
+The header fields (name through "What happened"):
+
 ```markdown
 ### Candidate: <short pattern name>
 
@@ -27,6 +29,12 @@ needs the PR's overall round count regardless of which round first surfaced any 
 same as counting individual inline comments, which can span multiple rounds or cluster within one.>
 **session-transcript:** available | unavailable
 **What happened:** <1-3 sentences, matching the document's own "What happened" framing>
+```
+
+The remaining fields (Assumed-vs-actual through Cross-check) follow immediately after, in the same
+candidate block:
+
+```markdown
 **Assumed vs. actual** (when applicable — omit for findings that aren't a tool/API/language-behavior
 mismatch):
 

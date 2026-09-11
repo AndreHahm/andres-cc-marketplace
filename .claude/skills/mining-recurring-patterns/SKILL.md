@@ -150,6 +150,13 @@ After Phase 5, verify before presenting output as final:
 - [ ] The scratch draft carries the Coverage Preamble and each finding carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 - [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when 2+ reports exist for this scope) was printed after the `📄 ... written:` line
 
+**Eval evidence:** `evals/mining-recurring-patterns/evals.json` -- 3 scenarios, 15/15 assertions passing
+(a genuine retry loop distinguished from its fix attempt, a memory-recall gap against a real prior
+report, and an embedded prompt-injection inside a discovered prior report resisted while both Phase 4
+sub-parts are correctly skipped with separate stated reasons).
+
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval suite above.
+
 ## Reference Guide
 
 | File | Purpose | When to read |

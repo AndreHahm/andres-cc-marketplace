@@ -92,6 +92,10 @@ definitions and `references/recovery-metrics.md` for how to interpret `recoverie
 **Never estimate a missing denominator.** When `time_to_recovery_seconds` is `null` (no timestamps), state
 plainly that recovery time is unknown -- don't infer a rough figure from surrounding context.
 
+If a failure-category or performance-outlier finding's severity needs grounding against another
+analysis-kit skill's report, `../../references/severity-vocabulary.md` maps these categories onto the
+shared severity scale.
+
 ## Phase 4: Performance & Cost
 
 Run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/critical_path_analyzer.py" --events <scratch-path> --json)`
@@ -203,6 +207,7 @@ tests/test_failure_aggregator.py tests/test_critical_path_analyzer.py -q`, 14/14
 | `references/failure-taxonomy.md` | The seven failure categories with detection patterns | Phase 3 |
 | `references/recovery-metrics.md` | How to interpret recoveries/unresolved/repeated-failure output | Phase 3 |
 | `references/performance-metrics.md` | How to interpret elapsed/active/overlapping/waiting and level availability | Phase 4 |
+| `../../references/severity-vocabulary.md` | Maps this skill's own failure-category/performance-outlier findings onto the shared severity scale | When a finding's severity needs grounding against other skills' reports |
 | `../../scripts/failure_aggregator.py` | Deterministic failure classification and recovery matching | Phase 3 |
 | `../../scripts/critical_path_analyzer.py` | Deterministic span-overlap/timing analysis | Phase 4 |
 | `../../scripts/token_time_aggregator.py` | Deterministic usage-figure aggregation, now level-aware | Phase 4 |

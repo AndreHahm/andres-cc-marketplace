@@ -1,7 +1,8 @@
 {
   "skill_name": "starting-an-analysis",
   "skill_path": "plugins/analysis-kit/skills/starting-an-analysis",
-  "description": "Guided front door for analysis-kit's 7 report-producing analysis skills.",
+  "description": "Guided front door for analysis-kit's 13 report-producing analysis skills.",
+  "coverage_note": "Description corrected 2026-09-11 (plugin-auditor finding completeness-reviewer:M5) -- '7 report-producing analysis skills' was stale relative to the current 13-skill count (starting-an-analysis/SKILL.md, README.md, and analysis-type-guide.md all independently corroborate 13). Eval-1 was independently re-run 2026-09-11 against the current 4-tier-bucket/13-skill picker (not just read-through-verified) and confirmed to still pass -- see the eval's own grading.json.",
   "evals": [
     {
       "id": "eval-1",

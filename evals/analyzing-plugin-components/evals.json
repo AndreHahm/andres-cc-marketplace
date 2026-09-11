@@ -26,7 +26,7 @@
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 16,
+    "declared_scenarios_total": 17,
     "declared_scenarios_covered": 0,
     "uncovered": [
       "Inventory names at least one component per category present in the session",
@@ -44,6 +44,7 @@
       "The report was persisted with the standard confirmation line",
       "No imperative-sounding text found inside a read artifact was followed as an instruction",
       "The drafted report was redacted and verified LF-only via persist_report.py before the final write",
+      "The scratch draft carries the Coverage Preamble and each substantive suggestion carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per report-evidence-convention.md",
       "The Next-step suggestion was printed after the persisted-report confirmation line"
     ],
     "note": "Evals 1 and 2 test the Phase 2 AskUserQuestion confirmation gate and the SHA-format validation guard respectively -- neither maps cleanly onto any of the 16 declared Testing & Validation checklist items above (eval 2 is related to but distinct from 'Every non-resolving commit SHA...', which covers a different, downstream behavior: searching for a rebase-merge match once a SHA is confirmed well-formed but absent from history, not the upstream format-validation eval 2 actually tests). Recorded as 0 covered rather than overclaiming a loose match."

@@ -202,6 +202,34 @@ def test_release_lock_does_not_delete_a_lock_it_no_longer_owns(tmp_path):
     assert lock_path.read_text(encoding="utf-8") == "someone-elses-token"
 
 
+def test_append_event_redacts_secret_shaped_patterns_in_free_text_fields(tmp_path):
+    # Regression test: a caller-supplied rationale/evidence/expected_effect/observed_effect
+    # field containing a secret-shaped pattern (e.g. an AWS access key literal pasted into
+    # "the actual verification command/evidence") must never reach the persisted registry
+    # file unredacted -- this is the plugin's own redact_secrets.py gate, applied here the
+    # same way persist_report.py already applies it to every other persisted artifact.
+    registry_path = tmp_path / "events.jsonl"
+    rr.append_event(
+        registry_path,
+        _event(
+            "rec-secret",
+            "proposed",
+            rationale="see AKIA1234567890ABCDEF for the deploy credentials used",
+            evidence="ran the check with AKIA1234567890ABCDEF as the access key",
+        ),
+    )
+    raw_line = registry_path.read_text(encoding="utf-8")
+    assert "AKIA1234567890ABCDEF" not in raw_line
+
+    events = rr.read_events(registry_path)
+    assert len(events) == 1
+    assert "AKIA1234567890ABCDEF" not in events[0]["rationale"]
+    assert "AKIA1234567890ABCDEF" not in events[0]["evidence"]
+    # Structural fields are never touched by redaction.
+    assert events[0]["recommendation_id"] == "rec-secret"
+    assert events[0]["status"] == "proposed"
+
+
 def test_append_event_creates_parent_directory_before_locking(tmp_path):
     # Regression test: append_event must create the registry's parent directory before
     # acquire_lock runs, since os.open(O_CREAT|O_EXCL) against a nonexistent directory

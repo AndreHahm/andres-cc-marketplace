@@ -137,6 +137,12 @@ After Phase 5, verify these gates before presenting output as final:
 - [ ] Gate-Order and Phase-Permission Checks ran whenever GG-SAD/GSD was the detected framework, not just the original authority/artifact/process checks
 - [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when 2+ reports exist for this scope) was printed after the `📄 ... written:` line
 
+**Eval evidence:** `evals/analyzing-tool-and-framework-use/evals.json` -- 3 scenarios, 13/13 assertions
+passing (mentioned-vs-invoked tool distinction, `.mcp.json` token-redaction discipline, and GG-SAD/GSD
+role-conformance including the Gate-Order/Phase-Permission checks).
+
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval suite above.
+
 ## Reference Guide
 
 | File | Purpose | When to read |
