@@ -213,6 +213,37 @@ def test_append_event_creates_parent_directory_before_locking(tmp_path):
     assert len(events) == 1
 
 
+def test_append_event_aborts_if_its_lock_was_stolen_before_the_write(tmp_path, monkeypatch):
+    # Regression test: append_event's own token re-check, immediately before the write,
+    # must detect that this process's lock was broken and replaced by another writer
+    # sometime after acquire_lock() returned -- and abort without writing, rather than
+    # completing a write validated against state that may now be stale.
+    registry_path = tmp_path / "events.jsonl"
+    rr.append_event(registry_path, _event("rec-hijacked", "proposed"))
+
+    real_acquire_lock = rr.acquire_lock
+
+    def acquire_then_simulate_theft(lock_path, timeout=10.0, poll=0.05):
+        token = real_acquire_lock(lock_path, timeout=timeout, poll=poll)
+        # Simulate a second writer breaking this lock as stale and replacing it with its
+        # own, sometime between this acquisition and append_event's pre-write re-check --
+        # exactly what a long stall (not a crash) on this process's own side would expose.
+        lock_path.write_text("someone-elses-token", encoding="utf-8")
+        return token
+
+    monkeypatch.setattr(rr, "acquire_lock", acquire_then_simulate_theft)
+    with pytest.raises(TimeoutError, match="broken by another writer"):
+        rr.append_event(registry_path, _event("rec-hijacked", "accepted"))
+
+    # Nothing was written -- the registry still shows only the original proposed event.
+    events = rr.read_events(registry_path)
+    assert len(events) == 1
+    assert events[0]["status"] == "proposed"
+    # The "other writer's" lock (not this process's own) must survive the abort --
+    # release_lock()'s own token check must not delete a lock this process doesn't own.
+    assert (tmp_path / "events.jsonl.lock").read_text(encoding="utf-8") == "someone-elses-token"
+
+
 def test_read_events_rejects_non_dict_line(tmp_path):
     registry_path = tmp_path / "events.jsonl"
     with registry_path.open("w", encoding="utf-8") as f:

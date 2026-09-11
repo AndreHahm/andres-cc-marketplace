@@ -245,6 +245,26 @@ def append_event(registry_path: Path, event: dict, *, lock_timeout: float = 10.0
         if not ok:
             raise ValueError(reason)
 
+        # Re-confirm this process still actually holds the lock immediately before
+        # writing -- release_lock()'s own token check (see _unlink_lock_if_token_matches)
+        # only protects the lock *file's* lifecycle, never deleting a replacement lock it
+        # doesn't own. It does nothing to stop this process's *write* below from landing
+        # if the gap between acquiring the lock above and reaching this point was long
+        # enough (a stall, not a crash) for another writer's acquire_lock() to judge this
+        # lock stale, break it, and acquire its own. Without this check, the transition
+        # validated above could be appended anyway against state that's since changed
+        # underneath it. A residual, microsecond-scale gap remains between this check and
+        # the write() call itself -- accepted, same tradeoff this module's stale-lock-break
+        # path already carries, rather than a full compare-and-swap write (not warranted
+        # for this registry's actual concurrency profile: a handful of sequential CLI
+        # invocations, not a high-contention multi-writer service).
+        if _read_lock_token(lock_path) != token:
+            raise TimeoutError(
+                f"lock {lock_path} was broken by another writer while this append was in "
+                "progress -- nothing was written; the transition validated above may now "
+                "be against stale state, re-run the append rather than retrying blindly"
+            )
+
         line = json.dumps(event, ensure_ascii=False) + "\n"
         with registry_path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(line)  # single buffered write() call -- append-only, no rewrite.
