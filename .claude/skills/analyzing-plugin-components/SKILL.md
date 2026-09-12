@@ -17,7 +17,7 @@ allowed-tools: Read Glob Grep Write Edit AskUserQuestion Bash(python */analysis-
 argument-hint: [start-date | "today" | "this conversation"]
 ---
 
-# Session Analysis
+# Plugin Component Analysis
 
 Produce SWOT analyses, self-critiques, and improvement suggestions for every component used across a session range.
 
@@ -250,7 +250,7 @@ close each one (a missing/duplicate disposition, a missing coverage-preamble fie
 line, or missing evidence metadata) and re-run the check before persisting. Never persist a report the
 validator rejects.
 
-**Run persist_report.py:** run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/analyzing-plugin-components/<scope-slug>-<timestamp>.md" --label "Session Analysis Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Session Analysis Report written: ...` confirmation line — present its printed output as its own line before the rest of Phase 6's output, followed by the persisted report's own `Next:`/`Also:` line(s) already embedded in it. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
+**Run persist_report.py:** run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/analyzing-plugin-components/<scope-slug>-<timestamp>.md" --label "Plugin Component Analysis Report")`, where `<scope-slug>` is a short kebab-case description of the scope (e.g. `this-conversation`, `2026-07-10-to-today`). The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Plugin Component Analysis Report written: ...` confirmation line — present its printed output as its own line before the rest of Phase 6's output, followed by the persisted report's own `Next:`/`Also:` line(s) already embedded in it. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
 Use one file per run (`<scope-slug>-<timestamp>.md`) as the persistence convention — this lets a later run in the same project link back to a specific prior retro instead of re-deriving one, and gives the Verify Open Items check above something concrete to point future re-checks at. If `.claude/output/analyzing-plugin-components/` already contains files from an older, different naming convention, don't migrate or delete them before persisting a new report — `Glob` the directory first only if a specific old file's content matters for the current run.
 

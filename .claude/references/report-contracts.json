@@ -1,5 +1,7 @@
 {
   "schema_version": "1.0.0",
+  "enforcement_note": "This file declares a contract for 18 report-producing skills, but only 'analyzing-plugin-components' and 'analyzing-actor-behavior' actually invoke scripts/validate_report.py against it in their own SKILL.md Persist step -- see the 'enforced' field on each skill entry below. A skill with enforced: false still documents its intended contract shape here (for a future validate_report.py rollout), but nothing mechanically checks it today; the skill's own prose (Coverage Preamble, evidence metadata format, Next-step line) is the only thing keeping it honest in the meantime. README.md's own Prerequisites section already discloses this at the plugin-doc level -- this field makes the same fact readable by a tool consuming this JSON file directly, without also reading the README.",
+  "terminology_note": "'Report-producing skill' means 18 skills here (this file's own key list) -- every skill whose Persist step writes a .claude/output/ report. `starting-an-analysis`'s picker and README.md's summary use the narrower term '13 analysis-type skills' for the subset starting-an-analysis actually routes to (excluding running-a-full-retrospective, mining-review-learnings, managing-review-learnings, generating-analysis-recommendations, and reviewing-analysis-findings -- all 5 are still report-producing in this file's own sense, just not reachable through that one picker). This is the canonical statement of that distinction; other files should point here rather than re-deriving or restating it.",
   "common": {
     "coverage_fields": [
       "Requested scope:",
@@ -10,108 +12,126 @@
   },
   "skills": {
     "analyzing-plugin-components": {
+      "enforced": true,
       "required_headings": [],
       "disposition_type": "component",
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "analyzing-actor-behavior": {
+      "enforced": true,
       "required_headings": [],
       "disposition_type": "actor",
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "analyzing-governance-and-conflicts": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "analyzing-tool-and-framework-use": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "mining-recurring-patterns": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "comparing-sessions": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "comparing-session-to-specification": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "generating-analysis-recommendations": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": false,
       "requires_evidence_metadata": true
     },
     "reviewing-analysis-findings": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": false,
       "requires_evidence_metadata": true
     },
     "running-a-full-retrospective": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": false,
       "requires_evidence_metadata": true
     },
     "mining-review-learnings": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": false,
       "requires_evidence_metadata": true
     },
     "managing-review-learnings": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": false,
       "requires_evidence_metadata": true
     },
     "analyzing-session-outcomes": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "analyzing-verification-effectiveness": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "analyzing-session-operations": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "analyzing-workflow-usability": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "analyzing-security-and-privacy": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,
       "requires_evidence_metadata": true
     },
     "identifying-feature-opportunities": {
+      "enforced": false,
       "required_headings": [],
       "disposition_type": null,
       "next_step_required": true,

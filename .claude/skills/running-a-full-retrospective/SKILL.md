@@ -427,7 +427,7 @@ here to keep this file under `plugin-rulebook`'s R13 line-count threshold.
 23/23 assertions passing (Phase 1's 4-option `AskUserQuestion` cap across 11 analysis types, Phase 3's
 severity/dedup consolidation, Phase 5's strictly-serial one-topic-at-a-time queue, and Phase 5's refusal
 to proceed without `AskUserQuestion` available). `references/phase-5-verification-checklist.md`'s own
-30-item checklist has 11 items directly covered by these 4 scenarios; the remaining 19 are either not
+31-item checklist has 11 items directly covered by these 4 scenarios; the remaining 20 are either not
 testable via a text-description eval (tool-call-choice and turn-boundary behaviors) or require a live
 multi-step dispatch beyond this eval format's scope -- see `evals.json`'s own `testing_validation_coverage`
 block for the full item-by-item breakdown.

@@ -37,7 +37,7 @@ def main() -> int:
     parser.add_argument(
         "--label",
         required=True,
-        help="Report type label for the confirmation line, e.g. 'Session Analysis Report'",
+        help="Report type label for the confirmation line, e.g. 'Plugin Component Analysis Report'",
     )
     args = parser.parse_args()
 

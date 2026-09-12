@@ -49,6 +49,10 @@ After Phase 5, verify before presenting output as final:
       wasn't, rather than assuming `/git-cleanup` had already run
 - [ ] `create-pr` was always told to answer Ready-to-merge, never left on its own "Draft (default)"
       option — a draft PR fails `merge-pr`'s own readiness check outright
+- [ ] When `starting-work` reported a worktree for the direct-fix path, every `Edit`/`Write` call in that
+      topic used a path re-rooted under the worktree's own absolute path (never a bare relative path
+      assumed to inherit from `cd`'s effect on `Bash`), and Step 3b's containment check was re-run against
+      that new absolute root before the first write — `cd` alone only ever governs `Bash`
 - [ ] `merge-pr`'s retry loop only retried on checks still pending/running, never on a genuine failure
       (an actually-failed check, a changes-requested review, no merge rights, a merge conflict, a
       rejected PR), and stopped after 5 attempts rather than retrying indefinitely

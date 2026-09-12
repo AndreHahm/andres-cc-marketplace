@@ -1,4 +1,4 @@
-# Session Analysis Report
+# Plugin Component Analysis Report
 
 **Requested scope:** this-conversation
 **Inspected scope:** this-conversation — same as requested, no narrowing

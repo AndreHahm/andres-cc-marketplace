@@ -547,12 +547,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-11",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "session-analysis",
+      "functional_role": "workflow",
       "id": "component_d87d98c4",
       "name": "analyzing-security-and-privacy",
       "naming_history": [
@@ -588,12 +588,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-11",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "session-analysis",
+      "functional_role": "workflow",
       "id": "component_dbc2540d",
       "name": "analyzing-session-operations",
       "naming_history": [
@@ -629,12 +629,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-11",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "session-analysis",
+      "functional_role": "workflow",
       "id": "component_aea383cc",
       "name": "analyzing-session-outcomes",
       "naming_history": [
@@ -670,12 +670,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-11",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "session-analysis",
+      "functional_role": "workflow",
       "id": "component_9500c116",
       "name": "analyzing-verification-effectiveness",
       "naming_history": [
@@ -711,12 +711,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-11",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "session-analysis",
+      "functional_role": "workflow",
       "id": "component_e8839d71",
       "name": "analyzing-workflow-usability",
       "naming_history": [
@@ -752,12 +752,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-11",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "session-analysis",
+      "functional_role": "workflow",
       "id": "component_5a32057f",
       "name": "identifying-feature-opportunities",
       "naming_history": [
@@ -793,12 +793,12 @@
     },
     {
       "compatibility": {},
-      "created_on": null,
+      "created_on": "2026-09-11",
       "details": {
         "schema": "skill"
       },
-      "domain": null,
-      "functional_role": null,
+      "domain": "session-analysis",
+      "functional_role": "workflow",
       "id": "component_70ada647",
       "name": "tracking-recommendation-lifecycle",
       "naming_history": [

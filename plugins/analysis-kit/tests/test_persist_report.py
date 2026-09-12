@@ -154,11 +154,11 @@ def test_cli_prints_standard_confirmation(tmp_path, monkeypatch, capsys):
     scratch.write_text("content\n", encoding="utf-8")
     final = tmp_path / ".claude" / "output" / "final.md"
 
-    rc = _run_main(monkeypatch, scratch, final, label="Session Analysis Report")
+    rc = _run_main(monkeypatch, scratch, final, label="Plugin Component Analysis Report")
 
     assert rc == 0
     captured = capsys.readouterr()
-    assert f"\U0001f4c4 Session Analysis Report written: `{final}`" in captured.out
+    assert f"\U0001f4c4 Plugin Component Analysis Report written: `{final}`" in captured.out
 
 
 def test_persist_report_rejects_final_path_outside_claude_output(tmp_path, monkeypatch, capsys):
