@@ -21,7 +21,7 @@
       "id": 3,
       "name": "development-to-pr existing-PR push scenario",
       "prompt": "There's already an open PR on GitHub for the Linear issue linked to this branch -- push these new commits so they land on that PR, don't open a new one.",
-      "expected_output": "Verifies both the current checkout's repository (via git remote get-url origin, never gh repo view alone) and branch match the selected PR's own headRefName before pushing; classifies the candidate PR correctly (Exact/Adoptable/Conflicting/Ambiguous/Stale) using a live gh pr view read rather than trusting the stated premise; on any mismatch or non-open state, stops with a structured handoff instead of pushing or creating a duplicate PR.",
+      "expected_output": "Verifies both the current checkout's repository (via git remote get-url origin AND git remote get-url --push --all origin -- never the fetch URL alone, and never gh repo view alone) and branch match the selected PR's own headRefName before pushing; classifies the candidate PR correctly (Exact/Adoptable/Conflicting/Ambiguous/Stale) using a live gh pr view read rather than trusting the stated premise; on any mismatch or non-open state, stops with a structured handoff instead of pushing or creating a duplicate PR.",
       "files": []
     },
     {

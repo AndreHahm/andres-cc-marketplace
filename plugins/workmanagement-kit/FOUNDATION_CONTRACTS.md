@@ -35,9 +35,17 @@ and follows this exact procedure rather than restating it:
 1. **Write the evidence to review** (the transition record, proposed hierarchy, or intake payload
    under review — whatever this skill would otherwise only hold in conversation context) to a
    single Markdown file under `.temp/workmanagement-kit-bridge/<dispatch-id>.md`, via the `Write`
-   tool. `.temp/` is gitignored repo-wide — this file is never committed; it exists only as
-   `--target-paths` input for the one dispatch that reads it and does not need to be independently
-   deleted afterward (no citing skill holds a file-deletion grant for this purpose).
+   tool. **Resolve this to an absolute path anchored to the repository root** (e.g.
+   `<repo-root>/.temp/workmanagement-kit-bridge/<dispatch-id>.md`, found via `git rev-parse
+   --show-toplevel` if not already known) — never relative to the invoking skill's own current
+   working directory, which can differ from the repository root. `bridge_caller.py` resolves the
+   same `--target-paths` value (step 3) against the repository root unconditionally, regardless of
+   its own invoking cwd (see its `repo_root_from()`); writing the evidence file anywhere else means
+   the dispatch looks for it at the wrong location and degrades to its unavailable-review fallback,
+   even though the evidence was written successfully. `.temp/` is gitignored repo-wide — this file
+   is never committed; it exists only as `--target-paths` input for the one dispatch that reads it
+   and does not need to be independently deleted afterward (no citing skill holds a file-deletion
+   grant for this purpose).
 2. **Choose `<dispatch-id>`** matching `^[A-Za-z0-9._-]{1,64}$` (`bridge_caller.py`'s own
    validation) — `<calling-skill-name>-<short-unique-suffix>`, e.g. the Linear issue ID the
    transition concerns, or a timestamp if none applies.

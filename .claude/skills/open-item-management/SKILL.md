@@ -177,7 +177,7 @@ even under pressure to "just track everything."
 
 **Last dated run record:** evals/open-item-management/workspace/iteration-1/ (2026-08-30) —
 `evals.json`'s expected_output was updated 2026-08-31 for the Disposition Record redesign (issue
-#254). Connectors are now verified live (see README's Status section); a fresh `skill-tester`
+`#254`). Connectors are now verified live (see README's Status section); a fresh `skill-tester`
 re-run against the redesigned expected_output is still worth doing, but is no longer blocked on
 Foundational Setup.
 
