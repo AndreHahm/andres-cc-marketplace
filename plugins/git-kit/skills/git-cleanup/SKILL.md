@@ -385,10 +385,25 @@ through still lets the rest proceed, and reports which index (if any) failed.
 | experiment/old | needs review |
 ```
 
+### Phase 7: Guided Manual Review (optional, offered after Phase 6 — rebase-backup tags only)
+
+Follow `references/guided-manual-review.md` in full. In outline: `delete-rebase-backup-tags.sh
+--list-review` already drops any candidate with a still-valid "keep" decision recorded — only if
+anything remains, offer via `AskUserQuestion` to walk through them. Per item: show raw evidence
+(`--diff <index>`), ask **Delete now / Keep / Skip**, require a second confirmation before `--force
+<index>`, and use `--keep <index>` to record a decision — never a hand-composed `jq`/`git` command with a
+tag name in it. `REMOTE_GONE` branches are explicitly NOT covered by this phase yet (an equivalent
+name-handling mechanism doesn't exist for branches — see the reference's own "open design problem"
+section); continue reporting them exactly as Phase 3 already does. Do not improvise any of this from
+memory — the reference has the full procedure and is the only place the decision-file schema lives.
+
 ## Safety Rules
 
 1. **Never invoke automatically** - Only run when user explicitly uses `/git-cleanup`
-2. **Two confirmation gates only** - Analysis review, then deletion confirmation
+2. **Two confirmation gates only for the main cleanup flow** - Analysis review, then deletion
+   confirmation. Phase 7's guided review is a separate, optional, opt-in extension for residual
+   "needs review" items only, gated by its own offer-then-decide-then-confirm flow — it doesn't add a
+   third gate to the main flow above, since a user who declines Phase 7's offer sees no extra gate at all
 3. **Use correct delete command** - `-d` for merged, `-D` for squash-merged/superseded
 4. **Never touch protected branches** - main, master, develop, release/* are excluded from Phase 1's
    per-branch commit-analysis loop by `scripts/phase1-analysis.sh`'s own `grep -vE` filter (run directly,
