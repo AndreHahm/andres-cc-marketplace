@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Real script calls were run for init, the proposed append, the invalid verified-transition attempt, show, and list -- not simulated",
+      "passed": true,
+      "evidence": "All six commands executed via real Bash calls against the actual Python 3.13.14 interpreter and the real recommendation_registry.py script, against a scratch registry under the agent's own scratchpad (never the default .claude/output/analysis-kit-recommendations/events.jsonl path). init exited 0 ('recommendation_registry: initialized ...'); the proposed append exited 0 and returned real JSON for rec-eval-003; show and list exited 0 and returned real JSON reflecting the registry's actual on-disk state."
+    },
+    {
+      "text": "The invalid proposed->verified transition attempt was actually rejected by recommendation_registry.py (non-zero exit code, explicit error naming the invalid transition), not silently accepted",
+      "passed": true,
+      "evidence": "append --recommendation-id rec-eval-003 --status verified exited 1 with empty stdout and stderr: \"Error: invalid transition: 'proposed' -> 'verified' is not allowed (allowed from 'proposed': ['accepted', 'declined', 'superseded'])\". No event was written for this attempt."
+    },
+    {
+      "text": "The skill's reporting to the user is honest about the rejection -- it does not claim success, and it does not silently substitute a different, valid status (e.g. accepted) without telling the user",
+      "passed": true,
+      "evidence": "The agent's role-played skill response states plainly the append was rejected, quotes the real stderr message and the actually-allowed next states, confirms nothing was written, and only OFFERS accepted/implemented as a path forward contingent on explicit user confirmation -- it does not silently append a substitute status on its own."
+    },
+    {
+      "text": "Final registry state (via real show/list calls) shows rec-eval-003 still at proposed, not verified",
+      "passed": true,
+      "evidence": "show --recommendation-id rec-eval-003 returned exactly one event, status 'proposed', with no verified event present. list returned a single entry: {\"recommendation_id\": \"rec-eval-003\", \"current_status\": \"proposed\", ...}. Both confirm the rejected verified attempt never persisted."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

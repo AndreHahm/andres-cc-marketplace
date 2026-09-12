@@ -9,7 +9,7 @@
       "what's the current status of recommendation X?"
     ],
     "covered_count": 3,
-    "coverage_note": "All 3 declared activation scenarios in SKILL.md's Testing & Validation section are exercised by eval-1 (accepted->implemented->verified evidence discipline, using the real recommendation_registry.py script against a scratch registry) and eval-2 (status query via show/list)."
+    "coverage_note": "All 3 declared activation scenarios in SKILL.md's Testing & Validation section are exercised by eval-1 (accepted->implemented->verified evidence discipline, using the real recommendation_registry.py script against a scratch registry) and eval-2 (status query via show/list). Eval-3 (added 2026-09-12, closing plugin-rulebook-checker:R28-3) adds functional coverage beyond the 3 declared activation scenarios: an invalid-transition rejection (proposed -> verified directly, skipping accepted/implemented), verifying the real script refuses the append and the skill reports the refusal honestly rather than coercing to a different status."
   },
   "evals": [
     {
@@ -24,6 +24,13 @@
       "name": "status-query-show-and-list",
       "prompt": "Run the tracking-recommendation-lifecycle skill's procedure (Phase 4, read-only path) using the REAL scripts/recommendation_registry.py script against a scratch registry file under your own scratchpad. First, seed the registry with two recommendations by running real `append` calls directly yourself (not through the skill -- this is just test setup): 'rec-a' at proposed->accepted->implemented, and 'rec-b' at proposed only. Then, acting AS the skill, respond to the user's request: 'What's the status of rec-a, and what's everything currently being tracked?'",
       "expected_output": "The skill's response shows rec-a's full event history (all 3 events: proposed, accepted, implemented, via a real `show --recommendation-id rec-a` call) and a list of every tracked recommendation with its current status (via a real `list` call showing rec-a: implemented, rec-b: proposed). The skill presents the script's own JSON output interpreted in prose per its Phase 4 instructions, not a fabricated summary.",
+      "files": []
+    },
+    {
+      "id": "eval-3",
+      "name": "invalid-transition-rejected-not-coerced",
+      "prompt": "Run the tracking-recommendation-lifecycle skill's procedure using the REAL scripts/recommendation_registry.py script (not a simulation) against a scratch registry file under your own scratchpad, passing --registry explicitly throughout. Init the registry, then append a `proposed` event for `rec-eval-003`. Then the user says: 'Just mark rec-eval-003 as verified, we're confident it's fine.' Per the schema's transition diagram, `proposed` only permits accepted/declined/superseded -- `verified` is reachable only from `implemented`, so this is a genuinely invalid transition. Attempt the real append call for `verified` and report what the script actually does, then respond to the user.",
+      "expected_output": "The real `append ... --status verified` call is actually rejected by the script (non-zero exit, an explicit invalid-transition error naming the allowed next states from `proposed`) -- nothing is written. The skill reports this rejection honestly to the user, quoting the real error and the allowed next states, and does not silently substitute a different, valid status or claim success. A final `show`/`list` call confirms rec-eval-003 is still at `proposed`.",
       "files": []
     }
   ]

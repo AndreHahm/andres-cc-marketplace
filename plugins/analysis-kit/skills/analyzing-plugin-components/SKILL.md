@@ -1,7 +1,7 @@
 ---
 name: analyzing-plugin-components
 description: >-
-  Analyzes Claude Code sessions over a user-defined date range. Executes SWOT analyses and
+  Analyzes Claude Code sessions over a session or user-defined date range. Executes SWOT analyses and
   self-critiques for each skill, sub-agent, command, workflow-skill, and rule in scope,
   re-verifying artifacts' stated open items against current repo state rather than trusting
   them at face value. With per-instance confirmation, also corrects a non-resolving commit
@@ -314,6 +314,7 @@ ported source. See each eval's own `grading.json` for the full assertion-level d
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing, Phase 2 confirmation gate's AskUserQuestion wording) | Before committing a change to this SKILL.md |
 | `../../references/date-range-scope-convention.md` | Shared Phase 1 scope-resolution procedure this skill's own Phase 1 restates by reference | Phase 1 |
+| `../../scripts/component_inventory.py` | Shared cross-plugin component inventory used to enumerate skills/agents/commands/rules in scope | Phase 2 |
 | `references/swot-framework.md` | Quadrant prompts and category-specific patterns | Phase 3 |
 | `references/critique-reflection-framework.md` | Question sets per category; rationalizations to reject | Phase 4 |
 | `references/suggestion-taxonomy.md` | Priority tiers, type definitions, merge rules, examples | Phase 5 |

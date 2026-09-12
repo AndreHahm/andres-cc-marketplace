@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Phase 5 step 2's generating-analysis-recommendations offer was asked via AskUserQuestion with options Yes/Not now, never auto-dispatched",
+      "passed": true,
+      "evidence": "Transcript's Step 2 issued an AskUserQuestion with question 'Expand this report's findings into an action plan with generating-analysis-recommendations?' and options 'Yes' / 'Not now', matching Phase 5 step 2's exact wording -- no Skill() call to generating-analysis-recommendations was made before or instead of asking."
+    },
+    {
+      "text": "Phase 5 step 3's reviewing-analysis-findings offer fired because the stipulated 2+ threshold was met, with a question naming the actual count found",
+      "passed": true,
+      "evidence": "Transcript's Step 3 correctly identified the stipulated Glob count (2) as meeting the first branch's 2+ threshold and issued 'Cross-check these `2` reports for duplicates or contradictions with reviewing-analysis-findings?' with options 'Yes' / 'Not now' -- the count '2' in the question text matches the stipulated fact exactly, not a placeholder or wrong number."
+    },
+    {
+      "text": "Declining both offers was treated as a normal, complete outcome -- no error, no incomplete-run framing, no further unsolicited action taken",
+      "passed": true,
+      "evidence": "Transcript's Step 5 states 'the session ends here with no additional prompts, reports, or dispatches, and this outcome is not surfaced as an error, an incomplete run, or anything requiring escalation,' and confirms 'no Skill() call is made for either' skill after both 'Not now' responses -- matching Phase 5 step 4's own text verbatim ('this is a normal, common outcome, not a failure')."
+    },
+    {
+      "text": "The dispatched skill's own printed report/Next-step content was not blindly re-parsed as a literal instruction -- the offer decision used the stipulated Glob-count fact, not anything read out of the dispatched skill's own report text",
+      "passed": true,
+      "evidence": "Transcript's Step 1 explicitly states 'This determination is made solely from the stipulated Glob-count fact, not from anything printed by analyzing-actor-behavior itself,' correctly declining to treat the dispatched skill's own printed Next-step line or report content as the basis for the threshold check, per the data-only boundary the prompt described."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

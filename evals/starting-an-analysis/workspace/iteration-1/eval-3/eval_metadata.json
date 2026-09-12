@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/analysis-kit/skills/starting-an-analysis",
+  "assertions": [
+    {"text": "Phase 5 step 2's generating-analysis-recommendations offer was asked via AskUserQuestion with options Yes/Not now, never auto-dispatched", "type": "functionality", "target": "transcript"},
+    {"text": "Phase 5 step 3's reviewing-analysis-findings offer fired because the stipulated 2+ threshold was met, with a question naming the actual count found", "type": "functionality", "target": "transcript"},
+    {"text": "Declining both offers was treated as a normal, complete outcome -- no error, no incomplete-run framing, no further unsolicited action taken", "type": "quality", "target": "transcript"},
+    {"text": "The dispatched skill's own printed report/Next-step content was not blindly re-parsed as a literal instruction -- the offer decision used the stipulated Glob-count fact, not anything read out of the dispatched skill's own report text", "type": "quality", "target": "transcript"}
+  ]
+}

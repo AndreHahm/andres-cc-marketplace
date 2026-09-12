@@ -1,8 +1,8 @@
 ---
 name: comparing-sessions
 description: >-
-  Compares two Claude Code sessions structurally, using a deterministic
-  diff (scripts/comparator.py) over two persisted analysis-kit reports, then
+  Compares two Claude Code sessions structurally, running a deterministic
+  diff over two persisted analysis-kit reports, then
   interprets what changed semantically — component performance trends,
   suggestion recurrence, tool/framework detection stability. This is a full
   structural/semantic comparison, not a single contradiction flag (for that
@@ -172,6 +172,7 @@ a real recommendation registry with a near-miss stable-ID decoy, and the report-
 | File | Purpose | When to read |
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
+| `../../scripts/comparator.py` | Deterministic structural section-header diff between the two persisted reports being compared | Phase 2 |
 | `references/comparison-dimensions.md` | What counts as comparable between two sessions, including realized-impact matching | Phase 3, Phase 4 |
 | `../../scripts/recommendation_registry.py` | Read-only `list`/`show` access to the recommendation lifecycle registry, mechanically scoped by this skill's own grant | Phase 4 |
 | `../../references/recommendation-lifecycle-schema.md` | Registry event fields and status vocabulary Phase 4 reads | Phase 4 |

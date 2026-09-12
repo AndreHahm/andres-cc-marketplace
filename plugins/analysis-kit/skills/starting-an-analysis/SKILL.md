@@ -168,13 +168,15 @@ The dispatched skill's own printed Next-step line already named the natural foll
 - [ ] Phase 5's `reviewing-analysis-findings` offer only appears when its branch's own threshold was actually met (2+ found for a scope-filtered check, 1+ *other* found for the unfiltered `comparing-session-to-specification` check) — never offered unconditionally
 - [ ] Declining both Phase 5 offers is treated as a normal, complete outcome — not surfaced as an error or incomplete run
 
-**Eval evidence:** `evals/starting-an-analysis/evals.json` -- 1 scenario, 1/1 assertion passing. Task
+**Eval evidence:** `evals/starting-an-analysis/evals.json` -- 3 scenarios, 12/12 assertions passing
+(eval-1: ambiguous-request disambiguation, 4/4; eval-2: a genuine Tier-1/Tier-2 picker branch, 4/4;
+eval-3: Phase 5's gated-offer branch at the 2+ threshold, 4/4). Task
 11's original Phase 1 picker redesign (13-skill/4-bucket taxonomy) was verified by direct read-through
 against `references/analysis-type-guide.md`'s own matching 4-section structure; the eval itself was
 independently re-run 2026-09-11 via a fresh, blind dispatch against the current SKILL.md and confirmed
 to still pass -- not merely read-through-checked. See `evals.json`'s own `coverage_note` for detail.
 
-**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing (frontmatter,
+**Last dated run record:** 2026-09-12 -- `scripts/smoke_test.py`, all 5 checks passing (frontmatter,
 Bash-grant usage, no scripts/*.py grants to check, Reference Guide file existence, no Phase-header
 sequencing to check); eval suite above.
 

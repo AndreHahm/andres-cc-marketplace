@@ -47,6 +47,12 @@ omitted, Phase 1 asks interactively.
 - **Whether a security control was adequate** -- use `analyzing-security-and-privacy` instead. That skill
   performs the actual threat-model/mitigation assessment; this skill's own job there is narrower -- judging
   whether a *claimed* security test or check was itself adequate evidence, not building the threat model.
+- **Whether a session followed a testing-mandate-style project rule at all** -- use
+  `analyzing-governance-and-conflicts` instead. That skill's conformance check is binary (did the session
+  follow the rule, yes or no); this skill judges the verification itself qualitatively (was it
+  proportionate, adequate evidence for the actual behavior/risk change) -- a session can satisfy that
+  skill's rule-conformance check while this skill still finds the verification weak or unconvincing, or
+  vice versa.
 
 ## Phase 1: Scope
 

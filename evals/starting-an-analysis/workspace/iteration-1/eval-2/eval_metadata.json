@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-2",
+  "skill_path": "plugins/analysis-kit/skills/starting-an-analysis",
+  "assertions": [
+    {"text": "Tier 1 AskUserQuestion presents exactly the 4 documented buckets from SKILL.md Phase 1 -- not more, not fewer, not invented options", "type": "structure", "target": "transcript"},
+    {"text": "Tier 2 AskUserQuestion (for the bucket this scenario should land in) presents only that bucket's own documented options, capped at 4, with no options borrowed from a different bucket", "type": "structure", "target": "transcript"},
+    {"text": "The final selected skill is one of the 13 analysis-type skills and is a defensible match for the scenario's actual request, justified against analysis-type-guide.md's own disambiguation text", "type": "quality", "target": "transcript"},
+    {"text": "Tier 2 was not skipped, or if skipped, the skip is actually justified per SKILL.md's own stated shortcut rule (free-text answer already clearly naming one of the 13 skills or their trigger phrases) rather than merely assumed", "type": "functionality", "target": "transcript"}
+  ]
+}
