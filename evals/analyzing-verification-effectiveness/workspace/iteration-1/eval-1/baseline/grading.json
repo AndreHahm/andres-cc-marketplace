@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "The retry-logic change is classified 'unverified_claim', not 'adequate' or plain 'missing'", "passed": false, "evidence": "Baseline never uses any formal classification label at all -- pure prose analysis concluding 'this wasn't adequately verified' with no unverified_claim/adequate/missing/weak taxonomy applied."},
+    {"text": "The report explicitly states the commit message is a claim, not evidence", "passed": true, "evidence": "'The commit message makes a factual claim with no basis... Tests pass implies a test was run and its output was observed. Neither happened... The change was reasoned about, then trusted, not verified.'"},
+    {"text": "The recommendation names an exact verification command/approach, not a generic 'add more tests'", "passed": true, "evidence": "Names specific concrete steps: assert delay-growth formula, cap/jitter bounds, inject a fake clock instead of real sleeps, run the full existing suite and read its output, do one manual/integration sanity check watching real retry timing in logs -- not a generic 'add more tests' deflection, though it stops short of naming an exact shell command."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.6667}
+}

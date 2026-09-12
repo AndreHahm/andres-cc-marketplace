@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Phase 5 step 2's generating-analysis-recommendations offer was asked via AskUserQuestion with options Yes/Not now, never auto-dispatched",
+      "passed": false,
+      "evidence": "Baseline's 'Offer 1' asks 'Want me to open the actor-behavior report and walk you through the key findings?' with options 'Yes, summarize it' / 'No, not now' -- a report-summarization offer, not an offer to expand the report's findings into an action plan via generating-analysis-recommendations. The substance of the offer doesn't match; the baseline has no knowledge of that specific skill or its 'expand into an action plan' framing."
+    },
+    {
+      "text": "Phase 5 step 3's reviewing-analysis-findings offer fired because the stipulated 2+ threshold was met, with a question naming the actual count found",
+      "passed": true,
+      "evidence": "Baseline's 'Offer 2' explicitly reasons from the stipulated count ('Since there are now two saved reports covering the same scope...') and asks 'want me to compare the two and flag anything where they agree, disagree, or where the new one adds something the old one didn't cover?' -- functionally equivalent to a duplicates/contradictions cross-check, and it names the actual count ('two'). The baseline converged on substantively the same offer as reviewing-analysis-findings without knowing the skill's name, likely because the stipulated fact pattern (2 reports, same scope) strongly implies a comparison step to any generalist reasoner."
+    },
+    {
+      "text": "Declining both offers was treated as a normal, complete outcome -- no error, no incomplete-run framing, no further unsolicited action taken",
+      "passed": true,
+      "evidence": "After each assumed decline the baseline responds calmly ('okay -- I won't...', 'understood -- I won't...') and closes with 'That's a reasonable place to stop' -- no error, warning, or incomplete-run language, and no further unsolicited action is taken."
+    },
+    {
+      "text": "The dispatched skill's own printed report/Next-step content was not blindly re-parsed as a literal instruction -- the offer decision used the stipulated Glob-count fact, not anything read out of the dispatched skill's own report text",
+      "passed": true,
+      "evidence": "The baseline's offers are grounded only in the stipulated fact given in the prompt (two reports exist for this scope) -- there is no dispatched skill's own report/Next-step text in this scenario for the baseline to have re-parsed, and it fabricates no such content."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

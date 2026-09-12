@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Phase 2 builds a real action-token list and runs sequence_miner.py for real", "passed": false, "evidence": "Baseline produced a purely narrative retrospective (prose sections 1-3 plus a summary table) with no action-token extraction and no script invocation of any kind -- it never mentions or runs a deterministic mining tool; the retry loop was identified by manual prose reasoning over the transcript, not a real script pass."},
+    {"text": "Retry loop identified (3 identical failed cycles), distinct from the 4th successful cycle which is NOT flagged", "passed": true, "evidence": "Baseline explicitly enumerates 'Attempt 1/2/3' as identical Edit+pytest cycles with the same ImportError, and separately identifies the 4th cycle (Read then Edit then passing test) as 'the first substantively different action' that fixed the test -- correctly distinguishes the loop from the real fix."},
+    {"text": "Memory-recall gap identified, citing the real prior report by path and noting the avoidable larger implementation", "passed": true, "evidence": "Baseline actually read `.claude/output/analyzing-plugin-components/rate-limiter-2026-08-01T00-00-00Z.md`, quoted its Verdict/Suggestion fields verbatim, and stated the assistant 'never issued a Read, Glob, or any other tool call' to check for it, concluding the one-line `limit_type` fix was available instead of a new class from scratch."},
+    {"text": "The single AskUserQuestion call correctly NOT flagged as a repeated-question loop; user's re-ask correctly distinguished", "passed": true, "evidence": "Baseline explicitly separates the two cases: 'the repetition originated from the user, and the assistant did not re-ask its own already-answered question at any point' -- correctly avoids conflating the user's re-ask with an assistant-side repeated AskUserQuestion."},
+    {"text": "Short repeated 2-token subsequences not treated as independent findings beyond the one real retry-loop finding", "passed": true, "evidence": "Baseline reports exactly one bounded retry-loop finding for the whole transcript and does not multiply it into separate findings for each Edit+test pair -- though this holds only because the baseline never performed fine-grained subsequence mining to begin with, not because it applied the skill's own dedup discipline."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 4, "pass_rate": 0.8}
+}

@@ -1,0 +1,32 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Report includes a finding classified as `candidate`",
+      "passed": false,
+      "evidence": "Baseline reaches an equivalent practical verdict ('Worth building... a real, worth-fixing gap... confirmed gap, not a duplicate of existing capability') but never uses the skill's own formal disposition taxonomy -- no label 'candidate' (or any of the sibling labels insufficient-evidence/merge-with-existing/reject) appears anywhere in the output. Without prior knowledge of the skill's classification scheme, a generic agent has no reason to produce a structured disposition field."
+    },
+    {
+      "text": "Finding cites repeated evidence (3+ instances of the same manual workaround) as the qualifying threshold",
+      "passed": true,
+      "evidence": "Explicitly counts and cites the recurrence: 'This complaint recurred three times in three weeks around the same skill, which is exactly the \"repeated ≥ 3 times, stable pattern, low decision complexity where automatable\" signal pattern-mining-methodology.md's own automation-candidate criteria describe.'"
+    },
+    {
+      "text": "Finding includes all four scoring bands: reach, expected value, confidence, effort",
+      "passed": false,
+      "evidence": "No scoring bands present in any form -- reasoning is prose-only (cost/benefit discussion, a 3-step breakdown of what's automatable vs. judgment-requiring), with no Reach/Expected-Value/Confidence/Effort labels or qualitative bands anywhere. This is the clearest capability gap: a generic agent has no reason to invent this specific four-axis scoring structure unprompted."
+    },
+    {
+      "text": "Finding states an overlap check was performed with no meaningful overlap found",
+      "passed": true,
+      "evidence": "Explicitly performed and reported: read mining-recurring-patterns' own SKILL.md, pattern-mining-methodology.md, and grepped scripts/ for any existing raw-event-to-action-token converter, concluding 'No script anywhere in plugins/analysis-kit/scripts/ bridges this gap... confirmed gap, not a duplicate of existing capability.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5,
+    "note": "Baseline dispatched to a fresh general-purpose agent with no knowledge of identifying-feature-opportunities' SKILL.md or its scoring/disposition conventions, and an explicit exclusion instruction barring it from reading anything under plugins/analysis-kit/skills/identifying-feature-opportunities/ or evals/ (a first attempt without this exclusion had read the skill's own opportunity-rubric.md and this eval's own with_skill/grading.json 'answer key' and was discarded as contaminated). The retained baseline independently investigated mining-recurring-patterns' own SKILL.md and scripts and reached the same substantive conclusion (worth building, no existing overlap) but lacks the skill's own structured disposition label and four-band scoring discipline -- the two failing assertions are exactly the skill's own procedural contribution, not evidence the underlying judgment was wrong."
+  }
+}

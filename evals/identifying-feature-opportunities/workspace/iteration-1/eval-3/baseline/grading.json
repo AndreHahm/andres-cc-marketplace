@@ -1,0 +1,27 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Report includes a finding classified as `merge-with-existing`",
+      "passed": false,
+      "evidence": "Baseline reaches the same practical verdict ('No new feature needed -- this need is already built, and built well') but never produces the skill's formal disposition label -- no term 'merge-with-existing' or any structured classification field appears anywhere in the free-form recommendation."
+    },
+    {
+      "text": "Finding names `comparing-sessions` as the specific overlapping existing skill",
+      "passed": true,
+      "evidence": "Explicitly named, quoted, and cited in detail: 'the capability the user describes... already exists in this repo as a shipped, tested, cross-referenced analysis-kit skill: comparing-sessions (plugins/analysis-kit/skills/comparing-sessions/SKILL.md)', with its activation description quoted and its Phase 3/4 behavior described."
+    },
+    {
+      "text": "Finding describes the gap between what comparing-sessions does today and what the candidate asks for, not just 'it's related'",
+      "passed": true,
+      "evidence": "Identifies two concrete gaps beyond 'it's related': (1) a discoverability/routing gap -- 'a conversational-routing miss in those specific sessions' where the assistant acknowledged the wish instead of invoking comparing-sessions or starting-an-analysis; (2) a precondition gap -- 'comparing-sessions requires a prior persisted report to diff against... if no analysis has ever been persisted for this project, the trend view has nothing to compare yet.'"
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6667,
+    "note": "Baseline dispatched to a fresh general-purpose agent with no mention of identifying-feature-opportunities' name or conventions; it independently explored comparing-sessions', tracking-recommendation-lifecycle's, and starting-an-analysis's own files (a legitimate overlap-check target) and never touched identifying-feature-opportunities or its evals/ directory. It reached the same substantive conclusion (existing capability covers the need) with a more thorough discoverability analysis than the with_skill run, but without the skill's own formal disposition label."
+  }
+}

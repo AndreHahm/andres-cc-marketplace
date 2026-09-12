@@ -1,0 +1,19 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Finding A classified Quick Win (Low/Low/Medium benefit)", "passed": false, "evidence": "The baseline never uses the skill's Quick Win/Strategic Investment/Nice-to-Have/Reconsider taxonomy at all. Finding A is rated 'Complexity: Trivial, Risk: None' and ranked #3 of 4 (after B and D), with no distinct 'benefit' axis and no bucket label."},
+    {"text": "Finding B classified Strategic Investment: High complexity, High risk, High benefit", "passed": false, "evidence": "Baseline rates B 'Complexity: High, Risk: Medium-high, Business impact: High' -- axis values are directionally similar (high complexity, high impact) but risk is rated Medium-high rather than High, there is no 'benefit' axis distinct from 'business impact', and no 'Strategic Investment' bucket label is produced anywhere."},
+    {"text": "Finding C classified Nice-to-Have: Low complexity, Low risk, Low benefit, explicitly cosmetic", "passed": false, "evidence": "Baseline rates C 'Complexity/risk: Trivial' and does state it is cosmetic-only ('does not affect log parseability'), but produces no distinct benefit axis and no 'Nice-to-Have' bucket label."},
+    {"text": "Finding D classified Reconsider, explicitly recommending the narrow 5-line fix instead of the proposed rewrite", "passed": false, "evidence": "Baseline recommends the narrow atomic-write fix directly and correctly, but never frames this as rejecting/reconsidering a proposed full rewrite -- it doesn't mention a rewrite alternative at all, so there is no explicit 'instead of the rewrite' contrast, and no 'Reconsider' verdict is named."},
+    {"text": "Every recommendation_id follows <id-prefix>-rec-<NN> derived from the source report's filename, not a bare scope-slug", "passed": false, "evidence": "Baseline output contains no recommendation IDs of any kind -- findings are referenced only by their original 'Finding A/B/C/D' labels."},
+    {"text": "Every WHAT/WHY/HOW cites specific evidence, none generic or fabricated", "passed": true, "evidence": "Each entry cites the exact figures from the source findings (12 call sites/6 files/3 incidents for B, the persist_report.py atomic-write precedent for D, the 12-to-15 skill count for A, the 'doesn't affect log parseability' language for C) under its own 'What to do'/'Why it matters'/'Complexity-risk' structure -- functionally equivalent to WHAT/WHY/HOW, with no fabricated evidence anywhere."},
+    {"text": "Order-of-operations/bucket grouping puts the Quick Win (Finding A) ahead of the Strategic Investment (Finding B)", "passed": false, "evidence": "Baseline's stated order is B -> D -> A -> C -- the opposite of what the assertion requires: B (the closest analogue to Strategic Investment) is ranked first, ahead of A (the closest analogue to Quick Win). The baseline explicitly reasons by business-impact-first rather than by a quick-wins-first convention."}
+  ],
+  "summary": {
+    "assertions_total": 7,
+    "assertions_passed": 1,
+    "pass_rate": 0.143,
+    "note": "A generic agent with no knowledge of this skill produces solid, evidence-grounded reasoning but organizes it around its own ad hoc framework (severity/business-impact-first ordering, a two-axis complexity/risk rating with no separate benefit axis) rather than the skill's specific complexity/risk/benefit rubric, named bucket taxonomy, recommendation_id scheme, or quick-wins-first sequencing convention. All 6 failures trace directly to those skill-specific conventions being entirely absent from the baseline's vocabulary and structure, not to any factual or evidentiary error in its analysis."
+  }
+}

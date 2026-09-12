@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Both confirmations are verdict 'necessary', not 'avoidable'", "passed": true, "evidence": "'Neither confirmation was excessive.' / 'Both prompts were warranted and appropriately scoped. This wasn't a case of redundant friction.'"},
+    {"text": "The report explicitly notes the subject (file) changed between the two asks as the reason both are necessary", "passed": true, "evidence": "'They targeted different resources. old-config.json and legacy-config.json are distinct files. Confirming a delete on one gives you no information about intent regarding the other... If the assistant had asked twice about the same file... that would be the excessive pattern. That's not what happened here.'"},
+    {"text": "This is not flagged as a confirmation-burden problem", "passed": true, "evidence": "'I don't see evidence of unnecessary friction in what you've described.' The one caveat raised (whether both files could have been surfaced in one combined prompt) is explicitly framed as a 'judgment call, not a mistake,' not a confirmation-burden finding."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

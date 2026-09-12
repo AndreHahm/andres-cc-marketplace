@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The finding pair is classified as Duplicate, not Contradiction, Severity Undercut, or None",
+      "passed": true,
+      "evidence": "Agent's final classification: 'Convergent duplicate (corroborating, not contradictory)' -- concluded 'two independent analyses converged on the exact same underlying issue, the correct relationship label is duplication (specifically, corroborating/convergent duplication)' and explicitly ruled out contradiction ('There is no case here of one report asserting X and the other asserting not-X')."
+    },
+    {
+      "text": "Both documented Duplicate carve-outs (different-symptom-same-root-cause; producer-consumer relationship) are explicitly checked and correctly ruled out with stated reasoning",
+      "passed": false,
+      "evidence": "No dedicated carve-out-check reasoning step appears anywhere in the response. The agent touches both facts only by restating what the prompt itself stipulated verbatim ('Neither report is a rewrite, summary, or derivation of the other' and 'nor of one symptom tracing to a different root cause ... the prompt explicitly stipulates both are describing the same symptom and the same root cause') rather than independently reasoning through why a producer-consumer relationship or a different-symptom-same-root-cause reading doesn't apply. Without the skill's own carve-out framework, the baseline has no named check to run and never attempts one -- it only echoes given facts."
+    },
+    {
+      "text": "The classification cites the actual shared root cause (retry_delivery()'s missing exponential backoff in webhook_dispatcher.py) from both fixtures' own text, not a generic restatement",
+      "passed": true,
+      "evidence": "Agent quoted both report characterizations directly: Report A's 're-invokes itself right away, with zero delay' and Report B's 'calls itself again immediately, with no delay, on failure ... lack of exponential backoff', naming retry_delivery() and webhook_dispatcher.py specifically rather than a generic 'these reports overlap' statement."
+    },
+    {
+      "text": "Phase 2's structural diff reasoning is performed before Phase 3's semantic classification",
+      "passed": false,
+      "evidence": "The response has no two-phase structure at all -- it is a single flowing analysis that blends structural observations (same function, same file, near-identical wording) and the semantic duplicate/contradiction classification into one undifferentiated paragraph, with no named or ordered 'structural diff' step preceding a separate classification step. This is an expected absence: the baseline prompt never named or requested a Phase 2/Phase 3 procedure."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}

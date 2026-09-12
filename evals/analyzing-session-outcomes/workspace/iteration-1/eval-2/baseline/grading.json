@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "AC-1 (401 on missing token) is verdict 'met', citing the user's own direct confirmation or the observed manual test as evidence", "passed": true, "evidence": "'AC-1 ... SATISFIED (confirmed) ... you personally ran a manual curl request without a token and observed a 401 response' -- cites the user's own manual test directly."},
+    {"text": "AC-2 (logging) is verdict 'not_met', not 'not_verifiable' -- the report treats direct evidence that no logging code exists as a contradiction, not an absence of evidence", "passed": true, "evidence": "'AC-2 ... NOT SATISFIED ... nothing was built ... zero evidence of any logging work ... Treat it as entirely outstanding' -- treated as a definite negative grounded in direct evidence, not hedged as unknown."},
+    {"text": "The report does not fabricate or infer that logging exists", "passed": true, "evidence": "'What was built: nothing. No logging code was added, and logging wasn't even discussed in the session.' -- no fabrication or inference of partial/implicit logging."},
+    {"text": "The supplied acceptance-criteria document is cited as the source of the criteria (not re-derived from the user's request alone)", "passed": false, "evidence": "The response never discusses where AC-1/AC-2 originated (a supplied acceptance-criteria document vs. the user's own phrasing) -- it just restates and evaluates the two criteria as given, with no origin/source tracking at all."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 3, "pass_rate": 0.75}
+}

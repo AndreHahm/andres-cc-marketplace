@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "The rename goal is verdict 'met' at tier 1 (explicit user acceptance), citing the user's own confirmation directly rather than downgrading to tier 2", "passed": false, "evidence": "The response bases its 'delivered' verdict on the fact it was 'executed correctly and verified with a real test run' -- it never cites the user's own quoted acceptance ('Perfect, that's exactly what I needed, thanks') as the evidence for the verdict, effectively grounding it in test-based (tier-2-equivalent) evidence rather than the stronger direct user confirmation available in the transcript."},
+    {"text": "Delivered Artifacts lists the unrequested docstring addition, kept distinct from the Acceptance Criteria section", "passed": true, "evidence": "A separate 'What was added without being asked' section lists 'A short docstring on the renamed function' distinctly from the 'What you explicitly asked for -- delivered' section."},
+    {"text": "A Process Compliance Note is present even though the session looks fully successful", "passed": false, "evidence": "No disclaimer stating process conformance isn't being judged; instead the response actively makes process judgments inline (scope-creep commentary, a 'quick grep' suggestion, critique of test-based verification strength) without ever separating out or declining that judgment."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 1, "pass_rate": 0.3333333333333333}
+}

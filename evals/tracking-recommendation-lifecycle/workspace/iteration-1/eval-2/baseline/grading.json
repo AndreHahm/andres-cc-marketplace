@@ -1,0 +1,26 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "A real `show --recommendation-id rec-a` call was run and its full 3-event history was presented",
+      "passed": true,
+      "evidence": "show --registry <scratch>/events.jsonl --recommendation-id rec-a exited 0, returning real JSON with all 3 events (proposed 06:53:31Z, accepted 06:53:38Z, implemented 06:53:45Z with evidence field). The baseline agent's final response to the user reproduces all 3 events with timestamps and the evidence field."
+    },
+    {
+      "text": "A real `list` call was run and both tracked recommendations were shown with correct current status (rec-a: implemented, rec-b: proposed)",
+      "passed": true,
+      "evidence": "list --registry <scratch>/events.jsonl exited 0, returning real JSON: rec-a current_status 'implemented', rec-b current_status 'proposed'. Both are reported correctly and completely in the final response's table."
+    },
+    {
+      "text": "The response interprets the script's own JSON output in prose, not a fabricated summary",
+      "passed": true,
+      "evidence": "The final response's numbered history and status table match the real show/list JSON output field-for-field (statuses, timestamps, evidence text) with no invented or altered values."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 3,
+    "pass_rate": 1.0
+  }
+}

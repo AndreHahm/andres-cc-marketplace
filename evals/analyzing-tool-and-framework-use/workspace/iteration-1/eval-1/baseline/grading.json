@@ -1,0 +1,11 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "ruff and pytest are both recorded as actually-invoked tools with invocation counts (ruff: 1, pytest: 1)", "passed": true, "evidence": "'Actually Run / Used' table lists ruff (`ruff check --fix .`) and pytest (`pytest -q`), each shown as a single discrete invocation event with its real result -- equivalent to invocation_count 1 each, though the baseline does not use an explicit numeric 'count' field/label the way the with_skill report does."},
+    {"text": "pytest-xdist is NOT recorded as an invoked tool -- it was only discussed/considered, never run", "passed": true, "evidence": "Listed only under a separate 'Discussed but Not Used' section: 'Proposed by the user as an option for parallel test runs. The assistant explicitly declined to add it... no installation or configuration occurred.'"},
+    {"text": "mypy is NOT recorded as an invoked tool, and is instead noted as a tool that was checked for and confirmed absent from the project (not even configured), distinct from a merely-discussed tool", "passed": true, "evidence": "Given its own distinct section 'Asked About, Confirmed Not Set Up': 'checked `pyproject.toml` (no `mypy` dependency listed) and confirmed no `mypy.ini` file exists. Conclusion: not set up in this repo.' Kept separate from the pytest-xdist 'discussed but not used' entry."},
+    {"text": "The report explicitly distinguishes 'mentioned but not invoked' from 'actually invoked' for at least the pytest-xdist/ruff pair, per the skill's own Required Distinctions -- not silently collapsing both into one undifferentiated tool list", "passed": true, "evidence": "Report is structured into three clearly separate sections/tables -- 'Actually Run / Used', 'Discussed but Not Used', and 'Asked About, Confirmed Not Set Up' -- rather than one flat tool list."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

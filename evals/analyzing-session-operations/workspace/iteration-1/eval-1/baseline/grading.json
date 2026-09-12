@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "The network-timeout failures are classified 'environment', not 'tool'", "passed": true, "evidence": "'Transient/environmental failure, not a deterministic error... the fault lies outside the tool call itself (network path, registry endpoint, or DNS flakiness) rather than in a bad command' -- correctly attributes cause to environment, not to the tool invocation."},
+    {"text": "repeated_failures shows Bash(npm install) with count 2 (two failures before eventual success)", "passed": true, "evidence": "'a two-strike identical-error pattern before recovery: the same command produced the same failure class twice in a row (10:00:00Z and 10:00:15Z) before the third attempt succeeded' -- correct count of 2, though expressed in prose rather than a named repeated_failures field."},
+    {"text": "time_to_recovery_seconds is derived from actual supplied timestamps, not estimated or omitted", "passed": true, "evidence": "'First failure: 10:00:00Z ... Successful completion: attempt began at 10:00:35Z ... Time to recovery: 35 seconds' -- computed directly from the two supplied timestamps, matching the with_skill run's own 35.0s figure."},
+    {"text": "The report explicitly notes no performance/span data was compiled for this run rather than fabricating a Performance & Cost section", "passed": true, "evidence": "'Performance/Cost Data: Not available for this session. The summary provides only start timestamps for each attempt, not attempt durations, so no per-call latency... can be computed.' -- explicit disclosure, no fabricated figures."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

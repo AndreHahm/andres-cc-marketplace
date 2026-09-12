@@ -1,0 +1,12 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Phase 4's subagent-level aggregation runs token_time_aggregator.py for real against the three actual dispatch figures", "passed": false, "evidence": "Baseline built a manual markdown table computing the correct totals (121000 tokens / 28 tool uses / 188000ms) by hand, but never invoked any aggregation script -- it has no awareness of token_time_aggregator.py at all, so the arithmetic is right but the required real-script-invocation mechanism is absent."},
+    {"text": "Top-tokens and top-duration rankings both rank stale-claim-scan first, doc-audit second, final-doc-review third", "passed": true, "evidence": "Baseline's table and prose both order stale-claim-scan (58000/94000) first, doc-audit (42000/61000) second, final-doc-review (21000/33000) third, on both metrics, and explicitly names stale-claim-scan as 'the largest on every axis provided.'"},
+    {"text": "Skill-level ranking explicitly skipped with a stated reason (no session_parser data for this scope)", "passed": false, "evidence": "Baseline never names or distinguishes a separate 'skill-level' tier at all -- it only notes generically that 'the transcript gives no figure for the orchestrating assistant's own token consumption... so a true session total... cannot be computed,' which is a data-absence observation about the pasted transcript, not a stated recognition that a distinct skill-level/session_parser.py-based ranking exists and is being skipped for its own separate reason."},
+    {"text": "The grep-pattern correction NOT flagged as a retry loop", "passed": true, "evidence": "Baseline explicitly states 'the assistant did not retry the same failing grep a second time... This is the opposite of the failure pattern... No repeated/failing-action-loop pattern is present in this transcript' -- correctly distinguishes the one-shot correction from a true retry loop."},
+    {"text": "Report does not claim or imply a whole-session total", "passed": true, "evidence": "The table's 'Total' row (121000/28/188000) is immediately qualified in the following prose: 'this is subagent token usage only... a true \"session total\" including the parent turn cannot be computed from what's available -- only the subagent slice can,' so the total is not left to imply whole-session coverage."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 3, "pass_rate": 0.6}
+}

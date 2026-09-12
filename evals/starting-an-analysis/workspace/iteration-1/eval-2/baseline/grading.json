@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Tier 1 AskUserQuestion presents exactly the 4 documented buckets from SKILL.md Phase 1 -- not more, not fewer, not invented options",
+      "passed": false,
+      "evidence": "Baseline's 'Round 1' question ('What is this review about?') offers 5 options -- 'A specific project or initiative', 'A recurring process or workflow', 'A single event or meeting', 'A piece of work someone else produced', 'Something else' -- an invented subject-classification taxonomy, wrong count (5 vs. 4), and none of the SKILL.md bucket names ('Outcome, verification & operational reliability', etc.) appear at all."
+    },
+    {
+      "text": "Tier 2 AskUserQuestion (for the bucket this scenario should land in) presents only that bucket's own documented options, capped at 4, with no options borrowed from a different bucket",
+      "passed": false,
+      "evidence": "Baseline's 'Round 2' actually produces two separate follow-up questions ('Evidence source' and 'Output format'), neither of which lists the 3 documented skills for the 'Outcome, verification & operational reliability' bucket (analyzing-session-outcomes, analyzing-verification-effectiveness, analyzing-session-operations). No bucket-specific skill options appear at all -- the questions are about evidence-gathering and output shape, unrelated to the skill-selection Tier 2 the assertion is checking."
+    },
+    {
+      "text": "The final selected skill is one of the 13 analysis-type skills and is a defensible match for the scenario's actual request, justified against analysis-type-guide.md's own disambiguation text",
+      "passed": false,
+      "evidence": "Baseline never names or lands on any of the 13 analysis-kit skills (it has no knowledge of them). Its fallback recommendation is a generic 'two-part retrospective' (outcome summary + process-compliance comparison) with no reference to analysis-type-guide.md or any named skill."
+    },
+    {
+      "text": "Tier 2 was not skipped, or if skipped, the skip is actually justified per SKILL.md's own stated shortcut rule (free-text answer already clearly naming one of the 13 skills or their trigger phrases) rather than merely assumed",
+      "passed": false,
+      "evidence": "There is no genuine Tier 1 bucket landing in this transcript (assertion 1 failed) for a Tier 2 to be scoped against, so no real Tier-2-for-a-specific-bucket exists to judge as skipped-or-not. The two extra rounds the baseline asks (evidence source, output format) are generic follow-ups unrelated to the documented per-bucket skill list, and the shortcut rule (a free-text answer already naming one of the 13 skills/trigger phrases) is never invoked or referenced -- the baseline has no concept of it."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}

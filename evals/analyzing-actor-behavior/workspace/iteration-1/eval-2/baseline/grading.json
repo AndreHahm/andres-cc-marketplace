@@ -1,0 +1,36 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The report's actor inventory includes exactly one sub-agent dispatch (general-purpose) and the human-developer, with no fabricated second agent",
+      "passed": true,
+      "evidence": "Section 1 lists exactly the human developer, the main assistant (orchestrator, not a sub-agent), and one sub-agent 'general-purpose' -- no second sub-agent is fabricated anywhere in the report."
+    },
+    {
+      "text": "Phase 5 (Cross-Agent Flow Analysis) does NOT run and is either absent from the report or explicitly stated as skipped, since only 1 agent was dispatched in scope",
+      "passed": true,
+      "evidence": "\"Only one sub-agent was dispatched in this session, so there is no multi-agent hand-off to evaluate... because there was no chain.\" -- explicitly stated as not applicable, not silently omitted."
+    },
+    {
+      "text": "The general-purpose dispatch is flagged as a dispatch-appropriateness finding -- a narrower/lighter check plausibly existed for a straightforward before/after behavior comparison -- per the skill's own 'a broad dispatch isn't automatically a finding' Gotcha, this should be flagged because the human's own correction confirms a narrower option was plausible, not just assumed",
+      "passed": true,
+      "evidence": "\"Was general-purpose the right dispatch, though? No... Dispatching a full general-purpose agent for it was disproportionate to the task's actual complexity -- correct output, wrong tool for the job.\""
+    },
+    {
+      "text": "The human's correction (use general-purpose less for this kind of check) is recorded in Phase 4 as a real, substantive correction about dispatch choice, not phrasing",
+      "passed": true,
+      "evidence": "\"This is a notable, substantive contribution, not a stylistic tweak -- for two reasons: It targets process/orchestration judgment (agent-selection proportionality)...\""
+    },
+    {
+      "text": "Every actor in the inventory has exactly one matching disposition marker",
+      "passed": false,
+      "evidence": "Human, main assistant, and general-purpose are each substantively assessed, but the report contains no disposition-marker syntax of any kind -- there is nothing to match against an inventory marker."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  }
+}
