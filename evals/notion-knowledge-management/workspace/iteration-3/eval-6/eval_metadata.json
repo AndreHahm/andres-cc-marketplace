@@ -1,0 +1,9 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {"text": "Output builds a Research record per the record-type property table (title, area, body, shared fields)", "type": "structure", "target": "outputs/"},
+    {"text": "Output previews the record and states approval is required before writing", "type": "functionality", "target": "outputs/"},
+    {"text": "Output does not claim to have actually written to Notion without a working connector", "type": "quality", "target": "outputs/"}
+  ]
+}

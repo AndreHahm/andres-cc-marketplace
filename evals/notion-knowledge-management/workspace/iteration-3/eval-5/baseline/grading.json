@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output builds a proposed Goal record per the record-type property table", "passed": false, "evidence": "Drafts a generic 'Goal/Why it matters/Owner/Target date/Key Results/Risks' structure with no knowledge of the skill's actual Proposed Goal property table (title/description/related-decision/readiness-notes/linear-link plus shared fields) -- a plausible-looking OKR doc, not the skill's own record shape."},
+    {"text": "Output previews the record and states live approval is required before writing", "passed": false, "evidence": "No explicit approval gate is stated -- ends with 'If this direction looks right, the natural place for it to live is...' and asks for missing details (owner, baseline numbers), framed as refinement questions rather than a stated approval requirement before any write."},
+    {"text": "Output does not create or touch any Linear state as part of proposing the Goal", "passed": true, "evidence": "Output never mentions Linear or any execution-tracking system; the whole response stays inside Notion/goal-drafting."},
+    {"text": "Output does not claim to have actually written to Notion without a working connector", "passed": true, "evidence": "'Since I can't reach Notion directly in this environment, I'm handing you the drafted goal above' -- explicitly does not claim a write happened."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 2, "pass_rate": 0.5}
+}

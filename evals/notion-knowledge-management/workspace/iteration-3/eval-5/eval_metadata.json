@@ -1,0 +1,10 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/workmanagement-kit/skills/notion-knowledge-management/SKILL.md",
+  "assertions": [
+    {"text": "Output builds a proposed Goal record per the record-type property table", "type": "structure", "target": "outputs/"},
+    {"text": "Output previews the record and states live approval is required before writing", "type": "functionality", "target": "outputs/"},
+    {"text": "Output does not create or touch any Linear state as part of proposing the Goal", "type": "quality", "target": "outputs/"},
+    {"text": "Output does not claim to have actually written to Notion without a working connector", "type": "quality", "target": "outputs/"}
+  ]
+}

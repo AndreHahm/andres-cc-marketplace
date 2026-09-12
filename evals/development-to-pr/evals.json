@@ -23,11 +23,18 @@
       "prompt": "There's already an open PR on GitHub for the Linear issue linked to this branch -- push these new commits so they land on that PR, don't open a new one.",
       "expected_output": "Verifies both the current checkout's repository (via git remote get-url origin, never gh repo view alone) and branch match the selected PR's own headRefName before pushing; classifies the candidate PR correctly (Exact/Adoptable/Conflicting/Ambiguous/Stale) using a live gh pr view read rather than trusting the stated premise; on any mismatch or non-open state, stops with a structured handoff instead of pushing or creating a duplicate PR.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "Existing-PR push runs the cross-model-review gate before pushing",
+      "prompt": "There's already an open PR (#412) for the Linear issue linked to this branch, same repo and branch as this checkout. Push these new commits so they land on that PR.",
+      "expected_output": "After confirming the repo/branch match the selected PR (step 2/3's own checks), runs Skill(git-kit:cross-model-review) against the current diff BEFORE invoking git-kit:commit at all -- never lets commit's own step 16 push reach the remote with no review gate of its own. Only after the gate clears (no edit, or an accepted edit's re-review loop completes) does it invoke git-kit:commit, instructing it to skip only step 17 (Auto-PR) and let its own step 16 push normally. Never skips this gate just because an existing PR already exists.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
-    "declared_scenarios_total": 3,
-    "declared_scenarios_covered": 3,
+    "declared_scenarios_total": 4,
+    "declared_scenarios_covered": 4,
     "uncovered": []
   }
 }

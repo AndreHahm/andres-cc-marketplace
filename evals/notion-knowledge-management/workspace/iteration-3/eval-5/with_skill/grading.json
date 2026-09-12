@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output builds a proposed Goal record per the record-type property table", "passed": true, "evidence": "Step 3 presents a full property table (title, description, related-decision, readiness-notes, linear-link, plus shared fields source/related-record/authority/transition-id/owner/date/status) matching the Proposed Goal type."},
+    {"text": "Output previews the record and states live approval is required before writing", "passed": true, "evidence": "'Approval required before writing' section: 'proposing a Goal requires the live approval gate unconditionally... I have not written anything to Notion yet' followed by an explicit AskUserQuestion block."},
+    {"text": "Output does not create or touch any Linear state as part of proposing the Goal", "passed": true, "evidence": "Closing section explicitly: 'No Linear state is created or touched... proposing the Goal here is never a silent trigger for that.'"},
+    {"text": "Output does not claim to have actually written to Notion without a working connector", "passed": true, "evidence": "Step 1 states the connector-verification assumption explicitly as simulated, and the approval section states 'I have not written anything to Notion yet' -- no write is claimed."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

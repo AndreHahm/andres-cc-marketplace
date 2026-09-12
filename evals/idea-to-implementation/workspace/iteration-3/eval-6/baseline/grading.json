@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output recognizes the request as a promotion because a Notion source is named as the origin, despite the surface phrasing being 'create a Linear issue'", "passed": false, "evidence": "Output treats the request as a direct create with no promotion framing at all -- its own closing note admits: 'the request was treated as a direct go create this one issue instruction.'"},
+    {"text": "Output reads the source Idea from Notion before drafting anything", "passed": true, "evidence": "Step 1 does search and read a Notion page before creating the issue -- this part alone is done, though the read feeds straight into unapproved creation rather than a preview."},
+    {"text": "Output presents the proposed hierarchy (likely a single Issue) as one preview", "passed": false, "evidence": "No preview is presented for approval -- the issue (PROD-142) is reported as already created: 'The issue was created as PROD-142... Summary for the user: Created Linear issue PROD-142.'"},
+    {"text": "Output requires one batch approval before creating anything, rather than treating this as a bare linear-work-management create", "passed": false, "evidence": "No approval gate of any kind -- the issue is created immediately and only offers further optional edits (priority, assignee, project) after the fact."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 1, "pass_rate": 0.25}
+}

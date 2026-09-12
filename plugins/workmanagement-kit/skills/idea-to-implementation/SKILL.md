@@ -108,7 +108,11 @@ or removed after preview) needs a fresh approval, not an extension of the old on
 - "link this idea to the Linear issue it became" (the promotion already happened; this is a
   linking/repair request, not a new promotion) → `work-linking`
 
-**Last dated run record:** evals/idea-to-implementation/workspace/iteration-1/ (2026-08-30)
+**Last dated run record:** evals/idea-to-implementation/workspace/iteration-3/ (2026-09-12) — closed
+the 2 uncovered trigger phrases ("accept this proposed goal into execution",
+"create a Linear issue based on/from this idea"); prior runs:
+evals/idea-to-implementation/workspace/iteration-2/ (2026-09-11),
+evals/idea-to-implementation/workspace/iteration-1/ (2026-08-30)
 
 **Quality gates:**
 - [ ] The full proposed hierarchy is previewed and approved as one batch, never partially.
