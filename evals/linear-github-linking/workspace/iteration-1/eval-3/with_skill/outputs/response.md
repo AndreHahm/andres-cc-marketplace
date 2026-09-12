@@ -16,8 +16,8 @@ read-only calls (`gh pr view`, `git ls-remote`).
   ```json
   {"error":"invalid_request","message":"Could not find referenced Issue.","status":400,"requestId":"a397a38f0c91332e"}
   ```
-- `mcp__claude_ai_Linear__list_teams({})` → one team in this workspace: `AndreHahm` (id
-  `a7270da5-1f7b-4215-88fa-5ea27341a021`). No team with key `ENG` exists, so `ENG-77` is not a
+- `mcp__claude_ai_Linear__list_teams({})` → one team in this workspace: `<redacted-team-name>` (id
+  `<redacted-team-id>`). No team with key `ENG` exists, so `ENG-77` is not a
   resolvable issue identifier in this connected workspace at all — not just a not-yet-synced issue.
 - `mcp__claude_ai_Linear__list_issues({ query: "timeout" })` → `{"issues":[],"hasNextPage":false}` —
   zero issues match the described symptom either, ruling out a same-issue-different-identifier case.
@@ -57,8 +57,9 @@ report on that front.
 Neither side of the broken link described in the request is real in the systems reachable from this
 session:
 
-- **Linear issue ENG-77 does not exist.** The connected workspace has only one team (`AndreHahm`),
-  no `ENG` team key, and no issue anywhere in the workspace mentions "timeout." There is therefore no
+- **Linear issue ENG-77 does not exist.** The connected workspace has only one team
+  (`<redacted-team-name>`), no `ENG` team key, and no issue anywhere in the workspace mentions
+  "timeout." There is therefore no
   Linear Issue record to hold a Git/GitHub Evidence Record array in the first place — nothing to read
   the "earlier entry" from, and nothing to append a superseding entry to.
 - **GitHub PR #12** on this repo (`AndreHahm/andres-cc-marketplace`, the only repo this session is

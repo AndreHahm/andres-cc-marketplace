@@ -8,17 +8,17 @@ Locate Linear issue ENG-77, find its recorded Git/GitHub evidence attachment poi
 **1. Linear workspace lookup**
 - `get_issue("ENG-77")` → `400 invalid_request: Could not find referenced Issue.`
 - `list_issues(query="timeout")` → 0 results.
-- `list_teams()` → the connected Linear workspace contains exactly **one** team: `AndreHahm` (issue-key prefix `AND`, not `ENG`).
-- `list_issues(team="AndreHahm")` → 9 issues total, `AND-1` through `AND-9` (topics: onboarding/setup items, a CSV-export feature, and three `[TEST]` items for workmanagement-kit's own connectivity checks). None is titled around a timeout fix, and none carries the `ENG-77` identifier.
+- `list_teams()` → the connected Linear workspace contains exactly **one** team: `<redacted-team-name>` (issue-key prefix `AND`, not `ENG`).
+- `list_issues(team="<redacted-team-name>")` → 9 issues total, `AND-1` through `AND-9` (topics: onboarding/setup items, a CSV-export feature, and three `[TEST]` items for workmanagement-kit's own connectivity checks). None is titled around a timeout fix, and none carries the `ENG-77` identifier.
 
 **Conclusion:** There is no team with an `ENG` key in the Linear workspace reachable from this session, and no issue `ENG-77` exists anywhere in it. The issue is not present in the connected Linear instance.
 
 **2. GitHub lookup**
-- `gh auth status` → authenticated as `AndreHahm`, repo scope granted.
-- Current repo context: `AndreHahm/andres-cc-marketplace`.
+- `gh auth status` → authenticated as `<redacted-account-name>`, repo scope granted.
+- Current repo context: `<redacted-account-name>/andres-cc-marketplace`.
 - `gh pr view 12` in that repo → PR #12 exists, but it is `fix(plugin-devkit): retro-driven tooling fixes (batching, dedup, handoff reports)` on branch `fix/plugin-devkit-retro-tooling`, state `MERGED` — entirely unrelated to ENG-77 or a timeout fix.
 - `git ls-remote --heads origin | grep -i "eng-77\|timeout"` → no matches in this repo.
-- Swept branch lists (`gh api repos/AndreHahm/<repo>/branches`) across **all 18 repositories** owned by the authenticated GitHub account (`andres-cc-marketplace`, `ggsad`, `agent-skills-devkit`, `skillops`, `agents-config-test`, `vault-mcp-server`, `memeclipse`, `pinforge`, `ratchet`, `mempalace`, `gstack`, `claude-code-config`, `openwolf`, `Next-Inventory-Management-System`, `ubuntu-setup`, `TextAnalysis`, `ai-dev-system`, `AndreHahm`) → **no branch named `fix/eng-77-timeout` exists in any of them.**
+- Swept branch lists (`gh api repos/<redacted-account-name>/<repo>/branches`) across **all 18 repositories** owned by the authenticated GitHub account (`andres-cc-marketplace` plus 17 other repositories — names redacted, not relevant to this eval's own scenario) → **no branch named `fix/eng-77-timeout` exists in any of them.**
 
 **Conclusion:** Neither the branch `fix/eng-77-timeout` nor any PR #12 matching the described fix exists in any GitHub repository reachable by this session's credentials.
 
