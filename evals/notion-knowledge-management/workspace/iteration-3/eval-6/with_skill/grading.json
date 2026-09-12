@@ -1,0 +1,10 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output builds a Research record per the record-type property table (title, area, body, shared fields)", "passed": true, "evidence": "Section 3 presents a property table with title, question, findings, source-link, plus shared fields source/related-record/authority/transition-id/owner/date/status, matching the Research type."},
+    {"text": "Output previews the record and states approval is required before writing", "passed": true, "evidence": "Section 4: 'I have not written anything to Notion... creating any Research record requires live approval via AskUserQuestion before the write' with explicit confirmation questions."},
+    {"text": "Output does not claim to have actually written to Notion without a working connector", "passed": true, "evidence": "Step 1 states the connector isn't confirmed verified in this session and 'nothing below is a live Notion call'; closing section repeats 'None of that has happened yet -- this is a preview only.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

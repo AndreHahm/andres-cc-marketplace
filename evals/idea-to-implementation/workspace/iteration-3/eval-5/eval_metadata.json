@@ -1,0 +1,10 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/workmanagement-kit/skills/idea-to-implementation/SKILL.md",
+  "assertions": [
+    {"text": "Output reads the source proposed Goal from Notion before drafting anything", "type": "functionality", "target": "outputs/"},
+    {"text": "Output drafts the exact Linear hierarchy the source Goal implies, without inventing levels the source doesn't call for", "type": "quality", "target": "outputs/"},
+    {"text": "Output presents the full hierarchy as one preview", "type": "structure", "target": "outputs/"},
+    {"text": "Output states one batch approval is required before creating/adopting anything", "type": "functionality", "target": "outputs/"}
+  ]
+}

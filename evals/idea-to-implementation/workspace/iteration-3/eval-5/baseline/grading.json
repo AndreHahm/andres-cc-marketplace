@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output reads the source proposed Goal from Notion before drafting anything", "passed": false, "evidence": "Output never reads a real source record -- it describes generically how it would search/read a page ('I don't have a link... I'd search Notion for it'), then pivots straight to asking the user 4 clarifying questions instead of drafting anything from an actual read."},
+    {"text": "Output drafts the exact Linear hierarchy the source Goal implies, without inventing levels the source doesn't call for", "passed": false, "evidence": "No concrete hierarchy is drafted at all -- 'the mechanical part... is quick and I can do it in one pass' once questions are answered, deferring the actual structure entirely."},
+    {"text": "Output presents the full hierarchy as one preview", "passed": false, "evidence": "No preview of any kind is presented -- only a numbered list of generic steps ('Update the Notion page', 'Create a tracking project/epic', 'Draft an initial set of issues') with no concrete record content."},
+    {"text": "Output states one batch approval is required before creating/adopting anything", "passed": false, "evidence": "Output says it would 'present this list to you before creating a pile of tickets' for the issue-breakdown step specifically, but frames this as one of several ad hoc checks, not a single stated batch-approval gate covering the whole hierarchy (Goal + Project + Issues) as one unit."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 0, "pass_rate": 0.0}
+}

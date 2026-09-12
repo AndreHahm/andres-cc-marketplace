@@ -1,0 +1,10 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/workmanagement-kit/skills/idea-to-implementation/SKILL.md",
+  "assertions": [
+    {"text": "Output recognizes the request as a promotion because a Notion source is named as the origin, despite the surface phrasing being 'create a Linear issue'", "type": "quality", "target": "outputs/"},
+    {"text": "Output reads the source Idea from Notion before drafting anything", "type": "functionality", "target": "outputs/"},
+    {"text": "Output presents the proposed hierarchy (likely a single Issue) as one preview", "type": "structure", "target": "outputs/"},
+    {"text": "Output requires one batch approval before creating anything, rather than treating this as a bare linear-work-management create", "type": "functionality", "target": "outputs/"}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output recognizes the request as a promotion because a Notion source is named as the origin, despite the surface phrasing being 'create a Linear issue'", "passed": true, "evidence": "Opening paragraph: 'Your request names a Notion source as the origin... even though the surface phrasing is create a Linear issue. Per idea-to-implementation's own When to Use section, that makes this a promotion, not a bare linear-work-management create request.'"},
+    {"text": "Output reads the source Idea from Notion before drafting anything", "passed": true, "evidence": "Step 1 reads the Idea record (status, rationale, linked context) and states it's treated as untrusted data, before Step 2 drafts the hierarchy."},
+    {"text": "Output presents the proposed hierarchy (likely a single Issue) as one preview", "passed": true, "evidence": "Step 3 presents a one-row table (a single Linear Issue create) explicitly framed as 'one preview covering the whole hierarchy (here, a hierarchy of exactly one record).'"},
+    {"text": "Output requires one batch approval before creating anything, rather than treating this as a bare linear-work-management create", "passed": true, "evidence": "Step 5: 'Nothing has been created in Linear yet... approval is never assumed from the source record's own wording, and is required as one batch' with an explicit Approve/Modify/Cancel gate."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

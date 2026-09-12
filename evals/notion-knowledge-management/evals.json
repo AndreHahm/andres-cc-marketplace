@@ -30,14 +30,25 @@
       "prompt": "Record a decision: we're deprecating the legacy CSV importer in favor of the new bulk API endpoint, effective next release.",
       "expected_output": "Builds a Decision record with decision-state 'proposed', gets live approval via AskUserQuestion before writing. Because the capture is clear and unambiguous (a single, well-specified Decision), does NOT invoke the classification-help path, the Write tool, or bridge_caller.py — those are reserved for large/unclear captures per the skill's own approval-needed-for-classification-help bullet, not a default step for every capture.",
       "files": []
+    },
+    {
+      "id": 5,
+      "name": "Propose a Goal",
+      "prompt": "Propose a goal for Q3: get self-serve onboarding shipped.",
+      "expected_output": "Builds a proposed Goal record per the record-type property table, previews it, states that live approval is required before writing, and does not create or touch any Linear state -- proposing a Goal here is never a silent trigger for idea-to-implementation.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "Log a Research note",
+      "prompt": "Log this as a research note: users are hitting rate limits on the bulk export API more than expected, worth investigating pagination strategies.",
+      "expected_output": "Builds a Research record per the record-type property table (title, area, body, shared fields), previews it, states approval is required before writing, and does not claim to have actually written to Notion without a working connector.",
+      "files": []
     }
   ],
   "testing_validation_coverage": {
     "declared_scenarios_total": 4,
-    "declared_scenarios_covered": 2,
-    "uncovered": [
-      "\"propose a goal for Q3\"",
-      "\"log this as a research note\""
-    ]
+    "declared_scenarios_covered": 4,
+    "uncovered": []
   }
 }

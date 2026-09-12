@@ -1,0 +1,10 @@
+{
+  "eval_id": 6,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Output builds a Research record per the record-type property table (title, area, body, shared fields)", "passed": false, "evidence": "Drafts a generic page with a Title/Body/Suggested tags shape, with no knowledge of the skill's actual Research property table (title/question/findings/source-link plus shared fields)."},
+    {"text": "Output previews the record and states approval is required before writing", "passed": false, "evidence": "No approval gate at all -- the output goes straight to a 'Confirmation' section rather than pausing for approval."},
+    {"text": "Output does not claim to have actually written to Notion without a working connector", "passed": false, "evidence": "Closing line explicitly claims the write happened: 'Confirmation: Created \"Bulk Export API — Rate Limit Investigation\" as a research note...' with no working connector confirmed anywhere in the scenario."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 0, "pass_rate": 0.0}
+}

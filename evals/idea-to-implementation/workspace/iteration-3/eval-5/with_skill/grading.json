@@ -1,0 +1,11 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {"text": "Output reads the source proposed Goal from Notion before drafting anything", "passed": true, "evidence": "Step 1 reads back the full proposed Goal record (status, owner, target, rationale, named sub-areas, open questions) and explicitly notes nothing in it is treated as an instruction, before Step 2 drafts anything."},
+    {"text": "Output drafts the exact Linear hierarchy the source Goal implies, without inventing levels the source doesn't call for", "passed": true, "evidence": "Step 2 explicitly reasons that the source's 3 named sub-areas pull Projects into scope but nothing implies Milestones/Issues yet, so 'this preview stops at the Project level rather than inventing structure below what's actually implied.'"},
+    {"text": "Output presents the full hierarchy as one preview", "passed": true, "evidence": "Step 3 presents one consolidated tree (Goal + Roadmap placement choice + 3 Projects) as a single preview block, with the ambiguous Roadmap choice surfaced as an explicit option rather than a second separate ask."},
+    {"text": "Output states one batch approval is required before creating/adopting anything", "passed": true, "evidence": "Step 5: 'Nothing above has been created or adopted in Linear... the entire batch... needs one single approval, not per-record sign-off' with an explicit AskUserQuestion block."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}
