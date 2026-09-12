@@ -76,23 +76,40 @@ See Testing & Validation below for the concrete trigger phrases this section sum
      structured handoff naming the mismatch — never invoke `commit`, and never run (b) below against
      a diff that isn't even confirmed to be on the right checkout.**
    - **(b) Only once both match, run the cross-model-review gate (mandatory unless declined):**
-     invoke `Skill(git-kit:cross-model-review)` against the current diff (default `BASE=main`, no
-     `SCOPE`). `cross-model-review`'s own diff mechanic already includes uncommitted working-tree
-     changes on top of the merge-base — it is explicitly designed to review "before the first commit
-     is even made" — so this reviews exactly what step 3's commit is about to capture and push,
-     before anything is committed or pushed. Skip this sub-check entirely on the new-PR path:
-     `git-kit:create-pr`'s own Pre-flight step 4 already runs this same gate later, right before its
-     own first push, and running it twice would be redundant.
+     invoke `Skill(git-kit:cross-model-review)` against the current diff with **`BASE=HEAD`** — never
+     the tool's own default `BASE=main`, which on this path would resolve `merge-base(main, HEAD)` to
+     an ancestor commit and re-review this branch's *entire* existing PR diff (every commit already
+     on the branch) on every single push, not just the pending uncommitted change. `BASE=HEAD`
+     resolves `merge-base(HEAD, HEAD)` to `HEAD` itself, so `cross-model-review`'s own diff mechanic
+     (which already includes uncommitted working-tree changes on top of its resolved merge-base)
+     reviews exactly and only what step 3's commit is about to capture and push — nothing already
+     committed on this branch. This is deliberately different from `create-pr`'s own Pre-flight step
+     4 gate, which uses the tool's default `BASE=main` because a brand-new PR's *entire* diff is
+     genuinely new and has never passed through this gate; `BASE=HEAD` is this existing-PR path's own,
+     narrower equivalent, scoped to reviewing what's about to be pushed right now. Skip this sub-check
+     entirely on the new-PR path: `git-kit:create-pr`'s own Pre-flight step 4 already runs this same
+     gate later, right before its own first push, and running it twice would be redundant.
+     - **Disclosed limitation: `BASE=HEAD` does not verify that HEAD's own prior commits ever passed
+       this gate.** If the existing PR was created or gained commits entirely outside this skill's
+       own governed flow (adopted from an out-of-band PR, or from a push whose own review findings
+       were declined on an earlier run), this sub-check's own "mandatory" framing covers only the
+       newly pushed change, never a retroactive audit of the PR's full history — it is a pre-push
+       gate on what's about to ship right now, not a guarantee that every commit already on the
+       branch was reviewed. Building a mechanism that tracks and verifies a PR's full review history
+       is out of scope for this fix; if that guarantee matters for a specific PR, run
+       `Skill(git-kit:cross-model-review)` manually with an explicit `BASE` covering the PR's full
+       range before relying on this sub-check alone.
      - Mirror `create-pr`'s own step 4 behavior: its mandatory First-Send Confirmation for the nested
        Codex dispatch fires normally here too; `cross-model-review` is report-only and ends by asking
        which findings, if any, to fix — never edits code itself.
      - If the gate produces no edit (clean read, or the user declines every finding), proceed to
        step 3.
      - If the gate produces an edit (an accepted finding was fixed), that edit is now part of the
-       uncommitted working tree — re-invoke `Skill(git-kit:cross-model-review)` again against the new
-       current diff before proceeding, the same re-review discipline `create-pr`'s own loop uses,
-       except here there is nothing to re-commit yet (nothing has been committed on this path so
-       far): simply re-run the gate against the now-updated working tree until a pass produces no
+       uncommitted working tree — re-invoke `Skill(git-kit:cross-model-review)` again, still with
+       `BASE=HEAD`, against the new current diff before proceeding, the same re-review discipline
+       `create-pr`'s own loop uses, except here there is nothing to re-commit yet (nothing has been
+       committed on this path so far): simply re-run the gate against the now-updated working tree
+       until a pass produces no
        newly-accepted edit, then proceed to step 3.
 3. **Commit:** invoke `Skill(git-kit:commit)` — never stage or commit directly. Let `git-kit` review
    staging, scan sensitive files, and confirm the message per its own procedure.
@@ -227,7 +244,11 @@ See Testing & Validation below for the concrete trigger phrases this section sum
 
 **Last dated run record:** evals/development-to-pr/workspace/iteration-2/ (2026-09-12) — added and
 verified the step 2.5 cross-model-review gate (existing-PR path) via a fresh with_skill/baseline
-scenario; prior run: evals/development-to-pr/workspace/iteration-1/ (2026-09-11, 3 scenarios)
+scenario. A live `cross-model-review` pass against this exact change (Codex, real dispatch) caught a
+real Major finding on the first draft — the gate's own default `BASE=main` would have re-reviewed the
+whole PR's already-committed diff on every push instead of just the pending change — fixed to
+`BASE=HEAD`, with a disclosed limitation noted (this doesn't verify HEAD's own prior commits ever
+passed the gate); prior run: evals/development-to-pr/workspace/iteration-1/ (2026-09-11, 3 scenarios)
 
 **Quality gates:**
 - [ ] Never stages, commits, or pushes directly — always through `git-kit:commit` and, on the
