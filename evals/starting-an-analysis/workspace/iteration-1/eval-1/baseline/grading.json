@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Response presents an AskUserQuestion-style multiple-choice pick for analysis type (Phase 1), not free-text guessing",
+      "passed": true,
+      "evidence": "Baseline produced a well-formed Question/Header/Options block ('Retrospective focus' with 4 concrete options) instead of guessing or free-text advice."
+    },
+    {
+      "text": "The Tier 1 options offered are a genuine attempt at the 4-option grouping from SKILL.md (single-session component performance / agents-tools-frameworks / rules-conflicts-patterns / compare two things), not an arbitrary list",
+      "passed": false,
+      "evidence": "The 4 options offered were 'Full narrative review', 'Structured pros/cons breakdown', 'Comparison against expectations', and 'Extracted lessons/patterns' -- a generic output-format taxonomy the agent invented from ordinary retrospective-writing knowledge. None of these map to SKILL.md's actual Tier-1 buckets (Outcome/verification/operational-reliability; Component/tool/actor performance; Usability/governance/security; Patterns/opportunities/comparisons). This is an arbitrary list coincidentally sized at 4, not a genuine attempt at the documented grouping."
+    },
+    {
+      "text": "No downstream skill (analyzing-*, comparing-*, generating-analysis-recommendations, reviewing-analysis-findings) is dispatched in this same turn — Phase 3's confirm-before-dispatch gate should block that",
+      "passed": true,
+      "evidence": "Response stops after asking its clarifying question and does not invoke or reference any analysis-kit skill by name -- trivially satisfied since the baseline has no knowledge of that skill set to dispatch in the first place."
+    },
+    {
+      "text": "Response does not crash, error, or produce malformed/incomplete output",
+      "passed": true,
+      "evidence": "Single well-formed response with question, header, options, and a reasoning paragraph; no errors or malformed output."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 3,
+    "pass_rate": 0.75
+  }
+}

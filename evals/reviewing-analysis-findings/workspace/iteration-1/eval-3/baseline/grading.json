@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The finding pair is classified as Severity Undercut, not Duplicate, Contradiction, or None, with explicit reasoning for why it isn't a Contradiction (same underlying fact agreed, only downstream severity/impact disputed)",
+      "passed": true,
+      "evidence": "Agent's final classification: 'Corroborating on the underlying fact, but conflicting/undercutting on severity and exploitability -- not a duplicate, and not a full contradiction.' Gave explicit reasoning that the two reports agree on the primitive defect ('Report B explicitly states \"the gap in upload_handler.py exists\" ... which is the identical root cause Report A flags') and diverge only on downstream consequence/exploitability, substantively matching a Severity Undercut classification even though that exact label isn't used."
+    },
+    {
+      "text": "Both reports' native severity terms (Critical; P3) are translated onto severity-vocabulary.md's shared 4-tier scale via its mapping table before being compared, not compared as native terms directly",
+      "passed": false,
+      "evidence": "The agent never references any shared severity scale or mapping table -- it compares and reasons about 'Critical' and 'P3' directly as native terms throughout, and its final recommendation is phrased as 'Low/P3', not any shared-vocabulary tier. This is an expected gap: the baseline was never given severity-vocabulary.md or told a shared scale exists."
+    },
+    {
+      "text": "The reasoning cites the actual undercutting evidence from the fixture (storage/writer.py's os.path.realpath() containment check at line 42), not a generic restatement",
+      "passed": true,
+      "evidence": "Agent quoted the fixture directly: \"its own containment check at line 42, which calls os.path.realpath() on the joined path and raises a ValueError if the resolved path escapes the intended storage directory,\" and used this specific evidence to justify the downgrade recommendation."
+    },
+    {
+      "text": "The flagged/inherited severity is stated as the lower of the two translated tiers (Minor), per the taxonomy's Severity Undercut reporting guidance",
+      "passed": false,
+      "evidence": "Agent recommends 'Downgrade from Critical ... I'd put it at Low/P3 as Report B does' -- a native-vocabulary label ('Low/P3'), not the shared-scale 'Minor' tier the taxonomy's reporting guidance requires. Without severity-vocabulary.md's mapping table, there was no shared scale to translate onto or state a tier from."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 2,
+    "pass_rate": 0.5
+  }
+}

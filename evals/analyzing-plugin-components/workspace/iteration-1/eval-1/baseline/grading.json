@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "States the next action is a tool call to AskUserQuestion, not a plain-text/printed question", "passed": false, "evidence": "Baseline explicitly says: \"Right now, before starting the deeper per-component analysis, I would not call any tool... the exact next action is a plain-text checkpoint message — not a tool call.\""},
+    {"text": "Names the question text 'Found N components. Proceed with full analysis?'", "passed": false, "evidence": "Baseline's example text is: \"Inventory complete: 5 components found (2 skills, 1 sub-agent, 1 command, 1 rule)... Does this list look complete and is this the right depth/focus before I proceed?\" -- no match to the required question text."},
+    {"text": "Names both options 'Proceed' and 'Cancel'", "passed": false, "evidence": "No discrete option set is named at all; baseline describes an open-ended plain-text question rather than a bounded-choice prompt."},
+    {"text": "States it waits for the user's answer before proceeding to Phase 3", "passed": false, "evidence": "Baseline is explicitly conditional and includes a non-waiting branch: \"if the task was already unambiguous about doing 'in-depth analysis of each', states the plan and moves directly into the first component's analysis without waiting.\" It does not commit to always waiting for an answer."}
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 0, "pass_rate": 0.0}
+}

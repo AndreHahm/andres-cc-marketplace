@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "The report explicitly states whole-session cost is unavailable, never presenting the subagent-level total as if it covered the whole session", "passed": true, "evidence": "'Partial coverage only. These three figures cover subagent work alone... A whole-session total is virtually always >= this subagent sum, not equal to it.' The 15,000-token bottom-line figure is explicitly scoped to '3 subagents', never presented as a whole-session total."},
+    {"text": "The report cites levels_present or equivalent rather than re-deriving the disclosure independently", "passed": false, "evidence": "No structured field (levels_present or equivalent) exists for the baseline to cite -- it has no aggregation script/tool output at all, so it re-derives the subagent-vs-whole-session disclosure entirely from its own prose reasoning ('these three figures cover subagent work alone... Without knowing the dispatch pattern, neither figure can be asserted'). This is the disclosed-denominator discipline the skill provides via its script's own printed field; a baseline with no such artifact cannot satisfy this assertion by construction."},
+    {"text": "No monetary/dollar figure is fabricated since no rate was supplied", "passed": true, "evidence": "'No dollar cost is derivable... None of that breakdown is present in the summary -- only flat per-agent totals.' No dollar figure appears anywhere in the report."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.667}
+}

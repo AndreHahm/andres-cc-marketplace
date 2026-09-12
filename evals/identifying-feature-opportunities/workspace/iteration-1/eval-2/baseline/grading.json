@@ -1,0 +1,27 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Report includes a finding classified as `insufficient-evidence`",
+      "passed": false,
+      "evidence": "Baseline reaches the same practical verdict ('no, there is nothing here worth turning into a feature or automation') but never produces any formal disposition label -- no term 'insufficient-evidence' or any structured classification field appears; the output is unstructured prose recommending against action."
+    },
+    {
+      "text": "Finding does NOT include reach/expected-value/confidence/effort scores",
+      "passed": true,
+      "evidence": "No scoring bands of any kind appear anywhere in the output -- correctly (if incidentally) avoids forcing precision onto a single instance."
+    },
+    {
+      "text": "Finding states the reason (no repeated evidence, no high-consequence impact) rather than a bare 'not enough evidence'",
+      "passed": true,
+      "evidence": "Explicitly reasons through both prongs: 'There is no second data point anywhere in this log to suggest this is a pattern rather than a one-off' (no repeated evidence) and weighs cost/benefit ('a misspelled word... got fixed in under a minute with zero back-and-forth... the juice isn't worth the squeeze'), which addresses the absence of high-consequence impact even without naming that term."
+    }
+  ],
+  "summary": {
+    "assertions_total": 3,
+    "assertions_passed": 2,
+    "pass_rate": 0.6667,
+    "note": "First baseline attempt was discarded as contaminated -- given generic full repo access, it found and explicitly quoted identifying-feature-opportunities' own methodology and disposition terminology ('insufficient-evidence', its evidence-threshold guardrail language) despite never being told the skill's name. Retained baseline was run with no tool access at all (pure reasoning over the pasted transcript), and independently reached the correct practical conclusion (nothing worth building) with detailed, non-bare reasoning, but without the skill's own formal disposition taxonomy."
+  }
+}

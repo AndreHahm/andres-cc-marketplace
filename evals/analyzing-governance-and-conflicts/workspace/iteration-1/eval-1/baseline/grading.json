@@ -1,0 +1,27 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Phase 2's rule inventory (via component_inventory.py) is actually run against the real repo and finds starting-work-before-first-change.md among the discovered rules",
+      "passed": true,
+      "evidence": "Baseline had no knowledge of component_inventory.py, but ran a real, functionally equivalent inventory: it Glob'd .claude/rules/ (confirmed 23 real rule files present) and Read starting-work-before-first-change.md's actual content directly, rather than guessing from memory. The target rule was genuinely discovered against the real repo."
+    },
+    {
+      "text": "The report identifies starting-work-before-first-change.md as violated in this session -- the edit was committed directly on main with no starting-work call",
+      "passed": true,
+      "evidence": "Report explicitly names '.claude/rules/starting-work-before-first-change.md -- violated, and this is the primary/clearest violation,' quotes the rule's own text, and ties it to the transcript's facts (git status showed main, no starting-work call, no branch ever created)."
+    },
+    {
+      "text": "The violation is correctly characterized as shipped/uncorrected (not caught-and-fixed within the session) -- per conflict-taxonomy.md's own severity guidance, a violation that shipped is more severe than one caught and corrected in-session",
+      "passed": true,
+      "evidence": "Report states 'It shipped uncorrected' and quotes the transcript's closing note verbatim. It independently reasons (with no knowledge of conflict-taxonomy.md, since baseline never saw that file) that an uncorrected, shipped violation is more serious than one caught in-session because 'every layer of defense... was bypassed and nothing downstream noticed' -- reaching the same substantive severity ordering the assertion requires, derived from its own reasoning rather than a citation to the skill's own taxonomy doc."
+    },
+    {
+      "text": "The finding is reported under Phase 2's Rule and Boundary Conformance section (or equivalent), not miscategorized as one of Phase 3's four conflict categories -- this is a conformance violation, not a conflict between two things",
+      "passed": true,
+      "evidence": "Baseline organizes its report under a 'Rules Violated' heading and treats this purely as a rule/process-conformance issue throughout -- it never frames or confuses this as a conflict between two agents, reviewers, or contradictory facts. Functionally equivalent to placement under a conformance section; no mislabeling as a conflict-category finding occurred."
+    }
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

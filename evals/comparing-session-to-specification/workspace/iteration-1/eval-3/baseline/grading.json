@@ -1,0 +1,13 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Idempotency section classified Violated, explicitly noting it was caught and fixed within the same session", "passed": true, "evidence": "Finding 1: 'Gap existed in the implementation history, but it was caught and remediated before shipping. Final shipped state complies with the spec,' citing the user's staging-incident catch and the assistant's Edit adding the idempotency_key parameter plus test_charge_idempotency.py."},
+    {"text": "PII Handling section classified Violated -- raw card number logged, never caught or fixed", "passed": true, "evidence": "Finding 2: 'This directly writes a raw card number to log output... shipped to production entirely uncaught,' quoting the transcript's own closing note that the debug line was never revisited, flagged, or removed."},
+    {"text": "Report explicitly differentiates the two violations' severity, PII Handling more severe than Idempotency", "passed": true, "evidence": "Finding 2 states 'This is the most serious finding in the review' and 'Unlike the idempotency case, there is no compensating control here at all: no test, no flag, no discussion.' The summary table and closing paragraph explicitly contrast the two MUST-level requirements' 'very different fates' despite comparable on-paper severity."},
+    {"text": "Currency section classified Compliant", "passed": true, "evidence": "Finding 3: 'Fully compliant, correct on the first attempt, no gap to report,' citing the currency=None -> USD default in the first draft."},
+    {"text": "No violation finding fabricates or reproduces a literal raw card number", "passed": true, "evidence": "Finding 2 quotes the logging statement verbatim using the fixture's own placeholder variable name (`{card_number}`), never inventing or reproducing a real-looking card number."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 5, "pass_rate": 1.0},
+  "notes": "Baseline (no-skill) run performed on par with the with_skill run for this scenario -- a capable generic agent, asked in plain user language to check the implementation against the spec including catch-vs-uncaught framing, independently arrived at the same severity differentiation and citation discipline the skill's checklist prescribes. No meaningful with_skill-vs-baseline capability gap observed here."
+}

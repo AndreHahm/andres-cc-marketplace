@@ -1,0 +1,41 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The report's actor inventory includes both security-reviewer and scripts-reviewer as separate sub-agent dispatches, each with its own <!-- inventory: --> marker",
+      "passed": false,
+      "evidence": "Baseline correctly discusses both security-reviewer and scripts-reviewer as separate dispatches in prose (own headed subsections '### security-reviewer (first dispatch)' and '### scripts-reviewer (second dispatch)'), but the report has no structured inventory table and no `<!-- inventory: -->` marker syntax anywhere -- it is free-form prose with no machine-parseable marker convention, since the baseline agent was never told this convention exists."
+    },
+    {
+      "text": "Phase 5 (Cross-Agent Flow Analysis) actually runs and is present in the report, since 2 agents were dispatched in scope",
+      "passed": true,
+      "evidence": "A distinct section, '## 3. Handoff between the two sub-agents', substantively performs the cross-agent flow analysis this assertion is checking for (not labeled 'Phase 5', but functionally equivalent and correctly triggered because 2 agents were dispatched)."
+    },
+    {
+      "text": "The cross-agent flow is correctly classified as sequential delegation (scripts-reviewer's task was directly informed by security-reviewer's finding), not parallel dispatch or handback-without-context",
+      "passed": true,
+      "evidence": "\"This was a real, substantive handoff, not a parallel or independent dispatch... dispatched sequentially, not in parallel... The second agent's task prompt explicitly encodes what the first agent found.\""
+    },
+    {
+      "text": "Both agent dispatches are assessed as appropriate (each was a purpose-built reviewer for its specific task) with no unwarranted broad-dispatch finding invented",
+      "passed": true,
+      "evidence": "security-reviewer: \"Dispatching security-reviewer for this task was the right call.\" scripts-reviewer: \"the dispatch choice is defensible, if not the only reasonable one\" -- hedges but does not invent a finding that either dispatch was inappropriately broad."
+    },
+    {
+      "text": "The human's request for an explicit regression test is recorded as a real, notable correction/contribution in Phase 4, not omitted or lumped in as trivial",
+      "passed": true,
+      "evidence": "\"This is a meaningful contribution for two reasons... I'd characterize it as a notable, substantive contribution rather than a minor stylistic tweak.\""
+    },
+    {
+      "text": "Every actor in the inventory (security-reviewer, scripts-reviewer, human-developer) has exactly one matching disposition marker -- no actor is silently left unassessed",
+      "passed": false,
+      "evidence": "All actors (human, assistant, security-reviewer, scripts-reviewer) are substantively assessed in a closing summary table, but the report uses no disposition-marker syntax at all -- there is nothing resembling a structured marker to match against an inventory entry."
+    }
+  ],
+  "summary": {
+    "assertions_total": 6,
+    "assertions_passed": 4,
+    "pass_rate": 0.6667
+  }
+}

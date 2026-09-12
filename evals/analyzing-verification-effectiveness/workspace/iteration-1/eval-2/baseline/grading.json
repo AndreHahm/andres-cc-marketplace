@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "The CRLF check is classified 'false_negative', not 'adequate'", "passed": false, "evidence": "Baseline never uses the 'false_negative' label or any formal classification taxonomy -- concludes 'this check as written can't fail in the way you need it to' in plain prose."},
+    {"text": "The report explains why the check cannot fail regardless of actual file content (both sides normalized before comparison)", "passed": true, "evidence": "'Either way, the comparison passes... A test that passes identically whether the bug exists or not has zero power to detect the bug... discards line-ending information from both sides before comparing.'"},
+    {"text": "The recommendation names the exact fix (compare without normalization / assert no CR present), not a generic 'add more tests'", "passed": true, "evidence": "Gives exact code: assert '\\r\\n' not in actual / assert '\\r' not in actual, plus a byte-level read-from-disk recommendation -- a precise, correct fix, not a generic 'add more tests' deflection."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 2, "pass_rate": 0.6667}
+}

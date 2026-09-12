@@ -1,0 +1,27 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "The report identifies this as a Duplication / canonical-fact-drift finding under Phase 5, naming a canonical source and listing all 3 known consumer sites (docs/onboarding.md, plugins/widget-kit/README.md, plugins/widget-kit/.claude-plugin/plugin.json), not just the one the session touched",
+      "passed": true,
+      "evidence": "Report's 'Root cause' section names the drifted fact explicitly ('widget-kit's actual skill count is a single underlying fact... duplicated across at least three independent documentation/metadata sites') and its site-by-site table lists all 3 exact sites -- docs/onboarding.md, plugins/widget-kit/README.md, plugins/widget-kit/.claude-plugin/plugin.json -- not just the one the session touched. It does not nominate one specific file as 'the' canonical source going forward (it instead suggests establishing one as a future improvement), but the core requirement -- naming the drifted fact and enumerating all 3 real consumer sites -- is fully met, matching how this same sub-point was evidenced for with_skill."
+    },
+    {
+      "text": "The report states the current state per consumer accurately: docs/onboarding.md now correct (7), the other 2 sites still stale (6)",
+      "passed": true,
+      "evidence": "Table states: docs/onboarding.md = '7 skills' / Correct; plugins/widget-kit/README.md = '6 skills' / Stale; plugins/widget-kit/.claude-plugin/plugin.json = '6 skills' / Stale -- exact match to the given ground truth."
+    },
+    {
+      "text": "This is reported as ONE consolidated finding naming all 3 sites, not 3 separate per-site findings, per change-impact-checklist.md's 'one root cause, one finding' consolidation discipline",
+      "passed": true,
+      "evidence": "Single report with one 'Root cause' narrative and one site-by-site table covering all 3 sites together -- not split into 3 separate finding blocks."
+    },
+    {
+      "text": "The finding does not silently present the fix as complete just because the session's own touched site is now correct -- the 2 still-stale sites are flagged as the actual remaining work",
+      "passed": true,
+      "evidence": "Report's verdict is explicitly 'Partial fix,' with a 'Remaining work' section stating 'Yes, work remains' and listing both stale sites by name and required change."
+    }
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

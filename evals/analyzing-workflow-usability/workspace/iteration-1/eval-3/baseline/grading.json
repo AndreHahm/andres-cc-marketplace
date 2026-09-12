@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "The report does not present '5 corrections' as a flat, equally-weighted count", "passed": true, "evidence": "'Two very different failure classes here, and they shouldn't be weighted the same even though you listed them together.'"},
+    {"text": "The force-push-prevention correction is explicitly distinguished as high-consequence, separate from the four trivial phrasing corrections", "passed": true, "evidence": "'The force-push near-miss is the real issue. Everything else is noise by comparison...' / 'one severity-10 near-miss and one severity-2 annoyance', kept as a distinct point from 'The four wording corrections are a much smaller, different kind of friction'."},
+    {"text": "The finding is weighted/ordered by consequence, not by raw count", "passed": true, "evidence": "'If you're prioritizing what to fix, put all the weight on the confirmation/guardrail behavior around irreversible git operations affecting shared branches... The phrasing corrections are worth a footnote about correction-retention, not a redesign.'"}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

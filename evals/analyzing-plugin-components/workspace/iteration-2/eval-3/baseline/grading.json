@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Correctly validates a 40-char uppercase hex SHA as passing the regex", "passed": true, "evidence": "\"Verdict: well-formed, worth looking up... Length: 40 characters -- matches the standard length of a Git SHA-1 object id... every character is a valid hex digit... What I'd do: treat it as a real candidate and look it up.\""},
+    {"text": "Correctly validates a 64-char lowercase hex SHA (SHA-256 length) as passing the regex", "passed": true, "evidence": "\"Length: 64 hex characters... So length alone doesn't disqualify it... the shape passes a superficial length/charset check.\" Baseline correctly treats the 64-char value as format-valid (its separate 'suspicious' flag is about the value being the well-known empty-string SHA-256 hash, not about format/regex validity)."},
+    {"text": "States it would proceed to Bash(git log)/Bash(git show) for both, since format validation passed", "passed": true, "evidence": "For A: \"look it up, e.g. git log 5736730DDDCBEFAF487E50CACDB1D3DC7229B078 / git show ...\". For B: \"I'd still attempt to verify... run git log e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 / git show ...\". Both are explicitly stated as lookups it would perform."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

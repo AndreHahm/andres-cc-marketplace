@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "The two-subagent concurrent dispatch is recognized as realized parallelism (overlapping_seconds > 0) and is not flagged as a problem by itself", "passed": true, "evidence": "'Good behavior: subagent dispatch ... genuinely overlapped for 25 of their combined 35-second span ... This is the correct pattern' -- recognized as realized parallelism and explicitly labeled good, not a defect."},
+    {"text": "The two serial Bash calls with no stated dependency are flagged as a potential serial-bottleneck / ineffective-parallelism finding", "passed": true, "evidence": "'Problem: serial Bash calls with no dependency ... Missed savings: ~50% of that segment's time ... this was a missed opportunity' -- flagged directly as a serial-bottleneck/ineffective-parallelism finding."},
+    {"text": "The two situations (good parallelism vs. avoidable serialization) are kept as distinct findings, not conflated", "passed": true, "evidence": "Presented under two separate headers ('Good behavior: subagent dispatch' vs 'Problem: serial Bash calls with no dependency') plus a comparison table with separate verdicts per pair -- not conflated."}
+  ],
+  "summary": {"assertions_total": 3, "assertions_passed": 3, "pass_rate": 1.0}
+}

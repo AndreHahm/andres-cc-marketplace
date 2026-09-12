@@ -1,0 +1,27 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Phase 3's agent-vs-agent conflict category is triggered and reports the contradiction between skill-reviewer and consistency-reviewer about the same description field",
+      "passed": true,
+      "evidence": "Report's section 1 ('The contradiction') states plainly: 'These are not two reviewers looking at different things -- it's the same file, the same field, the same measured length (1180 chars), with directly opposite verdicts on whether it passes.' The contradiction is the headline of the report."
+    },
+    {
+      "text": "The report correctly identifies which verdict is actually correct (consistency-reviewer's Critical finding -- 1180 chars does exceed a 1024-char limit) rather than presenting both as equally plausible or picking the wrong one",
+      "passed": true,
+      "evidence": "Report independently read the real files (plugin-rulebook/assets/settings.json's R21_skill_description_size limits, and references/size-rules.md's severity table showing '> 1024 -> Critical'), and concluded: 'consistency-reviewer's verdict is the one that matches the repo's actual configured rule... skill-reviewer's assessment... is factually wrong against R21 as it is actually configured in this repo.' Correct verdict identified via independent verification, not by trusting either agent's claim."
+    },
+    {
+      "text": "The conflict is reported as unresolved/still-open in this session (the transcript shows no reconciliation happened), not incorrectly presented as already resolved",
+      "passed": true,
+      "evidence": "Report states: 'No. The transcript explicitly ends with the assistant having dispatched both reviewers and received both verdicts, but never reconciling them... This is a still-open, unresolved contradiction as of the transcript's end.'"
+    },
+    {
+      "text": "This finding is reported under Phase 3's Conflict Detection section specifically (agent-vs-agent category), not miscategorized as a rule conformance issue",
+      "passed": true,
+      "evidence": "Report's section 4 ('Classification of the issue') explicitly states: 'This is a direct contradiction between two review outputs on the same subject... not a case of the assistant itself violating a rule.' Correctly distinguishes the agent-vs-agent conflict category from a conformance/rule-violation issue, even without a literal 'Phase 3' label."
+    }
+  ],
+  "summary": {"assertions_total": 4, "assertions_passed": 4, "pass_rate": 1.0}
+}

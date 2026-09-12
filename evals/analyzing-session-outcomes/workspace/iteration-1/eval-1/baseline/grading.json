@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {"text": "Report contains all six required sections: Goal Inventory, Acceptance Criteria, Delivered Artifacts, Unresolved Scope, User-Visible Value, Recommendations", "passed": false, "evidence": "Baseline response is unstructured prose with two ad hoc headers ('What's actually done and verified' / 'What's open/unconfirmed') plus a numbered action list -- none of the six required section headings appear anywhere in the output."},
+    {"text": "The malformed-email criterion is verdict 'met' with tier-2 (verified artifact behavior) evidence citing the actual test run", "passed": true, "evidence": "'Malformed emails get rejected -- verified, but only to the extent of whatever single case test_invalid_email exercises' -- correctly grounds the claim in the actual named test run rather than just the code change, even though it never uses 'met'/'tier-2' vocabulary."},
+    {"text": "The valid-email criterion is verdict 'not_verifiable', not forced into 'met' or 'not_met'", "passed": true, "evidence": "'you don't know if the signup form is fixed or just newly broken in a different way... Nobody ran anything that would catch that' -- treated as a genuine open unknown, not asserted as passing and not asserted as broken."},
+    {"text": "Each Acceptance Criteria/Unresolved Scope entry carries its own separate Evidence origin/Coverage/Confidence/Evidence source metadata block, not one shared block for both verdicts", "passed": false, "evidence": "No evidence-metadata blocks of any kind appear in the output -- the response is plain prose/bullets with no per-finding Evidence origin/Coverage/Confidence/Evidence source fields at all, shared or otherwise."},
+    {"text": "A Process Compliance Note is present and explicitly states process conformance is not judged in this report", "passed": false, "evidence": "No such disclaimer exists; the response instead actively renders a process judgment inline -- 'This is a standard shipped-half-tested pattern... Worth flagging... as a process gap, not just a code gap' -- the opposite of declining to judge process."}
+  ],
+  "summary": {"assertions_total": 5, "assertions_passed": 2, "pass_rate": 0.4}
+}

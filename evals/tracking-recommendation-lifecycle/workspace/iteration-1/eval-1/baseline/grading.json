@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-1",
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Real append calls were run for proposed and accepted via recommendation_registry.py",
+      "passed": true,
+      "evidence": "Both calls executed for real against the scratch registry outside the repo: append --status proposed exited 0 returning real JSON ({\"status\": \"proposed\", \"rationale\": \"Add input validation to the login form\"}); append --status accepted exited 0 returning real JSON ({\"status\": \"accepted\", \"rationale\": \"Confirmed: proceeding with the fix\"}). A follow-up real `show` call confirmed both events present in order."
+    },
+    {
+      "text": "A real append call was run for implemented, citing commit abc1234 as evidence",
+      "passed": true,
+      "evidence": "append --recommendation-id rec-eval-001 --status implemented --evidence \"commit abc1234\" --rationale \"Fix landed in commit abc1234\" exited 0, returning real JSON with \"evidence\": \"commit abc1234\" recorded verbatim."
+    },
+    {
+      "text": "No verified event was appended from 'the commit is in' alone -- the skill explicitly declined and asked for real verification evidence",
+      "passed": true,
+      "evidence": "The baseline agent deliberately did not run a second append for status verified. Its final response states it 'held off on also marking it verified', explains (independently, by reading the script's own VALID_TRANSITIONS table rather than being told) that implemented and verified are separate claims, that 'a commit merging is evidence of implementation, not of verification', and asks the user to supply the actual verification check performed before it would append a verified event."
+    },
+    {
+      "text": "Final registry state (via show/list) shows rec-eval-001 at implemented, not verified",
+      "passed": true,
+      "evidence": "A real `list` call after Turn 2 returned exactly one entry: {\"recommendation_id\": \"rec-eval-001\", \"current_status\": \"implemented\", ...}; a real `validate` call confirmed 'valid, no transition violations'. No verified event exists in the registry."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}
