@@ -121,14 +121,15 @@ Items still open before Wave 2 is fully live:
   `evals/<skill-name>/`), matching plugin-rulebook's `min_eval_scenarios` threshold — closed during
   this plugin's `plugin-lifecycle-downstream` QA run via 17 new scenarios and 34 real
   with_skill-vs-baseline comparison runs.
-- **`development-to-pr`'s existing-PR path pushes without the mandatory pre-push `cross-model-review`
-  gate** the new-PR path gets for free through `git-kit:create-pr`'s own Pre-flight Checks — `git-kit`
-  has no standalone "commit, review, then push" sequence to compose without re-implementing part of
-  `create-pr`'s own flow. Disclosed in that skill's own Gotchas; worth a `git-kit`-level fix in a
-  follow-up rather than a workaround here.
+- **RESOLVED (2026-09-12):** `development-to-pr`'s existing-PR path now runs its own mandatory
+  pre-push `cross-model-review` gate (step 2.5, scoped `BASE=HEAD` so it reviews only the pending
+  uncommitted change, not the whole already-committed PR diff) before `git-kit:commit` is ever
+  invoked — closed during a follow-up `plugin-lifecycle-downstream` QA pass, verified by a live
+  Codex-dispatch `cross-model-review` run against the fix itself.
 - **No `git-kit` skill currently owns marking a draft PR ready for review as a callable action** —
   `pr-to-linear`'s own "Marking ready" step is a disclosed manual handoff (the user runs `gh pr ready`
-  themselves) rather than a delegated mutation. Also worth a `git-kit`-level fix in a follow-up.
+  themselves) rather than a delegated mutation. Tracked as a `git-kit`-level follow-up at
+  [issue #318](https://github.com/AndreHahm/andres-cc-marketplace/issues/318).
 - **`git-github-evidence` will hit the same real-connector custom-field limitation an already-tracked
   Wave 1 issue documents for `notion-link`/`disposition-history`/`open-item-source`/`transition-id`**
   (`issues/2026-08-31-workmanagement-kit-notion-linear-connector-field-limitations.md`) — the real

@@ -5,6 +5,7 @@
     {"text": "Output verifies the current checkout's repository and branch match the selected existing PR before doing anything else on this path", "type": "functionality", "target": "outputs/"},
     {"text": "Output runs a cross-model-review gate against the current diff BEFORE invoking git-kit:commit at all on this path", "type": "functionality", "target": "outputs/"},
     {"text": "Output only invokes git-kit:commit (instructed to skip only its own Auto-PR step, letting its own push proceed) after the review gate has cleared", "type": "structure", "target": "outputs/"},
-    {"text": "Output never treats the existence of an already-open PR as a reason to skip the review gate", "type": "quality", "target": "outputs/"}
+    {"text": "Output never treats the existence of an already-open PR as a reason to skip the review gate", "type": "quality", "target": "outputs/"},
+    {"text": "Output invokes the review gate with BASE=HEAD explicitly, never the tool's own default BASE=main, so only the pending uncommitted change is reviewed rather than the whole already-committed PR diff", "type": "functionality", "target": "outputs/"}
   ]
 }

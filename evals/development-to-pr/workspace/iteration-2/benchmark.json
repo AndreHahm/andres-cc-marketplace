@@ -1,40 +1,40 @@
 {
   "skill_name": "development-to-pr",
   "iteration": 2,
-  "timestamp": "2026-09-12T07:10:22+02:00",
+  "timestamp": "2026-09-12T07:39:23+02:00",
   "evals": [
     {
       "eval_id": 4,
       "with_skill": {
         "pass_rate": 1.0,
-        "assertions_passed": 4,
-        "assertions_total": 4,
-        "avg_tokens": 9500,
-        "avg_duration_ms": 42000
+        "assertions_passed": 5,
+        "assertions_total": 5,
+        "avg_tokens": 11800,
+        "avg_duration_ms": 51000
       },
       "baseline": {
-        "pass_rate": 0.25,
+        "pass_rate": 0.2,
         "assertions_passed": 1,
-        "assertions_total": 4,
+        "assertions_total": 5,
         "avg_tokens": 3200,
         "avg_duration_ms": 25000
       },
       "delta": {
-        "pass_rate": 0.75,
-        "tokens": 6300,
-        "duration_ms": 17000
+        "pass_rate": 0.8,
+        "tokens": 8600,
+        "duration_ms": 26000
       }
     }
   ],
   "summary": {
     "with_skill_avg_pass_rate": 1.0,
-    "baseline_avg_pass_rate": 0.25,
-    "improvement": 0.75,
-    "avg_tokens_with_skill": 9500,
+    "baseline_avg_pass_rate": 0.2,
+    "improvement": 0.8,
+    "avg_tokens_with_skill": 11800,
     "avg_tokens_baseline": 3200,
-    "token_cost": 6300,
-    "avg_duration_ms_with_skill": 42000,
+    "token_cost": 8600,
+    "avg_duration_ms_with_skill": 51000,
     "avg_duration_ms_baseline": 25000,
-    "duration_cost_ms": 17000
+    "duration_cost_ms": 26000
   }
 }
