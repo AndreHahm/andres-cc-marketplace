@@ -171,11 +171,36 @@ default_branch="${default_branch:-main}"
 # specifically; `--no-abbrev` is the flag that actually works there,
 # confirmed by testing each in isolation.
 is_path_blob_reachable() {
-  local path="$1" wanted_blob="$2" wanted_mode="$3" mb="$4"
+  local path="$1" wanted_blob="$2" wanted_mode="$3" mb="$4" tag="$5"
   local mode blob
   read -r mode _ blob _ < <(git ls-tree "$mb" -- "$path" 2>/dev/null)
   if [ -n "$blob" ] && [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ]; then
     return 0
+  fi
+  # Final-state shortcut (issue #317): if $tag's own FINAL content at $path
+  # already matches $default_branch's CURRENT content at $path, this
+  # commit's own blob for the same path needs no independent history match.
+  # Whatever content this commit introduced was itself superseded by a
+  # later commit within the tag's own history -- it's the tag's FINAL
+  # contribution for this path that would actually be lost by deleting the
+  # tag, not any intermediate state along the way. This closes the case
+  # where $default_branch's own history reorganizes multiple tag-branch
+  # edits to the same path into a different commit order than the tag
+  # recorded them (e.g. the tag added section A then merged in section B,
+  # while $default_branch added B then A independently) -- no single
+  # historical commit on $default_branch ever matches this commit's own
+  # intermediate blob, even though the final states agree byte-for-byte.
+  # Live-verified against this repo's own
+  # feat-analysis-kit-new-dimensions-rebase-backup-20260910-194109 tag,
+  # exactly the case #317 was filed from.
+  local tip_mode tip_blob
+  read -r tip_mode _ tip_blob _ < <(git ls-tree "$tag" -- "$path" 2>/dev/null)
+  if [ -n "$tip_blob" ]; then
+    local cur_mode cur_blob
+    read -r cur_mode _ cur_blob _ < <(git ls-tree "$default_branch" -- "$path" 2>/dev/null)
+    if [ -n "$cur_blob" ] && [ "$cur_blob" = "$tip_blob" ] && [ "$cur_mode" = "$tip_mode" ]; then
+      return 0
+    fi
   fi
   local hist_file meta new_mode new_blob found
   hist_file=$(mktemp) || return 1
@@ -209,7 +234,7 @@ is_path_blob_reachable() {
 # doesn't invalidate an already-open fd) but not guaranteed on the Windows/
 # Git-Bash environment this script actually runs in).
 check_diff_records() {
-  local file="$1" mb="$2"
+  local file="$1" mb="$2" tag="$3"
   local meta path new_mode new_blob status del_out del_rc
   while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
     # meta: ":<old_mode> <new_mode> <old_blob> <new_blob> <status>" -- old
@@ -239,7 +264,7 @@ check_diff_records() {
       [ -n "$del_out" ] && return 1
     else
       [ -z "$new_blob" ] && return 1
-      is_path_blob_reachable "$path" "$new_blob" "$new_mode" "$mb" || return 1
+      is_path_blob_reachable "$path" "$new_blob" "$new_mode" "$mb" "$tag" || return 1
     fi
   done < "$file"
   return 0
@@ -324,7 +349,7 @@ is_tag_content_reachable() {
       rm -f "$diff_file"
       return 1
     fi
-    if ! check_diff_records "$diff_file" "$mb"; then
+    if ! check_diff_records "$diff_file" "$mb" "$tag"; then
       rm -f "$diff_file"
       return 1
     fi

@@ -533,3 +533,58 @@ elsewhere, just in a place none of them touched.**
   `delete-rebase-backup-tags.sh --list` and `phase1-analysis.sh` against this repository's real remaining
   tags afterward and confirmed no regression -- both scripts' output stayed identical to every prior
   round.
+
+**Live results, 2026-09-12 (issue #317: content merged in a different commit order):** found live during a
+real `/git-cleanup` run after PR #315 merged -- 5 rebase-backup tags were left for manual review;
+investigating one (`feat-analysis-kit-new-dimensions-rebase-backup-20260910-194109`) found a false negative
+distinct from every gap fixed above.
+- **Root cause: per-commit blob matching has no notion of a path's own FINAL state, only each individual
+  commit's own post-image.** `is_tag_content_reachable` requires every one of the tag's own unique
+  commits to have its own per-path post-image blob independently found somewhere in `$default_branch`'s
+  history. When the tag's own branch merges `$default_branch` back in mid-development and keeps editing
+  the same path, an EARLIER commit's blob reflects only that commit's own partial edit -- without content
+  a LATER commit in the same tag branch went on to incorporate -- and `$default_branch`'s own history may
+  never pass through that same intermediate, partial state, even though the tag's FINAL state for that
+  path is byte-identical to `$default_branch`'s current content. Live-verified against the real tag above:
+  its blocking commit `c4690df1`'s own post-image blob for `.codacy.yml` never appears anywhere in main's
+  `.codacy.yml` history (main added the same two pieces of content in the opposite order), yet the tag's
+  FINAL `.codacy.yml` (at its tip) diffed byte-identical against main's current `.codacy.yml`.
+- **Fix:** `is_path_blob_reachable` now takes the tag name as a fifth parameter (threaded down through
+  `check_diff_records` and `is_tag_content_reachable`, the same parameter-threading pattern `$mb` already
+  used for the pre-divergence-blob fix above) and, before falling through to the existing per-commit
+  history search, checks a shortcut first: if the tag's own tip blob+mode for this path already matches
+  `$default_branch`'s CURRENT blob+mode for the same path, the commit under test is satisfied regardless
+  of what its own individual blob was -- whatever content that commit introduced was itself superseded by
+  a later commit within the tag's own history, and it's the tag's FINAL contribution for the path that
+  would actually be lost by deleting the tag, not any intermediate state along the way. This is
+  purely additive (an early-return before the existing search, never a replacement of it) and
+  safe-direction-only: it can only turn a false "not reachable" into a correct "reachable" when the exact
+  final blob+mode genuinely match; it can never mask a genuine mismatch, since the shortcut requires an
+  exact blob+mode match at the CURRENT tip, not a fuzzy or historical one.
+- **Sibling-occurrence sweep (`.claude/rules/require-tests-for-behavior-changes.md`): `phase1-analysis.sh`
+  carries an intentional, comment-disclosed duplicate of these same three functions** (Phase 1's own
+  reporting pass, run before Phase 3.6's actual deletion proposal) -- grepping for the same anti-pattern
+  signature found it still had the pre-fix per-commit-only logic, which would have left Phase 1's own
+  reported "reachable from main: NO" verdict silently disagreeing with `--list`'s now-corrected output for
+  the same tag. Applied the identical parameter-threading and shortcut fix there too, mirroring the
+  existing "see delete-rebase-backup-tags.sh's identical comment" cross-reference convention this
+  duplicate already uses instead of restating the full rationale a second time.
+- **Verified against this repository's own real tag set** (8 rebase-backup tags present, 2026-09-12):
+  before the fix, `--list` reported only 1 of 8 as deletable
+  (`fix/git-cleanup-rebase-tag-content-reachability-rebase-backup-20260911-232051`), and `phase1-analysis.sh`
+  reported the same 1 of 8 as `reachable from main: yes`. After the fix, both scripts agree: 3 of 8 are
+  reachable/deletable -- the same tag plus 2 new ones (`feat-analysis-kit-new-dimensions-rebase-backup-20260910-194109`,
+  the exact tag #317 was filed from, and `feat/ci-pipeline-foundation-rebase-backup-20260907-143553`). A
+  per-tag diagnostic pass (comparing the old per-commit-only result against the new shortcut for every
+  failing path) confirmed the other 5 tags' failures are genuine content mismatches, not additional
+  instances of this bug -- the shortcut correctly declines to fire for any of them (fail-closed preserved).
+- 2 new regression scenarios added to `test-content-reachable.sh` (22 total, up from 20):
+  `scenario_reordered_final_state_recognized` (a positive case reproducing the exact bug shape: an
+  earlier tag commit's own intermediate blob never appears in `$default_branch`'s history, but the tag's
+  FINAL blob for that path matches `$default_branch`'s current content exactly) and
+  `scenario_reordered_final_state_mismatch_fails_closed` (the negative counterpart -- confirms the
+  shortcut doesn't overreach when the final states genuinely don't match). Sanity-checked
+  `scenario_reordered_final_state_recognized` against the pre-fix function bodies (extracted via the same
+  `git show HEAD:...` + sed-range technique this suite already uses) and confirmed it correctly reports
+  "not reachable" there, proving the new scenario actually exercises the bug rather than passing
+  vacuously. All 22 scenarios passed after the fix.
