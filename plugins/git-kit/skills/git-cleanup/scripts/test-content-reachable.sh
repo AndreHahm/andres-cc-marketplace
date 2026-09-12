@@ -944,6 +944,95 @@ scenario_merge_resolves_to_one_parent_content_loss_fails_closed() {
   )
 }
 
+# Scenario 21: issue #317 -- content that lands on $default_branch via a
+# DIFFERENT COMMIT ORDER than the tag recorded it, so no single historical
+# commit on $default_branch ever matches one of the tag's own EARLIER,
+# later-superseded commit blobs for a path, even though the tag's FINAL
+# (tip) content for that path is byte-identical to $default_branch's CURRENT
+# content. Distinct from scenario 6 (reorganized into different commit
+# GROUPING, but each individual final value still appears verbatim
+# somewhere in $default_branch's history) -- here the tag's own EARLIER
+# commit's intermediate value for the path never appears anywhere in
+# $default_branch's history at all, only the tag's FINAL value does.
+# Live-verified against this repo's own real
+# feat-analysis-kit-new-dimensions-rebase-backup-20260910-194109 tag before
+# writing this fixture (see is_path_blob_reachable's own comment on the
+# final-state shortcut this scenario guards).
+scenario_reordered_final_state_recognized() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'line0\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git branch feature
+    git checkout -q feature
+    # Commit 1: the tag's OWN addition -- this intermediate blob
+    # ("line0\nP\n") never appears anywhere in main's own history.
+    printf 'line0\nP\n' > shared.txt
+    git add shared.txt && git commit -q -m "feature: add P"
+    # Commit 2 (tip): the tag's own branch separately incorporates the
+    # SAME content main independently added ("M"), producing the tag's
+    # FINAL state.
+    printf 'line0\nP\nM\n' > shared.txt
+    git add shared.txt && git commit -q -m "feature: incorporate M"
+    git tag -a reorderfinal-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+    # main lands the identical final content in ONE commit -- it never
+    # passes through the "line0\nP\n" intermediate state at all.
+    printf 'line0\nP\nM\n' > shared.txt
+    git add shared.txt && git commit -q -m "main lands the combined content directly"
+  )
+  (
+    cd "$repo"
+    default_branch=main
+    # default_branch is read by is_tag_content_reachable via eval "$FUNCS" below,
+    # which shellcheck can't see through -- false positive.
+    # shellcheck disable=SC2034
+    git show-ref --verify --quiet refs/heads/main || default_branch=master
+    eval "$FUNCS"
+    is_tag_content_reachable reorderfinal-rebase-backup-20260101-000000
+  )
+}
+
+# Scenario 22: negative counterpart to scenario 21 -- the final-state
+# shortcut must not become overly permissive. The tag's final content for
+# the path does NOT match $default_branch's current content (main moved on
+# further, or never matched at all), and no intermediate commit matches
+# either -- must still fail closed.
+scenario_reordered_final_state_mismatch_fails_closed() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'line0\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git branch feature
+    git checkout -q feature
+    printf 'line0\nP\n' > shared.txt
+    git add shared.txt && git commit -q -m "feature: add P"
+    printf 'line0\nP\nM\n' > shared.txt
+    git add shared.txt && git commit -q -m "feature: incorporate M"
+    git tag -a reordermiss-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+    # main never lands this content at all -- it stays at the original base.
+  )
+  (
+    cd "$repo"
+    default_branch=main
+    # default_branch is read by is_tag_content_reachable via eval "$FUNCS" below,
+    # which shellcheck can't see through -- false positive.
+    # shellcheck disable=SC2034
+    git show-ref --verify --quiet refs/heads/main || default_branch=master
+    eval "$FUNCS"
+    if is_tag_content_reachable reordermiss-rebase-backup-20260101-000000; then
+      exit 1  # main never got this content -- must fail closed
+    else
+      exit 0
+    fi
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -974,6 +1063,8 @@ run scenario_pre_divergence_blob_not_reachable "a blob present on default_branch
 run scenario_content_inherited_from_merge_base_recognized "content inherited unchanged from the merge-base is still recognized as reachable"
 run scenario_default_branch_merge_conflict_content_recognized "default_branch's own merge-conflict-resolution content is still recognized"
 run scenario_merge_resolves_to_one_parent_content_loss_fails_closed "a tag's own merge resolving to exactly one parent's state still fails closed on lost content"
+run scenario_reordered_final_state_recognized "content landed via a different commit order than the tag recorded is still recognized (issue #317)"
+run scenario_reordered_final_state_mismatch_fails_closed "a final-state mismatch after content reordering still fails closed"
 
 echo ""
 echo "$PASS passed, $FAIL failed"
