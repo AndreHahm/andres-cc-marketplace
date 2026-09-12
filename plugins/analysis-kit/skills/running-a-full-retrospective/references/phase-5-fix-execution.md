@@ -59,13 +59,18 @@ directly now" for that finding, not after.
 For each finding that would otherwise offer "Fix directly now, here": first try resolving the
 finding's own `<plugin>'s <component>` tag to that component's actual plugin-root-relative file path;
 if the tag alone doesn't resolve to a specific file, open the finding's cited source report(s) (from
-its `**Reported in:**` line) to identify it — never guess. Then verify the resolved path, once joined
-to its `plugins/<target>/` root, stays inside that same `plugins/<target>/` directory (the directory
-this phase's own opening check already validated for this topic) — reject any resolution that escapes
-it (a `../` segment, a symlink, an absolute path outside the tree). If resolution fails, or the
+its `**Reported in:**` line) to identify it — never guess. **Anchor the containment check on an
+absolute path, not a bare relative one.** Resolve `<checkout-root>` explicitly right now — at this
+point in the flow it is the primary checkout's own absolute root (`git rev-parse --show-toplevel`,
+before Step 4's worktree creation changes anything) — and verify the resolved path, once joined to
+`<checkout-root>/plugins/<target>/`, stays inside that same absolute directory (the directory this
+phase's own opening check already validated for this topic) — reject any resolution that escapes it
+(a `../` segment, a symlink, an absolute path outside the tree). If resolution fails, or the
 containment check fails, drop "Fix directly now" for that specific finding only (other findings in the
 same topic aren't affected) and state why; that finding then only has "Not now — mark deferred"
-available.
+available. **Carry `<checkout-root>` and the resolved relative-to-it path(s) forward as explicit
+values** — Step 4 re-roots them under a different `<checkout-root>` if a worktree is created, rather
+than re-deriving either from scratch.
 
 **Check for a `.claude/`-mirrored copy of the same component before finalizing this resolution — but
 only for path shapes that are actually a clean 1:1 mirror.** `plugins/<target>/skills/<name>/...`,
@@ -111,22 +116,34 @@ otherwise always given relative to the primary checkout's `.claude/output/` — 
 `Skill(git-kit:starting-work)` — always, even if the previous topic "just finished" and this feels like a
 continuation (this is the exact trap `starting-work-before-first-change.md`'s own incident names).
 **Capture exactly what `starting-work` reports back** — a plain branch (the current checkout stays
-correct, no path change needed) or a worktree. `starting-work` only *reports* a worktree's path — per its
-own instructions, it does not change the session's own working directory for you, so this must be done
-explicitly: `cd` into the reported worktree path before any further command in this topic, and use paths
-relative to that new location (not the primary checkout) for every subsequent `Edit`/`Write`/`Bash` call
-and for `commit`/`create-pr`/`merge-pr` below, since each of those is itself just a dispatch that
-operates on wherever the session's cwd currently is. Skipping the `cd` is the same "orphaned worktree"
-mistake this repo's own `orphaned-worktree-git-read-fallthrough.md` rule already documents (git reads can
+correct, no path change needed) or a worktree, in which case capture its reported absolute path as the
+new `<checkout-root>`. `starting-work` only *reports* a worktree's path — per its own instructions, it
+does not change the session's own working directory for you, so this must be done explicitly: `cd` into
+the reported worktree path before any further command in this topic. **`cd` governs `Bash` only — it
+changes nothing for `Edit`/`Write`.** Those two tools take an independent absolute-path argument each
+call and inherit nothing from `Bash`'s own cwd (this repo's own
+`require-worktree-rooted-absolute-paths.md` rule documents this exact failure mode: a main-checkout-
+rooted path resolves and succeeds silently against the *wrong* real file, with no error at any layer).
+So: for every subsequent `Bash` call in this topic (including `commit`/`create-pr`/`merge-pr` below,
+each of which is itself just a dispatch operating on wherever the session's cwd currently is), the `cd`
+above is sufficient. For every `Edit`/`Write` call, **re-root the Step 3b-validated relative path(s)
+under the new `<checkout-root>`** (i.e. build the absolute path as `<new-checkout-root>/plugins/<target>/
+<relative-path>`) **and re-run Step 3b's own containment check against this new absolute root before the
+first write** — the path was validated once already, but against the *old* `<checkout-root>`; a fresh,
+cheap re-check against the new one is what actually confirms the write is about to land where the human
+approved, not just where it looked like it would when Step 3b originally ran. Skipping the `cd` (for
+`Bash`) or skipping this re-root-and-recheck (for `Edit`/`Write`) is the same "orphaned worktree" mistake
+this repo's own `orphaned-worktree-git-read-fallthrough.md` rule already documents (git reads can
 silently fall through to the primary checkout and look correct while writes land in the wrong place) —
 applying just as directly to writes landing in the *wrong* checkout as it does to reads from a *removed*
 one.
 
 The file(s) to edit were already resolved and containment-checked at Step 3b above, and their path(s)
 were shown to the human as part of the "Fix directly now, here" option they approved — do not re-resolve
-here. Apply the fix directly with `Edit`/`Write` against that already-validated file, resolved relative
-to the worktree — this is the one explicit exception to the "never write inside a target plugin" boundary
-stated in SKILL.md, scoped strictly to this single, already-human-approved, mechanical change. **If Step
+*which* file to edit here. Apply the fix directly with `Edit`/`Write` against that file's absolute path,
+re-rooted and re-checked under the current `<checkout-root>` per the re-root-and-recheck step above —
+this is the one explicit exception to the "never write inside a target plugin" boundary stated in
+SKILL.md, scoped strictly to this single, already-human-approved, mechanical change. **If Step
 3b found a `.claude/`-mirrored copy, apply the identical edit to both paths, in this same step** — the
 two must never diverge even transiently, since the very next action (`Skill(plugin-devkit:plugin-rulebook)`, below)
 checks R19 mirror parity before anything gets committed.

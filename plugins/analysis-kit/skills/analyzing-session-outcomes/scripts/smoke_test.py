@@ -27,6 +27,35 @@ def _find_repo_root(start: pathlib.Path) -> pathlib.Path:
 # development mirror -- the latter's SKILL_DIR.parent.parent is .claude/, which has
 # no scripts/ or references/ of its own.
 PLUGIN_ROOT = _find_repo_root(SKILL_DIR) / "plugins" / "analysis-kit"
+REPO_ROOT = _find_repo_root(SKILL_DIR)
+
+
+def _extract_allowed_tools_value(frontmatter: str) -> str | None:
+    """Extract the allowed-tools value from a frontmatter block, handling both
+    the single-line form ("allowed-tools: Read Glob ...") and a YAML
+    block-scalar form (">-"/">"/"|-"/"|" with the value on indented lines
+    below) -- a single-line-only regex silently degrades to a vacuous pass
+    the moment a long allowed-tools line is reformatted to a block scalar for
+    R8 compliance, since group(1) would then capture only the scalar
+    indicator itself."""
+    lines = frontmatter.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"^allowed-tools:\s*(.*)$", line)
+        if m is None:
+            continue
+        rest = m.group(1).strip()
+        if rest and not re.match(r"^[>|][-+]?\d*$", rest):
+            return rest
+        block_lines = []
+        for next_line in lines[i + 1 :]:
+            if next_line.strip() == "":
+                continue
+            if next_line.startswith(" ") or next_line.startswith("	"):
+                block_lines.append(next_line.strip())
+            else:
+                break
+        return " ".join(block_lines).strip() or None
+    return None
 
 
 def check_frontmatter():
@@ -46,10 +75,10 @@ def check_bash_grants():
     text = SKILL_MD.read_text(encoding="utf-8")
     header_end = text.find("\n---\n", 4) + 5
     frontmatter = text[:header_end]
-    fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    if not fm_line_match:
+    allowed_tools_value = _extract_allowed_tools_value(frontmatter)
+    if not allowed_tools_value:
         return True, "no allowed-tools line found (skip)"
-    granted_cmds = re.findall(r"Bash\(([\w.*/${}\s-]+?)(?::|\))", fm_line_match.group(1))
+    granted_cmds = re.findall(r"Bash\(([\w.*/${}\s-]+?)(?::|\))", allowed_tools_value)
     granted_cmds = [c.lstrip("*/").split("/")[-1] for c in granted_cmds]
 
     body = text[header_end:]
@@ -79,13 +108,24 @@ def check_referenced_scripts_exist():
     text = SKILL_MD.read_text(encoding="utf-8")
     header_end = text.find("\n---\n", 4) + 5
     frontmatter = text[:header_end]
-    fm_line_match = re.search(r"^allowed-tools:\s*(.+)$", frontmatter, re.MULTILINE)
-    if not fm_line_match:
+    allowed_tools_value = _extract_allowed_tools_value(frontmatter)
+    if not allowed_tools_value:
         return True, "no allowed-tools line found (skip)"
-    script_paths = re.findall(
-        r"Bash\(python \*/analysis-kit/(scripts/[\w./-]+\.py):", fm_line_match.group(1)
+    script_refs = re.findall(
+        r"Bash\(python \*/([\w-]+)/(scripts/[\w./-]+\.py):", allowed_tools_value
     )
-    missing = [p for p in script_paths if not (PLUGIN_ROOT / p).is_file()]
+    script_paths = [f"{plugin_or_skill_dir}/{path}" for plugin_or_skill_dir, path in script_refs]
+    # The "*/" wildcard in a real grant matches any depth (e.g. a skill-nested
+    # cross-plugin script like plugin-devkit/skills/plugin-rulebook/scripts/
+    # validate_evidence.py, not just a plugin-root plugins/<name>/scripts/...
+    # path) -- a recursive glob mirrors that, rather than assuming a fixed
+    # plugins/<captured-name>/scripts/... depth that only holds for this
+    # plugin's own scripts.
+    missing = [
+        ref
+        for ref, (plugin_or_skill_dir, path) in zip(script_paths, script_refs)
+        if not list(REPO_ROOT.glob(f"plugins/**/{plugin_or_skill_dir}/{path}"))
+    ]
     if missing:
         return False, "referenced script(s) do not exist: " + ", ".join(missing)
     if not script_paths:

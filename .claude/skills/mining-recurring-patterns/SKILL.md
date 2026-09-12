@@ -10,7 +10,8 @@ description: >-
   totals are explicitly out of scope, since no skill can measure those
   directly. Use when finding repeated command patterns, checking whether
   the same question was asked more than once, or reviewing where subagent
-  time and tokens went this session.
+  time and tokens went as part of a sequence-mining pass over this session's
+  actions.
 allowed-tools: Read Glob Write AskUserQuestion Bash(python */analysis-kit/scripts/sequence_miner.py:*) Bash(python */analysis-kit/scripts/token_time_aggregator.py:*) Bash(python */analysis-kit/scripts/session_parser.py:*) Bash(python */analysis-kit/scripts/codex_session_parser.py:*) Bash(python */analysis-kit/scripts/persist_report.py:*) Bash(date:*)
 argument-hint: [start-date | "today" | "this conversation"]
 ---
@@ -33,7 +34,8 @@ Mine a Claude Code session for recurring action sequences, loops, recall/memory 
 - Finding repeated command or workflow sequences a script or skill could automate
 - Checking whether the same clarifying question was asked more than once across the scope
 - Detecting retry loops (the same failing command repeated without an intervening change)
-- Reviewing where subagent dispatch tokens/time actually went this session
+- Reviewing where subagent dispatch tokens/time went, as part of a sequence-mining pass over the
+  session's actions
 
 ## When NOT to Use
 
@@ -49,6 +51,12 @@ Mine a Claude Code session for recurring action sequences, loops, recall/memory 
   judges latency outliers and parallelism against a critical-path analysis — a retry loop this skill flags
   as a repeated-command pattern may also appear there as a reliability finding with its own category and
   recovery status, but the two skills answer different questions about it
+- **A standalone request for a subagent-dispatch token/time report, with no sequence-mining question
+  attached** — use `analyzing-session-operations` instead. Its Performance & Cost section already
+  reports token/time usage alongside latency, critical-path, and parallelism; this skill only
+  aggregates token/time as one input to a sequence-mining pass (the same `token_time_aggregator.py`
+  output cross-referenced against repeated-pattern findings), not as a standalone report in its own
+  right.
 - **Deciding whether a recurring pattern is worth turning into a proposed feature/capability** — use
   `identifying-feature-opportunities` instead. This skill's "automation candidate" framing is mechanical
   and session-sequence-level (the same command sequence repeating, found by `sequence_miner.py`); that
@@ -129,11 +137,13 @@ categories, per
 **Verify this skill activates on:**
 - "find repeated command sequences a script or skill could automate"
 - "was the same clarifying question asked more than once this session?"
-- "review where subagent dispatch tokens/time actually went"
+- "as part of mining this session's action sequence, review where subagent dispatch tokens/time went"
 
 **Verify it does NOT activate on:**
 - "give me a full whole-session token/time cost breakdown" -> not this skill (subagent-observable usage
   only, never a whole-session total)
+- "just give me a report of where subagent tokens/time went this session" (no sequence-mining question
+  attached) -> `analyzing-session-operations`
 - "is this recurring failure an unresolved rule violation or governance issue" ->
   `analyzing-governance-and-conflicts`
 - "judge failure/recovery quality or latency/cost proportionality" -> `analyzing-session-operations`

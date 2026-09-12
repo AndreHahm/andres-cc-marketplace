@@ -132,7 +132,9 @@ description the date-range convention uses. The script redacts the draft, verifi
 written file are both LF-only, writes the final file, and prints the
 `📄 Verification Effectiveness Report written: ...` confirmation line -- present its printed output as-is.
 If it exits non-zero instead, its stderr names the problem -- report that error and stop, never present it
-as a successful persist.
+as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens,
+cloud key prefixes) -- it does not remove personal data, so the persisted report may still carry names,
+emails, or user paths.
 
 **Next step:** after presenting the `📄 ... written:` line, print
 `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.`

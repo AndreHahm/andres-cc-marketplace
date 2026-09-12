@@ -110,7 +110,7 @@ These are skills, not slash commands — invoke them by name in natural language
 
 | Skill | Use when |
 |---|---|
-| `starting-an-analysis` | Not already knowing which of the 13 report-producing analysis skills below fits — a guided front door that picks the type, scopes it, confirms before running, and offers the next step afterward |
+| `starting-an-analysis` | Not already knowing which of the 13 analysis-type skills below fits — a guided front door that picks the type, scopes it, confirms before running, and offers the next step afterward |
 | `running-a-full-retrospective` | Wanting several of the 11 date-range analysis skills below (not the 2 comparison skills, which take a comparison target rather than a bare scope) run over the same scope and consolidated into one deduplicated, prioritized action list, then optionally handed off to `plugin-devkit`'s `plugin-lifecycle-downstream` for a guided fix pass — not one analysis type at a time |
 | `analyzing-plugin-components` | Running a post-session retrospective, auditing skill/agent/rule performance, or building a prioritized improvement backlog from a session or date range |
 | `analyzing-tool-and-framework-use` | Auditing which external tools or developer frameworks a session actually used, or checking whether a framework's execution companion stayed within its subordinate role |
