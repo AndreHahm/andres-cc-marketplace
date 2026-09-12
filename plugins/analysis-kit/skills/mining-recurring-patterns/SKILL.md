@@ -2,12 +2,11 @@
 name: mining-recurring-patterns
 description: >-
   Mines a Claude Code session for recurring action sequences and loops
-  (using the deterministic scripts/sequence_miner.py over an
-  LLM-normalized action-token list), detects recall/memory-consultation
-  gaps, repeated-question patterns, and retry loops, and aggregates
-  whatever subagent-dispatch token/time usage was actually observed
-  (scripts/token_time_aggregator.py) — main-conversation-level token/time
-  totals are explicitly out of scope, since no skill can measure those
+  (using a deterministic miner over an LLM-normalized action-token
+  list), detects recall/memory-consultation gaps, repeated-question
+  patterns, and retry loops, and aggregates whatever subagent-dispatch
+  token/time usage was actually observed — main-conversation-level
+  token/time totals are explicitly out of scope, since no skill can measure those
   directly. Use when finding repeated command patterns, checking whether
   the same question was asked more than once, or reviewing where subagent
   time and tokens went as part of a sequence-mining pass over this session's

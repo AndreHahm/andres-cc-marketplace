@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/analysis-kit/skills/reviewing-analysis-findings",
+  "assertions": [
+    {"text": "The finding pair is classified as Severity Undercut, not Duplicate, Contradiction, or None, with explicit reasoning for why it isn't a Contradiction (same underlying fact agreed, only downstream severity/impact disputed)", "type": "functionality", "target": "transcript"},
+    {"text": "Both reports' native severity terms (Critical; P3) are translated onto severity-vocabulary.md's shared 4-tier scale via its mapping table before being compared, not compared as native terms directly", "type": "quality", "target": "transcript"},
+    {"text": "The reasoning cites the actual undercutting evidence from the fixture (storage/writer.py's os.path.realpath() containment check at line 42), not a generic restatement", "type": "quality", "target": "transcript"},
+    {"text": "The flagged/inherited severity is stated as the lower of the two translated tiers (Minor), per the taxonomy's Severity Undercut reporting guidance", "type": "functionality", "target": "transcript"}
+  ]
+}

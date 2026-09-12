@@ -1,0 +1,10 @@
+{
+  "eval_id": "eval-3",
+  "skill_path": "plugins/analysis-kit/skills/tracking-recommendation-lifecycle",
+  "assertions": [
+    {"text": "Real script calls were run for init, the proposed append, the invalid verified-transition attempt, show, and list -- not simulated", "type": "functionality", "target": "transcript"},
+    {"text": "The invalid proposed->verified transition attempt was actually rejected by recommendation_registry.py (non-zero exit code, explicit error naming the invalid transition), not silently accepted", "type": "functionality", "target": "transcript"},
+    {"text": "The skill's reporting to the user is honest about the rejection -- it does not claim success, and it does not silently substitute a different, valid status (e.g. accepted) without telling the user", "type": "quality", "target": "transcript"},
+    {"text": "Final registry state (via real show/list calls) shows rec-eval-003 still at proposed, not verified", "type": "functionality", "target": "transcript"}
+  ]
+}

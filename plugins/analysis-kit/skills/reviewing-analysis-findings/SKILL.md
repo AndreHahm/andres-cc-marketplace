@@ -4,8 +4,8 @@ description: >-
   Cross-checks two or more persisted analysis-kit report paths from the same
   session or scope for duplicate findings, direct contradictions between two
   reports' verdicts on the same subject, and a severity claim in one report
-  that another report's own evidence undercuts. Uses scripts/comparator.py
-  for a structural section-diff pass first, then evaluates each shared and
+  that another report's own evidence undercuts. Runs a structural
+  section-diff pass first, then evaluates each shared and
   divergent section for actual duplication or contradiction, grounded in
   references/severity-vocabulary.md's shared scale. Use when a multi-skill
   retrospective just produced several analysis-kit reports and a sanity
@@ -58,7 +58,7 @@ Require at least 2 paths — a single report has nothing to cross-check against.
 - **Exact-prefix boundary, not a substring match.** A match only counts if the text immediately following `<scope-slug>` in the filename is the persistence-timestamp separator (`-<ISO8601-timestamp>.md`, or `-vs-<...>` for `comparing-sessions`' compound slug) — never any other continuation. This guards against a shorter scope-slug (e.g. `2026-08-10`) silently swallowing a longer, distinct one (e.g. `2026-08-10-to-2026-08-14`) that happens to share the same literal prefix.
 - **Exclude the output about to be written.** This run's own not-yet-persisted report is never a candidate for its own Included/Excluded lists.
 - **Exclude this skill's own prior reports from the cross-check input set.** In scope mode, `reviewing-analysis-findings`'s own persisted-filename convention *is* the exact input scope-slug (`references/report-discovery-convention.md`'s `<scope-slug>` table) — so a match under `reviewing-analysis-findings/<scope-slug>-*.md` is always a prior aggregation run over this exact same scope, never an independent source report to cross-check. That's why this glob omits `reviewing-analysis-findings` from the 15-directory enumeration entirely, unlike `"latest N"` mode. A prior run is still discovered — but separately, by Phase 4's own supersession check (below), for superseding purposes only, never folded into this Phase's Included/Excluded set. Folding it in here would treat an earlier findings-review *conclusion* as if it were raw source-report evidence, and risks recursive self-comparison against a run's own prior aggregation of the very reports it's about to re-check.
-- **Exclude non-report matches.** Anything under `plugins/analysis-kit/tests/fixtures/` (smoke/eval fixtures, not real persisted output) is out of scope regardless of filename — the glob above only ever reaches `.claude/output/`, so this is naturally satisfied as long as the glob root isn't broadened later; call it out explicitly here so a future edit doesn't widen the root without noticing this guard.
+- **Exclude non-report matches.** Anything under `plugins/analysis-kit/tests/fixtures/` (smoke/eval fixtures, not real persisted output) is out of scope regardless of filename — the glob above only ever reaches `.claude/output/`, which normally excludes `tests/fixtures/` entirely. **Known dev-environment exception:** in this development worktree, some eval fixtures (e.g. a deliberate prompt-injection fixture, a synthetic report) are themselves persisted under `.claude/output/` alongside real runs, so the glob can return one as if it were a real report — a downstream install has no such fixtures under `.claude/output/` at all, since that directory is gitignored, but this worktree does. Recognize an eval-fixture filename or content marker if one turns up among the candidates and exclude it explicitly rather than trusting the glob root alone.
 - **List every match found as either Included or Excluded, with a reason for each exclusion** — e.g. a `mining-review-learnings`/`managing-review-learnings` report is never included here (neither directory is in this glob's enumeration, per their own deliberate exclusion — see the Arguments block above), a prior `reviewing-analysis-findings` report for this same scope is excluded per the bullet above (surfaced separately via Phase 4's supersession check instead), a match whose own content shows it's for a materially different sub-scope is excluded with that reason stated, and a compatible producer-consumer pair (see Phase 3) is included but flagged as related rather than treated as independent corroboration.
 
 ## Phase 2: Structural Diff (Pairwise)
@@ -106,6 +106,10 @@ Included/Excluded Reports sections describe the same fact — keep them consiste
 - **Contradiction requires the same subject.** Two findings using similarly strong language about different components are not a contradiction — verify both reports are actually talking about the same file, component, or decision before classifying.
 - **This skill doesn't resolve the contradiction.** Surfacing "these two reports disagree" is the deliverable — deciding which one is right, or reconciling them, returns to the user or the producing skill; this skill itself has no write exception (unlike `analyzing-plugin-components`' confirmed SHA correction or `running-a-full-retrospective`'s Phase 5 direct-fix path).
 - **A structural diff isn't a semantic verdict** (same caution `comparing-sessions` already documents) — `comparator.py`'s output only shows which sections exist where; Phase 3's actual judgment must be grounded in what the sections say, not just their presence.
+- **`Write` has no path-scoping syntax in this repo's tool-scoping convention.** The grant is used in
+  exactly one place — the Phase 4 scratch draft, written to the session scratchpad directory — never a
+  repo-tracked path; this skill's own "read-only discipline" claim above refers to never writing to a
+  producing skill's report or any other tracked file, not to holding zero `Write` grant at all.
 
 ## Testing & Validation
 
@@ -137,18 +141,23 @@ After Phase 4, verify these gates before presenting output as final:
 - [ ] The drafted report was redacted and verified LF-only via `persist_report.py` before the final write — never written directly from the scratch draft
 - [ ] The scratch draft carries the Coverage Preamble and each entry carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 
-**Eval evidence:** `evals/reviewing-analysis-findings/evals.json` -- 1 targeted regression scenario,
-4/4 assertions passing post-fix (2/4 pre-fix), scoped to Phase 1's `scope <scope-slug>` self-exclusion
-behavior (a pre-fix vs. post-fix comparison, not a full re-run of this skill's own Testing & Validation
-checklist -- see the eval's own `testing_validation_coverage` note for the narrower scope this covers).
+**Eval evidence:** `evals/reviewing-analysis-findings/evals.json` -- 3 scenarios, 12/12 assertions
+passing. Eval-1 is a targeted regression scenario (4/4 assertions passing post-fix, 2/4 pre-fix),
+scoped to Phase 1's `scope <scope-slug>` self-exclusion behavior -- not a full re-run of this skill's
+own Testing & Validation checklist. Eval-2 and eval-3 (added 2026-09-12) exercise the skill's actual
+core Phase 2/Phase 3 judgment functionally: a genuine Duplicate detection with both taxonomy carve-outs
+checked and ruled out (4/4), and a genuine Severity Undercut detection via `severity-vocabulary.md`'s
+translation table (4/4). See the eval file's own `testing_validation_coverage` note for the exact scope
+each covers, including that Contradiction specifically remains uncovered by a dedicated eval.
 
-**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval above.
+**Last dated run record:** 2026-09-12 -- `scripts/smoke_test.py`, all 5 checks passing; eval suite above.
 
 ## Reference Guide
 
 | File | Purpose | When to read |
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
+| `../../scripts/comparator.py` | Deterministic structural section-diff pass between two reports, run before Phase 3's semantic judgment | Phase 2 |
 | `references/cross-check-taxonomy.md` | Duplicate/Contradiction/Severity Undercut definitions and detection guidance | Phase 3 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions used to judge Severity Undercut findings | Phase 3 |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Arguments block / Phase 1 restate inline | Background — sweep this file's site list when editing either |

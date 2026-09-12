@@ -133,6 +133,11 @@ from memory when the registry itself is the authoritative source.
 - **An invalid transition is rejected, not coerced.** If the target status isn't reachable from the
   recommendation's current status (per the schema's transition diagram), the script refuses the append --
   don't work around this by picking a different, wrong status that happens to be valid.
+- **The `Bash(python */analysis-kit/scripts/recommendation_registry.py:*)` grant is unscoped across
+  subcommands, intentionally.** It reaches `init` as well as `append`/`show`/`list`/`validate`, unlike
+  `comparing-sessions`' own narrower `list`/`show`-only grant on the same script. This skill's write path
+  genuinely needs `append` (and occasionally `init`, for a not-yet-bootstrapped registry); `init` is
+  non-destructive -- it only creates a registry file if one doesn't already exist, never overwrites one.
 
 ## Testing & Validation
 
@@ -142,10 +147,13 @@ optional fields, secret redaction on free-text fields (including `source_report`
 redaction), the dual-position `--registry` CLI flag, and the lock's fail-loud-on-timeout guarantee --
 run via `python -m pytest plugins/analysis-kit/tests/test_recommendation_registry.py -q`.
 
-**Eval evidence:** `evals/tracking-recommendation-lifecycle/evals.json` -- 2 scenarios, all 3 declared
+**Eval evidence:** `evals/tracking-recommendation-lifecycle/evals.json` -- 3 scenarios, all 3 declared
 activation scenarios covered (eval-1: the accepted->implemented->verified evidence discipline, using the
 real `recommendation_registry.py` script against a scratch registry; eval-2: a status query via real
-`show`/`list` calls). Structural correctness is additionally covered by `scripts/smoke_test.py` below.
+`show`/`list` calls) plus eval-3 (added 2026-09-12), which adds functional coverage beyond the 3 declared
+scenarios: an invalid-transition rejection (`proposed` -> `verified` directly), confirming the real script
+refuses the append and the skill reports the refusal honestly rather than coercing to a valid status.
+Structural correctness is additionally covered by `scripts/smoke_test.py` below.
 
 **Verify this skill activates on:**
 - "mark this recommendation as accepted"
@@ -165,7 +173,7 @@ real `recommendation_registry.py` script against a scratch registry; eval-2: a s
       if it succeeded
 - [ ] No optional field was populated with a placeholder value just to fill it in
 
-**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing (frontmatter,
+**Last dated run record:** 2026-09-12 -- `scripts/smoke_test.py`, all 5 checks passing (frontmatter,
 Bash-grant usage, referenced-script existence, Reference Guide file existence, Phase-header sequencing);
 `python -m pytest plugins/analysis-kit/tests/test_recommendation_registry.py -q`, 26/26 passing; eval
 suite above.
@@ -176,7 +184,7 @@ suite above.
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `../../scripts/recommendation_registry.py` | The registry's own CLI (init/append/show/list/validate) | Phase 1, Phase 3, Phase 4 |
-| `../../references/recommendation-lifecycle-schema.md` | Event fields, status vocabulary, transition diagram, honesty discipline | Phase 2, Phase 3 |
+| `../../references/recommendation-lifecycle-schema.md` | Event fields, status vocabulary, transition diagram, honesty discipline | Background for authors -- this skill holds no `Read` grant, so it never reads this file at runtime; the Honesty Discipline text above is restated inline instead |
 | `../../tests/test_recommendation_registry.py` | Deterministic tests for the registry's transition rules and lock behavior | Background -- re-run after any registry script change |
 | `generating-analysis-recommendations` skill | Produces the recommendation and assigns its stable `recommendation_id` | Before Phase 1, for an ID that doesn't exist yet |
 | `comparing-sessions` skill | Reads the registry (read-only) to interpret realized impact across two sessions | Downstream consumer, not called from here |

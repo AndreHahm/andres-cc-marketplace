@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Tier 1 AskUserQuestion presents exactly the 4 documented buckets from SKILL.md Phase 1 -- not more, not fewer, not invented options",
+      "passed": true,
+      "evidence": "Transcript's TIER 1 QUESTION section lists exactly 4 options, verbatim: 'Outcome, verification & operational reliability', 'Component, tool & actor performance', 'Usability, governance & security', 'Patterns, opportunities & comparisons', matching SKILL.md Phase 1's own bucket list word-for-word with no additions or omissions."
+    },
+    {
+      "text": "Tier 2 AskUserQuestion (for the bucket this scenario should land in) presents only that bucket's own documented options, capped at 4, with no options borrowed from a different bucket",
+      "passed": true,
+      "evidence": "TIER 2 QUESTION section lists exactly the 3 skills SKILL.md assigns to the 'Outcome, verification & operational reliability' bucket -- analyzing-session-outcomes, analyzing-verification-effectiveness, analyzing-session-operations -- with no skill from any other bucket (e.g. no analyzing-plugin-components or comparing-sessions leaking in), and correctly notes '3 options, within the 4-option cap, so no truncation was needed.'"
+    },
+    {
+      "text": "The final selected skill is one of the 13 analysis-type skills and is a defensible match for the scenario's actual request, justified against analysis-type-guide.md's own disambiguation text",
+      "passed": true,
+      "evidence": "FINAL SKILL SELECTED is analyzing-session-outcomes, a real member of the 13. TIER 2 REASONING directly quotes analysis-type-guide.md's own text ('did the session achieve the user's actual goal... not merely whether the process was followed... separates task completion from process compliance in the report itself') and explains why the two sibling options (analyzing-verification-effectiveness scoped to test/verification evidence only; analyzing-session-operations scoped to reliability/cost only) don't cover the 'process followed' half of the request -- a specific, evidenced match, not a generic assertion."
+    },
+    {
+      "text": "Tier 2 was not skipped, or if skipped, the skip is actually justified per SKILL.md's own stated shortcut rule (free-text answer already clearly naming one of the 13 skills or their trigger phrases) rather than merely assumed",
+      "passed": true,
+      "evidence": "Transcript explicitly checked the shortcut rule first ('SKILL.md's stated shortcut is...'), quoted it accurately, and correctly concluded it does not apply because the scenario prompt names no skill and no exact trigger phrase and straddles two Tier-1 framings -- then proceeded through both tiers rather than skipping."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

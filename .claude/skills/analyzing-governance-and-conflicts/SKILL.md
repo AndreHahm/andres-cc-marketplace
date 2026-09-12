@@ -8,7 +8,7 @@ description: >-
   mirrors, documentation drift, blast radius) exposed by the session's own
   changes — reported as a second, independent section since structural drift
   can exist with no rule naming it. Reuses
-  the shared component_inventory.py script for rule evidence. Use when
+  the shared cross-component-inventory tooling for rule evidence. Use when
   checking whether a session followed its own project rules and
   conventions, finding contradictions between agents/rules/specs, tracking
   which mistakes keep recurring across sessions, or assessing whether a
@@ -59,6 +59,12 @@ Assess rule/boundary conformance and detect conflicts across a Claude Code sessi
   checks against the project's own stated rules/conventions; that skill checks security threats
   independent of whether any rule exists at all — a session can violate zero project rules and still have
   a real security finding there, and can be fully rule-conformant here while still exposing a credential
+- **Whether a specific fix's verification was adequate evidence for the risk it addressed** — use
+  `analyzing-verification-effectiveness` instead. This skill's conformance check is binary (did the
+  session follow a testing-mandate-style rule, yes or no); that skill judges the verification itself
+  qualitatively (was it proportionate, adequate evidence for the actual behavior/risk change) — a
+  session can satisfy this skill's rule-conformance check while that skill still finds the verification
+  weak or unconvincing, or vice versa
 
 ## Phase 1: Scope
 
@@ -199,6 +205,7 @@ After Phase 6, verify before presenting output as final:
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
 | `../../references/date-range-scope-convention.md` | Shared Phase 1 scope-resolution procedure this skill's own Phase 1 restates by reference | Phase 1 |
+| `../../scripts/component_inventory.py` | Shared cross-plugin component inventory used as rule evidence | Phase 2 |
 | `references/conflict-taxonomy.md` | The four conflict categories with detection patterns | Phase 3 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions used across analysis-kit | When a finding's severity needs grounding against other skills' reports |
 | `references/governance-conformance-checklist.md` | Rule-conformance evaluation patterns | Phase 2 |

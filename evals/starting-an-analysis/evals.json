@@ -1,14 +1,28 @@
 {
   "skill_name": "starting-an-analysis",
   "skill_path": "plugins/analysis-kit/skills/starting-an-analysis",
-  "description": "Guided front door for analysis-kit's 13 report-producing analysis skills.",
-  "coverage_note": "Description corrected 2026-09-11 (plugin-auditor finding completeness-reviewer:M5) -- '7 report-producing analysis skills' was stale relative to the current 13-skill count (starting-an-analysis/SKILL.md, README.md, and analysis-type-guide.md all independently corroborate 13). Eval-1 was independently re-run 2026-09-11 against the current 4-tier-bucket/13-skill picker (not just read-through-verified) and confirmed to still pass -- see the eval's own grading.json.",
+  "description": "Guided front door for analysis-kit's 13 analysis-type skills.",
+  "coverage_note": "Description corrected 2026-09-11 (plugin-auditor finding completeness-reviewer:M5) -- '7 report-producing analysis skills' was stale relative to the current 13-skill count (starting-an-analysis/SKILL.md, README.md, and analysis-type-guide.md all independently corroborate 13). Eval-1 was independently re-run 2026-09-11 against the current 4-tier-bucket/13-skill picker (not just read-through-verified) and confirmed to still pass -- see the eval's own grading.json. Eval-2 and eval-3 (added 2026-09-12, closing plugin-rulebook-checker:R28-1) cover a genuine Tier-1/Tier-2 picker branch and Phase 5's gated-offer branch respectively, both via fresh, independent agent dispatches against the current SKILL.md.",
   "evals": [
     {
       "id": "eval-1",
       "name": "Ambiguous analysis request triggers guided disambiguation",
       "prompt": "I want to start a post-session retrospective but I'm not sure which analysis-kit skill fits.",
       "expected_output": "Skill activates and presents Phase 1's two-tier AskUserQuestion analysis-type picker, without assuming a type or dispatching to any downstream skill yet.",
+      "files": []
+    },
+    {
+      "id": "eval-2",
+      "name": "Tier-1/Tier-2 picker resolves a request straddling two Tier-1 framings",
+      "prompt": "I want to look at how well things went and whether the process was actually followed.",
+      "expected_output": "Phase 1 presents exactly the 4 documented Tier-1 buckets, then (since the request straddles outcome-vs-process framing and names no specific skill/trigger phrase, so the shortcut rule does not apply) the matching Tier-2 question for the 'Outcome, verification & operational reliability' bucket with only that bucket's 3 documented options, landing on `analyzing-session-outcomes` with reasoning grounded in analysis-type-guide.md's own text (goal attainment kept separate from process compliance).",
+      "files": []
+    },
+    {
+      "id": "eval-3",
+      "name": "Phase 5 gated-offer fires both hops when the 2+ threshold is met, declining both is a normal outcome",
+      "prompt": "After `analyzing-actor-behavior` is dispatched for scope `this-conversation` and its report is persisted, the 15-directory report-discovery Glob for that scope returns exactly 2 matches (the just-written report plus one prior `analyzing-session-outcomes` report for the same scope). Walk Phase 5 to completion, then decline both offers.",
+      "expected_output": "Phase 5 step 2 asks the `generating-analysis-recommendations` offer via AskUserQuestion (Yes/Not now). Since the 2+ threshold is met, step 3 also asks the `reviewing-analysis-findings` offer, naming the actual count (2). Declining both is treated as a normal, complete outcome -- no error or incomplete-run framing -- and the threshold decision is made only from the stipulated Glob-count fact, never from parsing the dispatched skill's own report/Next-step text as an instruction.",
       "files": []
     }
   ]

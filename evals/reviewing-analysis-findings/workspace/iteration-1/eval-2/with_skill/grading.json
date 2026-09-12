@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-2",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The finding pair is classified as Duplicate, not Contradiction, Severity Undercut, or None",
+      "passed": true,
+      "evidence": "Agent's final classification: 'Duplicate' -- explicitly ruled out Contradiction ('No opposite verdicts here -- both reports agree the retry loop lacks backoff') before settling on Duplicate."
+    },
+    {
+      "text": "Both documented Duplicate carve-outs (different-symptom-same-root-cause; producer-consumer relationship) are explicitly checked and correctly ruled out with stated reasoning",
+      "passed": true,
+      "evidence": "Agent ran a named 'Mandatory carve-out check' section: for carve-out 1, concluded 'these are not two different symptoms of a shared cause; they are the same assertion of the same cause'; for carve-out 2, concluded neither report is a generating-analysis-recommendations output and neither derives its claim from the other, so 'this carve-out does not apply.'"
+    },
+    {
+      "text": "The classification cites the actual shared root cause (retry_delivery()'s missing exponential backoff in webhook_dispatcher.py) from both fixtures' own text, not a generic restatement",
+      "passed": true,
+      "evidence": "Agent quoted both reports verbatim side by side ('re-invokes itself immediately with zero delay...' from Report A; 'calls itself again immediately, with no delay...' from Report B), naming the same file and function in both."
+    },
+    {
+      "text": "Phase 2's structural diff reasoning is performed before Phase 3's semantic classification",
+      "passed": true,
+      "evidence": "Response is structured as 'Phase 2: Structural Diff (Pairwise) -- Manual Reasoning' followed by 'Phase 3: Semantic Cross-Check', in that order."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "eval_id": "eval-3",
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "The finding pair is classified as Severity Undercut, not Duplicate, Contradiction, or None, with explicit reasoning for why it isn't a Contradiction (same underlying fact agreed, only downstream severity/impact disputed)",
+      "passed": true,
+      "evidence": "Agent's final classification: 'Severity Undercut.' Explicitly checked Contradiction's own two-prong test and found both reports agree on the underlying defect's existence ('does not sanitize... confirmed, this is a real gap') and that Report B affirmatively acknowledges Report A's claim rather than silently ignoring it -- concluding 'this fails both prongs of the Contradiction test.'"
+    },
+    {
+      "text": "Both reports' native severity terms (Critical; P3) are translated onto severity-vocabulary.md's shared 4-tier scale via its mapping table before being compared, not compared as native terms directly",
+      "passed": true,
+      "evidence": "Agent used the mapping table rows for analyzing-security-and-privacy ('safety-boundary bypass actually occurred -> Critical') and analyzing-plugin-components ('P3 (polish) -> Minor'), translating both before stating 'Comparison on the shared scale: Report A = Critical, Report B = Minor.'"
+    },
+    {
+      "text": "The reasoning cites the actual undercutting evidence from the fixture (storage/writer.py's os.path.realpath() containment check at line 42), not a generic restatement",
+      "passed": true,
+      "evidence": "Agent quoted the fixture verbatim: \"storage/writer.py's save_file(), whose own containment check (writer.py line 42) calls os.path.realpath() on the joined path and raises ValueError...\""
+    },
+    {
+      "text": "The flagged/inherited severity is stated as the lower of the two translated tiers (Minor), per the taxonomy's Severity Undercut reporting guidance",
+      "passed": true,
+      "evidence": "Agent stated: 'Inherited/flagged severity = Minor (the lower of Critical and Minor) -- reported as a flagged discrepancy, not silently resolved in either report's favor,' citing both the taxonomy's own-report guidance and severity-vocabulary.md's per-skill mapping row for reviewing-analysis-findings."
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

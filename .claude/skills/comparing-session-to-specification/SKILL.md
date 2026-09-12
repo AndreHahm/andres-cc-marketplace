@@ -3,8 +3,8 @@ name: comparing-session-to-specification
 description: >-
   Checks whether a Claude Code session's decisions and actions complied with
   a project's specification, architecture, constitution, or project-brief
-  document, section by section. Uses scripts/comparator.py for a structural
-  section-header diff between the spec and a persisted session report, then
+  document, section by section. Runs a structural section-header diff
+  between the spec and a persisted session report, then
   evaluates each shared and spec-only section for actual compliance. Use
   when checking whether a session followed its own project's spec or
   constitution, or auditing session decisions against a stated architecture.
@@ -122,6 +122,7 @@ failed assertion traces to an eval-fixture design ambiguity, not a skill defect 
 | File | Purpose | When to read |
 |---|---|---|
 | `scripts/smoke_test.py` | Structural smoke test (frontmatter validity, referenced-script/Reference-Guide-file existence, Bash-grant usage, Phase-header sequencing) | Before committing a change to this SKILL.md |
+| `../../scripts/comparator.py` | Deterministic structural section-header diff between the spec and a persisted session report | Phase 2 |
 | `references/specification-compliance-checklist.md` | Section-classification procedure and severity guidance | Phase 3 |
 | `../../references/severity-vocabulary.md` | Shared severity-tier definitions used across analysis-kit | When a finding's severity needs grounding against other skills' reports |
 | `../../references/report-discovery-convention.md` | Canonical `<scope-slug>` convention and report-discovery glob this skill's Persist step / Next-step block restate inline | Background — sweep this file's site list when editing either |
