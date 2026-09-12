@@ -7,7 +7,7 @@ description: >-
   permitted Linear reference, then confirming the gate's real outcome once it can actually be
   observed. Use when asked to commit and open a PR linked to a Linear issue, or publish a draft PR
   for an issue. Never stages, commits, or pushes directly.
-allowed-tools: Read, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:commit), Skill(git-kit:create-pr), Skill(git-kit:cross-model-review), Bash(gh pr view:*), Bash(git remote get-url origin:*), Bash(git branch --show-current:*), AskUserQuestion
+allowed-tools: Read, Skill(linear-work-management), Skill(repository-gates), Skill(linear-github-linking), Skill(git-kit:commit), Skill(git-kit:create-pr), Skill(git-kit:cross-model-review), Bash(gh pr view:*), Bash(git remote get-url origin:*), Bash(git remote get-url --push --all origin:*), Bash(git branch --show-current:*), AskUserQuestion
 ---
 
 # Development to PR
@@ -56,25 +56,30 @@ See Testing & Validation below for the concrete trigger phrases this section sum
    sub-checks, cheap-then-expensive, both before `commit` is ever invoked:
    - **(a) First, verify the current checkout is actually the selected PR's own repository and
      branch** — both checks, not just one, and the repository check must be bound to the actual push
-     target, not `gh`'s own resolved context: `git remote get-url origin` compared against the
-     repository step 2 read from `linear-github-linking`, **and** `git branch --show-current`
-     compared against that PR's own branch. **`gh repo view` alone is not sufficient for the
-     repository check** — `gh` resolves its own repository context from `GH_REPO`/`GH_HOST`
+     target, not `gh`'s own resolved context, and not the fetch URL alone: `git remote get-url origin`
+     **and** `git remote get-url --push --all origin` — stopping at the first mismatch across every
+     returned push URL — both compared against the repository step 2 read from
+     `linear-github-linking`, **and** `git branch --show-current` compared against that PR's own
+     branch. Checking only the fetch URL is not sufficient even alongside the branch check: `origin`'s
+     configured push URL(s) can diverge from its fetch URL (an explicit `git remote set-url --push`,
+     or a `url.<base>.pushInsteadOf` rewrite) — `commit`'s own step 16 push actually goes to the push
+     URL, not the fetch URL, so the fetch URL alone doesn't bind to the real push target when the two
+     differ; checking both is what actually does. **`gh repo view` alone is not sufficient for the
+     repository check either** — `gh` resolves its own repository context from `GH_REPO`/`GH_HOST`
      environment overrides before falling back to the local git remote (per `gh help environment`),
      so a `GH_REPO` set to the selected PR's own slug would make `gh repo view` agree with step 2's
-     read even while this checkout's actual `origin` points somewhere else entirely — `commit`'s own
-     step 16 pushes to `origin`, not to whatever `gh` reports, so `origin` itself is the only check
-     that actually binds to the push target. A same-named branch in a *different* repository (a
-     fork, or an unrelated local clone) would pass a branch-only check and still get pushed to —
-     `commit`'s own step 16 pushes whatever the current `HEAD` is in whatever repository the checkout
-     actually belongs to; if either the repository or the branch doesn't match (or the session's cwd
-     is on a different checkout entirely — a real risk after a `starting-work`-created worktree that
-     the session never actually changed into, see `linear-github-lifecycle`'s own worktree-continuity
-     note if this skill is running under that orchestrator), that push would silently land on the
-     wrong branch or repository, and the later `gh pr view` read-back would just show the selected PR
-     never changed — with no error anywhere in the chain. **If either check fails, stop with a
-     structured handoff naming the mismatch — never invoke `commit`, and never run (b) below against
-     a diff that isn't even confirmed to be on the right checkout.**
+     read even while this checkout's actual `origin` points somewhere else entirely. A same-named
+     branch in a *different* repository (a fork, or an unrelated local clone) would pass a
+     branch-only check and still get pushed to — `commit`'s own step 16 pushes whatever the current
+     `HEAD` is in whatever repository the checkout actually belongs to; if the repository (fetch or
+     any push URL) or the branch doesn't match (or the session's cwd is on a different checkout
+     entirely — a real risk after a `starting-work`-created worktree that the session never actually
+     changed into, see `linear-github-lifecycle`'s own worktree-continuity note if this skill is
+     running under that orchestrator), that push would silently land on the wrong branch or
+     repository, and the later `gh pr view` read-back would just show the selected PR never changed —
+     with no error anywhere in the chain. **If any check fails, stop with a structured handoff naming
+     the mismatch — never invoke `commit`, and never run (b) below against a diff that isn't even
+     confirmed to be on the right checkout.**
    - **(b) Only once both match, run the cross-model-review gate (mandatory unless declined):**
      invoke `Skill(git-kit:cross-model-review)` against the current diff with **`BASE=HEAD`** — never
      the tool's own default `BASE=main`, which on this path would resolve `merge-base(main, HEAD)` to
@@ -99,6 +104,15 @@ See Testing & Validation below for the concrete trigger phrases this section sum
        is out of scope for this fix; if that guarantee matters for a specific PR, run
        `Skill(git-kit:cross-model-review)` manually with an explicit `BASE` covering the PR's full
        range before relying on this sub-check alone.
+     - **Disclosed limitation: `commit`'s own step 7.5/8 can rewrite content *after* this gate
+       clears but *before* the actual push, both inside the same step 3 invocation.** If the staged
+       change touches Python files or a canonical marketplace source, `commit`'s step 7.5
+       (`ruff check --fix`) or step 8 (marketplace-CI mirror sync) can modify and re-stage content
+       between this gate clearing and `commit`'s own step 16 push — so the diff that actually reaches
+       the remote can silently differ from the one this gate reviewed. Fixing this needs either a
+       `git-kit:commit` change (a way to suppress step 7.5/8 for an already-reviewed nested
+       invocation) or a post-push diff-and-re-review step this fix doesn't take on. Tracked at
+       [issue #319](https://github.com/AndreHahm/andres-cc-marketplace/issues/319).
      - Mirror `create-pr`'s own step 4 behavior: its mandatory First-Send Confirmation for the nested
        Codex dispatch fires normally here too; `cross-model-review` is report-only and ends by asking
        which findings, if any, to fix — never edits code itself.
@@ -274,8 +288,9 @@ passed the gate); prior run: evals/development-to-pr/workspace/iteration-1/ (202
       before being treated as an existing PR — never silently equated with an already-unambiguous
       `Exact` match.
 - [ ] The existing-PR path always verifies both the current checkout's repository (`git remote get-url
-      origin`, never `gh repo view` alone — see the `GH_REPO` gap noted above) and branch
-      (`git branch --show-current`) match the selected PR's own before invoking `commit` — never lets
-      `commit`'s step 16 push whatever repository/branch the checkout happens to be on, and never
+      origin` **and** `git remote get-url --push --all origin` — never the fetch URL alone, and never
+      `gh repo view` alone — see the `GH_REPO` gap and the push-vs-fetch-URL gap noted above) and
+      branch (`git branch --show-current`) match the selected PR's own before invoking `commit` —
+      never lets `commit`'s step 16 push whatever repository/branch the checkout happens to be on, and never
       treats a branch-name match alone as sufficient when the repository could differ.
 - [ ] Native GitHub → Linear status changes are always verified absent, never assumed absent.
