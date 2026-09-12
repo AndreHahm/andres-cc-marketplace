@@ -19,6 +19,28 @@
 # safe to run standalone for Gate 1's own candidate list), present the
 # numbered output to the user, then re-invoke with the chosen indices once
 # the user confirms at Gate 2.
+#
+# --list-review/--diff/--force/--keep (added for the guided-manual-review
+# phase): the analogous index-only interface for the population --list
+# deliberately EXCLUDES -- tags that failed the reachability check and would
+# otherwise sit in "needs review" forever with no further help. --list-review
+# snapshots that set the same way --list does (also recording $default_branch's
+# own oid at that moment, and silently dropping any candidate with a still-
+# valid "keep" decision already on file); --diff is read-only evidence (a
+# full tree diff against $default_branch) for one candidate by index; --force
+# is the actual bypass -- it deletes a review candidate WITHOUT re-checking
+# reachability (it already failed that check, by construction), protected by
+# an atomic compare-and-delete pinned to BOTH the tag's own recorded oid and
+# $default_branch's recorded oid (not a freshly re-resolved one -- see
+# --force's own comment for why); --keep records a "don't ask again until
+# something changes" decision, using the identical index/oid-pinning
+# discipline, entirely inside this script so the calling skill never needs a
+# raw tag name in a composed command. --force/--keep are meant to be reached
+# only after git-cleanup's own guided-review phase has shown the user
+# --diff's output and (for --force) obtained a second separate confirmation
+# -- this script has no way to enforce that from its own side, the same
+# trust boundary the plain index-based delete mode above already has with
+# Gate 2's confirmation.
 set -euo pipefail
 
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "Error: not inside a git repository" >&2; exit 1; }
@@ -42,14 +64,76 @@ cd "$(git rev-parse --show-toplevel)"
 export GIT_LITERAL_PATHSPECS=1
 
 SNAPSHOT="$(git rev-parse --git-dir)/delete-rebase-backup-tags.snapshot"
+# Separate snapshot for the manual-review candidate set (--list-review/--diff/
+# --force below) -- deliberately never shares $SNAPSHOT with the normal
+# deletable set. The two lists are mutually exclusive by construction (a tag
+# is either automatically safe to delete, or a manual-review candidate, never
+# both), but keeping the files separate means running --list (e.g. from a
+# concurrent invocation) can never silently invalidate an in-progress
+# --list-review/--diff/--force sequence, or vice versa.
+REVIEW_SNAPSHOT="$(git rev-parse --git-dir)/delete-rebase-backup-tags.review-snapshot"
+# Decision file lives at the repo's WORKING TREE root (not $GIT_DIR like the
+# snapshots above) -- it's a human-facing, persistent record meant to survive
+# across script runs, not a same-invocation handoff file. Read/write for this
+# stays entirely inside this script (--list-review/--keep below), never as
+# ad hoc jq/mv commands the calling skill composes -- security-reviewer
+# finding C3: those commands would have needed a raw tag name typed directly
+# into command text (Bash has no persistent shell state across separate tool
+# calls, and no prior mode of this script ever emitted a raw, unescaped tag
+# name for a caller to capture into a variable), reintroducing exactly the
+# untrusted-tag-name-in-a-command risk this script's whole index-only design
+# exists to avoid. Keying by index below, not name, closes this the same way
+# --diff/--force already do. Resolved via `git rev-parse --show-toplevel`
+# (already the script's own cwd, set above) rather than a bare relative
+# path, so this is never accidentally created wherever the caller's shell
+# happened to be cwd'd (security-reviewer finding m4).
+DECISIONS_FILE="$(git rev-parse --show-toplevel)/.claude/git-cleanup-review-decisions.local.json"
 
 # Get default branch name. Not `... || echo "main"` -- `sed` exits 0 even on
 # empty stdin (no origin/HEAD symref set), so the `||` fallback never fires
 # and default_branch would silently resolve to an empty string. Same fix as
 # phase1-analysis.sh's own default-branch resolution (PR #262 review).
-default_branch=$(git symbolic-ref refs/remotes/origin/HEAD \
-  2>/dev/null | sed 's@^refs/remotes/origin/@@')
+#
+# `{ ... || true; }` around the FIRST pipeline stage specifically (not a
+# trailing `|| true` on the whole line, which would only ever apply to
+# `sed`'s own exit status): without it, a repo with no origin/HEAD symref at
+# all -- any fresh `git init` repo, or plenty of real ones that never ran
+# `git remote set-head origin --auto` -- makes `git symbolic-ref` itself fail
+# (exit 128), and under this script's own `set -euo pipefail`, `pipefail`
+# propagates that as the WHOLE PIPELINE's exit status (since `sed` on empty
+# stdin still exits 0, the pipeline's status becomes the one non-zero exit
+# among its stages). Under `set -e`, that failing pipeline -- used here as
+# the right-hand side of a plain assignment -- kills the entire script
+# immediately, on this exact line, with NO output at all (not even a
+# fatal message, since `2>/dev/null` swallows the one git itself would have
+# printed) -- discovered live while writing this script's own regression
+# tests (`test-content-reachable.sh` scenarios 23-26), whose scratch repos
+# have no `origin` remote by construction and hit this every time. This is a
+# strictly worse outcome than issue #263 originally described (default_branch
+# silently resolving to a WRONG existing branch): here the script never
+# reaches its own documented `${default_branch:-main}` fallback at all --
+# every caller of this script (and phase1-analysis.sh's identical copy) saw a
+# bare, unexplained exit 128 in any repo without an origin/HEAD symref,
+# indistinguishable from "no rebase-backup tags to report" unless the exit
+# code was specifically checked. `|| true` makes the first stage always
+# exit 0, so the pipeline's status becomes `sed`'s own (0), letting the
+# already-correct `${default_branch:-main}` fallback on the next line
+# actually run as originally intended.
+default_branch=$({ git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null || true; } \
+  | sed 's@^refs/remotes/origin/@@')
 default_branch="${default_branch:-main}"
+
+# Fail loudly here, once, rather than letting an unresolvable $default_branch
+# propagate silently into every downstream function's own fail-closed
+# behavior -- security-reviewer finding C1 (guided-manual-review feature):
+# --diff's two git calls below both swallow stderr and never check exit
+# status, so a bad $default_branch previously produced the exact same empty
+# output as a genuinely empty (safe-to-delete) diff, with no way for a human
+# reviewer to tell the two apart.
+if ! git rev-parse --verify --quiet "$default_branch" >/dev/null; then
+  echo "Error: default branch '$default_branch' does not resolve to a valid ref -- refusing to run" >&2
+  exit 2
+fi
 
 # Content-based fallback for is_tag_safe_to_delete below. Requires every
 # commit unique to the tag (since its own merge-base with $default_branch)
@@ -394,10 +478,104 @@ is_tag_safe_to_delete() {
   return 1
 }
 
+# Inverse of is_tag_safe_to_delete's reachability outcome, for exactly the
+# same branch-gone-or-merged population -- the manual-review candidate set
+# git-cleanup's own SKILL.md already reports under "Needs Review (rebase-
+# backup tag...)" but, until now, never gave any further help with. A tag
+# whose branch still exists and isn't merged is excluded from BOTH sets (it's
+# not a review candidate either -- the branch may still need this recovery
+# point). Deliberately a separate function rather than inverting
+# is_tag_safe_to_delete's own return value: that function's callers (--list,
+# the delete loop) need "safe" to mean exactly what it already means, and a
+# tri-state return would change its existing, already-reviewed contract for
+# no benefit here -- a small sibling function with its own duplicated branch-
+# status check (mirroring phase1-analysis.sh's own cross-referenced-comment
+# precedent for tolerated duplication) is the lower-risk shape.
+is_tag_needs_review() {
+  local tag="$1"
+  if [[ "$tag" =~ ^(.+)-rebase-backup-[0-9]{8}-[0-9]{6}$ ]]; then
+    local branch="${BASH_REMATCH[1]}"
+    local branch_gone=false
+    local branch_merged=false
+    if git show-ref --verify --quiet "refs/heads/$branch"; then
+      if git branch --merged "$default_branch" --format='%(refname:short)' \
+        | grep -qxF "$branch"; then
+        branch_merged=true
+      fi
+    else
+      branch_gone=true
+    fi
+    if $branch_gone || $branch_merged; then
+      if git merge-base --is-ancestor "$tag" "$default_branch" 2>/dev/null; then
+        return 1
+      fi
+      if is_tag_content_reachable "$tag"; then
+        return 1
+      fi
+      return 0
+    fi
+  fi
+  return 1
+}
+
 list_deletable() {
   for tag in $(git tag -l '*-rebase-backup-*'); do
     if is_tag_safe_to_delete "$tag"; then
       printf '%s\0' "$tag"
+    fi
+  done
+}
+
+# Returns 0 (a still-valid "keep" decision exists -- suppress this
+# candidate from the review offer) only if $DECISIONS_FILE has a "keep"
+# entry for "tag:$1" whose recorded item_sha AND default_branch_sha both
+# still exactly match the current values passed in ($2, $3); returns 1 for
+# no decision, a decision for a different (stale) state, or a missing/
+# unreadable/malformed file. Read-only. $1 is always this script's own
+# internal loop variable here, never text a caller composed into a command
+# -- jq's `--arg` is pure string data regardless, but that property alone
+# doesn't protect against the calling shell reinterpreting metacharacters
+# in a name typed directly into command text (see DECISIONS_FILE's own
+# comment above).
+decision_is_valid_keep() {
+  local tag="$1" current_item_sha="$2" current_default_sha="$3"
+  [ -f "$DECISIONS_FILE" ] || return 1
+  local decision recorded_item recorded_default
+  decision=$(jq -r --arg k "tag:$tag" '.decisions[$k].decision // empty' "$DECISIONS_FILE" 2>/dev/null) || return 1
+  [ "$decision" = "keep" ] || return 1
+  recorded_item=$(jq -r --arg k "tag:$tag" '.decisions[$k].item_sha // empty' "$DECISIONS_FILE" 2>/dev/null) || return 1
+  recorded_default=$(jq -r --arg k "tag:$tag" '.decisions[$k].default_branch_sha // empty' "$DECISIONS_FILE" 2>/dev/null) || return 1
+  [ "$recorded_item" = "$current_item_sha" ] && [ "$recorded_default" = "$current_default_sha" ]
+}
+
+# Emits tag\0oid\0default_branch_sha\0 triples, not just tag\0 -- unlike
+# $SNAPSHOT (list_deletable), this snapshot's whole reason to exist is to
+# survive across a human reading --diff's evidence and later deciding to
+# --force/--keep, a window with no bound on how long a human takes to
+# decide. Recording each tag's oid AND $default_branch's oid AT THIS MOMENT
+# lets --force/--keep refuse if EITHER moved at any point since -- not just
+# during their own near-instantaneous execution (which is all a freshly
+# re-resolved oid could ever detect), and not just the tag's own oid
+# (security-reviewer finding M2: without pinning $default_branch too, a
+# force-push or rewind of the default branch between --diff and the actual
+# decision could invalidate evidence the human already reviewed with no way
+# to detect it). Also drops any candidate with a still-valid "keep" decision
+# already recorded (folding what would otherwise be a separate caller-side
+# filtering step into this one script call -- security-reviewer finding M1:
+# this keeps the index a caller sees always identical to the snapshot's own
+# row numbering, with no separate renumbering step to get wrong).
+list_review() {
+  local default_sha
+  default_sha=$(git rev-parse "$default_branch" 2>/dev/null) || return 0
+  for tag in $(git tag -l '*-rebase-backup-*'); do
+    if is_tag_needs_review "$tag"; then
+      local item_sha
+      item_sha=$(git rev-parse "refs/tags/$tag")
+      if decision_is_valid_keep "$tag" "$item_sha" "$default_sha"; then
+        printf 'Suppressed (previously reviewed and kept, no change since): %q\n' "$tag" >&2
+        continue
+      fi
+      printf '%s\0%s\0%s\0' "$tag" "$item_sha" "$default_sha"
     fi
   done
 }
@@ -416,8 +594,271 @@ if [ "${1:-}" = "--list" ]; then
   exit 0
 fi
 
+if [ "${1:-}" = "--list-review" ]; then
+  list_review > "$REVIEW_SNAPSHOT"
+  i=0
+  while IFS= read -r -d '' tag && IFS= read -r -d '' _oid && IFS= read -r -d '' _dsha; do
+    i=$((i + 1))
+    printf '%d\t%q\n' "$i" "$tag"
+  done < "$REVIEW_SNAPSHOT"
+  exit 0
+fi
+
+# Read-only evidence for one manual-review candidate: the tag's own unique
+# commits (mb..oid) plus a full tree diff between $default_branch's current
+# state and the tag's own recorded oid -- deliberately the tag's WHOLE diff
+# against $default_branch, not just the specific (path, commit) pairs that
+# failed is_tag_content_reachable's internal per-commit walk. A human
+# reviewing "is there real content here that would be lost" is better served
+# by seeing everything the tag differs on than by having this reproduce the
+# checker's own internal reasoning -- and it needs no new information beyond
+# what --list-review's snapshot already gives an index into. Diffs against
+# the snapshot's RECORDED oid, not a fresh "refs/tags/$tag" lookup -- so what
+# this shows is always exactly what --force (below) would delete, even if
+# the tag ref itself moved in between. Never destructive; safe to run any
+# number of times against the same snapshot.
+#
+# The `git diff` call's exit status is checked explicitly and its stderr is
+# captured, not suppressed -- security-reviewer finding C1: an empty diff is
+# the POSITIVE signal in normal operation (tag's tree matches $default_branch,
+# nothing lost by deleting), so a failed diff that ALSO produces empty stdout
+# is indistinguishable from "safe to delete" unless the exit status is
+# actually checked. Without this, a human could see blank evidence and
+# approve a delete based on a broken check rather than a genuine match.
+if [ "${1:-}" = "--diff" ]; then
+  shift
+  idx="${1:-}"
+  if ! [[ "$idx" =~ ^[0-9]+$ ]]; then
+    echo "Error: index '$idx' is not a positive integer" >&2
+    exit 2
+  fi
+  if [ ! -f "$REVIEW_SNAPSHOT" ]; then
+    echo "Error: no review candidate list found -- run --list-review first" >&2
+    exit 2
+  fi
+  tag="" oid=""
+  i=0
+  while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' _d; do
+    i=$((i + 1))
+    if [ "$i" = "$idx" ]; then
+      tag="$t"
+      oid="$o"
+    fi
+  done < "$REVIEW_SNAPSHOT"
+  if [ -z "$tag" ]; then
+    echo "Error: index '$idx' is out of range -- run --list-review again and retry" >&2
+    exit 1
+  fi
+  printf '=== %q (oid %s) ===\n' "$tag" "$oid"
+  mb=$(git merge-base -- "$oid" "$default_branch" 2>/dev/null) || mb=""
+  if [ -n "$mb" ]; then
+    echo "--- unique commits ($mb..$oid) ---"
+    git log --oneline "${mb}..${oid}" -- 2>/dev/null
+  fi
+  echo "--- content diff: $default_branch (current) vs $tag (recorded oid $oid) ---"
+  diff_out=$(git diff --no-ext-diff --no-textconv "$default_branch" "$oid" -- 2>&1)
+  diff_rc=$?
+  if [ "$diff_rc" -ne 0 ]; then
+    echo "Error: could not produce evidence for this candidate -- do NOT treat this as \"no content differs\"" >&2
+    printf '%s\n' "$diff_out" >&2
+    exit 1
+  fi
+  if [ -z "$diff_out" ]; then
+    echo "(no differences -- this candidate's tree matches $default_branch's current tree exactly)"
+  else
+    printf '%s\n' "$diff_out"
+  fi
+  exit 0
+fi
+
+# Force-delete one or more manual-review candidates -- the deliberate bypass
+# of is_tag_needs_review/is_tag_safe_to_delete this whole mode exists for.
+# Every tag reachable via $REVIEW_SNAPSHOT already FAILED the automated
+# reachability check (that's the only way it got into this snapshot in the
+# first place), so re-running that check here would always refuse and this
+# mode would never do anything. This is the actual security-relevant surface
+# added by this feature -- calling it is a human decision made outside this
+# script entirely (git-cleanup's own guided-review phase requires two
+# separate confirmations, having shown --diff's evidence, before ever
+# reaching this call); the script's own job is only to execute that decision
+# without introducing a NEW way to lose data beyond what the human already
+# saw.
+#
+# The safety net here is deliberately NOT "re-resolve the tag's current oid
+# and delete against that" -- that would only ever protect against a move
+# happening during --force's own near-instantaneous execution (essentially
+# no window at all), and would silently delete whatever the tag CURRENTLY
+# points to even if it moved entirely between --diff (what the human
+# actually reviewed) and this call, with no way to detect it (found while
+# writing this feature's own regression tests: scenario
+# scenario_force_refuses_on_toctou_move failed against an earlier version of
+# this code that re-resolved fresh, because there is no time window within a
+# single invocation for a "moved since I looked" race to manifest -- the
+# race that matters here spans the whole human-decision-making gap between
+# --list-review/--diff and --force, which can be arbitrarily long). Instead,
+# compare against $REVIEW_SNAPSHOT's own RECORDED tag oid AND recorded
+# $default_branch oid (captured when --list-review ran, the same values
+# --diff's evidence was built from) -- if EITHER differs from the current
+# value, refuse outright rather than deleting against evidence the human
+# never actually saw (security-reviewer finding M2: pinning the tag's oid
+# alone left the default branch itself free to move -- a rewind or
+# force-push there between --diff and the decision would silently
+# invalidate the reviewed evidence with nothing to detect it).
+#
+# Never removes $REVIEW_SNAPSHOT on completion (security-reviewer finding
+# C2): guided-manual-review.md's own procedure reviews items ONE AT A TIME,
+# and deleting the snapshot after the first "Delete now" would renumber
+# every remaining candidate on the next --list-review, reopening the exact
+# "same index, different tag" race this snapshot mechanism exists to
+# prevent -- on the one path where the reachability check is deliberately
+# skipped. Re-running --force against an already-consumed index already
+# fails safely on its own (the tag no longer resolves), so there is no
+# correctness reason to clear the snapshot proactively; only a fresh
+# --list-review ever replaces it.
+if [ "${1:-}" = "--force" ]; then
+  shift
+  if [ "$#" -eq 0 ]; then
+    echo "Usage: $0 --force <index> [index...]" >&2
+    exit 2
+  fi
+  if [ ! -f "$REVIEW_SNAPSHOT" ]; then
+    echo "Error: no review candidate list found -- run --list-review first" >&2
+    exit 2
+  fi
+  declare -A force_wanted
+  for arg in "$@"; do
+    if ! [[ "$arg" =~ ^[0-9]+$ ]]; then
+      echo "Error: index '$arg' is not a positive integer" >&2
+      exit 2
+    fi
+    force_wanted["$arg"]=1
+  done
+  force_matched_tags=()
+  force_matched_oids=()
+  force_matched_dshas=()
+  i=0
+  while IFS= read -r -d '' tag && IFS= read -r -d '' oid && IFS= read -r -d '' dsha; do
+    i=$((i + 1))
+    if [ -n "${force_wanted[$i]:-}" ]; then
+      force_matched_tags+=("$tag")
+      force_matched_oids+=("$oid")
+      force_matched_dshas+=("$dsha")
+    fi
+  done < "$REVIEW_SNAPSHOT"
+  if [ "${#force_matched_tags[@]}" -ne "${#force_wanted[@]}" ]; then
+    echo "Error: one or more requested indices are out of range -- run --list-review again and retry" >&2
+    exit 1
+  fi
+  force_failed=0
+  for m in "${!force_matched_tags[@]}"; do
+    tag="${force_matched_tags[$m]}"
+    expected_oid="${force_matched_oids[$m]}"
+    expected_dsha="${force_matched_dshas[$m]}"
+    current_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null)
+    current_dsha=$(git rev-parse "$default_branch" 2>/dev/null)
+    if [ -z "$current_oid" ]; then
+      echo "Skipped '$tag': could not resolve its current object id" >&2
+      force_failed=1
+      continue
+    fi
+    if [ "$current_oid" != "$expected_oid" ]; then
+      echo "Skipped '$tag': moved since --list-review (was $expected_oid, now $current_oid) -- run --list-review and --diff again, and confirm before forcing" >&2
+      force_failed=1
+      continue
+    fi
+    if [ -z "$current_dsha" ] || [ "$current_dsha" != "$expected_dsha" ]; then
+      echo "Skipped '$tag': $default_branch advanced since --list-review (was $expected_dsha, now ${current_dsha:-unresolvable}) -- the evidence you reviewed may be stale; run --list-review and --diff again" >&2
+      force_failed=1
+      continue
+    fi
+    if git update-ref -d "refs/tags/$tag" "$expected_oid"; then
+      :
+    else
+      echo "Error: failed to force-delete tag '$tag' (may have moved since verification, or another error occurred)" >&2
+      force_failed=1
+    fi
+  done
+  exit "$force_failed"
+fi
+
+# Records a "keep, don't ask again" decision for one manual-review candidate
+# by INDEX -- never a raw tag name (security-reviewer finding C3/M4): moving
+# this read-modify-write entirely inside the script, keyed the same way
+# --diff/--force already are, means the calling skill never needs to compose
+# a jq/git command containing a literal tag name -- no prior mode of this
+# script ever emitted one for a caller to safely capture into a variable in
+# the first place, and Claude Code's Bash tool has no persistent shell state
+# across separate calls to carry one even if it had. Same TOCTOU refusal as
+# --force (tag oid AND $default_branch oid must both still match what
+# --list-review recorded) -- keeping a tag based on evidence that's gone
+# stale since the human reviewed it is exactly as wrong as force-deleting
+# one would be. Never removes $REVIEW_SNAPSHOT, matching --force's own
+# rationale above.
+if [ "${1:-}" = "--keep" ]; then
+  shift
+  idx="${1:-}"
+  if ! [[ "$idx" =~ ^[0-9]+$ ]]; then
+    echo "Error: index '$idx' is not a positive integer" >&2
+    exit 2
+  fi
+  if [ ! -f "$REVIEW_SNAPSHOT" ]; then
+    echo "Error: no review candidate list found -- run --list-review first" >&2
+    exit 2
+  fi
+  tag="" oid="" dsha=""
+  i=0
+  while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' d; do
+    i=$((i + 1))
+    if [ "$i" = "$idx" ]; then
+      tag="$t"
+      oid="$o"
+      dsha="$d"
+    fi
+  done < "$REVIEW_SNAPSHOT"
+  if [ -z "$tag" ]; then
+    echo "Error: index '$idx' is out of range -- run --list-review again and retry" >&2
+    exit 1
+  fi
+  current_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null)
+  current_dsha=$(git rev-parse "$default_branch" 2>/dev/null)
+  if [ -z "$current_oid" ] || [ "$current_oid" != "$oid" ]; then
+    echo "Error: this candidate moved since --list-review -- run --list-review and --diff again, and confirm before keeping" >&2
+    exit 1
+  fi
+  if [ -z "$current_dsha" ] || [ "$current_dsha" != "$dsha" ]; then
+    echo "Error: $default_branch advanced since --list-review -- run --list-review and --diff again, and confirm before keeping" >&2
+    exit 1
+  fi
+  mkdir -p "$(dirname "$DECISIONS_FILE")"
+  if [ -f "$DECISIONS_FILE" ]; then
+    existing_version=$(jq -r '.version // empty' "$DECISIONS_FILE" 2>/dev/null) || existing_version=""
+    if [ -n "$existing_version" ] && [ "$existing_version" != "1" ]; then
+      echo "Error: $DECISIONS_FILE has unrecognized version '$existing_version' -- refusing to overwrite" >&2
+      exit 1
+    fi
+  else
+    echo '{"version":1,"decisions":{}}' > "$DECISIONS_FILE"
+  fi
+  ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  tmp_file=$(mktemp "$(dirname "$DECISIONS_FILE")/.git-cleanup-review-decisions.XXXXXX") || {
+    echo "Error: could not create a temp file for the decision write" >&2
+    exit 1
+  }
+  if ! jq --arg k "tag:$tag" --arg sha "$oid" --arg dsha "$dsha" --arg ts "$ts" \
+    '.version = 1 | .decisions[$k] = {"decision":"keep","item_sha":$sha,"default_branch_sha":$dsha,"decided_at":$ts}' \
+    "$DECISIONS_FILE" > "$tmp_file"; then
+    echo "Error: failed to update the decision file" >&2
+    rm -f "$tmp_file"
+    exit 1
+  fi
+  mv "$tmp_file" "$DECISIONS_FILE"
+  printf 'Recorded: keep %q (as of %s) -- suppressed from future --list-review output unless this tag or %s moves\n' \
+    "$tag" "$ts" "$default_branch"
+  exit 0
+fi
+
 if [ "$#" -eq 0 ]; then
-  echo "Usage: $0 --list | <index> [index...]" >&2
+  echo "Usage: $0 --list | <index> [index...] | --list-review | --diff <index> | --force <index> [index...] | --keep <index>" >&2
   exit 2
 fi
 

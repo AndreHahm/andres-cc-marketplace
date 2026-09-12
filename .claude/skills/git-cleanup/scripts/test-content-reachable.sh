@@ -40,7 +40,16 @@ report() {
 new_repo() {
   local dir
   dir=$(mktemp -d)
-  git -C "$dir" init -q
+  # -b main: every scenario's own `default_branch=main; git show-ref ... ||
+  # default_branch=master` fallback already tolerates either, but pinning
+  # the actual initial branch name removes a real, host-dependent source of
+  # flakiness (security-reviewer finding m8) -- a host whose
+  # init.defaultBranch is "master" previously made $TARGET's own
+  # $default_branch resolution and this suite's per-scenario default_branch
+  # disagree about which branch is "the" default in a way that surfaced as
+  # an unrelated-looking failure (an empty --diff, read as "no differences")
+  # rather than a clearly-flaky-fixture signal.
+  git -C "$dir" init -q -b main
   git -C "$dir" config user.email test@test.com
   git -C "$dir" config user.name test
   git -C "$dir" config core.autocrlf false
@@ -1033,6 +1042,287 @@ scenario_reordered_final_state_mismatch_fails_closed() {
   )
 }
 
+# Scenarios 23-26: the --list-review/--diff/--force CLI modes added for
+# git-cleanup's guided-manual-review phase. Unlike scenarios 1-22 (which
+# `eval` the extracted function bodies in isolation), these invoke the real
+# script directly ($TARGET) inside the scratch repo -- the behavior under
+# test lives in the CLI dispatch itself (argument parsing, snapshot
+# read/write, the atomic compare-and-delete), not in a function these tests
+# could extract and eval the same way.
+
+# Scenario 23: --list-review must show exactly the tags that fail the
+# automated reachability check, and --list must show exactly the ones that
+# pass -- the two lists are mutually exclusive by construction. Builds one of
+# each in the same repo to confirm neither leaks into the other's output.
+scenario_list_review_excludes_deletable_and_vice_versa() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    # Landed tag: feature adds a line that also lands on main verbatim.
+    # Deliberately named so neither tag name is a substring of the other
+    # (an earlier draft used "reachable"/"unreachable" -- "reachable" is a
+    # literal substring of "unreachable", which made the exclusion greps
+    # below pass or fail for the wrong reason regardless of the real
+    # behavior; caught only by tracing an unexpected failure, not by
+    # inspection).
+    git checkout -q -b landedok-feature
+    printf 'base\nlanded-line\n' > shared.txt
+    git add shared.txt && git commit -q -m "landedok feature change"
+    git tag -a landedok-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D landedok-feature >/dev/null
+    printf 'base\nlanded-line\n' > shared.txt
+    git add shared.txt && git commit -q -m "main lands the same line"
+    # Never-landed tag: a genuinely different, never-landed change.
+    git checkout -q -b neverlanded-feature
+    printf 'base\nlanded-line\nnever-lands\n' > shared.txt
+    git add shared.txt && git commit -q -m "neverlanded feature change"
+    git tag -a neverlanded-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D neverlanded-feature >/dev/null
+  )
+  (
+    cd "$repo"
+    list_out=$(bash "$TARGET" --list 2>/dev/null)
+    review_out=$(bash "$TARGET" --list-review 2>/dev/null)
+    echo "$list_out" | grep -qF "landedok-rebase-backup-20260101-000000" || exit 1
+    echo "$list_out" | grep -qF "neverlanded-rebase-backup-20260101-000000" && exit 1
+    echo "$review_out" | grep -qF "neverlanded-rebase-backup-20260101-000000" || exit 1
+    echo "$review_out" | grep -qF "landedok-rebase-backup-20260101-000000" && exit 1
+    exit 0
+  )
+}
+
+# Scenario 24: --diff must surface the actual differing content for a
+# review candidate resolved by index, not just a pass/fail signal.
+scenario_diff_shows_evidence_for_review_candidate() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q -b orphan-feature
+    printf 'base\nUNIQUE-MARKER-LINE\n' > shared.txt
+    git add shared.txt && git commit -q -m "orphan feature change"
+    git tag -a orphanmark-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D orphan-feature >/dev/null
+  )
+  (
+    cd "$repo"
+    bash "$TARGET" --list-review >/dev/null 2>&1
+    diff_out=$(bash "$TARGET" --diff 1 2>/dev/null)
+    echo "$diff_out" | grep -qF "UNIQUE-MARKER-LINE" || exit 1
+    echo "$diff_out" | grep -qF "orphanmark-rebase-backup-20260101-000000" || exit 1
+    exit 0
+  )
+}
+
+# Scenario 25: --force must actually delete a genuine review candidate by
+# index -- the positive counterpart to the existing scenario_atomic_delete,
+# specifically for the review-snapshot path rather than the main snapshot.
+scenario_force_deletes_review_candidate() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q -b gone-feature
+    printf 'base\nnever-lands\n' > shared.txt
+    git add shared.txt && git commit -q -m "gone feature change"
+    git tag -a gonefeat-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D gone-feature >/dev/null
+  )
+  (
+    cd "$repo"
+    bash "$TARGET" --list-review >/dev/null 2>&1
+    bash "$TARGET" --force 1 >/dev/null 2>&1
+    [ -z "$(git tag -l gonefeat-rebase-backup-20260101-000000)" ]
+  )
+}
+
+# Scenario 26: --force must refuse (atomic compare-and-delete) when the tag
+# was force-moved to a different object between --list-review and --force --
+# the same TOCTOU protection scenario_atomic_delete already verifies for the
+# plain delete path, mirrored here for the bypass path specifically, since
+# --force's whole point is skipping the reachability re-check that path
+# relies on -- the atomic compare-and-delete is the ONLY safety net left.
+scenario_force_refuses_on_toctou_move() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q -b moved-feature
+    printf 'base\nnever-lands\n' > shared.txt
+    git add shared.txt && git commit -q -m "moved feature change"
+    git tag -a movedfeat-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D moved-feature >/dev/null
+  )
+  (
+    cd "$repo"
+    bash "$TARGET" --list-review >/dev/null 2>&1
+    # Force-move the tag to a different object after the snapshot was taken --
+    # simulates a concurrent change in the window between --list-review and
+    # --force.
+    printf 'more\n' >> shared.txt
+    git add shared.txt && git commit -q -m "moves the tag's target"
+    git tag -f -a movedfeat-rebase-backup-20260101-000000 -m backup2 HEAD >/dev/null 2>&1
+    if bash "$TARGET" --force 1 >/dev/null 2>&1; then
+      exit 1  # should have refused -- the tag moved since --list-review
+    fi
+    # The tag must still exist (unchanged from the moved state), not deleted.
+    [ -n "$(git tag -l movedfeat-rebase-backup-20260101-000000)" ]
+  )
+}
+
+# Scenario 27: security-reviewer finding C1 -- an unresolvable
+# $default_branch must fail loudly (a clear error, non-zero exit) rather
+# than let --diff silently produce empty evidence indistinguishable from a
+# genuine "no differences" match.
+scenario_unresolvable_default_branch_fails_loudly() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > a.txt
+    git add a.txt && git commit -q -m base
+    git checkout -q -b other
+    # Delete "main" entirely -- $default_branch has nothing to resolve to.
+    git branch -D main >/dev/null
+  )
+  (
+    cd "$repo"
+    out=$(bash "$TARGET" --list 2>&1)
+    rc=$?
+    [ "$rc" -ne 0 ] || exit 1
+    echo "$out" | grep -qi "does not resolve to a valid ref" || exit 1
+    exit 0
+  )
+}
+
+# Scenario 28: security-reviewer finding C2 -- --force must NOT delete
+# $REVIEW_SNAPSHOT, so a second candidate from the same --list-review run
+# stays usable (--diff/--force/--keep) after the first is force-deleted.
+scenario_force_snapshot_survives_for_next_item() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    for n in one two; do
+      git checkout -q -b "gone-$n"
+      printf 'base\nnever-lands-%s\n' "$n" > shared.txt
+      git add shared.txt && git commit -q -m "gone-$n change"
+      git tag -a "gone$n-rebase-backup-20260101-000000" -m backup HEAD
+      git checkout -q main
+      git branch -D "gone-$n" >/dev/null
+    done
+  )
+  (
+    cd "$repo"
+    bash "$TARGET" --list-review >/dev/null 2>&1
+    bash "$TARGET" --force 1 >/dev/null 2>&1 || exit 1
+    # The second candidate (index 2) must still be usable -- the snapshot
+    # must not have been deleted by the first --force call.
+    bash "$TARGET" --diff 2 >/dev/null 2>&1 || exit 1
+    exit 0
+  )
+}
+
+# Scenario 29: security-reviewer finding M2 -- --force must refuse when
+# $default_branch itself advanced since --list-review, even though the
+# tag's own oid never moved -- pinning only the tag's oid would miss this.
+scenario_force_refuses_when_default_branch_advanced() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q -b gone-feature
+    printf 'base\nnever-lands\n' > shared.txt
+    git add shared.txt && git commit -q -m "gone feature change"
+    git tag -a defadvance-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main
+    git branch -D gone-feature >/dev/null
+  )
+  (
+    cd "$repo"
+    bash "$TARGET" --list-review >/dev/null 2>&1
+    # Advance main -- the tag itself never moves.
+    printf 'main-advances\n' >> shared.txt
+    git add shared.txt && git commit -q -m "main advances after --list-review"
+    if bash "$TARGET" --force 1 >/dev/null 2>&1; then
+      exit 1  # should have refused -- default_branch moved since --list-review
+    fi
+    [ -n "$(git tag -l defadvance-rebase-backup-20260101-000000)" ]
+  )
+}
+
+# Scenario 30: --keep records a decision that suppresses the candidate from
+# a subsequent --list-review, entirely via the script's own index-keyed
+# interface (security-reviewer finding C3/M4 -- no jq/git command composed
+# by the caller ever needs the raw tag name).
+scenario_keep_records_and_suppresses() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q -b keep-feature
+    printf 'base\nnever-lands\n' > shared.txt
+    git add shared.txt && git commit -q -m "keep feature change"
+    git tag -a keepme-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main
+    git branch -D keep-feature >/dev/null
+  )
+  (
+    cd "$repo"
+    bash "$TARGET" --list-review >/dev/null 2>&1
+    bash "$TARGET" --keep 1 >/dev/null 2>&1 || exit 1
+    [ -f .claude/git-cleanup-review-decisions.local.json ] || exit 1
+    grep -qF "keepme-rebase-backup-20260101-000000" .claude/git-cleanup-review-decisions.local.json || exit 1
+    # Fresh --list-review must no longer include the kept candidate.
+    review_out=$(bash "$TARGET" --list-review 2>/dev/null)
+    echo "$review_out" | grep -qF "keepme-rebase-backup-20260101-000000" && exit 1
+    exit 0
+  )
+}
+
+# Scenario 31: a "keep" decision must resurface (not stay permanently
+# suppressed) once $default_branch advances past what was pinned at
+# decision time -- the staleness rule this whole design is built around.
+scenario_keep_resurfaces_after_default_branch_advances() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q -b stale-feature
+    printf 'base\nnever-lands\n' > shared.txt
+    git add shared.txt && git commit -q -m "stale feature change"
+    git tag -a stalekeep-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main
+    git branch -D stale-feature >/dev/null
+  )
+  (
+    cd "$repo"
+    bash "$TARGET" --list-review >/dev/null 2>&1
+    bash "$TARGET" --keep 1 >/dev/null 2>&1 || exit 1
+    review_out=$(bash "$TARGET" --list-review 2>/dev/null)
+    echo "$review_out" | grep -qF "stalekeep-rebase-backup-20260101-000000" && exit 1
+    # Advance main -- the pinned default_branch_sha is now stale.
+    printf 'main-advances\n' >> shared.txt
+    git add shared.txt && git commit -q -m "main advances after keep"
+    review_out2=$(bash "$TARGET" --list-review 2>/dev/null)
+    echo "$review_out2" | grep -qF "stalekeep-rebase-backup-20260101-000000" || exit 1
+    exit 0
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -1065,6 +1355,15 @@ run scenario_default_branch_merge_conflict_content_recognized "default_branch's 
 run scenario_merge_resolves_to_one_parent_content_loss_fails_closed "a tag's own merge resolving to exactly one parent's state still fails closed on lost content"
 run scenario_reordered_final_state_recognized "content landed via a different commit order than the tag recorded is still recognized (issue #317)"
 run scenario_reordered_final_state_mismatch_fails_closed "a final-state mismatch after content reordering still fails closed"
+run scenario_list_review_excludes_deletable_and_vice_versa "--list-review and --list are mutually exclusive over the same tag set"
+run scenario_diff_shows_evidence_for_review_candidate "--diff surfaces the actual differing content for a review candidate"
+run scenario_force_deletes_review_candidate "--force deletes a genuine review candidate by index"
+run scenario_force_refuses_on_toctou_move "--force refuses when the tag moved since --list-review (atomic compare-and-delete)"
+run scenario_unresolvable_default_branch_fails_loudly "an unresolvable default branch fails loudly instead of silently"
+run scenario_force_snapshot_survives_for_next_item "--force doesn't delete the review snapshot, so the next candidate stays usable"
+run scenario_force_refuses_when_default_branch_advanced "--force refuses when the default branch advanced since --list-review"
+run scenario_keep_records_and_suppresses "--keep records a decision and suppresses the candidate from a fresh --list-review"
+run scenario_keep_resurfaces_after_default_branch_advances "a kept decision resurfaces once the default branch advances past what was pinned"
 
 echo ""
 echo "$PASS passed, $FAIL failed"
