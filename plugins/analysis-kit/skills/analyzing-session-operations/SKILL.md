@@ -196,8 +196,8 @@ event-building, Phase 5's report) is additionally smoke-tested via `scripts/smok
       Confidence/Evidence source metadata block
 - [ ] The Next-step suggestion was printed after the `📄 ... written:` line
 
-**Last dated run record:** 2026-09-10 -- `scripts/smoke_test.py`, all 5 checks passing; `pytest
-tests/test_failure_aggregator.py tests/test_critical_path_analyzer.py -q`, 14/14 passing.
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; `pytest
+tests/test_failure_aggregator.py tests/test_critical_path_analyzer.py -q`, 16/16 passing.
 
 ## Reference Guide
 

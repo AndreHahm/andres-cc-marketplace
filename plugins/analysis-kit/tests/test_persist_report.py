@@ -1,5 +1,5 @@
 """Tests for scripts/persist_report.py -- redaction, LF normalization,
-atomic replacement, and the standard confirmation line.
+atomic replacement, path containment, and the standard confirmation line.
 
 CRLF handling is two-layered, not one: `Path.read_text()`'s default
 universal-newline translation silently converts a CRLF-containing *input*
@@ -13,6 +13,11 @@ writing. Both layers are tested below rather than assumed.
 Imports the script as a module (matching test_pr_review_fetcher.py's own
 convention) and calls main() directly with a monkeypatched sys.argv, so
 os.replace can be monkeypatched too for the failure-injection test.
+
+Every test chdirs into tmp_path and places its --final destination under
+`.claude/output/...` there, matching the containment check persist_report.py
+enforces (--final must resolve under `<cwd>/.claude/output/`) and the
+cwd-relative path shape every real calling skill's own Persist step uses.
 """
 
 from __future__ import annotations
@@ -35,12 +40,13 @@ def _run_main(monkeypatch, scratch: Path, final: Path, label: str = "Test Report
 
 
 def test_persist_report_redacts_secrets_from_lf_input(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
     scratch = tmp_path / "scratch.md"
     scratch.write_text(
         "token: sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n",
         encoding="utf-8",
     )
-    final = tmp_path / "out" / "final.md"
+    final = tmp_path / ".claude" / "output" / "out" / "final.md"
 
     rc = _run_main(monkeypatch, scratch, final)
 
@@ -61,9 +67,10 @@ def test_persist_report_normalizes_real_crlf_input_to_lf(tmp_path, monkeypatch):
     # not fail the way a naive "detects and refuses CRLF" assumption would
     # predict; see the module docstring for why both are true depending on
     # which layer introduces the CRLF.
+    monkeypatch.chdir(tmp_path)
     scratch = tmp_path / "scratch.md"
     scratch.write_bytes(b"line one\r\nline two\r\n")
-    final = tmp_path / "out" / "final.md"
+    final = tmp_path / ".claude" / "output" / "out" / "final.md"
 
     rc = _run_main(monkeypatch, scratch, final)
 
@@ -81,9 +88,10 @@ def test_persist_report_refuses_crlf_introduced_after_the_read(tmp_path, monkeyp
     # return CRLF-injected text, exercising the script's own explicit check
     # (otherwise unreachable via a real file, since read_text() launders any
     # CRLF a real file could contain before this check ever runs).
+    monkeypatch.chdir(tmp_path)
     scratch = tmp_path / "scratch.md"
     scratch.write_text("clean LF input\n", encoding="utf-8")
-    final = tmp_path / "out" / "final.md"
+    final = tmp_path / ".claude" / "output" / "out" / "final.md"
 
     monkeypatch.setattr(persist_report, "redact", lambda text: ("corrupted\r\noutput", {}))
     rc = _run_main(monkeypatch, scratch, final)
@@ -95,9 +103,11 @@ def test_persist_report_refuses_crlf_introduced_after_the_read(tmp_path, monkeyp
 
 
 def test_persist_report_replaces_destination_atomically(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     scratch = tmp_path / "scratch.md"
     scratch.write_text("new content\n", encoding="utf-8")
-    final = tmp_path / "final.md"
+    final = tmp_path / ".claude" / "output" / "final.md"
+    final.parent.mkdir(parents=True)
     final.write_text("old content\n", encoding="utf-8")
 
     rc = _run_main(monkeypatch, scratch, final)
@@ -109,9 +119,11 @@ def test_persist_report_replaces_destination_atomically(tmp_path, monkeypatch):
 
 
 def test_persist_report_preserves_existing_destination_on_failure(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     scratch = tmp_path / "scratch.md"
     scratch.write_text("new content\n", encoding="utf-8")
-    final = tmp_path / "final.md"
+    final = tmp_path / ".claude" / "output" / "final.md"
+    final.parent.mkdir(parents=True)
     final.write_text("old content\n", encoding="utf-8")
 
     def _boom(*_args, **_kwargs):
@@ -137,12 +149,45 @@ def test_persist_report_preserves_existing_destination_on_failure(tmp_path, monk
 
 
 def test_cli_prints_standard_confirmation(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
     scratch = tmp_path / "scratch.md"
     scratch.write_text("content\n", encoding="utf-8")
-    final = tmp_path / "final.md"
+    final = tmp_path / ".claude" / "output" / "final.md"
 
     rc = _run_main(monkeypatch, scratch, final, label="Session Analysis Report")
 
     assert rc == 0
     captured = capsys.readouterr()
     assert f"\U0001f4c4 Session Analysis Report written: `{final}`" in captured.out
+
+
+def test_persist_report_rejects_final_path_outside_claude_output(tmp_path, monkeypatch, capsys):
+    # The containment check: --final must resolve under <cwd>/.claude/output/. A path escaping
+    # that root (even one still under tmp_path) must be refused before any write happens.
+    monkeypatch.chdir(tmp_path)
+    scratch = tmp_path / "scratch.md"
+    scratch.write_text("content\n", encoding="utf-8")
+    final = tmp_path / "elsewhere" / "final.md"
+
+    rc = _run_main(monkeypatch, scratch, final)
+    captured = capsys.readouterr()
+
+    assert rc == 1
+    assert not final.exists()
+    assert "must resolve under" in captured.err
+
+
+def test_persist_report_rejects_path_traversal_escaping_claude_output(tmp_path, monkeypatch, capsys):
+    # A relative --final using ../ segments to climb back out of .claude/output/ after starting
+    # inside it must be caught by resolving the path, not just checking its literal text.
+    monkeypatch.chdir(tmp_path)
+    scratch = tmp_path / "scratch.md"
+    scratch.write_text("content\n", encoding="utf-8")
+    final = tmp_path / ".claude" / "output" / ".." / ".." / "escaped.md"
+
+    rc = _run_main(monkeypatch, scratch, final)
+    captured = capsys.readouterr()
+
+    assert rc == 1
+    assert not (tmp_path / "escaped.md").exists()
+    assert "must resolve under" in captured.err

@@ -44,6 +44,22 @@ def main() -> int:
     scratch_path = Path(args.scratch)
     final_path = Path(args.final)
 
+    # Containment check: --final must resolve under <cwd>/.claude/output/ -- the
+    # Bash(python */analysis-kit/scripts/persist_report.py:*) grant this script runs under is
+    # held by 18 of analysis-kit's 20 skills with no path restriction of its own, so this is the
+    # one place that actually bounds where a redacted write can land. Resolved against cwd
+    # (not a fixed repo root) since every calling skill's own persist-step examples pass a
+    # cwd-relative ".claude/output/<skill>/..." path, matching how these skills are actually
+    # invoked.
+    allowed_root = (Path.cwd() / ".claude" / "output").resolve()
+    resolved_final = final_path.resolve()
+    if allowed_root != resolved_final and allowed_root not in resolved_final.parents:
+        print(
+            f"Error: --final must resolve under {allowed_root} -- got {resolved_final}",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
         text = scratch_path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:

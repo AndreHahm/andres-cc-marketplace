@@ -230,6 +230,26 @@ def test_append_event_redacts_secret_shaped_patterns_in_free_text_fields(tmp_pat
     assert events[0]["status"] == "proposed"
 
 
+def test_append_event_redacts_home_directory_path_in_source_report_field(tmp_path):
+    # Regression test: source_report is caller-supplied (comparing-sessions' own Phase 4
+    # populates it from --source-report) and can plausibly carry an absolute path revealing
+    # the OS username -- it must be redacted the same way rationale/evidence are, not left as
+    # a "structural" field exempt from the gate.
+    registry_path = tmp_path / "events.jsonl"
+    rr.append_event(
+        registry_path,
+        _event(
+            "rec-path",
+            "proposed",
+            source_report=r"C:\Users\andre\Dev\Repos\andres-cc-marketplace\evals\report.md",
+        ),
+    )
+    events = rr.read_events(registry_path)
+    assert len(events) == 1
+    assert r"C:\Users\andre" not in events[0]["source_report"]
+    assert r"Dev\Repos\andres-cc-marketplace\evals\report.md" in events[0]["source_report"]
+
+
 def test_append_event_creates_parent_directory_before_locking(tmp_path):
     # Regression test: append_event must create the registry's parent directory before
     # acquire_lock runs, since os.open(O_CREAT|O_EXCL) against a nonexistent directory
@@ -345,3 +365,55 @@ def test_cli_append_then_show_then_list_roundtrip(tmp_path, capsys, monkeypatch)
         ],
     )
     assert rr.main() == 1
+
+
+def test_cli_registry_flag_works_after_the_subcommand_for_list_and_show(tmp_path, capsys, monkeypatch):
+    # Regression test: --registry attached only to the top-level parser can never appear in a
+    # subcommand-scoped Bash grant pattern (e.g. "recommendation_registry.py list:*") at all,
+    # since --registry --registry <path> would have to precede "list" in that shape. comparing-
+    # sessions needs exactly this ("list --registry <path>", "show --registry <path>") to narrow
+    # its own grant to read-only subcommands -- confirm both subcommands accept --registry in
+    # this position and that it actually targets the given file, not the default path.
+    registry_path = tmp_path / "events.jsonl"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "recommendation_registry.py",
+            "append",
+            "--registry",
+            str(registry_path),
+            "--recommendation-id",
+            "rec-after",
+            "--status",
+            "proposed",
+            "--timestamp",
+            "2026-09-11T10:00:00Z",
+        ],
+    )
+    assert rr.main() == 0
+    capsys.readouterr()
+
+    monkeypatch.setattr(
+        sys, "argv", ["recommendation_registry.py", "list", "--registry", str(registry_path)]
+    )
+    assert rr.main() == 0
+    out = capsys.readouterr().out
+    assert "rec-after" in out
+    assert "proposed" in out
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "recommendation_registry.py",
+            "show",
+            "--registry",
+            str(registry_path),
+            "--recommendation-id",
+            "rec-after",
+        ],
+    )
+    assert rr.main() == 0
+    out = capsys.readouterr().out
+    assert "rec-after" in out
