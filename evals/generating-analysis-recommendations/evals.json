@@ -16,9 +16,9 @@
     }
   ],
   "summary": {
-    "assertions_total": 19,
-    "assertions_passed": 17,
-    "pass_rate": 0.895,
-    "note": "The 2 failed assertions (both in eval-1) trace to a single eval-fixture ambiguity in the classification rubric's Low-vs-Medium benefit boundary for a stale-documentation-count fix, not to independent skill defects -- see eval-1's grading.json notes."
+    "assertions_total": 17,
+    "assertions_passed": 15,
+    "pass_rate": 0.882,
+    "note": "Corrected 2026-09-11 (plugin-auditor finding completeness-reviewer:C1-new) -- the prior '19 total / 17 passed' figures didn't reconcile against the per-eval grading.json files (eval-1 5/7, eval-2 5/5, eval-3 5/5 = 15/17). The 2 failed assertions (both in eval-1) trace to a single eval-fixture ambiguity in the classification rubric's Low-vs-Medium benefit boundary for a stale-documentation-count fix, not to independent skill defects -- see eval-1's grading.json notes."
   }
 }

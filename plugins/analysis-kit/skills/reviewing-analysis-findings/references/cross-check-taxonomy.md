@@ -21,6 +21,13 @@ Three categories for classifying a candidate finding pair across two analysis-ki
   check itself) into a citation nobody sees without opening the merged entry's fine print. (This is the
   single canonical Duplicate definition analysis-kit uses; `running-a-full-retrospective`'s own Phase 3
   consolidation step points here rather than restating it, so the two never drift apart.)
+- **Not a duplicate: a producer-consumer relationship.** When a `generating-analysis-recommendations`
+  report's plan entry was expanded directly from a specific source report's finding, the same underlying
+  claim appearing in both is not independent corroboration — record it as a Related pair (name the
+  recommendation and its source finding) rather than classifying it as a Duplicate, which implies two
+  *independent* observations of the same thing. This is a different relationship from the same-root-cause
+  case above: a producer-consumer pair shares a claim by direct derivation, not by two skills separately
+  discovering it.
 
 **What to report:** cite both reports' finding text side by side, and note that a reader acting on both should treat this as one action item, not two.
 

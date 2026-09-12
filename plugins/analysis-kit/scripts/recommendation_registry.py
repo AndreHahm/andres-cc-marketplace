@@ -38,9 +38,14 @@ from redact_secrets import redact  # noqa: E402
 # Free-text fields a caller could plausibly paste a credential/token into (e.g. "the actual
 # verification command/evidence" tracking-recommendation-lifecycle's own Phase 2 asks for) --
 # redacted before every write, the same secret-shaped-pattern gate persist_report.py already
-# applies to every other persisted analysis-kit artifact. recommendation_id/status/timestamp/
+# applies to every other persisted analysis-kit artifact. source_report is included because it
+# is a caller-supplied path (comparing-sessions' own Phase 4 populates it from --source-report),
+# exactly the field redact_secrets.py's home_directory_path pattern exists to strip an absolute
+# path's username segment from, while leaving the repo-relative tail citable. actor/status/
+# timestamp/recommendation_id are genuinely structural (not free text a caller pastes a whole
+# path or credential into) and stay unredacted.
 # source_report/actor are structural fields, never redacted.
-REDACTED_FREE_TEXT_FIELDS = ("rationale", "evidence", "expected_effect", "observed_effect")
+REDACTED_FREE_TEXT_FIELDS = ("rationale", "evidence", "expected_effect", "observed_effect", "source_report")
 
 DEFAULT_REGISTRY_PATH = ".claude/output/analysis-kit-recommendations/events.jsonl"
 
@@ -346,9 +351,19 @@ def main() -> int:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("init", help="Create the registry file (and parent dirs) if it doesn't exist")
+    # Each subparser also accepts --registry (default=SUPPRESS, so a subparser-level omission
+    # never clobbers a value already supplied before the subcommand) -- this lets a caller whose
+    # own Bash grant can only be scoped per-subcommand (e.g. "recommendation_registry.py list
+    # --registry <path>") narrow that grant to read-only subcommands, since --registry attached
+    # only to the top-level parser (its original position) can never appear in a
+    # subcommand-scoped grant pattern at all.
+    registry_help = f"Path to the JSON Lines registry file (default: {DEFAULT_REGISTRY_PATH})"
+
+    p_init = sub.add_parser("init", help="Create the registry file (and parent dirs) if it doesn't exist")
+    p_init.add_argument("--registry", default=argparse.SUPPRESS, help=registry_help)
 
     p_append = sub.add_parser("append", help="Append one lifecycle event")
+    p_append.add_argument("--registry", default=argparse.SUPPRESS, help=registry_help)
     p_append.add_argument("--recommendation-id", required=True)
     p_append.add_argument("--status", required=True, choices=sorted(STATUSES))
     p_append.add_argument("--source-report")
@@ -360,11 +375,14 @@ def main() -> int:
     p_append.add_argument("--timestamp", help="ISO-8601; defaults to now (UTC)")
 
     p_show = sub.add_parser("show", help="Print the full event history for one recommendation_id")
+    p_show.add_argument("--registry", default=argparse.SUPPRESS, help=registry_help)
     p_show.add_argument("--recommendation-id", required=True)
 
-    sub.add_parser("list", help="Print current status of every tracked recommendation_id")
+    p_list = sub.add_parser("list", help="Print current status of every tracked recommendation_id")
+    p_list.add_argument("--registry", default=argparse.SUPPRESS, help=registry_help)
 
-    sub.add_parser("validate", help="Replay the registry and report any invalid transitions")
+    p_validate = sub.add_parser("validate", help="Replay the registry and report any invalid transitions")
+    p_validate.add_argument("--registry", default=argparse.SUPPRESS, help=registry_help)
 
     args = parser.parse_args()
     registry_path = Path(args.registry)
