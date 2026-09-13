@@ -717,3 +717,60 @@ sweep didn't cover, since it isn't a `set -e` issue at all: `--diff`'s merge-bas
   output contains both the new warning and the no-differences message together. Re-verified live against
   the fixed script (warning now appears) before adding the scenario. All 33 scenarios passed after the
   fix.
+
+**Live results, PR #322 round 1 (2026-09-13, `handling-review-findings` triaging Codex's + CodeRabbit's
+automated PR reviews):** 4 findings, all live-verified before fixing, all fixed in the same round.
+- **F1 (Critical, Codex P1 + CodeRabbit Critical):** `--list-review` overwrote the shared
+  `$REVIEW_SNAPSHOT` with no generation/version stamp. Live-reproduced: two orphan-tag candidates at
+  indices 1/2, then a third candidate added and `--list-review` re-run (simulating a concurrent
+  invocation), then the original index-1 tag removed and `--list-review` re-run again -- index 1 silently
+  resolved to a completely different tag than the one first shown. The existing atomic oid compare-and-
+  delete couldn't catch this -- it validates the CURRENT snapshot's own row, which is internally
+  consistent by construction; the race is about whether a human's own memory of "index N" still matches
+  the CURRENT snapshot's row N, not whether row N itself is stale. **Fix:** `--list-review` now generates
+  a random token (timestamp + PID + two `$RANDOM` draws -- a staleness fingerprint, not a security
+  boundary, and never derived from or composed with a raw tag name) written to
+  `$REVIEW_SNAPSHOT.generation` and printed as a `# Generation: <token>` header line; `--diff`/`--force`/
+  `--keep` all now require a matching `--generation <token>` argument, refusing outright (exit 1) on any
+  mismatch or missing generation file. Live-verified after the fix: the old token from before a
+  `--list-review` re-run is correctly refused, the new token correctly succeeds, and a `--force` call
+  with no `--generation` flag at all gets a clean usage error rather than silently proceeding.
+- **F2 (Major, Codex P1 + CodeRabbit Minor):** `--diff` re-resolved the current `$default_branch` for its
+  `merge-base`/heading/`diff` calls instead of using the snapshot's own recorded `dsha` (read into a
+  discarded `_d` variable). Live-reproduced: the SAME `--diff 1` call against the SAME unchanged snapshot
+  produced DIFFERENT evidence before and after `$default_branch` advanced -- a rename-detected diff
+  instead of the original new-file diff, with no new `--list-review` in between. **Fix:** capture `dsha`
+  into a real variable and use it throughout `--diff`'s git calls instead of `$default_branch`; the
+  printed heading now shows `$default_branch @ <dsha prefix> (as recorded by --list-review)` to make the
+  pinning explicit. Live-verified after the fix: the identical `--diff` call now produces identical
+  output before and after `$default_branch` advances, as long as no new `--list-review` ran.
+- **F3 (Major, Codex P1):** `--diff` gave no signal when a review candidate's final tree matched
+  `$default_branch` exactly for reasons other than the already-covered no-common-ancestor case. Codex's
+  own framing was narrower (self-reverted content within a single tag) -- live-verified with the exact
+  `scenario_self_reverted_unique_content_fails_closed` fixture: the unique-commit list DOES show both the
+  add and revert commits, so the evidence isn't literally hidden, but a human skimming one-line commit
+  subjects rather than full diffs could easily miss it. **Fix, broadened beyond Codex's own framing:**
+  every candidate reaching `--diff` at all already failed the automated `is_tag_content_reachable` check
+  by construction, so an exact final-tree match is ALWAYS evidence the automated walk couldn't verify
+  something, not just in the self-revert case -- issue #317's own reordered-commit-grouping case produces
+  the identical symptom. Added a general caution note (`Note: this candidate reached manual review
+  because the automated check could not verify it...`) whenever `diff_out` is empty and `mb` resolved
+  (the no-common-ancestor branch already has its own separate warning).
+- **F4 (Minor, Codex P2 + CodeRabbit Minor/quick-win):** `$DECISIONS_FILE` relied entirely on this SOURCE
+  repo's own `.gitignore` (`**/*.local.*`) to stay untracked -- but git-kit is a DISTRIBUTED plugin, and a
+  consumer repo installing it has no such rule of its own. First live-verification attempt gave a false
+  negative (the file showed as ignored) because this machine's own personal global `core.excludesfile`
+  (`~/.gitignore_global`) happens to ignore `.claude/` outright -- re-verified with `GIT_CONFIG_GLOBAL=
+  /dev/null`/`GIT_CONFIG_SYSTEM=/dev/null` (a true foreign-environment simulation, no personal machine
+  config involved): `git add -A` staged the decision file. **Fix:** `--keep` now also appends a per-repo
+  `info/exclude` entry (`git rev-parse --git-path info/exclude`, never a tracked `.gitignore` change,
+  idempotent) the first time it creates `$DECISIONS_FILE`, keeping the file's already-deliberate
+  working-tree location (see the script's own comment on that decision) while closing the gap for every
+  repo this script actually runs in, not just this one.
+- **4 new regression scenarios** added (37 total, up from 33): `scenario_generation_mismatch_refuses`,
+  `scenario_diff_pinned_to_snapshot_dsha_not_live_branch`,
+  `scenario_diff_notes_reachability_check_failure_on_empty_diff`, and
+  `scenario_keep_protects_decisions_file_via_info_exclude` -- one per fix above, each built from the same
+  live-reproduction fixture used to verify the finding was real in the first place. The ~9 pre-existing
+  scenarios that call `--diff`/`--force`/`--keep` were also updated to capture and pass the new generation
+  token via a new shared `list_review_generation()` helper. All 37 scenarios passed after the fixes.
