@@ -115,6 +115,34 @@ def test_out_of_order_timestamps_yield_null_time_to_recovery_not_negative():
     assert result["recovery_details"][0]["time_to_recovery_seconds"] is None
 
 
+def test_mixed_naive_and_aware_timestamps_do_not_raise():
+    # Regression test (Codex PR-review finding on PR #323): the input contract only
+    # requires ISO-8601, not a UTC/Z-suffixed offset -- a naive failure timestamp paired
+    # with an aware recovery timestamp (or vice versa) previously raised
+    # "TypeError: can't compare offset-naive and offset-aware datetimes" inside
+    # `recovered_ts >= failed_ts`, instead of the intended "skip this pair" behavior when
+    # ordering can't be determined, or a real duration when it can. _parse_ts now
+    # normalizes a naive value to UTC, so this must complete cleanly and still compute
+    # a real duration between the two.
+    events = [
+        {
+            "subject": "Bash(npm install)",
+            "category": "environment",
+            "result": "failure",
+            "timestamp": "2026-09-10T10:00:00",  # no offset -- naive
+        },
+        {
+            "subject": "Bash(npm install)",
+            "category": None,
+            "result": "success",
+            "timestamp": "2026-09-10T10:00:05Z",  # aware
+        },
+    ]
+    result = aggregate(events)
+    assert result["recoveries"] == 1
+    assert result["recovery_details"][0]["time_to_recovery_seconds"] == 5.0
+
+
 def test_empty_events_returns_zeroed_result_not_error():
     result = aggregate([])
     assert result["attempts"] == 0

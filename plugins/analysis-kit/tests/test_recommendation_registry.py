@@ -250,6 +250,57 @@ def test_append_event_redacts_home_directory_path_in_source_report_field(tmp_pat
     assert r"Dev\Repos\andres-cc-marketplace\evals\report.md" in events[0]["source_report"]
 
 
+def test_append_event_return_value_is_redacted_not_the_callers_original(tmp_path):
+    # Regression test (Codex PR-review finding on PR #323): append_event's own disk write
+    # was always redacted, but the function returned None -- the CLI's `append` command
+    # then re-printed the *caller's original, pre-redaction* event dict to stdout/logs,
+    # exposing exactly the secret-shaped value the disk write had just stripped. The fix:
+    # append_event now returns the same redacted_event dict it writes, and every caller
+    # that echoes an appended event back must use this return value.
+    registry_path = tmp_path / "events.jsonl"
+    original_event = _event(
+        "rec-return-value",
+        "proposed",
+        rationale="see AKIA1234567890ABCDEF for the deploy credentials used",
+    )
+    returned = rr.append_event(registry_path, original_event)
+
+    assert "AKIA1234567890ABCDEF" not in returned["rationale"]
+    # The caller's own dict, and the disk-persisted event, are unaffected by each other --
+    # append_event must not mutate the caller's original in place either.
+    assert original_event["rationale"] == "see AKIA1234567890ABCDEF for the deploy credentials used"
+    persisted = rr.read_events(registry_path)
+    assert persisted[0]["rationale"] == returned["rationale"]
+
+
+def test_cli_append_prints_redacted_event_not_original(tmp_path, capsys, monkeypatch):
+    # Regression test (Codex PR-review finding on PR #323), CLI-level: the `append`
+    # subcommand's own printed JSON must be the redacted event, matching what actually
+    # landed in the registry file -- never the pre-redaction argparse-built dict.
+    registry_path = tmp_path / "events.jsonl"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "recommendation_registry.py",
+            "--registry",
+            str(registry_path),
+            "append",
+            "--recommendation-id",
+            "rec-cli-secret",
+            "--status",
+            "proposed",
+            "--rationale",
+            "see AKIA1234567890ABCDEF for the deploy credentials used",
+        ],
+    )
+    exit_code = rr.main()
+    assert exit_code == 0
+
+    printed = json.loads(capsys.readouterr().out)
+    assert "AKIA1234567890ABCDEF" not in printed["rationale"]
+
+
 def test_append_event_creates_parent_directory_before_locking(tmp_path):
     # Regression test: append_event must create the registry's parent directory before
     # acquire_lock runs, since os.open(O_CREAT|O_EXCL) against a nonexistent directory
@@ -367,7 +418,9 @@ def test_cli_append_then_show_then_list_roundtrip(tmp_path, capsys, monkeypatch)
     assert rr.main() == 1
 
 
-def test_cli_registry_flag_works_after_the_subcommand_for_list_and_show(tmp_path, capsys, monkeypatch):
+def test_cli_registry_flag_works_after_the_subcommand_for_list_and_show(
+    tmp_path, capsys, monkeypatch
+):
     # Regression test: --registry attached only to the top-level parser can never appear in a
     # subcommand-scoped Bash grant pattern (e.g. "recommendation_registry.py list:*") at all,
     # since --registry --registry <path> would have to precede "list" in that shape. comparing-
