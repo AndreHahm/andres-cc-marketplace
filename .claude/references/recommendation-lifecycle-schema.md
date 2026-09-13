@@ -16,9 +16,9 @@ JSON Lines: one JSON object per line, one line per lifecycle event. **Append-onl
 never rewrites or removes a prior line; the full history for a `recommendation_id` is every line naming
 it, in file order. Each append is a single buffered `write()` call, guarded by a companion
 `<registry>.lock` file acquired via a retry-with-timeout loop over plain `os.open(O_CREAT|O_EXCL)` --
-portable across Windows and POSIX, no `fcntl`/`msvcrt` branching, no new dependency (AKR-NFR-002). A
-writer that cannot acquire the lock within its timeout raises rather than silently dropping the event
-(AKR-019). A lock older than 5 minutes is treated as orphaned (its writer crashed before releasing it)
+portable across Windows and POSIX, no `fcntl`/`msvcrt` branching, no new dependency. A
+writer that cannot acquire the lock within its timeout raises rather than silently dropping the event.
+A lock older than 5 minutes is treated as orphaned (its writer crashed before releasing it)
 and broken automatically, rather than deadlocking every future writer permanently. Read-only operations
 (`show`/`list`/`validate`) take the same lock before reading, so a reader never observes a write in
 progress.
@@ -38,7 +38,7 @@ progress.
 | `observed_effect` | No | What was actually observed afterward, recorded at `measured` time |
 
 A historical record missing any optional field is valid on its own terms -- reading an older registry
-never requires migrating it to add fields that didn't exist when it was written (AKR-NFR-005).
+never requires migrating it to add fields that didn't exist when it was written.
 
 ## Status Vocabulary
 
@@ -74,7 +74,7 @@ recurring issue reopens a `closed` or `declined` recommendation, and the reopene
 pipeline via `accepted` (the normal case) or `implemented` (if the fix was already redone and just needs
 re-verifying).
 
-## Honesty Discipline (AKR-NFR-004)
+## Honesty Discipline
 
 `tracking-recommendation-lifecycle` never infers a status from a weaker signal than the status actually
 requires: a commit landing is not itself `verified` (a commit message is a claim, not evidence -- same

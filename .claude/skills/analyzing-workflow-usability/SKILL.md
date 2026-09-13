@@ -49,6 +49,11 @@ omitted, Phase 1 asks interactively.
   avoidable friction or a legitimate re-ask (the safety-gate exception in Phase 3 is exactly the judgment
   call that skill's own mechanical counting doesn't make) -- a repeated-question finding from that skill
   may or may not also be a friction finding here, depending on whether state changed between asks.
+- **Turning a recurring friction pattern into a proposed new feature/capability candidate** -- use
+  `identifying-feature-opportunities` instead. This skill judges whether an existing interaction pattern
+  was actually usable; that skill converts a recurring unmet need into a proposed new capability -- a
+  friction finding here may be cited as evidence there, but this skill never itself proposes a new
+  feature.
 - **No confirmations, no repeated questions, and no notable readability/actionability issues observed** --
   nothing to analyze.
 
@@ -112,24 +117,27 @@ Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) a
 origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/
 `<!-- finding:end -->` markers, to each friction finding, per `../../references/report-evidence-convention.md`.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to
-a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch
-<scratch-path> --final ".claude/output/analyzing-workflow-usability/<scope-slug>-<timestamp>.md" --label
-"Workflow Usability Report")`, where `<scope-slug>` is the same short kebab-case scope description the
-date-range convention uses. The script redacts the draft, verifies the result and the written file are
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), then check whether 2+
+analysis-kit reports already exist for this scope via
+`Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
+(this glob restates the shared 15-directory enumeration, including this skill's own directory --
+see `../../references/report-discovery-convention.md` for the full sweep history). Write the full
+findings to a
+scratch file, closing it with the literal line
+`Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.`
+-- and, if the Glob found 2+ matches, a second closing line
+`Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**The scratch draft must include these line(s) as its own literal closing content, not merely printed to
+the conversation afterward.** Then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py"
+--scratch <scratch-path> --final ".claude/output/analyzing-workflow-usability/<scope-slug>-<timestamp>.md"
+--label "Workflow Usability Report")`, where `<scope-slug>` is the same short kebab-case scope description
+the date-range convention uses. The script redacts the draft, verifies the result and the written file are
 both LF-only, writes the final file, and prints the `📄 Workflow Usability Report written: ...`
-confirmation line -- present its printed output as-is. If it exits non-zero instead, its stderr names the
+confirmation line -- present its printed output as its own line, followed by the persisted report's own
+`Next:`/`Also:` line(s) already embedded in it. If it exits non-zero instead, its stderr names the
 problem -- report that error and stop, never present it as a successful persist. This redaction pass
 strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) -- it does not remove
 personal data, so the persisted report may still carry names, emails, or user paths.
-
-**Next step:** after presenting the `📄 ... written:` line, print
-`Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.`
-If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
-finds 2+ analysis-kit reports already written for this scope, also print
-`Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
-This glob restates the shared 15-directory enumeration, including this skill's own directory -- Task 11's
-full sweep is complete, same as the other Wave 2 skills' own Next-step blocks.
 
 ## Gotchas
 

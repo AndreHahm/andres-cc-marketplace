@@ -122,3 +122,18 @@ def test_empty_events_returns_zeroed_result_not_error():
     assert result["recoveries"] == 0
     assert result["repeated_failures"] == []
     assert result["unresolved_failures"] == []
+
+
+def test_repeated_failures_sort_does_not_crash_when_a_subject_is_none():
+    # A subject-less event group's key is None (grouped under the None key per
+    # the module's own documented behavior) -- sorting repeated_failures must
+    # not crash comparing None against a real subject string.
+    events = [
+        {"subject": None, "category": "tool", "result": "failure", "timestamp": None},
+        {"subject": None, "category": "tool", "result": "failure", "timestamp": None},
+        {"subject": "Bash(pytest)", "category": "tool", "result": "failure", "timestamp": None},
+        {"subject": "Bash(pytest)", "category": "tool", "result": "failure", "timestamp": None},
+    ]
+    result = aggregate(events)
+    subjects = [item["subject"] for item in result["repeated_failures"]]
+    assert subjects == ["Bash(pytest)", None]

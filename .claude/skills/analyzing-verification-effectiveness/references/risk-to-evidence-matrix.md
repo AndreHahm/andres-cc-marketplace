@@ -11,8 +11,8 @@ How much evidence a given risk level warrants, for Phase 2-3's classification. R
 | **Low** | Internal refactors with no behavior change, comment/doc-only changes, changes already covered by an existing, still-passing test suite that wasn't touched | Static/structural checks passing is sufficient; a full new behavior test is not required to reach `adequate`. |
 
 **When risk level itself is unclear or disputed**, classify at the higher of the two plausible levels
-rather than defaulting low -- AKR-NFR-004's "honest uncertainty" principle applies here too: don't resolve
-ambiguity in the direction that makes less verification look adequate.
+rather than defaulting low -- the same "honest uncertainty" principle this skill applies elsewhere: don't
+resolve ambiguity in the direction that makes less verification look adequate.
 
 **Post-fix re-verification always applies regardless of risk level.** A fix for a previously-failing check
 needs that same check re-run and observed passing, independent of how the original risk level was

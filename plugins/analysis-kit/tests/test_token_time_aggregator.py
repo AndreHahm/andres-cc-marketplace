@@ -59,3 +59,13 @@ def test_empty_entries_returns_empty_levels_not_error():
     assert result["by_level"] == {}
     assert result["levels_present"] == []
     assert "none" in result["scope_note"]
+
+
+def test_null_label_value_present_falls_back_to_unlabeled_not_none_key():
+    # entry.get("label", "unlabeled") only applies the default when the key
+    # is absent -- a JSON `"label": null` entry (key present, value None)
+    # must still bucket under "unlabeled", not a literal None key.
+    entries = [{"label": None, "tokens": 10, "duration_ms": 10}]
+    result = aggregate(entries)
+    assert None not in result["by_label"]
+    assert result["by_label"]["unlabeled"]["tokens"] == 10

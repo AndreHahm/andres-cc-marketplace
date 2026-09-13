@@ -152,7 +152,8 @@ For each PR in the resolved set:
    semantic read, not something the parser resolves for you — whether it plausibly covers *this* PR
    (mentions the PR number, its branch name, or content matching the fetched review findings); a
    session's `provenance.source_file` basename becomes the transcript locator for
-   `candidate-pattern-format.md`'s `Evidence` field when it does. **`--project-root` must resolve to the
+   `candidate-pattern-format.md`'s `Evidence` field when it does -- cite only the basename, never the raw
+   absolute path, which reveals the OS username on this machine. **`--project-root` must resolve to the
    checkout the fix was actually authored in** — a PR authored inside a linked worktree has its session
    transcripts stored under that worktree's own differently-encoded project path (per
    `session_parser.py`'s own `<encoded-cwd>` scheme), not under the primary checkout's; a bare call from
@@ -284,7 +285,7 @@ legitimate, common outcome, not a failure.
 
 ## Testing & Validation
 
-`evals/mining-review-learnings/evals.json` exists (3 evals, Quick Workflow, `iteration-1`): explicit
+**Eval evidence:** `evals/mining-review-learnings/evals.json` exists (3 evals, Quick Workflow, `iteration-1`): explicit
 PR-list mode with dedup-against-existing-entry, since-last-cited mode's cost-gate logic, and the
 data-only boundary under an embedded prompt-injection attempt in a PR review comment. 12/12 assertions
 passed (`workspace/iteration-1/eval-{1,2,3}/with_skill/grading.json`). This exercises the skill's real

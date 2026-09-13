@@ -24,13 +24,16 @@ argument-hint: [optional: what you want to analyze, in your own words]
 
 Guided front door for analysis-kit: pick an analysis type, provide its scope, run it, then get offered the natural next step.
 
-analysis-kit has 20 skills total — this one is the entry point for the 13 that produce a report
+analysis-kit has 20 skills total — this one is the entry point for the 13 *analysis-type* skills
 (`analyzing-plugin-components`, `analyzing-tool-and-framework-use`, `analyzing-actor-behavior`,
 `analyzing-governance-and-conflicts`, `mining-recurring-patterns`, `analyzing-session-outcomes`,
 `analyzing-verification-effectiveness`, `analyzing-session-operations`, `analyzing-workflow-usability`,
 `analyzing-security-and-privacy`, `identifying-feature-opportunities`, `comparing-sessions`,
-`comparing-session-to-specification`) and the gateway to the 2 that consume one
-(`generating-analysis-recommendations`, `reviewing-analysis-findings`). `running-a-full-retrospective`
+`comparing-session-to-specification`) — a narrower set than "report-producing skill," which means 18 here;
+see `../../references/report-contracts.json`'s `terminology_note` for the canonical statement of that
+distinction — and the gateway to 2 of those 18 report-producing skills that consume a finding rather than
+starting from a bare scope (`generating-analysis-recommendations`, `reviewing-analysis-findings`).
+`running-a-full-retrospective`
 runs several of the 11 bare-scope producers at once (everything above except the 2 comparison skills) and
 consolidates their findings — see "When NOT to Use" below. `tracking-recommendation-lifecycle` tracks an
 already-generated recommendation's status over time — it isn't part of this skill's own routing either,
@@ -123,7 +126,16 @@ Invoke the chosen skill via `Skill` with the confirmed scope. Let it run to comp
 - **`comparing-sessions`:** its printed slug is the compound `<current-scope>-vs-<prior-report-slug>` — capture only the `<current-scope>` portion (everything before the first `-vs-`), since that's the shared identifier; the full compound slug is unique to that one comparison and won't match a sibling report.
 - **`comparing-session-to-specification`:** its printed slug (`<spec-basename>-compliance`) is a per-report identifier with no shared-scope counterpart at all — nothing to capture here; Phase 5 checks for *any* other report instead (see below).
 
-**Exit:** the dispatched skill's report is written, its output (including its own Next-step line) has been shown, and the value (if any) Phase 5 needs has been captured.
+**Validate the captured value before Phase 5 interpolates it into a `Glob`.** A value parsed out of another
+skill's printed path is not the same trust level as a value this skill asked the user for directly —
+validate it against `../../references/report-discovery-convention.md`'s documented kebab-case format
+(`^[a-z0-9]+(-[a-z0-9]+)*$`) before it ever reaches Phase 5's glob. If the captured value doesn't match —
+in particular if it contains `/`, `..`, or a glob metacharacter (`*`, `?`, `[`, `]`, `{`, `}`) — treat
+Phase 5's discovery check as unavailable for this run (skip straight to the `generating-analysis-recommendations`
+offer only, per the "1+ other" comparing-session-to-specification-style fallback below) rather than
+interpolating the unvalidated value into a `Glob(...)` call.
+
+**Exit:** the dispatched skill's report is written, its output (including its own Next-step line) has been shown, and the value (if any) Phase 5 needs has been captured and validated.
 
 ## Phase 5: Offer the Next Hop
 

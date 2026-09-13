@@ -7,16 +7,16 @@ one skill's own .claude/output/<skill>/ directory, since the registry spans ever
 recommendation regardless of which skill originated it). Each append is one buffered
 write() of a single line, guarded by a companion "<registry>.lock" file acquired via a
 retry-with-timeout loop over plain os.open(O_CREAT|O_EXCL) -- portable across Windows and
-POSIX with no fcntl/msvcrt branching and no new dependency, per AKR-NFR-002. A writer that
+POSIX with no fcntl/msvcrt branching and no new dependency. A writer that
 cannot acquire the lock within the timeout raises TimeoutError rather than silently
-dropping the event, per AKR-019. A lock older than LOCK_STALE_SECONDS is treated as
+dropping the event. A lock older than LOCK_STALE_SECONDS is treated as
 orphaned (its writer crashed before releasing it) and broken automatically. Read-only
 operations (show/list/validate) take the same lock before reading, so a reader never
 observes a write in progress.
 
 Event fields: recommendation_id, timestamp, status (required); source_report, actor,
 rationale, evidence, expected_effect, observed_effect (optional -- a historical record
-missing any of these is valid and simply omits the field, per AKR-NFR-005).
+missing any of these is valid and simply omits the field).
 
 CLI operations: init, append, show, list, validate.
 """
@@ -193,7 +193,7 @@ def _unlink_lock_if_token_matches(lock_path: Path, expected_token: str | None) -
 def acquire_lock(lock_path: Path, timeout: float = 10.0, poll: float = 0.05) -> str:
     """Acquires the companion lock file via exclusive create, retrying until timeout.
     Raises TimeoutError rather than returning False -- a writer that can't get the lock
-    must fail loudly, per AKR-019, never silently skip the append it was asked to make.
+    must fail loudly, never silently skip the append it was asked to make.
     A lock older than LOCK_STALE_SECONDS is treated as orphaned (its writer crashed
     before reaching the release in append_event's `finally`) and broken automatically --
     without this, one crashed writer would deadlock every future writer permanently, with

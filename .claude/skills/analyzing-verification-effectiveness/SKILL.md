@@ -52,7 +52,10 @@ omitted, Phase 1 asks interactively.
   follow the rule, yes or no); this skill judges the verification itself qualitatively (was it
   proportionate, adequate evidence for the actual behavior/risk change) -- a session can satisfy that
   skill's rule-conformance check while this skill still finds the verification weak or unconvincing, or
-  vice versa.
+  vice versa. This also covers that skill's own Phase 5 "verification surface" dimension, which only asks
+  whether a regression-catching check exists structurally going forward -- never whether a specific
+  claimed verification for this session's own change was adequate evidence for the risk, which stays this
+  skill's job.
 
 ## Phase 1: Scope
 
@@ -130,25 +133,27 @@ origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- find
 `<!-- finding:end -->` markers, to each classified finding, per
 `../../references/report-evidence-convention.md`.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to
-a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch
-<scratch-path> --final ".claude/output/analyzing-verification-effectiveness/<scope-slug>-<timestamp>.md"
---label "Verification Effectiveness Report")`, where `<scope-slug>` is the same short kebab-case scope
-description the date-range convention uses. The script redacts the draft, verifies the result and the
-written file are both LF-only, writes the final file, and prints the
-`📄 Verification Effectiveness Report written: ...` confirmation line -- present its printed output as-is.
-If it exits non-zero instead, its stderr names the problem -- report that error and stop, never present it
-as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens,
-cloud key prefixes) -- it does not remove personal data, so the persisted report may still carry names,
-emails, or user paths.
-
-**Next step:** after presenting the `📄 ... written:` line, print
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), then check whether 2+
+analysis-kit reports already exist for this scope via
+`Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
+(this glob restates the shared 15-directory enumeration, including this skill's own directory --
+see `../../references/report-discovery-convention.md` for the full sweep history). Write the full
+findings to a scratch file, closing it with the literal line
 `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.`
-If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
-finds 2+ analysis-kit reports already written for this scope, also print
+-- and, if the Glob found 2+ matches, a second closing line
 `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
-This glob restates the shared 15-directory enumeration, including this skill's own directory -- Task 11's
-full sweep is complete, same as `analyzing-session-outcomes`' own Next-step block.
+**The scratch draft must include these line(s) as its own literal closing content, not merely printed to
+the conversation afterward.** Then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py"
+--scratch <scratch-path> --final
+".claude/output/analyzing-verification-effectiveness/<scope-slug>-<timestamp>.md" --label "Verification
+Effectiveness Report")`, where `<scope-slug>` is the same short kebab-case scope description the
+date-range convention uses. The script redacts the draft, verifies the result and the written file are
+both LF-only, writes the final file, and prints the `📄 Verification Effectiveness Report written: ...`
+confirmation line -- present its printed output as its own line, followed by the persisted report's own
+`Next:`/`Also:` line(s) already embedded in it. If it exits non-zero instead, its stderr names the
+problem -- report that error and stop, never present it as a successful persist. This redaction pass
+strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) -- it does not remove
+personal data, so the persisted report may still carry names, emails, or user paths.
 
 ## Gotchas
 

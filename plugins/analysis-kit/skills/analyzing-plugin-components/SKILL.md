@@ -286,6 +286,16 @@ After Phase 6, verify these gates before presenting output as final:
 - [ ] The scratch draft carries the Coverage Preamble and each substantive suggestion carries its Evidence origin/Coverage/Confidence/Evidence source metadata, per `report-evidence-convention.md`
 - [ ] The Next-step suggestion (`generating-analysis-recommendations`, plus `reviewing-analysis-findings` when 2+ reports exist for this scope) was printed after the `📄 ... written:` line
 
+**Eval evidence:** `evals/analyzing-plugin-components/evals.json` -- 3 scenarios (Quick Workflow style:
+prompt + expected narrative answer, not a full report-generation run) covering the Phase 2
+`AskUserQuestion` confirmation gate and the Verify Open Items SHA-validation guard. 9/10 assertions
+passing (eval-1 4/4, eval-2 2/3, eval-3 3/3) -- eval-2's one gap is the eval's own scope, not a skill
+defect: the prompt never presented a commit-message/branch-name scenario to exercise that specific
+guard, though the guard text itself was independently verified present via direct diff against the
+ported source. See each eval's own `grading.json` for the full assertion-level detail.
+
+**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 6 checks passing; eval suite above.
+
 ## Gotchas
 
 - **`session_parser.py` only sees sessions run from this machine's own `~/.claude/projects/` directory.** A date range spanning sessions run elsewhere (a different machine, a cloud environment) won't be found by auto-discovery — the script reports `no_session_files_found` rather than silently returning partial data, so treat that result as "nothing found here," not "nothing happened."
@@ -297,16 +307,6 @@ After Phase 6, verify these gates before presenting output as final:
 - **Self-referential sessions.** When `analyzing-plugin-components` is itself one of the components being analyzed, the assessment is inherently limited — the skill cannot objectively observe its own execution from outside. Note this explicitly in the SWOT weakness quadrant rather than producing inflated self-assessments.
 - **Don't trust an artifact's own "Open Items" section at face value.** A handoff report (or similar) reflects what its author believed was true at write time — it is not re-verified just by existing. Treat every "still open" or "resolved" claim as a hypothesis to check against current repo state (Phase 2's Verify Open Items step), not a fact to relay forward. An artifact that's wrong about its own open items is itself a finding about the component that produced it, not noise to filter out.
 - **Verify prior-state claims before writing them into a commit message or report — including this skill's own.** A claim like "this is new" or "X didn't exist before" is a testable assertion about current repo state, the same category as an artifact's Open Items claim above. `Glob`/`Read` the relevant directory before asserting novelty, whether the claim is about another component or about this one.
-
-**Eval evidence:** `evals/analyzing-plugin-components/evals.json` -- 3 scenarios (Quick Workflow style:
-prompt + expected narrative answer, not a full report-generation run) covering the Phase 2
-`AskUserQuestion` confirmation gate and the Verify Open Items SHA-validation guard. 9/10 assertions
-passing (eval-1 4/4, eval-2 2/3, eval-3 3/3) -- eval-2's one gap is the eval's own scope, not a skill
-defect: the prompt never presented a commit-message/branch-name scenario to exercise that specific
-guard, though the guard text itself was independently verified present via direct diff against the
-ported source. See each eval's own `grading.json` for the full assertion-level detail.
-
-**Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 6 checks passing; eval suite above.
 
 ## Reference Guide
 
