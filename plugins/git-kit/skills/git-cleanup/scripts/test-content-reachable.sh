@@ -1382,6 +1382,42 @@ scenario_plain_delete_skips_already_gone_tag_and_continues() {
   )
 }
 
+# Scenario 33: --diff must warn, not stay silent, when a review candidate has
+# no common ancestor with the default branch at all (orphan branch, grafted/
+# shallow history, an unrelated-histories merge root) -- Codex cross-model-
+# review finding (F1, round 3), live-reproduced with a real orphan-branch
+# tag whose tree happened to be byte-identical to main's. Before the fix,
+# the "unique commits" section was silently skipped with no explanation,
+# and if the tree-content diff then came back empty too, the only thing a
+# human reviewer saw was an unqualified "no differences" message -- no
+# signal at all that ancestry itself couldn't be established for this
+# candidate. The tree diff is still valid evidence either way (comparing
+# two trees needs no common ancestor), but the reviewer needs the warning
+# before trusting a clean-looking result.
+scenario_diff_warns_on_no_common_ancestor() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'shared content\n' > file.txt
+    git add file.txt && git commit -q -m "main commit"
+    git checkout -q --orphan orphanbranch
+    git add file.txt && git commit -q -m "orphan commit, same tree"
+    git tag -a orphan-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D orphanbranch >/dev/null
+  )
+  (
+    cd "$repo"
+    bash "$TARGET" --list-review >/dev/null 2>&1
+    out=$(bash "$TARGET" --diff 1 2>&1)
+    rc=$?
+    [ "$rc" -eq 0 ] || exit 1
+    echo "$out" | grep -qF "Warning: no common ancestor found" || exit 1
+    echo "$out" | grep -qF "no differences" || exit 1
+    exit 0
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -1424,6 +1460,7 @@ run scenario_force_refuses_when_default_branch_advanced "--force refuses when th
 run scenario_keep_records_and_suppresses "--keep records a decision and suppresses the candidate from a fresh --list-review"
 run scenario_keep_resurfaces_after_default_branch_advances "a kept decision resurfaces once the default branch advances past what was pinned"
 run scenario_plain_delete_skips_already_gone_tag_and_continues "the plain --list delete loop skips an already-gone tag and still processes the rest (Codex F1 sibling instance)"
+run scenario_diff_warns_on_no_common_ancestor "--diff warns instead of staying silent when a review candidate has no common ancestor with the default branch (Codex F1, round 3)"
 
 echo ""
 echo "$PASS passed, $FAIL failed"
