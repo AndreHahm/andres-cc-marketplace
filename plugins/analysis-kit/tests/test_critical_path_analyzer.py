@@ -155,3 +155,26 @@ def test_end_before_start_treated_as_unknown_not_negative_duration():
     assert s1["known_spans"] == 0
     assert s1["elapsed_seconds"] is None
     assert s1["active_seconds"] is None
+
+
+def test_mixed_naive_and_aware_timestamps_do_not_raise():
+    # Regression test (Codex PR-review finding on PR #323): the input contract only
+    # requires ISO-8601, not a UTC/Z-suffixed offset -- an offset-naive "start" paired
+    # with an offset-aware "end" (or vice versa) previously raised
+    # "TypeError: can't compare offset-naive and offset-aware datetimes" inside
+    # `end >= start`, instead of producing the promised unknown-span/duration result.
+    # _parse_ts now normalizes a naive value to UTC, so this must complete cleanly.
+    spans = [
+        {
+            "session_id": "s1",
+            "label": "naive-start-aware-end",
+            "start": "2026-09-10T10:00:00",  # no offset -- naive
+            "end": "2026-09-10T10:00:10Z",  # aware
+        },
+    ]
+    result = analyze(spans)
+    s1 = result["sessions"]["s1"]
+    assert s1["known_spans"] == 1
+    assert s1["unknown_spans"] == 0
+    assert s1["elapsed_seconds"] == 10.0
+    assert s1["active_seconds"] == 10.0

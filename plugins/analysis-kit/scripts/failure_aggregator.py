@@ -27,7 +27,7 @@ import argparse
 import json
 import sys
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -35,9 +35,18 @@ def _parse_ts(ts: str | None) -> datetime | None:
     if not ts:
         return None
     try:
-        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(ts.replace("Z", "+00:00"))
     except ValueError:
         return None
+    # The input contract only requires ISO-8601, not a UTC/Z-suffixed offset -- an
+    # offset-naive timestamp compared against an offset-aware one raises TypeError
+    # ("can't compare offset-naive and offset-aware datetimes") instead of the
+    # intended "skip this pair, time_to_recovery stays None" behavior. Assume UTC for
+    # a naive value so every comparison in this module is always between two aware
+    # datetimes. Same fix as critical_path_analyzer.py's own _parse_ts.
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed
 
 
 def aggregate(events: list[dict]) -> dict:

@@ -45,7 +45,13 @@ from redact_secrets import redact  # noqa: E402
 # timestamp/recommendation_id are genuinely structural (not free text a caller pastes a whole
 # path or credential into) and stay unredacted.
 # source_report/actor are structural fields, never redacted.
-REDACTED_FREE_TEXT_FIELDS = ("rationale", "evidence", "expected_effect", "observed_effect", "source_report")
+REDACTED_FREE_TEXT_FIELDS = (
+    "rationale",
+    "evidence",
+    "expected_effect",
+    "observed_effect",
+    "source_report",
+)
 
 DEFAULT_REGISTRY_PATH = ".claude/output/analysis-kit-recommendations/events.jsonl"
 
@@ -236,11 +242,14 @@ def release_lock(lock_path: Path, token: str) -> None:
     _unlink_lock_if_token_matches(lock_path, token)
 
 
-def append_event(registry_path: Path, event: dict, *, lock_timeout: float = 10.0) -> None:
+def append_event(registry_path: Path, event: dict, *, lock_timeout: float = 10.0) -> dict:
     """Validates the transition against the registry's current state for this
     recommendation_id, then appends exactly one JSON Line under the companion lock.
     Raises ValueError on an invalid transition (nothing is written); raises TimeoutError
-    if the lock can't be acquired in time."""
+    if the lock can't be acquired in time. Returns the redacted event actually written --
+    callers that echo the event back (e.g. the CLI's own `append` command) must use this
+    return value, never the caller's own pre-redaction `event` dict, or a secret-shaped
+    value stripped from disk would still be exposed wherever the return value is shown."""
     missing = [f for f in REQUIRED_FIELDS if f not in event]
     if missing:
         raise ValueError(f"event missing required field(s): {', '.join(missing)}")
@@ -290,6 +299,7 @@ def append_event(registry_path: Path, event: dict, *, lock_timeout: float = 10.0
             f.write(line)  # single buffered write() call -- append-only, no rewrite.
     finally:
         release_lock(lock_path, token)
+    return redacted_event
 
 
 def list_recommendations(events: list[dict]) -> list[dict]:
@@ -359,7 +369,9 @@ def main() -> int:
     # subcommand-scoped grant pattern at all.
     registry_help = f"Path to the JSON Lines registry file (default: {DEFAULT_REGISTRY_PATH})"
 
-    p_init = sub.add_parser("init", help="Create the registry file (and parent dirs) if it doesn't exist")
+    p_init = sub.add_parser(
+        "init", help="Create the registry file (and parent dirs) if it doesn't exist"
+    )
     p_init.add_argument("--registry", default=argparse.SUPPRESS, help=registry_help)
 
     p_append = sub.add_parser("append", help="Append one lifecycle event")
@@ -381,7 +393,9 @@ def main() -> int:
     p_list = sub.add_parser("list", help="Print current status of every tracked recommendation_id")
     p_list.add_argument("--registry", default=argparse.SUPPRESS, help=registry_help)
 
-    p_validate = sub.add_parser("validate", help="Replay the registry and report any invalid transitions")
+    p_validate = sub.add_parser(
+        "validate", help="Replay the registry and report any invalid transitions"
+    )
     p_validate.add_argument("--registry", default=argparse.SUPPRESS, help=registry_help)
 
     args = parser.parse_args()
@@ -411,11 +425,11 @@ def main() -> int:
             if value is not None:
                 event[field] = value
         try:
-            append_event(registry_path, event)
+            redacted_event = append_event(registry_path, event)
         except (ValueError, TimeoutError) as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 1
-        print(json.dumps(event, indent=2))
+        print(json.dumps(redacted_event, indent=2))
         return 0
 
     if args.command == "show":

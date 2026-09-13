@@ -84,7 +84,12 @@ recommendation reached `implemented` or later between the prior and current repo
 realized its expected effect:
 
 1. `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/recommendation_registry.py" list --registry <path>)` to
-   find every tracked `recommendation_id` currently at `implemented`, `verified`, or `measured`. Put
+   find every tracked `recommendation_id` currently at `implemented`, `verified`, `measured`, or
+   `closed` -- per `references/recommendation-lifecycle-schema.md`'s transition diagram, `closed` only
+   ever follows `measured`, so it's squarely "implemented or later" too; excluding it would silently
+   drop exactly the most mature recommendations (the ones that already completed their full
+   `measured -> closed` lifecycle) from this realized-impact check, along with their recorded
+   `observed_effect`. Put
    `--registry` after the subcommand, not before — this skill's own `allowed-tools` grant is scoped to
    `recommendation_registry.py list:*` / `... show:*` specifically (read-only), and the script's argparse
    accepts `--registry` in either position, but only the after-the-subcommand form is inside this skill's

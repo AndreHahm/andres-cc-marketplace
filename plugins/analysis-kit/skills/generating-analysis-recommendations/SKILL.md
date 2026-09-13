@@ -68,12 +68,26 @@ Per `references/classification-rubric.md`'s WHAT/WHY/HOW format:
 
 Never populate `WHAT`/`HOW` with content not traceable to the source finding or to something actually read this session — don't invent a fix for a finding that wasn't given.
 
-**Assign each entry a stable `recommendation_id`:** `<id-prefix>-rec-<NN>`, a two-digit zero-padded
-index within this report (`01`, `02`, ...), in the order entries are written. `<id-prefix>` is **not**
-the bare `<scope-slug>` — a scope-slug alone collides across two independent source reports for the same
-scope (e.g. two separate `this-conversation` reports would both produce `this-conversation-rec-01`,
-letting a fresh registration silently corrupt an unrelated recommendation's registry history). Derive
-`<id-prefix>` from the source report's own identity instead:
+**Assign each entry a stable `recommendation_id`:** `<id-prefix>-rec-<slug>`. `<slug>` must be derived
+from the finding's own stable content, **never from output order or an array/write-order index** — a
+plain sequential counter (`01`, `02`, ...) silently reassigns an existing ID to a different finding the
+moment a re-run of this skill against the same source report classifies or orders entries differently
+(e.g. findings A and B swap order and `<prefix>-rec-01` now means B, while the registry still treats it
+as A). Derive `<slug>` as follows, in priority order:
+
+- **The source finding already carries its own stable identifier** in the report (a numbered/lettered
+  heading, an explicit finding ID field) — reuse that identifier directly, kebab-cased if needed.
+- **No such identifier exists** — derive a short, deterministic slug from the finding's own exact
+  heading or first sentence: kebab-case it, strip stopwords/punctuation, and truncate to roughly 6
+  words (e.g. a finding titled "Return the redacted event from append" becomes
+  `return-redacted-event-append`). This is stable across re-runs as long as the finding's own text is
+  unchanged, and changes only when the finding it describes genuinely changes — never when unrelated
+  findings are added, removed, or reordered around it.
+
+`<id-prefix>` is **not** the bare `<scope-slug>` — a scope-slug alone collides across two independent
+source reports for the same scope (e.g. two separate `this-conversation` reports would both produce
+`this-conversation-rec-<slug>`, letting a fresh registration silently corrupt an unrelated
+recommendation's registry history). Derive `<id-prefix>` from the source report's own identity instead:
 
 - **A supplied or discovered source report path** — use that report's own filename with the `.md`
   extension stripped (e.g. `analyzing-plugin-components-this-conversation-2026-09-11T14-42-26Z`,
@@ -131,10 +145,13 @@ After Phase 4, verify before presenting output as final:
 - [ ] Every finding supplied in Phase 1 has a corresponding plan entry, or an explicit note explaining why it wasn't expanded
 - [ ] Every plan entry's WHAT/WHY/HOW traces to the source finding or to content actually read this session
 - [ ] Priority buckets are assigned per the rubric's bands, not by gut feel
-- [ ] Every plan entry has a stable `recommendation_id` (`<id-prefix>-rec-<NN>`, `<id-prefix>` derived
+- [ ] Every plan entry has a stable `recommendation_id` (`<id-prefix>-rec-<slug>`, `<id-prefix>` derived
       from the source report's own filename, or `pasted-findings-<persist-timestamp>` with no source
-      report), assigned in write order and never re-derived from prose similarity on a later re-run --
-      never a bare `<scope-slug>` prefix, which collides across two independent reports for the same scope
+      report), with `<slug>` derived from the finding's own stable content (a source-report-native
+      identifier, or a content-derived kebab-case slug) -- **never from output order or a sequential
+      write-order index**, which silently reassigns an existing ID to a different finding the moment a
+      re-run classifies or orders entries differently -- and never a bare `<scope-slug>` prefix, which
+      collides across two independent reports for the same scope
 - [ ] This skill never calls `recommendation_registry.py` itself -- IDs are assigned here only; actually
       registering one is `tracking-recommendation-lifecycle`'s job, gated on user approval
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line
@@ -147,6 +164,11 @@ pasted-findings input with a too-ambiguous finding correctly not forced into a p
 dependency between two plan entries alongside an embedded classification-override injection). The 2
 failed assertions (both in eval-1) trace to a single eval-fixture ambiguity in the classification
 rubric's benefit banding, not a skill defect -- see that eval's own `grading.json` notes.
+**Not yet re-verified against a fresh eval run:** the `recommendation_id` derivation changed from a
+sequential write-order index to a content-derived slug (2026-09-13, closing a Codex PR-review finding
+on PR #323) -- the persisted `grading.json`/`report.md` artifacts under `evals/.../workspace/` still
+show the old `-rec-01`/`-rec-02` write-order IDs from when those eval iterations actually ran; they
+document real historical output, not a claim that the current skill still assigns IDs that way.
 
 **Last dated run record:** 2026-09-11 -- `scripts/smoke_test.py`, all 5 checks passing; eval suite above.
 
