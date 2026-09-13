@@ -683,6 +683,24 @@ if [ "${1:-}" = "--diff" ]; then
   if [ -n "$mb" ]; then
     echo "--- unique commits ($mb..$oid) ---"
     git log --oneline "${mb}..${oid}" -- 2>/dev/null
+  else
+    # Codex cross-model-review finding (F1, round 3): a failed merge-base
+    # (no common ancestor -- an orphan branch, a grafted/shallow boundary,
+    # or a `merge --allow-unrelated-histories` root) was silently skipping
+    # this whole section with no explanation, then falling straight through
+    # to the tree-content diff below. If that diff then happened to come
+    # back empty (the two trees are byte-identical despite sharing no
+    # history at all -- live-reproduced with a real orphan-branch tag), the
+    # only thing the human reviewer saw was a clean, reassuring "no
+    # differences" message, with nothing to signal that ancestry itself
+    # could never be established for this candidate -- exactly the kind of
+    # anomalous, unrelated-history case this script already treats with
+    # extra scrutiny elsewhere (the `--root` handling for parentless
+    # commits, a few lines up). The tree-content diff below is still valid,
+    # accurate evidence either way (a tree comparison needs no common
+    # ancestor), but the reviewer needs to know this warning applies before
+    # trusting it.
+    echo "Warning: no common ancestor found with $default_branch -- unique-commit history cannot be shown for this candidate (orphan branch, grafted/shallow history, or an unrelated-histories merge root)" >&2
   fi
   echo "--- content diff: $default_branch (current) vs $tag (recorded oid $oid) ---"
   # `&& diff_rc=0 || diff_rc=$?`, not a bare assignment followed by
@@ -705,7 +723,11 @@ if [ "${1:-}" = "--diff" ]; then
     exit 1
   fi
   if [ -z "$diff_out" ]; then
-    echo "(no differences -- this candidate's tree matches $default_branch's current tree exactly)"
+    if [ -z "$mb" ]; then
+      echo "(no differences -- this candidate's tree matches $default_branch's current tree exactly, but see the no-common-ancestor warning above before treating that as sufficient evidence)"
+    else
+      echo "(no differences -- this candidate's tree matches $default_branch's current tree exactly)"
+    fi
   else
     printf '%s\n' "$diff_out"
   fi

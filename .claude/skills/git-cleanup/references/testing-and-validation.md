@@ -678,3 +678,42 @@ revert had caught.
   loop. Sanity-checked against the pre-fix script (extracted via the same `git show HEAD:...` technique
   this suite already uses): confirmed it dies with exit 128 and zero output, proving the scenario
   genuinely exercises the bug rather than passing vacuously. All 32 scenarios passed after the fix.
+
+**Live results, 2026-09-13 (a third cross-model-review pass, run again after the F1 fix above, per this
+skill's own re-commit-then-re-review requirement -- found a third, unrelated, real bug in `--diff`
+mode):** Claude's own fresh-eyes pass on this round's diff (the F1 fix commit itself) found nothing --
+re-swept every bare `var=$(cmd)` assignment in the file and confirmed no instance remained without a
+fallback. Codex's fresh-eyes Phase 1 pass (Major, correctness, high confidence) flagged a gap this
+sweep didn't cover, since it isn't a `set -e` issue at all: `--diff`'s merge-base handling.
+- **The finding:** `mb=$(git merge-base -- "$oid" "$default_branch" 2>/dev/null) || mb=""` already fails
+  gracefully when no common ancestor exists (an orphan branch, a grafted/shallow boundary, or an
+  unrelated-histories merge root) -- but the "unique commits" section it gates was silently skipped with
+  no explanation, and the tree-content diff below it still ran regardless (a tree comparison needs no
+  common ancestor at all, so it isn't itself the bug). If that diff then came back empty -- the two trees
+  happen to be byte-identical despite sharing no history whatsoever -- the only thing a human reviewer
+  saw was an unqualified `(no differences -- this candidate's tree matches $default_branch's current
+  tree exactly)` message, with nothing to signal that ancestry itself could never be established for
+  this candidate -- exactly the kind of anomalous, unrelated-history case this same file already treats
+  with extra scrutiny elsewhere (the `--root` handling for parentless commits, and `security-reviewer`'s
+  original C1 finding about it).
+- **Live-verified before fixing**, in an isolated scratch repo: created a real orphan branch
+  (`git checkout --orphan`) with a tree byte-identical to `main`'s, tagged it as a rebase-backup
+  candidate, confirmed `git merge-base` genuinely fails (exit 1, no common ancestor), confirmed the tag
+  correctly lands in `--list-review` (the automated `is_tag_content_reachable` check already fails closed
+  on the same merge-base failure), then ran `--diff 1` against the pre-fix script and confirmed it
+  printed only `(no differences -- this candidate's tree matches main's current tree exactly)` with zero
+  indication anything unusual was going on.
+- **Fix:** the `else` branch of the merge-base check now prints an explicit `Warning: no common ancestor
+  found with $default_branch -- ...` to stderr before falling through to the content diff, and the
+  `(no differences ...)` message itself grows a conditional caveat ("...but see the no-common-ancestor
+  warning above before treating that as sufficient evidence") when `$mb` was empty. The underlying content
+  diff is unchanged -- it was already correct, valid evidence; only the missing disclosure was the bug.
+  `phase1-analysis.sh` has no `--diff`-equivalent evidence-display mode (only the automated
+  `is_tag_content_reachable` check, whose own `|| return 1` on the same merge-base call already fails
+  closed correctly) -- confirmed via a targeted grep before ruling out a sibling instance there, not
+  assumed.
+- **1 new regression scenario** added (33 total, up from 32): `scenario_diff_warns_on_no_common_ancestor`,
+  building a real orphan-branch tag with an identical tree to the default branch and asserting `--diff`'s
+  output contains both the new warning and the no-differences message together. Re-verified live against
+  the fixed script (warning now appears) before adding the scenario. All 33 scenarios passed after the
+  fix.
