@@ -88,16 +88,33 @@ REVIEW_SNAPSHOT="$(git rev-parse --git-dir)/delete-rebase-backup-tags.review-sna
 # tag removed and --list-review re-run again -- index 1 silently resolved
 # to a completely different tag than the one first shown. --diff/--force/
 # --keep below all require the caller to pass back the exact token
-# --list-review printed; a mismatch (or a missing generation file) refuses
-# outright rather than acting on an index whose meaning may have changed.
-# Not a security boundary (a script-generated token, never derived from or
-# composed with a raw tag name -- the untrusted-content risk this script's
-# whole index-only design exists to avoid never applies to this token),
-# just a staleness fingerprint: $RANDOM twice plus a timestamp and this
-# process's own PID is far more than enough entropy to distinguish "the
-# same listing" from "a different one," without needing /dev/urandom or any
-# other environment-dependent source.
-REVIEW_GENERATION_FILE="${REVIEW_SNAPSHOT}.generation"
+# --list-review printed; a mismatch refuses outright rather than acting on
+# an index whose meaning may have changed. Not a security boundary (a
+# script-generated token, never derived from or composed with a raw tag
+# name -- the untrusted-content risk this script's whole index-only design
+# exists to avoid never applies to this token), just a staleness
+# fingerprint: $RANDOM twice plus a timestamp and this process's own PID is
+# far more than enough entropy to distinguish "the same listing" from "a
+# different one," without needing /dev/urandom or any other
+# environment-dependent source.
+#
+# The generation token is embedded as the FIRST NUL-terminated field
+# WITHIN $REVIEW_SNAPSHOT itself (read by every consumer below before the
+# tag/oid/dsha triples), not a second, separate file -- Codex cross-model-
+# review finding (PR #322 round 2, Critical), live-verified: round 1's
+# first version wrote $REVIEW_SNAPSHOT and a sibling `.generation` file as
+# two SEPARATE writes. An interruption between them (a second --list-review
+# that successfully overwrites the snapshot but never reaches its own
+# generation-file write) leaves the OLD generation file's content matching
+# an OLD token that a caller still holds, while the snapshot it now points
+# at has already been replaced -- reproduced live by manually replaying
+# exactly that interrupted-write sequence: the old token's `--diff` call
+# succeeded (exit 0) against the REPLACED snapshot's own row 1, a
+# completely different tag than the one the old token was originally
+# issued for. A single file, updated via a single atomic `mv` (the same
+# mktemp-then-mv pattern already used for $DECISIONS_FILE below), has no
+# two-write window for this to happen in at all -- either the whole update
+# lands, or none of it does.
 # Decision file lives at the repo's WORKING TREE root (not $GIT_DIR like the
 # snapshots above) -- it's a human-facing, persistent record meant to survive
 # across script runs, not a same-invocation handoff file. Read/write for this
@@ -594,15 +611,20 @@ decision_is_valid_keep() {
 }
 
 # Refuses --diff/--force/--keep outright unless the caller's supplied token
-# matches $REVIEW_GENERATION_FILE's CURRENT content exactly -- see this
-# constant's own definition above for the full race this closes. A missing
-# generation file (no --list-review has ever run, or it predates this
-# mechanism) is treated the same as a mismatch: fail closed, never assume
-# "no file yet" means "anything goes."
+# matches the generation token embedded as $REVIEW_SNAPSHOT's OWN first
+# NUL-terminated field -- see this constant's own definition above (near
+# $REVIEW_SNAPSHOT) for the full race this closes, including why the
+# generation lives inside the same file/write as the snapshot content
+# rather than a second, separately-written file. A single fresh read of
+# just that first field -- never assumed to match what a caller's own
+# request-parsing loop later re-reads from the same file, since both reads
+# independently hit the same on-disk bytes. A missing/unreadable snapshot
+# (no --list-review has ever run) is treated the same as a mismatch: fail
+# closed, never assume "no file yet" means "anything goes."
 require_generation_token() {
   local supplied="$1"
   local current=""
-  current=$(cat "$REVIEW_GENERATION_FILE" 2>/dev/null) || current=""
+  IFS= read -r -d '' current < "$REVIEW_SNAPSHOT" 2>/dev/null || current=""
   if [ -z "$current" ] || [ "$supplied" != "$current" ]; then
     echo "Error: the review snapshot has changed since you ran --list-review (no matching generation) -- run --list-review again and start this candidate's review over, since a previously-shown index no longer reliably maps to the tag you reviewed" >&2
     exit 1
@@ -666,21 +688,35 @@ if [ "${1:-}" = "--list" ]; then
 fi
 
 if [ "${1:-}" = "--list-review" ]; then
-  list_review > "$REVIEW_SNAPSHOT"
-  # Written AFTER $REVIEW_SNAPSHOT, not atomically together with it: a crash
-  # or interruption between the two writes leaves the generation file stale
-  # or missing, which require_generation_token() above already treats as a
-  # refusal (fail closed), never as "generation checking is optional this
-  # time" -- there is no failure ordering here that lets a stale-index
-  # delete through unnoticed.
+  # Generation token + tag/oid/dsha triples written to a TEMP file first,
+  # then moved into place with a single atomic `mv` -- Codex cross-model-
+  # review finding (PR #322 round 2, Critical): writing the snapshot and its
+  # generation as two SEPARATE files/writes left a real window where an
+  # interruption between them could leave an OLD generation token matching
+  # NEW (already-replaced) snapshot content -- live-verified by replaying
+  # exactly that interrupted-write sequence. A single file, single `mv`, has
+  # no such window: either the whole update lands, or none of it does.
   generation="$(date -u +%Y%m%dT%H%M%S)-$$-$RANDOM-$RANDOM"
-  printf '%s' "$generation" > "$REVIEW_GENERATION_FILE"
+  review_tmp=$(mktemp "$(dirname "$REVIEW_SNAPSHOT")/.delete-rebase-backup-tags.review-snapshot.XXXXXX") || {
+    echo "Error: could not create a temp file for the review snapshot" >&2
+    exit 1
+  }
+  { printf '%s\0' "$generation"; list_review; } > "$review_tmp"
+  mv "$review_tmp" "$REVIEW_SNAPSHOT"
   printf '# Generation: %s -- pass this back via --generation on --diff/--force/--keep\n' "$generation"
   i=0
-  while IFS= read -r -d '' tag && IFS= read -r -d '' _oid && IFS= read -r -d '' _dsha; do
-    i=$((i + 1))
-    printf '%d\t%q\n' "$i" "$tag"
-  done < "$REVIEW_SNAPSHOT"
+  # One redirection on this whole block, not per-`read` -- the leading
+  # `read` consumes the embedded generation field first, and the `while`
+  # loop's own reads continue from the SAME stream position for the
+  # tag/oid/dsha triples that follow it, rather than re-reading from the
+  # file's start.
+  {
+    IFS= read -r -d '' _gen
+    while IFS= read -r -d '' tag && IFS= read -r -d '' _oid && IFS= read -r -d '' _dsha; do
+      i=$((i + 1))
+      printf '%d\t%q\n' "$i" "$tag"
+    done
+  } < "$REVIEW_SNAPSHOT"
   exit 0
 fi
 
@@ -725,14 +761,19 @@ if [ "${1:-}" = "--diff" ]; then
   require_generation_token "$generation_arg"
   tag="" oid="" dsha=""
   i=0
-  while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' d; do
-    i=$((i + 1))
-    if [ "$i" = "$idx" ]; then
-      tag="$t"
-      oid="$o"
-      dsha="$d"
-    fi
-  done < "$REVIEW_SNAPSHOT"
+  # Leading `read` skips the embedded generation field (see this file's own
+  # $REVIEW_SNAPSHOT definition) before the index-numbered triples begin.
+  {
+    IFS= read -r -d '' _gen
+    while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' d; do
+      i=$((i + 1))
+      if [ "$i" = "$idx" ]; then
+        tag="$t"
+        oid="$o"
+        dsha="$d"
+      fi
+    done
+  } < "$REVIEW_SNAPSHOT"
   if [ -z "$tag" ]; then
     echo "Error: index '$idx' is out of range -- run --list-review again and retry" >&2
     exit 1
@@ -897,14 +938,19 @@ if [ "${1:-}" = "--force" ]; then
   force_matched_oids=()
   force_matched_dshas=()
   i=0
-  while IFS= read -r -d '' tag && IFS= read -r -d '' oid && IFS= read -r -d '' dsha; do
-    i=$((i + 1))
-    if [ -n "${force_wanted[$i]:-}" ]; then
-      force_matched_tags+=("$tag")
-      force_matched_oids+=("$oid")
-      force_matched_dshas+=("$dsha")
-    fi
-  done < "$REVIEW_SNAPSHOT"
+  # Leading `read` skips the embedded generation field (see this file's own
+  # $REVIEW_SNAPSHOT definition) before the index-numbered triples begin.
+  {
+    IFS= read -r -d '' _gen
+    while IFS= read -r -d '' tag && IFS= read -r -d '' oid && IFS= read -r -d '' dsha; do
+      i=$((i + 1))
+      if [ -n "${force_wanted[$i]:-}" ]; then
+        force_matched_tags+=("$tag")
+        force_matched_oids+=("$oid")
+        force_matched_dshas+=("$dsha")
+      fi
+    done
+  } < "$REVIEW_SNAPSHOT"
   if [ "${#force_matched_tags[@]}" -ne "${#force_wanted[@]}" ]; then
     echo "Error: one or more requested indices are out of range -- run --list-review again and retry" >&2
     exit 1
@@ -983,14 +1029,19 @@ if [ "${1:-}" = "--keep" ]; then
   require_generation_token "$generation_arg"
   tag="" oid="" dsha=""
   i=0
-  while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' d; do
-    i=$((i + 1))
-    if [ "$i" = "$idx" ]; then
-      tag="$t"
-      oid="$o"
-      dsha="$d"
-    fi
-  done < "$REVIEW_SNAPSHOT"
+  # Leading `read` skips the embedded generation field (see this file's own
+  # $REVIEW_SNAPSHOT definition) before the index-numbered triples begin.
+  {
+    IFS= read -r -d '' _gen
+    while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' d; do
+      i=$((i + 1))
+      if [ "$i" = "$idx" ]; then
+        tag="$t"
+        oid="$o"
+        dsha="$d"
+      fi
+    done
+  } < "$REVIEW_SNAPSHOT"
   if [ -z "$tag" ]; then
     echo "Error: index '$idx' is out of range -- run --list-review again and retry" >&2
     exit 1

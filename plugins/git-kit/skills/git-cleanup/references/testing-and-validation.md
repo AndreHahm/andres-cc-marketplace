@@ -774,3 +774,40 @@ automated PR reviews):** 4 findings, all live-verified before fixing, all fixed 
   live-reproduction fixture used to verify the finding was real in the first place. The ~9 pre-existing
   scenarios that call `--diff`/`--force`/`--keep` were also updated to capture and pass the new generation
   token via a new shared `list_review_generation()` helper. All 37 scenarios passed after the fixes.
+
+**Live results, PR #322 round 2 (2026-09-13, `handling-review-findings` triaging Codex's fresh review
+of the round-1 fix commit):** 2 findings, both live-verified before fixing, both fixed in the same
+round.
+- **F1 (Critical):** round 1's own generation-token fix (above) wrote `$REVIEW_SNAPSHOT` and a separate
+  sibling `$REVIEW_SNAPSHOT.generation` file as two SEPARATE, non-atomic writes. Codex found the exact
+  race this left open: if a SECOND `--list-review` successfully overwrites the snapshot but is
+  interrupted before it reaches its own generation-file write, the OLD generation file still holds a
+  token from an EARLIER run, which now matches the CURRENT (already-replaced) snapshot content purely
+  by coincidence of the write ordering. Live-reproduced: captured token A from run 1, then manually
+  replayed exactly the interrupted-write sequence (overwrote the snapshot file's content the way a
+  second run would, left the generation file untouched) -- `--diff --generation A 1` against the
+  REPLACED snapshot succeeded (exit 0) and returned evidence for a completely different tag than the
+  one token A was originally issued for. **Fix:** the generation token is now embedded as
+  `$REVIEW_SNAPSHOT`'s own first NUL-terminated field, written to a temp file together with the
+  tag/oid/dsha triples and moved into place with a single atomic `mv` (the same mktemp-then-mv pattern
+  already used for `$DECISIONS_FILE`) -- no separate file, no two-write window for this class of race
+  to occur in at all. `require_generation_token()` and all three read loops (`--diff`/`--force`/
+  `--keep`) updated to read the embedded field (a leading `read` before the triples loop, both sharing
+  one input redirection on the surrounding block so the stream position carries over correctly).
+- **F2 (Minor):** `guided-manual-review.md`'s own Step 2 said "If `--list-review` returns anything,
+  ask..." -- but `--list-review` always prints its `# Generation: <token> -- ...` header line, even
+  with zero review candidates, so that condition is unconditionally true on every invocation.
+  Live-verified: a repo with no rebase-backup tags at all still produced non-empty `--list-review`
+  output (the header line alone). **Fix:** Step 2 now checks for at least one numbered candidate row
+  (a line matching `<digit(s)><TAB><tag>`), not merely non-empty output.
+- **1 new regression scenario** added (38 total, up from 37):
+  `scenario_generation_embedded_atomically_no_sibling_file`, confirming the file-layout guarantee
+  directly (no sibling `.generation` file, the embedded field matches the printed token, `--diff` still
+  works normally) -- a genuine interrupted-syscall reproduction isn't something a test script can
+  construct, since the whole point of atomicity is that there's no observable partial state to
+  construct; the file-layout check is the strongest available proxy. F2's fix is documentation-only (the
+  script's own always-print-the-header behavior is correct and unchanged) -- no script-level regression
+  scenario needed; the live-verification above stands as its own evidence. All 38 scenarios passed after
+  the fixes.
+- **CodeRabbit's own re-review** of the round-1 fix commit (3 auto-replies on its own resolved threads)
+  confirmed all 3 of its round-1 findings fixed correctly, with no new findings of its own this round.
