@@ -811,3 +811,57 @@ round.
   the fixes.
 - **CodeRabbit's own re-review** of the round-1 fix commit (3 auto-replies on its own resolved threads)
   confirmed all 3 of its round-1 findings fixed correctly, with no new findings of its own this round.
+
+**Live results, PR #322 round 3 (2026-09-13, `handling-review-findings` triaging Codex's fresh review of
+the round-2 fix commit -- the 3rd and final round within `review_findings_max_rounds`):** 3 findings, all
+P1, all live-verified before fixing, all fixed in the same round.
+- **F1 (Critical):** round 2's own atomic-write fix (above) closed the snapshot's WRITE-side race, but
+  every consumer (`--diff`/`--force`/`--keep`) still performed TWO SEPARATE file opens -- one inside
+  `require_generation_token` to validate the embedded generation, a second, later one in the caller's own
+  triple-parsing loop. Codex found the READ-side race this left open: a concurrent `--list-review`
+  landing in the gap between those two opens replaces the snapshot after validation already passed
+  against the OLD content, so the later, separate parse reads the NEW (already-replaced) content instead.
+  Live-reproduced with a real background process (a temp copy of the script with a `sleep` injected right
+  after it opens the file, racing a real foreground `--list-review`): a token validated when index 1
+  named `atag` was still accepted after `atag` was independently removed and a fresh `--list-review`
+  made index 1 name `ztag` instead -- the old token's `--force` call deleted `ztag`. **Fix:**
+  `require_generation_token` no longer opens the file itself -- it takes the already-read generation
+  value as a plain argument. Every caller now opens `$REVIEW_SNAPSHOT` exactly ONCE
+  (`exec {snap_fd}< "$REVIEW_SNAPSHOT"`), reads the generation field from that fd, validates it, and
+  continues reading the tag/oid/dsha triples from the SAME fd. This relies on POSIX rename semantics: an
+  already-open file descriptor keeps reading its original inode's content regardless of what the path
+  later points to -- live-verified directly on this environment (an fd opened before a `mktemp`+`mv`
+  replacement kept reading the pre-replacement bytes afterward) before relying on it. Re-ran the exact
+  reproduction above against the fixed script under the MAXIMUM possible race window (the sleep placed
+  immediately after the file opens, before either read) and confirmed `--force` correctly resolved to
+  the ORIGINAL `atag` (now gone) and refused, never touching `ztag`.
+- **F2 (P1):** only the tag's own oid was atomically protected by `--force`'s
+  `git update-ref -d <ref> <old-oid>` call -- `$default_branch`'s oid was checked sequentially
+  beforehand with no atomic binding to the delete itself, so a `$default_branch` rewind landing in the
+  gap between that check passing and the delete actually running could still let the delete through.
+  Live-reproduced (same sleep-injection technique, this time delaying right before the delete):
+  rewinding `$default_branch` in that gap still let an unpatched `--force` succeed. **Fix:** the
+  sequential pre-checks stay (fast, friendly rejection for the common case), but the actual delete is now
+  a single `git update-ref --stdin` transaction combining `verify <default_branch's full ref> <expected
+  dsha>` with `delete refs/tags/<tag> <expected oid>` -- live-verified that this primitive is genuinely
+  atomic across two DIFFERENT refs (a crafted repro: `verify` an intentionally stale branch oid alongside
+  `delete` of a real tag in one transaction correctly refused the whole batch with git's own "cannot lock
+  ref ...: is at X but expected Y", leaving the tag untouched) before relying on it, and that the matching
+  positive case (both refs current) still succeeds normally. `$default_branch`'s full ref path is resolved
+  via `git rev-parse --symbolic-full-name` (`update-ref --stdin` requires a fully-qualified ref, not a
+  short branch name -- verified live that a bare `main` is rejected: "fatal: refusing to update ref with
+  bad name").
+- **F3 (P1):** the "unique commits" section printed only `git log --oneline` subjects, but the round-1
+  caution note (added for F3 in that round) explicitly tells the reviewer to "review each unique commit's
+  own diff above" -- no such diff was ever printed. Live-reproduced with commits titled only `one` and
+  `two`: a string unique to the first commit (later reverted by the second, so absent from the final
+  tree-content diff) never appeared anywhere in `--diff`'s output. **Fix:** `git log --oneline` replaced
+  with `git log -p --no-ext-diff --no-textconv` (matching the flags already used for the tree-content diff
+  call), printing each unique commit's actual patch, not just its subject.
+- **3 new regression scenarios** added (41 total, up from 38): `scenario_force_immune_to_concurrent_
+  snapshot_replacement` and `scenario_force_atomic_default_branch_verify_and_delete` both use a real
+  background process racing a real foreground `--list-review`/branch-rewind (a temp copy of the script
+  patched with a `sleep` inserted at the exact race point, via `awk`) rather than a hypothetical -- an
+  actual concurrent-process reproduction, matching how each finding was first verified;
+  `scenario_diff_shows_unique_commit_patches` reuses the exact one/two-commit fixture Codex's own
+  reproduction used. All 41 scenarios passed after the fixes.
