@@ -242,3 +242,14 @@ resolved.
   reference's tag-side procedure is new and hasn't had a real `/git-cleanup` invocation reach it yet.
   Flagged here rather than implied complete, per this repo's own Unplanned-Overhead/testing-mandate
   conventions.
+- **Live results, 2026-09-13:** a fresh cross-model-review pass (required after the #317-shortcut revert
+  above, per that skill's own re-commit-then-re-review rule) found a `set -euo pipefail` interaction bug
+  in `--force`/`--keep` (Codex, high confidence, live-verified) — see `testing-and-validation.md`'s own
+  entry for the full finding, the sibling-occurrence sweep that found 5 total instances (2 more in this
+  session's own new code, 3 pre-existing and swept in with explicit user approval), and the fix. Net
+  effect for this reference's own documented behavior: `--force`/`--keep` now correctly report `Skipped
+  '<tag>': ...`/`Error: this candidate moved...` when a tag or the default branch becomes unresolvable,
+  instead of silently crashing with no output — exactly what Step 3's "check --force's exit status and
+  surface any Skipped line" instruction always assumed, but which a `set -e` interaction had made
+  unreachable until this fix. `test-content-reachable.sh` now has 32 regression scenarios total (up from
+  31), all passing.

@@ -1331,6 +1331,57 @@ scenario_keep_resurfaces_after_default_branch_advances() {
   )
 }
 
+# Scenario 32: security-reviewer/Codex cross-model-review finding (F1),
+# swept into the PRE-EXISTING plain-delete loop (--list / <index>) as a
+# sibling instance of the same bug found in --force/--keep/--diff: under
+# `set -euo pipefail`, `pre_check_oid=$(git rev-parse ...)` with no `||`
+# fallback silently killed the ENTIRE multi-tag delete loop the instant one
+# requested tag no longer resolved, instead of reporting "Skipped" for just
+# that one and continuing with the rest -- exactly the partial-failure
+# behavior this loop's own comments already document as intended. Invokes
+# the real CLI (`--list` then `<index> <index>`), not the extracted
+# functions, since the bug lives in the CLI's own delete loop.
+scenario_plain_delete_skips_already_gone_tag_and_continues() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    for n in 1 2; do
+      git checkout -q -b "gone-$n"
+      printf 'unique-%s\n' "$n" > "file-$n.txt"
+      git add "file-$n.txt" && git commit -q -m "gone-$n change"
+      # Fast-forward main to include this commit -- unambiguously makes
+      # the tag's own commit an ancestor of main (raw-SHA safe-to-delete),
+      # no content-reachability nuance needed for this test.
+      git checkout -q main
+      git merge -q --ff-only "gone-$n"
+      git tag -a "gone$n-rebase-backup-20260101-000000" -m backup HEAD
+      git branch -D "gone-$n" >/dev/null
+    done
+  )
+  (
+    cd "$repo"
+    bash "$TARGET" --list >/dev/null 2>&1
+    # Delete the FIRST candidate out from under the snapshot before the
+    # actual delete call runs -- simulates a concurrent deletion between
+    # --list and Phase 5's own delete call.
+    git tag -d gone1-rebase-backup-20260101-000000 >/dev/null
+    out=$(bash "$TARGET" 1 2 2>&1)
+    rc=$?
+    # Must NOT crash (a bash internal error / unexplained non-1 exit would
+    # indicate the set -e crash reappeared) -- exit 1 here means "one of
+    # the two indices failed," the correct partial-failure result.
+    [ "$rc" -eq 1 ] || exit 1
+    echo "$out" | grep -qF "Skipped 'gone1-rebase-backup-20260101-000000': could not resolve" || exit 1
+    # The SECOND tag must still have been processed and deleted -- the
+    # bug this test guards against made the whole loop die on the first
+    # failure, never reaching the second index at all.
+    [ -z "$(git tag -l gone2-rebase-backup-20260101-000000)" ] || exit 1
+    exit 0
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -1372,6 +1423,7 @@ run scenario_force_snapshot_survives_for_next_item "--force doesn't delete the r
 run scenario_force_refuses_when_default_branch_advanced "--force refuses when the default branch advanced since --list-review"
 run scenario_keep_records_and_suppresses "--keep records a decision and suppresses the candidate from a fresh --list-review"
 run scenario_keep_resurfaces_after_default_branch_advances "a kept decision resurfaces once the default branch advances past what was pinned"
+run scenario_plain_delete_skips_already_gone_tag_and_continues "the plain --list delete loop skips an already-gone tag and still processes the rest (Codex F1 sibling instance)"
 
 echo ""
 echo "$PASS passed, $FAIL failed"

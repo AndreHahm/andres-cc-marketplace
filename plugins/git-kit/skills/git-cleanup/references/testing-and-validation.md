@@ -637,3 +637,44 @@ high confidence) raised a Major correctness finding against the shortcut above.
   passed after the revert; re-verified against this repository's own real tags afterward --
   `feat-analysis-kit-new-dimensions-rebase-backup-20260910-194109` (the actual #317 tag) is back under
   `--list-review`, not `--list`.
+
+**Live results, 2026-09-13 (a fresh cross-model-review pass, run again after the revert above, per this
+skill's own re-commit-then-re-review requirement -- found a second, unrelated, real bug in the same
+file):** Codex's fresh-eyes Phase 1 pass on the corrected diff (high confidence) flagged a `set -euo
+pipefail` interaction neither the original security-reviewer pass nor this session's own re-review of the
+revert had caught.
+- **The finding:** under this script's own `set -euo pipefail`, a bare `var=$(cmd)` assignment with no
+  `||` fallback makes the WHOLE ASSIGNMENT STATEMENT's exit status equal to `cmd`'s own exit status --
+  and if that's non-zero, `set -e` triggers immediate script exit *right there*, before any following
+  line (a `[ -z "$var" ]` check, or a separate `rc=$?` capture) ever runs. Flagged in `--force`/`--keep`'s
+  `current_oid`/`current_dsha` resolution (lines 760-761/825-826 at the time) -- exactly the "Skipped"
+  graceful-degradation path those functions document as their own intended behavior, made unreachable.
+- **Live-verified before fixing**, in an isolated scratch repo: built a genuine rebase-backup tag,
+  ran `--list-review`, then deleted the tag entirely (simulating a concurrent deletion) before calling
+  `--force 1` -- confirmed the script died with exit 128 and **zero output**, never printing the
+  documented `Skipped '<tag>': could not resolve its current object id` message at all.
+- **Sibling-occurrence sweep found 5 total instances**, not just the 2 Codex flagged -- 2 more introduced
+  by this same session's own new code (`list_review`'s `item_sha`, and this session's own C1 fix for
+  `--diff`'s `diff_out`/`diff_rc` -- meaning the C1 fix's own exit-status check was *itself* dead code
+  from the moment it shipped, an ironic instance of the exact anti-pattern C1 was written to guard
+  against), and 3 in PRE-EXISTING code predating this session entirely (`check_diff_records`'s `del_out`,
+  `is_tag_content_reachable`'s `tag_commits`, and the plain `--list`/`<index>` delete loop's
+  `pre_check_oid` -- live-verified this last one too: a multi-index `--list`/delete call died on the
+  *first* already-gone tag and silently never processed any later index in the same call, despite this
+  loop's own comments explicitly documenting one-failure-doesn't-block-the-rest as its intended design).
+  User explicitly approved fixing all 3 pre-existing instances in this same PR rather than deferring them
+  (asked via `AskUserQuestion`, since they predate this session's diff).
+- **Fix:** each bare assignment now either appends `|| var=""` (when the caller only needs an
+  empty-vs-non-empty check afterward: `list_review`'s `item_sha` uses `|| continue` instead, since the
+  intended behavior there is to skip a tag that vanished mid-enumeration entirely, not emit a snapshot row
+  with a blank oid) or uses `cmd && rc=0 || rc=$?` (when the caller needs the *actual* exit code
+  preserved, as in `--diff`'s `diff_rc` and `check_diff_records`'s `del_rc`) -- both forms make the whole
+  compound statement's own exit status always 0, so `set -e` never fires regardless of whether the
+  underlying git command succeeded or failed, while still letting the existing downstream check see the
+  real result.
+- **1 new regression scenario** added (32 total, up from 31):
+  `scenario_plain_delete_skips_already_gone_tag_and_continues`, invoking the real CLI (`--list` then a
+  multi-index delete) rather than the extracted functions, since the bug lives in the CLI's own delete
+  loop. Sanity-checked against the pre-fix script (extracted via the same `git show HEAD:...` technique
+  this suite already uses): confirmed it dies with exit 128 and zero output, proving the scenario
+  genuinely exercises the bug rather than passing vacuously. All 32 scenarios passed after the fix.
