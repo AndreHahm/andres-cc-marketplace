@@ -1636,6 +1636,158 @@ scenario_generation_embedded_atomically_no_sibling_file() {
   )
 }
 
+# Scenario 39: --force must resolve its index against the SAME open file
+# description it validated its generation token against, immune to a
+# concurrent --list-review replacing $REVIEW_SNAPSHOT in the gap between
+# validation and parsing. Codex cross-model-review finding (PR #322 round
+# 3, Critical): round 2's own atomic-write fix (above) closed the WRITE-
+# side race, but every consumer still performed TWO SEPARATE file opens --
+# one to validate the generation, a second, later one to parse the index-
+# numbered rows -- leaving a READ-side race open. Live-reproduced: a token
+# validated against a snapshot where index 1 named one tag, then (before
+# the parsing loop's own separate open) a real --list-review replaced the
+# file so index 1 named a DIFFERENT tag -- the old token's --force call
+# deleted the new tag. Uses a real background process racing a real
+# foreground `--list-review`, patching a temp copy of the script with a
+# `sleep` inserted right after it opens the snapshot (before either read),
+# the maximum-width version of the race -- not a hypothetical, an actual
+# concurrent-process reproduction.
+scenario_force_immune_to_concurrent_snapshot_replacement() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    for n in a z; do
+      git checkout -q --orphan "orphan-$n"
+      printf 'orphan-%s-unique\n' "$n" > "orphan-$n.txt"
+      git add "orphan-$n.txt" && git commit -q -m "orphan-$n commit"
+      git tag -a "${n}tag-rebase-backup-20260101-000000" -m backup HEAD
+      git checkout -q main 2>/dev/null || git checkout -q master
+      git branch -D "orphan-$n" >/dev/null
+    done
+  )
+  (
+    cd "$repo"
+    out=$(bash "$TARGET" --list-review 2>&1)
+    gen=$(printf '%s\n' "$out" | sed -n 's/^# Generation: \([^ ]*\).*/\1/p')
+    delayed="$repo/.delayed-target.sh"
+    awk '
+      /^if \[ "\$\{1:-\}" = "--force" \]; then/ { in_force=1 }
+      in_force && /exec \{snap_fd\}< "\$REVIEW_SNAPSHOT"/ && !done {
+        print
+        print "  sleep 2"
+        done=1
+        next
+      }
+      { print }
+    ' "$TARGET" > "$delayed"
+    chmod +x "$delayed"
+    ( bash "$delayed" --force --generation "$gen" 1 > "$repo/.force-out.txt" 2>&1 ) &
+    force_pid=$!
+    sleep 0.5
+    # atag (index 1 in the validated snapshot) is removed independently,
+    # then --list-review re-runs so index 1 now names ztag instead.
+    git tag -d atag-rebase-backup-20260101-000000 >/dev/null
+    bash "$TARGET" --list-review >/dev/null 2>&1
+    wait "$force_pid"
+    # The old token must never have deleted ztag -- it must fail closed
+    # (atag no longer resolves) instead.
+    [ -n "$(git tag -l ztag-rebase-backup-20260101-000000)" ] || exit 1
+    grep -qF "Skipped" "$repo/.force-out.txt" || exit 1
+    exit 0
+  )
+}
+
+# Scenario 40: --force's default-branch verification and the tag deletion
+# must happen as ONE atomic transaction, not two sequential steps -- Codex
+# cross-model-review finding (PR #322 round 3, P1): only the tag's own oid
+# was atomically protected by the old `git update-ref -d <ref> <old-oid>`
+# call; $default_branch's oid was checked sequentially beforehand with no
+# atomic binding to the delete itself, so a rewind landing in the gap
+# between that check passing and the delete actually running could still
+# let the delete through. Live-reproduced: rewinding $default_branch
+# immediately before the delete call (via the same sleep-injection
+# technique as the scenario above, this time delaying right before the
+# atomic transaction itself) still let an unpatched version through.
+scenario_force_atomic_default_branch_verify_and_delete() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q --orphan orphanbranch
+    printf 'orphan-unique\n' > orphan.txt
+    git add orphan.txt && git commit -q -m "orphan commit"
+    git tag -a defcheck-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D orphanbranch >/dev/null
+  )
+  (
+    cd "$repo"
+    out=$(bash "$TARGET" --list-review 2>&1)
+    gen=$(printf '%s\n' "$out" | sed -n 's/^# Generation: \([^ ]*\).*/\1/p')
+    delayed="$repo/.delayed-target-d.sh"
+    awk '
+      /^if \[ "\$\{1:-\}" = "--force" \]; then/ { in_force=1 }
+      in_force && /default_branch_full_ref=\$\(git rev-parse --symbolic-full-name/ && !done {
+        print "    sleep 2"
+        print
+        done=1
+        next
+      }
+      { print }
+    ' "$TARGET" > "$delayed"
+    chmod +x "$delayed"
+    ( bash "$delayed" --force --generation "$gen" 1 > "$repo/.force-out-d.txt" 2>&1 ) &
+    force_pid=$!
+    sleep 0.5
+    # Rewind the default branch (amend to a completely different oid) in
+    # the gap between the sequential dsha check passing and the atomic
+    # verify+delete transaction actually running.
+    git commit -q --amend -m "rewound default branch" --allow-empty
+    wait "$force_pid"
+    # The tag must survive -- the transaction must have refused because
+    # the default branch no longer matched what was verified.
+    [ -n "$(git tag -l defcheck-rebase-backup-20260101-000000)" ] || exit 1
+    exit 0
+  )
+}
+
+# Scenario 41: --diff must print each unique commit's actual patch, not
+# just its one-line subject -- Codex cross-model-review finding (PR #322
+# round 3, P1), using the exact commits-titled-"one"/"two" reproduction:
+# a string unique to the FIRST commit (later reverted by the second, so
+# absent from the final tree-content diff) must actually appear in --diff's
+# output -- the caution note this same round-1 fix added explicitly tells
+# the reviewer to "review each unique commit's own diff above," which was
+# false when only `--oneline` subjects were printed.
+scenario_diff_shows_unique_commit_patches() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'original\n' > secret.txt
+    git add secret.txt && git commit -q -m base
+    git branch feature
+    git checkout -q feature
+    printf 'SECRET-UNIQUE-STRING\n' > secret.txt
+    git add secret.txt && git commit -q -m one
+    printf 'original\n' > secret.txt
+    git add secret.txt && git commit -q -m two
+    git tag -a patchtag-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+  )
+  (
+    cd "$repo"
+    out=$(bash "$TARGET" --list-review 2>&1)
+    gen=$(printf '%s\n' "$out" | sed -n 's/^# Generation: \([^ ]*\).*/\1/p')
+    diff_out=$(bash "$TARGET" --diff --generation "$gen" 1 2>&1)
+    echo "$diff_out" | grep -qF "SECRET-UNIQUE-STRING" || exit 1
+    exit 0
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -1684,6 +1836,9 @@ run scenario_diff_pinned_to_snapshot_dsha_not_live_branch "--diff is reproducibl
 run scenario_diff_notes_reachability_check_failure_on_empty_diff "--diff adds an explicit caution note when a review candidate's tree matches the default branch exactly (Codex, PR #322 round 1)"
 run scenario_keep_protects_decisions_file_via_info_exclude "--keep protects the decision file from an accidental git add -A via .git/info/exclude, not just this source repo's own .gitignore (Codex/CodeRabbit, PR #322 round 1)"
 run scenario_generation_embedded_atomically_no_sibling_file "the generation token is embedded in the snapshot's own first field via a single atomic mv, not a separately-written sibling file (Codex, PR #322 round 2, Critical)"
+run scenario_force_immune_to_concurrent_snapshot_replacement "--force resolves its index against the same open file description it validated its generation token against, immune to a concurrent --list-review replacement (Codex, PR #322 round 3, Critical)"
+run scenario_force_atomic_default_branch_verify_and_delete "--force's default-branch verification and the tag deletion happen as one atomic transaction, not two sequential steps (Codex, PR #322 round 3)"
+run scenario_diff_shows_unique_commit_patches "--diff prints each unique commit's actual patch, not just its one-line subject (Codex, PR #322 round 3)"
 
 echo ""
 echo "$PASS passed, $FAIL failed"

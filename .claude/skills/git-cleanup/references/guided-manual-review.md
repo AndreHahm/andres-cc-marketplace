@@ -97,10 +97,13 @@ phase; don't ask the user to walk through zero candidates.
 "${CLAUDE_PLUGIN_ROOT}/skills/git-cleanup/scripts/delete-rebase-backup-tags.sh" --diff --generation <token> <index>
 ```
 
-Read-only; prints the candidate's unique commits and a full tree diff between the default branch's
-current state and the tag's own recorded oid (deliberately the *whole* diff, not just the specific paths
-that failed the automated per-commit check — a human is better served by seeing everything the tag
-differs on). Safe to run repeatedly against the same `--list-review` snapshot.
+Read-only; prints each of the candidate's unique commits' own actual patch (not just their one-line
+subjects — Codex cross-model-review finding, PR #322 round 3: a subject-only listing left content unique
+to a later-reverted commit completely absent from the output, even though the caution note below tells
+the reviewer to inspect it) and a full tree diff between the default branch's current state and the tag's
+own recorded oid (deliberately the *whole* diff, not just the specific paths that failed the automated
+per-commit check — a human is better served by seeing everything the tag differs on). Safe to run
+repeatedly against the same `--list-review` snapshot.
 
 **`--diff`'s exit status matters — check it.** A non-zero exit means evidence could NOT be produced (a
 corrupted object, an unresolvable ref) — this is never the same thing as "no differences," and must never
@@ -339,3 +342,21 @@ resolved.
   for a numbered candidate row specifically. `test-content-reachable.sh` grew from 37 to 38 scenarios,
   all passing. CodeRabbit's own re-review of the round-1 fix confirmed all 3 of its round-1 findings
   fixed correctly, with no new findings.
+- **Live results, PR #322 round 3 (2026-09-13, the final round within the review budget):** a fresh
+  Codex review of the round-2 fix commit found 3 more real issues (all P1), all live-verified with real
+  background-process race reproductions and fixed in the same round — see `testing-and-validation.md`'s
+  own entry for the full narrative. (1) round 2's atomic-write fix only closed the snapshot's WRITE-side
+  race; every consumer still opened the file TWICE (once to validate the generation, again to parse the
+  rows), leaving a READ-side race a concurrent `--list-review` could still exploit — fixed by opening
+  `$REVIEW_SNAPSHOT` exactly once per invocation and reading both the generation and the rows from that
+  same file descriptor, relying on POSIX rename semantics (an already-open descriptor keeps reading its
+  original content regardless of later path replacement — verified directly on this environment before
+  relying on it). (2) `--force`'s default-branch check and its tag deletion were sequential, not atomic
+  — fixed with a single `git update-ref --stdin` transaction verifying the default branch and deleting
+  the tag together, refusing the whole thing if either ref no longer matches (verified this primitive's
+  atomicity live against a crafted two-ref race before relying on it). (3) the unique-commits evidence
+  (above) printed only commit subjects, not their actual patches, despite the round-1 caution note
+  telling the reviewer to inspect them — fixed by switching to `git log -p`. `test-content-reachable.sh`
+  grew from 38 to 41 scenarios, two of them using a real background process racing a real foreground
+  command rather than a hypothetical. No further review round was triggered after this one — round 3 was
+  the last allowed within `review_findings_max_rounds` (3).

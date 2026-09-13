@@ -611,20 +611,34 @@ decision_is_valid_keep() {
 }
 
 # Refuses --diff/--force/--keep outright unless the caller's supplied token
-# matches the generation token embedded as $REVIEW_SNAPSHOT's OWN first
-# NUL-terminated field -- see this constant's own definition above (near
-# $REVIEW_SNAPSHOT) for the full race this closes, including why the
-# generation lives inside the same file/write as the snapshot content
-# rather than a second, separately-written file. A single fresh read of
-# just that first field -- never assumed to match what a caller's own
-# request-parsing loop later re-reads from the same file, since both reads
-# independently hit the same on-disk bytes. A missing/unreadable snapshot
-# (no --list-review has ever run) is treated the same as a mismatch: fail
-# closed, never assume "no file yet" means "anything goes."
+# matches the CURRENT value already read from $REVIEW_SNAPSHOT -- takes
+# that value as an argument rather than opening the file itself (Codex
+# cross-model-review finding, PR #322 round 3, Critical: an earlier version
+# of this function opened the file independently, which meant every caller
+# still performed TWO SEPARATE opens -- one here for validation, a second,
+# later one in the caller's own triple-parsing loop. Live-reproduced: a
+# third --list-review landing in the gap between those two opens replaced
+# the snapshot after this function's own read had already validated the OLD
+# token against the OLD content, so the caller's later, separate open read
+# the NEW (already-replaced) content instead -- an old token for tag A
+# force-deleted tag B). Embedding the generation token inside the snapshot
+# file (this constant's own definition above) only closes the race if
+# validation and parsing share the SAME open file description throughout a
+# single invocation -- every caller below now opens $REVIEW_SNAPSHOT exactly
+# ONCE via `exec {fd}< "$REVIEW_SNAPSHOT"`, reads the embedded generation
+# field from that fd, passes it here, and continues reading the tag/oid/dsha
+# triples from that SAME fd afterward. A POSIX rename (the `mv` that
+# publishes a fresh snapshot) only repoints the path to a new inode -- an
+# already-open file descriptor keeps reading the ORIGINAL inode's content
+# regardless of what the path now points to (live-verified on this exact
+# environment: an fd opened before a `mktemp`+`mv` replacement kept reading
+# the pre-replacement bytes after the replacement completed) -- so a
+# concurrent --list-review can never again invalidate a read that's already
+# in progress, only one that hasn't started yet. A missing/unreadable
+# snapshot (no --list-review has ever run) is treated the same as a
+# mismatch: fail closed, never assume "no file yet" means "anything goes."
 require_generation_token() {
-  local supplied="$1"
-  local current=""
-  IFS= read -r -d '' current < "$REVIEW_SNAPSHOT" 2>/dev/null || current=""
+  local supplied="$1" current="$2"
   if [ -z "$current" ] || [ "$supplied" != "$current" ]; then
     echo "Error: the review snapshot has changed since you ran --list-review (no matching generation) -- run --list-review again and start this candidate's review over, since a previously-shown index no longer reliably maps to the tag you reviewed" >&2
     exit 1
@@ -758,22 +772,27 @@ if [ "${1:-}" = "--diff" ]; then
     echo "Error: no review candidate list found -- run --list-review first" >&2
     exit 2
   fi
-  require_generation_token "$generation_arg"
+  # ONE open of $REVIEW_SNAPSHOT for both validation and parsing -- see
+  # require_generation_token's own comment above for the race this closes
+  # (two separate opens let a concurrent --list-review replace the file in
+  # the gap between them). The leading read consumes the embedded
+  # generation field; every read after it continues from the SAME open file
+  # description, immune to any later replacement of the path.
+  exec {snap_fd}< "$REVIEW_SNAPSHOT"
+  current_gen=""
+  IFS= read -r -d '' -u "$snap_fd" current_gen
+  require_generation_token "$generation_arg" "$current_gen"
   tag="" oid="" dsha=""
   i=0
-  # Leading `read` skips the embedded generation field (see this file's own
-  # $REVIEW_SNAPSHOT definition) before the index-numbered triples begin.
-  {
-    IFS= read -r -d '' _gen
-    while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' d; do
-      i=$((i + 1))
-      if [ "$i" = "$idx" ]; then
-        tag="$t"
-        oid="$o"
-        dsha="$d"
-      fi
-    done
-  } < "$REVIEW_SNAPSHOT"
+  while IFS= read -r -d '' -u "$snap_fd" t && IFS= read -r -d '' -u "$snap_fd" o && IFS= read -r -d '' -u "$snap_fd" d; do
+    i=$((i + 1))
+    if [ "$i" = "$idx" ]; then
+      tag="$t"
+      oid="$o"
+      dsha="$d"
+    fi
+  done
+  exec {snap_fd}<&-
   if [ -z "$tag" ]; then
     echo "Error: index '$idx' is out of range -- run --list-review again and retry" >&2
     exit 1
@@ -795,8 +814,20 @@ if [ "${1:-}" = "--diff" ]; then
   # against, not just usually the same.
   mb=$(git merge-base -- "$oid" "$dsha" 2>/dev/null) || mb=""
   if [ -n "$mb" ]; then
+    # `-p` (each commit's actual patch), not `--oneline` (subjects only) --
+    # Codex cross-model-review finding (PR #322 round 3, P1): the caution
+    # note below this block tells the reviewer to "review each unique
+    # commit's own diff above, not just its one-line subject" -- but with
+    # `--oneline`, no such diff was ever printed for the reviewer to look
+    # at, only the subjects. Live-reproduced with commits titled only "one"
+    # and "two": a string unique to the first commit (later reverted by the
+    # second, so absent from the final tree-content diff below) never
+    # appeared anywhere in `--diff`'s output at all -- a human could approve
+    # deleting the tag that was its only remaining reference without ever
+    # seeing the content actually at risk. `--no-ext-diff --no-textconv`
+    # match the tree-content diff call below, for the same reason.
     echo "--- unique commits ($mb..$oid) ---"
-    git log --oneline "${mb}..${oid}" -- 2>/dev/null
+    git log -p --no-ext-diff --no-textconv "${mb}..${oid}" -- 2>/dev/null
   else
     # Codex cross-model-review finding (F1, round 3): a failed merge-base
     # (no common ancestor -- an orphan branch, a grafted/shallow boundary,
@@ -925,7 +956,6 @@ if [ "${1:-}" = "--force" ]; then
     echo "Error: no review candidate list found -- run --list-review first" >&2
     exit 2
   fi
-  require_generation_token "$generation_arg"
   declare -A force_wanted
   for arg in "$@"; do
     if ! [[ "$arg" =~ ^[0-9]+$ ]]; then
@@ -938,19 +968,21 @@ if [ "${1:-}" = "--force" ]; then
   force_matched_oids=()
   force_matched_dshas=()
   i=0
-  # Leading `read` skips the embedded generation field (see this file's own
-  # $REVIEW_SNAPSHOT definition) before the index-numbered triples begin.
-  {
-    IFS= read -r -d '' _gen
-    while IFS= read -r -d '' tag && IFS= read -r -d '' oid && IFS= read -r -d '' dsha; do
-      i=$((i + 1))
-      if [ -n "${force_wanted[$i]:-}" ]; then
-        force_matched_tags+=("$tag")
-        force_matched_oids+=("$oid")
-        force_matched_dshas+=("$dsha")
-      fi
-    done
-  } < "$REVIEW_SNAPSHOT"
+  # ONE open of $REVIEW_SNAPSHOT for both validation and parsing -- see
+  # require_generation_token's own comment above for the race this closes.
+  exec {snap_fd}< "$REVIEW_SNAPSHOT"
+  current_gen=""
+  IFS= read -r -d '' -u "$snap_fd" current_gen
+  require_generation_token "$generation_arg" "$current_gen"
+  while IFS= read -r -d '' -u "$snap_fd" tag && IFS= read -r -d '' -u "$snap_fd" oid && IFS= read -r -d '' -u "$snap_fd" dsha; do
+    i=$((i + 1))
+    if [ -n "${force_wanted[$i]:-}" ]; then
+      force_matched_tags+=("$tag")
+      force_matched_oids+=("$oid")
+      force_matched_dshas+=("$dsha")
+    fi
+  done
+  exec {snap_fd}<&-
   if [ "${#force_matched_tags[@]}" -ne "${#force_wanted[@]}" ]; then
     echo "Error: one or more requested indices are out of range -- run --list-review again and retry" >&2
     exit 1
@@ -986,10 +1018,35 @@ if [ "${1:-}" = "--force" ]; then
       force_failed=1
       continue
     fi
-    if git update-ref -d "refs/tags/$tag" "$expected_oid"; then
+    # The checks above and the delete below are still two SEPARATE steps up
+    # to this point (a fast, friendly rejection for the common case of
+    # something having already moved before --force was even invoked) --
+    # but the ACTUAL delete now verifies $default_branch's oid again, in the
+    # SAME atomic transaction as the delete itself, closing the narrower gap
+    # between "the checks above passed" and "the delete below actually
+    # runs" -- Codex cross-model-review finding (PR #322 round 3, P1): only
+    # the tag's own oid was atomically protected by the old
+    # `git update-ref -d <ref> <old-oid>` call; $default_branch's oid was
+    # checked sequentially beforehand with no atomic binding to the delete
+    # itself, so a $default_branch rewind landing in that specific gap could
+    # still let the delete through despite having already "failed" the
+    # check moments earlier. Live-reproduced: rewinding $default_branch
+    # immediately before the delete call still let it succeed. `git
+    # update-ref --stdin` verifies one ref and deletes another as ONE
+    # atomic transaction -- if EITHER ref no longer matches, the WHOLE
+    # transaction (including the delete) is refused; live-verified against
+    # a real crafted race (git's own "cannot lock ref ...: is at X but
+    # expected Y", exit 128, tag left untouched).
+    default_branch_full_ref=$(git rev-parse --symbolic-full-name "$default_branch" 2>/dev/null) || default_branch_full_ref=""
+    if [ -z "$default_branch_full_ref" ]; then
+      echo "Error: failed to force-delete tag '$tag' -- could not resolve $default_branch's full ref name" >&2
+      force_failed=1
+      continue
+    fi
+    if printf 'verify %s %s\ndelete refs/tags/%s %s\n' "$default_branch_full_ref" "$expected_dsha" "$tag" "$expected_oid" | git update-ref --stdin; then
       :
     else
-      echo "Error: failed to force-delete tag '$tag' (may have moved since verification, or another error occurred)" >&2
+      echo "Error: failed to force-delete tag '$tag' -- $tag or $default_branch moved since verification, or another error occurred" >&2
       force_failed=1
     fi
   done
@@ -1026,22 +1083,23 @@ if [ "${1:-}" = "--keep" ]; then
     echo "Error: no review candidate list found -- run --list-review first" >&2
     exit 2
   fi
-  require_generation_token "$generation_arg"
+  # ONE open of $REVIEW_SNAPSHOT for both validation and parsing -- see
+  # require_generation_token's own comment above for the race this closes.
+  exec {snap_fd}< "$REVIEW_SNAPSHOT"
+  current_gen=""
+  IFS= read -r -d '' -u "$snap_fd" current_gen
+  require_generation_token "$generation_arg" "$current_gen"
   tag="" oid="" dsha=""
   i=0
-  # Leading `read` skips the embedded generation field (see this file's own
-  # $REVIEW_SNAPSHOT definition) before the index-numbered triples begin.
-  {
-    IFS= read -r -d '' _gen
-    while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' d; do
-      i=$((i + 1))
-      if [ "$i" = "$idx" ]; then
-        tag="$t"
-        oid="$o"
-        dsha="$d"
-      fi
-    done
-  } < "$REVIEW_SNAPSHOT"
+  while IFS= read -r -d '' -u "$snap_fd" t && IFS= read -r -d '' -u "$snap_fd" o && IFS= read -r -d '' -u "$snap_fd" d; do
+    i=$((i + 1))
+    if [ "$i" = "$idx" ]; then
+      tag="$t"
+      oid="$o"
+      dsha="$d"
+    fi
+  done
+  exec {snap_fd}<&-
   if [ -z "$tag" ]; then
     echo "Error: index '$idx' is out of range -- run --list-review again and retry" >&2
     exit 1
