@@ -255,37 +255,40 @@ fi
 # specifically; `--no-abbrev` is the flag that actually works there,
 # confirmed by testing each in isolation.
 is_path_blob_reachable() {
-  local path="$1" wanted_blob="$2" wanted_mode="$3" mb="$4" tag="$5"
+  local path="$1" wanted_blob="$2" wanted_mode="$3" mb="$4"
   local mode blob
   read -r mode _ blob _ < <(git ls-tree "$mb" -- "$path" 2>/dev/null)
   if [ -n "$blob" ] && [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ]; then
     return 0
   fi
-  # Final-state shortcut (issue #317): if $tag's own FINAL content at $path
-  # already matches $default_branch's CURRENT content at $path, this
-  # commit's own blob for the same path needs no independent history match.
-  # Whatever content this commit introduced was itself superseded by a
-  # later commit within the tag's own history -- it's the tag's FINAL
-  # contribution for this path that would actually be lost by deleting the
-  # tag, not any intermediate state along the way. This closes the case
-  # where $default_branch's own history reorganizes multiple tag-branch
-  # edits to the same path into a different commit order than the tag
-  # recorded them (e.g. the tag added section A then merged in section B,
-  # while $default_branch added B then A independently) -- no single
-  # historical commit on $default_branch ever matches this commit's own
-  # intermediate blob, even though the final states agree byte-for-byte.
-  # Live-verified against this repo's own
-  # feat-analysis-kit-new-dimensions-rebase-backup-20260910-194109 tag,
-  # exactly the case #317 was filed from.
-  local tip_mode tip_blob
-  read -r tip_mode _ tip_blob _ < <(git ls-tree "$tag" -- "$path" 2>/dev/null)
-  if [ -n "$tip_blob" ]; then
-    local cur_mode cur_blob
-    read -r cur_mode _ cur_blob _ < <(git ls-tree "$default_branch" -- "$path" 2>/dev/null)
-    if [ -n "$cur_blob" ] && [ "$cur_blob" = "$tip_blob" ] && [ "$cur_mode" = "$tip_mode" ]; then
-      return 0
-    fi
-  fi
+  # A "final-state shortcut" was tried here for issue #317 (accepting a
+  # commit's own blob as reachable whenever $tag's own FINAL content at
+  # $path matched $default_branch's CURRENT content, reasoning that a
+  # superseded-within-the-tag intermediate blob no longer mattered) and
+  # REVERTED before ever shipping -- found unsafe by a pre-push
+  # cross-model-review pass (Codex fresh-eyes, high confidence), live-
+  # verified in an isolated scratch repo before reverting: a tag whose
+  # unique history adds unique content to a path and then REVERTS that
+  # same path back to $default_branch's own original content (never
+  # touched on $default_branch at all) passed the shortcut and was reported
+  # SAFE TO DELETE, even though the reverted-away content exists NOWHERE
+  # else and would be permanently lost (eventually garbage-collected) once
+  # the tag is gone -- a genuine false POSITIVE, strictly worse than #317's
+  # own false-negative bug, since it would have caused confident, automated
+  # data loss rather than an unnecessary manual-review prompt. No safe
+  # narrowing of the shortcut was found that still resolves #317's own
+  # scenario: restricting it to only fire when a commit's own blob equals
+  # the tag's tip blob for that path (the only version that can't also be a
+  # discarded intermediate) makes it fire exclusively for the LAST commit
+  # touching a path -- which the existing mb-tree/history checks below
+  # already cover on their own, so the narrowed shortcut adds no value for
+  # #317's actual reordering case, which specifically requires validating
+  # an EARLIER, non-final commit's blob. #317-shaped tags are instead left
+  # to `--list-review`/`--diff`/`--force` (the guided-manual-review feature
+  # shipped alongside this revert) -- a human reviewing the actual diff
+  # evidence is the safe way to resolve this class of case; no blob-
+  # identity-only shortcut can distinguish "converged via reordering" from
+  # "converged via an unrelated revert that discarded unique content."
   local hist_file meta new_mode new_blob found
   hist_file=$(mktemp) || return 1
   git log --raw -m --root -z --no-abbrev --no-ext-diff --no-textconv --format= \
@@ -318,7 +321,7 @@ is_path_blob_reachable() {
 # doesn't invalidate an already-open fd) but not guaranteed on the Windows/
 # Git-Bash environment this script actually runs in).
 check_diff_records() {
-  local file="$1" mb="$2" tag="$3"
+  local file="$1" mb="$2"
   local meta path new_mode new_blob status del_out del_rc
   while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
     # meta: ":<old_mode> <new_mode> <old_blob> <new_blob> <status>" -- old
@@ -348,7 +351,7 @@ check_diff_records() {
       [ -n "$del_out" ] && return 1
     else
       [ -z "$new_blob" ] && return 1
-      is_path_blob_reachable "$path" "$new_blob" "$new_mode" "$mb" "$tag" || return 1
+      is_path_blob_reachable "$path" "$new_blob" "$new_mode" "$mb" || return 1
     fi
   done < "$file"
   return 0
@@ -433,7 +436,7 @@ is_tag_content_reachable() {
       rm -f "$diff_file"
       return 1
     fi
-    if ! check_diff_records "$diff_file" "$mb" "$tag"; then
+    if ! check_diff_records "$diff_file" "$mb"; then
       rm -f "$diff_file"
       return 1
     fi
