@@ -77,9 +77,17 @@ this happens mid-review, re-run `--list-review` and restart the current candidat
 
 ## Step 2: Offer
 
-If `--list-review` returns anything, ask via `AskUserQuestion`: "N tag(s) still need manual review. Walk
-through them now?" — options "Yes, review now" / "No, skip (reported again next run)". On decline, stop
-here; nothing else in this phase runs.
+**Check for at least one numbered candidate row (a line matching `<digit(s)><TAB><tag>`), not merely
+whether `--list-review`'s output is non-empty** — Codex cross-model-review finding (PR #322 round 2):
+`--list-review` always prints its `# Generation: <token> -- ...` header line, even with zero review
+candidates, so a bare "output is non-empty" check is true on every single invocation regardless of
+whether anything actually needs review — live-verified: a repo with no rebase-backup tags at all still
+produced non-empty `--list-review` output (the header line alone). If at least one numbered row is
+present, ask via `AskUserQuestion`: "N tag(s) still need manual review. Walk through them now?" —
+options "Yes, review now" / "No, skip (reported again next run)". On decline, stop here; nothing else
+in this phase runs. If no numbered row is present (only the header line, or no output at all — e.g. an
+unresolvable default branch's exit-2 error), skip the offer entirely and say nothing further in this
+phase; don't ask the user to walk through zero candidates.
 
 ## Step 3: Per-item review (one at a time, not batched)
 
@@ -319,3 +327,15 @@ resolved.
   also writing a per-repo `info/exclude` entry the first time `--keep` creates the file. `test-content-
   reachable.sh` grew from 33 to 37 regression scenarios (one per fix, plus the existing ~9 scenarios that
   call `--diff`/`--force`/`--keep` updated to capture and pass the new generation token), all passing.
+- **Live results, PR #322 round 2 (2026-09-13):** a fresh Codex review of the round-1 fix commit found
+  2 more real issues, both live-verified and fixed in the same round — see `testing-and-validation.md`'s
+  own entry for the full narrative. (1) **Critical**: round 1's generation-token write and the snapshot
+  write were two SEPARATE files/writes, leaving a real window where an interruption between them let an
+  old token match already-replaced snapshot content (live-reproduced by replaying exactly that
+  interrupted-write sequence). Fixed by embedding the generation token as the snapshot's own first
+  field, written and moved into place via a single atomic `mv` — no separate file, no window. (2) this
+  file's own Step 2 (above) checked "if `--list-review` returns anything," which the new `# Generation:
+  ...` header line makes unconditionally true even with zero candidates (live-verified) — fixed to check
+  for a numbered candidate row specifically. `test-content-reachable.sh` grew from 37 to 38 scenarios,
+  all passing. CodeRabbit's own re-review of the round-1 fix confirmed all 3 of its round-1 findings
+  fixed correctly, with no new findings.

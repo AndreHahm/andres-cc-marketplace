@@ -1589,6 +1589,53 @@ scenario_keep_protects_decisions_file_via_info_exclude() {
   )
 }
 
+# Scenario 38: the generation token must be embedded as $REVIEW_SNAPSHOT's
+# own first NUL-terminated field -- written and moved into place via a
+# SINGLE atomic `mv` -- never a second, separately-written sibling file.
+# Codex cross-model-review finding (PR #322 round 2, Critical): round 1's
+# first version wrote the snapshot and its generation token as two separate
+# files/writes, leaving a real window where an interruption between them
+# left an OLD generation token matching NEW (already-replaced) snapshot
+# content -- live-verified by replaying exactly that interrupted-write
+# sequence (an old token's --diff call succeeded against a completely
+# different tag than the one it was issued for). A single file, single
+# `mv`, has no such window: either the whole update lands or none of it
+# does -- this scenario checks the resulting file layout directly, since
+# a genuine interrupted-syscall reproduction isn't something a test script
+# can construct (the whole point of atomicity is that there's no
+# observable partial state to construct).
+scenario_generation_embedded_atomically_no_sibling_file() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q --orphan orphanbranch
+    printf 'orphan-unique\n' > orphan.txt
+    git add orphan.txt && git commit -q -m "orphan commit"
+    git tag -a atomtag-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main
+    git branch -D orphanbranch >/dev/null
+  )
+  (
+    cd "$repo"
+    out=$(bash "$TARGET" --list-review 2>&1)
+    gen=$(printf '%s\n' "$out" | sed -n 's/^# Generation: \([^ ]*\).*/\1/p')
+    [ -n "$gen" ] || exit 1
+    gitdir=$(git rev-parse --git-dir)
+    # No sibling `.generation` file -- the generation lives inside the
+    # snapshot itself now, not a second file that could go out of sync.
+    [ ! -e "$gitdir/delete-rebase-backup-tags.review-snapshot.generation" ] || exit 1
+    # The snapshot's own first NUL-terminated field must equal the printed
+    # generation exactly.
+    embedded=$(IFS= read -r -d '' g < "$gitdir/delete-rebase-backup-tags.review-snapshot" && printf '%s' "$g")
+    [ "$embedded" = "$gen" ] || exit 1
+    # --diff with the correct token still works normally against this format.
+    bash "$TARGET" --diff --generation "$gen" 1 >/dev/null 2>&1 || exit 1
+    exit 0
+  )
+}
+
 # Each scenario is called via if/else, never as a bare statement -- under
 # `set -e`, a bare failing command at top level aborts the whole script
 # immediately, which would stop this file after the first real failure
@@ -1636,6 +1683,7 @@ run scenario_generation_mismatch_refuses "--diff/--force/--keep all refuse a gen
 run scenario_diff_pinned_to_snapshot_dsha_not_live_branch "--diff is reproducible against a given snapshot, not affected by the default branch advancing afterward (Codex/CodeRabbit, PR #322 round 1)"
 run scenario_diff_notes_reachability_check_failure_on_empty_diff "--diff adds an explicit caution note when a review candidate's tree matches the default branch exactly (Codex, PR #322 round 1)"
 run scenario_keep_protects_decisions_file_via_info_exclude "--keep protects the decision file from an accidental git add -A via .git/info/exclude, not just this source repo's own .gitignore (Codex/CodeRabbit, PR #322 round 1)"
+run scenario_generation_embedded_atomically_no_sibling_file "the generation token is embedded in the snapshot's own first field via a single atomic mv, not a separately-written sibling file (Codex, PR #322 round 2, Critical)"
 
 echo ""
 echo "$PASS passed, $FAIL failed"
