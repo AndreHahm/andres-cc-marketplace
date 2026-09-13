@@ -84,6 +84,24 @@ as A). Derive `<slug>` as follows, in priority order:
   unchanged, and changes only when the finding it describes genuinely changes — never when unrelated
   findings are added, removed, or reordered around it.
 
+**Collision resistance (mandatory, not optional):** a 6-word truncated slug is not by itself guaranteed
+unique — two distinct findings can open with the same words (Codex PR-review finding on PR #323:
+`recommendation_registry.py` keys all transition history solely by `recommendation_id`, so two findings
+silently sharing one ID merges their lifecycles). Before finalizing any entry's ID in this run, compare
+its `<slug>` against every other `<slug>` already assigned in the same run (not against the registry —
+this is a same-batch check). On a collision, disambiguate using content the colliding findings do NOT
+share, in this order, until every ID in the batch is distinct:
+
+1. **Append the finding's own cited file/line** from its WHAT field, if one is known — e.g.
+   `return-redacted-event-append-recommendation-registry-py-l418`. This is the most reliable
+   disambiguator, since two distinct findings essentially never cite the exact same file and line.
+2. **No file/line available, or that still collides** — extend `<slug>` with more words from the
+   finding's own next sentence or detail (not from a different finding) until the two differ.
+
+Never resolve a collision by falling back to a write-order/array-index suffix (`-2`, `-3`, ...) — that
+reintroduces the exact instability this scheme replaces, since which finding is "second" in a batch can
+change across re-runs even when no individual finding's own text changes.
+
 `<id-prefix>` is **not** the bare `<scope-slug>` — a scope-slug alone collides across two independent
 source reports for the same scope (e.g. two separate `this-conversation` reports would both produce
 `this-conversation-rec-<slug>`, letting a fresh registration silently corrupt an unrelated
@@ -119,7 +137,7 @@ origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- find
 inherited` (from the source report's own finding), unless this skill independently re-verified the
 underlying evidence.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full plan to a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/generating-analysis-recommendations/<scope-slug>-<timestamp>.md" --label "Recommendations Plan")`, where `<scope-slug>` derives from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Recommendations Plan written: ...` confirmation line — present its printed output as-is. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full plan to the session scratchpad directory as a scratch file (never a bare relative filename, which resolves to the current working directory — usually the repo root — instead), then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/generating-analysis-recommendations/<scope-slug>-<timestamp>.md" --label "Recommendations Plan")`, where `<scope-slug>` derives from the source report's own scope-slug, or `pasted-findings-<date>` if findings were pasted directly rather than read from a report. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Recommendations Plan written: ...` confirmation line — present its printed output as-is. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
 ## Gotchas
 
@@ -152,6 +170,10 @@ After Phase 4, verify before presenting output as final:
       write-order index**, which silently reassigns an existing ID to a different finding the moment a
       re-run classifies or orders entries differently -- and never a bare `<scope-slug>` prefix, which
       collides across two independent reports for the same scope
+- [ ] Every slug is checked against every other slug already assigned in the same run before finalizing;
+      a collision is resolved via the finding's own cited file/line or more of its own distinguishing
+      text -- never a write-order/array-index suffix (`-2`, `-3`, ...), which reintroduces the same
+      instability the content-derived scheme replaces
 - [ ] This skill never calls `recommendation_registry.py` itself -- IDs are assigned here only; actually
       registering one is `tracking-recommendation-lifecycle`'s job, gated on user approval
 - [ ] The report was persisted and its path confirmed with the standard `📄 ... written:` line

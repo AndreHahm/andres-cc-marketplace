@@ -41,16 +41,20 @@ from redact_secrets import redact  # noqa: E402
 # applies to every other persisted analysis-kit artifact. source_report is included because it
 # is a caller-supplied path (comparing-sessions' own Phase 4 populates it from --source-report),
 # exactly the field redact_secrets.py's home_directory_path pattern exists to strip an absolute
-# path's username segment from, while leaving the repo-relative tail citable. actor/status/
-# timestamp/recommendation_id are genuinely structural (not free text a caller pastes a whole
-# path or credential into) and stay unredacted.
-# source_report/actor are structural fields, never redacted.
+# path's username segment from, while leaving the repo-relative tail citable. actor is included
+# too -- the CLI accepts it as unconstrained free text with no format check, and
+# tracking-recommendation-lifecycle/SKILL.md already documents it as redacted alongside
+# rationale/evidence/expected_effect/observed_effect (Codex PR-review finding on PR #323: a live
+# append with a credential-shaped --actor value was returned and persisted unchanged before this
+# fix). status/timestamp/recommendation_id are the only genuinely structural fields (fixed
+# vocabularies/formats a caller can't paste arbitrary text into) and stay unredacted.
 REDACTED_FREE_TEXT_FIELDS = (
     "rationale",
     "evidence",
     "expected_effect",
     "observed_effect",
     "source_report",
+    "actor",
 )
 
 DEFAULT_REGISTRY_PATH = ".claude/output/analysis-kit-recommendations/events.jsonl"
@@ -185,15 +189,43 @@ def _read_lock_token(lock_path: Path) -> str | None:
 
 
 def _unlink_lock_if_token_matches(lock_path: Path, expected_token: str | None) -> None:
-    """Unlinks lock_path only if its current content still matches expected_token.
-    Guards both release_lock() and the stale-lock breaker below against deleting a lock
-    file some other process has since broken-and-replaced or freshly acquired -- without
-    this check, a blind unlink() can delete another writer's active lock out from under
-    it, breaking the mutual-exclusion guarantee the lock exists to provide."""
+    """Deletes lock_path only if its content still matches expected_token when this call
+    actually removes it. Guards both release_lock() and the stale-lock breaker below
+    against deleting a lock file some other process has since broken-and-replaced or
+    freshly acquired.
+
+    A separate read-then-compare-then-unlink(path) sequence is NOT safe for this: unlink()
+    always resolves the path fresh, so a second process's own broken-and-replaced lock,
+    created in the gap between this call's read and its unlink, would be deleted anyway --
+    the check passed against the OLD content, but the unlink acts on whatever now-different
+    file currently sits at that path (Codex PR-review finding on PR #323, reproduced live
+    with a controlled interleaving). os.rename() is atomic on both POSIX and Windows for a
+    same-directory rename, so renaming lock_path to a private, unpredictable name first
+    "claims" whatever file is currently there as a single indivisible operation -- no other
+    process can observe or act on that exact file between the claim and the content check
+    below, closing the window a path-based unlink can't."""
     if expected_token is None:
         return
-    if _read_lock_token(lock_path) == expected_token:
-        lock_path.unlink(missing_ok=True)
+    claim_path = lock_path.with_name(f"{lock_path.name}.claim-{os.getpid()}-{uuid.uuid4().hex}")
+    try:
+        os.rename(lock_path, claim_path)
+    except OSError:
+        return  # already gone, or already claimed by a concurrent caller -- nothing to do
+    if _read_lock_token(claim_path) == expected_token:
+        claim_path.unlink(missing_ok=True)
+    else:
+        # Claimed someone else's lock by accident (it was replaced between our caller's own
+        # earlier read and this rename) -- restore it rather than discarding a lock we don't
+        # own. If the original path was already recreated by its rightful owner in the
+        # meantime, O_CREAT|O_EXCL below fails loudly (a benign, retried FileExistsError from
+        # the caller's own acquire loop) instead of silently clobbering that fresh lock.
+        try:
+            fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, claim_path.read_bytes())
+            os.close(fd)
+            claim_path.unlink(missing_ok=True)
+        except OSError:
+            pass  # leave the claimed copy as a harmless stray *.claim-* file
 
 
 def acquire_lock(lock_path: Path, timeout: float = 10.0, poll: float = 0.05) -> str:
