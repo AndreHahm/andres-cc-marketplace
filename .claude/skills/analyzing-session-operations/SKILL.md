@@ -82,9 +82,17 @@ event list plus a direct read of the matching transcript for `tool_result` block
 
 - **Failure events** (for `failure_aggregator.py`): one entry per attempt --
   `{subject, category, result, timestamp}`. `subject` is a stable description of what was attempted (a
-  tool name plus a non-verbatim discriminator -- an argument shape, an index, or a hash, never the raw
-  input copied through -- e.g. `"Bash(pytest)"` or `"Bash(curl, attempt 2)"`, never
-  `"Bash(curl -H 'Authorization: Bearer ...')"`). Never copy a credential-, token-, or header-bearing
+  tool name plus a non-verbatim discriminator for genuinely *different* operations -- an argument shape
+  or a hash, never the raw input copied through -- e.g. `"Bash(pytest)"`, or `"Bash(curl example.com/a)"`
+  vs `"Bash(curl example.com/b)"` to tell two different URLs apart, never
+  `"Bash(curl -H 'Authorization: Bearer ...')"`). **Never fold a retry/attempt index into `subject`**
+  (e.g. never `"Bash(curl, attempt 1)"` then `"Bash(curl, attempt 2)"` for the same retried operation --
+  Codex PR-review finding on PR #323) -- `failure_aggregator.py` matches a failure to its eventual
+  success by exact `subject` equality, using a per-subject FIFO queue specifically so repeated retries of
+  the *same* operation share one `subject` and pair correctly (the Nth failure is recovered by the Nth
+  later success for that subject); varying `subject` per attempt breaks this pairing entirely -- every
+  attempt then reads as an unrelated, permanently unresolved failure, and none contribute to the
+  repeated-failure count either. Never copy a credential-, token-, or header-bearing
   argument into `subject`, even before redaction runs -- not writing the value down in the first place is
   the real control, the same discipline `analyzing-security-and-privacy` and
   `analyzing-tool-and-framework-use` apply to their own persisted fields; `persist_report.py`'s
