@@ -388,10 +388,11 @@ through still lets the rest proceed, and reports which index (if any) failed.
 ### Phase 7: Guided Manual Review (optional, offered after Phase 6 — rebase-backup tags only)
 
 Follow `references/guided-manual-review.md` in full. In outline: `delete-rebase-backup-tags.sh
---list-review` already drops any candidate with a still-valid "keep" decision recorded — only if
-anything remains, offer via `AskUserQuestion` to walk through them. Per item: show raw evidence
-(`--diff <index>`), ask **Delete now / Keep / Skip**, require a second confirmation before `--force
-<index>`, and use `--keep <index>` to record a decision — never a hand-composed `jq`/`git` command with a
+--list-review` already drops any candidate with a still-valid "keep" decision recorded and prints a
+generation token every later call must pass back — only if anything remains, offer via `AskUserQuestion`
+to walk through them. Per item: show raw evidence (`--diff --generation <token> <index>`), ask **Delete
+now / Keep / Skip**, require a second confirmation before `--force --generation <token> <index>`, and use
+`--keep --generation <token> <index>` to record a decision — never a hand-composed `jq`/`git` command with a
 tag name in it. `REMOTE_GONE` branches are explicitly NOT covered by this phase yet (an equivalent
 name-handling mechanism doesn't exist for branches — see the reference's own "open design problem"
 section); continue reporting them exactly as Phase 3 already does. Do not improvise any of this from

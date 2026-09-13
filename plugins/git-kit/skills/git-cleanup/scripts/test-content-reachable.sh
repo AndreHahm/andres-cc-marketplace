@@ -71,6 +71,19 @@ new_repo() {
   echo "$dir"
 }
 
+# Runs --list-review against $TARGET (cwd must already be the scratch repo)
+# and echoes just the generation token from its "# Generation: <token> --
+# ..." header line -- every scenario below that calls --diff/--force/--keep
+# needs this, since those modes now require the caller to pass back the
+# exact token --list-review printed (Codex/CodeRabbit cross-model-review
+# finding, PR #322 round 1). Centralized here rather than repeating the
+# same grep/cut in every scenario.
+list_review_generation() {
+  local out
+  out=$(bash "$TARGET" --list-review 2>&1)
+  printf '%s\n' "$out" | sed -n 's/^# Generation: \([^ ]*\).*/\1/p'
+}
+
 # Scenario 1: rebase-merge is recognized -- a branch's commit is rebased
 # (same content, different SHA/parent) onto an advanced main, then merged.
 # The tag on the pre-rebase commit must be recognized as content-reachable.
@@ -1120,8 +1133,8 @@ scenario_diff_shows_evidence_for_review_candidate() {
   )
   (
     cd "$repo"
-    bash "$TARGET" --list-review >/dev/null 2>&1
-    diff_out=$(bash "$TARGET" --diff 1 2>/dev/null)
+    gen=$(list_review_generation)
+    diff_out=$(bash "$TARGET" --diff --generation "$gen" 1 2>/dev/null)
     echo "$diff_out" | grep -qF "UNIQUE-MARKER-LINE" || exit 1
     echo "$diff_out" | grep -qF "orphanmark-rebase-backup-20260101-000000" || exit 1
     exit 0
@@ -1146,8 +1159,8 @@ scenario_force_deletes_review_candidate() {
   )
   (
     cd "$repo"
-    bash "$TARGET" --list-review >/dev/null 2>&1
-    bash "$TARGET" --force 1 >/dev/null 2>&1
+    gen=$(list_review_generation)
+    bash "$TARGET" --force --generation "$gen" 1 >/dev/null 2>&1
     [ -z "$(git tag -l gonefeat-rebase-backup-20260101-000000)" ]
   )
 }
@@ -1173,14 +1186,14 @@ scenario_force_refuses_on_toctou_move() {
   )
   (
     cd "$repo"
-    bash "$TARGET" --list-review >/dev/null 2>&1
+    gen=$(list_review_generation)
     # Force-move the tag to a different object after the snapshot was taken --
     # simulates a concurrent change in the window between --list-review and
     # --force.
     printf 'more\n' >> shared.txt
     git add shared.txt && git commit -q -m "moves the tag's target"
     git tag -f -a movedfeat-rebase-backup-20260101-000000 -m backup2 HEAD >/dev/null 2>&1
-    if bash "$TARGET" --force 1 >/dev/null 2>&1; then
+    if bash "$TARGET" --force --generation "$gen" 1 >/dev/null 2>&1; then
       exit 1  # should have refused -- the tag moved since --list-review
     fi
     # The tag must still exist (unchanged from the moved state), not deleted.
@@ -1232,11 +1245,12 @@ scenario_force_snapshot_survives_for_next_item() {
   )
   (
     cd "$repo"
-    bash "$TARGET" --list-review >/dev/null 2>&1
-    bash "$TARGET" --force 1 >/dev/null 2>&1 || exit 1
+    gen=$(list_review_generation)
+    bash "$TARGET" --force --generation "$gen" 1 >/dev/null 2>&1 || exit 1
     # The second candidate (index 2) must still be usable -- the snapshot
-    # must not have been deleted by the first --force call.
-    bash "$TARGET" --diff 2 >/dev/null 2>&1 || exit 1
+    # must not have been deleted by the first --force call. Same generation
+    # still applies -- $REVIEW_SNAPSHOT wasn't regenerated between calls.
+    bash "$TARGET" --diff --generation "$gen" 2 >/dev/null 2>&1 || exit 1
     exit 0
   )
 }
@@ -1259,11 +1273,11 @@ scenario_force_refuses_when_default_branch_advanced() {
   )
   (
     cd "$repo"
-    bash "$TARGET" --list-review >/dev/null 2>&1
+    gen=$(list_review_generation)
     # Advance main -- the tag itself never moves.
     printf 'main-advances\n' >> shared.txt
     git add shared.txt && git commit -q -m "main advances after --list-review"
-    if bash "$TARGET" --force 1 >/dev/null 2>&1; then
+    if bash "$TARGET" --force --generation "$gen" 1 >/dev/null 2>&1; then
       exit 1  # should have refused -- default_branch moved since --list-review
     fi
     [ -n "$(git tag -l defadvance-rebase-backup-20260101-000000)" ]
@@ -1289,8 +1303,8 @@ scenario_keep_records_and_suppresses() {
   )
   (
     cd "$repo"
-    bash "$TARGET" --list-review >/dev/null 2>&1
-    bash "$TARGET" --keep 1 >/dev/null 2>&1 || exit 1
+    gen=$(list_review_generation)
+    bash "$TARGET" --keep --generation "$gen" 1 >/dev/null 2>&1 || exit 1
     [ -f .claude/git-cleanup-review-decisions.local.json ] || exit 1
     grep -qF "keepme-rebase-backup-20260101-000000" .claude/git-cleanup-review-decisions.local.json || exit 1
     # Fresh --list-review must no longer include the kept candidate.
@@ -1318,8 +1332,8 @@ scenario_keep_resurfaces_after_default_branch_advances() {
   )
   (
     cd "$repo"
-    bash "$TARGET" --list-review >/dev/null 2>&1
-    bash "$TARGET" --keep 1 >/dev/null 2>&1 || exit 1
+    gen=$(list_review_generation)
+    bash "$TARGET" --keep --generation "$gen" 1 >/dev/null 2>&1 || exit 1
     review_out=$(bash "$TARGET" --list-review 2>/dev/null)
     echo "$review_out" | grep -qF "stalekeep-rebase-backup-20260101-000000" && exit 1
     # Advance main -- the pinned default_branch_sha is now stale.
@@ -1408,13 +1422,170 @@ scenario_diff_warns_on_no_common_ancestor() {
   )
   (
     cd "$repo"
-    bash "$TARGET" --list-review >/dev/null 2>&1
-    out=$(bash "$TARGET" --diff 1 2>&1)
+    gen=$(list_review_generation)
+    out=$(bash "$TARGET" --diff --generation "$gen" 1 2>&1)
     rc=$?
     [ "$rc" -eq 0 ] || exit 1
     echo "$out" | grep -qF "Warning: no common ancestor found" || exit 1
     echo "$out" | grep -qF "no differences" || exit 1
     exit 0
+  )
+}
+
+# Scenario 34: --diff/--force/--keep must all refuse a generation token that
+# doesn't match the CURRENT $REVIEW_SNAPSHOT -- Codex/CodeRabbit cross-model-
+# review finding (PR #322 round 1, Critical): without this, a concurrent
+# --list-review re-run between a human's own --list-review and their later
+# --force/--keep silently changes what a previously-shown index refers to,
+# with the existing atomic-oid-compare unable to catch it (it validates the
+# CURRENT snapshot's own row, which stays internally consistent even when
+# its MEANING has changed underneath the human). Live-verified before this
+# fix: two orphan-tag candidates, a re-run after one was removed, and index
+# 1 silently resolved to a different tag than first shown.
+scenario_generation_mismatch_refuses() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q --orphan orphanbranch
+    printf 'orphan-unique\n' > orphan.txt
+    git add orphan.txt && git commit -q -m "orphan commit"
+    git tag -a gentag-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main
+    git branch -D orphanbranch >/dev/null
+  )
+  (
+    cd "$repo"
+    gen=$(list_review_generation)
+    # A wrong/stale token must refuse on every mode that accepts one.
+    bash "$TARGET" --diff --generation "wrong-token" 1 >/dev/null 2>&1 && exit 1
+    bash "$TARGET" --force --generation "wrong-token" 1 >/dev/null 2>&1 && exit 1
+    bash "$TARGET" --keep --generation "wrong-token" 1 >/dev/null 2>&1 && exit 1
+    # Omitting --generation entirely must also refuse (a usage error), not
+    # silently fall back to "no check."
+    bash "$TARGET" --diff 1 >/dev/null 2>&1 && exit 1
+    # The tag must still exist -- none of the above should have deleted it.
+    [ -n "$(git tag -l gentag-rebase-backup-20260101-000000)" ] || exit 1
+    # A fresh --list-review changes the generation, and the OLD token from
+    # the first listing must now be rejected even though the same tag is
+    # still at the same index.
+    gen2=$(list_review_generation)
+    [ "$gen" != "$gen2" ] || exit 1
+    bash "$TARGET" --diff --generation "$gen" 1 >/dev/null 2>&1 && exit 1
+    # The CURRENT token must still work.
+    bash "$TARGET" --diff --generation "$gen2" 1 >/dev/null 2>&1 || exit 1
+    exit 0
+  )
+}
+
+# Scenario 35: --diff must be reproducible against a given --list-review
+# snapshot -- the SAME --diff call against the SAME unchanged snapshot must
+# show the SAME evidence, regardless of how much $default_branch has moved
+# on since. Codex/CodeRabbit cross-model-review finding (PR #322 round 1):
+# --diff previously re-resolved current $default_branch instead of using
+# the snapshot's own recorded dsha, so re-running the identical command
+# later could show different (in this fixture's live reproduction, a
+# rename-detected match instead of the original new-file diff) evidence for
+# the exact same recorded candidate.
+scenario_diff_pinned_to_snapshot_dsha_not_live_branch() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q --orphan orphanbranch
+    printf 'orphan-unique\n' > orphan.txt
+    git add orphan.txt && git commit -q -m "orphan commit"
+    git tag -a pintag-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main
+    git branch -D orphanbranch >/dev/null
+  )
+  (
+    cd "$repo"
+    gen=$(list_review_generation)
+    before=$(bash "$TARGET" --diff --generation "$gen" 1 2>/dev/null)
+    # main advances -- no new --list-review, same snapshot, same generation.
+    printf 'orphan-unique\n' > mirrored.txt
+    git add mirrored.txt && git commit -q -m "coincidentally adds the same content the tag has"
+    after=$(bash "$TARGET" --diff --generation "$gen" 1 2>/dev/null)
+    [ "$before" = "$after" ]
+  )
+}
+
+# Scenario 36: --diff must add an explicit caution note (not just an
+# unqualified "no differences") when a review candidate's final tree
+# matches $default_branch exactly, using the exact
+# scenario_self_reverted_unique_content_fails_closed fixture -- Codex
+# cross-model-review finding (PR #322 round 1): the unique-commit list DOES
+# include the add/revert commit pair, but a human skimming one-line commit
+# subjects (not full diffs) could easily miss that; every candidate reaching
+# --diff at all already failed the automated check by construction, so an
+# exact tree match here is always worth flagging, not just this specific
+# self-revert case.
+scenario_diff_notes_reachability_check_failure_on_empty_diff() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'original\n' > secret.txt
+    git add secret.txt && git commit -q -m base
+    git branch feature
+    git checkout -q feature
+    printf 'SECRET-CONTENT\n' > secret.txt
+    git add secret.txt && git commit -q -m "feature: add secret content"
+    printf 'original\n' > secret.txt
+    git add secret.txt && git commit -q -m "feature: revert secret.txt back to original"
+    git tag -a selfrevert-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main 2>/dev/null || git checkout -q master
+    git branch -D feature >/dev/null
+  )
+  (
+    cd "$repo"
+    gen=$(list_review_generation)
+    out=$(bash "$TARGET" --diff --generation "$gen" 1 2>&1)
+    rc=$?
+    [ "$rc" -eq 0 ] || exit 1
+    echo "$out" | grep -qF "no differences" || exit 1
+    echo "$out" | grep -qF "Note: this candidate reached manual review because the automated check could not verify it" || exit 1
+    exit 0
+  )
+}
+
+# Scenario 37: --keep must protect $DECISIONS_FILE from an accidental
+# `git add -A` in whatever repo this script runs in, not just this source
+# repo's own `.gitignore` -- Codex/CodeRabbit cross-model-review finding
+# (PR #322 round 1): git-kit is a DISTRIBUTED plugin, and a consumer repo
+# that installs it has no `**/*.local.*` rule of its own. Neutralizes this
+# machine's own global/system git config via env vars so the scratch repo
+# genuinely has no ignore rule at all (a true "foreign environment"
+# simulation) -- live-verified this was necessary: without it, this
+# machine's personal global excludesfile already ignores `.claude/`,
+# masking the exact gap this scenario exists to catch.
+scenario_keep_protects_decisions_file_via_info_exclude() {
+  local repo; repo=$(new_repo)
+  (
+    cd "$repo"
+    printf 'base\n' > shared.txt
+    git add shared.txt && git commit -q -m base
+    git checkout -q --orphan orphanbranch
+    printf 'orphan-unique\n' > orphan.txt
+    git add orphan.txt && git commit -q -m "orphan commit"
+    git tag -a excltag-rebase-backup-20260101-000000 -m backup HEAD
+    git checkout -q main
+    git branch -D orphanbranch >/dev/null
+  )
+  (
+    cd "$repo"
+    export GIT_CONFIG_GLOBAL=/dev/null
+    export GIT_CONFIG_SYSTEM=/dev/null
+    gen=$(list_review_generation)
+    bash "$TARGET" --keep --generation "$gen" 1 >/dev/null 2>&1 || exit 1
+    grep -qxF ".claude/git-cleanup-review-decisions.local.json" .git/info/exclude 2>/dev/null || exit 1
+    # git status must report the decision file as IGNORED, not untracked --
+    # the actual behavioral guarantee this scenario exists to verify.
+    git status --porcelain --ignored | grep -qF "!! .claude/git-cleanup-review-decisions.local.json" && exit 0
+    git status --porcelain --ignored | grep -qF "!! .claude/" && exit 0
+    exit 1
   )
 }
 
@@ -1461,6 +1632,10 @@ run scenario_keep_records_and_suppresses "--keep records a decision and suppress
 run scenario_keep_resurfaces_after_default_branch_advances "a kept decision resurfaces once the default branch advances past what was pinned"
 run scenario_plain_delete_skips_already_gone_tag_and_continues "the plain --list delete loop skips an already-gone tag and still processes the rest (Codex F1 sibling instance)"
 run scenario_diff_warns_on_no_common_ancestor "--diff warns instead of staying silent when a review candidate has no common ancestor with the default branch (Codex F1, round 3)"
+run scenario_generation_mismatch_refuses "--diff/--force/--keep all refuse a generation token that doesn't match the current review snapshot (Codex/CodeRabbit, PR #322 round 1, Critical)"
+run scenario_diff_pinned_to_snapshot_dsha_not_live_branch "--diff is reproducible against a given snapshot, not affected by the default branch advancing afterward (Codex/CodeRabbit, PR #322 round 1)"
+run scenario_diff_notes_reachability_check_failure_on_empty_diff "--diff adds an explicit caution note when a review candidate's tree matches the default branch exactly (Codex, PR #322 round 1)"
+run scenario_keep_protects_decisions_file_via_info_exclude "--keep protects the decision file from an accidental git add -A via .git/info/exclude, not just this source repo's own .gitignore (Codex/CodeRabbit, PR #322 round 1)"
 
 echo ""
 echo "$PASS passed, $FAIL failed"

@@ -72,6 +72,32 @@ SNAPSHOT="$(git rev-parse --git-dir)/delete-rebase-backup-tags.snapshot"
 # concurrent invocation) can never silently invalidate an in-progress
 # --list-review/--diff/--force sequence, or vice versa.
 REVIEW_SNAPSHOT="$(git rev-parse --git-dir)/delete-rebase-backup-tags.review-snapshot"
+# Generation stamp for $REVIEW_SNAPSHOT (Codex/CodeRabbit cross-model-review
+# finding, PR #322 round 1, Critical): --list-review's own index numbering
+# only means anything relative to the EXACT snapshot content that produced
+# it -- without a way to detect "the snapshot was regenerated since I last
+# looked," a concurrent --list-review (another session, another process)
+# between a human's --diff and their --force/--keep silently changes what a
+# previously-shown index actually refers to, with nothing in the existing
+# atomic-oid-compare protection able to catch it (that check validates the
+# CURRENT snapshot's own row, which is self-consistent by construction --
+# the race is about whether the human's own mental model of "index N" still
+# matches the CURRENT snapshot's row N, not whether row N itself is stale).
+# Live-verified: two orphan-tag candidates at indices 1/2, a third candidate
+# added and a concurrent --list-review re-run, then the original index-1
+# tag removed and --list-review re-run again -- index 1 silently resolved
+# to a completely different tag than the one first shown. --diff/--force/
+# --keep below all require the caller to pass back the exact token
+# --list-review printed; a mismatch (or a missing generation file) refuses
+# outright rather than acting on an index whose meaning may have changed.
+# Not a security boundary (a script-generated token, never derived from or
+# composed with a raw tag name -- the untrusted-content risk this script's
+# whole index-only design exists to avoid never applies to this token),
+# just a staleness fingerprint: $RANDOM twice plus a timestamp and this
+# process's own PID is far more than enough entropy to distinguish "the
+# same listing" from "a different one," without needing /dev/urandom or any
+# other environment-dependent source.
+REVIEW_GENERATION_FILE="${REVIEW_SNAPSHOT}.generation"
 # Decision file lives at the repo's WORKING TREE root (not $GIT_DIR like the
 # snapshots above) -- it's a human-facing, persistent record meant to survive
 # across script runs, not a same-invocation handoff file. Read/write for this
@@ -567,6 +593,22 @@ decision_is_valid_keep() {
   [ "$recorded_item" = "$current_item_sha" ] && [ "$recorded_default" = "$current_default_sha" ]
 }
 
+# Refuses --diff/--force/--keep outright unless the caller's supplied token
+# matches $REVIEW_GENERATION_FILE's CURRENT content exactly -- see this
+# constant's own definition above for the full race this closes. A missing
+# generation file (no --list-review has ever run, or it predates this
+# mechanism) is treated the same as a mismatch: fail closed, never assume
+# "no file yet" means "anything goes."
+require_generation_token() {
+  local supplied="$1"
+  local current=""
+  current=$(cat "$REVIEW_GENERATION_FILE" 2>/dev/null) || current=""
+  if [ -z "$current" ] || [ "$supplied" != "$current" ]; then
+    echo "Error: the review snapshot has changed since you ran --list-review (no matching generation) -- run --list-review again and start this candidate's review over, since a previously-shown index no longer reliably maps to the tag you reviewed" >&2
+    exit 1
+  fi
+}
+
 # Emits tag\0oid\0default_branch_sha\0 triples, not just tag\0 -- unlike
 # $SNAPSHOT (list_deletable), this snapshot's whole reason to exist is to
 # survive across a human reading --diff's evidence and later deciding to
@@ -625,6 +667,15 @@ fi
 
 if [ "${1:-}" = "--list-review" ]; then
   list_review > "$REVIEW_SNAPSHOT"
+  # Written AFTER $REVIEW_SNAPSHOT, not atomically together with it: a crash
+  # or interruption between the two writes leaves the generation file stale
+  # or missing, which require_generation_token() above already treats as a
+  # refusal (fail closed), never as "generation checking is optional this
+  # time" -- there is no failure ordering here that lets a stale-index
+  # delete through unnoticed.
+  generation="$(date -u +%Y%m%dT%H%M%S)-$$-$RANDOM-$RANDOM"
+  printf '%s' "$generation" > "$REVIEW_GENERATION_FILE"
+  printf '# Generation: %s -- pass this back via --generation on --diff/--force/--keep\n' "$generation"
   i=0
   while IFS= read -r -d '' tag && IFS= read -r -d '' _oid && IFS= read -r -d '' _dsha; do
     i=$((i + 1))
@@ -656,6 +707,12 @@ fi
 # approve a delete based on a broken check rather than a genuine match.
 if [ "${1:-}" = "--diff" ]; then
   shift
+  if [ "${1:-}" != "--generation" ] || [ -z "${2:-}" ]; then
+    echo "Usage: $0 --diff --generation <token> <index>" >&2
+    exit 2
+  fi
+  generation_arg="$2"
+  shift 2
   idx="${1:-}"
   if ! [[ "$idx" =~ ^[0-9]+$ ]]; then
     echo "Error: index '$idx' is not a positive integer" >&2
@@ -665,13 +722,15 @@ if [ "${1:-}" = "--diff" ]; then
     echo "Error: no review candidate list found -- run --list-review first" >&2
     exit 2
   fi
-  tag="" oid=""
+  require_generation_token "$generation_arg"
+  tag="" oid="" dsha=""
   i=0
-  while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' _d; do
+  while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' d; do
     i=$((i + 1))
     if [ "$i" = "$idx" ]; then
       tag="$t"
       oid="$o"
+      dsha="$d"
     fi
   done < "$REVIEW_SNAPSHOT"
   if [ -z "$tag" ]; then
@@ -679,7 +738,21 @@ if [ "${1:-}" = "--diff" ]; then
     exit 1
   fi
   printf '=== %q (oid %s) ===\n' "$tag" "$oid"
-  mb=$(git merge-base -- "$oid" "$default_branch" 2>/dev/null) || mb=""
+  # $dsha (the snapshot's own recorded $default_branch oid), not a fresh
+  # `$default_branch` resolution -- Codex/CodeRabbit cross-model-review
+  # finding (PR #322 round 1): re-resolving current $default_branch here
+  # meant the SAME --diff call against the SAME unchanged snapshot could
+  # show DIFFERENT evidence depending only on how much time passed since
+  # --list-review -- live-verified: an identical `--diff 1` call, run again
+  # after $default_branch advanced with no new --list-review in between,
+  # produced a different diff (a rename-detected match instead of the
+  # original new-file diff) for the exact same recorded candidate. Using
+  # $dsha instead means this command is reproducible against a given
+  # snapshot -- exactly what --force/--keep below already pin their own
+  # atomic compare-and-delete to, so the evidence a human reviews here is
+  # now guaranteed to be the SAME state those commands actually validate
+  # against, not just usually the same.
+  mb=$(git merge-base -- "$oid" "$dsha" 2>/dev/null) || mb=""
   if [ -n "$mb" ]; then
     echo "--- unique commits ($mb..$oid) ---"
     git log --oneline "${mb}..${oid}" -- 2>/dev/null
@@ -702,7 +775,7 @@ if [ "${1:-}" = "--diff" ]; then
     # trusting it.
     echo "Warning: no common ancestor found with $default_branch -- unique-commit history cannot be shown for this candidate (orphan branch, grafted/shallow history, or an unrelated-histories merge root)" >&2
   fi
-  echo "--- content diff: $default_branch (current) vs $tag (recorded oid $oid) ---"
+  echo "--- content diff: $default_branch @ ${dsha:0:12} (as recorded by --list-review) vs $tag (recorded oid $oid) ---"
   # `&& diff_rc=0 || diff_rc=$?`, not a bare assignment followed by
   # `diff_rc=$?` on the next line -- security-reviewer/Codex cross-model-
   # review finding (F1, same root cause as list_review's item_sha above):
@@ -716,7 +789,7 @@ if [ "${1:-}" = "--diff" ]; then
   # never fires on this line regardless of whether `git diff` itself
   # succeeded or failed -- `$diff_rc` still ends up holding the real exit
   # code either way.
-  diff_out=$(git diff --no-ext-diff --no-textconv "$default_branch" "$oid" -- 2>&1) && diff_rc=0 || diff_rc=$?
+  diff_out=$(git diff --no-ext-diff --no-textconv "$dsha" "$oid" -- 2>&1) && diff_rc=0 || diff_rc=$?
   if [ "$diff_rc" -ne 0 ]; then
     echo "Error: could not produce evidence for this candidate -- do NOT treat this as \"no content differs\"" >&2
     printf '%s\n' "$diff_out" >&2
@@ -724,9 +797,26 @@ if [ "${1:-}" = "--diff" ]; then
   fi
   if [ -z "$diff_out" ]; then
     if [ -z "$mb" ]; then
-      echo "(no differences -- this candidate's tree matches $default_branch's current tree exactly, but see the no-common-ancestor warning above before treating that as sufficient evidence)"
+      echo "(no differences -- this candidate's tree matches $default_branch's recorded tree exactly, but see the no-common-ancestor warning above before treating that as sufficient evidence)"
     else
-      echo "(no differences -- this candidate's tree matches $default_branch's current tree exactly)"
+      echo "(no differences -- this candidate's tree matches $default_branch's recorded tree exactly)"
+      # General caution, not just the self-reverted-content case Codex named
+      # specifically (cross-model-review finding, PR #322 round 1): this
+      # candidate is only in --list-review at all because the AUTOMATED
+      # reachability check already failed to verify it (is_tag_needs_review
+      # returned true) -- so a matching final tree here can only mean the
+      # automated per-commit walk found something it couldn't confirm was
+      # genuinely reflected on $default_branch, yet the end states happen to
+      # coincide anyway. That can happen for more than one reason (content
+      # reorganized into differently-grouped commits -- issue #317's own
+      # still-open case -- or content added then reverted within this tag's
+      # own history, live-verified with the exact
+      # scenario_self_reverted_unique_content_fails_closed fixture: the
+      # unique-commit list above DOES include the add/revert pair, but a
+      # human skimming one-line commit subjects, not full diffs, could
+      # easily miss that on their own) -- worth surfacing explicitly rather
+      # than trusting the reviewer to always read every commit's own diff.
+      echo "Note: this candidate reached manual review because the automated check could not verify it -- an exact tree match despite that can mean content was reorganized across differently-grouped commits, or added then later reverted within this tag's own history; review each unique commit's own diff above, not just its one-line subject, before treating an empty diff as equivalent to \"nothing unique happened here\"" >&2
     fi
   else
     printf '%s\n' "$diff_out"
@@ -780,14 +870,21 @@ fi
 # --list-review ever replaces it.
 if [ "${1:-}" = "--force" ]; then
   shift
+  if [ "${1:-}" != "--generation" ] || [ -z "${2:-}" ]; then
+    echo "Usage: $0 --force --generation <token> <index> [index...]" >&2
+    exit 2
+  fi
+  generation_arg="$2"
+  shift 2
   if [ "$#" -eq 0 ]; then
-    echo "Usage: $0 --force <index> [index...]" >&2
+    echo "Usage: $0 --force --generation <token> <index> [index...]" >&2
     exit 2
   fi
   if [ ! -f "$REVIEW_SNAPSHOT" ]; then
     echo "Error: no review candidate list found -- run --list-review first" >&2
     exit 2
   fi
+  require_generation_token "$generation_arg"
   declare -A force_wanted
   for arg in "$@"; do
     if ! [[ "$arg" =~ ^[0-9]+$ ]]; then
@@ -868,6 +965,12 @@ fi
 # rationale above.
 if [ "${1:-}" = "--keep" ]; then
   shift
+  if [ "${1:-}" != "--generation" ] || [ -z "${2:-}" ]; then
+    echo "Usage: $0 --keep --generation <token> <index>" >&2
+    exit 2
+  fi
+  generation_arg="$2"
+  shift 2
   idx="${1:-}"
   if ! [[ "$idx" =~ ^[0-9]+$ ]]; then
     echo "Error: index '$idx' is not a positive integer" >&2
@@ -877,6 +980,7 @@ if [ "${1:-}" = "--keep" ]; then
     echo "Error: no review candidate list found -- run --list-review first" >&2
     exit 2
   fi
+  require_generation_token "$generation_arg"
   tag="" oid="" dsha=""
   i=0
   while IFS= read -r -d '' t && IFS= read -r -d '' o && IFS= read -r -d '' d; do
@@ -907,6 +1011,26 @@ if [ "${1:-}" = "--keep" ]; then
     echo "Error: $default_branch advanced since --list-review -- run --list-review and --diff again, and confirm before keeping" >&2
     exit 1
   fi
+  # Protect $DECISIONS_FILE from an accidental `git add -A`/`git commit -a`
+  # in whatever repo this script actually runs in -- Codex/CodeRabbit
+  # cross-model-review finding (PR #322 round 1): this SOURCE repo's own
+  # `.gitignore` (`**/*.local.*`) already covers it, but git-kit is a
+  # DISTRIBUTED plugin -- a consumer repo that installs it has no such rule
+  # of its own, and live-verifying with this machine's personal global
+  # excludesfile neutralized (a true "foreign environment" simulation)
+  # confirmed `git add -A` happily stages this file there. Writing to the
+  # repo's own PER-REPO `info/exclude` (never shipped, never committed by
+  # anyone) rather than a tracked `.gitignore` keeps the decision file at
+  # its already-documented working-tree location (see this constant's own
+  # definition above for why that placement is deliberate) while still
+  # closing the gap for every repo this script ever runs in, not just this
+  # one. Idempotent: only appended once, checked by an exact-line match.
+  exclude_file="$(git rev-parse --git-path info/exclude)"
+  exclude_pattern=".claude/git-cleanup-review-decisions.local.json"
+  mkdir -p "$(dirname "$exclude_file")"
+  if [ ! -f "$exclude_file" ] || ! grep -qxF "$exclude_pattern" "$exclude_file" 2>/dev/null; then
+    printf '%s\n' "$exclude_pattern" >> "$exclude_file"
+  fi
   mkdir -p "$(dirname "$DECISIONS_FILE")"
   if [ -f "$DECISIONS_FILE" ]; then
     existing_version=$(jq -r '.version // empty' "$DECISIONS_FILE" 2>/dev/null) || existing_version=""
@@ -936,7 +1060,7 @@ if [ "${1:-}" = "--keep" ]; then
 fi
 
 if [ "$#" -eq 0 ]; then
-  echo "Usage: $0 --list | <index> [index...] | --list-review | --diff <index> | --force <index> [index...] | --keep <index>" >&2
+  echo "Usage: $0 --list | <index> [index...] | --list-review | --diff --generation <token> <index> | --force --generation <token> <index> [index...] | --keep --generation <token> <index>" >&2
   exit 2
 fi
 
