@@ -103,27 +103,18 @@ comm -23 \
 # against this repository's own real tag history, controlled A/B, 2 runs
 # each).
 is_path_blob_reachable() {
-  local path="$1" wanted_blob="$2" wanted_mode="$3" mb="$4" tag="$5"
+  local path="$1" wanted_blob="$2" wanted_mode="$3" mb="$4"
   local mode blob
   read -r mode _ blob _ < <(git ls-tree "$mb" -- "$path" 2>/dev/null)
   if [ -n "$blob" ] && [ "$blob" = "$wanted_blob" ] && [ "$mode" = "$wanted_mode" ]; then
     return 0
   fi
-  # Final-state shortcut (issue #317) -- see delete-rebase-backup-tags.sh's
-  # identical comment for the full rationale: if $tag's own FINAL content at
-  # $path already matches $default_branch's CURRENT content at $path, this
-  # commit's own blob for the same path needs no independent history match --
-  # whatever content this commit introduced was itself superseded by a later
-  # commit within the tag's own history.
-  local tip_mode tip_blob
-  read -r tip_mode _ tip_blob _ < <(git ls-tree "$tag" -- "$path" 2>/dev/null)
-  if [ -n "$tip_blob" ]; then
-    local cur_mode cur_blob
-    read -r cur_mode _ cur_blob _ < <(git ls-tree "$default_branch" -- "$path" 2>/dev/null)
-    if [ -n "$cur_blob" ] && [ "$cur_blob" = "$tip_blob" ] && [ "$cur_mode" = "$tip_mode" ]; then
-      return 0
-    fi
-  fi
+  # A "final-state shortcut" for issue #317 was tried and REVERTED here --
+  # see delete-rebase-backup-tags.sh's identical comment for the full
+  # rationale: it was found unsafe by a pre-push cross-model-review pass
+  # (live-verified false positive -- a tag whose unique history adds then
+  # reverts unique content to a path was reported reachable even though
+  # that content exists nowhere on $default_branch and would be lost).
   local hist_file meta new_mode new_blob found
   hist_file=$(mktemp) || return 1
   git log --raw -m --root -z --no-abbrev --no-ext-diff --no-textconv --format= \
@@ -141,7 +132,7 @@ is_path_blob_reachable() {
 }
 
 check_diff_records() {
-  local file="$1" mb="$2" tag="$3"
+  local file="$1" mb="$2"
   local meta path new_mode new_blob status del_out del_rc
   while IFS= read -r -d '' meta && IFS= read -r -d '' path; do
     read -r _ new_mode _ new_blob status <<< "${meta#:}"
@@ -158,7 +149,7 @@ check_diff_records() {
       [ -n "$del_out" ] && return 1
     else
       [ -z "$new_blob" ] && return 1
-      is_path_blob_reachable "$path" "$new_blob" "$new_mode" "$mb" "$tag" || return 1
+      is_path_blob_reachable "$path" "$new_blob" "$new_mode" "$mb" || return 1
     fi
   done < "$file"
   return 0
@@ -191,7 +182,7 @@ is_tag_content_reachable() {
       rm -f "$diff_file"
       return 1
     fi
-    if ! check_diff_records "$diff_file" "$mb" "$tag"; then
+    if ! check_diff_records "$diff_file" "$mb"; then
       rm -f "$diff_file"
       return 1
     fi

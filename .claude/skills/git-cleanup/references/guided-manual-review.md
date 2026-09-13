@@ -224,12 +224,18 @@ resolved.
     needs to grant any of them for this feature.
   - The branch-side findings (part of C3, plus the branch-specific character-class gap) are NOT fixed —
     see "Branches: open design problem" above; this is a deliberate scope reduction, not an oversight.
-- Verified live against this repository's own real tags (2026-09-12, re-confirmed after all fixes):
-  `--list-review` returns exactly the 4 genuinely-unreachable tags already identified during issue #317's
-  investigation (`feat-context-kit-plugin-rebase-backup-20260910-214413`,
+- Verified live against this repository's own real tags (2026-09-12, re-confirmed after all fixes),
+  **after** the final-state shortcut for issue #317 was separately reverted (see
+  `testing-and-validation.md`'s own entry on that revert — a `security-reviewer`/`cross-model-review`
+  finding unrelated to this feature's own C1-C3/M1-M5 fixes above, caught during this same pre-push
+  review pass): `--list-review` correctly includes both the originally-genuinely-unreachable tags
+  (`feat-context-kit-plugin-rebase-backup-20260910-214413`,
   `feat-context-kit-plugin-rebase-backup-20260911-154738`,
-  `feat-context-kit-plugin-rebase-backup-20260911-234121`,
-  `feat/ci-pipeline-foundation-rebase-backup-20260907-100335`), and `--diff` produces readable evidence
+  `feat-context-kit-plugin-rebase-backup-20260911-234121`) and the tags the now-reverted shortcut had
+  briefly (never-shipped) auto-recognized
+  (`feat-analysis-kit-new-dimensions-rebase-backup-20260910-194109`,
+  `feat/ci-pipeline-foundation-rebase-backup-20260907-143553`) — all correctly back to "needs review"
+  post-revert, exactly what this feature exists to make actionable. `--diff` produces readable evidence
   for each. `--force`/`--keep` were NOT exercised against this repository's real tags (destructive/
   state-mutating; only exercised in isolated scratch repos per the regression suite above).
 - Not yet exercised: a full live run of Phase 7 itself end-to-end (the `AskUserQuestion` flow) — this

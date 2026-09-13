@@ -958,16 +958,15 @@ scenario_merge_resolves_to_one_parent_content_loss_fails_closed() {
 # commit on $default_branch ever matches one of the tag's own EARLIER,
 # later-superseded commit blobs for a path, even though the tag's FINAL
 # (tip) content for that path is byte-identical to $default_branch's CURRENT
-# content. Distinct from scenario 6 (reorganized into different commit
-# GROUPING, but each individual final value still appears verbatim
-# somewhere in $default_branch's history) -- here the tag's own EARLIER
-# commit's intermediate value for the path never appears anywhere in
-# $default_branch's history at all, only the tag's FINAL value does.
-# Live-verified against this repo's own real
-# feat-analysis-kit-new-dimensions-rebase-backup-20260910-194109 tag before
-# writing this fixture (see is_path_blob_reachable's own comment on the
-# final-state shortcut this scenario guards).
-scenario_reordered_final_state_recognized() {
+# content. A "final-state shortcut" was tried here and REVERTED before
+# shipping -- found unsafe by a pre-push cross-model-review pass (see
+# scenario 23 below, which locks in the exact counter-example that killed
+# it). No safe narrowing of that shortcut was found that still resolves
+# this scenario (see is_path_blob_reachable's own comment for why), so this
+# is now a NEGATIVE test: reordering-only convergence correctly still fails
+# closed (reported "needs review", never auto-deleted) -- resolvable only
+# via the guided-manual-review feature's human-reviewed --diff/--force.
+scenario_reordered_final_state_not_auto_recognized() {
   local repo; repo=$(new_repo)
   (
     cd "$repo"
@@ -1000,31 +999,40 @@ scenario_reordered_final_state_recognized() {
     # shellcheck disable=SC2034
     git show-ref --verify --quiet refs/heads/main || default_branch=master
     eval "$FUNCS"
-    is_tag_content_reachable reorderfinal-rebase-backup-20260101-000000
+    if is_tag_content_reachable reorderfinal-rebase-backup-20260101-000000; then
+      exit 1  # no shortcut exists anymore -- must fail closed, not auto-recognize this
+    else
+      exit 0
+    fi
   )
 }
 
-# Scenario 22: negative counterpart to scenario 21 -- the final-state
-# shortcut must not become overly permissive. The tag's final content for
-# the path does NOT match $default_branch's current content (main moved on
-# further, or never matched at all), and no intermediate commit matches
-# either -- must still fail closed.
-scenario_reordered_final_state_mismatch_fails_closed() {
+# Scenario 22: security-reviewer/cross-model-review finding (Codex
+# fresh-eyes, high confidence, live-verified before reverting) -- the exact
+# counter-example that killed the final-state shortcut scenario 21 once
+# guarded. A tag's unique history adds UNIQUE content to a path, then a
+# LATER commit in the SAME tag REVERTS that path back to $default_branch's
+# own original (never-touched) content. The tag's own final state trivially
+# matches $default_branch -- but the reverted-away unique content exists
+# NOWHERE else and would be permanently lost (eventually garbage-collected)
+# if a final-state-only check treated this as "reachable". Locks in that
+# this must always fail closed, regardless of any future shortcut attempt.
+scenario_self_reverted_unique_content_fails_closed() {
   local repo; repo=$(new_repo)
   (
     cd "$repo"
-    printf 'line0\n' > shared.txt
-    git add shared.txt && git commit -q -m base
+    printf 'original\n' > secret.txt
+    git add secret.txt && git commit -q -m base
     git branch feature
     git checkout -q feature
-    printf 'line0\nP\n' > shared.txt
-    git add shared.txt && git commit -q -m "feature: add P"
-    printf 'line0\nP\nM\n' > shared.txt
-    git add shared.txt && git commit -q -m "feature: incorporate M"
-    git tag -a reordermiss-rebase-backup-20260101-000000 -m backup HEAD
+    printf 'SECRET-CONTENT\n' > secret.txt
+    git add secret.txt && git commit -q -m "feature: add secret content"
+    printf 'original\n' > secret.txt
+    git add secret.txt && git commit -q -m "feature: revert secret.txt back to original"
+    git tag -a selfrevert-rebase-backup-20260101-000000 -m backup HEAD
     git checkout -q main 2>/dev/null || git checkout -q master
     git branch -D feature >/dev/null
-    # main never lands this content at all -- it stays at the original base.
+    # main never touches secret.txt at all -- stays at "original" forever.
   )
   (
     cd "$repo"
@@ -1034,8 +1042,8 @@ scenario_reordered_final_state_mismatch_fails_closed() {
     # shellcheck disable=SC2034
     git show-ref --verify --quiet refs/heads/main || default_branch=master
     eval "$FUNCS"
-    if is_tag_content_reachable reordermiss-rebase-backup-20260101-000000; then
-      exit 1  # main never got this content -- must fail closed
+    if is_tag_content_reachable selfrevert-rebase-backup-20260101-000000; then
+      exit 1  # SECRET-CONTENT is unique to this tag -- must fail closed
     else
       exit 0
     fi
@@ -1353,8 +1361,8 @@ run scenario_pre_divergence_blob_not_reachable "a blob present on default_branch
 run scenario_content_inherited_from_merge_base_recognized "content inherited unchanged from the merge-base is still recognized as reachable"
 run scenario_default_branch_merge_conflict_content_recognized "default_branch's own merge-conflict-resolution content is still recognized"
 run scenario_merge_resolves_to_one_parent_content_loss_fails_closed "a tag's own merge resolving to exactly one parent's state still fails closed on lost content"
-run scenario_reordered_final_state_recognized "content landed via a different commit order than the tag recorded is still recognized (issue #317)"
-run scenario_reordered_final_state_mismatch_fails_closed "a final-state mismatch after content reordering still fails closed"
+run scenario_reordered_final_state_not_auto_recognized "content landed via a different commit order (issue #317) is NOT auto-recognized -- fails closed, deferred to guided manual review"
+run scenario_self_reverted_unique_content_fails_closed "unique content later self-reverted within the same tag still fails closed (security-reviewer/Codex finding)"
 run scenario_list_review_excludes_deletable_and_vice_versa "--list-review and --list are mutually exclusive over the same tag set"
 run scenario_diff_shows_evidence_for_review_candidate "--diff surfaces the actual differing content for a review candidate"
 run scenario_force_deletes_review_candidate "--force deletes a genuine review candidate by index"

@@ -588,3 +588,52 @@ distinct from every gap fixed above.
   `git show HEAD:...` + sed-range technique this suite already uses) and confirmed it correctly reports
   "not reachable" there, proving the new scenario actually exercises the bug rather than passing
   vacuously. All 22 scenarios passed after the fix.
+
+**Live results, 2026-09-12 (the final-state shortcut above was REVERTED, same day, before ever
+shipping): a mandatory pre-push `cross-model-review` pass found it unsafe.** This fix, and the
+guided-manual-review feature built alongside it (Phase 7, see this file's own later entry), were both
+about to be pushed together when Codex's fresh-eyes Phase 1 pass (dispatched via `cross-model-review`,
+high confidence) raised a Major correctness finding against the shortcut above.
+- **The finding:** `is_path_blob_reachable`'s shortcut accepted ANY commit's blob as reachable purely
+  because the TAG'S OWN tip blob for that path matched `$default_branch`'s current blob -- without ever
+  checking whether the specific commit's own `wanted_blob` had any relationship to that tip blob at all.
+  Concretely: a tag whose unique history adds UNIQUE content to a path, then REVERTS that same path back
+  to `$default_branch`'s own untouched original content in a LATER commit, has a tip that trivially
+  matches `$default_branch` -- but the reverted-away unique content was never on `$default_branch` in any
+  form and would become permanently unreachable (eventually garbage-collected) once the tag is deleted.
+  This is a genuine false POSITIVE ("safe to delete" when it isn't) -- strictly worse than #317's own
+  false-negative bug, which only produced an unnecessary manual-review prompt, never data loss.
+- **Live-verified before reverting**, in an isolated scratch repo mirroring the exact finding: a tag adds
+  `SECRET-CONTENT` to `secret.txt`, then a later commit in the same tag reverts it to `original`;
+  `$default_branch` never touches `secret.txt` at all. Confirmed `--list` reported this tag as
+  automatically SAFE TO DELETE before the revert, and correctly moved it to `--list-review` ("needs
+  review") after.
+- **No safe narrowing was found that preserves both properties.** Restricting the shortcut to only fire
+  when a commit's own blob equals the tag's own tip blob for that path (the only version that provably
+  can't also be a discarded intermediate) closes the false positive -- but that restriction makes the
+  shortcut fire exclusively for whichever commit is literally the LAST to touch a path, which the
+  pre-existing `mb`-tree check and `mb..$default_branch` history search already cover on their own. #317's
+  own scenario specifically requires validating an EARLIER, non-final commit's blob (`c4690df1`, superseded
+  within the tag by a later merge) -- exactly the case a safely-narrowed shortcut can no longer help with.
+  Distinguishing "superseded on the way to an equivalent final state" from "discarded via an unrelated
+  revert" would require actual content/diff analysis, a deliberate departure from this file's
+  long-standing, extensively-defended commitment to blob-identity-only comparison (see the file's own
+  historical rejection of a patch-id-based approach for the same reason).
+- **Fix: fully reverted** -- `is_path_blob_reachable`/`check_diff_records`/`is_tag_content_reachable` are
+  back to their pre-#317-session per-commit-only form (including removing the now-unused `tag` parameter
+  threading) in both `delete-rebase-backup-tags.sh` and `phase1-analysis.sh`. `#317`-shaped tags once again
+  report "needs review" via `--list-review`, exactly as before this session -- but are now actually
+  actionable, via Phase 7's guided-manual-review feature (a human reviews `--diff`'s real evidence and
+  decides `--force`/`--keep`), which is arguably the correct tool for this class of case regardless: no
+  blob-identity-only automation can safely distinguish it from Codex's counter-example, but a human looking
+  at the actual diff can.
+- **Regression suite updated to match** (still 31 scenarios total, alongside Phase 7's own additions --
+  see that entry below): `scenario_reordered_final_state_recognized` renamed to
+  `scenario_reordered_final_state_not_auto_recognized` and its assertion inverted (now proves #317's own
+  case correctly fails closed with no shortcut); `scenario_reordered_final_state_mismatch_fails_closed`
+  removed (redundant once there's no shortcut left to guard against overreaching); new
+  `scenario_self_reverted_unique_content_fails_closed` added, locking in Codex's exact counter-example as
+  a permanent regression guard against ever reintroducing this specific class of false positive. All 31
+  passed after the revert; re-verified against this repository's own real tags afterward --
+  `feat-analysis-kit-new-dimensions-rebase-backup-20260910-194109` (the actual #317 tag) is back under
+  `--list-review`, not `--list`.
