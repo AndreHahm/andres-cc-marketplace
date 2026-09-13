@@ -109,7 +109,10 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/recommendation_registry.py" append \
 Omit any optional flag with nothing to report -- never pass a placeholder value just to fill it in. If
 the script exits non-zero, its stderr names the problem (an invalid transition, or a lock timeout) --
 report that error and stop; never present a rejected append as if it had landed. On success, confirm the
-new status and print the appended event's own JSON as returned.
+new status and print the appended event's own JSON as returned. `--actor`, `--rationale`, `--evidence`,
+`--expected-effect`, and `--observed-effect` are free-text fields the script redacts for secret-shaped
+patterns only -- this does not remove personal data, so the registry may still carry names, emails, or
+user paths pasted into any of these fields.
 
 ## Phase 4: Show or List (Read-Only Alternative)
 
@@ -147,7 +150,8 @@ optional fields, secret redaction on free-text fields (including `source_report`
 redaction), the dual-position `--registry` CLI flag, and the lock's fail-loud-on-timeout guarantee --
 run via `python -m pytest plugins/analysis-kit/tests/test_recommendation_registry.py -q`.
 
-**Eval evidence:** `evals/tracking-recommendation-lifecycle/evals.json` -- 3 scenarios, all 3 declared
+**Eval evidence:** `evals/tracking-recommendation-lifecycle/evals.json` -- 3 scenarios, 11/11 assertions
+passing (eval-1 4/4, eval-2 3/3, eval-3 4/4). All 3 declared
 activation scenarios covered (eval-1: the accepted->implemented->verified evidence discipline, using the
 real `recommendation_registry.py` script against a scratch registry; eval-2: a status query via real
 `show`/`list` calls) plus eval-3 (added 2026-09-12), which adds functional coverage beyond the 3 declared

@@ -325,7 +325,7 @@ This report is the terminal artifact of the review-learnings chain (`mining-revi
 
 ## Testing & Validation
 
-`evals/managing-review-learnings/evals.json` exists (3 evals, Quick Workflow, `iteration-1`): a doc-diff
+**Eval evidence:** `evals/managing-review-learnings/evals.json` exists (3 evals, Quick Workflow, `iteration-1`): a doc-diff
 proposal against the real document with the redaction/approval gate stated explicitly, a live
 rule-coverage check against `.claude/rules/*.md`, and the filing-outcome vocabulary (filed / found-as-
 duplicate / filing-failed, including the "filed, but flagged as unverified" carve-out). 11/11 assertions

@@ -37,7 +37,7 @@ def aggregate(entries: list[dict]) -> dict:
     for entry in entries:
         tokens = entry.get("tokens", 0) or 0
         duration_ms = entry.get("duration_ms", 0) or 0
-        label = entry.get("label", "unlabeled")
+        label = entry.get("label") or "unlabeled"
         level = entry.get("level") or "subagent"
         if not isinstance(level, str) or level not in KNOWN_LEVELS:
             level = "subagent"

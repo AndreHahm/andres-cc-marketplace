@@ -8,7 +8,7 @@ session_parser.py's own current output has no per-attempt success/failure
 signal, so the calling skill builds this script's --events input directly
 from transcript content). It never estimates a denominator or a
 time-to-recovery it wasn't given timestamps to compute -- both come back
-`null`/omitted rather than a guessed value, per AKR-NFR-004.
+`null`/omitted rather than a guessed value.
 
 Input (--events <path>): a JSON array of event objects, one per attempt:
   {
@@ -105,7 +105,10 @@ def aggregate(events: list[dict]) -> dict:
     for subject, failure_list in by_subject_failures.items():
         if len(failure_list) > 1:
             repeated_failures.append({"subject": subject, "count": len(failure_list)})
-    repeated_failures.sort(key=lambda item: item["subject"])
+    # A subject can be None (grouped under the None key when an event omits it,
+    # per the module docstring) -- sort None-keyed groups last rather than
+    # crashing on a None-vs-str comparison.
+    repeated_failures.sort(key=lambda item: (item["subject"] is None, item["subject"]))
 
     return {
         "attempts": attempts,

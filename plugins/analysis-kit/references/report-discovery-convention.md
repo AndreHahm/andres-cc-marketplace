@@ -24,6 +24,20 @@ A short kebab-case description of the scope a report covers, used as the filenam
 - **`mining-review-learnings`**: not a `<scope-slug>` in this file's sense at all — its own persisted-filename prefix takes one of 3 forms depending on input mode: `<pr-a>-to-<pr-b>` for a since-last-cited run (e.g. `pr-92-to-172`), `merged-<start>-to-<end>` for a merge-date range (e.g. `merged-2026-08-14-to-2026-08-20`), or `pr-<a>-<b>` for an explicit PR list (e.g. `pr-47-51`) — none of them a session/date-range scope identity.
 - **`managing-review-learnings`**: derives `<source-slug>` from the input `mining-review-learnings` report's own PR-set slug (e.g. `pr-47-172`), or `direct-finding-<date>` when acting on a user-named finding with no input report at all.
 
+**Validate before interpolating an externally-derived value into a discovery `Glob`.** A `<scope-slug>`-shaped
+value that a skill *captures* from somewhere else — parsed out of another skill's printed report path
+(`starting-an-analysis` Phase 4), or carried forward from an earlier compound slug (`comparing-sessions`'
+`<current-scope>`) — is not the same trust level as a value this skill derived itself from a direct user
+answer. Before interpolating any such captured value into a `Glob(...)` call, validate it against the
+documented short kebab-case format above: lowercase letters, digits, and single hyphens only, e.g.
+`^[a-z0-9]+(-[a-z0-9]+)*$`. Reject a value that doesn't match this pattern — in particular one containing
+`/`, `..`, or a glob metacharacter (`*`, `?`, `[`, `]`, `{`, `}`) — and fall back to a safe default (or ask
+for a corrected value) rather than interpolating it unchanged. An unvalidated value could otherwise be
+used to escape `.claude/output/`'s intended directories or match unintended files (path traversal,
+CWE-22). `reviewing-analysis-findings` Phase 1 already applies exactly this check to its own
+caller-supplied `<scope-slug>` — this is the same discipline extended to every site that captures or
+carries forward a value from somewhere other than a direct user answer.
+
 **Two different things share this one name — read this before wiring a new discovery glob.** `<scope-slug>` is used two ways in this plugin: as a *filename prefix* (always — every skill's own Persist step, per the derivations above), and as a *cross-skill discovery filter* (a `<value>-*.md` glob checking "do 2+ reports share this scope," used only at the specific sites listed below — not universally). Whether a site can filter by scope, and by what value, depends entirely on whether that skill's own persisted-filename slug is a value a sibling report could plausibly share:
 
 | Site | Filter used | Why |
@@ -39,6 +53,9 @@ A short kebab-case description of the scope a report covers, used as the filenam
 | `running-a-full-retrospective` Phase 1 reuse check | `<scope-slug>-*.md`, filtered per candidate analysis type's own report directory | Checks whether a report already exists for the confirmed scope before dispatching, mirroring each date-range skill's own Next-step filter |
 | `mining-review-learnings` Phase 1 "since last cited" resolution | none — bare `Grep` against the live document, not a report glob | Resolves the last-cited PR number from `THIRD_PARTY_REVIEW_LEARNINGS.md` itself, not from a prior report |
 | `managing-review-learnings` Phase 1 report resolution | none — bare, unfiltered `Glob('.claude/output/mining-review-learnings/*.md')`, most-recent-modified | Discovers the latest input report generally, not a "does this specific scope already have 2+ reports" check |
+| `analyzing-plugin-components`'s own narrow-scope gap-awareness check | none — bare `Glob('.claude/output/analyzing-plugin-components/*.md')`, newest-modified | Finds this same skill's own newest prior report to compare timestamp boundaries against, not a cross-skill "2+ reports" check |
+| `analyzing-plugin-components`'s own sibling-scope-overlap check | none — bare `Glob('.claude/output/analyzing-sessions/*.md')` | **Deliberate exception to the "cannot match a foreign plugin's directory" guarantee below** — this skill began as a port of `plugin-devkit`'s `analyzing-sessions` skill and intentionally checks that sibling's own report directory (a different plugin) for overlapping coverage; not part of the 15-directory report-discovery glob itself |
+| `identifying-feature-opportunities` Phase 2 | none — bare, unfiltered glob against the full 15-directory enumeration | Discovers a prior report already citing repeated friction/failure evidence for the same gap; not a "does this specific scope already have 2+ reports" check |
 
 `comparing-sessions` and `mining-recurring-patterns` each appear twice above — once with a filter, once without — since each uses both forms in different places within its own file.
 
@@ -68,7 +85,9 @@ full final 15) is now complete -- every site listed below enumerates the same 15
 Every site below must match this file. If you change either definition here, update all of them in the same pass. Paths are relative to `plugins/analysis-kit/`. **Note on the anti-pattern example above:** the prefix-wildcard pattern shown in "Why explicit, not a prefix wildcard" is a deliberate counter-example kept for documentation — do not count it as a stale site to fix.
 
 - `skills/starting-an-analysis/SKILL.md` — Phase 4 (captures whatever Phase 5 needs from the dispatched skill's printed report path, per the per-site table above) and Phase 5 step 1 (glob, branched by which skill was dispatched). This skill has no `<scope-slug>` derivation step of its own — Phase 4 derives the capture from whatever the dispatched skill actually produced.
-- `skills/analyzing-plugin-components/SKILL.md`, `skills/analyzing-tool-and-framework-use/SKILL.md`, `skills/analyzing-actor-behavior/SKILL.md`, `skills/analyzing-governance-and-conflicts/SKILL.md`, `skills/analyzing-session-outcomes/SKILL.md`, `skills/analyzing-verification-effectiveness/SKILL.md`, `skills/analyzing-session-operations/SKILL.md`, `skills/analyzing-workflow-usability/SKILL.md`, `skills/analyzing-security-and-privacy/SKILL.md`, `skills/identifying-feature-opportunities/SKILL.md` — each skill's own Persist step (scope-slug) and Next-step block (glob), all now enumerating the full 15-directory list (swept as part of Task 11's integration pass — previously each Wave 2 skill's own Next-step block only enumerated itself plus whichever siblings existed at the time it was built, not the full final set)
+- `skills/analyzing-plugin-components/SKILL.md`, `skills/analyzing-tool-and-framework-use/SKILL.md`, `skills/analyzing-actor-behavior/SKILL.md`, `skills/analyzing-governance-and-conflicts/SKILL.md`, `skills/analyzing-session-outcomes/SKILL.md`, `skills/analyzing-verification-effectiveness/SKILL.md`, `skills/analyzing-session-operations/SKILL.md`, `skills/analyzing-workflow-usability/SKILL.md`, `skills/analyzing-security-and-privacy/SKILL.md` — each skill's own Persist step (scope-slug) and Next-step block (glob), all now enumerating the full 15-directory list (swept as part of Task 11's integration pass — previously each Wave 2 skill's own Next-step block only enumerated itself plus whichever siblings existed at the time it was built, not the full final set)
+- `skills/analyzing-plugin-components/SKILL.md` — additionally, its own narrow-scope gap-awareness check (bare glob, own directory only) and sibling-scope-overlap check (bare glob against `plugin-devkit`'s `analyzing-sessions` directory — a deliberate, named exception to the "explicit enumeration, not prefix wildcard" guarantee, see the per-site table above) — two more sites beyond the Persist/Next-step pair above
+- `skills/identifying-feature-opportunities/SKILL.md` — Phase 2 (bare, unfiltered glob against the full 15-directory enumeration), Persist step (scope-slug), Next-step block (glob) — three sites
 - `skills/mining-recurring-patterns/SKILL.md` — Phase 3 memory-recall (glob), Persist step (scope-slug), Next-step block (glob) — three sites
 - `skills/comparing-sessions/SKILL.md` — Phase 1 "latest" resolution (glob) and `<current-scope>` derivation (scope-slug), Persist step (scope-slug), Next-step block (glob) — three sites
 - `skills/comparing-session-to-specification/SKILL.md` — Persist step (scope-slug), Next-step block (glob)

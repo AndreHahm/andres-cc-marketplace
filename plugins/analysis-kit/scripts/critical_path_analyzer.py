@@ -6,7 +6,7 @@ Scope note: this script aggregates timestamped spans the calling skill has
 already compiled from a session transcript or subagent-dispatch records --
 it does not itself measure wall-clock time. A span missing `start` or `end`
 contributes to `unknown_spans` only; it is never defaulted to zero duration
-or silently dropped from the count, per AKR-NFR-004.
+or silently dropped from the count.
 
 Input (--events <path>): a JSON array of span objects:
   {

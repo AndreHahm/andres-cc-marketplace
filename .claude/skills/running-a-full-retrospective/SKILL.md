@@ -303,7 +303,10 @@ fully closed (5c-4 below) and the continue checkpoint (5c-5) has fired.
      selected finding** (tag → plugin-root-relative path, falling back to the finding's cited source
      report — never a guess, per the data-only boundary above) and verify the resolved path stays
      inside this topic's already-validated `plugins/<target>/` directory (this phase's own opening
-     check). If resolution fails, or the resolved path escapes that directory, drop this option for
+     check) — **normalize the path first** (resolve any `..` segment and symlink) rather than comparing
+     the raw, unresolved string, since an untrusted-derived path is exactly the kind of value a `..`
+     segment or symlink could otherwise use to escape the intended directory. If resolution fails, or
+     the resolved path escapes that directory, drop this option for
      that finding — offer only "Not now — mark deferred" for it instead, and state why. **Name the
      resolved, validated file path(s) directly in this option's own description text** — the human
      approves the actual write target here, not just the finding's title; 5c-4 then edits exactly the

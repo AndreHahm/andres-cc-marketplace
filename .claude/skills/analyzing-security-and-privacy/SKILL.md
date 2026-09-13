@@ -60,6 +60,12 @@ omitted, Phase 1 asks interactively.
   covers an actor actually crossing a *trust boundary* during the session; that skill's role-conformance
   check is a structural comparison against a framework's own documented role definition, independent of
   whether any trust boundary was actually crossed.
+- **A `fail-open`-shaped event with no security/trust-boundary consequence** (e.g. a low-risk fallback
+  path that let something through on error with nothing sensitive at stake) -- use
+  `analyzing-session-operations` instead; that skill's own `fail-open` category (Phase 2) tracks it as an
+  operational-reliability/recovery event. This skill's `fail-open` finding class is reserved for an actual
+  safety/governance-boundary bypass, mapped to Critical severity -- not every fail-open-shaped event
+  clears that bar.
 
 ## Phase 1: Scope
 
@@ -142,24 +148,27 @@ origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- find
 finding's own text contains a literal secret-shaped value** -- this is a manual check on top of
 `persist_report.py`'s own automated redaction pass, not a substitute for it.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to
-a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch
-<scratch-path> --final ".claude/output/analyzing-security-and-privacy/<scope-slug>-<timestamp>.md" --label
-"Security and Privacy Report")`, where `<scope-slug>` is the same short kebab-case scope description the
-date-range convention uses. The script redacts the draft, verifies the result and the written file are
-both LF-only, writes the final file, and prints the `📄 Security and Privacy Report written: ...`
-confirmation line -- present its printed output as-is. If it exits non-zero instead, its stderr names the
-problem -- report that error and stop, never present it as a successful persist. This redaction pass
-strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) -- it does not remove
-personal data, so the persisted report may still carry names, emails, or user paths.
-
-**Next step:** after presenting the `📄 ... written:` line, print
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), then check whether 2+
+analysis-kit reports already exist for this scope via
+`Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
+(this glob restates the shared 15-directory enumeration, including this skill's own directory --
+see `../../references/report-discovery-convention.md` for the full sweep history). Write the full
+findings to a
+scratch file, closing it with the literal line
 `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.`
-If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
-finds 2+ analysis-kit reports already written for this scope, also print
+-- and, if the Glob found 2+ matches, a second closing line
 `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
-This glob restates the shared 15-directory enumeration, including this skill's own directory -- Task 11's
-full sweep is complete, same as the other Wave 2 skills' own Next-step blocks.
+**The scratch draft must include these line(s) as its own literal closing content, not merely printed to
+the conversation afterward.** Then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py"
+--scratch <scratch-path> --final ".claude/output/analyzing-security-and-privacy/<scope-slug>-<timestamp>.md"
+--label "Security and Privacy Report")`, where `<scope-slug>` is the same short kebab-case scope
+description the date-range convention uses. The script redacts the draft, verifies the result and the
+written file are both LF-only, writes the final file, and prints the `📄 Security and Privacy Report
+written: ...` confirmation line -- present its printed output as its own line, followed by the persisted
+report's own `Next:`/`Also:` line(s) already embedded in it. If it exits non-zero instead, its stderr
+names the problem -- report that error and stop, never present it as a successful persist. This redaction
+pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) -- it does not remove
+personal data, so the persisted report may still carry names, emails, or user paths.
 
 ## Gotchas
 
@@ -178,8 +187,13 @@ full sweep is complete, same as the other Wave 2 skills' own Next-step blocks.
 ## Testing & Validation
 
 **Eval evidence:** `evals/analyzing-security-and-privacy/evals.json` -- 3 scenarios (sanitized
-injection/credential/trust-boundary/fail-open fixtures), 13/14 assertions passing. Structural
-correctness is additionally covered by `scripts/smoke_test.py` below.
+injection/credential/trust-boundary/fail-open fixtures), 13/14 assertions passing -- the one gap
+(eval-3) is an eval-design artifact, not a skill defect: the fixture's bypassed action was itself
+consequential, so the agent correctly grounded Critical severity in that real effect and had no
+occasion to also restate the general "applies even if harmless" Gotchas principle the assertion
+expected verbatim; the skill's actual classification and severity reasoning were fully correct. See
+the eval's own `grading.json` for the full assertion-level detail. Structural correctness is
+additionally covered by `scripts/smoke_test.py` below.
 
 **Verify this skill activates on:**
 - "check this session for security or privacy issues"

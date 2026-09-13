@@ -55,6 +55,17 @@ omitted, Phase 1 asks interactively.
   they recovered; that skill's recurring-error tracking is a cross-session, rule/governance-conformance
   question (did this violate a stated rule, and has it happened before), not an operational-recovery one
   -- a single failure can legitimately be both, classified independently by each skill.
+- **Whether a `fail-open` event represents a real security/trust-boundary bypass** -- use
+  `analyzing-security-and-privacy` instead. This skill's own `fail-open` failure category (Phase 2)
+  records it only as an operational-reliability event (did the guard fail, did the session recover) for
+  the Reliability & Stability section; that skill judges whether the bypass actually crossed a trust
+  boundary with real consequence and maps it to Critical severity -- the same incident can legitimately
+  produce an independent finding in both reports.
+- **Assessing the human developer's own correction/contribution pattern in depth** (why the human
+  intervened, and what it implies about agent performance) -- use `analyzing-actor-behavior` instead.
+  This skill's `user-corrected` failure category (Phase 2) only records *that* a human had to intervene,
+  for the Reliability & Stability section's recovery accounting; it never assesses the human's or the
+  agent's behavior the way that skill does.
 - **No tool calls, no failures, and no subagent dispatches observed** -- nothing to analyze.
 
 ## Phase 1: Scope
@@ -71,7 +82,13 @@ event list plus a direct read of the matching transcript for `tool_result` block
 
 - **Failure events** (for `failure_aggregator.py`): one entry per attempt --
   `{subject, category, result, timestamp}`. `subject` is a stable description of what was attempted (a
-  tool name plus enough of its input to distinguish repeats, e.g. `"Bash(pytest)"`); `category` is one of
+  tool name plus a non-verbatim discriminator -- an argument shape, an index, or a hash, never the raw
+  input copied through -- e.g. `"Bash(pytest)"` or `"Bash(curl, attempt 2)"`, never
+  `"Bash(curl -H 'Authorization: Bearer ...')"`). Never copy a credential-, token-, or header-bearing
+  argument into `subject`, even before redaction runs -- not writing the value down in the first place is
+  the real control, the same discipline `analyzing-security-and-privacy` and
+  `analyzing-tool-and-framework-use` apply to their own persisted fields; `persist_report.py`'s
+  pattern-based redaction is defense in depth, not the primary safeguard. `category` is one of
   `tool`/`environment`/`flaky`/`nondeterministic`/`silent`/`fail-open`/`user-corrected`, left `null` only
   when `result` is `"success"` -- a `failure` with no determinable category is still recorded, with
   `category: null` (the script itself buckets this as `"uncategorized"`, never guessed into an existing
@@ -141,25 +158,26 @@ origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- find
 `<!-- finding:end -->` markers, to each classified failure finding and each performance-outlier finding,
 per `../../references/report-evidence-convention.md`.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), write the full findings to
-a scratch file, then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch
-<scratch-path> --final ".claude/output/analyzing-session-operations/<scope-slug>-<timestamp>.md" --label
-"Session Operations Report")`, where `<scope-slug>` is the same short kebab-case scope description the
-date-range convention uses. The script redacts the draft, verifies the result and the written file are
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), then check whether 2+
+analysis-kit reports already exist for this scope via
+`Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
+(this glob restates the shared 15-directory enumeration, including this skill's own directory --
+see `../../references/report-discovery-convention.md` for the full sweep history). Write the full
+findings to a scratch file, closing it with the literal line
+`Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.`
+-- and, if the Glob found 2+ matches, a second closing line
+`Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
+**The scratch draft must include these line(s) as its own literal closing content, not merely printed to
+the conversation afterward.** Then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py"
+--scratch <scratch-path> --final ".claude/output/analyzing-session-operations/<scope-slug>-<timestamp>.md"
+--label "Session Operations Report")`, where `<scope-slug>` is the same short kebab-case scope description
+the date-range convention uses. The script redacts the draft, verifies the result and the written file are
 both LF-only, writes the final file, and prints the `📄 Session Operations Report written: ...`
-confirmation line -- present its printed output as-is. If it exits non-zero instead, its stderr names the
+confirmation line -- present its printed output as its own line, followed by the persisted report's own
+`Next:`/`Also:` line(s) already embedded in it. If it exits non-zero instead, its stderr names the
 problem -- report that error and stop, never present it as a successful persist. This redaction pass
 strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) -- it does not remove
 personal data, so the persisted report may still carry names, emails, or user paths.
-
-**Next step:** after presenting the `📄 ... written:` line, print
-`Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.`
-If `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
-finds 2+ analysis-kit reports already written for this scope, also print
-`Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`
-This glob restates the shared 15-directory enumeration, including this skill's own directory -- Task 11's
-full sweep is complete, same as `analyzing-session-outcomes`'/`analyzing-verification-effectiveness`'s own
-Next-step blocks.
 
 ## Gotchas
 

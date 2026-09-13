@@ -124,10 +124,7 @@ satisfy the per-finding metadata check. When a report genuinely has no substanti
 
 This convention governs reports written from this convention's adoption forward. An existing persisted
 report written before this file existed is not retroactively invalid, and no skill needs to migrate or
-re-annotate historical output — see `AKR-NFR-005` (backward compatibility) in the Wave 2 requirements doc
-under `.draft/analysis-kit/new-dimensions/` (a local, gitignored planning directory — the doc currently
-sits under `_open/` pending this work's own merge, and may move to `_done/` afterward; look under either
-if the exact subdirectory has since moved) for the source requirement. When a skill reads an older report
+re-annotate historical output. When a skill reads an older report
 that lacks this metadata, treat the absence itself as `Coverage: partial` / `Confidence: low` for whatever
 it inherits from that report, and say so, rather than assuming the missing fields would have said
 `complete`/`high`.
@@ -144,7 +141,7 @@ own interpretation from scratch.
 | `comparing-sessions` | The two sessions/reports named for comparison | Which of the two was read in full vs. read only through a prior report's own findings |
 | `comparing-session-to-specification` | The named specification document and session | Which specification sections were actually checked against session evidence — a large spec partially sampled must say so |
 | `generating-analysis-recommendations` | The source report (or pasted findings) named as input | Same as requested in the common case — this skill expands existing findings rather than gathering new evidence, so Inspected scope narrows only when the source report itself was only partially read |
-| `reviewing-analysis-findings` | The report set named or resolved for cross-check | The reports actually included vs. excluded (see `AKR-009`'s Included/Excluded Reports sections — this preamble and that section describe the same fact from two angles, keep them consistent) |
+| `reviewing-analysis-findings` | The report set named or resolved for cross-check | The reports actually included vs. excluded (see that skill's own Phase 1 Included/Excluded Reports sections — this preamble and that section describe the same fact from two angles, keep them consistent) |
 | `running-a-full-retrospective` | The shared scope confirmed once in Phase 1 | Which analysis types actually ran fresh, were reused from an existing report, or produced an explicit empty contribution — see this skill's own source-report table |
 | `mining-review-learnings` | The PR set (explicit list, merge-date range, or "since last cited") | Which PRs' review history was actually fetched, and which had `session-transcript: unavailable` (GitHub history only, no matching transcript found) |
 | `managing-review-learnings` | The input `mining-review-learnings` report or user-named finding | Which candidates were actually turned into a proposed diff vs. skipped (already covered, doesn't generalize, etc.) |

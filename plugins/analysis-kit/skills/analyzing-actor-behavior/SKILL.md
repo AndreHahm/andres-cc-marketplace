@@ -42,6 +42,10 @@ Assess agent behavior, human developer behavior, and cross-agent handoff pattern
   actionability) — use `analyzing-workflow-usability` instead. This skill judges actor *behavior quality*;
   that skill judges *friction the interaction pattern itself* imposed on the user — a well-performing
   agent can still produce a high-friction interaction, and vice versa
+- **A bare mechanical tally of how many operations required user correction, as one of several
+  operational failure-recovery categories** (alongside `tool`/`environment`/`flaky`/`silent`/`fail-open`)
+  — use `analyzing-session-operations` instead; this skill assesses the human's own contribution/
+  correction *behavior* in depth, not a reliability-category count
 
 ## Phase 1: Scope
 

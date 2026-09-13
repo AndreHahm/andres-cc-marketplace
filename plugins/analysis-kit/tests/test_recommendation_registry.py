@@ -1,7 +1,7 @@
 """Tests for scripts/recommendation_registry.py -- written before the implementation (TDD),
 per Wave 2 Task 9 Step 1. Covers: valid transitions, invalid transition rejection, append-only
 history, reopened items, supersession, historical records with missing optional fields, the
-lock's fail-loud-on-timeout guarantee (AKR-019), stale-lock auto-recovery, the append-before-
+lock's fail-loud-on-timeout guarantee, stale-lock auto-recovery, the append-before-
 mkdir ordering regression, non-dict line rejection, and a CLI-level roundtrip via main()."""
 
 import json
