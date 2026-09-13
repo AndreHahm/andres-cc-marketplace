@@ -345,8 +345,17 @@ check_diff_records() {
       # genuinely absent; a nonzero exit here means $default_branch itself
       # couldn't be read (a bad ref, or a corrupted root tree), which fails
       # closed the same way the non-merge diff-tree call above already does.
-      del_out=$(git ls-tree "$default_branch" -- "$path" 2>/dev/null)
-      del_rc=$?
+      # `&& del_rc=0 || del_rc=$?`, not a bare assignment followed by
+      # `del_rc=$?` on the next line -- security-reviewer/Codex cross-model-
+      # review finding (F1, pre-existing sibling instance swept in after the
+      # finding on --force/--keep/--diff): under this script's own
+      # `set -euo pipefail`, a plain `del_out=$(git ls-tree ...)` with no
+      # `||` fallback triggers immediate script exit the instant `git
+      # ls-tree` fails, before the very next line (`del_rc=$?`) can ever
+      # run -- the exact same root cause, just an older instance of it. The
+      # `&&`/`||` compound's own exit status is always 0, so `set -e` never
+      # fires here regardless of whether `git ls-tree` itself succeeded.
+      del_out=$(git ls-tree "$default_branch" -- "$path" 2>/dev/null) && del_rc=0 || del_rc=$?
       [ "$del_rc" -ne 0 ] && return 1
       [ -n "$del_out" ] && return 1
     else
@@ -362,7 +371,14 @@ is_tag_content_reachable() {
   local mb
   mb=$(git merge-base -- "$tag" "$default_branch" 2>/dev/null) || return 1
   local tag_commits
-  tag_commits=$(git rev-list "$mb..$tag" 2>/dev/null)
+  # `|| return 1` -- security-reviewer/Codex cross-model-review finding
+  # (F1, pre-existing sibling instance): under `set -euo pipefail`, a bare
+  # `tag_commits=$(git rev-list ...)` with no `||` fallback triggers
+  # immediate script exit if `$tag` or `$mb` somehow stop resolving (e.g.
+  # concurrent force-deletion) between the merge-base call above and here,
+  # instead of the graceful `return 1` (fail closed) this function's own
+  # design already intends for exactly this kind of failure.
+  tag_commits=$(git rev-list "$mb..$tag" 2>/dev/null) || return 1
   [ -z "$tag_commits" ] && return 1
   local commit diff_file diff_rc
   while IFS= read -r commit; do
@@ -573,7 +589,17 @@ list_review() {
   for tag in $(git tag -l '*-rebase-backup-*'); do
     if is_tag_needs_review "$tag"; then
       local item_sha
-      item_sha=$(git rev-parse "refs/tags/$tag")
+      # `|| continue` (not a bare assignment) -- security-reviewer/Codex
+      # cross-model-review finding (F1): under this script's own
+      # `set -euo pipefail`, a plain `var=$(cmd)` assignment with no `||`
+      # fallback triggers immediate script exit the instant `cmd` fails,
+      # BEFORE any check afterward can run -- live-verified. A tag deleted
+      # in the narrow window between the `git tag -l` enumeration above and
+      # this resolution would otherwise kill the entire --list-review run
+      # silently, not just skip that one tag. `continue` (skip this tag,
+      # keep processing the rest) is the correct behavior here, not a
+      # decision-file lookup against an empty oid.
+      item_sha=$(git rev-parse "refs/tags/$tag" 2>/dev/null) || continue
       if decision_is_valid_keep "$tag" "$item_sha" "$default_sha"; then
         printf 'Suppressed (previously reviewed and kept, no change since): %q\n' "$tag" >&2
         continue
@@ -659,8 +685,20 @@ if [ "${1:-}" = "--diff" ]; then
     git log --oneline "${mb}..${oid}" -- 2>/dev/null
   fi
   echo "--- content diff: $default_branch (current) vs $tag (recorded oid $oid) ---"
-  diff_out=$(git diff --no-ext-diff --no-textconv "$default_branch" "$oid" -- 2>&1)
-  diff_rc=$?
+  # `&& diff_rc=0 || diff_rc=$?`, not a bare assignment followed by
+  # `diff_rc=$?` on the next line -- security-reviewer/Codex cross-model-
+  # review finding (F1, same root cause as list_review's item_sha above):
+  # under `set -euo pipefail`, a plain `diff_out=$(git diff ...)` with no
+  # `||` fallback triggers immediate script exit the instant `git diff`
+  # fails, BEFORE the very next line (`diff_rc=$?`) can ever run --
+  # live-verified: this made the C1 fix's own error-status check dead code,
+  # unreachable, exactly the same class of bug it was meant to guard
+  # against. The `&&`/`||` compound's own exit status is always 0 (the
+  # assignment branch that actually runs always succeeds), so `set -e`
+  # never fires on this line regardless of whether `git diff` itself
+  # succeeded or failed -- `$diff_rc` still ends up holding the real exit
+  # code either way.
+  diff_out=$(git diff --no-ext-diff --no-textconv "$default_branch" "$oid" -- 2>&1) && diff_rc=0 || diff_rc=$?
   if [ "$diff_rc" -ne 0 ]; then
     echo "Error: could not produce evidence for this candidate -- do NOT treat this as \"no content differs\"" >&2
     printf '%s\n' "$diff_out" >&2
@@ -757,8 +795,17 @@ if [ "${1:-}" = "--force" ]; then
     tag="${force_matched_tags[$m]}"
     expected_oid="${force_matched_oids[$m]}"
     expected_dsha="${force_matched_dshas[$m]}"
-    current_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null)
-    current_dsha=$(git rev-parse "$default_branch" 2>/dev/null)
+    # `|| current_oid=""` / `|| current_dsha=""` -- security-reviewer/Codex
+    # cross-model-review finding (F1): under `set -euo pipefail`, a bare
+    # `var=$(cmd)` assignment with no `||` fallback triggers immediate
+    # script exit the instant `cmd` fails, before the `[ -z "$current_oid" ]`
+    # check below can ever run -- live-verified: a tag deleted concurrently
+    # after --list-review (or an unresolvable $default_branch) silently
+    # killed the whole --force invocation instead of skipping just that one
+    # index and reporting "Skipped", which also stopped any LATER index in
+    # the same multi-index --force call from ever being processed.
+    current_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null) || current_oid=""
+    current_dsha=$(git rev-parse "$default_branch" 2>/dev/null) || current_dsha=""
     if [ -z "$current_oid" ]; then
       echo "Skipped '$tag': could not resolve its current object id" >&2
       force_failed=1
@@ -822,8 +869,14 @@ if [ "${1:-}" = "--keep" ]; then
     echo "Error: index '$idx' is out of range -- run --list-review again and retry" >&2
     exit 1
   fi
-  current_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null)
-  current_dsha=$(git rev-parse "$default_branch" 2>/dev/null)
+  # `|| current_oid=""` / `|| current_dsha=""` -- security-reviewer/Codex
+  # cross-model-review finding (F1), same as --force's identical check
+  # above: under `set -euo pipefail`, a bare `var=$(cmd)` assignment with
+  # no `||` fallback triggers immediate script exit before the check below
+  # can run, silently killing --keep instead of reporting the documented
+  # "moved since --list-review" refusal.
+  current_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null) || current_oid=""
+  current_dsha=$(git rev-parse "$default_branch" 2>/dev/null) || current_dsha=""
   if [ -z "$current_oid" ] || [ "$current_oid" != "$oid" ]; then
     echo "Error: this candidate moved since --list-review -- run --list-review and --diff again, and confirm before keeping" >&2
     exit 1
@@ -927,7 +980,18 @@ for tag in "${matched[@]}"; do
   # that from never having moved at all -- an intentionally accepted,
   # vanishingly narrow race for a manually-run, interactive cleanup tool,
   # not something a background/automated process would trigger.
-  pre_check_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null)
+  # `|| pre_check_oid=""` -- security-reviewer/Codex cross-model-review
+  # finding (F1, pre-existing sibling instance): under `set -euo pipefail`,
+  # a bare `pre_check_oid=$(git rev-parse ...)` with no `||` fallback
+  # triggers immediate script exit the instant the tag no longer resolves
+  # (e.g. already deleted by another process), before the very next line's
+  # `[ -z "$pre_check_oid" ]` check -- the exact "Skipped" graceful-
+  # degradation path below -- can ever run. Live-verified: this silently
+  # killed the whole multi-tag delete loop on the first already-gone tag,
+  # instead of skipping just that one and continuing with the rest, exactly
+  # the partial-failure behavior this loop's own comments document as the
+  # intended design.
+  pre_check_oid=$(git rev-parse "refs/tags/$tag" 2>/dev/null) || pre_check_oid=""
   if [ -z "$pre_check_oid" ]; then
     echo "Skipped '$tag': could not resolve its current object id" >&2
     failed=1
