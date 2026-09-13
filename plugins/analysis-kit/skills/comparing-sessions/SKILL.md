@@ -84,20 +84,27 @@ recommendation reached `implemented` or later between the prior and current repo
 realized its expected effect:
 
 1. `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/recommendation_registry.py" list --registry <path>)` to
-   find every tracked `recommendation_id` currently at `implemented`, `verified`, `measured`, or
-   `closed` -- per `references/recommendation-lifecycle-schema.md`'s transition diagram, `closed` only
-   ever follows `measured`, so it's squarely "implemented or later" too; excluding it would silently
-   drop exactly the most mature recommendations (the ones that already completed their full
-   `measured -> closed` lifecycle) from this realized-impact check, along with their recorded
-   `observed_effect`. Put
-   `--registry` after the subcommand, not before — this skill's own `allowed-tools` grant is scoped to
-   `recommendation_registry.py list:*` / `... show:*` specifically (read-only), and the script's argparse
-   accepts `--registry` in either position, but only the after-the-subcommand form is inside this skill's
-   own narrowed grant.
-2. For each one plausibly relevant to this comparison's scope (its `source_report` matches, or is the
+   enumerate every tracked `recommendation_id` in the registry, **regardless of current status** —
+   `list` only reports the latest status, which is not by itself eligibility evidence (see step 2).
+   Put `--registry` after the subcommand, not before — this skill's own `allowed-tools` grant is scoped
+   to `recommendation_registry.py list:*` / `... show:*` specifically (read-only), and the script's
+   argparse accepts `--registry` in either position, but only the after-the-subcommand form is inside
+   this skill's own narrowed grant.
+2. For each ID plausibly relevant to this comparison's scope (its `source_report` matches, or is the
    same report lineage as, the prior side), fetch its full history:
    `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/recommendation_registry.py" show --recommendation-id <id>
-   --registry <path>)`.
+   --registry <path>)`. **Determine eligibility from the full history, never from `list`'s current-status
+   field alone:** an ID is eligible for this phase if its history contains at least one
+   `implemented`/`verified`/`measured`/`closed` event at any point, even if its *current* status has since
+   moved on to `reopened` or `superseded` — per `references/recommendation-lifecycle-schema.md`'s
+   transition diagram, `reopened` is reachable from `closed`, and `superseded` is reachable from every
+   non-terminal status, so either can follow a recommendation that genuinely reached "implemented or
+   later" and may still carry a real `observed_effect` from that earlier `measured` event (Codex
+   PR-review finding on PR #323: a current-status-only filter, even one that already includes `closed`,
+   still silently drops a `measured -> closed -> reopened` or `... -> superseded` item). When eligible
+   this way but the current status is no longer `measured`/`closed`, note that plainly in the
+   Recommendation Impact section (e.g. "reopened after measurement — see below") rather than presenting
+   it as if still in its measured state.
 3. **Match only by the stable `recommendation_id` — never join a registry entry to a report finding by
    comparing prose similarity.** An ID with no exact match to anything in scope contributes nothing to
    this phase; don't force a fuzzy match.
@@ -127,7 +134,7 @@ Preamble (Requested scope, Inspected scope, Unavailable evidence, Limitations) a
 origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- finding:start -->`/`<!-- finding:end -->` markers, to each Consistency/Divergence/Unresolved-recurrence/Recommendation-Impact
 entry, per `../../references/report-evidence-convention.md`.
 
-**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), then check whether 2+ analysis-kit reports already exist for this scope. This skill's own persisted filename slug (`<current-scope>-vs-<prior-report-slug>`) is unique to this one comparison and won't match any sibling report — so this check uses just the `<current-scope>` component (the same shared session identifier a date-range skill run on this same session/scope would have used), not the full compound slug: `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<current-scope>-*.md')`. (The just-written report itself, and any earlier `comparing-sessions` run sharing this same `<current-scope>`, both count toward the 2+ threshold — that's expected, not a bug: a genuine sibling report already exists in either case.) Write the full findings to a scratch file, closing it with the literal line `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` -- and, if the Glob found 2+ matches, a second closing line `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.` **The scratch draft must include these line(s) as its own literal closing content, not merely printed to the conversation afterward.** Then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/comparing-sessions/<scope-slug>-<timestamp>.md" --label "Session Comparison Report")`, where `<scope-slug>` derives from the two things being compared, e.g. `<current-scope>-vs-<prior-report-slug>`. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Session Comparison Report written: ...` confirmation line — present its printed output as its own line, followed by the persisted report's own `Next:`/`Also:` line(s) already embedded in it. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
+**Persist the report:** get a timestamp (`Bash(date -u +%Y-%m-%dT%H-%M-%SZ)`), then check whether 2+ analysis-kit reports already exist for this scope. This skill's own persisted filename slug (`<current-scope>-vs-<prior-report-slug>`) is unique to this one comparison and won't match any sibling report — so this check uses just the `<current-scope>` component (the same shared session identifier a date-range skill run on this same session/scope would have used), not the full compound slug: `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<current-scope>-*.md')`. (The just-written report itself, and any earlier `comparing-sessions` run sharing this same `<current-scope>`, both count toward the 2+ threshold — that's expected, not a bug: a genuine sibling report already exists in either case.) Write the full findings to the session scratchpad directory as a scratch file (never a bare relative filename, which resolves to the current working directory — usually the repo root — instead), closing it with the literal line `Next: run \`generating-analysis-recommendations\` on this report to expand its findings into a WHAT/WHY/HOW action plan.` -- and, if the Glob found 2+ matches, a second closing line `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.` **The scratch draft must include these line(s) as its own literal closing content, not merely printed to the conversation afterward.** Then run `Bash(python "${CLAUDE_PLUGIN_ROOT}/scripts/persist_report.py" --scratch <scratch-path> --final ".claude/output/comparing-sessions/<scope-slug>-<timestamp>.md" --label "Session Comparison Report")`, where `<scope-slug>` derives from the two things being compared, e.g. `<current-scope>-vs-<prior-report-slug>`. The script redacts the draft, verifies the result and the written file are both LF-only, writes the final file, and prints the `📄 Session Comparison Report written: ...` confirmation line — present its printed output as its own line, followed by the persisted report's own `Next:`/`Also:` line(s) already embedded in it. If it exits non-zero instead, its stderr names the problem (an unreadable scratch draft, or a CRLF corruption it refuses to persist) — report that error and stop, never present it as a successful persist. This redaction pass strips secret-shaped patterns only (credentials, tokens, cloud key prefixes) — it does not remove personal data, so the persisted report may still carry names, emails, or user paths.
 
 ## Gotchas
 

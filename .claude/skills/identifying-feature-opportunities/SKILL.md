@@ -130,9 +130,9 @@ origin/Coverage/Confidence/Evidence source metadata block, wrapped in `<!-- find
 analysis-kit reports already exist for this scope via
 `Glob('.claude/output/{analyzing-plugin-components,analyzing-tool-and-framework-use,analyzing-actor-behavior,analyzing-governance-and-conflicts,mining-recurring-patterns,comparing-sessions,comparing-session-to-specification,generating-analysis-recommendations,reviewing-analysis-findings,analyzing-session-outcomes,analyzing-verification-effectiveness,analyzing-session-operations,analyzing-workflow-usability,analyzing-security-and-privacy,identifying-feature-opportunities}/<scope-slug>-*.md')`
 (this glob restates the shared 15-directory enumeration, including this skill's own directory --
-see `../../references/report-discovery-convention.md` for the full sweep history). Write the full
-findings to a
-scratch file, closing it with the literal line
+see `../../references/report-discovery-convention.md` for the full sweep history). Write the full findings to the session scratchpad directory as a scratch
+file (never a bare relative filename, which resolves to the current working directory — usually the
+repo root — instead), closing it with the literal line
 `Next: run \`generating-analysis-recommendations\` on this report to expand a candidate into a WHAT/WHY/HOW action plan.`
 -- and, if the Glob found 2+ matches, a second closing line
 `Also: run \`reviewing-analysis-findings\` to cross-check these reports for duplicates or contradictions.`

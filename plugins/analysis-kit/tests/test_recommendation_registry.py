@@ -179,6 +179,42 @@ def test_acquire_lock_breaks_a_stale_lock(tmp_path):
     rr.release_lock(lock_path, token)
 
 
+def test_unlink_lock_if_token_matches_deletes_when_content_matches(tmp_path):
+    lock_path = tmp_path / "events.jsonl.lock"
+    lock_path.write_text("the-real-token", encoding="utf-8")
+    rr._unlink_lock_if_token_matches(lock_path, "the-real-token")
+    assert not lock_path.exists()
+    # No stray claim file left behind on the successful-delete path.
+    assert list(tmp_path.glob("*.claim-*")) == []
+
+
+def test_unlink_lock_if_token_matches_restores_a_replaced_lock_instead_of_deleting_it(tmp_path):
+    # Regression test (Codex PR-review finding on PR #323): a caller's own `expected_token`
+    # can be captured from an earlier read that's since gone stale -- another process may
+    # have broken the original lock and replaced it with its own fresh, active one by the
+    # time this function actually runs. A separate read-then-compare-then-unlink(path)
+    # sequence is unsafe here: unlink() always resolves the path fresh, so it deletes
+    # whatever now-different file currently sits there, not the one the earlier read saw.
+    # The rename-based claim must detect the mismatch and restore the fresh lock rather
+    # than discarding it.
+    lock_path = tmp_path / "events.jsonl.lock"
+    lock_path.write_text("someone-elses-fresh-token", encoding="utf-8")
+
+    rr._unlink_lock_if_token_matches(lock_path, "a-stale-token-from-an-earlier-read")
+
+    # The fresh lock must survive, unchanged, at its original path.
+    assert lock_path.exists()
+    assert lock_path.read_text(encoding="utf-8") == "someone-elses-fresh-token"
+    # No stray claim file left behind on the restore path either.
+    assert list(tmp_path.glob("*.claim-*")) == []
+
+
+def test_unlink_lock_if_token_matches_is_a_noop_when_lock_already_gone(tmp_path):
+    lock_path = tmp_path / "events.jsonl.lock"  # never created
+    rr._unlink_lock_if_token_matches(lock_path, "some-token")  # must not raise
+    assert not lock_path.exists()
+
+
 def test_lock_release_then_reacquire_succeeds(tmp_path):
     lock_path = tmp_path / "events.jsonl.lock"
     token = rr.acquire_lock(lock_path, timeout=1.0)
