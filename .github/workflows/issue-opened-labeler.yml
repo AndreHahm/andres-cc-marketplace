@@ -73,3 +73,51 @@ jobs:
             } else {
               core.info('Issue already has s: triage label. Skipping.');
             }
+
+      - name: 'Label issue by keyword patterns'
+        # Issues have no Conventional-Commit title convention to parse (unlike
+        # pr-auto-label.yml's CC-prefix step), so this matches free-form
+        # keywords against the title+body instead. Owns only t:/p: labels;
+        # a: area labels are the separate .github/issue-labeler.yml action's
+        # job (issue-auto-label.yml) -- kept non-overlapping deliberately, so
+        # this doesn't need the stale-label reconciliation/exclusion-list
+        # machinery pr-auto-label.yml required to coexist with labeler.yml
+        # (PR #290). This step only ever adds labels, never removes -- issues
+        # only trigger it once on "opened", so there's nothing to reconcile.
+        uses: 'actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3' # ratchet:actions/github-script@v9.0.0
+        with:
+          github-token: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          script: |-
+            const issue = context.payload.issue;
+            if (!issue) return;
+
+            const text = `${issue.title || ''}\n${issue.body || ''}`;
+
+            // Content -> label patterns. Multiple type labels may apply to
+            // the same issue (unlike a PR, which requires exactly one i:
+            // impact label) -- see docs/github-label-taxonomy.md.
+            const patterns = [
+              { label: 't: security', regex: /\b(security|vulnerabilit(y|ies)|CVE-\d{4}-\d+|exploit)\b/i },
+              { label: 't: performance', regex: /\b(performance|slow|latency|regression|memory leak)\b/i },
+              { label: 't: documentation', regex: /\b(docs?|documentation|readme|typo)\b/i },
+              { label: 't: bug', regex: /\b(bug|crash(es|ed)?|broken|exception|traceback|doesn'?t work|not working)\b/i },
+              { label: 't: feature', regex: /\b(feature request|feature|enhancement|proposal)\b/i },
+              { label: 'p: critical', regex: /\b(critical|urgent|blocker|blocking|asap|production down)\b/i },
+            ];
+
+            const existing = new Set((issue.labels || []).map(l => (typeof l === 'string' ? l : l.name)));
+            const labelsToAdd = patterns
+              .filter(p => p.regex.test(text) && !existing.has(p.label))
+              .map(p => p.label);
+
+            if (labelsToAdd.length > 0) {
+              core.info(`Adding labels: ${labelsToAdd.join(', ')}`);
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: labelsToAdd
+              });
+            } else {
+              core.info('No keyword-pattern labels to add.');
+            }

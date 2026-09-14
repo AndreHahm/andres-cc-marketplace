@@ -1,0 +1,50 @@
+name: 'Auto-label Issues by Content'
+
+on:
+  issues:
+    types: [opened, edited]
+
+concurrency:
+  group: 'issue-auto-label-${{ github.event.issue.number }}'
+  cancel-in-progress: true
+
+permissions:
+  issues: 'write'
+
+jobs:
+  label:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+            .github/WORKFLOW_KILLSWITCH
+            .github/issue-labeler.yml
+      - name: 'Check Workflow Kill Switch'
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: 'Track workflow rerun'
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: 'Label issue by content regex'
+        # Direct issue-equivalent of actions/labeler (which drives PR
+        # labeling off .github/labeler.yml) -- github/issue-labeler matches
+        # regexes from .github/issue-labeler.yml against the issue title+body
+        # instead of a diff. sync-labels is left at its default (0/off): a
+        # label only ever gets added here, never removed on a later edit --
+        # avoids needing the same stale-label exclusion-list machinery
+        # pr-auto-label.yml built for labeler.yml's sync-labels:true.
+        uses: github/issue-labeler@ccca1e16fcb66762200e616fc29b57b940c1cb67 # ratchet:github/issue-labeler@v3.5
+        with:
+          repo-token: '${{ secrets.GITHUB_TOKEN }}'
+          configuration-path: '.github/issue-labeler.yml'
+          enable-versioned-regex: '0'
+          include-title: '1'
+          include-body: '1'
