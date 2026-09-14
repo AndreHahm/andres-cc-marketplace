@@ -57,10 +57,27 @@ Apply exactly one `p:` label based on Step 5's read, per `docs/github-label-taxo
 section (`p: critical`/`p: high`/`p: medium`/`p: low`) — the same Critical/Service-down, High/Major
 feature broken, Medium/Feature impaired, Low/cosmetic scale `github-issue-creator`'s own template
 already uses for the drafted "Impact" section, so Step 2's draft and this label agree. Default to
-`p: medium` when Step 5's read doesn't clearly signal a different tier. `gh issue edit <number>
---add-label "p: <tier>"`. If the label doesn't exist in this repository yet, report that rather than
-silently skipping it or creating it — label creation is a one-time repo-setup precondition, not
-something this skill does on every invocation.
+`p: medium` when Step 5's read doesn't clearly signal a different tier.
+
+**Reconcile against `issue-opened-labeler.yml`'s automatic `p: critical` before applying the
+resolved tier** — that workflow independently adds `p: critical` to any newly opened issue whose
+title/body matches its own keyword regex (`docs/github-label-taxonomy.md`'s Priority section), and
+it runs asynchronously relative to this step, so it may have already fired (or could fire shortly
+after) regardless of what Step 5's own read concludes. Read the issue's current labels first —
+`gh issue view <number> --json labels` — and if a `p:` label is already present that differs from
+the resolved tier, remove it in the same call that adds the resolved one:
+`gh issue edit <number> --add-label "p: <tier>" --remove-label "p: <other-tier>"`. If no `p:` label
+is present yet, a plain `gh issue edit <number> --add-label "p: <tier>"` is sufficient. Either way,
+the issue must carry exactly one `p:` label once this step completes, never two. If the label doesn't
+exist in this repository yet, report that rather than silently skipping it or creating it — label
+creation is a one-time repo-setup precondition, not something this skill does on every invocation.
+
+**Residual timing risk (disclosed, not closed by this step alone):** because `issue-opened-labeler.yml`
+is a separate, asynchronous GitHub Action, it can still add `p: critical` *after* this step completes
+its own reconciliation — this step only closes the race as of the moment it runs, it cannot guarantee
+the automation never fires again afterward. Workflow 2's Step 7 is what catches and corrects this on
+the next triage pass; a freshly-filed issue is not guaranteed to hold exactly one `p:` label
+indefinitely between filing and its first re-triage.
 
 ## Step 6: Link to Originating PR (If Applicable)
 

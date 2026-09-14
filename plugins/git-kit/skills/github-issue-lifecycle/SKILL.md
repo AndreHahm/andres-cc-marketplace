@@ -86,9 +86,10 @@ repo root.
 
 `allowed-tools` also grants `Bash(gh issue edit:*)` (added 2026-09-14, priority-label capability) —
 broader than the `--add-label`/`--remove-label` calls Workflow 1's Step 5.5 and Workflow 2's Step 7
-actually make, since `gh issue edit` also accepts `--title`, `--body`, `--assignee`, and `--milestone`.
-The actual bound is the documented workflow steps: this skill only ever calls `gh issue edit` to
-add/remove a `p:` label, never to change an issue's title, body, assignee, or milestone.
+actually make, since `gh issue edit` also accepts `--title`, `--body`, `--add-assignee`/
+`--remove-assignee`, and `--milestone`. The actual bound is the documented workflow steps: this
+skill only ever calls `gh issue edit` to add/remove a `p:` label, never to change an issue's title,
+body, assignee, or milestone.
 
 `allowed-tools` also grants `Write` directly (added 2026-08-28, external PR review round 2) — needed
 because Workflows 2 and 3 require writing comment text to a session-scratchpad file before every

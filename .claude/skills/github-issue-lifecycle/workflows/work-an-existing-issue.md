@@ -57,7 +57,11 @@ one-shot — a new angle or a third independent pass can raise the assessed seve
 (this repo has a real precedent: an issue was escalated to Critical only after a 3rd independent pass
 reconfirmed it). Confirm or update the issue's `p:` label to match this reconfirmed severity, per
 `docs/github-label-taxonomy.md`'s Priority section (`p: critical`/`p: high`/`p: medium`/`p: low`),
-defaulting to `p: medium` when nothing signals a different tier: `gh issue edit <number> --add-label
+defaulting to `p: medium` when nothing signals a different tier. `<old-tier>` is whatever this
+workflow's own Step 1 already read (`gh issue view <number> --comments` reports current labels along
+with comments) — if Step 1 wasn't actually run this session (e.g. this step is somehow reached
+without it), re-check with `gh issue view <number> --json labels` before proceeding, rather than
+guessing at the current label: `gh issue edit <number> --add-label
 "p: <tier>"`, adding `--remove-label "p: <old-tier>"` to the same call whenever the tier actually
 changed — an issue carries exactly one `p:` label at a time, never two at once. If the target label
 doesn't exist in this repository yet, report that rather than silently skipping it.
