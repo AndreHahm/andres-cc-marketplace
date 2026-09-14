@@ -115,6 +115,15 @@ check('a:tests plural (test suites)', classify(areaPatterns, 'Test suites time o
 check('a:architecture plural (decisions)', classify(areaPatterns, 'Need some design decisions documented'), ['a: architecture']);
 check('a:architecture plural (ADRs)', classify(areaPatterns, 'Multiple ADRs needed'), ['a: architecture']);
 
+console.log('\n=== Round-2 coverage gaps (PR #324 review, Codex) ===');
+check('a:github-actions (CI workflow wording)', classify(areaPatterns, 'CI workflow fails on fork PRs'), ['a: github-actions']);
+check('a:github-actions (GitHub workflow wording)', classify(areaPatterns, 'GitHub workflow is broken'), ['a: github-actions']);
+check('a:tests (bare plural)', classify(areaPatterns, 'Tests fail on Windows'), ['a: tests']);
+// Deliberately plural-only -- singular "test" (a verb, not this area's
+// noun) must NOT match, since it would false-positive on
+// feature_request.md's own boilerplate ("I can help test this feature").
+check('a:tests (singular verb form does not match)', classify(areaPatterns, 'I can help test this feature'), []);
+
 console.log('\n=== Original singular cases still work (no regression) ===');
 check('t:bug singular', classify(keywordPatterns, 'App crashes on startup with a stack traceback'), ['t: bug']);
 check('t:feature singular', classify(keywordPatterns, '[FEATURE] Add dark mode support'), ['t: feature']);
