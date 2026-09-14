@@ -124,8 +124,17 @@ jobs:
 
           # Build a JSON array of issue numbers for the matrix
           # (e.g. [1, 2, 3]). An empty result yields [] -- the matrix
-          # job's if-condition skips it.
-          ISSUE_NUMBERS=$(echo "$ISSUE_LIST" | jq '[.[].number]')
+          # job's if-condition skips it. -c (compact) is required, not
+          # cosmetic: jq's default pretty-printer spans multiple lines for
+          # any non-empty array (even a single element), and $GITHUB_OUTPUT
+          # requires a value written via plain `key=value` to stay on one
+          # line -- a multi-line value needs the `key<<EOF` delimiter form
+          # instead. Without -c, this step failed with an invalid-format
+          # error on every run that found at least one issue
+          # (cross-model-review finding, round 2: Codex found it in Phase 1,
+          # Claude independently reproduced the multi-line jq output live
+          # and confirmed in Phase 2).
+          ISSUE_NUMBERS=$(echo "$ISSUE_LIST" | jq -c '[.[].number]')
           ISSUE_COUNT=$(echo "$ISSUE_NUMBERS" | jq 'length')
 
           echo "issue-numbers=$ISSUE_NUMBERS" >> "$GITHUB_OUTPUT"

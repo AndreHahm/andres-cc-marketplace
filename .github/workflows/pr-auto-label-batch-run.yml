@@ -390,6 +390,7 @@ jobs:
                   changed = true;
                 }
 
+                let hadRemoveFailure = false;
                 for (const label of toRemove) {
                   core.info(`PR #${issue_number}: removing stale label: ${label}`);
                   try {
@@ -402,10 +403,20 @@ jobs:
                     changed = true;
                   } catch (e) {
                     core.warning(`PR #${issue_number}: could not remove stale label "${label}": ${e.message}`);
+                    hadRemoveFailure = true;
                   }
                 }
 
-                if (changed) {
+                // A failed removal always counts as this PR's outcome, even
+                // when addLabels above also succeeded (changed === true) --
+                // otherwise the failure is masked, the PR is reported as
+                // "updated"/"skipped" instead of failed, and the job's own
+                // exit code (based on failedCount) never reflects the real
+                // API error (cross-model-review finding, round 2: Codex
+                // Phase 1, confirmed by Claude Phase 2).
+                if (hadRemoveFailure) {
+                  failedCount++;
+                } else if (changed) {
                   updatedCount++;
                 } else {
                   core.info(`PR #${issue_number}: already has correct labels. Skipping.`);
