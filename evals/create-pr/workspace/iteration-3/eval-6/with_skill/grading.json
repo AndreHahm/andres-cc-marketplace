@@ -1,0 +1,31 @@
+{
+  "eval_id": 6,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Part A: correctly identifies step 3.85 as this-repository-only, a no-op in a repo without the p: taxonomy",
+      "passed": true,
+      "evidence": "\"Step 3.85 is skipped entirely. No priority is resolved, no p: label is chosen (not even a default)...\" -- quotes the exact SKILL.md rule verbatim"
+    },
+    {
+      "text": "Part A: the final gh pr create command in acme/widgets includes no --label flag at all",
+      "passed": true,
+      "evidence": "`gh pr create --title \"fix(widgets): resolve example widget bug\" --body \"Your PR description\" --base main --assignee <login>` -- no --label present in either the draft or ready-to-merge form"
+    },
+    {
+      "text": "Part A: states PR creation is never blocked by the missing taxonomy in acme/widgets",
+      "passed": true,
+      "evidence": "\"PR creation is never blocked by this\""
+    },
+    {
+      "text": "Part B: resolves p: medium (not p: low) for the unframed internal refactor, citing the tightened p: low criteria (explicit cosmetic/nice-to-have signal required)",
+      "passed": true,
+      "evidence": "\"Resolved label: p: medium... p: low requires a positive, explicit signal, not just the absence of a reason to pick something higher\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 4,
+    "assertions_passed": 4,
+    "pass_rate": 1.0
+  }
+}

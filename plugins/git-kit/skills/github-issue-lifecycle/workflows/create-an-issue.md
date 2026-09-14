@@ -53,11 +53,17 @@ workflow's own impact-analysis step, which can escalate severity on reconfirmati
 
 ## Step 5.5: Assign Priority Label
 
-Apply exactly one `p:` label based on Step 5's read, per `docs/github-label-taxonomy.md`'s Priority
-section (`p: critical`/`p: high`/`p: medium`/`p: low`) — the same Critical/Service-down, High/Major
-feature broken, Medium/Feature impaired, Low/cosmetic scale `github-issue-creator`'s own template
-already uses for the drafted "Impact" section, so Step 2's draft and this label agree. Default to
-`p: medium` when Step 5's read doesn't clearly signal a different tier.
+**This repository only — a no-op elsewhere.** Check whether `docs/github-label-taxonomy.md` exists and
+defines a `p:` Priority section. If it doesn't, skip this entire step — `github-issue-lifecycle` is a
+`git-kit` component, and `git-kit` is a general-purpose plugin installable in any repository; no
+repository installing it is required to have adopted this specific `p:` taxonomy, and issue filing
+must never block on a label scheme the target repository never opted into.
+
+If the taxonomy does exist: apply exactly one `p:` label based on Step 5's read, per
+`docs/github-label-taxonomy.md`'s Priority section (`p: critical`/`p: high`/`p: medium`/`p: low`) — the
+same Critical/Service-down, High/Major feature broken, Medium/Feature impaired, Low/cosmetic scale
+`github-issue-creator`'s own template already uses for the drafted "Impact" section, so Step 2's draft
+and this label agree. Default to `p: medium` when Step 5's read doesn't clearly signal a different tier.
 
 **Reconcile against `issue-opened-labeler.yml`'s automatic `p: critical` before applying the
 resolved tier** — that workflow independently adds `p: critical` to any newly opened issue whose

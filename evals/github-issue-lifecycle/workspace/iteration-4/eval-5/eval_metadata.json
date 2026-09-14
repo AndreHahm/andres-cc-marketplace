@@ -1,0 +1,21 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+  "assertions": [
+    {
+      "text": "Correctly identifies Step 5.5's label-update part as this-repository-only, a no-op in a repo without the p: taxonomy",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "States the issue in acme/widgets still gets filed with no p: label applied",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "States or implies filing is never blocked or delayed by the missing taxonomy",
+      "type": "quality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

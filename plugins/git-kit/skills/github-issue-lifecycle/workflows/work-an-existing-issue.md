@@ -55,9 +55,18 @@ A severity/impact-driven ordering judgment across the current working set.
 Re-run the same impact-analysis judgment from Workflow 1's Step 5. This is explicitly re-runnable, not
 one-shot — a new angle or a third independent pass can raise the assessed severity on reconfirmation
 (this repo has a real precedent: an issue was escalated to Critical only after a 3rd independent pass
-reconfirmed it). Confirm or update the issue's `p:` label to match this reconfirmed severity, per
-`docs/github-label-taxonomy.md`'s Priority section (`p: critical`/`p: high`/`p: medium`/`p: low`),
-defaulting to `p: medium` when nothing signals a different tier. The current `p:` label(s) are
+reconfirmed it).
+
+**The label-reconciliation part of this step is this repository only — a no-op elsewhere.** Check
+whether `docs/github-label-taxonomy.md` exists and defines a `p:` Priority section; if it doesn't,
+skip the label-update part below entirely (the severity re-run itself still applies everywhere) —
+`git-kit` is a general-purpose plugin, and no installing repository is required to have adopted this
+`p:` taxonomy.
+
+If the taxonomy does exist: confirm or update the issue's `p:` label to match this reconfirmed
+severity, per `docs/github-label-taxonomy.md`'s Priority section
+(`p: critical`/`p: high`/`p: medium`/`p: low`), defaulting to `p: medium` when nothing signals a
+different tier. The current `p:` label(s) are
 whatever this workflow's own Step 1 already read (`gh issue view <number> --comments` reports
 current labels along with comments) — if Step 1 wasn't actually run this session (e.g. this step is
 somehow reached without it), re-check with `gh issue view <number> --json labels` before proceeding,
