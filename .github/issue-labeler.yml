@@ -1,0 +1,34 @@
+# ---------------------------------------------------------------------------
+# Content-regex label rules for github/issue-labeler, wired up by
+# .github/workflows/issue-auto-label.yml. Direct issue-equivalent of
+# .github/labeler.yml (actions/labeler) on the PR side -- but since issues
+# have no diff/changed-files to match against, rules here match issue
+# title+body content instead of file paths.
+#
+# Format: label -> list of regexes (github/issue-labeler requires ALL entries
+# in a label's list to match -- not "any of" -- so each label below uses a
+# single regex with internal alternation). Use the '/pattern/flags' form for
+# case-insensitive matching; a bare pattern (no slashes) is matched
+# case-sensitively via a plain String.match.
+#
+# Labels must match the names defined in .github/labels.yml. Scoped to the
+# `a:` area labels only -- `t:`/`p:` type/priority labels are the separate
+# keyword-pattern step in issue-opened-labeler.yml's job. Kept deliberately
+# non-overlapping so the two mechanisms never fight over the same label
+# (see issue-opened-labeler.yml's own comment on this split).
+# ---------------------------------------------------------------------------
+
+"a: github-actions":
+  - '/\b(github action|workflow file|\.github\/workflows|\.github\/actions)\b/i'
+
+"a: ai-setup":
+  - '/\b(claude code|plugin-devkit|marketplace plugin|\.claude\/|skill\.md|subagent)\b/i'
+
+"a: dependencies":
+  - '/\b(dependenc(y|ies)|package\.json|pyproject\.toml|uv\.lock|pnpm-lock|npm install|pip install)\b/i'
+
+"a: tests":
+  - '/\b(pytest|unit test|test suite|failing test)\b/i'
+
+"a: architecture":
+  - '/\b(architecture|design decision|\bADR\b)\b/i'
