@@ -12,7 +12,7 @@ description: >-
   judgment attached, not `handling-review-findings`'s triage of findings already posted against an open
   PR review thread, and not `managing-review-learnings`'s mined-candidate routing (dispatches here once
   approved) — never PR-review findings, only freestanding issues.
-allowed-tools: Read, Write, Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
+allowed-tools: Read, Write, Skill(git-kit:collaborating-on-a-pr), Skill(git-kit:github-issue-creator), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh issue create:*), Bash(gh issue comment:*), Bash(gh issue close:*), Bash(gh issue reopen:*), Bash(gh issue edit:*), Bash(gh api repos/*/issues/*:*), Bash(gh api search/issues:*)
 ---
 
 # GitHub Issue Lifecycle
@@ -83,6 +83,12 @@ by HTTP method. The actual bound is the documented workflow steps, not the grant
 GET/POST calls named in `references/sub-issues-api.md` are sanctioned. Invoking `Skill(git-kit:
 github-issue-creator)` also transitively reaches that skill's own `Write` access to `issues/` at the
 repo root.
+
+`allowed-tools` also grants `Bash(gh issue edit:*)` (added 2026-09-14, priority-label capability) —
+broader than the `--add-label`/`--remove-label` calls Workflow 1's Step 5.5 and Workflow 2's Step 7
+actually make, since `gh issue edit` also accepts `--title`, `--body`, `--assignee`, and `--milestone`.
+The actual bound is the documented workflow steps: this skill only ever calls `gh issue edit` to
+add/remove a `p:` label, never to change an issue's title, body, assignee, or milestone.
 
 `allowed-tools` also grants `Write` directly (added 2026-08-28, external PR review round 2) — needed
 because Workflows 2 and 3 require writing comment text to a session-scratchpad file before every
@@ -185,6 +191,18 @@ Devin's automated review flagged the incident narrative being restated at nearly
 across `commit`/`create-pr`/`github-issue-lifecycle` as a simplicity/drift risk — the boundary paragraph
 above was trimmed to point at `commit`'s single canonical narrative instead of restating it here too.
 
+**Priority-label capability (added 2026-09-14):** Workflow 1's Step 5.5 and Workflow 2's Step 7 now
+apply/update exactly one `p:` label per `docs/github-label-taxonomy.md`'s documented default
+(`p: medium` unless the content signals a different tier). Verified live: `gh issue create --help`,
+`gh issue edit --help` confirm `--label`/`--add-label`/`--remove-label` exist as documented, and
+`gh label list --search "p:"` confirmed all four `p: critical`/`p: high`/`p: medium`/`p: low` labels
+already exist in this repository. **`skill-tester` blind-comparison eval (eval-4, iteration-3,
+2026-09-14):** Full Pipeline, `evals/github-issue-lifecycle/workspace/iteration-3/benchmark.json` —
+with_skill 100% (5/5 assertions), baseline 60% (3/5) — baseline correctly identified the severity
+tier but invented a `priority: critical`/`priority: high` naming scheme instead of citing this repo's
+actual `p:` taxonomy or its documented default, and defaulted to applying the label at issue-creation
+time rather than via the documented `gh issue edit --add-label` mechanism.
+
 **Verify this skill activates on:**
 - "work on issue #123"
 - "triage these issues"
@@ -214,6 +232,13 @@ above was trimmed to point at `commit`'s single canonical narrative instead of r
       the constraint is passed through to `github-issue-creator` when Workflow 1 delegates drafting
       to it. An ordinary `@username`/`@team` mention notifying a human collaborator or assignee is
       never affected by this check
+- [ ] Workflow 1's Step 5.5 always applies exactly one `p:` label after the initial impact read —
+      never left unset, and never `p: medium` picked over a tier the read actually signals
+- [ ] Workflow 2's Step 7 always confirms or updates the `p:` label to match the reconfirmed severity,
+      removing the old tier's label (`--remove-label`) whenever the tier changes — an issue never
+      carries two `p:` labels at once
+- [ ] A missing `p:` label in this repository is always reported, never silently skipped or
+      auto-created
 
 ## Reference Guide
 

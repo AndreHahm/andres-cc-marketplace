@@ -55,7 +55,12 @@ A severity/impact-driven ordering judgment across the current working set.
 Re-run the same impact-analysis judgment from Workflow 1's Step 5. This is explicitly re-runnable, not
 one-shot — a new angle or a third independent pass can raise the assessed severity on reconfirmation
 (this repo has a real precedent: an issue was escalated to Critical only after a 3rd independent pass
-reconfirmed it).
+reconfirmed it). Confirm or update the issue's `p:` label to match this reconfirmed severity, per
+`docs/github-label-taxonomy.md`'s Priority section (`p: critical`/`p: high`/`p: medium`/`p: low`),
+defaulting to `p: medium` when nothing signals a different tier: `gh issue edit <number> --add-label
+"p: <tier>"`, adding `--remove-label "p: <old-tier>"` to the same call whenever the tier actually
+changed — an issue carries exactly one `p:` label at a time, never two at once. If the target label
+doesn't exist in this repository yet, report that rather than silently skipping it.
 
 ## Step 8: Create Comments
 

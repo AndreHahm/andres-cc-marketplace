@@ -26,6 +26,13 @@
       "name": "Resolve is gated on the open-question check",
       "prompt": "An issue has an unresolved open question logged in an earlier comment, and the user asks to resolve it as fixed. What does github-issue-lifecycle do?",
       "expected_output": "Workflow 3's Step 1 (open-question gate) blocks marking the issue Resolved while the logged open question remains unaddressed -- the flow does not proceed to Step 2's close/comment sequence until that gate passes, per SKILL.md's own quality gate ('Workflow 3 never marks an issue Resolved while an open question logged in a prior comment remains unaddressed')."
+    },
+    {
+      "id": 4,
+      "name": "Priority label is assigned and kept in sync with reconfirmed severity",
+      "prompt": "DRY RUN ONLY -- this is a test of your reasoning, not a live task. Do not actually invoke Bash, git, gh, or any Skill/Agent tool.\n\nPart A: A user reports: 'Our production deploy pipeline is completely down -- every deploy fails with a 500 error, this started right after the last release.' They ask to file this as a new GitHub issue in this repo. Walk through what github-issue-lifecycle does, including how the issue's p: priority label gets decided and applied, and give the exact literal gh command that applies it.\n\nPart B: Later, this same issue is re-triaged through Workflow 2 (work an existing issue), and the re-run impact analysis (Step 7) concludes the severity should actually be lower than first assessed -- High instead of Critical, since a workaround was found. What happens to the issue's p: label at that point?",
+      "expected_output": "Part A: Step 5 (Initial Impact Analysis) reads this as Critical (production down, no workaround). Step 5.5 (Assign Priority Label) then applies p: critical via `gh issue edit <number> --add-label \"p: critical\"`, per docs/github-label-taxonomy.md's Priority section -- not the p: medium default, since the read clearly signals Critical. Part B: Workflow 2's Step 7 confirms/updates the label to match the reconfirmed severity -- since the tier changed from critical to high, the old p: critical label is removed via `--remove-label \"p: critical\"` in the same `gh issue edit` call that adds `--add-label \"p: high\"`, so the issue carries exactly one p: label at a time, never two at once.",
+      "files": []
     }
   ]
 }

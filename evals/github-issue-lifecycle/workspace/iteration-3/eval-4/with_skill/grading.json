@@ -1,0 +1,36 @@
+{
+  "eval_id": 4,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "Part A: identifies the production-down report as Critical severity",
+      "passed": true,
+      "evidence": "\"docs/github-label-taxonomy.md's Priority section defines p: critical as 'Top priority: requires immediate attention'... A fully down deploy pipeline blocking every release is a service-down condition -- this is not the 'nothing clearly signals a tier' case\""
+    },
+    {
+      "text": "Part A: states the p: critical label is applied via a gh issue edit command with --add-label",
+      "passed": true,
+      "evidence": "\"The exact literal command: gh issue edit <number> --add-label \\\"p: critical\\\"\""
+    },
+    {
+      "text": "Cites docs/github-label-taxonomy.md's Priority section (or names the p: medium default explicitly) as the source of the tier decision, rather than inventing a label scheme",
+      "passed": true,
+      "evidence": "\"docs/github-label-taxonomy.md's Priority section defines p: critical as...\" and later confirms via gh label list --search that all four p: labels exist"
+    },
+    {
+      "text": "Part B: states the label is updated (not left stale) when Step 7's re-run impact analysis reconfirms a different severity, via --remove-label on the old tier plus --add-label on the new tier in the same gh issue edit call",
+      "passed": true,
+      "evidence": "\"gh issue edit <number> --add-label \\\"p: high\\\" --remove-label \\\"p: critical\\\"... This single gh issue edit call both adds the new tier and removes the old one\""
+    },
+    {
+      "text": "States or implies an issue carries exactly one p: label at a time, never two at once",
+      "passed": true,
+      "evidence": "\"Workflow 2's Step 7 is explicit that 'an issue carries exactly one p: label at a time, never two at once'\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 5,
+    "pass_rate": 1.0
+  }
+}

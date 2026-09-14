@@ -106,6 +106,14 @@ Describes urgency and importance.
 - `p: medium` — Medium priority.
 - `p: low` — Low priority.
 
+**Default:** every Pull Request and Issue gets exactly one `p:` label. When nothing about the change
+signals otherwise, apply `p: medium`. Use `p: critical` for security/data-loss risk, a broken
+build/CI, or something blocking an active release; `p: high` for a user-facing bug or something
+blocking other in-progress work; `p: low` for cosmetic or nice-to-have items.
+`issue-opened-labeler.yml` auto-applies `p: critical` to new issues from a keyword match
+(`critical|urgent|blockers?|blocking|asap|production down`) — every other tier is a judgment call
+applied by whoever files or triages the item.
+
 ---
 
 ## 7. Execution Transparency (`x:`)

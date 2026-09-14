@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "skill_path": "plugins/git-kit/skills/github-issue-lifecycle/SKILL.md",
+  "assertions": [
+    {
+      "text": "Part A: identifies the production-down report as Critical severity",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Part A: states the p: critical label is applied via a gh issue edit command with --add-label",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Cites docs/github-label-taxonomy.md's Priority section (or names the p: medium default explicitly) as the source of the tier decision, rather than inventing a label scheme",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Part B: states the label is updated (not left stale) when Step 7's re-run impact analysis reconfirms a different severity, via --remove-label on the old tier plus --add-label on the new tier in the same gh issue edit call",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "States or implies an issue carries exactly one p: label at a time, never two at once",
+      "type": "quality",
+      "target": "outputs/ directory"
+    }
+  ]
+}
