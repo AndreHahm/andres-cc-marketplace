@@ -39,6 +39,23 @@
 # still use an obviously-synthetic placeholder, the same discipline already
 # expected repo-wide -- this exclusion is not a reason to relax that.
 #
+# .github/scripts/test-issue-auto-labeling.js hits the same two rules as the
+# smoke-tests exclusion above, for the same underlying reason: it reads
+# .github/workflows/issue-opened-labeler.yml and .github/issue-labeler.yml
+# via a __dirname-relative path (non-literal-path-reaches-fs-write) and
+# builds RegExp objects from the patterns it parses out of them
+# (non-literal-RegExp-construction), by design -- extracting the real
+# source-of-truth patterns instead of hand-duplicating them is the whole
+# point (so this test can't silently drift from what actually ships; see
+# the script's own header comment). Verified directly before excluding:
+# eval() was removed entirely in favor of new RegExp() (PR #324 review),
+# and the one function whose parameter Codacy still flags
+# (path.resolve(..., `ISSUE_TEMPLATE/${name}`)) already has an explicit
+# runtime allowlist Codacy's static analysis has no way to credit. Same
+# disclosed tradeoff as above: excluding the whole file also silences
+# secret-detection for it, accepted since it contains no secrets and the
+# canonical files it reads are never themselves excluded.
+#
 # .claude/skills|agents|commands|hooks|rules/** are this repo's own generated mirror
 # tree -- byte-identical copies of the canonical plugins/*/... source, kept in sync by
 # scripts/marketplace_ci (see .claude/marketplace-sync.json's plugin_mirrors and R19's
@@ -55,6 +72,7 @@
 exclude_paths:
   - "plugins/codex-kit/scripts/smoke-tests/**"
   - "plugins/*/tests/**"
+  - ".github/scripts/test-issue-auto-labeling.js"
   - ".claude/skills/**"
   - ".claude/agents/**"
   - ".claude/commands/**"
