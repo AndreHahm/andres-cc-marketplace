@@ -180,14 +180,24 @@ jobs:
 
             core.info(`Batch title-labeling up to ${limit} ${state} PRs...`);
 
-            // Fetch PRs with all required fields. github.paginate handles
-            // pagination; we slice to the requested limit afterwards.
-            const prs = await github.paginate(github.rest.pulls.list, {
-              owner,
-              repo,
-              state,
-              per_page: 100,
-            });
+            // Fetch PRs with all required fields, stopping pagination once
+            // `limit` have been collected instead of walking every page
+            // matching `state` and slicing afterward -- a plain
+            // github.paginate(route, params) call has no early-stop, so it
+            // was issuing a List-PRs request for every page of `state`
+            // regardless of `limit` (cross-model-review finding: both
+            // Claude and Codex independently flagged this in Phase 1, each
+            // confirmed the other's finding in Phase 2, no refutation).
+            let fetchedCount = 0;
+            const prs = await github.paginate(
+              github.rest.pulls.list,
+              { owner, repo, state, per_page: 100 },
+              (response, done) => {
+                fetchedCount += response.data.length;
+                if (fetchedCount >= limit) done();
+                return response.data;
+              }
+            );
             const prsToProcess = prs.slice(0, limit);
 
             if (prsToProcess.length === 0) {
