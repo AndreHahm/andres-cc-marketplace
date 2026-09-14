@@ -57,14 +57,18 @@ one-shot — a new angle or a third independent pass can raise the assessed seve
 (this repo has a real precedent: an issue was escalated to Critical only after a 3rd independent pass
 reconfirmed it). Confirm or update the issue's `p:` label to match this reconfirmed severity, per
 `docs/github-label-taxonomy.md`'s Priority section (`p: critical`/`p: high`/`p: medium`/`p: low`),
-defaulting to `p: medium` when nothing signals a different tier. `<old-tier>` is whatever this
-workflow's own Step 1 already read (`gh issue view <number> --comments` reports current labels along
-with comments) — if Step 1 wasn't actually run this session (e.g. this step is somehow reached
-without it), re-check with `gh issue view <number> --json labels` before proceeding, rather than
-guessing at the current label: `gh issue edit <number> --add-label
-"p: <tier>"`, adding `--remove-label "p: <old-tier>"` to the same call whenever the tier actually
-changed — an issue carries exactly one `p:` label at a time, never two at once. If the target label
-doesn't exist in this repository yet, report that rather than silently skipping it.
+defaulting to `p: medium` when nothing signals a different tier. The current `p:` label(s) are
+whatever this workflow's own Step 1 already read (`gh issue view <number> --comments` reports
+current labels along with comments) — if Step 1 wasn't actually run this session (e.g. this step is
+somehow reached without it), re-check with `gh issue view <number> --json labels` before proceeding,
+rather than guessing. **Collect every `p:` label currently present, not just one** — nothing
+guarantees there's at most one at this point (Workflow 1's Step 5.5 can leave more than one behind
+during its own disclosed asynchronous-labeler race window). `gh issue edit <number> --add-label
+"p: <tier>"`, adding `--remove-label "p: <tier-a>,p: <tier-b>"` (comma-separated for however many
+stale tiers are actually present — matching `--add-label`'s own documented multi-value form, never
+repeated `--remove-label` flags) to the same call whenever any tier needs to change — an issue
+carries exactly one `p:` label at a time, never two or more. If the target label doesn't exist in
+this repository yet, report that rather than silently skipping it.
 
 ## Step 8: Create Comments
 
