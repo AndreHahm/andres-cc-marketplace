@@ -1,0 +1,247 @@
+# Batch runner for issue-auto-label.yml: applies the same content-regex
+# labeling (github/issue-labeler matching .github/issue-labeler.yml) to
+# all open (and optionally closed) issues in one manually-triggered run,
+# mirroring the batch pattern from pr-size-labeler-batch-run.yml.
+#
+# Combines:
+#   - .github/workflows/issue-auto-label.yml  (per-issue labeling logic)
+#   - .github/workflows/pr-size-labeler-batch-run.yml (batch-run pattern)
+#
+# Structural difference from pr-auto-label-batch-run.yml:
+#   actions/labeler@v6 accepts a newline-separated pr-number list (one
+#   action call labels all PRs), but github/issue-labeler@v3.5's
+#   issue-number input is parsed with parseInt() -- a single integer,
+#   not a list (verified against the action's own source: src/main.ts).
+#   So this workflow uses a matrix strategy: one job lists issues, a
+#   second matrix job runs github/issue-labeler once per issue. This
+#   stays faithful to the actual action rather than re-implementing its
+#   regex-matching logic (which would risk drifting from the action's
+#   own checkRegexes/loadConfig semantics if either changes).
+#
+# Differences from the per-issue issue-auto-label.yml:
+#   - Triggered via workflow_dispatch (no issues event).
+#   - No concurrency group (matrix jobs are independent per issue).
+#   - github/issue-labeler is given an explicit issue-number
+#     (matrix.value) instead of relying on the issues event context.
+#   - Backfills a missing p: priority label (see "Set missing priority
+#     label" step below) -- issue-auto-label.yml has no equivalent step
+#     of its own; that policy lives in issue-opened-labeler.yml instead,
+#     which only ever fires once, on "opened". This batch run is the
+#     catch-up pass for issues that predate that policy or slipped
+#     through it.
+#
+# Open items (disclosed, not blocking):
+#   - Matrix job limit: GitHub Actions caps a matrix at 256 jobs. The
+#     default limit input (100) is well within range, but a limit > 256
+#     would silently drop the excess. Run in smaller batches if needed.
+#   - Per-job overhead: each matrix job does its own checkout + killswitch
+#     check, plus one issues.get call for the priority-label step below.
+#     For 100 issues that's 100 checkouts and 100 extra API reads --
+#     acceptable for a manual batch run, but slower than a single-job
+#     approach would be.
+#   - Rate limiting: max-parallel is set to 10 to avoid GitHub API rate
+#     limits. Adjust if needed for larger batches.
+#   - Priority-tier detection is deliberately narrow: it only recognizes
+#     the same "critical" keyword pattern issue-opened-labeler.yml already
+#     uses, defaulting everything else to p: medium. p: high/p: low are
+#     judgment calls per docs/github-label-taxonomy.md, not something this
+#     pass infers from content -- same scope boundary the live per-issue
+#     workflow already accepts.
+
+name: 'Auto-label Issues (Batch)'
+
+on:
+  workflow_dispatch:
+    inputs:
+      process_all:
+        description: 'Process all issues (open and closed) or open only'
+        required: true
+        default: 'false'
+        type: 'choice'
+        options:
+          - 'true'
+          - 'false'
+      limit:
+        description: 'Max number of issues to fetch and label'
+        required: true
+        default: '100'
+        type: 'string'
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  # ── List issues ───────────────────────────────────────────────────
+  # Fetches issue numbers for the matrix job. The killswitch check here
+  # gates the entire matrix -- if disabled, this job fails and the
+  # matrix job (which needs this one) never starts.
+  list-issues:
+    runs-on: ubuntu-latest
+    outputs:
+      issue-numbers: ${{ steps.list.outputs.issue-numbers }}
+      issue-count: ${{ steps.list.outputs.issue-count }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+            .github/WORKFLOW_KILLSWITCH
+
+      - name: 'Check Workflow Kill Switch'
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: 'Track workflow rerun'
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      - name: 'List issues'
+        id: list
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          STATE="open"
+          if [ "${{ github.event.inputs.process_all }}" = "true" ]; then
+            STATE="all"
+          fi
+          LIMIT="${{ github.event.inputs.limit }}"
+          echo "Fetching up to $LIMIT $STATE issues..."
+
+          # Check the command's own exit status separately from an empty
+          # result -- a failed gh issue list (auth/rate-limit/API error)
+          # would otherwise be indistinguishable from "no issues found"
+          # (same guard as pr-size-labeler-batch-run.yml).
+          if ! ISSUE_LIST=$(gh issue list --state "$STATE" --limit "$LIMIT" --json number); then
+            echo "::error::gh issue list failed -- could not fetch the issue list."
+            exit 1
+          fi
+
+          # Build a JSON array of issue numbers for the matrix
+          # (e.g. [1, 2, 3]). An empty result yields [] -- the matrix
+          # job's if-condition skips it.
+          ISSUE_NUMBERS=$(echo "$ISSUE_LIST" | jq '[.[].number]')
+          ISSUE_COUNT=$(echo "$ISSUE_NUMBERS" | jq 'length')
+
+          echo "issue-numbers=$ISSUE_NUMBERS" >> "$GITHUB_OUTPUT"
+          echo "issue-count=$ISSUE_COUNT" >> "$GITHUB_OUTPUT"
+
+          if [ "$ISSUE_COUNT" -eq 0 ]; then
+            echo "No issues found matching the criteria."
+          else
+            echo "Found $ISSUE_COUNT issue(s) to process."
+          fi
+
+  # ── Label issues (matrix) ────────────────────────────────────────
+  # Runs github/issue-labeler once per issue. fail-fast:false ensures
+  # one failure doesn't cancel the rest; max-parallel:10 avoids GitHub
+  # API rate limits on large batches.
+  label-issues:
+    needs: list-issues
+    if: needs.list-issues.outputs.issue-count != '0'
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        issue-number: ${{ fromJSON(needs.list-issues.outputs.issue-numbers) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            .github/actions/workflow-killswitch
+            .github/actions/track-rerun
+            .github/WORKFLOW_KILLSWITCH
+            .github/issue-labeler.yml
+
+      - name: 'Check Workflow Kill Switch'
+        uses: ./.github/actions/workflow-killswitch
+        with:
+          killswitch-var: ${{ vars.WORKFLOW_KILLSWITCH }}
+
+      - name: 'Track workflow rerun'
+        if: github.run_attempt > 1
+        uses: ./.github/actions/track-rerun
+
+      # Mirrors issue-auto-label.yml's "Label issue by content regex" step,
+      # but passes an explicit issue-number (matrix value) since there is
+      # no issues event context in a workflow_dispatch run. Same inputs
+      # as the per-issue workflow: include-title=1, include-body=1,
+      # enable-versioned-regex=0, sync-labels left at default (0/off --
+      # labels only ever get added, never removed on a later edit).
+      - name: 'Label issue by content regex'
+        uses: github/issue-labeler@ccca1e16fcb66762200e616fc29b57b940c1cb67 # ratchet:github/issue-labeler@v3.5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/issue-labeler.yml
+          enable-versioned-regex: '0'
+          include-title: '1'
+          include-body: '1'
+          issue-number: ${{ matrix.issue-number }}
+
+      # ── Set missing priority label ───────────────────────────────────
+      # Backfills a single p: label onto issues that don't have one yet.
+      # docs/github-label-taxonomy.md's Priority section states every issue
+      # gets exactly one p: label, defaulting to p: medium when nothing
+      # signals otherwise. This only ADDS a label when none is present -- it
+      # never replaces or removes an existing p: tier, since a human/agent-
+      # assigned tier is a judgment call this batch pass shouldn't
+      # second-guess.
+      #
+      # Reuses issue-opened-labeler.yml's own critical-keyword regex and
+      # boilerplate-stripping logic so an issue re-processed here isn't
+      # classified any differently than it would have been on "opened".
+      # Duplicated rather than shared -- there's no common script location
+      # between the two workflows to import from, the same tradeoff the
+      # content-regex step above and issue-auto-label.yml already accept
+      # for github/issue-labeler's own config duplication.
+      - name: 'Set missing priority label'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # ratchet:actions/github-script@v9.0.0
+        with:
+          script: |
+            const issue_number = ${{ matrix.issue-number }};
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+            });
+
+            const existing = (issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
+            if (existing.some((l) => l.startsWith('p: '))) {
+              core.info(`Issue #${issue_number}: already has a priority label. Skipping.`);
+              return;
+            }
+
+            // Same boilerplate-stripping as issue-opened-labeler.yml, so an
+            // unedited template's own prose (an HTML comment, an unchecked
+            // "- [ ] ..." option, a fixed section header) doesn't get
+            // misread as content the issue author actually asserted
+            // (PR #324 review).
+            function stripTemplateBoilerplate(s) {
+              return s
+                .replace(/<!--[\s\S]*?-->/g, ' ')
+                .replace(/^\s*-\s*\[\s\]\s.*$/gm, ' ')
+                .replace(/^#{1,6}\s.*$/gm, ' ');
+            }
+            const text = stripTemplateBoilerplate(`${issue.title || ''}\n${issue.body || ''}`);
+
+            // Same critical-keyword pattern as issue-opened-labeler.yml.
+            // Every other tier is a judgment call per
+            // docs/github-label-taxonomy.md, not inferred here.
+            const isCritical = /\b(critical|urgent|blockers?|blocking|asap|production down)\b/i.test(text);
+            const label = isCritical ? 'p: critical' : 'p: medium';
+
+            core.info(`Issue #${issue_number}: no priority label found -- applying "${label}".`);
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+              labels: [label],
+            });
