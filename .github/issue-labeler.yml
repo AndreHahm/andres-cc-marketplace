@@ -25,21 +25,29 @@
   # boundary that precedes it in real prose (cross-model-review finding,
   # verified live: the old \b(...|\\.github\/workflows|...)\b form tested
   # false against "The .github/workflows file fails"). Trailing \b is kept
-  # here since both dotted alternatives end in a word char (s).
-  - '/(?:\b(?:github action|workflow file)\b|\.github\/(?:workflows|actions)\b)/i'
+  # here since both dotted alternatives end in a word char (s). The `s?` on
+  # the word-based alternatives (also PR #324 review, CodeRabbit + Codex,
+  # both independently) covers the plural forms ("GitHub Actions",
+  # "workflow files") a bare trailing \b otherwise blocks the same way.
+  - '/(?:\b(?:github actions?|workflow files?)\b|\.github\/(?:workflows|actions)\b)/i'
 
 "a: ai-setup":
   # Same fix as "a: github-actions" above for the .claude/ alternative --
   # additionally drops the trailing \b too, since .claude/ ends in "/" (also
   # non-word), which would keep blocking a match whenever followed by
-  # whitespace/punctuation instead of a word character.
-  - '/(?:\b(?:claude code|plugin-devkit|marketplace plugin|skill\.md|subagent)\b|\.claude\/)/i'
+  # whitespace/punctuation instead of a word character. `s?` on
+  # "subagent"/"marketplace plugin" for the same plural-boundary reason as
+  # "a: github-actions" above.
+  - '/(?:\b(?:claude code|plugin-devkit|marketplace plugins?|skill\.md|subagents?)\b|\.claude\/)/i'
 
 "a: dependencies":
   - '/\b(dependenc(y|ies)|package\.json|pyproject\.toml|uv\.lock|pnpm-lock|npm install|pip install)\b/i'
 
 "a: tests":
-  - '/\b(pytest|unit test|test suite|failing test)\b/i'
+  # `s?` on all three phrases -- "unit tests", "test suites", "failing
+  # tests" are at least as common as their singular forms and were silently
+  # unmatched before (PR #324 review, Codex).
+  - '/\b(pytest|unit tests?|test suites?|failing tests?)\b/i'
 
 "a: architecture":
-  - '/\b(architecture|design decision|\bADR\b)\b/i'
+  - '/\b(architecture|design decisions?|\bADRs?\b)\b/i'

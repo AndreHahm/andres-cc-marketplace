@@ -91,18 +91,49 @@ jobs:
             const issue = context.payload.issue;
             if (!issue) return;
 
-            const text = `${issue.title || ''}\n${issue.body || ''}`;
+            // Strip content the issue author never actually asserted, before
+            // classifying: an HTML comment is template placeholder guidance
+            // (e.g. bug_report.md's "<!-- Severity: Critical/... -->"), an
+            // unchecked "- [ ] ..." line is a template option the author did
+            // NOT select (e.g. skill_improvement.md's "- [ ] Improve
+            // SKILL.md documentation"), and a markdown header is a fixed
+            // section title present in every issue filed from that template
+            // regardless of content (e.g. skill_improvement.md's own
+            // "### If Enhancing Documentation:") -- all three were matching
+            // literally on unedited template scaffolding regardless of the
+            // issue's real content (PR #324 review, Codex, P1). A CHECKED
+            // "- [x] ..." line is left alone and still counts. Doesn't chase
+            // every possible boilerplate variant -- e.g. feature_request.md's
+            // own prompt prose ("What problem does this feature address?")
+            // still contributes to t: feature on an unedited issue, which is
+            // redundant with, not contradictory to, that template's own
+            // "t: enhancement" label -- lower severity than the two false
+            // positives this actually fixes, left as a disclosed residual
+            // rather than expanding scope to strip all prompt prose too.
+            function stripTemplateBoilerplate(s) {
+              return s
+                .replace(/<!--[\s\S]*?-->/g, ' ')
+                .replace(/^\s*-\s*\[\s\]\s.*$/gm, ' ')
+                .replace(/^#{1,6}\s.*$/gm, ' ');
+            }
+            const text = stripTemplateBoilerplate(`${issue.title || ''}\n${issue.body || ''}`);
 
             // Content -> label patterns. Multiple type labels may apply to
             // the same issue (unlike a PR, which requires exactly one i:
-            // impact label) -- see docs/github-label-taxonomy.md.
+            // impact label) -- see docs/github-label-taxonomy.md. Optional
+            // trailing `s` on plural-capable nouns (bugs, exceptions,
+            // regressions, etc.) -- a bare trailing \b otherwise blocks the
+            // plural form the same way it blocked ".github/workflows" before
+            // that fix, since \b needs a boundary right after the matched
+            // text and a glued-on "s" is still a word character (PR #324
+            // review, CodeRabbit + Codex, independently).
             const patterns = [
-              { label: 't: security', regex: /\b(security|vulnerabilit(y|ies)|CVE-\d{4}-\d+|exploit)\b/i },
-              { label: 't: performance', regex: /\b(performance|slow|latency|regression|memory leak)\b/i },
-              { label: 't: documentation', regex: /\b(docs?|documentation|readme|typo)\b/i },
-              { label: 't: bug', regex: /\b(bug|crash(es|ed)?|broken|exception|traceback|doesn'?t work|not working)\b/i },
-              { label: 't: feature', regex: /\b(feature request|feature|enhancement|proposal)\b/i },
-              { label: 'p: critical', regex: /\b(critical|urgent|blocker|blocking|asap|production down)\b/i },
+              { label: 't: security', regex: /\b(security|vulnerabilit(y|ies)|CVE-\d{4}-\d+|exploits?)\b/i },
+              { label: 't: performance', regex: /\b(performance|slow|latency|regressions?|memory leaks?)\b/i },
+              { label: 't: documentation', regex: /\b(docs?|documentation|readme|typos?)\b/i },
+              { label: 't: bug', regex: /\b(bugs?|crash(es|ed)?|broken|exceptions?|tracebacks?|doesn'?t work|not working)\b/i },
+              { label: 't: feature', regex: /\b(feature requests?|features?|enhancements?|proposals?)\b/i },
+              { label: 'p: critical', regex: /\b(critical|urgent|blockers?|blocking|asap|production down)\b/i },
             ];
 
             const existing = new Set((issue.labels || []).map(l => (typeof l === 'string' ? l : l.name)));
