@@ -63,12 +63,15 @@ current labels along with comments) — if Step 1 wasn't actually run this sessi
 somehow reached without it), re-check with `gh issue view <number> --json labels` before proceeding,
 rather than guessing. **Collect every `p:` label currently present, not just one** — nothing
 guarantees there's at most one at this point (Workflow 1's Step 5.5 can leave more than one behind
-during its own disclosed asynchronous-labeler race window). `gh issue edit <number> --add-label
+during its own disclosed asynchronous-labeler race window). Build the removal set from only the
+labels that **differ** from the resolved tier — **the resolved tier itself must never appear in
+`--remove-label`**, even if it's already among the current labels (removing it there would undo the
+very label this step just added). `gh issue edit <number> --add-label
 "p: <tier>"`, adding `--remove-label "p: <tier-a>,p: <tier-b>"` (comma-separated for however many
-stale tiers are actually present — matching `--add-label`'s own documented multi-value form, never
-repeated `--remove-label` flags) to the same call whenever any tier needs to change — an issue
-carries exactly one `p:` label at a time, never two or more. If the target label doesn't exist in
-this repository yet, report that rather than silently skipping it.
+*stale* (non-resolved) tiers are actually present — matching `--add-label`'s own documented
+multi-value form, never repeated `--remove-label` flags) to the same call whenever any tier needs to
+change — an issue carries exactly one `p:` label at a time, never two or more. If the target label
+doesn't exist in this repository yet, report that rather than silently skipping it.
 
 ## Step 8: Create Comments
 
