@@ -65,12 +65,15 @@ title/body matches its own keyword regex (`docs/github-label-taxonomy.md`'s Prio
 it runs asynchronously relative to this step, so it may have already fired (or could fire shortly
 after) regardless of what Step 5's own read concludes. Read the issue's current labels first —
 `gh issue view <number> --json labels` — and collect every `p:` label present, not just one (nothing
-guarantees there's at most one at this point). If any are present and differ from the resolved tier,
-remove all of them in the same call that adds the resolved one, using `gh issue edit`'s
-comma-separated `--remove-label` value (matching `--add-label`'s own documented multi-value form —
-never repeated `--remove-label` flags for this): `gh issue edit <number> --add-label "p: <tier>"
---remove-label "p: <tier-a>,p: <tier-b>"` for however many stale tiers are actually present. If no
-`p:` label is present yet, a plain `gh issue edit <number> --add-label "p: <tier>"` is sufficient.
+guarantees there's at most one at this point). Build the removal set from only the labels that
+**differ** from the resolved tier — **the resolved tier itself must never appear in `--remove-label`**,
+even if it's already among the current labels (removing it there would undo the very label this step
+just added). If any differing labels are present, remove all of them in the same call that adds the
+resolved one, using `gh issue edit`'s comma-separated `--remove-label` value (matching `--add-label`'s
+own documented multi-value form — never repeated `--remove-label` flags for this):
+`gh issue edit <number> --add-label "p: <tier>" --remove-label "p: <tier-a>,p: <tier-b>"` for however
+many *stale* (non-resolved) tiers are actually present. If no `p:` label is present yet, a plain
+`gh issue edit <number> --add-label "p: <tier>"` is sufficient.
 Either way, the issue must carry exactly one `p:` label once this step completes, never two or more.
 If the label doesn't exist in this repository yet, report that rather than silently skipping it or
 creating it — label creation is a one-time repo-setup precondition, not something this skill does on
