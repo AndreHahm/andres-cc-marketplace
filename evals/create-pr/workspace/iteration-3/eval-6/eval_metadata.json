@@ -1,0 +1,26 @@
+{
+  "eval_id": 6,
+  "skill_path": "plugins/git-kit/skills/create-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "Part A: correctly identifies step 3.85 as this-repository-only, a no-op in a repo without the p: taxonomy",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Part A: the final gh pr create command in acme/widgets includes no --label flag at all",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Part A: states PR creation is never blocked by the missing taxonomy in acme/widgets",
+      "type": "quality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Part B: resolves p: medium (not p: low) for the unframed internal refactor, citing the tightened p: low criteria (explicit cosmetic/nice-to-have signal required)",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

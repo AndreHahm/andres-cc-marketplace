@@ -33,6 +33,13 @@
       "prompt": "DRY RUN ONLY -- this is a test of your reasoning, not a live task. Do not actually invoke Bash, git, gh, or any Skill/Agent tool.\n\nPart A: A user reports: 'Our production deploy pipeline is completely down -- every deploy fails with a 500 error, this started right after the last release.' They ask to file this as a new GitHub issue in this repo. Walk through what github-issue-lifecycle does, including how the issue's p: priority label gets decided and applied, and give the exact literal gh command that applies it.\n\nPart B: Later, this same issue is re-triaged through Workflow 2 (work an existing issue), and the re-run impact analysis (Step 7) concludes the severity should actually be lower than first assessed -- High instead of Critical, since a workaround was found. What happens to the issue's p: label at that point?",
       "expected_output": "Part A: Step 5 (Initial Impact Analysis) reads this as Critical (production down, no workaround). Step 5.5 (Assign Priority Label) then applies p: critical via `gh issue edit <number> --add-label \"p: critical\"`, per docs/github-label-taxonomy.md's Priority section -- not the p: medium default, since the read clearly signals Critical. Part B: Workflow 2's Step 7 confirms/updates the label to match the reconfirmed severity -- since the tier changed from critical to high, the old p: critical label is removed via `--remove-label \"p: critical\"` in the same `gh issue edit` call that adds `--add-label \"p: high\"`, so the issue carries exactly one p: label at a time, never two at once.",
       "files": []
+    },
+    {
+      "id": 5,
+      "name": "Priority-label scoping (Step 5.5/Step 7) -- no-op outside this repo",
+      "prompt": "DRY RUN ONLY -- this is a test of your reasoning, not a live task. Do not actually invoke Bash, git, gh, or any Skill/Agent tool.\n\nPretend this is a completely different repository, `acme/widgets`, which has never adopted this marketplace's `docs/github-label-taxonomy.md` `p:` taxonomy -- no such file, no `p:` Priority section exists there. A user reports a straightforward bug and asks to file it as a new GitHub issue in `acme/widgets`. Walk through what github-issue-lifecycle does, specifically around priority labeling -- does the issue end up with a p: label, and does anything about the missing taxonomy block filing the issue?",
+      "expected_output": "Step 5.5 checks whether docs/github-label-taxonomy.md defines a p: Priority section, finds none in acme/widgets, and skips the label-update part of the step entirely -- the issue still gets filed normally (Steps 1-4 proceed as usual), just with no p: label applied, and nothing about the missing taxonomy blocks or delays filing.",
+      "files": []
     }
   ]
 }

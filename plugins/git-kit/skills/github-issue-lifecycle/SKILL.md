@@ -204,6 +204,19 @@ tier but invented a `priority: critical`/`priority: high` naming scheme instead 
 actual `p:` taxonomy or its documented default, and defaulted to applying the label at issue-creation
 time rather than via the documented `gh issue edit --add-label` mechanism.
 
+**Round-1 automated PR review finding (PR #326, Codex, P2), fixed 2026-09-14:** unconditionally
+requiring this repo's own `p:` taxonomy would have blocked issue filing/triage in any other repository
+installing `git-kit` (a general-purpose plugin, per its own `plugin.json` description) without that
+taxonomy adopted. Confirmed real — `create-pr`'s step 3.85 had the identical gap, and this finding
+named both. Fixed by scoping Workflow 1's Step 5.5 and Workflow 2's Step 7's label-update logic to
+"this repository only — a no-op elsewhere," matching `create-pr`'s own step 3.5 repository-detection
+pattern (check whether `docs/github-label-taxonomy.md` exists before requiring anything). Verified by
+re-reading the new wording against the finding and against `git-kit`'s own `plugin.json` description
+confirming it's genuinely repo-agnostic. **`skill-tester` blind-comparison eval (eval-5, iteration-4,
+2026-09-14):** Full Pipeline, `evals/github-issue-lifecycle/workspace/iteration-4/benchmark.json` —
+with_skill 100% (3/3 assertions), baseline 66.7% (2/3) — baseline correctly avoided inventing a label
+but had no awareness of Step 5.5's specific repository-detection gate, reasoning generically instead.
+
 **Verify this skill activates on:**
 - "work on issue #123"
 - "triage these issues"
@@ -233,13 +246,17 @@ time rather than via the documented `gh issue edit --add-label` mechanism.
       the constraint is passed through to `github-issue-creator` when Workflow 1 delegates drafting
       to it. An ordinary `@username`/`@team` mention notifying a human collaborator or assignee is
       never affected by this check
-- [ ] Workflow 1's Step 5.5 always applies exactly one `p:` label after the initial impact read —
-      never left unset, and never `p: medium` picked over a tier the read actually signals
+- [ ] Workflow 1's Step 5.5 and Workflow 2's Step 7 label-update are always a no-op in a repository
+      without `docs/github-label-taxonomy.md`'s `p:` Priority section — issue filing/triage never
+      blocks on a label scheme the installing repository never opted into
+- [ ] In a repository that does define the taxonomy, Workflow 1's Step 5.5 always applies exactly one
+      `p:` label after the initial impact read — never left unset, and never `p: medium` picked over a
+      tier the read actually signals
 - [ ] Workflow 2's Step 7 always confirms or updates the `p:` label to match the reconfirmed severity,
       removing the old tier's label (`--remove-label`) whenever the tier changes — an issue never
       carries two `p:` labels at once
-- [ ] A missing `p:` label in this repository is always reported, never silently skipped or
-      auto-created
+- [ ] In a repository with the taxonomy, a missing `p:` label is always reported, never silently
+      skipped or auto-created
 
 ## Reference Guide
 

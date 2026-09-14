@@ -255,33 +255,37 @@ Before creating a PR, check for uncommitted changes:
    `--assignee <login>` in step 4's `gh pr create` call below — never skip assignment silently just
    because the primary lookup failed; the fallback exists precisely so a PR is never left unassigned.
 
-3.85. **Resolve the PR priority label**: apply exactly one `p:` label, per
-   `docs/github-label-taxonomy.md`'s Priority section (`p: critical`/`p: high`/`p: medium`/`p: low`).
-   Default to `p: medium` unless the change itself signals a different tier — `p: critical` for
-   security/data-loss risk, a broken build/CI, or something blocking an active release; `p: high` for a
-   user-facing bug fix or something blocking other in-progress work; `p: low` for a cosmetic or
-   nice-to-have change. Pass the resolved label as `--label "p: <tier>"` in step 4's `gh pr create` call
-   below — never skip it silently. If the label doesn't exist in this repository yet, report that as a
-   labeling failure rather than silently creating it or omitting the flag; label creation is a one-time
-   repo-setup precondition, not something this skill does on every invocation.
+3.85. **Resolve the PR priority label** (this repository only — a no-op elsewhere, matching step 3.5's
+   repository-detection pattern): if `docs/github-label-taxonomy.md` has no `p:` Priority section,
+   skip this step — `git-kit` is a general-purpose plugin, so no installing repository is required to
+   have adopted this taxonomy; don't pass `--label` below, and never block PR creation on it.
 
-4. Immediately before creating the PR, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-create create-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then use the `gh pr create` command to create a new pull request, including `--draft` only if step 3's answer was "Draft", and always including `--assignee <login>` from step 3.75 and `--label "p: <tier>"` from step 3.85:
+   Otherwise apply exactly one `p:` label per that section (`p: critical`/`p: high`/`p: medium`/
+   `p: low`). Default to `p: medium` unless the change signals otherwise — `p: critical` for
+   security/data-loss risk, a broken build/CI, or blocking an active release; `p: high` for a
+   user-facing bug fix or blocking other in-progress work; `p: low` **only** with an explicit cosmetic/
+   nice-to-have signal (e.g. framed as optional polish) — an ambiguous case (e.g. an unframed internal
+   refactor) stays at `p: medium`, never inferred down to `p: low` by elimination. Pass
+   `--label "p: <tier>"` in step 4 — never skip it once the taxonomy exists. A missing specific label
+   (taxonomy present) is a labeling failure to report, not something to silently create or omit.
+
+4. Immediately before creating the PR, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-create create-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then use the `gh pr create` command to create a new pull request, including `--draft` only if step 3's answer was "Draft", always including `--assignee <login>` from step 3.75, and including `--label "p: <tier>"` from step 3.85 only when that step actually resolved a tier (omit the flag entirely in a repository with no `p:` taxonomy):
 
    ```bash
-   # Basic command structure (draft)
+   # Basic command structure (draft) -- omit --label entirely if step 3.85 was a no-op
    gh pr create --draft --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main --assignee <login> --label "p: <tier>"
 
-   # Basic command structure (ready-to-merge)
+   # Basic command structure (ready-to-merge) -- omit --label entirely if step 3.85 was a no-op
    gh pr create --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main --assignee <login> --label "p: <tier>"
    ```
 
    For more complex PR descriptions with proper formatting, use the `--body-file` option pointing at the resolved template path (`.github/pull_request_template.md`, or `${CLAUDE_SKILL_DIR}/assets/pull_request_template.md` if that project file doesn't exist):
 
    ```bash
-   # Create PR with proper template structure (draft)
+   # Create PR with proper template structure (draft) -- omit --label entirely if step 3.85 was a no-op
    gh pr create --draft --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main --assignee <login> --label "p: <tier>"
 
-   # Create PR with proper template structure (ready-to-merge)
+   # Create PR with proper template structure (ready-to-merge) -- omit --label entirely if step 3.85 was a no-op
    gh pr create --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main --assignee <login> --label "p: <tier>"
    ```
 
@@ -473,12 +477,13 @@ behavior (R30 extraction — kept out of this file to stay under R13's line budg
       always falls through to the repo-owner fallback, never leaves the PR unassigned silently
 - [ ] Every `gh pr create` variant in step 4 always includes `--assignee <login>` — draft and
       ready-to-merge, both the `--body` and `--body-file` forms
-- [ ] Step 3.85 always resolves exactly one `p:` label before step 4 — never left unset, and never
-      `p: medium` picked over a tier the change itself clearly signals
-- [ ] Every `gh pr create` variant in step 4 always includes `--label "p: <tier>"` from step 3.85 —
-      draft and ready-to-merge, both the `--body` and `--body-file` forms
-- [ ] A missing `p:` label in this repository is always reported as a labeling failure — never
-      silently created or silently omitted from the `gh pr create` call
+- [ ] Step 3.85 is a no-op without `docs/github-label-taxonomy.md`'s `p:` section (`--label` omitted,
+      PR creation never blocked); otherwise it always resolves exactly one `p:` label before step 4
+- [ ] `p: low` requires an explicit cosmetic/nice-to-have signal — an ambiguous change always stays at
+      the `p: medium` default, never inferred down by elimination
+- [ ] Every `gh pr create` variant includes `--label "p: <tier>"` when step 3.85 resolved one, omits it
+      when step 3.85 was a no-op; a missing specific label (taxonomy present) is reported, never
+      silently created or omitted
 
 See `references/verification-log.md` for dated "verified live" notes on steps 3.5, 3.75, 3.85, Best
 Practice 6, and the step-3.5 session open-issues check (R30 extraction — kept out of this file to stay

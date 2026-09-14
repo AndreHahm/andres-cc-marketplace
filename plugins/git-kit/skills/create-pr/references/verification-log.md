@@ -43,3 +43,25 @@ ambiguous refactor case, it resolved `p: low` (reading the change as matching th
 nice-to-have" criterion directly) rather than the `p: medium` default the eval expected — a
 defensible reading of the documented criteria, not a failure to apply a label, but flagged here since
 it didn't match the specific assertion as written.
+
+**Step 3.85 — round-1 automated PR review findings (PR #326), fixed 2026-09-14:**
+1. **Codex (P2):** step 3.85 unconditionally required this repo's own `p:` taxonomy, which would have
+   blocked `/create-pr` in any other repository installing `git-kit` (a general-purpose plugin, per its
+   own `plugin.json` description) without that taxonomy adopted. Confirmed real. Fixed by scoping the
+   step to "this repository only — a no-op elsewhere," matching step 3.5's own existing
+   repository-detection pattern (check whether `docs/github-label-taxonomy.md` exists before requiring
+   anything). Applied the same scoping to `github-issue-lifecycle`'s Step 5.5 and Step 7, which Codex's
+   finding explicitly named as sharing the same gap.
+2. **CodeRabbit (Minor):** independently found the exact ambiguous-refactor discrepancy already
+   disclosed above (eval-5 Part B expected `p: medium`, with_skill resolved `p: low`). Fixed by
+   tightening `p: low`'s own criteria to require an explicit cosmetic/nice-to-have signal, rather than
+   being inferable by elimination for a merely-ambiguous change — an internal refactor with no stated
+   cosmetic framing now stays at the `p: medium` default. Both verified by re-reading the new wording
+   against the finding each addresses, and (for finding 1) against `git-kit`'s own `plugin.json`
+   description confirming it's genuinely repo-agnostic.
+
+**`skill-tester` blind-comparison eval (eval-6, iteration-3, 2026-09-14):** Full Pipeline,
+`evals/create-pr/workspace/iteration-3/benchmark.json` — with_skill 100% (4/4 assertions), baseline
+50% (2/4) — baseline correctly omitted a label in the no-taxonomy repo but, without the tightened
+wording, explicitly resolved `p: low` for the unframed refactor ("absent any such signal, 'low' is
+the best-fit choice") — the exact anti-pattern the fix targets, confirming the fix's own necessity.
