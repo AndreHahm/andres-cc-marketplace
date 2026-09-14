@@ -29,7 +29,13 @@
   # the word-based alternatives (also PR #324 review, CodeRabbit + Codex,
   # both independently) covers the plural forms ("GitHub Actions",
   # "workflow files") a bare trailing \b otherwise blocks the same way.
-  - '/(?:\b(?:github actions?|workflow files?)\b|\.github\/(?:workflows|actions)\b)/i'
+  # `ci workflows?|github workflows?` added per PR #324 round-2 review
+  # (Codex): "CI workflow fails" / "GitHub workflow is broken" are common
+  # phrasings docs/github-label-taxonomy.md's own "workflows generally"
+  # scope covers, verified false with the prior pattern. Deliberately
+  # qualified (not a bare "workflow") to avoid matching an unrelated
+  # workflow mention (e.g. "improve the review workflow").
+  - '/(?:\b(?:github actions?|workflow files?|ci workflows?|github workflows?)\b|\.github\/(?:workflows|actions)\b)/i'
 
 "a: ai-setup":
   # Same fix as "a: github-actions" above for the .claude/ alternative --
@@ -46,8 +52,14 @@
 "a: tests":
   # `s?` on all three phrases -- "unit tests", "test suites", "failing
   # tests" are at least as common as their singular forms and were silently
-  # unmatched before (PR #324 review, Codex).
-  - '/\b(pytest|unit tests?|test suites?|failing tests?)\b/i'
+  # unmatched before (PR #324 review, Codex). Bare plural `tests` added per
+  # PR #324 round-2 review (Codex): "Tests fail on Windows" was still false.
+  # Deliberately plural-only, not `tests?` -- singular bare "test" would
+  # match feature_request.md's own boilerplate ("I can help test this
+  # feature"), the same false-positive class round-1's review fixed
+  # elsewhere; Codex's own round-2 finding explicitly verified this
+  # asymmetry holds.
+  - '/\b(pytest|unit tests?|test suites?|failing tests?|tests)\b/i'
 
 "a: architecture":
   - '/\b(architecture|design decisions?|\bADRs?\b)\b/i'
