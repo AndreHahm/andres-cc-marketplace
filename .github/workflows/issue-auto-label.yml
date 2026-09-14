@@ -10,6 +10,19 @@ concurrency:
 
 permissions:
   issues: 'write'
+  # Not required by this workflow in this repo: the config file is checked
+  # out locally via sparse-checkout below, so github/issue-labeler's
+  # fs.existsSync branch is always taken and its repos.getContent API
+  # fallback (the thing that would actually need this) never runs; a plain
+  # actions/checkout on this public repo also doesn't require contents:read
+  # for the clone itself -- verified live against this repo's own CI history
+  # (issue-opened-labeler.yml/self-assign-issue.yml run the identical
+  # checkout with the identical issues:write-only permissions block, 5/5
+  # successful). Kept anyway to match github/issue-labeler's own documented
+  # example workflow (issues:write + contents:read together) -- cross-model
+  # review raised this as a Codex-only finding; harmless to include even
+  # though this repo's live behavior refutes the failure claim.
+  contents: 'read'
 
 jobs:
   label:
