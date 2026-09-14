@@ -105,12 +105,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          # Passed through env, not interpolated directly into the script
+          # below: workflow_dispatch inputs aren't validated against their
+          # declared `type: choice`/`options` at the API level (only the
+          # web-UI form enforces that), so a value dispatched via `gh
+          # workflow run`/the REST API could contain shell metacharacters --
+          # a direct ${{ }} substitution into this script body would let
+          # that value execute as shell code (same class of finding as
+          # zizmor's template-injection finding, PR #294 review;
+          # cross-model-review finding, round 3: Codex Phase 1).
+          PROCESS_ALL: ${{ github.event.inputs.process_all }}
+          LIMIT: ${{ github.event.inputs.limit }}
         run: |
           STATE="open"
-          if [ "${{ github.event.inputs.process_all }}" = "true" ]; then
+          if [ "$PROCESS_ALL" = "true" ]; then
             STATE="all"
           fi
-          LIMIT="${{ github.event.inputs.limit }}"
           echo "Fetching up to $LIMIT $STATE issues..."
 
           # Check the command's own exit status separately from an empty
