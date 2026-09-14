@@ -1,0 +1,36 @@
+{
+  "eval_id": 5,
+  "configuration": "with_skill",
+  "assertions_evaluated": [
+    {
+      "text": "States a p: priority label is resolved (step 3.85) before gh pr create runs in step 4",
+      "passed": true,
+      "evidence": "\"Step 3.85 (priority label -- the focus of this task): create-pr applies exactly one p: label per docs/github-label-taxonomy.md's Priority section\" -- walked through as occurring before step 4's gh pr create"
+    },
+    {
+      "text": "Part A: resolves p: critical for the session-token-survives-password-change bug, citing the security/data-loss-risk criterion rather than defaulting to p: medium",
+      "passed": true,
+      "evidence": "\"Resolution: p: critical. A session token that stays valid indefinitely after a password change is a session-invalidation vulnerability... It squarely matches the p: critical criterion's first listed trigger, 'security/data-loss risk'\""
+    },
+    {
+      "text": "Part A: the final gh pr create command includes --label \"p: critical\"",
+      "passed": true,
+      "evidence": "`gh pr create --draft --title \"fix(auth): invalidate session tokens on password change\" --body-file .github/pull_request_template.md --base main --assignee AndreHahm --label \"p: critical\"`"
+    },
+    {
+      "text": "Part B: resolves p: medium as the default for the ambiguous internal refactor, since nothing signals a different tier",
+      "passed": false,
+      "evidence": "Resolved p: low instead of p: medium, reasoning the refactor matches the p: low 'cosmetic or nice-to-have' criterion directly rather than being genuinely ambiguous: \"Resolution: p: low... Because this is a signal the change itself clearly gives... the default tier is bypassed in favor of p: low here, rather than falling through to p: medium.\" This is a defensible, non-arbitrary reading of the documented criteria (not an omission or an arbitrary guess), but it does not match this assertion's literal expectation of p: medium -- a genuinely debatable case the eval prompt didn't fully disambiguate between 'nothing signals a tier' (medium) and 'signals low' (low)."
+    },
+    {
+      "text": "States or implies exactly one p: label is always applied to the gh pr create call, never omitted just because the tier is unclear",
+      "passed": true,
+      "evidence": "Applied a specific label in both Part A (p: critical) and Part B (p: low) -- never omitted the --label flag in either case."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 4,
+    "pass_rate": 0.8
+  }
+}

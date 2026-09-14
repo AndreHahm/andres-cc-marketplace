@@ -1,0 +1,36 @@
+{
+  "eval_id": 4,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "Part A: identifies the production-down report as Critical severity",
+      "passed": true,
+      "evidence": "\"I'd triage this as the highest severity level the repo's label scheme has -- typically priority: critical (or P0, depending on the repo's convention)\""
+    },
+    {
+      "text": "Part A: states the p: critical label is applied via a gh issue edit command with --add-label",
+      "passed": false,
+      "evidence": "Primary command applies the label at creation time with a different, invented name: `gh issue create ... --label \"priority: critical,bug\"`. gh issue edit --add-label is only offered as a secondary fallback (\"If I had already created the issue without a label\"), and even then uses \"priority: critical\", not this repo's actual \"p: critical\" label."
+    },
+    {
+      "text": "Cites docs/github-label-taxonomy.md's Priority section (or names the p: medium default explicitly) as the source of the tier decision, rather than inventing a label scheme",
+      "passed": false,
+      "evidence": "Explicitly does not consult any repo-specific taxonomy: \"I would not invent a new label scheme on the spot -- I'd first check what priority labels already exist... For this answer I'll assume a priority: critical label already exists\" -- guesses a generic convention instead of the repo's actual p: scheme or its documented default."
+    },
+    {
+      "text": "Part B: states the label is updated (not left stale) when Step 7's re-run impact analysis reconfirms a different severity, via --remove-label on the old tier plus --add-label on the new tier in the same gh issue edit call",
+      "passed": true,
+      "evidence": "\"gh issue edit <ISSUE_NUMBER> --remove-label \\\"priority: critical\\\" --add-label \\\"priority: high\\\"\" -- same single-call remove+add mechanism, just the invented label prefix instead of this repo's real \"p:\" prefix."
+    },
+    {
+      "text": "States or implies an issue carries exactly one p: label at a time, never two at once",
+      "passed": true,
+      "evidence": "\"don't just add the new label on top of the old one, which would leave the issue carrying two conflicting priority labels simultaneously\""
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 3,
+    "pass_rate": 0.6
+  }
+}

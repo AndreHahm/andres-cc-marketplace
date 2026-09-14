@@ -255,24 +255,34 @@ Before creating a PR, check for uncommitted changes:
    `--assignee <login>` in step 4's `gh pr create` call below — never skip assignment silently just
    because the primary lookup failed; the fallback exists precisely so a PR is never left unassigned.
 
-4. Immediately before creating the PR, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-create create-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then use the `gh pr create` command to create a new pull request, including `--draft` only if step 3's answer was "Draft", and always including `--assignee <login>` from step 3.75:
+3.85. **Resolve the PR priority label**: apply exactly one `p:` label, per
+   `docs/github-label-taxonomy.md`'s Priority section (`p: critical`/`p: high`/`p: medium`/`p: low`).
+   Default to `p: medium` unless the change itself signals a different tier — `p: critical` for
+   security/data-loss risk, a broken build/CI, or something blocking an active release; `p: high` for a
+   user-facing bug fix or something blocking other in-progress work; `p: low` for a cosmetic or
+   nice-to-have change. Pass the resolved label as `--label "p: <tier>"` in step 4's `gh pr create` call
+   below — never skip it silently. If the label doesn't exist in this repository yet, report that as a
+   labeling failure rather than silently creating it or omitting the flag; label creation is a one-time
+   repo-setup precondition, not something this skill does on every invocation.
+
+4. Immediately before creating the PR, run `"${CLAUDE_PLUGIN_ROOT}/scripts/write-git-kit-marker.sh" gh-pr-create create-pr` — this writes the marker git-kit's PR-operations guard hook requires (it accepts markers up to 60 seconds old, so write it right before this step, not earlier). Then use the `gh pr create` command to create a new pull request, including `--draft` only if step 3's answer was "Draft", and always including `--assignee <login>` from step 3.75 and `--label "p: <tier>"` from step 3.85:
 
    ```bash
    # Basic command structure (draft)
-   gh pr create --draft --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main --assignee <login>
+   gh pr create --draft --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main --assignee <login> --label "p: <tier>"
 
    # Basic command structure (ready-to-merge)
-   gh pr create --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main --assignee <login>
+   gh pr create --title "<type>(scope): Your descriptive title" --body "Your PR description" --base main --assignee <login> --label "p: <tier>"
    ```
 
    For more complex PR descriptions with proper formatting, use the `--body-file` option pointing at the resolved template path (`.github/pull_request_template.md`, or `${CLAUDE_SKILL_DIR}/assets/pull_request_template.md` if that project file doesn't exist):
 
    ```bash
    # Create PR with proper template structure (draft)
-   gh pr create --draft --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main --assignee <login>
+   gh pr create --draft --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main --assignee <login> --label "p: <tier>"
 
    # Create PR with proper template structure (ready-to-merge)
-   gh pr create --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main --assignee <login>
+   gh pr create --title "<type>(scope): Your descriptive title" --body-file <resolved-template-path> --base main --assignee <login> --label "p: <tier>"
    ```
 
 5. **Optional Codex-review bypass attestation** (only when invoked with `--bypass-codex-review "<reason>"`): a non-empty reason is required — if the flag is present with an empty or missing reason, reject it and stop before creating any attestation (the PR itself, already created in step 4, is unaffected). **The reason text also gets posted verbatim to this PR as a comment (step d below) — check it for a literal bot-trigger mention the same way step 2's title/body check does, and reject it the same way as an empty reason if one is found**, asking for a rephrased reason instead of proceeding: a reason that happens to spell out a bot's own review-trigger mention (e.g. `@codex review`) would reproduce the exact self-retrigger risk this skill's "No literal bot-trigger mentions" Best Practice exists to prevent, just through this flag's own text instead of the drafted title/body (found by Codex's own automated review of this exact change, PR #258, 2026-08-31). Otherwise, after the PR exists:
@@ -463,32 +473,16 @@ behavior (R30 extraction — kept out of this file to stay under R13's line budg
       always falls through to the repo-owner fallback, never leaves the PR unassigned silently
 - [ ] Every `gh pr create` variant in step 4 always includes `--assignee <login>` — draft and
       ready-to-merge, both the `--body` and `--body-file` forms
+- [ ] Step 3.85 always resolves exactly one `p:` label before step 4 — never left unset, and never
+      `p: medium` picked over a tier the change itself clearly signals
+- [ ] Every `gh pr create` variant in step 4 always includes `--label "p: <tier>"` from step 3.85 —
+      draft and ready-to-merge, both the `--body` and `--body-file` forms
+- [ ] A missing `p:` label in this repository is always reported as a labeling failure — never
+      silently created or silently omitted from the `gh pr create` call
 
-**Step 3.5 (`check-pr-title.py`) — verified live, 2026-08-16:** confirmed `PASS` on a real compliant title
-(`docs(plugin-devkit): ...`, used for PR #42) and `FAIL` with the correct reason on three synthetic bad
-titles — a `style:`-typed title (rejected: not in this repo's allowed-type list, even though `style` is a
-valid `commit` type), a `ci:`-typed title (same reason), and an uppercase-scope title (rejected: fails the
-title regex). All four results matched `pr_policy.py`'s actual behavior, called directly rather than
-reimplemented.
-
-**Step 3.75 (assignee resolution) — verified live end-to-end, 2026-08-16:** `gh api user --jq '.login'`
-resolved correctly, and this exact `create-pr` run used it to create a real PR (#43) with
-`--assignee AndreHahm` — `gh pr view 43 --json assignees` confirmed the assignee actually landed. The
-`gh repo view --json owner --jq '.owner.login'` fallback path resolved correctly too, though wasn't
-exercised as the active path (the primary `gh api user` lookup succeeded) — and since this repo's
-authenticated user and owner are the same account, a real divergence between primary and fallback still
-isn't covered; a multi-maintainer repo would be needed to observe that.
-
-**Best Practice 6 and step 5's reason check (no literal bot-trigger mentions) — 3 rounds, PR #257/#258,
-2026-08-31:** see `references/bot-trigger-mention-incident.md` for the full narrative (rounds 1-2 from
-PR #257, round 3's two findings — the bypass-reason gap and this file's own R13 line-count fix — from
-Codex and Devin's automated review of PR #258 itself). No fresh `skill-tester` eval re-run for any
-round; each was verified by re-observing the real PR/GitHub Actions state after applying it.
-
-**Pre-flight Checks step 3.5 (session open-issues check) — added 2026-09-08:** documentation-only
-Testing & Validation coverage (concrete scenarios plus the quality-gates checklist above), not a fresh
-`skill-tester` eval run — this is a new, narrow decision procedure layered onto an already-tested skill,
-verified by re-reading it against the scenarios above rather than a blind-comparison eval.
+See `references/verification-log.md` for dated "verified live" notes on steps 3.5, 3.75, 3.85, Best
+Practice 6, and the step-3.5 session open-issues check (R30 extraction — kept out of this file to stay
+under R13's line budget, same reason `references/test-scenarios.md` was already extracted).
 
 ## Related Documentation
 

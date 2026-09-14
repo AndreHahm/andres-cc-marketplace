@@ -1,0 +1,31 @@
+{
+  "eval_id": 5,
+  "skill_path": "plugins/git-kit/skills/create-pr/SKILL.md",
+  "assertions": [
+    {
+      "text": "States a p: priority label is resolved (step 3.85) before gh pr create runs in step 4",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Part A: resolves p: critical for the session-token-survives-password-change bug, citing the security/data-loss-risk criterion rather than defaulting to p: medium",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Part A: the final gh pr create command includes --label \"p: critical\"",
+      "type": "presence",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "Part B: resolves p: medium as the default for the ambiguous internal refactor, since nothing signals a different tier",
+      "type": "functionality",
+      "target": "outputs/ directory"
+    },
+    {
+      "text": "States or implies exactly one p: label is always applied to the gh pr create call, never omitted just because the tier is unclear",
+      "type": "quality",
+      "target": "outputs/ directory"
+    }
+  ]
+}

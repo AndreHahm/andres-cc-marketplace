@@ -51,6 +51,17 @@ A first-pass severity/impact read, using whatever the filed issue's own template
 capture. This is explicitly re-run (not one-shot) once the issue moves into Workflow 2 — see that
 workflow's own impact-analysis step, which can escalate severity on reconfirmation.
 
+## Step 5.5: Assign Priority Label
+
+Apply exactly one `p:` label based on Step 5's read, per `docs/github-label-taxonomy.md`'s Priority
+section (`p: critical`/`p: high`/`p: medium`/`p: low`) — the same Critical/Service-down, High/Major
+feature broken, Medium/Feature impaired, Low/cosmetic scale `github-issue-creator`'s own template
+already uses for the drafted "Impact" section, so Step 2's draft and this label agree. Default to
+`p: medium` when Step 5's read doesn't clearly signal a different tier. `gh issue edit <number>
+--add-label "p: <tier>"`. If the label doesn't exist in this repository yet, report that rather than
+silently skipping it or creating it — label creation is a one-time repo-setup precondition, not
+something this skill does on every invocation.
+
 ## Step 6: Link to Originating PR (If Applicable)
 
 `collaborating-on-a-pr`'s Path A only covers linking at *PR-creation* time — invoking it against an

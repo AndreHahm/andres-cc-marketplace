@@ -1,0 +1,36 @@
+{
+  "eval_id": 5,
+  "configuration": "baseline",
+  "assertions_evaluated": [
+    {
+      "text": "States a p: priority label is resolved (step 3.85) before gh pr create runs in step 4",
+      "passed": false,
+      "evidence": "No awareness of this repo's create-pr skill, step 3.85, or the p: taxonomy at all -- explicitly states it is \"intentionally not consulting any label reference doc for this exercise\" and invents a generic \"priority: high\" convention instead."
+    },
+    {
+      "text": "Part A: resolves p: critical for the session-token-survives-password-change bug, citing the security/data-loss-risk criterion rather than defaulting to p: medium",
+      "passed": false,
+      "evidence": "Explicitly resolves p: high, not critical: \"I would not go as far as 'critical/blocker' by default, since there's no indication this is actively being exploited or that it blocks a release outright\" -- misses that this repo's own taxonomy treats security/data-loss risk itself as the p: critical trigger, independent of active exploitation."
+    },
+    {
+      "text": "Part A: the final gh pr create command includes --label \"p: critical\"",
+      "passed": false,
+      "evidence": "`gh pr create --title \"fix: invalidate existing session tokens on password change\" --body \"...\" --label \"priority: high\"` -- wrong tier and wrong label name."
+    },
+    {
+      "text": "Part B: resolves p: medium as the default for the ambiguous internal refactor, since nothing signals a different tier",
+      "passed": false,
+      "evidence": "\"My default would be to not apply any priority label at all... I would not pass a --label flag in that PR's gh pr create command\" -- omits the label entirely rather than resolving any tier."
+    },
+    {
+      "text": "States or implies exactly one p: label is always applied to the gh pr create call, never omitted just because the tier is unclear",
+      "passed": false,
+      "evidence": "Explicitly omits the label for Part B (\"no priority label\" / \"I would not pass a --label flag\") -- the exact anti-pattern this assertion checks against."
+    }
+  ],
+  "summary": {
+    "assertions_total": 5,
+    "assertions_passed": 0,
+    "pass_rate": 0.0
+  }
+}
