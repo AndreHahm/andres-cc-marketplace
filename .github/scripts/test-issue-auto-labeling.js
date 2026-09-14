@@ -20,12 +20,17 @@ function extractKeywordPatterns() {
     throw new Error('Could not locate the patterns array in issue-opened-labeler.yml -- this test is out of sync with the workflow file');
   }
   const block = yml.slice(start, end);
-  const entryRe = /\{\s*label:\s*'([^']+)',\s*regex:\s*(\/(?:\\.|[^/\\])*\/[a-z]*)\s*\}/g;
+  // Capture pattern/flags separately and build via `new RegExp(...)` --
+  // never eval() a string parsed out of a file this repo's own PRs can
+  // modify (Codacy finding: an eval() on file-derived content is a real
+  // code-execution risk regardless of how trusted the source normally is;
+  // `new RegExp` can at worst build a slow pattern, never run arbitrary JS).
+  const entryRe = /\{\s*label:\s*'([^']+)',\s*regex:\s*\/((?:\\.|[^/\\])*)\/([a-z]*)\s*\}/g;
   const patterns = [];
   let m;
   while ((m = entryRe.exec(block))) {
-    const [, label, regexLiteral] = m;
-    patterns.push({ label, regex: (0, eval)(regexLiteral) });
+    const [, label, source, flags] = m;
+    patterns.push({ label, regex: new RegExp(source, flags) });
   }
   if (patterns.length !== 6) {
     throw new Error(`Extracted ${patterns.length} keyword patterns, expected 6 -- parser likely out of sync with the workflow file`);
@@ -47,6 +52,12 @@ function extractAreaPatterns() {
     const regexMatch = line.match(/^\s*-\s*'\/((?:\\.|[^/\\])*)\/([a-z]*)'\s*$/);
     if (regexMatch && currentLabel) {
       const [, source, flags] = regexMatch;
+      // `new RegExp` from parsed file content (Codacy finding) -- accepted,
+      // not removed: this is the whole point of extracting real patterns
+      // instead of hand-duplicating them (see this function's own purpose).
+      // Lower risk than eval() (worst case is a slow pattern via ReDoS, not
+      // code execution), and this script isn't wired into any CI gate that
+      // would run it against an unreviewed PR's content automatically.
       patterns.push({ label: currentLabel, regex: new RegExp(source, flags) });
       currentLabel = null;
     }
@@ -120,7 +131,15 @@ check('a:architecture singular', classify(areaPatterns, 'Need an ADR for this'),
 check('neutral (area)', classify(areaPatterns, 'Just a general question about usage'), []);
 
 console.log('\n=== Template-boilerplate false-positive fix (PR #324 review, Codex, P1) ===');
+const KNOWN_ISSUE_TEMPLATES = new Set(['skill_improvement.md', 'bug_report.md', 'feature_request.md']);
 function templateBody(name) {
+  // Every call site below passes a literal, but Codacy's static analysis
+  // can't prove that interprocedurally -- an explicit allowlist makes this
+  // provably safe rather than relying on "every caller happens to be a
+  // literal today."
+  if (!KNOWN_ISSUE_TEMPLATES.has(name)) {
+    throw new Error(`templateBody: unexpected template name ${JSON.stringify(name)}`);
+  }
   return fs.readFileSync(path.resolve(GITHUB_DIR, `ISSUE_TEMPLATE/${name}`), 'utf8').split(/^---\s*$/m)[2] || '';
 }
 check('skill_improvement.md scaffolding, stripped', classify(keywordPatterns, stripTemplateBoilerplate(templateBody('skill_improvement.md'))), []);
